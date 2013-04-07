@@ -2,6 +2,7 @@ package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import org.junit.Before;
@@ -25,8 +26,10 @@ public class BraveTest {
     }
 
     @Test
-    public void testGetClientTracer() {
-        assertNotNull(Brave.getClientTracer());
+    public void testGetLoggingSpanCollector() {
+        final SpanCollector loggingSpanCollector = Brave.getLoggingSpanCollector();
+        assertNotNull(loggingSpanCollector);
+        assertTrue(loggingSpanCollector instanceof LoggingSpanCollectorImpl);
     }
 
     @Test
@@ -37,11 +40,6 @@ public class BraveTest {
     @Test
     public void testGetServerTracerCustomCollector() {
         assertNotNull(Brave.getServerTracer(mockSpanCollector));
-    }
-
-    @Test
-    public void testGetServerTracer() {
-        assertNotNull(Brave.getServerTracer());
     }
 
     @Test

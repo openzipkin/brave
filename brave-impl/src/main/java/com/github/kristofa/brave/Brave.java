@@ -29,13 +29,12 @@ public class Brave {
     }
 
     /**
-     * Gets a {@link ClientTracer} that traces every request and which uses a {@link SpanCollector} which logs spans through
-     * slf4j at info level.
+     * Gets a simple {@link SpanCollector} which logs spans through slf4j at info level.
      * 
-     * @return {@link ClientTracer} instance.
+     * @return A simple {@link SpanCollector} which logs spans through slf4j at info level.
      */
-    public static ClientTracer getClientTracer() {
-        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, new LoggingSpanCollectorImpl());
+    public static SpanCollector getLoggingSpanCollector() {
+        return new LoggingSpanCollectorImpl();
     }
 
     /**
@@ -46,16 +45,6 @@ public class Brave {
      */
     public static ClientTracer getClientTracer(final SpanCollector collector) {
         return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector);
-    }
-
-    /**
-     * Gets a {@link ServerTracer} that traces every request and which uses a {@link SpanCollector} which logs spans through
-     * slf4j at info level.
-     * 
-     * @return {@link ServerTracer} instance.
-     */
-    public static ServerTracer getServerTracer() {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, new LoggingSpanCollectorImpl());
     }
 
     /**
