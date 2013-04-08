@@ -8,11 +8,18 @@ package com.github.kristofa.brave;
 public interface EndPoint {
 
     /**
-     * Get Ip address.
+     * Get Ip address as integer.
      * 
-     * @return Ip address.
+     * @return Ip address as integer.
      */
-    int getIpAddress();
+    int getIpv4();
+
+    /**
+     * Gets the ip address as String.
+     * 
+     * @return Ip address as String. Example 127.0.0.1
+     */
+    String getIpAddress();
 
     /**
      * Get port.
