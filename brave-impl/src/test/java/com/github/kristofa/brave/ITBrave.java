@@ -53,7 +53,7 @@ public class ITBrave {
 
             final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
             if (endPointSubmitter.getEndPoint() == null) {
-                endPointSubmitter.submit(10, 80, "serviceName");
+                endPointSubmitter.submit("10.0.1.6", 80, "serviceName");
             }
 
             final IntegrationTestSpanCollector mockSpanCollector = new IntegrationTestSpanCollector();

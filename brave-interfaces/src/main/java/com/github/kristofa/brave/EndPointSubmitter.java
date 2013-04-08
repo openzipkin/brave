@@ -13,11 +13,11 @@ public interface EndPointSubmitter {
     /**
      * Sets end point.
      * 
-     * @param ip Ip address
+     * @param ip Ip address, example 10.0.1.5
      * @param port Port.
      * @param serviceName Service name.
      */
-    void submit(final int ip, final int port, final String serviceName);
+    void submit(final String ip, final int port, final String serviceName);
 
     /**
      * Gets end point.

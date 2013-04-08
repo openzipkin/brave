@@ -25,7 +25,7 @@ class EndPointSubmitterImpl implements EndPointSubmitter {
      * {@inheritDoc}
      */
     @Override
-    public void submit(final int ip, final int port, final String serviceName) {
+    public void submit(final String ip, final int port, final String serviceName) {
         spanstate.setEndPoint(new EndPointImpl(ip, port, serviceName));
     }
 

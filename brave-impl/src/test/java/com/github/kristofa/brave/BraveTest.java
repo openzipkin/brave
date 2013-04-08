@@ -10,6 +10,9 @@ import org.junit.Test;
 
 public class BraveTest {
 
+    private static final String SERVICE_NAME = "service";
+    private static final int PORT = 80;
+    private static final String IP = "10.0.1.5";
     private SpanCollector mockSpanCollector;
 
     @Before
@@ -20,8 +23,8 @@ public class BraveTest {
     @Test
     public void testSetGetEndPoint() {
         final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-        endPointSubmitter.submit(10, 80, "service");
-        final EndPointImpl expectedEndPoint = new EndPointImpl(10, 80, "service");
+        endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
+        final EndPointImpl expectedEndPoint = new EndPointImpl(IP, PORT, SERVICE_NAME);
         assertEquals(expectedEndPoint, Brave.getEndPointSubmitter().getEndPoint());
     }
 

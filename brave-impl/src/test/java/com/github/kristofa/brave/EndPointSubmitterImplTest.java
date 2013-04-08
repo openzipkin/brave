@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public class EndPointSubmitterImplTest {
 
-    private final static int IP = 11;
+    private final static String IP = "10.0.0.1";
     private final static int PORT = 8080;
     private final static String SERVICE_NAME = "serviceName";
 
