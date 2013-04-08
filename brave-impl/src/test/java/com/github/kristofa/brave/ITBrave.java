@@ -61,10 +61,8 @@ public class ITBrave {
 
             final Random random = new Random();
 
-            final SpanId spanId = new SpanIdImpl(random.nextLong(), random.nextLong(), random.nextLong());
             final String serverSpanName = "server span name " + random.nextLong();
-
-            serverTracer.setSpan(spanId, serverSpanName);
+            serverTracer.setSpan(random.nextLong(), random.nextLong(), random.nextLong(), serverSpanName);
             serverTracer.setShouldTrace(true);
 
             serverTracer.setServerReceived();

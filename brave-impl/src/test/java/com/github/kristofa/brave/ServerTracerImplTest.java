@@ -12,6 +12,9 @@ public class ServerTracerImplTest {
 
     private final static String ANNOTATION_NAME = "Annotation name";
     private final static long DURATION = 13;
+    private final static long TRACE_ID = 1l;
+    private final static long SPAN_ID = 2l;
+    private final static Long PARENT_SPANID = 3l;
 
     private ServerTracerImpl serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -42,12 +45,12 @@ public class ServerTracerImplTest {
 
     @Test
     public void testSetSpan() {
-        final SpanIdImpl spanIdImpl = new SpanIdImpl(1l, 2l, 3l);
+        final SpanIdImpl expectedSpanImpl = new SpanIdImpl(TRACE_ID, SPAN_ID, PARENT_SPANID);
         final String name = "spanName";
 
-        serverTracer.setSpan(spanIdImpl, name);
+        serverTracer.setSpan(TRACE_ID, SPAN_ID, PARENT_SPANID, name);
 
-        final Span expectedSpan = new SpanImpl(spanIdImpl, name);
+        final Span expectedSpan = new SpanImpl(expectedSpanImpl, name);
         verify(mockServerSpanState).setCurrentServerSpan(expectedSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
