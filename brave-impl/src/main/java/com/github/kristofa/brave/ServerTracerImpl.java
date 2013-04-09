@@ -32,6 +32,14 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
+    public void clearCurrentSpan() {
+        state.setCurrentServerSpan(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void setSpan(final long traceId, final long spanId, final Long parentSpanId, final String name) {
         final SpanImpl spanImpl = new SpanImpl(new SpanIdImpl(traceId, spanId, parentSpanId), name);
         state.setCurrentServerSpan(spanImpl);

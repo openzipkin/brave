@@ -15,6 +15,7 @@ public class ServerTracerImplTest {
     private final static long TRACE_ID = 1l;
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;
+    private final static String SPAN_NAME = "span name";
 
     private ServerTracerImpl serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -44,13 +45,19 @@ public class ServerTracerImplTest {
     }
 
     @Test
+    public void testClearCurrentSpan() {
+        serverTracer.clearCurrentSpan();
+        verify(mockServerSpanState).setCurrentServerSpan(null);
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
+    }
+
+    @Test
     public void testSetSpan() {
         final SpanIdImpl expectedSpanImpl = new SpanIdImpl(TRACE_ID, SPAN_ID, PARENT_SPANID);
-        final String name = "spanName";
 
-        serverTracer.setSpan(TRACE_ID, SPAN_ID, PARENT_SPANID, name);
+        serverTracer.setSpan(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
 
-        final Span expectedSpan = new SpanImpl(expectedSpanImpl, name);
+        final Span expectedSpan = new SpanImpl(expectedSpanImpl, SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }

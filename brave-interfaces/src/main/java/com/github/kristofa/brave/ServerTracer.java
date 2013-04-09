@@ -10,6 +10,11 @@ package com.github.kristofa.brave;
 public interface ServerTracer extends AnnotationSubmitter {
 
     /**
+     * Clears current span. When a thread pool is used this can be used to avoid you re-use previous information.
+     */
+    void clearCurrentSpan();
+
+    /**
      * Sets the span we are part of.
      * 
      * @param traceId Trace id.
