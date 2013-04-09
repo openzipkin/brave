@@ -20,6 +20,7 @@
   <modules>
   		<module>brave-interfaces</module>
         <module>brave-impl</module>
+        <module>brave-resteasy-spring</module>
   </modules>
 
   <dependencies>
