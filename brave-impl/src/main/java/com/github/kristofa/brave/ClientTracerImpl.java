@@ -83,7 +83,7 @@ class ClientTracerImpl implements ClientTracer {
      * {@inheritDoc}
      */
     @Override
-    public void submitAnnotation(final String annotationName, final long duration) {
+    public void submitAnnotation(final String annotationName, final int duration) {
         if (state.shouldTrace() == false) {
             return;
         }
@@ -101,7 +101,7 @@ class ClientTracerImpl implements ClientTracer {
         submit(annotationName, null);
     }
 
-    private Span submit(final String annotationName, final Long duration) {
+    private Span submit(final String annotationName, final Integer duration) {
         final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             final EndPoint endPoint = state.getEndPoint();

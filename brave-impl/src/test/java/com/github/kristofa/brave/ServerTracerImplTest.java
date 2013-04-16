@@ -11,7 +11,7 @@ import org.junit.Test;
 public class ServerTracerImplTest {
 
     private final static String ANNOTATION_NAME = "Annotation name";
-    private final static long DURATION = 13;
+    private final static int DURATION = 13;
     private final static long TRACE_ID = 1l;
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;

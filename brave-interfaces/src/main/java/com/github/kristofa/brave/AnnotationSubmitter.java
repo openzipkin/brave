@@ -11,9 +11,9 @@ public interface AnnotationSubmitter {
      * Submits custom annotation for current span. Use this method if your annotation has a duration assigned to it.
      * 
      * @param annotationName Custom annotation for current span.
-     * @param duration Duration in microseconds.
+     * @param duration Duration in milliseconds.
      */
-    void submitAnnotation(final String annotationName, final long duration);
+    void submitAnnotation(final String annotationName, final int duration);
 
     /**
      * Submits custom annotation for current span. Use this method if your annotation has no duration assigned to it.

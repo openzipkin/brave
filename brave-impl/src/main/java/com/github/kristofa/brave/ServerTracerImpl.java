@@ -57,7 +57,7 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
-    public void submitAnnotation(final String annotationName, final long duration) {
+    public void submitAnnotation(final String annotationName, final int duration) {
         if (!state.shouldTrace()) {
             return;
         }
@@ -102,7 +102,7 @@ class ServerTracerImpl implements ServerTracer {
         }
     }
 
-    private Span submit(final String annotationName, final Long duration) {
+    private Span submit(final String annotationName, final Integer duration) {
         final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             final EndPoint endPoint = state.getEndPoint();

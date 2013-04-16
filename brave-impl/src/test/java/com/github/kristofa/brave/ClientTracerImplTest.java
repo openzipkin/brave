@@ -16,7 +16,7 @@ public class ClientTracerImplTest {
 
     private final static String REQUEST_NAME = "requestName";
     private final static String ANNOTATION_NAME = "annotationName";
-    private final static long DURATION = 11;
+    private final static int DURATION = 11;
 
     private ServerAndClientSpanState mockState;
     private Random mockRandom;

@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class AnnotationImplTest {
 
-    private final static Long DURATION = 15654l;
+    private final static Integer DURATION = 15654;
     private final static String ANNOTATION_NAME = "annotation Name";
     private final static EndPoint MOCK_ENDPOINT = mock(EndPoint.class);
 

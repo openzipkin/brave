@@ -11,7 +11,7 @@ public interface Annotation {
     /**
      * Get time stamp for annotation.
      * 
-     * @return Time stamp for annotation, when was annotation created. Microseconds since Unix epoch.
+     * @return Time stamp for annotation, when was annotation created. Milliseconds since Unix epoch.
      */
     long getTimeStamp();
 
@@ -25,9 +25,9 @@ public interface Annotation {
     /**
      * Optional duration for annotation.
      * 
-     * @return Duration in microseconds or <code>null</code> in case this annotation has no duration assigned.
+     * @return Duration in milliseconds or <code>null</code> in case this annotation has no duration assigned.
      */
-    Long getDuration();
+    Integer getDuration();
 
     /**
      * Get endpoint for annotation.

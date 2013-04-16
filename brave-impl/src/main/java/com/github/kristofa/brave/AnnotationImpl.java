@@ -11,7 +11,7 @@ import org.apache.commons.lang3.Validate;
 class AnnotationImpl implements Annotation {
 
     private final long timeStamp;
-    private final Long duration;
+    private final Integer duration;
     private final String annotationName;
     private final EndPoint endpoint;
 
@@ -30,16 +30,16 @@ class AnnotationImpl implements Annotation {
      * 
      * @param annotationName Annotation name. Should not be <code>null</code> or empty.
      * @param endpoint Endpoint. Should not be <code>null</code>.
-     * @param duration Optional duration in microseconds. Can be <code>null</code> but if specified it should be >= 0.
+     * @param duration Optional duration in milliseconds. Can be <code>null</code> but if specified it should be >= 0.
      */
-    AnnotationImpl(final String annotationName, final EndPoint endpoint, final Long duration) {
+    AnnotationImpl(final String annotationName, final EndPoint endpoint, final Integer duration) {
         Validate.notEmpty(annotationName);
         Validate.notNull(endpoint);
         Validate.isTrue(duration == null || duration >= 0);
         this.annotationName = annotationName;
         this.endpoint = endpoint;
         this.duration = duration;
-        timeStamp = System.nanoTime();
+        timeStamp = System.currentTimeMillis();
     }
 
     /**
@@ -62,7 +62,7 @@ class AnnotationImpl implements Annotation {
      * {@inheritDoc}
      */
     @Override
-    public Long getDuration() {
+    public Integer getDuration() {
         return duration;
     }
 
