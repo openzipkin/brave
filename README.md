@@ -30,6 +30,10 @@ and web ui are reusable.
 
 ![Distributed tracing overview](https://raw.github.com/wiki/kristofa/brave/distributed_tracing.png)
 
+The above image shows how Brave integrates with Zipkin. This is an option but not required. You can
+create new SpanCollector implementations that submit Span/Trace data to other data stores or processing
+engines.
+
 
 
 
