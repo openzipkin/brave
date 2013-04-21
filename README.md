@@ -10,9 +10,10 @@ dapper (dutch) = brave (english)... so that's where the name comes from.
 I advise you to read the [Dapper](http://research.google.com/pubs/pub36356.html) paper, but in
 short:
 
-What we want to achieve is understand system behavior and performance of complex distributed systems.
-We want to do this with minimal impact on existing code by introducing some small common libraries that
-are reusable and don't interfere with the existing business logic or architecture.
+> What we want to achieve is understand system behavior and performance of complex distributed systems.
+> We want to do this with minimal impact on existing code by introducing some small common libraries that
+> are reusable and don't interfere with the existing business logic or architecture. Besides not impacting
+> business logic or architecute we off course also want it to have a neglectable impact on performance.
 
 I looked into reusing zipkin 'as is' but did not find an elegant way to use the exising Scala code/api's 
 into the Java/Spring code I want to incorporate it.  I'm however very thankful to Twitter for open sourcing
@@ -34,7 +35,8 @@ The above image shows how Brave integrates with Zipkin. This is an option but no
 create new SpanCollector implementations that submit Span/Trace data to other data stores or processing
 engines.
 
+## public api ##
 
-
+TODO
 
 
