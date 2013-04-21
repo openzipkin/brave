@@ -11,11 +11,11 @@ package com.github.kristofa.brave;
 public interface ClientTracer extends AnnotationSubmitter {
 
     /**
-     * Start a new span that will be bound to current thread. If another client request is already bound to current thread it
-     * will be overridden.
+     * Start a new span for a new client request that will be bound to current thread. The ClientTracer can decide to return
+     * <code>null</code> in case this request should not be traced (eg sampling).
      * 
      * @param requestName Request name. Should not be <code>null</code> or empty.
-     * @return Span id for new request.
+     * @return Span id for new request or <code>null</code> in case we should not trace this new client request.
      */
     SpanId startNewSpan(final String requestName);
 
