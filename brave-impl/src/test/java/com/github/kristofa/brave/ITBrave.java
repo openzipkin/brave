@@ -70,7 +70,7 @@ public class ITBrave {
             serverTracer.submitAnnotation("custom annotation", 10);
 
             // Simulate client.
-            final ClientTracer clientTracer = Brave.getClientTracer(mockSpanCollector);
+            final ClientTracer clientTracer = Brave.getClientTracer(mockSpanCollector, Brave.getTraceAllTraceFilter());
             final String clientSpanName = "client span name " + random.nextLong();
             clientTracer.startNewSpan(clientSpanName);
             clientTracer.setClientSent();

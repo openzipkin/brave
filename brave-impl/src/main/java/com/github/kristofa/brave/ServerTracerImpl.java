@@ -102,6 +102,14 @@ class ServerTracerImpl implements ServerTracer {
         }
     }
 
+    ServerSpanState getServerSpanState() {
+        return state;
+    }
+
+    SpanCollector getSpanCollector() {
+        return collector;
+    }
+
     private Span submit(final String annotationName, final Integer duration) {
         final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {

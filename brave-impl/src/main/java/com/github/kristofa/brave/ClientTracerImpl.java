@@ -22,18 +22,6 @@ class ClientTracerImpl implements ClientTracer {
     private final TraceFilter traceFilter;
 
     /**
-     * Creates a new instance which will trace all requests except if parent span already indicates we should not trace
-     * current request.
-     * 
-     * @param state Current span state.
-     * @param randomGenerator Used to generate new trace/span ids.
-     * @param spanCollector Will collect the spans.
-     */
-    ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector) {
-        this(state, randomGenerator, spanCollector, new TraceAllTraceFilter());
-    }
-
-    /**
      * Creates a new instance.
      * 
      * @param state Current span state.
@@ -123,6 +111,18 @@ class ClientTracerImpl implements ClientTracer {
             return;
         }
         submit(annotationName, null);
+    }
+
+    ServerAndClientSpanState getServerAndClientSpanState() {
+        return state;
+    }
+
+    SpanCollector getSpanCollector() {
+        return spanCollector;
+    }
+
+    TraceFilter getTraceFilter() {
+        return traceFilter;
     }
 
     private Span submit(final String annotationName, final Integer duration) {

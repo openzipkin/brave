@@ -32,23 +32,36 @@ public class Brave {
      * Gets a simple {@link SpanCollector} which logs spans through slf4j at info level.
      * 
      * @return A simple {@link SpanCollector} which logs spans through slf4j at info level.
+     * @see Brave#getClientTracer(SpanCollector)
+     * @see Brave#getServerTracer(SpanCollector)
      */
     public static SpanCollector getLoggingSpanCollector() {
         return new LoggingSpanCollectorImpl();
     }
 
     /**
-     * Gets a {@link ClientTracer} that traces every request.
+     * Gets a {@link TraceFilter} that does not filtering at all.
      * 
-     * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
-     * @return {@link ClientTracer} instance.
+     * @return TraceFilter that does not filtering at all.
      */
-    public static ClientTracer getClientTracer(final SpanCollector collector) {
-        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector);
+    public static TraceFilter getTraceAllTraceFilter() {
+        return new TraceAllTraceFilter();
     }
 
     /**
-     * Gets a {@link ServerTracer} that traces every request.
+     * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom
+     * {@link TraceFilter}.
+     * 
+     * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
+     * @param traceFilter Custom trace filter. Should not be <code>null</code>.
+     * @return {@link ClientTracer} instance.
+     */
+    public static ClientTracer getClientTracer(final SpanCollector collector, final TraceFilter traceFilter) {
+        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilter);
+    }
+
+    /**
+     * Gets a {@link ServerTracer}.
      * 
      * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
      * @return {@link ServerTracer} instance.
