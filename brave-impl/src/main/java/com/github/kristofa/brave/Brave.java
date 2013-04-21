@@ -43,6 +43,7 @@ public class Brave {
      * Gets a {@link TraceFilter} that does not filtering at all.
      * 
      * @return TraceFilter that does not filtering at all.
+     * @see Brave#getClientTracer(SpanCollector, TraceFilter)
      */
     public static TraceFilter getTraceAllTraceFilter() {
         return new TraceAllTraceFilter();
@@ -55,6 +56,8 @@ public class Brave {
      * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
      * @param traceFilter Custom trace filter. Should not be <code>null</code>.
      * @return {@link ClientTracer} instance.
+     * @see Brave#getLoggingSpanCollector()
+     * @see Brave#getTraceAllTraceFilter()
      */
     public static ClientTracer getClientTracer(final SpanCollector collector, final TraceFilter traceFilter) {
         return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilter);
