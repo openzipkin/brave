@@ -5,7 +5,8 @@ import java.util.Random;
 import org.apache.commons.lang3.Validate;
 
 /**
- * {@link ClientTracer} implementation that traces every request if there is no indication we should not trace request.
+ * {@link ClientTracer} implementation that is configurable using a {@link TraceFilter} with which for example sampling can
+ * be implemented.
  * 
  * @see ClientTracer
  * @author kristof
@@ -18,6 +19,19 @@ class ClientTracerImpl implements ClientTracer {
     private final ServerAndClientSpanState state;
     private final Random randomGenerator;
     private final SpanCollector spanCollector;
+    private final TraceFilter traceFilter;
+
+    /**
+     * Creates a new instance which will trace all requests except if parent span already indicates we should not trace
+     * current request.
+     * 
+     * @param state Current span state.
+     * @param randomGenerator Used to generate new trace/span ids.
+     * @param spanCollector Will collect the spans.
+     */
+    ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector) {
+        this(state, randomGenerator, spanCollector, new TraceAllTraceFilter());
+    }
 
     /**
      * Creates a new instance.
@@ -25,15 +39,18 @@ class ClientTracerImpl implements ClientTracer {
      * @param state Current span state.
      * @param randomGenerator Used to generate new trace/span ids.
      * @param spanCollector Will collect the spans.
+     * @param traceFilter Allows filtering of traces.
      */
-    ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector) {
+    ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector,
+        final TraceFilter traceFilter) {
         Validate.notNull(state);
         Validate.notNull(randomGenerator);
         Validate.notNull(spanCollector);
+        Validate.notNull(traceFilter);
         this.state = state;
         this.randomGenerator = randomGenerator;
         this.spanCollector = spanCollector;
-
+        this.traceFilter = traceFilter;
     }
 
     /**
@@ -71,11 +88,18 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public SpanId startNewSpan(final String requestName) {
 
+        if (state.shouldTrace() == false) {
+            return null;
+        }
+
+        if (traceFilter.shouldTrace(requestName) == false) {
+            state.setTracing(false);
+            return null;
+        }
+
         final SpanId newSpanId = getNewSpanId();
         final Span newSpan = new SpanImpl(newSpanId, requestName);
-        if (state.shouldTrace()) {
-            state.setCurrentClientSpan(newSpan);
-        }
+        state.setCurrentClientSpan(newSpan);
         return newSpanId;
     }
 

@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -104,10 +105,8 @@ public class ClientTracerImplTest {
     @Test
     public void testStartNewSpanShouldTraceFalse() {
         when(mockState.shouldTrace()).thenReturn(false);
-        assertNotNull(clientTracer.startNewSpan(REQUEST_NAME));
+        assertNull(clientTracer.startNewSpan(REQUEST_NAME));
         verify(mockState).shouldTrace();
-        verify(mockState).getCurrentServerSpan();
-        verify(mockRandom, times(2)).nextLong();
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector);
     }
 
@@ -173,6 +172,52 @@ public class ClientTracerImplTest {
         verify(mockSpan).addAnnotation(expectedAnnotation);
 
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector);
+    }
+
+    @Test
+    public void testCustomTraceFilterShouldNotTrace() {
+        final TraceFilter mockTraceFilter = mock(TraceFilter.class);
+        final ClientTracerImpl clientTracerImpl =
+            new ClientTracerImpl(mockState, mockRandom, mockCollector, mockTraceFilter);
+
+        when(mockState.shouldTrace()).thenReturn(true);
+        when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(false);
+
+        assertNull(clientTracerImpl.startNewSpan(REQUEST_NAME));
+
+        verify(mockState).shouldTrace();
+        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
+        verify(mockState).setTracing(false);
+
+        verifyNoMoreInteractions(mockState, mockTraceFilter, mockRandom, mockCollector);
+
+    }
+
+    @Test
+    public void testCustomTraceFilterShouldTrace() {
+        final TraceFilter mockTraceFilter = mock(TraceFilter.class);
+        final ClientTracerImpl clientTracerImpl =
+            new ClientTracerImpl(mockState, mockRandom, mockCollector, mockTraceFilter);
+
+        when(mockState.shouldTrace()).thenReturn(true);
+        when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(true);
+        when(mockState.getCurrentServerSpan()).thenReturn(null);
+        when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
+
+        final SpanId spanId = clientTracerImpl.startNewSpan(REQUEST_NAME);
+
+        final SpanIdImpl expectedSpanId = new SpanIdImpl(2, 1, null);
+        final Span expectedSpan = new SpanImpl(expectedSpanId, REQUEST_NAME);
+
+        assertEquals(expectedSpanId, spanId);
+
+        verify(mockState).shouldTrace();
+        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
+        verify(mockRandom, times(2)).nextLong();
+        verify(mockState).getCurrentServerSpan();
+        verify(mockState).setCurrentClientSpan(expectedSpan);
+
+        verifyNoMoreInteractions(mockState, mockTraceFilter, mockRandom, mockCollector);
 
     }
 
