@@ -76,6 +76,10 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
             final String contextPath = servletRequest.getContextPath();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Setting endpoint: addr: " + localAddr + ", port: " + localPort + ", contextpath: "
+                    + contextPath);
+            }
             endPointSubmitter.submit(localAddr, localPort, contextPath);
         }
 
@@ -83,6 +87,9 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
         serverTracer.setShouldTrace(traceData.shouldBeTraced());
         if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Setting server side span + submit Server Received annotation");
+            }
             serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(),
                 request.getPreprocessedPath());
             serverTracer.setServerReceived();
@@ -104,6 +111,9 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         final TraceData traceData = new TraceData();
 
         for (final Entry<String, List<String>> headerEntry : requestHeaders.entrySet()) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(headerEntry.getKey() + "=" + headerEntry.getValue());
+            }
             if (HeaderConstants.TRACE_ID.equals(headerEntry.getKey())) {
                 traceData.setTraceId(getFirstLongValueFor(headerEntry));
             } else if (HeaderConstants.SPAN_ID.equals(headerEntry.getKey())) {
