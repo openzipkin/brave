@@ -25,6 +25,14 @@ public interface ServerTracer extends AnnotationSubmitter {
     void setSpan(final long traceId, final long spanId, final Long parentSpanId, final String name);
 
     /**
+     * Sets server side span. This should be used if you have a span with annotations. For example when using
+     * {@link ServerSpanThreadBinder}.
+     * 
+     * @param span Span.
+     */
+    void setSpan(final Span span);
+
+    /**
      * Sets indication if we should trace the current request.
      * 
      * @param shouldTrace <code>true</code> in case we should trace current request. <code>false</code> in case we should not
