@@ -11,7 +11,7 @@
   <packaging>jar</packaging>
 
   <name>brave-resteasy-spring</name>
-  <url>http://maven.apache.org</url>
+  <url>https://github.com/kristofa/brave</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
