@@ -3,8 +3,10 @@ package com.github.kristofa.brave;
 /**
  * Allows binding span from request thread to a new executor thread.
  * <p/>
- * This should be used in case you execute logic in new threads in your service. In that case you have to bind the span state
- * from the request thread to your new threads to make sure we can still link spans correctly.
+ * To be used in case you execute logic in new threads within you service and if you submit annotations or new requests from
+ * those threads. The span state is bound to the request thread. When you start new threads it means that the span state that
+ * was set in the request thread is not available in those new threads. The ServerSpanThreadBinder allows you to bind the
+ * original span state to the new thread.
  * 
  * @author kristof
  */
