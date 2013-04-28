@@ -4,6 +4,8 @@ package com.github.kristofa.brave;
  * Contains the header keys that are used to represent trace id, span id, parent span id, sampled.
  * <p/>
  * The names correspond with the zipkin header values.
+ * <p/>
+ * These can be used to submit as HTTP header in a new request.
  * 
  * @author kristof
  */
