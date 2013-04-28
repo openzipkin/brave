@@ -45,7 +45,7 @@ engines.
 All api access is centralized in com.github.kristofa.brave.Brave
 
 This class contains only static methods. Reason is that the returned components should
-share the same span state which is maintained as a singleton com.github.kristofa.brave.Brave.
+share the same span state which is maintained as a singleton in com.github.kristofa.brave.Brave.
 
 ### Brave.getEndPointSubmitter ###
 
@@ -116,6 +116,11 @@ The span state is bound to the request thread. When you start new threads it mea
 that the span state that was set in the request thread is not available in those new
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
 new thread.
+
+## Example implementation ##
+
+The [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example) is a good starting point 
+to get you up to speed on how you can implement brave in your own apps.
 
 ## RESTEasy integration ##
 
