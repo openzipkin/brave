@@ -1,10 +1,10 @@
 package com.github.kristofa.brave;
 
 /**
- * Allows binding span from our request thread to a new executor thread.
- * <p>
- * This should be used in case you execute logic in multiple threads to make sure we can still bind your threads to the
- * correct span.
+ * Allows binding span from request thread to a new executor thread.
+ * <p/>
+ * This should be used in case you execute logic in new threads in your service. In that case you have to bind the span state
+ * from the request thread to your new threads to make sure we can still link spans correctly.
  * 
  * @author kristof
  */
