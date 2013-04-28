@@ -1,5 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
+    
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.kristofa</groupId>
@@ -12,6 +19,25 @@
   Java implementation of Dapper (http://research.google.com/pubs/pub36356.html) and inspired by zipkin (https://github.com/twitter/zipkin/).
   </description>
   <url>https://github.com/kristofa/brave</url>
+  <licenses>
+  	<license>
+		<name>Apache 2</name>
+		<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		<distribution>repo</distribution>
+	</license>
+   </licenses>
+   <scm>
+   		<connection>scm:git:git@github.com:kristofa/brave.git</connection>
+    	<url>git@github.com:kristofa/brave.git</url>
+    	<developerConnection>scm:git:git@github.com:kristofa/brave.git</developerConnection>
+   </scm>
+   <developers>
+   		<developer>
+      		<id>kristofa</id>
+      		<name>Kristof Adriaenssens</name>
+      		<email>kr_adr@yahoo.co.uk</email>
+    	</developer>
+   </developers>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -148,4 +174,33 @@
           </plugins>        
         </pluginManagement> 
     </build>
+    <profiles>
+        <profile>
+            <id>release-sign-artifacts</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -11,8 +11,18 @@
   <packaging>jar</packaging>
 
   <name>brave-impl</name>
+  <description>
+    Brave implementation. Has ClientTracer, ServerTracer, SpanCollector implementations,... that are 
+    accessible behind api so ClientTracer, ServerTracer share state.
+  </description>
   <url>https://github.com/kristofa/brave</url>
-
+  <licenses>
+    <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+    </license>
+   </licenses>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

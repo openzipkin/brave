@@ -11,8 +11,17 @@
   <packaging>jar</packaging>
 
   <name>brave-interfaces</name>
+  <description>
+  	Brave interfaces.
+  </description>
   <url>https://github.com/kristofa/brave</url>
-
+  <licenses>
+    <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+    </license>
+   </licenses>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -41,8 +50,8 @@
             </plugin>
             <plugin>
             	<groupId>org.apache.maven.plugins</groupId>
-		<artifactId>maven-failsafe-plugin</artifactId>		
-	    </plugin>        
+				<artifactId>maven-failsafe-plugin</artifactId>		
+	    	</plugin>        
         </plugins>          
   </build>
   
