@@ -116,3 +116,49 @@ The span state is bound to the request thread. When you start new threads it mea
 that the span state that was set in the request thread is not available in those new
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
 new thread.
+
+## RESTEasy integration ##
+
+The brave-resteasy-spring module has RESTEasy pre- and postprocess interceptor implementations
+that use the ServerTracer to set up the span state.
+
+There is a separate example application that shown how to set up and configure the
+RESTEAsy integration using Spring -> [https://github.com/kristofa/brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example)
+
+brave-resteasy-spring puts the Spring and RESTEasy dependencies to scope provided which means you have to
+add the dependencies to your own application. Important to know is that you should use a recent RESTEasy version otherwise
+the integration might not work. It does for example not work with RESTEasy 2.2.1.GA. It does work with 2.3.5.Final which is
+also used in brave-resteasy-example. When it comes to Spring the oldest version I tried out and which worked was 3.0.5. 
+
+## Zipkin integration ##
+
+There is a ZipkinSpanCollector which converts the Brave spans to Zipkin flavour and submits them
+to the Zipkin SpanCollector. See [https://github.com/kristofa/brave-zipkin-spancollector](https://github.com/kristofa/brave-zipkin-spancollector).
+
+## Maven artifacts ##
+
+Version 1.0 is available in Maven central. So you can simple add the dependencies you need to your pom.xml:
+
+
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-interfaces</artifactId>
+        <version>1.0</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-impl</artifactId>
+        <version>1.0</version>
+    </dependency>
+     <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-resteasy-spring</artifactId>
+        <version>1.0</version>
+    </dependency>
+    
+## Future functionality, nice to have ##
+
+*   Binary annotation support (key=value). Is not supported in 1.0
+*   Add Flume support which can route the spans to the components that do the actual persistence. [Flume](https://cwiki.apache.org/FLUME/home.html) would replace the role of Scribe that is used in Zipkin.
+*   Zookeeper support to enable/disable tracing and update sample rate globally for all services.
+
