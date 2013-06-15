@@ -1,7 +1,8 @@
 package com.github.kristofa.brave;
 
 /**
- * Annotation that can be assigned to a Span.
+ * Annotation that can be assigned to a Span. An annotation represent an event that happened and can have an optional
+ * duration.
  * 
  * @author kristof
  * @see Span
@@ -9,7 +10,7 @@ package com.github.kristofa.brave;
 public interface Annotation {
 
     /**
-     * Get time stamp for annotation.
+     * Get time stamp for annotation. It allows showing at which time relative to begin/end time of span the event happened.
      * 
      * @return Time stamp for annotation, when was annotation created. Milliseconds since Unix epoch.
      */
