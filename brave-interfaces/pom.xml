@@ -25,6 +25,15 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   
+  <dependencies>
+    <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>0.9.0</version>
+    </dependency>
+  
+  </dependencies>
+  
   <build>
   	<plugins>
             <plugin>           
