@@ -1,7 +1,9 @@
 # brave #
 
 
-Java implementation of [Dapper](http://research.google.com/pubs/pub36356.html) and inspired by [Zipkin](https://github.com/twitter/zipkin/).
+Java implementation of [Zipkin](https://github.com/twitter/zipkin/).
+
+Zipkin is based on [Dapper](http://research.google.com/pubs/pub36356.html).
 
 dapper (dutch) = brave (english)... so that's where the name comes from.
 
@@ -16,12 +18,15 @@ short:
 > business logic or architecute we off course also want it to have a neglectable impact on performance.
 
 I looked into reusing zipkin 'as is' but did not find an elegant way to use the exising Scala code/api's 
-into the Java/Spring code I want to incorporate it.  I'm however very thankful to Twitter for open sourcing
+into the Java/Spring code I want to incorporate it.  
+
+However Brave uses the Zipkin thrift generated classes as part of its api so it is easy to use existing
+Zipkin components with Brave (zipkin-collector, zipkin-query, zipkin-ui, cassandra store,...). 
+
+I'm very thankful to Twitter for open sourcing
 Zipkin! Is is by seeing their [Zipkin video and presentation](http://www.infoq.com/presentations/Zipkin) that
 I got to know Zipkin/Dapper and that I saw the potential and the simplicity of the solution.
 
-As you can read later, brave can be integrated in Zipkin so that the cassandra back-end store
-and web ui are reusable.
 
 ## about spans and traces ##
 
