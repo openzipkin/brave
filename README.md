@@ -165,10 +165,23 @@ Version 1.0 is available in Maven central. So you can simple add the dependencie
         <artifactId>brave-resteasy-spring</artifactId>
         <version>1.0</version>
     </dependency>
-    
-## Future functionality, nice to have ##
 
-*   Binary annotation support (key=value). Is not supported in 1.0
-*   Add Flume support which can route the spans to the components that do the actual persistence. [Flume](https://cwiki.apache.org/FLUME/home.html) would replace the role of Scribe that is used in Zipkin.
-*   Zookeeper support to enable/disable tracing and update sample rate globally for all services.
+## Version history ##
+
+### 2.0-SNAPSHOT ###
+
+Brave 1.0 was an alternative implementation of Dapper with Zipkin compatibility.
+Brave 2.0-SNAPSHOT is a Java implementation of Zipkin. The Zipkin thrift classes are part 
+of the public api of Brave. This has as consequence that it will be easier to share 
+components or extensions between Zipkin/Brave. 
+
+
+*   TODO: Binary annotation support
+*   TODO: Zookeeper support to enable/disable tracing and update sample rate globally for all services.
+*   TODO: Add [logstash](http://logstash.net) support for routing spans.
+
+
+### 1.0 ###
+
+*   Fully functional but might not be ideal for large scale production usage.
 
