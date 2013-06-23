@@ -6,6 +6,7 @@
  */
 package com.twitter.zipkin.gen;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
@@ -424,7 +425,29 @@ public class BinaryAnnotation implements org.apache.thrift.TBase<BinaryAnnotatio
 
   @Override
   public int hashCode() {
-    return 0;
+    HashCodeBuilder builder = new HashCodeBuilder();
+
+    boolean present_key = true && (isSetKey());
+    builder.append(present_key);
+    if (present_key)
+      builder.append(key);
+
+    boolean present_value = true && (isSetValue());
+    builder.append(present_value);
+    if (present_value)
+      builder.append(value);
+
+    boolean present_annotation_type = true && (isSetAnnotation_type());
+    builder.append(present_annotation_type);
+    if (present_annotation_type)
+      builder.append(annotation_type.getValue());
+
+    boolean present_host = true && (isSetHost());
+    builder.append(present_host);
+    if (present_host)
+      builder.append(host);
+
+    return builder.toHashCode();
   }
 
   public int compareTo(BinaryAnnotation other) {

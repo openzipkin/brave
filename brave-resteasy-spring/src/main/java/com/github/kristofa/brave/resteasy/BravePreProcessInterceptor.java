@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.EndPoint;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.HeaderConstants;
 import com.github.kristofa.brave.ServerTracer;
@@ -72,7 +71,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     public ServerResponse preProcess(final HttpRequest request, final ResourceMethod method) throws Failure,
         WebApplicationException {
 
-        if (endPointSubmitter.getEndPoint() == null) {
+        if (!endPointSubmitter.endPointSubmitted()) {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
             final String contextPath = servletRequest.getContextPath();

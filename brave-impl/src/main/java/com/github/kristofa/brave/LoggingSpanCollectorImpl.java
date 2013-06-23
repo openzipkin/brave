@@ -4,6 +4,8 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.twitter.zipkin.gen.Span;
+
 /**
  * Simple {@link SpanCollector} implementation which logs the span through slf4j at INFO level.
  * 

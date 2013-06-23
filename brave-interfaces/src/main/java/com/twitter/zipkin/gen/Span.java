@@ -6,6 +6,7 @@
  */
 package com.twitter.zipkin.gen;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
@@ -618,7 +619,44 @@ public class Span implements org.apache.thrift.TBase<Span, Span._Fields>, java.i
 
   @Override
   public int hashCode() {
-    return 0;
+    HashCodeBuilder builder = new HashCodeBuilder();
+
+    boolean present_trace_id = true;
+    builder.append(present_trace_id);
+    if (present_trace_id)
+      builder.append(trace_id);
+
+    boolean present_name = true && (isSetName());
+    builder.append(present_name);
+    if (present_name)
+      builder.append(name);
+
+    boolean present_id = true;
+    builder.append(present_id);
+    if (present_id)
+      builder.append(id);
+
+    boolean present_parent_id = true && (isSetParent_id());
+    builder.append(present_parent_id);
+    if (present_parent_id)
+      builder.append(parent_id);
+
+    boolean present_annotations = true && (isSetAnnotations());
+    builder.append(present_annotations);
+    if (present_annotations)
+      builder.append(annotations);
+
+    boolean present_binary_annotations = true && (isSetBinary_annotations());
+    builder.append(present_binary_annotations);
+    if (present_binary_annotations)
+      builder.append(binary_annotations);
+
+    boolean present_debug = true && (isSetDebug());
+    builder.append(present_debug);
+    if (present_debug)
+      builder.append(debug);
+
+    return builder.toHashCode();
   }
 
   public int compareTo(Span other) {

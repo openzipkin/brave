@@ -1,13 +1,19 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import com.twitter.zipkin.gen.Endpoint;
 
 public class EndPointSubmitterImplTest {
 
@@ -16,13 +22,13 @@ public class EndPointSubmitterImplTest {
     private final static String SERVICE_NAME = "serviceName";
 
     private CommonSpanState mockState;
-    private EndPoint mockEndPoint;
+    private Endpoint mockEndPoint;
     private EndPointSubmitterImpl endPointSubmitter;
 
     @Before
     public void setUp() {
         mockState = mock(CommonSpanState.class);
-        mockEndPoint = mock(EndPoint.class);
+        mockEndPoint = new Endpoint();
         endPointSubmitter = new EndPointSubmitterImpl(mockState);
     }
 
@@ -34,17 +40,28 @@ public class EndPointSubmitterImplTest {
     @Test
     public void testSubmit() {
         endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
-        final EndPoint expectedEndPoint = new EndPointImpl(IP, PORT, SERVICE_NAME);
+        final Endpoint expectedEndPoint = new Endpoint(ipAddressToInt(IP), (short)PORT, SERVICE_NAME);
         verify(mockState).setEndPoint(expectedEndPoint);
-        verifyNoMoreInteractions(mockState, mockEndPoint);
+        verifyNoMoreInteractions(mockState);
     }
 
     @Test
-    public void testGetEndPoint() {
+    public void testEndPointSubmitted() {
+
         when(mockState.getEndPoint()).thenReturn(mockEndPoint);
-        assertSame(mockEndPoint, endPointSubmitter.getEndPoint());
+        assertTrue(endPointSubmitter.endPointSubmitted());
         verify(mockState).getEndPoint();
-        verifyNoMoreInteractions(mockState, mockEndPoint);
+        verifyNoMoreInteractions(mockState);
+    }
+
+    private int ipAddressToInt(final String ip) {
+        InetAddress inetAddress = null;
+        try {
+            inetAddress = InetAddress.getByName(ip);
+        } catch (final UnknownHostException e) {
+            throw new IllegalArgumentException(e);
+        }
+        return ByteBuffer.wrap(inetAddress.getAddress()).getInt();
     }
 
 }

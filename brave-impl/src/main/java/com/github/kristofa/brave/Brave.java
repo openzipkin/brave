@@ -2,6 +2,8 @@ package com.github.kristofa.brave;
 
 import java.util.Random;
 
+import com.twitter.zipkin.gen.Span;
+
 /**
  * Public Brave api. Makes sure all returned instances share the same trace/span state.
  * <p>

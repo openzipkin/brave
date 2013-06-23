@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.junit.Test;
+
+import com.twitter.zipkin.gen.Span;
 
 /**
  * Integration test for Brave api. Tests submitting server/client spans in parallel threads. Each thread represents a
@@ -52,7 +54,7 @@ public class ITBrave {
         public Integer call() throws Exception {
 
             final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-            if (endPointSubmitter.getEndPoint() == null) {
+            if (!endPointSubmitter.endPointSubmitted()) {
                 endPointSubmitter.submit("10.0.1.6", 80, "serviceName");
             }
 
@@ -83,18 +85,18 @@ public class ITBrave {
             final Span clientSpan = collectedSpans.get(0);
             final Span serverSpan = collectedSpans.get(1);
 
-            assertNotNull(serverSpan.getSpanId().getTraceId());
-            assertNotNull(serverSpan.getSpanId().getSpanId());
-            assertNotNull(serverSpan.getSpanId().getParentSpanId());
+            assertTrue(serverSpan.getTrace_id() != 0);
+            assertTrue(serverSpan.getId() != 0);
+            assertTrue(serverSpan.getParent_id() != 0);
 
-            assertNotNull(clientSpan.getSpanId().getTraceId());
-            assertNotNull(clientSpan.getSpanId().getSpanId());
-            assertNotNull(clientSpan.getSpanId().getParentSpanId());
+            assertTrue(clientSpan.getTrace_id() != 0);
+            assertTrue(clientSpan.getId() != 0);
+            assertTrue(clientSpan.getParent_id() != 0);
 
-            assertEquals("Should belong to same trace.", serverSpan.getSpanId().getTraceId(), clientSpan.getSpanId()
-                .getTraceId());
-            assertEquals("Parent span id of client span should be equal to server span id.",
-                Long.valueOf(serverSpan.getSpanId().getSpanId()), clientSpan.getSpanId().getParentSpanId());
+            assertEquals("Should belong to same trace.", serverSpan.getTrace_id(), clientSpan.getTrace_id());
+            assertTrue("Span ids should be different.", serverSpan.getId() != clientSpan.getId());
+            assertEquals("Parent span id of client span should be equal to server span id.", serverSpan.getId(),
+                clientSpan.getParent_id());
 
             assertEquals("Expect sr, ss and 1 custom annotation.", 3, serverSpan.getAnnotations().size());
             assertEquals(2, clientSpan.getAnnotations().size());

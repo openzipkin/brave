@@ -20,10 +20,11 @@ public interface EndPointSubmitter {
     void submit(final String ip, final int port, final String serviceName);
 
     /**
-     * Gets end point.
+     * Indicates if EndPoint has already been set.
      * 
-     * @return {@link EndPoint}. Can be <code>null</code> in case not yet set.
+     * @return <code>true</code> in case end point has already been submitted, <code>false</code> in case it has not been
+     *         submitted yet.
      */
-    EndPoint getEndPoint();
+    boolean endPointSubmitted();
 
 }

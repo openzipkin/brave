@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.twitter.zipkin.gen.Span;
+
 public class ServerSpanThreadBinderImplTest {
 
     private ServerSpanState mockServerSpanState;

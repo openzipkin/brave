@@ -8,8 +8,14 @@ import static org.mockito.Mockito.when;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.zipkinCoreConstants;
+
 public class ServerTracerImplTest {
 
+    private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private final static String ANNOTATION_NAME = "Annotation name";
     private final static int DURATION = 13;
     private final static long TRACE_ID = 1l;
@@ -21,7 +27,7 @@ public class ServerTracerImplTest {
     private ServerSpanState mockServerSpanState;
     private SpanCollector mockSpanCollector;
     private Span mockSpan;
-    private EndPoint mockEndPoint;
+    private Endpoint mockEndPoint;
 
     @Before
     public void setup() {
@@ -29,8 +35,14 @@ public class ServerTracerImplTest {
         mockServerSpanState = mock(ServerSpanState.class);
         mockSpanCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
-        mockEndPoint = mock(EndPoint.class);
-        serverTracer = new ServerTracerImpl(mockServerSpanState, mockSpanCollector);
+        mockEndPoint = new Endpoint();
+        serverTracer = new ServerTracerImpl(mockServerSpanState, mockSpanCollector) {
+
+            @Override
+            long currentTimeMicroseconds() {
+                return CURRENT_TIME_MICROSECONDS;
+            }
+        };
         when(mockServerSpanState.shouldTrace()).thenReturn(true);
     }
 
@@ -53,11 +65,14 @@ public class ServerTracerImplTest {
 
     @Test
     public void testSetSpan() {
-        final SpanIdImpl expectedSpanImpl = new SpanIdImpl(TRACE_ID, SPAN_ID, PARENT_SPANID);
 
         serverTracer.setSpan(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
 
-        final Span expectedSpan = new SpanImpl(expectedSpanImpl, SPAN_NAME);
+        final Span expectedSpan = new Span();
+        expectedSpan.setTrace_id(TRACE_ID);
+        expectedSpan.setId(SPAN_ID);
+        expectedSpan.setParent_id(PARENT_SPANID);
+        expectedSpan.setName(SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
@@ -117,8 +132,12 @@ public class ServerTracerImplTest {
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
-        final Annotation expectedAnnotation = new AnnotationImpl(ANNOTATION_NAME, mockEndPoint, null);
-        verify(mockSpan).addAnnotation(expectedAnnotation);
+        final Annotation expectedAnnotation = new Annotation();
+        expectedAnnotation.setHost(mockEndPoint);
+        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        expectedAnnotation.setValue(ANNOTATION_NAME);
+
+        verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
 
@@ -140,8 +159,11 @@ public class ServerTracerImplTest {
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
-        final Annotation expectedAnnotation = new AnnotationImpl("sr", mockEndPoint, null);
-        verify(mockSpan).addAnnotation(expectedAnnotation);
+        final Annotation expectedAnnotation = new Annotation();
+        expectedAnnotation.setHost(mockEndPoint);
+        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        expectedAnnotation.setValue(zipkinCoreConstants.SERVER_RECV);
+        verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
 
@@ -163,8 +185,11 @@ public class ServerTracerImplTest {
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
-        final Annotation expectedAnnotation = new AnnotationImpl("ss", mockEndPoint, null);
-        verify(mockSpan).addAnnotation(expectedAnnotation);
+        final Annotation expectedAnnotation = new Annotation();
+        expectedAnnotation.setHost(mockEndPoint);
+        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        expectedAnnotation.setValue(zipkinCoreConstants.SERVER_SEND);
+        verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockSpanCollector).collect(mockSpan);
         verify(mockServerSpanState).setCurrentServerSpan(null);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);

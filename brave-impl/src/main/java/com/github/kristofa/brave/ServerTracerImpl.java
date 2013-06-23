@@ -2,15 +2,17 @@ package com.github.kristofa.brave;
 
 import org.apache.commons.lang3.Validate;
 
+import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.zipkinCoreConstants;
+
 /**
  * {@link ServerTracer} implementation that traces every request if there is not indication not to trace request.
  * 
  * @author kristof
  */
 class ServerTracerImpl implements ServerTracer {
-
-    private final static String SERVER_RECEIVED = "sr";
-    private final static String SERVER_SEND = "ss";
 
     private final ServerSpanState state;
     private final SpanCollector collector;
@@ -41,8 +43,15 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void setSpan(final long traceId, final long spanId, final Long parentSpanId, final String name) {
-        final SpanImpl spanImpl = new SpanImpl(new SpanIdImpl(traceId, spanId, parentSpanId), name);
-        state.setCurrentServerSpan(spanImpl);
+
+        final Span span = new Span();
+        span.setTrace_id(traceId);
+        span.setId(spanId);
+        if (parentSpanId != null) {
+            span.setParent_id(parentSpanId);
+        }
+        span.setName(name);
+        state.setCurrentServerSpan(span);
     }
 
     /**
@@ -92,7 +101,7 @@ class ServerTracerImpl implements ServerTracer {
         if (!state.shouldTrace()) {
             return;
         }
-        submit(SERVER_RECEIVED, null);
+        submit(zipkinCoreConstants.SERVER_RECV, null);
     }
 
     /**
@@ -103,7 +112,7 @@ class ServerTracerImpl implements ServerTracer {
         if (!state.shouldTrace()) {
             return;
         }
-        final Span currentServerSpan = submit(SERVER_SEND, null);
+        final Span currentServerSpan = submit(zipkinCoreConstants.SERVER_SEND, null);
         if (currentServerSpan != null) {
             collector.collect(currentServerSpan);
             state.setCurrentServerSpan(null);
@@ -118,12 +127,24 @@ class ServerTracerImpl implements ServerTracer {
         return collector;
     }
 
+    long currentTimeMicroseconds() {
+        return System.currentTimeMillis() * 1000;
+    }
+
     private Span submit(final String annotationName, final Integer duration) {
         final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
-            final EndPoint endPoint = state.getEndPoint();
+            final Endpoint endPoint = state.getEndPoint();
             if (endPoint != null) {
-                currentSpan.addAnnotation(new AnnotationImpl(annotationName, endPoint, duration));
+                final Annotation annotation = new Annotation();
+                if (duration != null) {
+                    annotation.setDuration(duration * 1000);
+                }
+                annotation.setTimestamp(currentTimeMicroseconds());
+                annotation.setHost(endPoint);
+                annotation.setValue(annotationName);
+
+                currentSpan.addToAnnotations(annotation);
                 return currentSpan;
             }
         }

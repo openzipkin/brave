@@ -1,5 +1,8 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
+
 /**
  * {@link ServerAndClientSpanState} implementation.
  * 
@@ -11,7 +14,7 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     private final static ThreadLocal<Span> currentServerSpan = new ThreadLocal<Span>();
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
-    private EndPoint endPoint;
+    private Endpoint endPoint;
 
     /**
      * {@inheritDoc}
@@ -54,7 +57,7 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public EndPoint getEndPoint() {
+    public Endpoint getEndPoint() {
         return endPoint;
     }
 
@@ -62,7 +65,7 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public void setEndPoint(final EndPoint endPoint) {
+    public void setEndPoint(final Endpoint endPoint) {
         this.endPoint = endPoint;
     }
 

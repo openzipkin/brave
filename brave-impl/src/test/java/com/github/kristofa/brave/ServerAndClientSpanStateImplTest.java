@@ -10,17 +10,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
+
 public class ServerAndClientSpanStateImplTest {
 
     private ServerAndClientSpanStateImpl serverAndClientSpanState;
     private Span mockSpan;
-    private EndPoint mockEndPoint;
+    private Endpoint mockEndPoint;
 
     @Before
     public void setup() {
         serverAndClientSpanState = new ServerAndClientSpanStateImpl();
         mockSpan = mock(Span.class);
-        mockEndPoint = mock(EndPoint.class);
+        mockEndPoint = mock(Endpoint.class);
     }
 
     @After

@@ -6,6 +6,7 @@
  */
 package com.twitter.zipkin.gen;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
@@ -345,7 +346,24 @@ public class Endpoint implements org.apache.thrift.TBase<Endpoint, Endpoint._Fie
 
   @Override
   public int hashCode() {
-    return 0;
+    HashCodeBuilder builder = new HashCodeBuilder();
+
+    boolean present_ipv4 = true;
+    builder.append(present_ipv4);
+    if (present_ipv4)
+      builder.append(ipv4);
+
+    boolean present_port = true;
+    builder.append(present_port);
+    if (present_port)
+      builder.append(port);
+
+    boolean present_service_name = true && (isSetService_name());
+    builder.append(present_service_name);
+    if (present_service_name)
+      builder.append(service_name);
+
+    return builder.toHashCode();
   }
 
   public int compareTo(Endpoint other) {

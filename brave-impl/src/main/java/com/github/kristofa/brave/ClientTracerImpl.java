@@ -4,6 +4,11 @@ import java.util.Random;
 
 import org.apache.commons.lang3.Validate;
 
+import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.zipkinCoreConstants;
+
 /**
  * {@link ClientTracer} implementation that is configurable using a {@link TraceFilter} with which for example sampling can
  * be implemented.
@@ -12,9 +17,6 @@ import org.apache.commons.lang3.Validate;
  * @author kristof
  */
 class ClientTracerImpl implements ClientTracer {
-
-    private final static String CLIENT_SEND = "cs";
-    private final static String CLIENT_RECEIVED = "cr";
 
     private final ServerAndClientSpanState state;
     private final Random randomGenerator;
@@ -50,7 +52,7 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        submit(CLIENT_SEND, null);
+        submit(zipkinCoreConstants.CLIENT_SEND, null);
     }
 
     /**
@@ -62,7 +64,7 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        final Span currentSpan = submit(CLIENT_RECEIVED, null);
+        final Span currentSpan = submit(zipkinCoreConstants.CLIENT_RECV, null);
         if (currentSpan != null) {
             spanCollector.collect(currentSpan);
             state.setCurrentClientSpan(null);
@@ -86,7 +88,13 @@ class ClientTracerImpl implements ClientTracer {
         }
 
         final SpanId newSpanId = getNewSpanId();
-        final Span newSpan = new SpanImpl(newSpanId, requestName);
+        final Span newSpan = new Span();
+        newSpan.setId(newSpanId.getSpanId());
+        newSpan.setTrace_id(newSpanId.getTraceId());
+        if (newSpanId.getParentSpanId() != null) {
+            newSpan.setParent_id(newSpanId.getParentSpanId());
+        }
+        newSpan.setName(requestName);
         state.setCurrentClientSpan(newSpan);
         return newSpanId;
     }
@@ -125,12 +133,24 @@ class ClientTracerImpl implements ClientTracer {
         return traceFilter;
     }
 
+    long currentTimeMicroseconds() {
+        return System.currentTimeMillis() * 1000;
+    }
+
     private Span submit(final String annotationName, final Integer duration) {
         final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
-            final EndPoint endPoint = state.getEndPoint();
+            final Endpoint endPoint = state.getEndPoint();
             if (endPoint != null) {
-                currentSpan.addAnnotation(new AnnotationImpl(annotationName, endPoint, duration));
+
+                final Annotation annotation = new Annotation();
+                if (duration != null) {
+                    annotation.setDuration(duration * 1000);
+                }
+                annotation.setTimestamp(currentTimeMicroseconds());
+                annotation.setHost(endPoint);
+                annotation.setValue(annotationName);
+                currentSpan.addToAnnotations(annotation);
                 return currentSpan;
             }
         }
@@ -145,8 +165,8 @@ class ClientTracerImpl implements ClientTracer {
             final long newTraceId = randomGenerator.nextLong();
             return new SpanIdImpl(newTraceId, newSpanId, null);
         }
-        return new SpanIdImpl(currentServerSpan.getSpanId().getTraceId(), newSpanId, currentServerSpan.getSpanId()
-            .getSpanId());
+
+        return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
     }
 
 }

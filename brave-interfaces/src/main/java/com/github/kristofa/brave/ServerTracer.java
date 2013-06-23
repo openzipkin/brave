@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Span;
+
 /**
  * Used for submitting server event information. Keeps state for each thread. </p> Depending on the implementation it can be
  * that each request is traced or it can be that only some requests are traced to avoid too much overhead. This is all

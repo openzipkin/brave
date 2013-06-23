@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -27,8 +26,7 @@ public class BraveTest {
     public void testSetGetEndPoint() {
         final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
         endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
-        final EndPointImpl expectedEndPoint = new EndPointImpl(IP, PORT, SERVICE_NAME);
-        assertEquals(expectedEndPoint, Brave.getEndPointSubmitter().getEndPoint());
+        assertTrue(Brave.getEndPointSubmitter().endPointSubmitted());
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Span;
+
 /**
  * Allows binding span from request thread to a new executor thread.
  * <p/>

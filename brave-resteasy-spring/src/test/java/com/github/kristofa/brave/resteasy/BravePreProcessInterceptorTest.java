@@ -16,7 +16,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
-import com.github.kristofa.brave.EndPoint;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.HeaderConstants;
 import com.github.kristofa.brave.ServerTracer;
@@ -35,7 +34,6 @@ public class BravePreProcessInterceptorTest {
     private EndPointSubmitter mockEndPointSubmitter;
     private ServerTracer mockServerTracer;
     private HttpServletRequest mockHttpServletRequest;
-    private EndPoint mockEndPoint;
     private HttpRequest mockHttpRequest;
 
     @Before
@@ -46,7 +44,6 @@ public class BravePreProcessInterceptorTest {
         interceptor = new BravePreProcessInterceptor(mockEndPointSubmitter, mockServerTracer);
         interceptor.servletRequest = mockHttpServletRequest;
 
-        mockEndPoint = mock(EndPoint.class);
         mockHttpRequest = mock(HttpRequest.class);
         when(mockHttpRequest.getPreprocessedPath()).thenReturn(PATH);
 
@@ -68,13 +65,13 @@ public class BravePreProcessInterceptorTest {
     @Test
     public void testPreProcessEndPointNotSet_TraceHeadersSubmitted() {
 
-        when(mockEndPointSubmitter.getEndPoint()).thenReturn(null);
+        when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(false);
         mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, false);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
-        inOrder.verify(mockEndPointSubmitter).getEndPoint();
+        inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockEndPointSubmitter).submit(LOCAL_ADDR, PORT, CONTEXT_PATH);
         inOrder.verify(mockServerTracer).setShouldTrace(true);
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
@@ -95,13 +92,13 @@ public class BravePreProcessInterceptorTest {
 
     @Test
     public void testPreProcessEndPointSet_TraceHeadersSubmitted() {
-        when(mockEndPointSubmitter.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
         mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, false);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
-        inOrder.verify(mockEndPointSubmitter).getEndPoint();
+        inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).setShouldTrace(true);
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
@@ -117,13 +114,13 @@ public class BravePreProcessInterceptorTest {
 
     @Test
     public void testPreProcessEndPointSet_TraceHeadersMixedCase() {
-        when(mockEndPointSubmitter.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
         mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, true);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
-        inOrder.verify(mockEndPointSubmitter).getEndPoint();
+        inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).setShouldTrace(true);
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
@@ -139,13 +136,13 @@ public class BravePreProcessInterceptorTest {
 
     @Test
     public void testPreProcessEndPointSet_TraceHeadersNotSubmitted() {
-        when(mockEndPointSubmitter.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
         mockEmptyHttpHeaders();
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
-        inOrder.verify(mockEndPointSubmitter).getEndPoint();
+        inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).setShouldTrace(true);
         inOrder.verify(mockServerTracer).clearCurrentSpan();
 
@@ -159,13 +156,13 @@ public class BravePreProcessInterceptorTest {
 
     @Test
     public void testPreProcessEndPointSet_ShouldNotTrace() {
-        when(mockEndPointSubmitter.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
         mockShouldNotTraceHttpHeaders();
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
-        inOrder.verify(mockEndPointSubmitter).getEndPoint();
+        inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).setShouldTrace(false);
         inOrder.verify(mockServerTracer).clearCurrentSpan();
 

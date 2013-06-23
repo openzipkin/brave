@@ -6,6 +6,7 @@
  */
 package com.twitter.zipkin.gen;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
@@ -400,7 +401,29 @@ public class Annotation implements org.apache.thrift.TBase<Annotation, Annotatio
 
   @Override
   public int hashCode() {
-    return 0;
+    HashCodeBuilder builder = new HashCodeBuilder();
+
+    boolean present_timestamp = true;
+    builder.append(present_timestamp);
+    if (present_timestamp)
+      builder.append(timestamp);
+
+    boolean present_value = true && (isSetValue());
+    builder.append(present_value);
+    if (present_value)
+      builder.append(value);
+
+    boolean present_host = true && (isSetHost());
+    builder.append(present_host);
+    if (present_host)
+      builder.append(host);
+
+    boolean present_duration = true && (isSetDuration());
+    builder.append(present_duration);
+    if (present_duration)
+      builder.append(duration);
+
+    return builder.toHashCode();
   }
 
   public int compareTo(Annotation other) {
