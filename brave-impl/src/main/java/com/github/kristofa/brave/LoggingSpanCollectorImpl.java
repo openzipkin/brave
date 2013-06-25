@@ -24,4 +24,13 @@ class LoggingSpanCollectorImpl implements SpanCollector {
         LOGGER.info(span.toString());
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void close() {
+        // Nothing to do for this collector.
+
+    }
+
 }

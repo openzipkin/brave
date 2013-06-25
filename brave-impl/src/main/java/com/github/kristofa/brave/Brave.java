@@ -104,6 +104,12 @@ public class Brave {
                 // Nothing.
 
             }
+
+            @Override
+            public void close() {
+                // Nothing to do.
+
+            }
         });
     }
 

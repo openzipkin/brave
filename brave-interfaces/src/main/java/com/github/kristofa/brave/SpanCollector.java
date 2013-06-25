@@ -17,4 +17,9 @@ public interface SpanCollector {
      */
     void collect(final Span span);
 
+    /**
+     * Closes resources. After close has been called SpanCollector probably will not be usable anymore.
+     */
+    void close();
+
 }

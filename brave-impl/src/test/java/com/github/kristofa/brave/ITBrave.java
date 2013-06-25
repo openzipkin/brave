@@ -109,6 +109,7 @@ public class ITBrave {
     class IntegrationTestSpanCollector implements SpanCollector {
 
         private final List<Span> collectedSpans = new ArrayList<Span>();
+        private int closeCalled = 0;
 
         @Override
         public void collect(final Span span) {
@@ -117,6 +118,15 @@ public class ITBrave {
 
         public List<Span> getCollectedSpans() {
             return collectedSpans;
+        }
+
+        @Override
+        public void close() {
+            closeCalled++;
+        }
+
+        public int howManyTimesCloseCalled() {
+            return closeCalled;
         }
 
     }
