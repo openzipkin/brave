@@ -149,14 +149,14 @@ public class ClientTracerImplTest {
         clientTracer.startNewSpan(REQUEST_NAME);
 
         final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(2);
+        expectedSpan.setTrace_id(1);
         expectedSpan.setId(1);
         expectedSpan.setName(REQUEST_NAME);
 
         verify(mockState).shouldTrace();
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
         verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
-        verify(mockRandom, times(2)).nextLong();
+        verify(mockRandom, times(1)).nextLong();
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
 

@@ -168,8 +168,7 @@ class ClientTracerImpl implements ClientTracer {
         final Span currentServerSpan = state.getCurrentServerSpan();
         final long newSpanId = randomGenerator.nextLong();
         if (currentServerSpan == null) {
-            final long newTraceId = randomGenerator.nextLong();
-            return new SpanIdImpl(newTraceId, newSpanId, null);
+            return new SpanIdImpl(newSpanId, newSpanId, null);
         }
 
         return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
