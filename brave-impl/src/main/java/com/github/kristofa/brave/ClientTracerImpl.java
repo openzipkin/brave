@@ -1,5 +1,8 @@
 package com.github.kristofa.brave;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang3.Validate;
@@ -21,7 +24,7 @@ class ClientTracerImpl implements ClientTracer {
     private final ServerAndClientSpanState state;
     private final Random randomGenerator;
     private final SpanCollector spanCollector;
-    private final TraceFilter traceFilter;
+    private final List<TraceFilter> traceFilters = new ArrayList<TraceFilter>();
 
     /**
      * Creates a new instance.
@@ -29,18 +32,19 @@ class ClientTracerImpl implements ClientTracer {
      * @param state Current span state.
      * @param randomGenerator Used to generate new trace/span ids.
      * @param spanCollector Will collect the spans.
-     * @param traceFilter Allows filtering of traces.
+     * @param traceFilters List of TraceFilters. Will be executed in order. If one returns <code>false</code> there will be
+     *            no tracing and next ones will not be executed anymore. So order is important.
      */
     ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector,
-        final TraceFilter traceFilter) {
+        final List<TraceFilter> traceFilters) {
         Validate.notNull(state);
         Validate.notNull(randomGenerator);
         Validate.notNull(spanCollector);
-        Validate.notNull(traceFilter);
+        Validate.notNull(traceFilters);
         this.state = state;
         this.randomGenerator = randomGenerator;
         this.spanCollector = spanCollector;
-        this.traceFilter = traceFilter;
+        this.traceFilters.addAll(traceFilters);
     }
 
     /**
@@ -82,9 +86,11 @@ class ClientTracerImpl implements ClientTracer {
             return null;
         }
 
-        if (traceFilter.shouldTrace(requestName) == false) {
-            state.setTracing(false);
-            return null;
+        for (final TraceFilter traceFilter : traceFilters) {
+            if (traceFilter.shouldTrace(requestName) == false) {
+                state.setTracing(false);
+                return null;
+            }
         }
 
         final SpanId newSpanId = getNewSpanId();
@@ -129,8 +135,8 @@ class ClientTracerImpl implements ClientTracer {
         return spanCollector;
     }
 
-    TraceFilter getTraceFilter() {
-        return traceFilter;
+    List<TraceFilter> getTraceFilters() {
+        return Collections.unmodifiableList(traceFilters);
     }
 
     long currentTimeMicroseconds() {

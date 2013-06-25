@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.Before;
@@ -31,43 +32,47 @@ public class ClientTracerImplTest {
     private Span mockSpan;
     private Endpoint endPoint;
     private TraceFilter mockTraceFilter;
+    private TraceFilter mockTraceFilter2;
 
     @Before
     public void setup() {
         mockState = mock(ServerAndClientSpanState.class);
         endPoint = new Endpoint();
         mockTraceFilter = mock(TraceFilter.class);
+        mockTraceFilter2 = mock(TraceFilter.class);
         when(mockState.shouldTrace()).thenReturn(true);
         when(mockState.getEndPoint()).thenReturn(endPoint);
         when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(true);
+        when(mockTraceFilter2.shouldTrace(REQUEST_NAME)).thenReturn(true);
 
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
 
-        clientTracer = new ClientTracerImpl(mockState, mockRandom, mockCollector, mockTraceFilter) {
+        clientTracer =
+            new ClientTracerImpl(mockState, mockRandom, mockCollector, Arrays.asList(mockTraceFilter, mockTraceFilter2)) {
 
-            @Override
-            long currentTimeMicroseconds() {
-                return CURRENT_TIME_MICROSECONDS;
-            }
-        };
+                @Override
+                long currentTimeMicroseconds() {
+                    return CURRENT_TIME_MICROSECONDS;
+                }
+            };
 
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
-        new ClientTracerImpl(null, mockRandom, mockCollector, mockTraceFilter);
+        new ClientTracerImpl(null, mockRandom, mockCollector, Arrays.asList(mockTraceFilter));
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullRandom() {
-        new ClientTracerImpl(mockState, null, mockCollector, mockTraceFilter);
+        new ClientTracerImpl(mockState, null, mockCollector, Arrays.asList(mockTraceFilter));
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullCollector() {
-        new ClientTracerImpl(mockState, mockRandom, null, mockTraceFilter);
+        new ClientTracerImpl(mockState, mockRandom, null, Arrays.asList(mockTraceFilter));
     }
 
     @Test(expected = NullPointerException.class)
@@ -97,7 +102,7 @@ public class ClientTracerImplTest {
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
         verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
@@ -105,7 +110,7 @@ public class ClientTracerImplTest {
         when(mockState.shouldTrace()).thenReturn(false);
         clientTracer.setClientReceived();
         verify(mockState).shouldTrace();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
@@ -124,7 +129,7 @@ public class ClientTracerImplTest {
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockState).setCurrentClientSpan(null);
         verify(mockCollector).collect(mockSpan);
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
@@ -132,7 +137,7 @@ public class ClientTracerImplTest {
         when(mockState.shouldTrace()).thenReturn(false);
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
         verify(mockState).shouldTrace();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
@@ -150,11 +155,12 @@ public class ClientTracerImplTest {
 
         verify(mockState).shouldTrace();
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
+        verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
         verify(mockRandom, times(2)).nextLong();
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
 
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
@@ -210,7 +216,7 @@ public class ClientTracerImplTest {
     }
 
     @Test
-    public void testTraceFilterFalse() {
+    public void testFirstTraceFilterFalse() {
         when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(false);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
@@ -219,7 +225,22 @@ public class ClientTracerImplTest {
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
         verify(mockState).setTracing(false);
 
-        verifyNoMoreInteractions(mockState, mockTraceFilter, mockRandom, mockCollector);
+        verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
+
+    }
+
+    @Test
+    public void testSecondTraceFilterFalse() {
+        when(mockTraceFilter2.shouldTrace(REQUEST_NAME)).thenReturn(false);
+
+        assertNull(clientTracer.startNewSpan(REQUEST_NAME));
+
+        verify(mockState).shouldTrace();
+        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
+        verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
+        verify(mockState).setTracing(false);
+
+        verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
 
     }
 

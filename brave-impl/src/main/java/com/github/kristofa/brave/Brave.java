@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import java.util.List;
 import java.util.Random;
 
 import com.twitter.zipkin.gen.Span;
@@ -61,21 +62,23 @@ public class Brave {
     }
 
     /**
-     * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom
-     * {@link TraceFilter}.
+     * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom list of
+     * {@link TraceFilter trace filters}.
      * <p/>
      * The ClientTracer is used to initiate a new span when doing a request to another service. It will generate the cs
      * (client send) and cr (client received) annotations. When the cr annotation is set the span will be submitted to
-     * SpanCollector if not filtered by TraceFilter.
+     * SpanCollector if not filtered by one of the trace filters.
      * 
      * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
-     * @param traceFilter Custom trace filter. Should not be <code>null</code>.
+     * @param traceFilters List of Trace filters. List can be empty if you don't want trace filtering (sampling). The trace
+     *            filters will be executed in order. If one returns false there will not be tracing and the next trace
+     *            filters will not be executed anymore.
      * @return {@link ClientTracer} instance.
      * @see Brave#getLoggingSpanCollector()
      * @see Brave#getTraceAllTraceFilter()
      */
-    public static ClientTracer getClientTracer(final SpanCollector collector, final TraceFilter traceFilter) {
-        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilter);
+    public static ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
+        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters);
     }
 
     /**
