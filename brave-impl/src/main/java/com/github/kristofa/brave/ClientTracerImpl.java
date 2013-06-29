@@ -7,8 +7,6 @@ import java.util.Random;
 
 import org.apache.commons.lang3.Validate;
 
-import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
@@ -25,6 +23,7 @@ class ClientTracerImpl implements ClientTracer {
     private final Random randomGenerator;
     private final SpanCollector spanCollector;
     private final List<TraceFilter> traceFilters = new ArrayList<TraceFilter>();
+    private final CommonAnnotationSubmitter annotationSubmitter;
 
     /**
      * Creates a new instance.
@@ -34,17 +33,20 @@ class ClientTracerImpl implements ClientTracer {
      * @param spanCollector Will collect the spans.
      * @param traceFilters List of TraceFilters. Will be executed in order. If one returns <code>false</code> there will be
      *            no tracing and next ones will not be executed anymore. So order is important.
+     * @param commonAnnotationSubmitter Common Annotation Submitter.
      */
     ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector,
-        final List<TraceFilter> traceFilters) {
+        final List<TraceFilter> traceFilters, final CommonAnnotationSubmitter commonAnnotationSubmitter) {
         Validate.notNull(state);
         Validate.notNull(randomGenerator);
         Validate.notNull(spanCollector);
         Validate.notNull(traceFilters);
+        Validate.notNull(commonAnnotationSubmitter);
         this.state = state;
         this.randomGenerator = randomGenerator;
         this.spanCollector = spanCollector;
         this.traceFilters.addAll(traceFilters);
+        annotationSubmitter = commonAnnotationSubmitter;
     }
 
     /**
@@ -56,7 +58,11 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        submit(zipkinCoreConstants.CLIENT_SEND, null);
+
+        final Span currentSpan = state.getCurrentClientSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_SEND);
+        }
     }
 
     /**
@@ -68,8 +74,10 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        final Span currentSpan = submit(zipkinCoreConstants.CLIENT_RECV, null);
+
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
+            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_RECV);
             spanCollector.collect(currentSpan);
             state.setCurrentClientSpan(null);
         }
@@ -113,7 +121,10 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        submit(annotationName, duration);
+        final Span currentSpan = state.getCurrentClientSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, duration);
+        }
     }
 
     /**
@@ -124,7 +135,10 @@ class ClientTracerImpl implements ClientTracer {
         if (state.shouldTrace() == false) {
             return;
         }
-        submit(annotationName, null);
+        final Span currentSpan = state.getCurrentClientSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
+        }
     }
 
     ServerAndClientSpanState getServerAndClientSpanState() {
@@ -141,26 +155,6 @@ class ClientTracerImpl implements ClientTracer {
 
     long currentTimeMicroseconds() {
         return System.currentTimeMillis() * 1000;
-    }
-
-    private Span submit(final String annotationName, final Integer duration) {
-        final Span currentSpan = state.getCurrentClientSpan();
-        if (currentSpan != null) {
-            final Endpoint endPoint = state.getEndPoint();
-            if (endPoint != null) {
-
-                final Annotation annotation = new Annotation();
-                if (duration != null) {
-                    annotation.setDuration(duration * 1000);
-                }
-                annotation.setTimestamp(currentTimeMicroseconds());
-                annotation.setHost(endPoint);
-                annotation.setValue(annotationName);
-                currentSpan.addToAnnotations(annotation);
-                return currentSpan;
-            }
-        }
-        return null;
     }
 
     private SpanId getNewSpanId() {

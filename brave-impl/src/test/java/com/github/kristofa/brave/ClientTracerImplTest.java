@@ -33,6 +33,7 @@ public class ClientTracerImplTest {
     private Endpoint endPoint;
     private TraceFilter mockTraceFilter;
     private TraceFilter mockTraceFilter2;
+    private CommonAnnotationSubmitter mockAnnotationSubmitter;
 
     @Before
     public void setup() {
@@ -48,9 +49,11 @@ public class ClientTracerImplTest {
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
+        mockAnnotationSubmitter = mock(CommonAnnotationSubmitter.class);
 
         clientTracer =
-            new ClientTracerImpl(mockState, mockRandom, mockCollector, Arrays.asList(mockTraceFilter, mockTraceFilter2)) {
+            new ClientTracerImpl(mockState, mockRandom, mockCollector, Arrays.asList(mockTraceFilter, mockTraceFilter2),
+                mockAnnotationSubmitter) {
 
                 @Override
                 long currentTimeMicroseconds() {
@@ -62,22 +65,27 @@ public class ClientTracerImplTest {
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
-        new ClientTracerImpl(null, mockRandom, mockCollector, Arrays.asList(mockTraceFilter));
+        new ClientTracerImpl(null, mockRandom, mockCollector, Arrays.asList(mockTraceFilter), mockAnnotationSubmitter);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullRandom() {
-        new ClientTracerImpl(mockState, null, mockCollector, Arrays.asList(mockTraceFilter));
+        new ClientTracerImpl(mockState, null, mockCollector, Arrays.asList(mockTraceFilter), mockAnnotationSubmitter);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullCollector() {
-        new ClientTracerImpl(mockState, mockRandom, null, Arrays.asList(mockTraceFilter));
+        new ClientTracerImpl(mockState, mockRandom, null, Arrays.asList(mockTraceFilter), mockAnnotationSubmitter);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullTraceFilter() {
-        new ClientTracerImpl(mockState, mockRandom, mockCollector, null);
+        new ClientTracerImpl(mockState, mockRandom, mockCollector, null, mockAnnotationSubmitter);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testConstructorNullAnnotationSubmitter() {
+        new ClientTracerImpl(mockState, mockRandom, mockCollector, Arrays.asList(mockTraceFilter), null);
     }
 
     @Test
@@ -85,7 +93,7 @@ public class ClientTracerImplTest {
         when(mockState.shouldTrace()).thenReturn(false);
         clientTracer.setClientSent();
         verify(mockState).shouldTrace();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockAnnotationSubmitter);
     }
 
     @Test
@@ -101,8 +109,9 @@ public class ClientTracerImplTest {
         verify(mockState).shouldTrace();
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, zipkinCoreConstants.CLIENT_SEND);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
+            mockAnnotationSubmitter);
     }
 
     @Test
@@ -110,7 +119,8 @@ public class ClientTracerImplTest {
         when(mockState.shouldTrace()).thenReturn(false);
         clientTracer.setClientReceived();
         verify(mockState).shouldTrace();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
+            mockAnnotationSubmitter);
     }
 
     @Test
@@ -126,10 +136,11 @@ public class ClientTracerImplTest {
         verify(mockState).shouldTrace();
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, zipkinCoreConstants.CLIENT_RECV);
         verify(mockState).setCurrentClientSpan(null);
         verify(mockCollector).collect(mockSpan);
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
+            mockAnnotationSubmitter);
     }
 
     @Test
@@ -137,7 +148,8 @@ public class ClientTracerImplTest {
         when(mockState.shouldTrace()).thenReturn(false);
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
         verify(mockState).shouldTrace();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
+            mockAnnotationSubmitter);
     }
 
     @Test
@@ -160,7 +172,8 @@ public class ClientTracerImplTest {
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
 
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
+            mockAnnotationSubmitter);
     }
 
     @Test
@@ -180,14 +193,9 @@ public class ClientTracerImplTest {
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endPoint);
-        expectedAnnotation.setValue(ANNOTATION_NAME);
-        expectedAnnotation.setDuration(DURATION * 1000); // conversion to microseconds.
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, DURATION);
 
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
     }
 
     @Test
@@ -206,13 +214,9 @@ public class ClientTracerImplTest {
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endPoint);
-        expectedAnnotation.setValue(ANNOTATION_NAME);
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME);
 
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
     }
 
     @Test

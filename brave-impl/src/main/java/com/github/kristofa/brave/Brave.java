@@ -78,7 +78,8 @@ public class Brave {
      * @see Brave#getTraceAllTraceFilter()
      */
     public static ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters);
+        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters,
+            new CommonAnnotationSubmitter());
     }
 
     /**
