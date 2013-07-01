@@ -1,6 +1,13 @@
 package com.github.kristofa.brave;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+
+import org.apache.commons.lang3.Validate;
+
 import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.AnnotationType;
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -35,11 +42,34 @@ class CommonAnnotationSubmitter {
      * Submit an annotation without duration.
      * 
      * @param span Span
-     * @param endPoint Endpoint, optional, an be <code>null</code>.
+     * @param endPoint Endpoint, optional, can be <code>null</code>.
      * @param annotationName Annotation name.
      */
     public void submitAnnotation(final Span span, final Endpoint endPoint, final String annotationName) {
         submitAnnotation(span, endPoint, annotationName, -1);
+    }
+
+    /**
+     * Submits a binary annoration.
+     * 
+     * @param span Span.
+     * @param endPoint Endpoint, optional, can be <code>null</code>.
+     * @param key Key, should not be empty.
+     * @param value Value, should not be <code>null</code>.
+     */
+    public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final String value) {
+        Validate.notBlank(key);
+        Validate.notNull(value);
+        final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
+        binaryAnnotation.setKey(key);
+        try {
+            binaryAnnotation.setValue(ByteBuffer.wrap(value.getBytes("UTF-8")));
+            binaryAnnotation.setAnnotation_type(AnnotationType.STRING);
+            binaryAnnotation.setHost(endPoint);
+            span.addToBinary_annotations(binaryAnnotation);
+        } catch (final UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
