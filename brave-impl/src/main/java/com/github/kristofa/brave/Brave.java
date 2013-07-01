@@ -92,7 +92,7 @@ public class Brave {
      * @return {@link ServerTracer} instance.
      */
     public static ServerTracer getServerTracer(final SpanCollector collector) {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, collector);
+        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, collector, new CommonAnnotationSubmitter());
     }
 
     /**
@@ -101,20 +101,8 @@ public class Brave {
      * @return Server span {@link AnnotationSubmitter}.
      */
     public static AnnotationSubmitter getServerSpanAnnotationSubmitter() {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, new SpanCollector() {
-
-            @Override
-            public void collect(final Span span) {
-                // Nothing.
-
-            }
-
-            @Override
-            public void close() {
-                // Nothing to do.
-
-            }
-        });
+        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, new Brave.EmptySpanCollector(),
+            new CommonAnnotationSubmitter());
     }
 
     /**
@@ -126,5 +114,20 @@ public class Brave {
      */
     public static ServerSpanThreadBinder getServerSpanThreadBinder() {
         return new ServerSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
+    }
+
+    private static class EmptySpanCollector implements SpanCollector {
+
+        @Override
+        public void collect(final Span span) {
+            // Nothing do to
+
+        }
+
+        @Override
+        public void close() {
+            // Nothing to do
+        }
+
     }
 }
