@@ -73,6 +73,26 @@ class CommonAnnotationSubmitter {
     }
 
     /**
+     * Submits a binary annotation.
+     * 
+     * @param span Span.
+     * @param endPoint Endpoint, optional, can be <code>null</code>.
+     * @param key Key, should not be empty.
+     * @param value int value.
+     */
+    public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final int value) {
+        Validate.notBlank(key);
+        final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
+        binaryAnnotation.setKey(key);
+        final ByteBuffer bb = ByteBuffer.allocate(4);
+        bb.putInt(value);
+        binaryAnnotation.setValue(bb);
+        binaryAnnotation.setAnnotation_type(AnnotationType.I32);
+        binaryAnnotation.setHost(endPoint);
+        span.addToBinary_annotations(binaryAnnotation);
+    }
+
+    /**
      * Gets the current time in micro seconds.
      * 
      * @return Current time in micro seconds.

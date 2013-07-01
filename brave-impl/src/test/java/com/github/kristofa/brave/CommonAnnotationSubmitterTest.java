@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +23,7 @@ public class CommonAnnotationSubmitterTest {
     protected static final long CURRENT_TIME = 20;
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
+    private static final int INT_VALUE = 23;
 
     private CommonAnnotationSubmitter commonAnnotationSubmitter;
     private Endpoint endPoint;
@@ -91,7 +93,22 @@ public class CommonAnnotationSubmitterTest {
 
         verify(mockSpan).addToBinary_annotations(expectedAnnodation);
         verifyNoMoreInteractions(mockSpan);
+    }
 
+    @Test
+    public void testSubmitBinaryAnnotationIntValue() {
+        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, INT_VALUE);
+
+        final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
+        expectedAnnodation.setHost(endPoint);
+        expectedAnnodation.setKey(KEY);
+        final ByteBuffer bb = ByteBuffer.allocate(4);
+        bb.putInt(INT_VALUE);
+        expectedAnnodation.setValue(bb);
+        expectedAnnodation.setAnnotation_type(AnnotationType.I32);
+
+        verify(mockSpan).addToBinary_annotations(expectedAnnodation);
+        verifyNoMoreInteractions(mockSpan);
     }
 
 }
