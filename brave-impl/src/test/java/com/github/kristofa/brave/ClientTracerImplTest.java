@@ -24,6 +24,8 @@ public class ClientTracerImplTest {
     private final static String REQUEST_NAME = "requestName";
     private final static String ANNOTATION_NAME = "annotationName";
     private final static int DURATION = 11;
+    private static final String KEY = "key";
+    private static final String STRING_VALUE = "stringValue";
 
     private ServerAndClientSpanState mockState;
     private Random mockRandom;
@@ -215,6 +217,19 @@ public class ClientTracerImplTest {
         verify(mockState).getEndPoint();
 
         verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME);
+
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
+    }
+
+    @Test
+    public void testSubmitBinaryAnnotationStringValue() {
+        when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        clientTracer.submitBinaryAnnotation(KEY, STRING_VALUE);
+        verify(mockState).shouldTrace();
+        verify(mockState).getCurrentClientSpan();
+        verify(mockState).getEndPoint();
+
+        verify(mockAnnotationSubmitter).submitBinaryAnnotation(mockSpan, endPoint, KEY, STRING_VALUE);
 
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
     }

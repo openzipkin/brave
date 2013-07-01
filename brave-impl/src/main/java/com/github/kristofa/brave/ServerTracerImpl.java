@@ -99,6 +99,20 @@ class ServerTracerImpl implements ServerTracer {
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void submitBinaryAnnotation(final String key, final String value) {
+        if (!state.shouldTrace()) {
+            return;
+        }
+        final Span currentSpan = state.getCurrentServerSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
+        }
 
     }
 

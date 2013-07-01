@@ -141,6 +141,20 @@ class ClientTracerImpl implements ClientTracer {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void submitBinaryAnnotation(final String key, final String value) {
+        if (state.shouldTrace() == false) {
+            return;
+        }
+        final Span currentSpan = state.getCurrentClientSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
+        }
+    }
+
     ServerAndClientSpanState getServerAndClientSpanState() {
         return state;
     }

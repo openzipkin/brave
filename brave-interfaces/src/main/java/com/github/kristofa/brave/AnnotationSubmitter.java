@@ -22,4 +22,12 @@ public interface AnnotationSubmitter {
      */
     void submitAnnotation(final String annotationName);
 
+    /**
+     * Submits a binary (key/value) annotation with String value.
+     * 
+     * @param key Key, should not be blank.
+     * @param value String value, should not be <code>null</code>.
+     */
+    void submitBinaryAnnotation(final String key, final String value);
+
 }
