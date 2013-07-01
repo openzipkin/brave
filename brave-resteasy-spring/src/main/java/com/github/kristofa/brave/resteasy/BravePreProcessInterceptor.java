@@ -2,6 +2,7 @@ package com.github.kristofa.brave.resteasy;
 
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
@@ -29,11 +30,12 @@ import com.github.kristofa.brave.ServerTracer;
 /**
  * Rest Easy {@link PreProcessInterceptor} that will:
  * <ol>
- * <li>Set {@link EndPoint} information for our service in case it is not set yet.
+ * <li>Set {@link EndPoint} information for our service in case it is not set yet.</li>
  * <li>Get trace data (trace id, span id, parent span id) from http headers and initialize state for request + submit 'server
- * received' for request.
+ * received' for request.</li>
+ * <li>If no trace information is submitted we will start a new span. In that case it means client does not support tracing
+ * and should be adapted.</li>
  * </ol>
- * In case there is no trace data submitted it will not trace this server request. A span is initiated from a client request.
  * 
  * @author kristof
  */
@@ -46,6 +48,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
     private final EndPointSubmitter endPointSubmitter;
     private final ServerTracer serverTracer;
+    private final Random randomGenerator;
 
     @Context
     HttpServletRequest servletRequest;
@@ -55,13 +58,17 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      * 
      * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
      * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
+     * @param randomGenerator Random generator.
      */
     @Autowired
-    public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {
+    public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer,
+        final Random randomGenerator) {
         Validate.notNull(endPointSubmitter);
         Validate.notNull(serverTracer);
+        Validate.notNull(randomGenerator);
         this.endPointSubmitter = endPointSubmitter;
         this.serverTracer = serverTracer;
+        this.randomGenerator = randomGenerator;
     }
 
     /**
@@ -85,21 +92,29 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         final TraceData traceData = getTraceData(request);
 
         serverTracer.setShouldTrace(traceData.shouldBeTraced());
-        if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+
+        if (traceData.shouldBeTraced() == false) {
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Setting server side span + submit Server Received annotation");
-            }
-            serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(),
-                request.getPreprocessedPath());
-            serverTracer.setServerReceived();
-        } else {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER
-                    .debug("No span information as part of request. Server span will be set to null and will not be traced.");
+                LOGGER.debug("Received indication that we should NOT trace.");
             }
             serverTracer.clearCurrentSpan();
-        }
+        } else {
+            if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Received span information as part of request.");
+                }
+                serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(),
+                    request.getPreprocessedPath());
 
+            } else {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Received no span information as part of request. Will start new server span.");
+                }
+                final long traceId = randomGenerator.nextLong();
+                serverTracer.setSpan(traceId, traceId, null, request.getPreprocessedPath());
+            }
+            serverTracer.setServerReceived();
+        }
         return null;
     }
 

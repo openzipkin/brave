@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Random;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.HttpHeaders;
 
@@ -29,19 +31,22 @@ public class BravePreProcessInterceptorTest {
     private static final String LOCAL_ADDR = "localhost";
     private static final int PORT = 80;
     private static final String CONTEXT_PATH = "contextPath";
+    private static final Long RANDOM_TRACE_ID = 21l;
 
     private BravePreProcessInterceptor interceptor;
     private EndPointSubmitter mockEndPointSubmitter;
     private ServerTracer mockServerTracer;
     private HttpServletRequest mockHttpServletRequest;
     private HttpRequest mockHttpRequest;
+    private Random mockRandom;
 
     @Before
     public void setUp() throws Exception {
         mockEndPointSubmitter = mock(EndPointSubmitter.class);
         mockServerTracer = mock(ServerTracer.class);
         mockHttpServletRequest = mock(HttpServletRequest.class);
-        interceptor = new BravePreProcessInterceptor(mockEndPointSubmitter, mockServerTracer);
+        mockRandom = mock(Random.class);
+        interceptor = new BravePreProcessInterceptor(mockEndPointSubmitter, mockServerTracer, mockRandom);
         interceptor.servletRequest = mockHttpServletRequest;
 
         mockHttpRequest = mock(HttpRequest.class);
@@ -54,12 +59,17 @@ public class BravePreProcessInterceptorTest {
 
     @Test(expected = NullPointerException.class)
     public void testBravePreProcessInterceptorNullEndPointSubmitter() {
-        new BravePreProcessInterceptor(null, mockServerTracer);
+        new BravePreProcessInterceptor(null, mockServerTracer, mockRandom);
     }
 
     @Test(expected = NullPointerException.class)
     public void testBravePreProcessInterceptorNullServerTracer() {
-        new BravePreProcessInterceptor(mockEndPointSubmitter, null);
+        new BravePreProcessInterceptor(mockEndPointSubmitter, null, mockRandom);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testBravePreProcessInterceptorNullRandomGenerator() {
+        new BravePreProcessInterceptor(mockEndPointSubmitter, mockServerTracer, null);
     }
 
     @Test
@@ -87,6 +97,7 @@ public class BravePreProcessInterceptorTest {
         verifyNoMoreInteractions(mockServerTracer);
         verifyNoMoreInteractions(mockHttpRequest);
         verifyNoMoreInteractions(mockHttpServletRequest);
+        verifyNoMoreInteractions(mockRandom);
 
     }
 
@@ -110,6 +121,7 @@ public class BravePreProcessInterceptorTest {
         verifyNoMoreInteractions(mockServerTracer);
         verifyNoMoreInteractions(mockHttpRequest);
         verifyNoMoreInteractions(mockHttpServletRequest);
+        verifyNoMoreInteractions(mockRandom);
     }
 
     @Test
@@ -132,26 +144,32 @@ public class BravePreProcessInterceptorTest {
         verifyNoMoreInteractions(mockServerTracer);
         verifyNoMoreInteractions(mockHttpRequest);
         verifyNoMoreInteractions(mockHttpServletRequest);
+        verifyNoMoreInteractions(mockRandom);
     }
 
     @Test
     public void testPreProcessEndPointSet_TraceHeadersNotSubmitted() {
         when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
         mockEmptyHttpHeaders();
+        when(mockRandom.nextLong()).thenReturn(RANDOM_TRACE_ID);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
-        final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
+        final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer, mockRandom);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).setShouldTrace(true);
-        inOrder.verify(mockServerTracer).clearCurrentSpan();
+        inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockServerTracer).setSpan(RANDOM_TRACE_ID, RANDOM_TRACE_ID, null, PATH);
+        inOrder.verify(mockServerTracer).setServerReceived();
 
+        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
 
         verifyNoMoreInteractions(mockEndPointSubmitter);
         verifyNoMoreInteractions(mockServerTracer);
         verifyNoMoreInteractions(mockHttpRequest);
         verifyNoMoreInteractions(mockHttpServletRequest);
+        verifyNoMoreInteractions(mockRandom);
     }
 
     @Test
