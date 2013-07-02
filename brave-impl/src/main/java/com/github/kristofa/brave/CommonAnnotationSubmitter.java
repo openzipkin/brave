@@ -18,6 +18,8 @@ import com.twitter.zipkin.gen.Span;
  */
 class CommonAnnotationSubmitter {
 
+    private static final String UTF_8 = "UTF-8";
+
     /**
      * Submit an annotation with duration.
      * 
@@ -58,15 +60,10 @@ class CommonAnnotationSubmitter {
      * @param value Value, should not be <code>null</code>.
      */
     public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final String value) {
-        Validate.notBlank(key);
         Validate.notNull(value);
-        final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
-        binaryAnnotation.setKey(key);
         try {
-            binaryAnnotation.setValue(ByteBuffer.wrap(value.getBytes("UTF-8")));
-            binaryAnnotation.setAnnotation_type(AnnotationType.STRING);
-            binaryAnnotation.setHost(endPoint);
-            span.addToBinary_annotations(binaryAnnotation);
+            final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
+            submitBinaryAnnotation(span, endPoint, key, bb, AnnotationType.STRING);
         } catch (final UnsupportedEncodingException e) {
             throw new IllegalStateException(e);
         }
@@ -81,15 +78,9 @@ class CommonAnnotationSubmitter {
      * @param value int value.
      */
     public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final int value) {
-        Validate.notBlank(key);
-        final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
-        binaryAnnotation.setKey(key);
         final ByteBuffer bb = ByteBuffer.allocate(4);
         bb.putInt(value);
-        binaryAnnotation.setValue(bb);
-        binaryAnnotation.setAnnotation_type(AnnotationType.I32);
-        binaryAnnotation.setHost(endPoint);
-        span.addToBinary_annotations(binaryAnnotation);
+        submitBinaryAnnotation(span, endPoint, key, bb, AnnotationType.I32);
     }
 
     /**
