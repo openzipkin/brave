@@ -24,6 +24,7 @@ public class CommonAnnotationSubmitterTest {
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
     private static final int INT_VALUE = 23;
+    private static final ByteBuffer CUSTOM_VALUE = ByteBuffer.allocate(1);
 
     private CommonAnnotationSubmitter commonAnnotationSubmitter;
     private Endpoint endPoint;
@@ -109,6 +110,21 @@ public class CommonAnnotationSubmitterTest {
 
         verify(mockSpan).addToBinary_annotations(expectedAnnodation);
         verifyNoMoreInteractions(mockSpan);
+    }
+
+    @Test
+    public void testSubmitBinaryAnnotationCustomValue() {
+        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, CUSTOM_VALUE, AnnotationType.BOOL);
+
+        final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
+        expectedAnnodation.setHost(endPoint);
+        expectedAnnodation.setKey(KEY);
+        expectedAnnodation.setValue(CUSTOM_VALUE);
+        expectedAnnodation.setAnnotation_type(AnnotationType.BOOL);
+
+        verify(mockSpan).addToBinary_annotations(expectedAnnodation);
+        verifyNoMoreInteractions(mockSpan);
+
     }
 
 }

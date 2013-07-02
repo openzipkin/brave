@@ -93,6 +93,27 @@ class CommonAnnotationSubmitter {
     }
 
     /**
+     * Submits a binary annotation with custom type.
+     * 
+     * @param span Span.
+     * @param endPoint Endpoint, optional, can be <code>null</code>.
+     * @param key Key, should not be empty.
+     * @param value Should not be null.
+     * @param annotationType Indicates the type of the value.
+     */
+    public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final ByteBuffer value,
+        final AnnotationType annotationType) {
+        Validate.notBlank(key);
+        Validate.notNull(value);
+        final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
+        binaryAnnotation.setKey(key);
+        binaryAnnotation.setValue(value);
+        binaryAnnotation.setAnnotation_type(annotationType);
+        binaryAnnotation.setHost(endPoint);
+        span.addToBinary_annotations(binaryAnnotation);
+    }
+
+    /**
      * Gets the current time in micro seconds.
      * 
      * @return Current time in micro seconds.
