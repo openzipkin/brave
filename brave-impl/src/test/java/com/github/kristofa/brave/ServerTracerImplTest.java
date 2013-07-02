@@ -24,6 +24,8 @@ public class ServerTracerImplTest {
     private static final String KEY = "key";
     private static final String VALUE = "stringValue";
     private static final int INT_VALUE = 14;
+    private static final long END_DATE = 10;
+    private static final long START_DATE = 10000;
 
     private ServerTracerImpl serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -97,32 +99,32 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSubmitAnnotationStringLongShouldNotTrace() {
+    public void testSubmitAnnotationWithDurationShouldNotTrace() {
         when(mockServerSpanState.shouldTrace()).thenReturn(false);
-        serverTracer.submitAnnotation(ANNOTATION_NAME, DURATION);
+        serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
         verify(mockServerSpanState).shouldTrace();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
     @Test
-    public void testSubmitAnnotationStringLongNoServerSpan() {
+    public void testSubmitAnnotationWithDurationNoServerSpan() {
 
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(null);
-        serverTracer.submitAnnotation(ANNOTATION_NAME, DURATION);
+        serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
         verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
     @Test
-    public void testSubmitAnnotationStringLongNoEndPoint() {
+    public void testSubmitAnnotationWithDurationNoEndPoint() {
 
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
-        serverTracer.submitAnnotation(ANNOTATION_NAME, DURATION);
+        serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
         verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
-        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, null, ANNOTATION_NAME, DURATION);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, null, ANNOTATION_NAME, START_DATE, END_DATE);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 

@@ -23,7 +23,8 @@ public class ClientTracerImplTest {
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private final static String REQUEST_NAME = "requestName";
     private final static String ANNOTATION_NAME = "annotationName";
-    private final static int DURATION = 11;
+    private final static long START_DATE = 11;
+    private final static long END_DATE = 11000;
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
     private static final int INT_VALUE = 21;
@@ -180,23 +181,23 @@ public class ClientTracerImplTest {
     }
 
     @Test
-    public void testSubmitAnnotationStringLongShouldTraceFalse() {
+    public void testSubmitAnnotationWithDurationShouldTraceFalse() {
         when(mockState.shouldTrace()).thenReturn(false);
-        clientTracer.submitAnnotation(ANNOTATION_NAME, DURATION);
+        clientTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
         verify(mockState).shouldTrace();
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector);
     }
 
     @Test
-    public void testSubmitAnnotationStringLong() {
+    public void testSubmitAnnotationWithDuration() {
 
         when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
-        clientTracer.submitAnnotation(ANNOTATION_NAME, DURATION);
+        clientTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
         verify(mockState).shouldTrace();
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getEndPoint();
 
-        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, DURATION);
+        verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, START_DATE, END_DATE);
 
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
     }

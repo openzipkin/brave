@@ -77,11 +77,11 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
-    public void submitAnnotation(final String annotationName, final int duration) {
+    public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
 
         final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, duration);
+            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
         }
     }
 

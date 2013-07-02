@@ -21,22 +21,24 @@ class CommonAnnotationSubmitter {
     private static final String UTF_8 = "UTF-8";
 
     /**
-     * Submit an annotation with duration.
+     * Submit an annotation with start/end time. Used for timing an event.
      * 
-     * @param span Span
-     * @param endPoint Endpoint, optional, can be <code>null</code>.
+     * @param span Span.
+     * @param endpoint Endpoint, optional, can be <code>null</code>.
      * @param annotationName Annotation name.
+     * @param startDate Start date/time, Unix time in milliseconds. eg System.currentTimeMillis()
+     * @param endDate End date/time, Unix time in milliseconds. eg System.currentTimeMillis()
      * @param duration Duration in milliseconds.
      */
-    public void submitAnnotation(final Span span, final Endpoint endPoint, final String annotationName, final int duration) {
-
+    public void submitAnnotation(final Span span, final Endpoint endpoint, final String annotationName,
+        final long startDate, final long endDate) {
         final Annotation annotation = new Annotation();
-        if (duration >= 0) {
-            annotation.setDuration(duration * 1000);
-        }
-        annotation.setTimestamp(currentTimeMicroseconds());
-        annotation.setHost(endPoint);
-        annotation.setValue(annotationName);
+        final int duration = (int)(endDate - startDate);
+        annotation.setTimestamp(startDate * 1000);
+        annotation.setHost(endpoint);
+        annotation.setDuration(duration * 1000);
+        // Duration is currently not supported in the ZipkinUI, so also add it as part of the annotation name.
+        annotation.setValue(annotationName + "=" + duration + "ms");
         span.addToAnnotations(annotation);
     }
 
@@ -48,7 +50,11 @@ class CommonAnnotationSubmitter {
      * @param annotationName Annotation name.
      */
     public void submitAnnotation(final Span span, final Endpoint endPoint, final String annotationName) {
-        submitAnnotation(span, endPoint, annotationName, -1);
+        final Annotation annotation = new Annotation();
+        annotation.setTimestamp(currentTimeMicroseconds());
+        annotation.setHost(endPoint);
+        annotation.setValue(annotationName);
+        span.addToAnnotations(annotation);
     }
 
     /**

@@ -8,12 +8,14 @@ package com.github.kristofa.brave;
 public interface AnnotationSubmitter {
 
     /**
-     * Submits custom annotation for current span. Use this method if your annotation has a duration assigned to it.
+     * Submits custom annotation that represents an event with duration.
      * 
-     * @param annotationName Custom annotation for current span.
-     * @param duration Duration in milliseconds.
+     * @param annotationName Custom annotation.
+     * @param startTime Start time, <a href="http://en.wikipedia.org/wiki/Unix_time">Unix time</a> in milliseconds. eg
+     *            System.currentTimeMillis().
+     * @param endTime End time, Unix time in milliseconds. eg System.currentTimeMillis().
      */
-    void submitAnnotation(final String annotationName, final int duration);
+    void submitAnnotation(final String annotationName, final long startTime, final long endTime);
 
     /**
      * Submits custom annotation for current span. Use this method if your annotation has no duration assigned to it.

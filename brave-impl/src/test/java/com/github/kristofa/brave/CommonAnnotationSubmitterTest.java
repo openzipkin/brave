@@ -19,7 +19,6 @@ import com.twitter.zipkin.gen.Span;
 public class CommonAnnotationSubmitterTest {
 
     private final static String ANNOTATION_NAME = "AnnotationName";
-    private final static int DURATION = 11;
     protected static final long CURRENT_TIME = 20;
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
@@ -44,18 +43,19 @@ public class CommonAnnotationSubmitterTest {
     }
 
     @Test
-    public void testSubmitAnnotationSpanEndpointStringInt() {
-        commonAnnotationSubmitter.submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, DURATION);
+    public void testSubmitAnnotationStartEndTime() {
+        final long startDateMs = 1000;
+        final long endDateMs = 2000;
+        final int durationMs = (int)(endDateMs - startDateMs);
+        commonAnnotationSubmitter.submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, startDateMs, endDateMs);
 
         final Annotation expectedAnnotation = new Annotation();
         expectedAnnotation.setHost(endPoint);
-        expectedAnnotation.setValue(ANNOTATION_NAME);
-        expectedAnnotation.setTimestamp(CURRENT_TIME);
-        expectedAnnotation.setDuration(DURATION * 1000);
-
+        expectedAnnotation.setValue(ANNOTATION_NAME + "=" + durationMs + "ms");
+        expectedAnnotation.setTimestamp(startDateMs * 1000);
+        expectedAnnotation.setDuration(durationMs * 1000);
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockSpan);
-
     }
 
     @Test
