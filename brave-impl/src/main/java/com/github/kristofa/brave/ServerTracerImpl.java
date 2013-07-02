@@ -69,8 +69,8 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
-    public void setShouldTrace(final boolean shouldTrace) {
-        state.setTracing(shouldTrace);
+    public void setSample(final Boolean sample) {
+        state.setSample(sample);
     }
 
     /**
@@ -79,7 +79,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
         }
@@ -91,7 +91,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitAnnotation(final String annotationName) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
@@ -103,7 +103,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitBinaryAnnotation(final String key, final String value) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -114,7 +114,7 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void submitBinaryAnnotation(final String key, final int value) {
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -133,9 +133,6 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void setServerSend() {
-        if (!state.shouldTrace()) {
-            return;
-        }
         final Span currentSpan = state.getCurrentServerSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.SERVER_SEND);
@@ -154,13 +151,6 @@ class ServerTracerImpl implements ServerTracer {
 
     long currentTimeMicroseconds() {
         return System.currentTimeMillis() * 1000;
-    }
-
-    private Span getCurrentSpan() {
-        if (!state.shouldTrace()) {
-            return null;
-        }
-        return state.getCurrentServerSpan();
     }
 
 }

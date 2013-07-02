@@ -55,7 +55,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void setClientSent() {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_SEND);
         }
@@ -67,7 +67,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void setClientReceived() {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_RECV);
             spanCollector.collect(currentSpan);
@@ -82,15 +82,22 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public SpanId startNewSpan(final String requestName) {
 
-        if (state.shouldTrace() == false) {
+        final Boolean sample = state.sample();
+        if (Boolean.FALSE.equals(sample)) {
+            state.setCurrentClientSpan(null);
             return null;
         }
 
-        for (final TraceFilter traceFilter : traceFilters) {
-            if (traceFilter.shouldTrace(requestName) == false) {
-                state.setTracing(false);
-                return null;
+        if (sample == null) {
+            // No sample indication is present.
+            for (final TraceFilter traceFilter : traceFilters) {
+                if (traceFilter.shouldTrace(requestName) == false) {
+                    state.setSample(false);
+                    state.setCurrentClientSpan(null);
+                    return null;
+                }
             }
+            state.setSample(true);
         }
 
         final SpanId newSpanId = getNewSpanId();
@@ -110,7 +117,7 @@ class ClientTracerImpl implements ClientTracer {
      */
     @Override
     public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
         }
@@ -122,7 +129,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void submitAnnotation(final String annotationName) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
@@ -134,7 +141,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void submitBinaryAnnotation(final String key, final String value) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -146,7 +153,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void submitBinaryAnnotation(final String key, final int value) {
 
-        final Span currentSpan = getCurrentSpan();
+        final Span currentSpan = state.getCurrentClientSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -178,13 +185,6 @@ class ClientTracerImpl implements ClientTracer {
         }
 
         return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
-    }
-
-    private Span getCurrentSpan() {
-        if (state.shouldTrace() == false) {
-            return null;
-        }
-        return state.getCurrentClientSpan();
     }
 
 }

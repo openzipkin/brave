@@ -76,14 +76,15 @@ public class BravePreProcessInterceptorTest {
     public void testPreProcessEndPointNotSet_TraceHeadersSubmitted() {
 
         when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(false);
-        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, false);
+        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, true, false);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockEndPointSubmitter).submit(LOCAL_ADDR, PORT, CONTEXT_PATH);
-        inOrder.verify(mockServerTracer).setShouldTrace(true);
+        inOrder.verify(mockServerTracer).setSample(true);
+        inOrder.verify(mockServerTracer).clearCurrentSpan();
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
@@ -104,13 +105,14 @@ public class BravePreProcessInterceptorTest {
     @Test
     public void testPreProcessEndPointSet_TraceHeadersSubmitted() {
         when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
-        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, false);
+        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, true, false);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
-        inOrder.verify(mockServerTracer).setShouldTrace(true);
+        inOrder.verify(mockServerTracer).setSample(true);
+        inOrder.verify(mockServerTracer).clearCurrentSpan();
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
@@ -127,13 +129,14 @@ public class BravePreProcessInterceptorTest {
     @Test
     public void testPreProcessEndPointSet_TraceHeadersMixedCase() {
         when(mockEndPointSubmitter.endPointSubmitted()).thenReturn(true);
-        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, true);
+        mockHttpHeaders(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, true, true);
 
         assertNull(interceptor.preProcess(mockHttpRequest, null));
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
-        inOrder.verify(mockServerTracer).setShouldTrace(true);
+        inOrder.verify(mockServerTracer).setSample(true);
+        inOrder.verify(mockServerTracer).clearCurrentSpan();
         inOrder.verify(mockServerTracer).setSpan(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
@@ -157,12 +160,9 @@ public class BravePreProcessInterceptorTest {
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer, mockRandom);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
-        inOrder.verify(mockServerTracer).setShouldTrace(true);
-        inOrder.verify(mockRandom).nextLong();
-        inOrder.verify(mockServerTracer).setSpan(RANDOM_TRACE_ID, RANDOM_TRACE_ID, null, PATH);
-        inOrder.verify(mockServerTracer).setServerReceived();
+        inOrder.verify(mockServerTracer).setSample(null);
+        inOrder.verify(mockServerTracer).clearCurrentSpan();
 
-        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
 
         verifyNoMoreInteractions(mockEndPointSubmitter);
@@ -181,7 +181,7 @@ public class BravePreProcessInterceptorTest {
 
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
-        inOrder.verify(mockServerTracer).setShouldTrace(false);
+        inOrder.verify(mockServerTracer).setSample(false);
         inOrder.verify(mockServerTracer).clearCurrentSpan();
 
         verify(mockHttpRequest).getHttpHeaders();
@@ -192,7 +192,7 @@ public class BravePreProcessInterceptorTest {
         verifyNoMoreInteractions(mockHttpServletRequest);
     }
 
-    private void mockHttpHeaders(final long traceid, final long spanId, final long parentSpanId,
+    private void mockHttpHeaders(final long traceid, final long spanId, final long parentSpanId, final Boolean sampled,
         final boolean mixLowerAndUpperCase) {
         final HttpHeaders mockHttpHeaders = mock(HttpHeaders.class);
         final MultivaluedMapImpl<String, String> multivaluedMapImpl = new MultivaluedMapImpl<String, String>();
@@ -201,11 +201,16 @@ public class BravePreProcessInterceptorTest {
             multivaluedMapImpl.add(BraveHttpHeaders.TraceId.getName().toLowerCase(), String.valueOf(traceid));
             multivaluedMapImpl.add(BraveHttpHeaders.SpanId.getName().toUpperCase(), String.valueOf(spanId));
             multivaluedMapImpl.add(BraveHttpHeaders.ParentSpanId.getName().toLowerCase(), String.valueOf(parentSpanId));
+            if (sampled != null) {
+                multivaluedMapImpl.add(BraveHttpHeaders.Sampled.getName(), sampled.toString().toUpperCase());
+            }
         } else {
             multivaluedMapImpl.add(BraveHttpHeaders.TraceId.getName(), String.valueOf(traceid));
             multivaluedMapImpl.add(BraveHttpHeaders.SpanId.getName(), String.valueOf(spanId));
             multivaluedMapImpl.add(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(parentSpanId));
-
+            if (sampled != null) {
+                multivaluedMapImpl.add(BraveHttpHeaders.Sampled.getName(), sampled.toString());
+            }
         }
         when(mockHttpHeaders.getRequestHeaders()).thenReturn(multivaluedMapImpl);
         when(mockHttpRequest.getHttpHeaders()).thenReturn(mockHttpHeaders);

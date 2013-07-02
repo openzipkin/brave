@@ -91,14 +91,14 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
         final TraceData traceData = getTraceData(request);
 
-        serverTracer.setShouldTrace(traceData.shouldBeTraced());
+        serverTracer.setSample(traceData.shouldBeTraced());
+        serverTracer.clearCurrentSpan();
 
-        if (traceData.shouldBeTraced() == false) {
+        if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Received indication that we should NOT trace.");
             }
-            serverTracer.clearCurrentSpan();
-        } else {
+        } else if (Boolean.TRUE.equals(traceData.shouldBeTraced())) {
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Received span information as part of request.");

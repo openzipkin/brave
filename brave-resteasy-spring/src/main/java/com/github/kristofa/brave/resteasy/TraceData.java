@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.resteasy;
 
-
 class TraceData {
 
     private Long traceId;
@@ -40,11 +39,8 @@ class TraceData {
         return parentSpanId;
     }
 
-    public boolean shouldBeTraced() {
-        if (shouldBeSampled == null || Boolean.TRUE.equals(shouldBeSampled)) {
-            return true;
-        }
-        return false;
+    public Boolean shouldBeTraced() {
+        return shouldBeSampled;
     }
 
 }

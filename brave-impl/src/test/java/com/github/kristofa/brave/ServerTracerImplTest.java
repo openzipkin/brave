@@ -16,7 +16,6 @@ public class ServerTracerImplTest {
 
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private final static String ANNOTATION_NAME = "Annotation name";
-    private final static int DURATION = 13;
     private final static long TRACE_ID = 1l;
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;
@@ -51,7 +50,6 @@ public class ServerTracerImplTest {
             }
         };
 
-        when(mockServerSpanState.shouldTrace()).thenReturn(true);
     }
 
     @Test(expected = NullPointerException.class)
@@ -91,37 +89,26 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSetShouldTrace() {
+    public void testSetSample() {
 
-        serverTracer.setShouldTrace(false);
-        verify(mockServerSpanState).setTracing(false);
+        serverTracer.setSample(false);
+        verify(mockServerSpanState).setSample(false);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
     @Test
-    public void testSubmitAnnotationWithDurationShouldNotTrace() {
-        when(mockServerSpanState.shouldTrace()).thenReturn(false);
-        serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
-        verify(mockServerSpanState).shouldTrace();
-        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
-    }
-
-    @Test
-    public void testSubmitAnnotationWithDurationNoServerSpan() {
-
+    public void testSubmitAnnotationWithStartEndDateNoServerSpan() {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(null);
         serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
     @Test
-    public void testSubmitAnnotationWithDurationNoEndPoint() {
+    public void testSubmitAnnotationWithStartEndDateNoEndPoint() {
 
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         serverTracer.submitAnnotation(ANNOTATION_NAME, START_DATE, END_DATE);
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
         verify(mockAnnotationSubmitter).submitAnnotation(mockSpan, null, ANNOTATION_NAME, START_DATE, END_DATE);
@@ -129,11 +116,11 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSubmitAnnotationStringShouldNotTrace() {
+    public void testSubmitAnnotationStringNoServerSpan() {
 
-        when(mockServerSpanState.shouldTrace()).thenReturn(false);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(null);
         serverTracer.submitAnnotation(ANNOTATION_NAME);
-        verify(mockServerSpanState).shouldTrace();
+        verify(mockServerSpanState).getCurrentServerSpan();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
@@ -142,7 +129,6 @@ public class ServerTracerImplTest {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
         serverTracer.submitAnnotation(ANNOTATION_NAME);
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
@@ -155,7 +141,6 @@ public class ServerTracerImplTest {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
         serverTracer.submitBinaryAnnotation(KEY, VALUE);
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
@@ -168,7 +153,6 @@ public class ServerTracerImplTest {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
         serverTracer.submitBinaryAnnotation(KEY, INT_VALUE);
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
@@ -177,11 +161,11 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSetServerReceivedShouldNotTrace() {
+    public void testSetServerReceivedNoServerSpan() {
 
-        when(mockServerSpanState.shouldTrace()).thenReturn(false);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(null);
         serverTracer.setServerReceived();
-        verify(mockServerSpanState).shouldTrace();
+        verify(mockServerSpanState).getCurrentServerSpan();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
@@ -190,7 +174,6 @@ public class ServerTracerImplTest {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
         serverTracer.setServerReceived();
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 
@@ -200,11 +183,11 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSetServerSendShouldNotTrace() {
+    public void testSetServerSendShouldNoServerSpan() {
 
-        when(mockServerSpanState.shouldTrace()).thenReturn(false);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(null);
         serverTracer.setServerSend();
-        verify(mockServerSpanState).shouldTrace();
+        verify(mockServerSpanState).getCurrentServerSpan();
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
@@ -213,7 +196,6 @@ public class ServerTracerImplTest {
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
         serverTracer.setServerSend();
-        verify(mockServerSpanState).shouldTrace();
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getEndPoint();
 

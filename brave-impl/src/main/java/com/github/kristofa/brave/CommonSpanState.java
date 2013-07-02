@@ -13,23 +13,24 @@ import com.twitter.zipkin.gen.Endpoint;
 interface CommonSpanState {
 
     /**
-     * Indicates if we should trace current request.
+     * Indicates if we should sample current request.
      * <p/>
      * Should be thread-aware to support multiple parallel requests.
      * 
-     * @return <code>true</code> in case we should trace current request, <code>false</code> in case we should not trace
-     *         current request.
+     * @return <code>null</code> in case there is no indication if we should sample or not. <code>true</code> in case we
+     *         should got the indication we should sample current request, <code>false</code> in case we should not sample
+     *         the current request.
      */
-    boolean shouldTrace();
+    Boolean sample();
 
     /**
-     * Indicates if we should trace current request. If one of the callers decided that this trace should not be traced it
-     * should have submitted it via header information.
+     * Indicates if we should sample current request. If one of the clients decides that this request should or should not be
+     * sampled it is submitted it via header information.
      * 
-     * @param shouldTrace <code>true</code> in case we should trace this request. <code>false</code> in case we should not
-     *            trace the request. The default value is <code>true</code>.
+     * @param sample <code>true</code> in case we should sample this request. <code>false</code> in case we should not sample
+     *            the request. <code>null</code> in case we have no indication if we should sample this request.
      */
-    void setTracing(final boolean shouldTrace);
+    void setSample(final Boolean sample);
 
     /**
      * Gets the EndPoint (ip, port, service name) for this service.

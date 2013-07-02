@@ -10,7 +10,7 @@ import com.twitter.zipkin.gen.Span;
  */
 class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
 
-    private final static ThreadLocal<Boolean> traceCurrentRequest = new ThreadLocal<Boolean>();
+    private final static ThreadLocal<Boolean> sampleCurrentRequest = new ThreadLocal<Boolean>();
     private final static ThreadLocal<Span> currentServerSpan = new ThreadLocal<Span>();
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
@@ -37,20 +37,16 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public boolean shouldTrace() {
-        final Boolean value = traceCurrentRequest.get();
-        if (value == null) {
-            return true;
-        }
-        return value;
+    public Boolean sample() {
+        return sampleCurrentRequest.get();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setTracing(final boolean shouldTrace) {
-        traceCurrentRequest.set(shouldTrace);
+    public void setSample(final Boolean sample) {
+        sampleCurrentRequest.set(sample);
     }
 
     /**

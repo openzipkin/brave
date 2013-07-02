@@ -35,12 +35,12 @@ public interface ServerTracer extends AnnotationSubmitter {
     void setSpan(final Span span);
 
     /**
-     * Sets indication if we should trace the current request.
+     * Sets indication if we should trace/sample the current request.
      * 
-     * @param shouldTrace <code>true</code> in case we should trace current request. <code>false</code> in case we should not
-     *            trace current request.
+     * @param sample <code>true</code> in case we should trace current request. <code>false</code> in case we should not
+     *            trace current request, or <code>null</code> in case we did not get any information from client.
      */
-    void setShouldTrace(final boolean shouldTrace);
+    void setSample(final Boolean sample);
 
     /**
      * Sets server received event for current thread.

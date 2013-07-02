@@ -3,7 +3,6 @@ package com.github.kristofa.brave;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import org.junit.After;
@@ -31,7 +30,7 @@ public class ServerAndClientSpanStateImplTest {
         serverAndClientSpanState.setCurrentClientSpan(null);
         serverAndClientSpanState.setCurrentServerSpan(null);
         serverAndClientSpanState.setEndPoint(null);
-        serverAndClientSpanState.setTracing(true);
+        serverAndClientSpanState.setSample(null);
     }
 
     @Test
@@ -43,10 +42,10 @@ public class ServerAndClientSpanStateImplTest {
     }
 
     @Test
-    public void testGetAndSetShouldTrace() {
-        assertTrue(serverAndClientSpanState.shouldTrace());
-        serverAndClientSpanState.setTracing(false);
-        assertFalse(serverAndClientSpanState.shouldTrace());
+    public void testGetAndSetSample() {
+        assertNull(serverAndClientSpanState.sample());
+        serverAndClientSpanState.setSample(false);
+        assertFalse(serverAndClientSpanState.sample());
     }
 
     @Test
