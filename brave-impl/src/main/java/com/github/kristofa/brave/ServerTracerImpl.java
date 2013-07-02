@@ -78,10 +78,8 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void submitAnnotation(final String annotationName, final int duration) {
-        if (!state.shouldTrace()) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentServerSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, duration);
         }
@@ -92,10 +90,8 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void submitAnnotation(final String annotationName) {
-        if (!state.shouldTrace()) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentServerSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
@@ -106,14 +102,22 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void submitBinaryAnnotation(final String key, final String value) {
-        if (!state.shouldTrace()) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentServerSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void submitBinaryAnnotation(final String key, final int value) {
+        final Span currentSpan = getCurrentSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
+        }
     }
 
     /**
@@ -150,6 +154,13 @@ class ServerTracerImpl implements ServerTracer {
 
     long currentTimeMicroseconds() {
         return System.currentTimeMillis() * 1000;
+    }
+
+    private Span getCurrentSpan() {
+        if (!state.shouldTrace()) {
+            return null;
+        }
+        return state.getCurrentServerSpan();
     }
 
 }

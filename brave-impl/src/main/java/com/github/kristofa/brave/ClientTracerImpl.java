@@ -55,11 +55,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void setClientSent() {
 
-        if (state.shouldTrace() == false) {
-            return;
-        }
-
-        final Span currentSpan = state.getCurrentClientSpan();
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_SEND);
         }
@@ -71,11 +67,7 @@ class ClientTracerImpl implements ClientTracer {
     @Override
     public void setClientReceived() {
 
-        if (state.shouldTrace() == false) {
-            return;
-        }
-
-        final Span currentSpan = state.getCurrentClientSpan();
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.CLIENT_RECV);
             spanCollector.collect(currentSpan);
@@ -118,10 +110,8 @@ class ClientTracerImpl implements ClientTracer {
      */
     @Override
     public void submitAnnotation(final String annotationName, final int duration) {
-        if (state.shouldTrace() == false) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentClientSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, duration);
         }
@@ -132,10 +122,8 @@ class ClientTracerImpl implements ClientTracer {
      */
     @Override
     public void submitAnnotation(final String annotationName) {
-        if (state.shouldTrace() == false) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentClientSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
@@ -146,13 +134,24 @@ class ClientTracerImpl implements ClientTracer {
      */
     @Override
     public void submitBinaryAnnotation(final String key, final String value) {
-        if (state.shouldTrace() == false) {
-            return;
-        }
-        final Span currentSpan = state.getCurrentClientSpan();
+
+        final Span currentSpan = getCurrentSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void submitBinaryAnnotation(final String key, final int value) {
+
+        final Span currentSpan = getCurrentSpan();
+        if (currentSpan != null) {
+            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
+        }
+
     }
 
     ServerAndClientSpanState getServerAndClientSpanState() {
@@ -180,6 +179,13 @@ class ClientTracerImpl implements ClientTracer {
         }
 
         return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
+    }
+
+    private Span getCurrentSpan() {
+        if (state.shouldTrace() == false) {
+            return null;
+        }
+        return state.getCurrentClientSpan();
     }
 
 }

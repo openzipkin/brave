@@ -26,6 +26,7 @@ public class ClientTracerImplTest {
     private final static int DURATION = 11;
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
+    private static final int INT_VALUE = 21;
 
     private ServerAndClientSpanState mockState;
     private Random mockRandom;
@@ -230,6 +231,19 @@ public class ClientTracerImplTest {
         verify(mockState).getEndPoint();
 
         verify(mockAnnotationSubmitter).submitBinaryAnnotation(mockSpan, endPoint, KEY, STRING_VALUE);
+
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
+    }
+
+    @Test
+    public void testSubmitBinaryAnnotationIntValue() {
+        when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        clientTracer.submitBinaryAnnotation(KEY, INT_VALUE);
+        verify(mockState).shouldTrace();
+        verify(mockState).getCurrentClientSpan();
+        verify(mockState).getEndPoint();
+
+        verify(mockAnnotationSubmitter).submitBinaryAnnotation(mockSpan, endPoint, KEY, INT_VALUE);
 
         verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockAnnotationSubmitter);
     }

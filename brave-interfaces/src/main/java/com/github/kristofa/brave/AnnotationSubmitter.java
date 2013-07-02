@@ -30,4 +30,12 @@ public interface AnnotationSubmitter {
      */
     void submitBinaryAnnotation(final String key, final String value);
 
+    /**
+     * Submits a binary (key/value) annotation with int value.
+     * 
+     * @param key Key, should not be blank.
+     * @param value Integer value.
+     */
+    void submitBinaryAnnotation(final String key, final int value);
+
 }

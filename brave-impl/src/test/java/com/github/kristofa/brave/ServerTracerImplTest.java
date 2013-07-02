@@ -23,6 +23,7 @@ public class ServerTracerImplTest {
     private final static String SPAN_NAME = "span name";
     private static final String KEY = "key";
     private static final String VALUE = "stringValue";
+    private static final int INT_VALUE = 14;
 
     private ServerTracerImpl serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -157,6 +158,19 @@ public class ServerTracerImplTest {
         verify(mockServerSpanState).getEndPoint();
 
         verify(mockAnnotationSubmitter).submitBinaryAnnotation(mockSpan, mockEndPoint, KEY, VALUE);
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
+    }
+
+    @Test
+    public void testSubmitBinaryAnnotationInt() {
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockSpan);
+        when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
+        serverTracer.submitBinaryAnnotation(KEY, INT_VALUE);
+        verify(mockServerSpanState).shouldTrace();
+        verify(mockServerSpanState).getCurrentServerSpan();
+        verify(mockServerSpanState).getEndPoint();
+
+        verify(mockAnnotationSubmitter).submitBinaryAnnotation(mockSpan, mockEndPoint, KEY, INT_VALUE);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
