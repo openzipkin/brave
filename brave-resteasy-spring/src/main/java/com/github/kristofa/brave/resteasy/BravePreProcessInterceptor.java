@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.EndPointSubmitter;
-import com.github.kristofa.brave.HeaderConstants;
 import com.github.kristofa.brave.ServerTracer;
 
 /**
@@ -128,13 +128,13 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(headerEntry.getKey() + "=" + headerEntry.getValue());
             }
-            if (HeaderConstants.TRACE_ID.equalsIgnoreCase(headerEntry.getKey())) {
+            if (BraveHttpHeaders.TraceId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setTraceId(getFirstLongValueFor(headerEntry));
-            } else if (HeaderConstants.SPAN_ID.equalsIgnoreCase(headerEntry.getKey())) {
+            } else if (BraveHttpHeaders.SpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setSpanId(getFirstLongValueFor(headerEntry));
-            } else if (HeaderConstants.PARENT_SPAN_ID.equalsIgnoreCase(headerEntry.getKey())) {
+            } else if (BraveHttpHeaders.ParentSpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setParentSpanId(getFirstLongValueFor(headerEntry));
-            } else if (HeaderConstants.SHOULD_GET_TRACED.equalsIgnoreCase(headerEntry.getKey())) {
+            } else if (BraveHttpHeaders.Sampled.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setShouldBeSampled(getFirstBooleanValueFor(headerEntry));
             }
         }

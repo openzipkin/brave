@@ -18,8 +18,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
+import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.EndPointSubmitter;
-import com.github.kristofa.brave.HeaderConstants;
 import com.github.kristofa.brave.ServerTracer;
 
 public class BravePreProcessInterceptorTest {
@@ -198,13 +198,13 @@ public class BravePreProcessInterceptorTest {
         final MultivaluedMapImpl<String, String> multivaluedMapImpl = new MultivaluedMapImpl<String, String>();
 
         if (mixLowerAndUpperCase) {
-            multivaluedMapImpl.add(HeaderConstants.TRACE_ID.toLowerCase(), String.valueOf(traceid));
-            multivaluedMapImpl.add(HeaderConstants.SPAN_ID.toUpperCase(), String.valueOf(spanId));
-            multivaluedMapImpl.add(HeaderConstants.PARENT_SPAN_ID.toLowerCase(), String.valueOf(parentSpanId));
+            multivaluedMapImpl.add(BraveHttpHeaders.TraceId.getName().toLowerCase(), String.valueOf(traceid));
+            multivaluedMapImpl.add(BraveHttpHeaders.SpanId.getName().toUpperCase(), String.valueOf(spanId));
+            multivaluedMapImpl.add(BraveHttpHeaders.ParentSpanId.getName().toLowerCase(), String.valueOf(parentSpanId));
         } else {
-            multivaluedMapImpl.add(HeaderConstants.TRACE_ID, String.valueOf(traceid));
-            multivaluedMapImpl.add(HeaderConstants.SPAN_ID, String.valueOf(spanId));
-            multivaluedMapImpl.add(HeaderConstants.PARENT_SPAN_ID, String.valueOf(parentSpanId));
+            multivaluedMapImpl.add(BraveHttpHeaders.TraceId.getName(), String.valueOf(traceid));
+            multivaluedMapImpl.add(BraveHttpHeaders.SpanId.getName(), String.valueOf(spanId));
+            multivaluedMapImpl.add(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(parentSpanId));
 
         }
         when(mockHttpHeaders.getRequestHeaders()).thenReturn(multivaluedMapImpl);
@@ -221,7 +221,7 @@ public class BravePreProcessInterceptorTest {
     private void mockShouldNotTraceHttpHeaders() {
         final HttpHeaders mockHttpHeaders = mock(HttpHeaders.class);
         final MultivaluedMapImpl<String, String> multivaluedMapImpl = new MultivaluedMapImpl<String, String>();
-        multivaluedMapImpl.add(HeaderConstants.SHOULD_GET_TRACED, "false");
+        multivaluedMapImpl.add(BraveHttpHeaders.Sampled.getName(), "false");
         when(mockHttpHeaders.getRequestHeaders()).thenReturn(multivaluedMapImpl);
         when(mockHttpRequest.getHttpHeaders()).thenReturn(mockHttpHeaders);
     }
