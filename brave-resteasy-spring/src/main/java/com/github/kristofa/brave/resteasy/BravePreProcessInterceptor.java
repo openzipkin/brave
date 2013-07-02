@@ -61,7 +61,18 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      * @param randomGenerator Random generator.
      */
     @Autowired
-    public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer,
+    public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {
+        this(endPointSubmitter, serverTracer, new Random());
+    }
+
+    /**
+     * Creates a new instance.
+     * 
+     * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
+     * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
+     * @param randomGenerator Random generator.
+     */
+    BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer,
         final Random randomGenerator) {
         Validate.notNull(endPointSubmitter);
         Validate.notNull(serverTracer);
