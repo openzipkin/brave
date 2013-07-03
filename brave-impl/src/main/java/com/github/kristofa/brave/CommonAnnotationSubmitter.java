@@ -84,9 +84,12 @@ class CommonAnnotationSubmitter {
      * @param value int value.
      */
     public void submitBinaryAnnotation(final Span span, final Endpoint endPoint, final String key, final int value) {
-        final ByteBuffer bb = ByteBuffer.allocate(4);
-        bb.putInt(value);
-        submitBinaryAnnotation(span, endPoint, key, bb, AnnotationType.I32);
+        submitBinaryAnnotation(span, endPoint, key, String.valueOf(value));
+
+        // This code did not work in the UI, it looks like UI only supports String annotations.
+        // final ByteBuffer bb = ByteBuffer.allocate(4);
+        // bb.putInt(value);
+        // submitBinaryAnnotation(span, endPoint, key, bb, AnnotationType.I32);
     }
 
     /**

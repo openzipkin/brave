@@ -103,10 +103,8 @@ public class CommonAnnotationSubmitterTest {
         final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
         expectedAnnodation.setHost(endPoint);
         expectedAnnodation.setKey(KEY);
-        final ByteBuffer bb = ByteBuffer.allocate(4);
-        bb.putInt(INT_VALUE);
-        expectedAnnodation.setValue(bb);
-        expectedAnnodation.setAnnotation_type(AnnotationType.I32);
+        expectedAnnodation.setValue(String.valueOf(INT_VALUE).getBytes());
+        expectedAnnodation.setAnnotation_type(AnnotationType.STRING);
 
         verify(mockSpan).addToBinary_annotations(expectedAnnodation);
         verifyNoMoreInteractions(mockSpan);
