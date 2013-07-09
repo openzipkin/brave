@@ -176,7 +176,7 @@ of the public api of Brave. This has as consequence that it will be easier to sh
 components or extensions between Zipkin/Brave. 
 
 
-*   TODO: Binary annotation support
+*   Binary annotation support
 *   TODO: Zookeeper support to enable/disable tracing and update sample rate globally for all services.
 *   TODO: Add [logstash](http://logstash.net) support for routing spans.
 
