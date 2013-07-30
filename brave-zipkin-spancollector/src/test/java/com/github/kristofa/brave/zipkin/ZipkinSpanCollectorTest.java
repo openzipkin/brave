@@ -78,14 +78,13 @@ public class ZipkinSpanCollectorTest {
                 span.setName(SPAN_NAME);
                 zipkinSpanCollector.collect(span);
 
-                final Span serverCollectedSpan = zipkinCollectorReceiver.getSpan();
-                assertEquals(SPAN_ID, serverCollectedSpan.getId());
-                assertEquals(TRACE_ID, serverCollectedSpan.getTrace_id());
-                assertEquals(SPAN_NAME, serverCollectedSpan.getName());
-
             } finally {
                 zipkinSpanCollector.close();
             }
+            final Span serverCollectedSpan = zipkinCollectorReceiver.getSpan();
+            assertEquals(SPAN_ID, serverCollectedSpan.getId());
+            assertEquals(TRACE_ID, serverCollectedSpan.getTrace_id());
+            assertEquals(SPAN_NAME, serverCollectedSpan.getName());
 
         } finally {
             server.stop();
