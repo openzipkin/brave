@@ -40,6 +40,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <spring.version>3.2.2.RELEASE</spring.version>
   </properties>
   
   <modules>
@@ -48,6 +49,21 @@
         <module>brave-resteasy-spring</module>
         <module>brave-zipkin-spancollector</module>
   </modules>
+  
+  <dependencyManagement>
+  	<dependencies>
+  		<dependency>
+    		<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>${spring.version}</version>
+    	</dependency>
+    	<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>${spring.version}</version>
+    	</dependency>
+  	</dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <dependency>

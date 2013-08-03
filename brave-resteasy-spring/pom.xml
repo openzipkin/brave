@@ -24,7 +24,6 @@
    </licenses>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring.version>3.2.2.RELEASE</spring.version>
     <resteasy.version>2.3.5.Final</resteasy.version>
   </properties>
   
@@ -40,17 +39,15 @@
 		<version>${resteasy.version}</version>
 		<scope>provided</scope>
 	</dependency>
-	 <dependency>
+	<dependency>
     	<groupId>org.springframework</groupId>
-	<artifactId>spring-core</artifactId>
-	<version>${spring.version}</version>
-	<scope>provided</scope>
+	    <artifactId>spring-core</artifactId>
+	    <scope>provided</scope>
     </dependency>
     <dependency>
-	<groupId>org.springframework</groupId>
-	<artifactId>spring-context</artifactId>
-	<version>${spring.version}</version>
-	<scope>provided</scope>
+	    <groupId>org.springframework</groupId>
+	    <artifactId>spring-context</artifactId>
+	    <scope>provided</scope>
     </dependency>
 	<dependency>
 		<groupId>javax.servlet</groupId>
