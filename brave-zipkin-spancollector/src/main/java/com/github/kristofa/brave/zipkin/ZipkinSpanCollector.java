@@ -7,6 +7,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.PreDestroy;
+
 import org.apache.commons.lang.Validate;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -104,6 +106,7 @@ public class ZipkinSpanCollector implements SpanCollector {
      * {@inheritDoc}
      */
     @Override
+    @PreDestroy
     public void close() {
 
         LOGGER.info("Stopping SpanProcessingThread.");
