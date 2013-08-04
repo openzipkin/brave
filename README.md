@@ -80,13 +80,15 @@ in your local environment.
 
 ### 2.0-SNAPSHOT ###
 
-Brave 1.0 was an alternative implementation of Dapper with Zipkin compatibility.
-Brave 2.0-SNAPSHOT is a Java implementation of Zipkin. The Zipkin thrift classes are part 
-of the public api of Brave. This has as consequence that it will be easier to share 
+Brave 1.0 was an alternative implementation of Dapper with integration with the Zipkin 
+backend components.
+Brave 2.0-SNAPSHOT has the Zipkin core thrift classes as part of its api. This has as consequence that it will be easier to share 
 components or extensions between Zipkin/Brave. 
 
 *   Done: Use Zipkin-core thrift generated classes as part of api.
 *   Done: Binary annotation support.
+*   Done: Cut dependencies with Twitter specific libraries. Only rely on Thrift.
+*   Done: Rework zipkin-span-collector so it uses a separate thread with a queue in between for submitting spans to span collector / scribe. This means less overhead in applications.
 *   TODO: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together.
 *   TODO: Add [flume](http://flume.apache.org) support for transporting spans.
 
