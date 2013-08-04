@@ -91,13 +91,17 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         final long start = System.currentTimeMillis();
         try {
-            spanQueue.offer(span, 5, TimeUnit.SECONDS);
+            final boolean offer = spanQueue.offer(span, 5, TimeUnit.SECONDS);
+            if (!offer) {
+                LOGGER.error("It took to long to offer Span to queue (more than 5 seconds). Span not submitted: " + span);
+            } else {
+                final long end = System.currentTimeMillis();
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Adding span to queue took " + (end - start) + "ms.");
+                }
+            }
         } catch (final InterruptedException e1) {
             LOGGER.error("Unable to submit span to queue: " + span, e1);
-        }
-        final long end = System.currentTimeMillis();
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Adding span to queue took " + (end - start) + "ms.");
         }
 
     }
