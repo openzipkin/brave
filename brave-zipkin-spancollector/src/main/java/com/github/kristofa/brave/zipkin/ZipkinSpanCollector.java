@@ -89,7 +89,7 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         final long start = System.currentTimeMillis();
         try {
-            spanQueue.offer(span, 5000, TimeUnit.SECONDS);
+            spanQueue.offer(span, 5, TimeUnit.SECONDS);
         } catch (final InterruptedException e1) {
             LOGGER.error("Unable to submit span to queue: " + span, e1);
         }

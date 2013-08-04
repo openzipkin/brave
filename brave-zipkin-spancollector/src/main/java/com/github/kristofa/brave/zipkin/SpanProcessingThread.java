@@ -63,7 +63,7 @@ class SpanProcessingThread implements Callable<Integer> {
     public Integer call() throws Exception {
 
         do {
-            final Span span = queue.poll(5000, TimeUnit.SECONDS);
+            final Span span = queue.poll(5, TimeUnit.SECONDS);
             if (span != null) {
 
                 final long start = System.currentTimeMillis();
