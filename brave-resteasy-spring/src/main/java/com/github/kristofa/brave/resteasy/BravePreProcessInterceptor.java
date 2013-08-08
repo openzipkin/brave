@@ -11,6 +11,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ResourceMethod;
@@ -110,19 +111,26 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
                 LOGGER.debug("Received indication that we should NOT trace.");
             }
         } else if (Boolean.TRUE.equals(traceData.shouldBeTraced())) {
+
+            String spanName = null;
+            if (StringUtils.isNotBlank(traceData.getSpanName())) {
+                spanName = traceData.getSpanName();
+            } else {
+                spanName = request.getPreprocessedPath();
+            }
+
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Received span information as part of request.");
                 }
-                serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(),
-                    request.getPreprocessedPath());
+                serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(), spanName);
 
             } else {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Received no span information as part of request. Will start new server span.");
                 }
                 final long traceId = randomGenerator.nextLong();
-                serverTracer.setSpan(traceId, traceId, null, request.getPreprocessedPath());
+                serverTracer.setSpan(traceId, traceId, null, spanName);
             }
             serverTracer.setServerReceived();
         }
@@ -147,23 +155,29 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
                 traceData.setParentSpanId(getFirstLongValueFor(headerEntry));
             } else if (BraveHttpHeaders.Sampled.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setShouldBeSampled(getFirstBooleanValueFor(headerEntry));
+            } else if (BraveHttpHeaders.SpanName.getName().equalsIgnoreCase(headerEntry.getKey())) {
+                traceData.setSpanName(getFirstStringValueFor(headerEntry));
             }
         }
         return traceData;
     }
 
     private Long getFirstLongValueFor(final Entry<String, List<String>> headerEntry) {
-        final List<String> values = headerEntry.getValue();
-        if (values != null && values.size() > 0) {
-            return Long.valueOf(headerEntry.getValue().get(0));
-        }
-        return null;
+
+        final String firstStringValueFor = getFirstStringValueFor(headerEntry);
+        return firstStringValueFor == null ? null : Long.valueOf(firstStringValueFor);
+
     }
 
     private Boolean getFirstBooleanValueFor(final Entry<String, List<String>> headerEntry) {
+        final String firstStringValueFor = getFirstStringValueFor(headerEntry);
+        return firstStringValueFor == null ? null : Boolean.valueOf(firstStringValueFor);
+    }
+
+    private String getFirstStringValueFor(final Entry<String, List<String>> headerEntry) {
         final List<String> values = headerEntry.getValue();
         if (values != null && values.size() > 0) {
-            return Boolean.valueOf(headerEntry.getValue().get(0));
+            return headerEntry.getValue().get(0);
         }
         return null;
     }

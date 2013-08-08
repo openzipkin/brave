@@ -6,6 +6,7 @@ class TraceData {
     private Long spanId;
     private Long parentSpanId;
     private Boolean shouldBeSampled;
+    private String spanName;
 
     public void setTraceId(final Long traceId) {
         if (traceId != null) {
@@ -27,6 +28,10 @@ class TraceData {
         this.shouldBeSampled = shouldBeSampled;
     }
 
+    public void setSpanName(final String spanName) {
+        this.spanName = spanName;
+    }
+
     public Long getTraceId() {
         return traceId;
     }
@@ -41,6 +46,10 @@ class TraceData {
 
     public Boolean shouldBeTraced() {
         return shouldBeSampled;
+    }
+
+    public String getSpanName() {
+        return spanName;
     }
 
 }
