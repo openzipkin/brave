@@ -26,7 +26,12 @@ public enum BraveHttpHeaders {
     /**
      * Sampled http header field name. Indicates if this trace should be sampled or not.
      */
-    Sampled("X-B3-Sampled");
+    Sampled("X-B3-Sampled"),
+    /**
+     * Span name as submitted by client. In case span name is different from URL we can only know it in server that is being
+     * called by passing it as header.
+     */
+    SpanName("X-B3-SpanName");
 
     private final String name;
 
