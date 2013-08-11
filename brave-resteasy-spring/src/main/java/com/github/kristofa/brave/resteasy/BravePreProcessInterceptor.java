@@ -102,11 +102,10 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         }
 
         final TraceData traceData = getTraceData(request);
-
-        serverTracer.setSample(traceData.shouldBeTraced());
         serverTracer.clearCurrentSpan();
 
         if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
+            serverTracer.setNoSampling();
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Received indication that we should NOT trace.");
             }

@@ -1,6 +1,6 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
@@ -14,13 +14,17 @@ import com.twitter.zipkin.gen.Span;
 
 public class ServerAndClientSpanStateImplTest {
 
+    private static final long DURATION1 = 10;
+    private static final long DURATION2 = 30;
     private ServerAndClientSpanStateImpl serverAndClientSpanState;
+    private ServerSpan mockServerSpan;
     private Span mockSpan;
     private Endpoint mockEndPoint;
 
     @Before
     public void setup() {
         serverAndClientSpanState = new ServerAndClientSpanStateImpl();
+        mockServerSpan = mock(ServerSpan.class);
         mockSpan = mock(Span.class);
         mockEndPoint = mock(Endpoint.class);
     }
@@ -30,22 +34,14 @@ public class ServerAndClientSpanStateImplTest {
         serverAndClientSpanState.setCurrentClientSpan(null);
         serverAndClientSpanState.setCurrentServerSpan(null);
         serverAndClientSpanState.setEndPoint(null);
-        serverAndClientSpanState.setSample(null);
     }
 
     @Test
     public void testGetAndSetCurrentServerSpan() {
-        assertNull(serverAndClientSpanState.getCurrentServerSpan());
-        serverAndClientSpanState.setCurrentServerSpan(mockSpan);
-        assertSame(mockSpan, serverAndClientSpanState.getCurrentServerSpan());
+        assertEquals(new ServerSpanImpl(null), serverAndClientSpanState.getCurrentServerSpan());
+        serverAndClientSpanState.setCurrentServerSpan(mockServerSpan);
+        assertSame(mockServerSpan, serverAndClientSpanState.getCurrentServerSpan());
         assertNull("Should not have been modified.", serverAndClientSpanState.getCurrentClientSpan());
-    }
-
-    @Test
-    public void testGetAndSetSample() {
-        assertNull(serverAndClientSpanState.sample());
-        serverAndClientSpanState.setSample(false);
-        assertFalse(serverAndClientSpanState.sample());
     }
 
     @Test
@@ -60,7 +56,17 @@ public class ServerAndClientSpanStateImplTest {
         assertNull(serverAndClientSpanState.getCurrentClientSpan());
         serverAndClientSpanState.setCurrentClientSpan(mockSpan);
         assertSame(mockSpan, serverAndClientSpanState.getCurrentClientSpan());
-        assertNull("Should not have been modified.", serverAndClientSpanState.getCurrentServerSpan());
+        assertEquals("Should not have been modified.", new ServerSpanImpl(null),
+            serverAndClientSpanState.getCurrentServerSpan());
+    }
+
+    @Test
+    public void testGetAndSetServerSpanThreadDuration() {
+        assertEquals(0, serverAndClientSpanState.getServerSpanThreadDuration());
+        serverAndClientSpanState.incrementServerSpanThreadDuration(DURATION1);
+        assertEquals(DURATION1, serverAndClientSpanState.getServerSpanThreadDuration());
+        serverAndClientSpanState.incrementServerSpanThreadDuration(DURATION2);
+        assertEquals(DURATION1 + DURATION2, serverAndClientSpanState.getServerSpanThreadDuration());
     }
 
 }

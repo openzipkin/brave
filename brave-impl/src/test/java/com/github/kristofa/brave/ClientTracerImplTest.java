@@ -161,8 +161,10 @@ public class ClientTracerImplTest {
     @Test
     public void testStartNewSpanSampleNullNotPartOfExistingSpan() {
 
+        final ServerSpan mockServerSpan = mock(ServerSpan.class);
+        when(mockServerSpan.getSpan()).thenReturn(null);
         when(mockState.sample()).thenReturn(null);
-        when(mockState.getCurrentServerSpan()).thenReturn(null);
+        when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
@@ -179,7 +181,6 @@ public class ClientTracerImplTest {
         verify(mockState).sample();
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
         verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
-        verify(mockState).setSample(true);
         verify(mockRandom, times(1)).nextLong();
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
@@ -191,8 +192,10 @@ public class ClientTracerImplTest {
     @Test
     public void testStartNewSpanSampleTrueNotPartOfExistingSpan() {
 
+        final ServerSpan mockServerSpan = mock(ServerSpan.class);
+        when(mockServerSpan.getSpan()).thenReturn(null);
         when(mockState.sample()).thenReturn(true);
-        when(mockState.getCurrentServerSpan()).thenReturn(null);
+        when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
@@ -220,9 +223,7 @@ public class ClientTracerImplTest {
 
         when(mockState.sample()).thenReturn(true);
 
-        final Span parentSpan = new Span();
-        parentSpan.setId(PARENT_SPAN_ID);
-        parentSpan.setTrace_id(PARENT_TRACE_ID);
+        final ServerSpan parentSpan = new ServerSpanImpl(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
 
         when(mockState.getCurrentServerSpan()).thenReturn(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
@@ -241,42 +242,6 @@ public class ClientTracerImplTest {
 
         verify(mockState).sample();
         verify(mockRandom, times(1)).nextLong();
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).setCurrentClientSpan(expectedSpan);
-
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2,
-            mockAnnotationSubmitter);
-    }
-
-    @Test
-    public void testStartNewSpanSampleNullPartOfExistingSpan() {
-
-        when(mockState.sample()).thenReturn(null);
-
-        final Span parentSpan = new Span();
-        parentSpan.setId(PARENT_SPAN_ID);
-        parentSpan.setTrace_id(PARENT_TRACE_ID);
-
-        when(mockState.getCurrentServerSpan()).thenReturn(parentSpan);
-        when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
-
-        final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertNotNull(newSpanId);
-        assertEquals(PARENT_TRACE_ID, newSpanId.getTraceId());
-        assertEquals(1l, newSpanId.getSpanId());
-        assertEquals(Long.valueOf(PARENT_SPAN_ID), newSpanId.getParentSpanId());
-
-        final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(PARENT_TRACE_ID);
-        expectedSpan.setId(1);
-        expectedSpan.setParent_id(PARENT_SPAN_ID);
-        expectedSpan.setName(REQUEST_NAME);
-
-        verify(mockState).sample();
-        verify(mockRandom, times(1)).nextLong();
-        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
-        verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
-        verify(mockState).setSample(true);
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
 
@@ -358,7 +323,6 @@ public class ClientTracerImplTest {
 
         verify(mockState).sample();
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
-        verify(mockState).setSample(false);
         verify(mockState).setCurrentClientSpan(null);
 
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector,
@@ -376,7 +340,6 @@ public class ClientTracerImplTest {
         verify(mockState).sample();
         verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
         verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
-        verify(mockState).setSample(false);
         verify(mockState).setCurrentClientSpan(null);
 
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector,

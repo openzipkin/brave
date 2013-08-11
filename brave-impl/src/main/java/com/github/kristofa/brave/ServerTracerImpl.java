@@ -47,30 +47,12 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void setSpan(final long traceId, final long spanId, final Long parentSpanId, final String name) {
 
-        final Span span = new Span();
-        span.setTrace_id(traceId);
-        span.setId(spanId);
-        if (parentSpanId != null) {
-            span.setParent_id(parentSpanId);
-        }
-        span.setName(name);
-        state.setCurrentServerSpan(span);
+        state.setCurrentServerSpan(new ServerSpanImpl(traceId, spanId, parentSpanId, name));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void setSpan(final Span span) {
-        state.setCurrentServerSpan(span);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setSample(final Boolean sample) {
-        state.setSample(sample);
+    public void setNoSampling() {
+        state.setCurrentServerSpan(new ServerSpanImpl(false));
     }
 
     /**
@@ -79,7 +61,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
 
-        final Span currentSpan = state.getCurrentServerSpan();
+        final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
         }
@@ -91,7 +73,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitAnnotation(final String annotationName) {
 
-        final Span currentSpan = state.getCurrentServerSpan();
+        final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
         }
@@ -103,7 +85,7 @@ class ServerTracerImpl implements ServerTracer {
     @Override
     public void submitBinaryAnnotation(final String key, final String value) {
 
-        final Span currentSpan = state.getCurrentServerSpan();
+        final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -114,7 +96,7 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void submitBinaryAnnotation(final String key, final int value) {
-        final Span currentSpan = state.getCurrentServerSpan();
+        final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
         }
@@ -133,12 +115,26 @@ class ServerTracerImpl implements ServerTracer {
      */
     @Override
     public void setServerSend() {
-        final Span currentSpan = state.getCurrentServerSpan();
+        final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.SERVER_SEND);
+            final long threadDuration = state.getServerSpanThreadDuration();
+            if (threadDuration > 0) {
+                annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(),
+                    BraveAnnotations.THREAD_DURATION, String.valueOf(threadDuration));
+            }
+
             collector.collect(currentSpan);
             state.setCurrentServerSpan(null);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getThreadDuration() {
+        return state.getServerSpanThreadDuration();
     }
 
     ServerSpanState getServerSpanState() {

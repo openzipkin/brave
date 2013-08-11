@@ -23,7 +23,7 @@ public interface ServerSpanThreadBinder {
      * @see ServerSpanThreadBinder#setCurrentSpan(Span)
      * @return Returned Span can be bound to different executing threads.
      */
-    Span getCurrentServerSpan();
+    ServerSpan getCurrentServerSpan();
 
     /**
      * Binds given span to current thread. This should typically be called when code is invoked in new thread to bind the
@@ -31,6 +31,6 @@ public interface ServerSpanThreadBinder {
      * 
      * @param span Span to bind to current execution thread. Should not be <code>null</code>.
      */
-    void setCurrentSpan(final Span span);
+    void setCurrentSpan(final ServerSpan span);
 
 }

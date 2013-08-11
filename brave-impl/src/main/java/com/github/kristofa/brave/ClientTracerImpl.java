@@ -92,12 +92,10 @@ class ClientTracerImpl implements ClientTracer {
             // No sample indication is present.
             for (final TraceFilter traceFilter : traceFilters) {
                 if (traceFilter.shouldTrace(requestName) == false) {
-                    state.setSample(false);
                     state.setCurrentClientSpan(null);
                     return null;
                 }
             }
-            state.setSample(true);
         }
 
         final SpanId newSpanId = getNewSpanId();
@@ -178,7 +176,7 @@ class ClientTracerImpl implements ClientTracer {
 
     private SpanId getNewSpanId() {
 
-        final Span currentServerSpan = state.getCurrentServerSpan();
+        final Span currentServerSpan = state.getCurrentServerSpan().getSpan();
         final long newSpanId = randomGenerator.nextLong();
         if (currentServerSpan == null) {
             return new SpanIdImpl(newSpanId, newSpanId, null);

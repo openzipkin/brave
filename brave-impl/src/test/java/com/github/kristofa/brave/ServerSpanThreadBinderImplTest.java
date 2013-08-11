@@ -10,19 +10,17 @@ import static org.mockito.Mockito.when;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.twitter.zipkin.gen.Span;
-
 public class ServerSpanThreadBinderImplTest {
 
     private ServerSpanState mockServerSpanState;
-    private Span mockSpan;
+    private ServerSpan mockSpan;
     private ServerSpanThreadBinderImpl binder;
 
     @Before
     public void setup() {
         mockServerSpanState = mock(ServerSpanState.class);
         binder = new ServerSpanThreadBinderImpl(mockServerSpanState);
-        mockSpan = mock(Span.class);
+        mockSpan = mock(ServerSpan.class);
     }
 
     @Test(expected = NullPointerException.class)

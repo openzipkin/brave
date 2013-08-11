@@ -2,8 +2,6 @@ package com.github.kristofa.brave;
 
 import org.apache.commons.lang3.Validate;
 
-import com.twitter.zipkin.gen.Span;
-
 /**
  * {@link ServerSpanThreadBinder} implementation.
  * 
@@ -27,7 +25,7 @@ class ServerSpanThreadBinderImpl implements ServerSpanThreadBinder {
      * {@inheritDoc}
      */
     @Override
-    public Span getCurrentServerSpan() {
+    public ServerSpan getCurrentServerSpan() {
         return serverSpanState.getCurrentServerSpan();
     }
 
@@ -35,7 +33,7 @@ class ServerSpanThreadBinderImpl implements ServerSpanThreadBinder {
      * {@inheritDoc}
      */
     @Override
-    public void setCurrentSpan(final Span span) {
+    public void setCurrentSpan(final ServerSpan span) {
         serverSpanState.setCurrentServerSpan(span);
     }
 

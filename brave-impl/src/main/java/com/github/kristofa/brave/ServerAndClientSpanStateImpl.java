@@ -10,8 +10,13 @@ import com.twitter.zipkin.gen.Span;
  */
 class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
 
-    private final static ThreadLocal<Boolean> sampleCurrentRequest = new ThreadLocal<Boolean>();
-    private final static ThreadLocal<Span> currentServerSpan = new ThreadLocal<Span>();
+    private final static ThreadLocal<ServerSpan> currentServerSpan = new ThreadLocal<ServerSpan>() {
+
+        @Override
+        protected ServerSpanImpl initialValue() {
+            return new ServerSpanImpl(null);
+        }
+    };
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
     private Endpoint endPoint;
@@ -20,7 +25,7 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public Span getCurrentServerSpan() {
+    public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();
     }
 
@@ -28,25 +33,13 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public void setCurrentServerSpan(final Span span) {
-        currentServerSpan.set(span);
+    public void setCurrentServerSpan(final ServerSpan span) {
+        if (span == null) {
+            currentServerSpan.remove();
+        } else {
+            currentServerSpan.set(span);
+        }
 
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Boolean sample() {
-        return sampleCurrentRequest.get();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setSample(final Boolean sample) {
-        sampleCurrentRequest.set(sample);
     }
 
     /**
@@ -79,6 +72,27 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     @Override
     public void setCurrentClientSpan(final Span span) {
         currentClientSpan.set(span);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void incrementServerSpanThreadDuration(final long durationMs) {
+        currentServerSpan.get().incThreadDuration(durationMs);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getServerSpanThreadDuration() {
+        return currentServerSpan.get().getThreadDuration();
+    }
+
+    @Override
+    public Boolean sample() {
+        return currentServerSpan.get().getSample();
     }
 
 }
