@@ -89,8 +89,9 @@ components or extensions between Zipkin/Brave.
 *   Done: Binary annotation support.
 *   Done: Cut dependencies with Twitter specific libraries. Only rely on Thrift.
 *   Done: Rework zipkin-span-collector so it uses a separate thread with a queue in between for submitting spans to span collector / scribe. This means less overhead in applications.
+*   In progress: Add [flume](http://flume.apache.org) support for transporting spans.
 *   TODO: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together.
-*   TODO: Add [flume](http://flume.apache.org) support for transporting spans.
+
 
 
 ### 1.0 ###
