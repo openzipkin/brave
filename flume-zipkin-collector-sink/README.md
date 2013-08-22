@@ -1,6 +1,6 @@
 # flume-zipkin-collector-sink #
 
-Flume [Flume](http://flume.apache.org) Sink implementation that sends Flume Events that
+[Flume](http://flume.apache.org) Sink implementation that sends Flume Events that
 contain Spans to the Zipkin Collector.
 
 We expect that you use the org.apache.flume.source.scribe.ScribeSource which will 
