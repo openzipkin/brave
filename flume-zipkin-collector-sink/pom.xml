@@ -10,7 +10,7 @@
   <groupId>com.github.kristofa</groupId>
   <artifactId>flume-zipkin-collector-sink</artifactId>
   <name>flume-zipkin-collector-sink</name>
-  <description>Flume Sink that is used to submit Events containing spans to Zipkin Span Collector.</description>
+  <description>Flume Sink that is used to submit Events containing spans to Zipkin Span Collector or ScribeSource.</description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
     <license>
