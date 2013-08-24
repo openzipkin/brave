@@ -1,7 +1,5 @@
 package com.github.kristofa.brave.zipkin;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,18 +33,19 @@ class ZipkinCollectorReceiver implements Iface {
     @Override
     public ResultCode Log(final List<LogEntry> messages) throws TException {
         try {
-            assertEquals("Expect only 1 LogEntry.", 1, messages.size());
-            final LogEntry logEntry = messages.get(0);
 
             final Base64 base64 = new Base64();
-            final byte[] decodedSpan = base64.decode(logEntry.getMessage());
 
-            final ByteArrayInputStream buf = new ByteArrayInputStream(decodedSpan);
-            final TProtocolFactory factory = new TBinaryProtocol.Factory();
-            final TProtocol proto = factory.getProtocol(new TIOStreamTransport(buf));
-            final Span span = new Span();
-            span.read(proto);
-            spans.add(span);
+            for (final LogEntry logEntry : messages) {
+                final byte[] decodedSpan = base64.decode(logEntry.getMessage());
+
+                final ByteArrayInputStream buf = new ByteArrayInputStream(decodedSpan);
+                final TProtocolFactory factory = new TBinaryProtocol.Factory();
+                final TProtocol proto = factory.getProtocol(new TIOStreamTransport(buf));
+                final Span span = new Span();
+                span.read(proto);
+                spans.add(span);
+            }
 
             if (delayMs > 0) {
                 try {

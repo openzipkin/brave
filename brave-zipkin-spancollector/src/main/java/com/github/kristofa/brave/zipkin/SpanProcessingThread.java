@@ -1,7 +1,8 @@
 package com.github.kristofa.brave.zipkin;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -23,12 +24,17 @@ import com.twitter.zipkin.gen.ZipkinCollector;
  * Thread implementation that is responsible for submitting spans to the Zipkin span collector or Scribe. The thread takes
  * spans from a queue. The spans are produced by {@link ZipkinSpanCollector}, put on a queue and consumed and processed by
  * this thread.
+ * <p/>
+ * We will try to buffer spans and send them in batches to minimize communication overhead. However if the batch size is not
+ * reached within 2 polls (max 10 seconds) the available spans will be sent over anyway.
  * 
  * @author adriaens
  */
 class SpanProcessingThread implements Callable<Integer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpanProcessingThread.class);
+    private static final int MAX_BATCH_SIZE = 50;
+    private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
     private final ZipkinCollector.Client client;
@@ -36,6 +42,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private final TProtocolFactory protocolFactory;
     private boolean stop = false;
     private int processedSpans = 0;
+    private final List<LogEntry> logEntries;
 
     /**
      * Creates a new instance.
@@ -47,6 +54,7 @@ class SpanProcessingThread implements Callable<Integer> {
         this.queue = queue;
         this.client = client;
         protocolFactory = new TBinaryProtocol.Factory();
+        logEntries = new ArrayList<LogEntry>(MAX_BATCH_SIZE);
     }
 
     /**
@@ -62,28 +70,46 @@ class SpanProcessingThread implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
 
+        int subsequentEmptyBatches = 0;
         do {
+
             final Span span = queue.poll(5, TimeUnit.SECONDS);
-            if (span != null) {
+            if (span == null) {
+                subsequentEmptyBatches++;
 
-                final long start = System.currentTimeMillis();
-
-                try {
-                    final String spanAsString = base64.encodeToString(spanToBytes(span));
-                    final LogEntry logEntry = new LogEntry("zipkin", spanAsString);
-                    client.Log(Arrays.asList(logEntry));
-                } catch (final TException e) {
-                    LOGGER.error("Exception when trying to log Span.", e);
-                } finally {
-                    if (LOGGER.isDebugEnabled()) {
-                        final long end = System.currentTimeMillis();
-                        LOGGER.debug("Submitting span to service took " + (end - start) + "ms.");
-                    }
-                }
-                processedSpans++;
+            } else {
+                logEntries.add(create(span));
             }
+
+            if (subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty()
+                || logEntries.size() >= MAX_BATCH_SIZE || !logEntries.isEmpty() && stop) {
+                log(logEntries);
+                logEntries.clear();
+                subsequentEmptyBatches = 0;
+            }
+
         } while (stop == false);
         return processedSpans;
+    }
+
+    private void log(final List<LogEntry> logEntries) {
+        final long start = System.currentTimeMillis();
+        try {
+            client.Log(logEntries);
+        } catch (final TException e) {
+            LOGGER.error("Exception when trying to log Span.", e);
+        } finally {
+            if (LOGGER.isDebugEnabled()) {
+                final long end = System.currentTimeMillis();
+                LOGGER.debug("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
+            }
+        }
+        processedSpans += logEntries.size();
+    }
+
+    private LogEntry create(final Span span) throws TException {
+        final String spanAsString = base64.encodeToString(spanToBytes(span));
+        return new LogEntry("zipkin", spanAsString);
     }
 
     private byte[] spanToBytes(final Span thriftSpan) throws TException {

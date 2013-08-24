@@ -83,9 +83,9 @@ public class ITZipkinSpanCollector {
     }
 
     /**
-     * The test will submit a burst of 10 spans in a for loop without delay while only having a small queue size (configured
-     * to 5). But the server is configured to take a long time to consume span, longer than the 5 seconds So implicitly this
-     * test tests:
+     * The test will submit a burst of 110 spans in a for loop without delay while only having a small queue size (configured
+     * to 5). But the server is configured to take a long time to consume span, longer than the 5 seconds. So implicitly this
+     * tests:
      * <ol>
      * <li>a full queue at which client will be blocked for more then its time out value. This means spans are lost, do not
      * end up in collector server.</li>
@@ -101,6 +101,7 @@ public class ITZipkinSpanCollector {
         final ZipkinCollectorServer zipkinCollectorServer = new ZipkinCollectorServer(PORT, 7000);
         zipkinCollectorServer.start();
         try {
+            final int hunderdTen = 110;
 
             final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, QUEUE_SIZE);
             try {
@@ -110,8 +111,8 @@ public class ITZipkinSpanCollector {
                 span.setTrace_id(TRACE_ID);
                 span.setName(SPAN_NAME);
 
-                for (int i = 1; i <= 10; i++) {
-                    LOGGER.info("Submitting Span nr " + i + "/" + SECOND_BURST_OF_SPANS);
+                for (int i = 1; i <= hunderdTen; i++) {
+                    LOGGER.info("Submitting Span nr " + i + "/" + hunderdTen);
                     zipkinSpanCollector.collect(span);
                 }
                 LOGGER.info("Sleep 5 seconds");
@@ -120,7 +121,7 @@ public class ITZipkinSpanCollector {
                 zipkinSpanCollector.close();
             }
             final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
-            assertTrue(serverCollectedSpans.size() < 10);
+            assertTrue(serverCollectedSpans.size() < hunderdTen);
 
         } finally {
             zipkinCollectorServer.stop();

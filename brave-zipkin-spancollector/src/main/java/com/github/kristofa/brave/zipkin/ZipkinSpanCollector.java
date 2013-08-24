@@ -40,7 +40,7 @@ import com.twitter.zipkin.gen.ZipkinCollector;
  */
 public class ZipkinSpanCollector implements SpanCollector {
 
-    private static final int DEFAULT_MAX_QUEUESIZE = 50;
+    private static final int DEFAULT_MAX_QUEUESIZE = 100;
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
     private final TTransport transport;
