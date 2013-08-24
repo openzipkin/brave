@@ -3,7 +3,7 @@
 brave-impl contains implementations of the components used to set up and keep track of
 tracing state. It has a ClientTracer implementation which is used to set up new spans when
 invoking new service requests and it has a ServerTracer implementation used to set up 
-existing span state.  
+existing span state when receiving service requests.  
 
 The [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example) is a 
 good starting point to get you up to speed on how you can implement brave in your 
@@ -82,7 +82,22 @@ The AnnotationSubmitter is used to submit application specific annotations.
 
 To be used in case you execute logic in new threads within you service and if you submit 
 annotations or new requests from those threads.
-The span state is bound to the request thread. When you start new threads it means
+The span state is bound to the request thread using ThreadLocal variable. When you start new threads it means
 that the span state that was set in the request thread is not available in those new
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
-new thread.
+new thread. See also next section: brave and multi threading.
+
+
+## brave and multi threading ##
+
+Brave uses ThreadLocal variables to keep track of trace/span state. By doing this it is
+able to support keeping track of state for multiple requests (multiple threads).
+
+However when you start a new Thread yourself from a request Thread brave will lose its trace/span state.
+To bind the same state to your new Thread you can use the ServerSpanThreadBinder yourself as explained earlier
+or you can use `com.github.kristofa.brave.BraveExecutorService`.
+
+BraveExecutorService implements the java.util.concurrent.ExecutorService interface and acts as a decorator for
+an existing ExecutorService.  It also uses the ServerSpanThreadBinder which it takes in its constructor but
+once set up if is transparent for your code and will make sure any thread you start through the ExecutorService
+will get proper trace/span state.
