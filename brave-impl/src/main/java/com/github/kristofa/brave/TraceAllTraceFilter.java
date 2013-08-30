@@ -15,4 +15,9 @@ class TraceAllTraceFilter implements TraceFilter {
         return true;
     }
 
+    @Override
+    public void close() {
+        // Nothing to do here.
+    }
+
 }

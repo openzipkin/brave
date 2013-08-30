@@ -16,6 +16,10 @@ public interface TraceFilter {
      * @return <code>true</code> in case we should trace this request, <code>false</code> in case we should not trace this
      *         request.
      */
-    public boolean shouldTrace(final String requestName);
+    boolean shouldTrace(final String requestName);
 
+    /**
+     * Should be called when TraceFilter will not be used anymore. Used to close/clean resources.
+     */
+    void close();
 }
