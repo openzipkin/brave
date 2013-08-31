@@ -17,7 +17,6 @@ public class ServerSpanImplTest {
     private static final long SPAN_ID = 2;
     private static final Long PARENT_SPAN_ID = Long.valueOf(3);
     private static final String NAME = "name";
-    private static final Boolean SAMPLE = true;
     private ServerSpanImpl serverSpan;
 
     @Before

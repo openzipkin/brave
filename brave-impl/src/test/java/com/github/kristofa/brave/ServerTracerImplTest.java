@@ -21,7 +21,6 @@ public class ServerTracerImplTest {
     private final static long TRACE_ID = 1l;
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;
-    private final static Boolean SAMPLE = true;
     private final static String SPAN_NAME = "span name";
     private static final String KEY = "key";
     private static final String VALUE = "stringValue";
