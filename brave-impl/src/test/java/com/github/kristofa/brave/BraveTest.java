@@ -38,12 +38,6 @@ public class BraveTest {
         assertTrue(loggingSpanCollector instanceof LoggingSpanCollectorImpl);
     }
 
-    public void test() {
-        final TraceFilter traceAllTraceFilter = Brave.getTraceAllTraceFilter();
-        assertNotNull(traceAllTraceFilter);
-        assertTrue(traceAllTraceFilter instanceof TraceAllTraceFilter);
-    }
-
     @Test
     public void testGetClientTracer() {
         final ClientTracer clientTracer = Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));

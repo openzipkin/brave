@@ -50,18 +50,6 @@ public class Brave {
     }
 
     /**
-     * Gets a {@link TraceFilter} that does not filter. So it will trace every request.
-     * <p/>
-     * Can be used if tracing every request will not cause too much overhead or for debugging or during development.
-     * 
-     * @return TraceFilter that does not filtering at all.
-     * @see Brave#getClientTracer(SpanCollector, TraceFilter)
-     */
-    public static TraceFilter getTraceAllTraceFilter() {
-        return new TraceAllTraceFilter();
-    }
-
-    /**
      * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom list of
      * {@link TraceFilter trace filters}.
      * <p/>

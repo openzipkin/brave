@@ -74,7 +74,7 @@ public class ITBrave {
 
             // Simulate client.
             final ClientTracer clientTracer =
-                Brave.getClientTracer(mockSpanCollector, Arrays.asList(Brave.getTraceAllTraceFilter()));
+                Brave.getClientTracer(mockSpanCollector, Arrays.<TraceFilter>asList(new FixedSampleRateTraceFilter(1)));
             final String clientSpanName = "client span name " + random.nextLong();
             clientTracer.startNewSpan(clientSpanName);
             clientTracer.setClientSent();
