@@ -41,6 +41,8 @@ The ClientTracer is used to initiate a new span when doing a request to another 
 (client send) and cr (client received) annotations. When the cr annotation is set the span 
 will be submitted to SpanCollector if not filtered by one of the TraceFilters.
 
+For mor information on TraceFilters, see section below: FixedSampleRateTraceFilter.
+
 
 ### Brave.getServerTracer ###
 
@@ -63,13 +65,6 @@ and the com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
 Returns a SpanCollector that will log the collected span through sl4j. Can be used during
 testing or debugging.
 
-### Brave.getTraceAllTraceFilter ###
-
-> public static TraceFilter getTraceAllTraceFilter()
-
-Returns a TraceFilter that will trace all requests. To be used when debugging or
-during development.
-
 ### Brave.getServerSpanAnnotationSubmitter ###
 
 > public static AnnotationSubmitter getServerSpanAnnotationSubmitter()
@@ -87,6 +82,19 @@ that the span state that was set in the request thread is not available in those
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
 new thread. See also next section: brave and multi threading.
 
+## FixedSampleRateTraceFilter ##
+
+When getting the ClientTracer you need to provide a TraceFilter. There is a TraceFilter
+implementation that comes with brave-impl which is FixedSampleRateTraceFilter. This 
+TraceFilter is created with a fixed sample rate provided through its constructor. The
+sample rate can't be adapted at run time.  Behaviour:
+
+*   sample rate <= 0 : Non of the requests will be traced.
+*   sample rate = 1 : All requests will be traced.
+*   sample rate > 1 : For example 3, every third request will be traced.
+
+If you want to use a TraceFilter implemenation which allows adapting sample rate at run
+time see brave-tracefilters project.
 
 ## brave and multi threading ##
 
