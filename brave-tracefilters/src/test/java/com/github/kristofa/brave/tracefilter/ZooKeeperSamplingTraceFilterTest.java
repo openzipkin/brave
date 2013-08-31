@@ -11,17 +11,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ZooKeeperTraceFilterTest {
+public class ZooKeeperSamplingTraceFilterTest {
 
     private final static String SAMPLE_RATE_NODE = "/zipkin/sampleRate";
 
     private TestingServer zooKeeperTestServer;
-    private ZooKeeperTraceFilter traceFilter;
+    private ZooKeeperSamplingTraceFilter traceFilter;
 
     @Before
     public void setup() throws Exception {
         zooKeeperTestServer = new TestingServer();
-        traceFilter = new ZooKeeperTraceFilter(zooKeeperTestServer.getConnectString(), SAMPLE_RATE_NODE);
+        traceFilter = new ZooKeeperSamplingTraceFilter(zooKeeperTestServer.getConnectString(), SAMPLE_RATE_NODE);
 
     }
 

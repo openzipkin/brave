@@ -35,9 +35,9 @@ import com.github.kristofa.brave.TraceFilter;
  * 
  * @author kristof
  */
-public class ZooKeeperTraceFilter implements TraceFilter, Watcher {
+public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ZooKeeperTraceFilter.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(ZooKeeperSamplingTraceFilter.class);
     private final static int DEFAULT_SAMPLE_RATE = 0;
 
     private final CuratorFramework zkCurator;
@@ -56,7 +56,7 @@ public class ZooKeeperTraceFilter implements TraceFilter, Watcher {
      * @throws IOException In case we can't connect with ZooKeeper.
      * @throws InterruptedException In case we can't connect with ZooKeeper.
      */
-    public ZooKeeperTraceFilter(final String connectionString, final String sampleRateZNode) throws InterruptedException {
+    public ZooKeeperSamplingTraceFilter(final String connectionString, final String sampleRateZNode) throws InterruptedException {
         Validate.notEmpty(connectionString);
         Validate.notEmpty(sampleRateZNode);
         this.sampleRateZNode = sampleRateZNode;
