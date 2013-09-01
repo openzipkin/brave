@@ -30,6 +30,10 @@ class ZipkinCollectorReceiver implements Iface {
         this.delayMs = delayMs;
     }
 
+    public void clearReceivedSpans() {
+        spans.clear();
+    }
+
     @Override
     public ResultCode Log(final List<LogEntry> messages) throws TException {
         try {

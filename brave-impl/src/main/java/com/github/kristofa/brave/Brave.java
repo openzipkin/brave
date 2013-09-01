@@ -3,6 +3,8 @@ package com.github.kristofa.brave;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.lang.NotImplementedException;
+
 import com.twitter.zipkin.gen.Span;
 
 /**
@@ -95,13 +97,19 @@ public class Brave {
 
         @Override
         public void collect(final Span span) {
-            // Nothing do to
+            throw new NotImplementedException();
 
         }
 
         @Override
         public void close() {
-            // Nothing to do
+            throw new NotImplementedException();
+        }
+
+        @Override
+        public void addDefaultAnnotation(final String name, final String value) {
+            throw new NotImplementedException();
+
         }
 
     }

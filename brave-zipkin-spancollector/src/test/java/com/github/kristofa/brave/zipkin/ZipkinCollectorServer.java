@@ -54,6 +54,10 @@ class ZipkinCollectorServer {
         new Thread(serveThread).start();
     }
 
+    public void clearReceivedSpans() {
+        receiver.clearReceivedSpans();
+    }
+
     public List<Span> getReceivedSpans() {
         return receiver.getSpans();
     }

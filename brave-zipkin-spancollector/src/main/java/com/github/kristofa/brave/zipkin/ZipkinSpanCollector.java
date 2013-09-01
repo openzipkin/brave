@@ -1,5 +1,9 @@
 package com.github.kristofa.brave.zipkin;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -22,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanCollector;
+import com.twitter.zipkin.gen.AnnotationType;
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.ZipkinCollector;
 
@@ -40,6 +46,7 @@ import com.twitter.zipkin.gen.ZipkinCollector;
  */
 public class ZipkinSpanCollector implements SpanCollector {
 
+    private static final String UTF_8 = "UTF-8";
     private static final int DEFAULT_MAX_QUEUESIZE = 100;
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
@@ -49,6 +56,7 @@ public class ZipkinSpanCollector implements SpanCollector {
     private final ExecutorService executorService;
     private final SpanProcessingThread spanProcessingThread;
     private final Future<Integer> future;
+    private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
      * Create a new instance with default queue size (=50).
@@ -91,6 +99,13 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         final long start = System.currentTimeMillis();
         try {
+
+            if (!defaultAnnotations.isEmpty()) {
+                for (final BinaryAnnotation ba : defaultAnnotations) {
+                    span.addToBinary_annotations(ba);
+                }
+            }
+
             final boolean offer = spanQueue.offer(span, 5, TimeUnit.SECONDS);
             if (!offer) {
                 LOGGER.error("It took to long to offer Span to queue (more than 5 seconds). Span not submitted: " + span);
@@ -103,7 +118,28 @@ public class ZipkinSpanCollector implements SpanCollector {
         } catch (final InterruptedException e1) {
             LOGGER.error("Unable to submit span to queue: " + span, e1);
         }
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addDefaultAnnotation(final String key, final String value) {
+        Validate.notEmpty(key);
+        Validate.notNull(value);
+
+        try {
+            final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
+
+            final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
+            binaryAnnotation.setKey(key);
+            binaryAnnotation.setValue(bb);
+            binaryAnnotation.setAnnotation_type(AnnotationType.STRING);
+            defaultAnnotations.add(binaryAnnotation);
+
+        } catch (final UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
