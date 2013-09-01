@@ -3,8 +3,8 @@ package com.github.kristofa.brave;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * Collect spans. We can have implementations that simply log the collected spans or implementations that persist the spans
- * to a database, submit them to a service,...
+ * Collects spans that are submitted by {@link ServerTracer} and {@link ClientTracer}. We can have implementations that
+ * simply log the collected spans or implementations that persist the spans to a database, submit them to a service,...
  * 
  * @author kristof
  */
@@ -28,7 +28,7 @@ public interface SpanCollector {
     void addDefaultAnnotation(final String key, final String value);
 
     /**
-     * Closes resources. After close has been called SpanCollector probably will not be usable anymore.
+     * Closes and cleans up resources. After close has been called SpanCollector will probably not be usable anymore.
      */
     void close();
 
