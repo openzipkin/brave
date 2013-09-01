@@ -58,12 +58,6 @@ The ServerTracer sets the span state for an incoming request. You can see how it
 used in the brave-resteasy-spring module in the com.github.kristofa.brave.resteasy.BravePreProcessInterceptor
 and the com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
 
-### Brave.getLoggingSpanCollector ###
-
-> public static SpanCollector getLoggingSpanCollector
-
-Returns a SpanCollector that will log the collected span through sl4j. Can be used during
-testing or debugging.
 
 ### Brave.getServerSpanAnnotationSubmitter ###
 
@@ -80,7 +74,7 @@ annotations or new requests from those threads.
 The span state is bound to the request thread using ThreadLocal variable. When you start new threads it means
 that the span state that was set in the request thread is not available in those new
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
-new thread. See also next section: brave and multi threading.
+new thread. See also the section below: 'brave and multi threading'.
 
 ## about trace filters ##
 
