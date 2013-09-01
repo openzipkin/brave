@@ -28,8 +28,11 @@ public enum BraveHttpHeaders {
      */
     Sampled("X-B3-Sampled"),
     /**
-     * Span name as submitted by client. In case span name is different from URL we can only know it in server that is being
-     * called by passing it as header.
+     * Span name as submitted by client.
+     * <p/>
+     * By default we will use the URL as span name but when we want to do grouping and aggregation of service requests using
+     * URL is not always a good idea as it might contain variable parameters that make it difficult to match same service
+     * requests. Providing a separate name for it can help.
      */
     SpanName("X-B3-SpanName");
 
