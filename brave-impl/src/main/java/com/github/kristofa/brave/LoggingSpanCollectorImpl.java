@@ -8,10 +8,12 @@ import com.twitter.zipkin.gen.Span;
 
 /**
  * Simple {@link SpanCollector} implementation which logs the span through slf4j at INFO level.
+ * <p/>
+ * Can be used for testing and debugging.
  * 
  * @author kristof
  */
-class LoggingSpanCollectorImpl implements SpanCollector {
+public class LoggingSpanCollectorImpl implements SpanCollector {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(LoggingSpanCollectorImpl.class);
 

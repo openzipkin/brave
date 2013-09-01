@@ -37,19 +37,6 @@ public class Brave {
     }
 
     /**
-     * Gets a simple {@link SpanCollector} which logs spans through slf4j at info level.
-     * <p/>
-     * Can be used for testing or debugging.
-     * 
-     * @return A simple {@link SpanCollector} which logs spans through slf4j at info level.
-     * @see Brave#getClientTracer(SpanCollector)
-     * @see Brave#getServerTracer(SpanCollector)
-     */
-    public static SpanCollector getLoggingSpanCollector() {
-        return new LoggingSpanCollectorImpl();
-    }
-
-    /**
      * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom list of
      * {@link TraceFilter trace filters}.
      * <p/>

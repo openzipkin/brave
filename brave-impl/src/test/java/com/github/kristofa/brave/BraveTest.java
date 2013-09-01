@@ -32,13 +32,6 @@ public class BraveTest {
     }
 
     @Test
-    public void testGetLoggingSpanCollector() {
-        final SpanCollector loggingSpanCollector = Brave.getLoggingSpanCollector();
-        assertNotNull(loggingSpanCollector);
-        assertTrue(loggingSpanCollector instanceof LoggingSpanCollectorImpl);
-    }
-
-    @Test
     public void testGetClientTracer() {
         final ClientTracer clientTracer = Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         assertNotNull(clientTracer);
