@@ -19,6 +19,9 @@ public class ServerTracerConfig {
     @Autowired
     private SpanCollector spanCollector;
 
+    @Autowired
+    private TraceFilters traceFilters;
+
     /**
      * Creates a singleton ServerTracer instance.
      * 
@@ -27,7 +30,7 @@ public class ServerTracerConfig {
     @Bean
     @Scope(value = "singleton")
     public ServerTracer serverTracer() {
-        return Brave.getServerTracer(spanCollector);
+        return Brave.getServerTracer(spanCollector, traceFilters.getTraceFilters());
     }
 
 }

@@ -2,7 +2,6 @@ package com.github.kristofa.brave.resteasy;
 
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Random;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
@@ -49,7 +48,6 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
     private final EndPointSubmitter endPointSubmitter;
     private final ServerTracer serverTracer;
-    private final Random randomGenerator;
 
     @Context
     HttpServletRequest servletRequest;
@@ -63,24 +61,10 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      */
     @Autowired
     public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {
-        this(endPointSubmitter, serverTracer, new Random());
-    }
-
-    /**
-     * Creates a new instance.
-     * 
-     * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
-     * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
-     * @param randomGenerator Random generator.
-     */
-    BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer,
-        final Random randomGenerator) {
         Validate.notNull(endPointSubmitter);
         Validate.notNull(serverTracer);
-        Validate.notNull(randomGenerator);
         this.endPointSubmitter = endPointSubmitter;
         this.serverTracer = serverTracer;
-        this.randomGenerator = randomGenerator;
     }
 
     /**
@@ -101,35 +85,33 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             endPointSubmitter.submit(localAddr, localPort, contextPath);
         }
 
-        final TraceData traceData = getTraceData(request);
         serverTracer.clearCurrentSpan();
+        final TraceData traceData = getTraceData(request);
 
         if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
-            serverTracer.setNoSampling();
+            serverTracer.setStateNoTracing();
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Received indication that we should NOT trace.");
             }
-        } else if (Boolean.TRUE.equals(traceData.shouldBeTraced())) {
-
+        } else {
             String spanName = null;
             if (StringUtils.isNotBlank(traceData.getSpanName())) {
                 spanName = traceData.getSpanName();
             } else {
                 spanName = request.getPreprocessedPath();
             }
-
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Received span information as part of request.");
                 }
-                serverTracer.setSpan(traceData.getTraceId(), traceData.getSpanId(), traceData.getParentSpanId(), spanName);
-
+                serverTracer.setStateExistingTrace(traceData.getTraceId(), traceData.getSpanId(),
+                    traceData.getParentSpanId(), spanName);
             } else {
                 if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received no span information as part of request. Will start new server span.");
+                    LOGGER.debug("Received no span state.");
                 }
-                final long traceId = randomGenerator.nextLong();
-                serverTracer.setSpan(traceId, traceId, null, spanName);
+                serverTracer.setStateUnknown(spanName);
             }
             serverTracer.setServerReceived();
         }

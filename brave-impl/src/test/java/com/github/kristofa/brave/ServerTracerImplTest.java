@@ -1,14 +1,20 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InOrder;
 
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
@@ -36,6 +42,10 @@ public class ServerTracerImplTest {
     private Span mockSpan;
     private Endpoint mockEndPoint;
     private CommonAnnotationSubmitter mockAnnotationSubmitter;
+    private Random mockRandom;
+    private TraceFilter mockTraceFilter1;
+    private TraceFilter mockTraceFilter2;
+    private List<TraceFilter> traceFilters;
 
     @Before
     public void setup() {
@@ -47,30 +57,46 @@ public class ServerTracerImplTest {
 
         mockEndPoint = new Endpoint();
         mockAnnotationSubmitter = mock(CommonAnnotationSubmitter.class);
+        mockRandom = mock(Random.class);
+        mockTraceFilter1 = mock(TraceFilter.class);
+        mockTraceFilter2 = mock(TraceFilter.class);
 
-        serverTracer = new ServerTracerImpl(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter) {
+        traceFilters = Arrays.asList(mockTraceFilter1, mockTraceFilter2);
 
-            @Override
-            long currentTimeMicroseconds() {
-                return CURRENT_TIME_MICROSECONDS;
-            }
-        };
+        serverTracer =
+            new ServerTracerImpl(mockServerSpanState, mockSpanCollector, traceFilters, mockRandom, mockAnnotationSubmitter) {
+
+                @Override
+                long currentTimeMicroseconds() {
+                    return CURRENT_TIME_MICROSECONDS;
+                }
+            };
 
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
-        new ServerTracerImpl(null, mockSpanCollector, mockAnnotationSubmitter);
+        new ServerTracerImpl(null, mockSpanCollector, traceFilters, mockRandom, mockAnnotationSubmitter);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullCollector() {
-        new ServerTracerImpl(mockServerSpanState, null, mockAnnotationSubmitter);
+        new ServerTracerImpl(mockServerSpanState, null, traceFilters, mockRandom, mockAnnotationSubmitter);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testConstructorNullTraceFilters() {
+        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, null, mockRandom, mockAnnotationSubmitter);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testConstructorNullRandom() {
+        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, traceFilters, null, mockAnnotationSubmitter);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullAnnotationSubmitter() {
-        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, null);
+        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, traceFilters, mockRandom, null);
     }
 
     @Test
@@ -81,21 +107,59 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSetSpan() {
-
-        serverTracer.setSpan(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
-
-        final ServerSpan expectedServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
+    public void testSetStateExistingTrace() {
+        serverTracer.setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
+        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
     }
 
     @Test
-    public void testSetNoSampling() {
-        serverTracer.setNoSampling();
-        final ServerSpan expectedServerSpan = new ServerSpanImpl(false);
+    public void testSetStateNoTracing() {
+        serverTracer.setStateNoTracing();
+        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(false);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);
+    }
+
+    @Test
+    public void testSetStateUnknownTraceFiltersTrue() {
+
+        when(mockTraceFilter1.shouldTrace(SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.shouldTrace(SPAN_NAME)).thenReturn(true);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+
+        serverTracer.setStateUnknown(SPAN_NAME);
+        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(TRACE_ID, TRACE_ID, null, SPAN_NAME);
+
+        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
+
+        inOrder.verify(mockTraceFilter1).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
+
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter, mockRandom);
+    }
+
+    @Test
+    public void testSetStateUnknownTraceFiltersFalse() {
+
+        when(mockTraceFilter1.shouldTrace(SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.shouldTrace(SPAN_NAME)).thenReturn(false);
+
+        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(false);
+
+        serverTracer.setStateUnknown(SPAN_NAME);
+
+        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
+
+        inOrder.verify(mockTraceFilter1).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
+
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter, mockRandom);
+
     }
 
     @Test

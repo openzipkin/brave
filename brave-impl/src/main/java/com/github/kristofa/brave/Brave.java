@@ -3,10 +3,6 @@ package com.github.kristofa.brave;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.lang.NotImplementedException;
-
-import com.twitter.zipkin.gen.Span;
-
 /**
  * Public Brave api. Makes sure all returned instances share the same trace/span state.
  * <p>
@@ -68,8 +64,8 @@ public class Brave {
      * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
      * @return {@link ServerTracer} instance.
      */
-    public static ServerTracer getServerTracer(final SpanCollector collector) {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, collector, new CommonAnnotationSubmitter());
+    public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
+        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, collector, traceFilters, RANDOM_GENERATOR);
     }
 
     /**
@@ -78,8 +74,7 @@ public class Brave {
      * @return Server span {@link AnnotationSubmitter}.
      */
     public static AnnotationSubmitter getServerSpanAnnotationSubmitter() {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, new Brave.EmptySpanCollector(),
-            new CommonAnnotationSubmitter());
+        return new AnnotationSubmitterImpl(SERVER_AND_CLIENT_SPAN_STATE, new CommonAnnotationSubmitter());
     }
 
     /**
@@ -93,24 +88,4 @@ public class Brave {
         return new ServerSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
     }
 
-    private static class EmptySpanCollector implements SpanCollector {
-
-        @Override
-        public void collect(final Span span) {
-            throw new NotImplementedException();
-
-        }
-
-        @Override
-        public void close() {
-            throw new NotImplementedException();
-        }
-
-        @Override
-        public void addDefaultAnnotation(final String name, final String value) {
-            throw new NotImplementedException();
-
-        }
-
-    }
 }

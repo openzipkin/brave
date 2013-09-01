@@ -11,7 +11,8 @@ public class ServerTracerTest {
     @Test
     public void testServerTracer() {
         final AnnotationConfigApplicationContext ctx =
-            new AnnotationConfigApplicationContext(SpanCollectorMockConfig.class, ServerTracerConfig.class);
+            new AnnotationConfigApplicationContext(TraceFiltersMockConfig.class, SpanCollectorMockConfig.class,
+                ServerTracerConfig.class);
         try {
             final ServerTracer bean1 = ctx.getBean(ServerTracer.class);
             assertNotNull(bean1);

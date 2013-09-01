@@ -61,12 +61,13 @@ public class ITBrave {
             }
 
             final IntegrationTestSpanCollector mockSpanCollector = new IntegrationTestSpanCollector();
-            final ServerTracer serverTracer = Brave.getServerTracer(mockSpanCollector);
+            final ServerTracer serverTracer =
+                Brave.getServerTracer(mockSpanCollector, Arrays.<TraceFilter>asList(new FixedSampleRateTraceFilter(1)));
 
             final Random random = new Random();
 
             final String serverSpanName = "server span name " + random.nextLong();
-            serverTracer.setSpan(random.nextLong(), random.nextLong(), random.nextLong(), serverSpanName);
+            serverTracer.setStateExistingTrace(random.nextLong(), random.nextLong(), random.nextLong(), serverSpanName);
 
             serverTracer.setServerReceived();
 
