@@ -50,8 +50,8 @@ public class ClientTracerImplTest {
         mockTraceFilter = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
         when(mockState.getEndPoint()).thenReturn(endPoint);
-        when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(true);
-        when(mockTraceFilter2.shouldTrace(REQUEST_NAME)).thenReturn(true);
+        when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(true);
 
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
@@ -179,8 +179,8 @@ public class ClientTracerImplTest {
         expectedSpan.setName(REQUEST_NAME);
 
         verify(mockState).sample();
-        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
-        verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(REQUEST_NAME);
+        verify(mockTraceFilter2).trace(REQUEST_NAME);
         verify(mockRandom, times(1)).nextLong();
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
@@ -317,12 +317,12 @@ public class ClientTracerImplTest {
     @Test
     public void testFirstTraceFilterFalse() {
         when(mockState.sample()).thenReturn(null);
-        when(mockTraceFilter.shouldTrace(REQUEST_NAME)).thenReturn(false);
+        when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(false);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
         verify(mockState).sample();
-        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
 
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector,
@@ -333,13 +333,13 @@ public class ClientTracerImplTest {
     @Test
     public void testSecondTraceFilterFalse() {
         when(mockState.sample()).thenReturn(null);
-        when(mockTraceFilter2.shouldTrace(REQUEST_NAME)).thenReturn(false);
+        when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(false);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
         verify(mockState).sample();
-        verify(mockTraceFilter).shouldTrace(REQUEST_NAME);
-        verify(mockTraceFilter2).shouldTrace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(REQUEST_NAME);
+        verify(mockTraceFilter2).trace(REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
 
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector,

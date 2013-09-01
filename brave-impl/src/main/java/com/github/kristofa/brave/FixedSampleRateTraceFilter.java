@@ -26,7 +26,7 @@ public class FixedSampleRateTraceFilter implements TraceFilter {
      * {@inheritDoc}
      */
     @Override
-    public boolean shouldTrace(final String requestName) {
+    public boolean trace(final String requestName) {
         if (sampleRate <= 0) {
             return false;
         } else if (sampleRate == 1) {

@@ -10,43 +10,43 @@ public class FixedSampleRateTraceFilterTest {
     @Test
     public void testSampleRateZero() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(0);
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
     }
 
     @Test
     public void testSampleRateNegative() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(-1);
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
     }
 
     @Test
     public void testSampleRateOne() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(1);
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
     }
 
     @Test
     public void testSampleRateBiggerThanOne() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(3);
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertTrue(fixedSampleRateTraceFilter.shouldTrace(null));
-        assertFalse(fixedSampleRateTraceFilter.shouldTrace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(null));
     }
 
 }

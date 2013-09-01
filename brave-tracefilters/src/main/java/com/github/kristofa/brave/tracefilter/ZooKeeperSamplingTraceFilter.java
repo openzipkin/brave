@@ -56,7 +56,8 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
      * @throws IOException In case we can't connect with ZooKeeper.
      * @throws InterruptedException In case we can't connect with ZooKeeper.
      */
-    public ZooKeeperSamplingTraceFilter(final String connectionString, final String sampleRateZNode) throws InterruptedException {
+    public ZooKeeperSamplingTraceFilter(final String connectionString, final String sampleRateZNode)
+        throws InterruptedException {
         Validate.notEmpty(connectionString);
         Validate.notEmpty(sampleRateZNode);
         this.sampleRateZNode = sampleRateZNode;
@@ -79,7 +80,7 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
      * {@inheritDoc}
      */
     @Override
-    public boolean shouldTrace(final String requestName) {
+    public boolean trace(final String requestName) {
         if (sampleRate <= 0) {
             return false;
         } else if (sampleRate == 1) {

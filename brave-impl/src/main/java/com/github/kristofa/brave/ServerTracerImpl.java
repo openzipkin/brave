@@ -91,7 +91,7 @@ class ServerTracerImpl implements ServerTracer {
     public void setStateUnknown(final String spanName) {
         Validate.notBlank(spanName, "Span name should not be null.");
         for (final TraceFilter traceFilter : traceFilters) {
-            if (traceFilter.shouldTrace(spanName) == false) {
+            if (traceFilter.trace(spanName) == false) {
                 state.setCurrentServerSpan(new ServerSpanImpl(false));
                 return;
             }

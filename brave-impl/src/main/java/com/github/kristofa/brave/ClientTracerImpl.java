@@ -91,7 +91,7 @@ class ClientTracerImpl implements ClientTracer {
         if (sample == null) {
             // No sample indication is present.
             for (final TraceFilter traceFilter : traceFilters) {
-                if (traceFilter.shouldTrace(requestName) == false) {
+                if (traceFilter.trace(requestName) == false) {
                     state.setCurrentClientSpan(null);
                     return null;
                 }

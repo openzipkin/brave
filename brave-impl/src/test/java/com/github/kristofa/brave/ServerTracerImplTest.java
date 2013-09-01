@@ -125,8 +125,8 @@ public class ServerTracerImplTest {
     @Test
     public void testSetStateUnknownTraceFiltersTrue() {
 
-        when(mockTraceFilter1.shouldTrace(SPAN_NAME)).thenReturn(true);
-        when(mockTraceFilter2.shouldTrace(SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter1.trace(SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(SPAN_NAME)).thenReturn(true);
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         serverTracer.setStateUnknown(SPAN_NAME);
@@ -134,8 +134,8 @@ public class ServerTracerImplTest {
 
         final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
 
-        inOrder.verify(mockTraceFilter1).shouldTrace(SPAN_NAME);
-        inOrder.verify(mockTraceFilter2).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter1).trace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).trace(SPAN_NAME);
         inOrder.verify(mockRandom).nextLong();
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
@@ -145,8 +145,8 @@ public class ServerTracerImplTest {
     @Test
     public void testSetStateUnknownTraceFiltersFalse() {
 
-        when(mockTraceFilter1.shouldTrace(SPAN_NAME)).thenReturn(true);
-        when(mockTraceFilter2.shouldTrace(SPAN_NAME)).thenReturn(false);
+        when(mockTraceFilter1.trace(SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(SPAN_NAME)).thenReturn(false);
 
         final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(false);
 
@@ -154,8 +154,8 @@ public class ServerTracerImplTest {
 
         final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
 
-        inOrder.verify(mockTraceFilter1).shouldTrace(SPAN_NAME);
-        inOrder.verify(mockTraceFilter2).shouldTrace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter1).trace(SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).trace(SPAN_NAME);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter, mockRandom);
