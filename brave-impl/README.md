@@ -41,15 +41,15 @@ The ClientTracer is used to initiate a new span when doing a request to another 
 (client send) and cr (client received) annotations. When the cr annotation is set the span 
 will be submitted to SpanCollector if not filtered by one of the TraceFilters.
 
-For mor information on TraceFilters, see section below: FixedSampleRateTraceFilter.
+For mor information on TraceFilters, see section below 'about trace filters'
 
 
 ### Brave.getServerTracer ###
 
-> public static ServerTracer getServerTracer(final SpanCollector collector)
+> public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilter)
 
-Get a ServerTracer that will be initialized with a specific SpanCollector.
-The ServerTracer and ClientTracer should share the same SpanCollector.
+Get a ServerTracer that will be initialized with a specific SpanCollector and a List of custom TraceFilters.
+The ServerTracer and ClientTracer should share the same SpanCollector and the same TraceFilters!
 
 The ServerTracer will generate sr (server received) and ss (server send) annotations. When ss annotation is set
 the span will be submitted to SpanCollector if our span needs to get traced (as decided by ClientTracer).
@@ -82,10 +82,26 @@ that the span state that was set in the request thread is not available in those
 threads. The ServerSpanThreadBinder allows you to bind the original span state to the
 new thread. See also next section: brave and multi threading.
 
-## FixedSampleRateTraceFilter ##
+## about trace filters ##
 
-When getting the ClientTracer you need to provide a TraceFilter. There is a TraceFilter
-implementation that comes with brave-impl which is FixedSampleRateTraceFilter. This 
+You might not want to trace all requests that are being submitted:
+
+*   to avoid performance overhead
+*   to avoid running out of storage
+
+and having a big enough sample might be good enough.
+
+A TraceFilter's purpose is to decide if a given request should get traced or not. Both
+the ClientTracer and ServerTracer take a List of TraceFilters which should be the same
+and before starting with a new Span they will check the TraceFilters. If one of 
+the TraceFilters says we should not trace the request it will not be traced.
+
+The decision, should trace (true) or not (false), is taken by the first request and should
+be passed through to all subsequent requests. This has as a consequence that we either
+trace a full request tree or none of the requests at all which is actually good.
+
+There is a TraceFilter implementation that comes with brave-impl which is 
+com.github.kristofa.braveFixedSampleRateTraceFilter. This 
 TraceFilter is created with a fixed sample rate provided through its constructor. The
 sample rate can't be adapted at run time.  Behaviour:
 
@@ -93,8 +109,8 @@ sample rate can't be adapted at run time.  Behaviour:
 *   sample rate = 1 : All requests will be traced.
 *   sample rate > 1 : For example 3, every third request will be traced.
 
-If you want to use a TraceFilter implemenation which allows adapting sample rate at run
-time see brave-tracefilters project.
+If you want to use a TraceFilter implementation which allows adapting sample rate at run
+time see brave-tracefilters project which contains a TraceFilter with ZooKeeper support.
 
 ## brave and multi threading ##
 
