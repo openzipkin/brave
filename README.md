@@ -90,11 +90,11 @@ Implemented changes + what is still to be done before release:
 *   Done: Use Zipkin-core thrift generated classes as part of api.
 *   Done: Binary annotation support.
 *   Done: Cut dependencies with Twitter specific libraries. Only rely on Thrift.
-*   Done: Performance and through-put optimizations for zipkin-span-collector. It uses queue to store spans and separate thread for submitting spans to span collector / scribe. 
+*   Done: Performance and through-put optimizations for [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector). It uses queue to store spans and separate thread for submitting spans to span collector / scribe. 
 It tries to buffer spans to send them in batches to avoid communication overhead.
 *   Done: Add [flume](http://flume.apache.org) support for transporting spans. See [flume-zipkin-collector-sink](https://github.com/kristofa/brave/tree/master/flume-zipkin-collector-sink). 
 *   Done: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together. See [brave-tracefilters](https://github.com/kristofa/brave/tree/master/brave-tracefilters)
-*   TODO: Test and let zipkin-span-collector properly deal with connection losses.
+*   TODO: Test and update [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) to let it deal with connection loss.
 
 
 ### 1.0 ###
