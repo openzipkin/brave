@@ -14,12 +14,14 @@ own apps.
 All spans that are submitted by brave end up in a SpanCollector of your choice 
 (com.github.kristofa.brave.SpanCollector).
 
-A SpanCollector is responsible for receiving spans and acting upon them. There is 1 
-SpanCollector implementation part of brave-impl: com.github.kristofa.brave.LoggingSpanCollectorImpl.
-This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
+A SpanCollector is responsible for receiving spans and acting upon them. There are 2 
+SpanCollector implementations part of brave-impl: 
 
-The most interesting SpanCollector is the ZipkinSpanCollector, this can be found in 
-brave-zipkin-spancollector project.
+*    com.github.kristofa.brave.LoggingSpanCollectorImpl: This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
+*    com.github.kristofa.brave.EmptySpanCollectorImpl : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
+
+The most interesting SpanCollector is the ZipkinSpanCollector. This one can be found in 
+[brave-zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) project.
 
 
 ## about trace filters ##
