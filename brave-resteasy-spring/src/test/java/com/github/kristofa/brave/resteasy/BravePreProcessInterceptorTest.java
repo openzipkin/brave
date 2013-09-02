@@ -76,7 +76,7 @@ public class BravePreProcessInterceptorTest {
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockEndPointSubmitter).submit(LOCAL_ADDR, PORT, CONTEXT_PATH);
         inOrder.verify(mockServerTracer).clearCurrentSpan();
-        inOrder.verify(mockServerTracer).setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
+        inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
         verify(mockHttpRequest).getPreprocessedPath();
@@ -102,7 +102,7 @@ public class BravePreProcessInterceptorTest {
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).clearCurrentSpan();
-        inOrder.verify(mockServerTracer).setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
+        inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
         verify(mockHttpRequest).getPreprocessedPath();
@@ -124,7 +124,7 @@ public class BravePreProcessInterceptorTest {
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).clearCurrentSpan();
-        inOrder.verify(mockServerTracer).setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
+        inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
         verify(mockHttpRequest).getPreprocessedPath();
@@ -189,7 +189,7 @@ public class BravePreProcessInterceptorTest {
         final InOrder inOrder = inOrder(mockEndPointSubmitter, mockServerTracer);
         inOrder.verify(mockEndPointSubmitter).endPointSubmitted();
         inOrder.verify(mockServerTracer).clearCurrentSpan();
-        inOrder.verify(mockServerTracer).setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SPAN_NAME);
+        inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SPAN_NAME);
         inOrder.verify(mockServerTracer).setServerReceived();
 
         verify(mockHttpRequest).getHttpHeaders();

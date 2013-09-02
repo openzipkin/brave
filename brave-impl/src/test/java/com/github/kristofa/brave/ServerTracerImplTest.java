@@ -107,8 +107,8 @@ public class ServerTracerImplTest {
     }
 
     @Test
-    public void testSetStateExistingTrace() {
-        serverTracer.setStateExistingTrace(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
+    public void testSetStateCurrentTrace() {
+        serverTracer.setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
         final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockAnnotationSubmitter);

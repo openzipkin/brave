@@ -70,7 +70,7 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
-    public void setStateExistingTrace(final long traceId, final long spanId, final Long parentSpanId, final String name) {
+    public void setStateCurrentTrace(final long traceId, final long spanId, final Long parentSpanId, final String name) {
         Validate.notEmpty(name, "Span name can't be empty or null.");
         state.setCurrentServerSpan(new ServerSpanImpl(traceId, spanId, parentSpanId, name));
     }

@@ -105,7 +105,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Received span information as part of request.");
                 }
-                serverTracer.setStateExistingTrace(traceData.getTraceId(), traceData.getSpanId(),
+                serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
                     traceData.getParentSpanId(), spanName);
             } else {
                 if (LOGGER.isDebugEnabled()) {

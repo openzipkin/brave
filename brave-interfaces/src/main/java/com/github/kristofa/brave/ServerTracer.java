@@ -18,7 +18,7 @@ package com.github.kristofa.brave;
 public interface ServerTracer extends AnnotationSubmitter {
 
     /**
-     * Clears current span. When a thread pool is used this can be used to avoid you re-use previous information.
+     * Clears current span.
      */
     void clearCurrentSpan();
 
@@ -32,7 +32,7 @@ public interface ServerTracer extends AnnotationSubmitter {
      * @see ServerTracer#setStateNoTracing()
      * @see ServerTracer#setStateUnknown(String)
      */
-    void setStateExistingTrace(final long traceId, final long spanId, final Long parentSpanId, final String name);
+    void setStateCurrentTrace(final long traceId, final long spanId, final Long parentSpanId, final String name);
 
     /**
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
