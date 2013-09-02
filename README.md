@@ -74,7 +74,7 @@ Version 1.0 is available in Maven central. So you can simple add the dependencie
     </dependency>
     
 Version 2.0-SNAPSHOT is not available on a central Maven repo. You can deploy the jars
-in your local environment.    
+in your local environment. If you start with brave now, it is advised to use 2.0-SNAPSHOT.   
 
 ## Version history ##
 
@@ -85,13 +85,16 @@ backend components.
 Brave 2.0-SNAPSHOT has the Zipkin core thrift classes as part of its api. This has as consequence that it will be easier to share 
 components or extensions between Zipkin/Brave. 
 
+Implemented changes + what is still to be done before release:
+
 *   Done: Use Zipkin-core thrift generated classes as part of api.
 *   Done: Binary annotation support.
 *   Done: Cut dependencies with Twitter specific libraries. Only rely on Thrift.
-*   Done: Rework zipkin-span-collector so it uses a separate thread with a queue in between for submitting spans to span collector / scribe. This means less overhead in applications.
-*   Done: Add [flume](http://flume.apache.org) support for transporting spans.
-*   Done: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together.
-
+*   Done: Performance and through-put optimizations for zipkin-span-collector. It uses queue to store spans and separate thread for submitting spans to span collector / scribe. 
+It tries to buffer spans to send them in batches to avoid communication overhead.
+*   Done: Add [flume](http://flume.apache.org) support for transporting spans. See [flume-zipkin-collector-sink](https://github.com/kristofa/brave/tree/master/flume-zipkin-collector-sink). 
+*   Done: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together. See [brave-tracefilters](https://github.com/kristofa/brave/tree/master/brave-tracefilters)
+*   TODO: Test and let zipkin-span-collector properly deal with connection losses.
 
 
 ### 1.0 ###
