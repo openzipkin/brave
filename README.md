@@ -93,11 +93,12 @@ Implemented changes + what is still to be done before release:
 *   Done: Performance and through-put optimizations for [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector). It uses queue to store spans and separate thread for submitting spans to span collector / scribe. 
 It tries to buffer spans to send them in batches to avoid communication overhead.
 *   Done: Add [flume](http://flume.apache.org) support for transporting spans. See [flume-zipkin-collector-sink](https://github.com/kristofa/brave/tree/master/flume-zipkin-collector-sink). 
-*   Done: Add TraceFilter implementations that use Zookeeper for globally adjusting sample rate or enable/disable tracing all together. See [brave-tracefilters](https://github.com/kristofa/brave/tree/master/brave-tracefilters)
-*   TODO: Test and update [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) to let it deal with connection loss.
+*   Done: Add TraceFilter implementation that uses Zookeeper for globally adjusting sample rate or enable/disable tracing all together. See [brave-tracefilters](https://github.com/kristofa/brave/tree/master/brave-tracefilters)
+*   Done: Extend threading support by introducing BraveExecutorService, BraveCallable and BraveRunnable.
+*   TODO: Test and update [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) to let it deal with lost connections.
 
 
 ### 1.0 ###
 
-*   Functional but might not be ideal for large scale production usage. Usable for development and testing.
+*   Functional but not usable for production usage, only for development and testing.
 
