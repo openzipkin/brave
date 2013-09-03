@@ -1,5 +1,13 @@
 # brave-resteasy-spring #
 
+Latest release available in Maven central:
+
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-resteasy-spring</artifactId>
+        <version>2.0</version>
+    </dependency>
+
 
 The brave-resteasy-spring module has RESTEasy pre- and postprocess interceptor implementations
 that use the ServerTracer to set up the span state.

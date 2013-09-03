@@ -1,5 +1,10 @@
 # flume-zipkin-collector-sink #
 
+Latest release available in Maven central: 2.0. You normally don't have to include this in
+a project through Maven but can download the JAR from [here](http://search.maven.org/#browse%7C1822528105)
+to add it to the Flume Agent class path.
+
+
 [Flume](http://flume.apache.org) Sink implementation that sends Flume Events that
 contain Spans to the Zipkin Collector.
 

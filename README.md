@@ -54,48 +54,43 @@ to get you up to speed on how you can implement brave in your own apps.
 
 ## Maven artifacts ##
 
-Version 1.0 is available in Maven central. So you can simple add the dependencies you need to your pom.xml:
+Version 2.0 is available in Maven central. So you can simply add the dependencies you want
+ to your pom.xml. You will need at least:
 
-
-    <dependency>
-        <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-interfaces</artifactId>
-        <version>1.0</version>
-    </dependency>
+    
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>1.0</version>
-    </dependency>
-     <dependency>
-        <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-resteasy-spring</artifactId>
-        <version>1.0</version>
+        <version>2.0</version>
     </dependency>
     
-Version 2.0-SNAPSHOT is not available on a central Maven repo. You can deploy the jars
-in your local environment. If you start with brave now, it is advised to use 2.0-SNAPSHOT.   
+For other dependencies see README.md files for sub modules.
+   
 
 ## Version history ##
 
-### 2.0-SNAPSHOT ###
+### 2.0.1-SNAPSHOT ###
+
+Nothing so far.
+
+### 2.0 ###
 
 Brave 1.0 was an alternative implementation of Dapper with integration with the Zipkin 
 backend components.
-Brave 2.0-SNAPSHOT has the Zipkin core thrift classes as part of its api. This has as consequence that it will be easier to share 
-components or extensions between Zipkin/Brave. 
+Brave 2.0 has the Zipkin core thrift classes as part of its api. This has as consequence that it will be easier to share 
+components or extensions between Zipkin/Brave. It is compatible with Zipkin 1.0.1.
 
-Implemented changes + what is still to be done before release:
+Implemented changes:
 
 *   Done: Use Zipkin-core thrift generated classes as part of api.
 *   Done: Binary annotation support.
 *   Done: Cut dependencies with Twitter specific libraries. Only rely on Thrift.
 *   Done: Performance and through-put optimizations for [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector). It uses queue to store spans and separate thread for submitting spans to span collector / scribe. 
 It tries to buffer spans to send them in batches to avoid communication overhead.
+*   Done: Make sampling / trace filtering work properly. See [here](https://github.com/kristofa/brave/tree/master/brave-impl) for details.
 *   Done: Add [flume](http://flume.apache.org) support for transporting spans. See [flume-zipkin-collector-sink](https://github.com/kristofa/brave/tree/master/flume-zipkin-collector-sink). 
 *   Done: Add TraceFilter implementation that uses Zookeeper for globally adjusting sample rate or enable/disable tracing all together. See [brave-tracefilters](https://github.com/kristofa/brave/tree/master/brave-tracefilters)
 *   Done: Extend threading support by introducing BraveExecutorService, BraveCallable and BraveRunnable.
-*   TODO: Test and update [zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) to let it deal with lost connections.
 
 
 ### 1.0 ###

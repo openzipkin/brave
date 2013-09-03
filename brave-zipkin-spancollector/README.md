@@ -1,5 +1,14 @@
 # brave-zipkin-spancollector #
 
+Latest release available in Maven central:
+
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-zipkin-spancollector</artifactId>
+        <version>2.0</version>
+    </dependency>
+
+
 [Brave](https://github.com/kristofa/brave) SpanCollector that is used to submit spans to the [Zipkin](https://github.com/twitter/zipkin/) span-collector-service or Scribe.
 Advantage is that you can reuse the Zipkin back-end (zipkin-collector-service, Cassandra back-end store, zipkin-query, zipkin-web zipkin web).
 

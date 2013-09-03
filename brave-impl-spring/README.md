@@ -1,5 +1,13 @@
 # brave-impl-spring #
 
+Latest release available in Maven central:
+
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-impl-spring</artifactId>
+        <version>2.0</version>
+    </dependency>
+
 
 The brave-impl-spring module has Spring dependency injection configuration classes for the
 brave-impl api objects (Java based container configuration). 

@@ -1,5 +1,14 @@
 # brave-impl #
 
+Latest release available in Maven central:
+
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-impl</artifactId>
+        <version>2.0</version>
+    </dependency>
+
+
 brave-impl contains implementations of the components used to set up and keep track of
 tracing state. It has a ClientTracer implementation which is used to set up new spans when
 invoking new service requests and it has a ServerTracer implementation used to set up 
