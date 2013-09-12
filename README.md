@@ -78,7 +78,7 @@ Nothing so far.
 Brave 1.0 was an alternative implementation of Dapper with integration with the Zipkin 
 backend components.
 Brave 2.0 has the Zipkin core thrift classes as part of its api. This has as consequence that it will be easier to share 
-components or extensions between Zipkin/Brave. It is compatible with Zipkin 1.0.1.
+components or extensions between Zipkin/Brave. It is compatible with Zipkin 1.1
 
 Implemented changes:
 
