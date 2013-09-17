@@ -18,6 +18,42 @@ The [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example)
 good starting point to get you up to speed on how you can implement brave in your 
 own apps.
 
+## sequence diagram ##
+
+![Client and ServerTracer usage.](https://raw.github.com/wiki/kristofa/brave/brave-client-servertracer-usage.png)
+
+The sequence diagram shows a service the executes a request to another service.
+It shows interaction with the brave Client- , ServerTracer and SpanCollector.
+
+The actions taking place in both services are also indicated by the coloured boxes. The
+blue box indicates the caller service, the green box indicates the callee. Typically both
+services run in separate JVM.
+
+Some explanation:
+
+*    002 : The ClientTracer can decide if we should trace the new request or not. It will
+internally use 1 or more TraceFilter implementations which will decide on tracing or not. 
+In case we should not trace the request null will be returned. Otherwise the new trace id,
+span id and parent span id will be returned.
+*    004 / 005 / 007 : We need to forward the trace state to the service which we call. When
+using HTTP this is typically done by adding specific HTTP headers. When using other protocols the
+trace data should be submitted in another way.
+*    012 : In case we receive a request without or with incomplete tracing state the ServerTracer will
+just as the ClientTracer decide if we should trace the current request or not by using 1 or more 
+TraceFilter implementations.
+*    016 : If the ServerTracer receives 'Server Send' and it has an active span it will add the 
+Server Send annotation to the span and submit it to the SpanCollector.
+*    019 : If the ClientTracer receives 'Client Received' and it has an active span it will add the
+Client Received annotation to the span and submit it to the SpanCollector.
+
+The trace/span state is maintained in a ThreadLocal variable so parallel requests where each
+request is executed in a separate thread are supported.
+
+The ServerTracer logic (green box) is implemented in brave-resteasy-spring project for
+integration in a RestEasy service.
+
+Code example of the ClientTracer logic (blue box) can be found in brave-resteasy-example.
+
 ## about span collectors ##
 
 All spans that are submitted by brave end up in a SpanCollector of your choice 
