@@ -22,7 +22,7 @@ own apps.
 
 ![Client and ServerTracer usage.](https://raw.github.com/wiki/kristofa/brave/brave-client-servertracer-usage.png)
 
-The sequence diagram shows a service the executes a request to another service.
+The sequence diagram shows a service that executes a request to another service.
 It shows interaction with the brave Client- , ServerTracer and SpanCollector.
 
 The actions taking place in both services are also indicated by the coloured boxes. The
@@ -48,6 +48,12 @@ Client Received annotation to the span and submit it to the SpanCollector.
 
 The trace/span state is maintained in a ThreadLocal variable so parallel requests where each
 request is executed in a separate thread are supported.
+
+The sequence diagram does not show this but off course typically a service receives requests and
+execute new requests. In that case the ClientTracer and ServerTracer logic exists in the 
+same JVM/Service.  In this case the span state between Server/Client Tracer is shared. A
+new client request will use the incoming request as parent. Also the 
+Client and Server Tracers should use the same TraceFilter(s) and SpanCollector.
 
 The ServerTracer logic (green box) is implemented in brave-resteasy-spring project for
 integration in a RestEasy service.
