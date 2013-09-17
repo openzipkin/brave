@@ -76,7 +76,7 @@ You might not want to trace all requests that are being submitted:
 *   to avoid performance overhead
 *   to avoid running out of storage
 
-and having a big enough sample might be good enough.
+and you don't need to trace all requests to come to usable data.
 
 A TraceFilter's purpose (com.github.kristofa.brave.TraceFilter) is to decide if a given 
 request should get traced or not. Both
@@ -86,14 +86,14 @@ the TraceFilters says we should not trace the request it will not be traced.
 
 The decision, should trace (true) or not (false), is taken by the first request and should
 be passed through to all subsequent requests. This has as a consequence that we either
-trace a full request tree or none of the requests at all which is actually good.
+trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
 
 There is a TraceFilter implementation that comes with brave-impl which is 
 com.github.kristofa.brave.FixedSampleRateTraceFilter. This 
 TraceFilter is created with a fixed sample rate provided through its constructor. The
 sample rate can't be adapted at run time.  Behaviour:
 
-*   sample rate <= 0 : Non of the requests will be traced.
+*   sample rate <= 0 : Non of the requests will be traced. Means tracing is disabled
 *   sample rate = 1 : All requests will be traced.
 *   sample rate > 1 : For example 3, every third request will be traced.
 
