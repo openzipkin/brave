@@ -60,6 +60,10 @@ integration in a RestEasy service.
 
 Code example of the ClientTracer logic (blue box) can be found in brave-resteasy-example.
 
+## about EndPointSubmitter ##
+
+TODO
+
 ## about span collectors ##
 
 All spans that are submitted by brave end up in a SpanCollector of your choice 
