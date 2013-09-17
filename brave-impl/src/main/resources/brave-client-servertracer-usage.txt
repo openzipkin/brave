@@ -1,7 +1,7 @@
 @startuml
 
-actor User
-box "Service 1" #LightBlue
+
+box "Service 1 - caller" #LightBlue
 
  participant Service as Service1
  participant ClientLib
@@ -9,14 +9,13 @@ box "Service 1" #LightBlue
  participant SpanCollector as ClientSpanCollector
 end box
 
-box "Service 2" #LightGreen
+box "Service 2 - callee" #LightGreen
   participant Service as Service2
   participant ServerTracer
   participant SpanCollector as ServerSpanCollector
 end box
 autonumber "[000]"
 
-User -> Service1 : Execute request
 Service1 -> ClientLib : Execute request
 ClientLib -> ClientTracer : startNewSpan(requestName)
 ClientLib <-- ClientTracer : SpanId
@@ -26,7 +25,7 @@ else returned SpanId != null
   ClientLib -> ClientLib : Add TraceId, SpanId, ParentSpanId,\nSampled = true as meta data to request
 end
 ClientLib -> ClientTracer : setClientSent()
-ClientLib -> Service2 : Execute Request
+ClientLib -> Service2 : Execute Request (with trace meta data)
 Service2 -> ServerTracer : clearCurrentSpan()
 Service2 -> Service2 : Get Span Meta Data as potentially\nsubmitted by client.
 alt sampled = false
@@ -46,5 +45,5 @@ Service2 --> ClientLib : Response
 ClientLib -> ClientTracer : setClientReceived() 
 ClientTracer -> ClientSpanCollector : collect(Span)
 Service1 <-- ClientLib : Response
-User <-- Service1 : Response
+
 @enduml
