@@ -27,7 +27,7 @@ public class BraveCallable<T> implements Callable<T> {
      * @param wrappedCallable The wrapped Callable.
      * @param serverSpanThreadBinder ServerSpan thread binder.
      */
-    BraveCallable(final Callable<T> wrappedCallable, final ServerSpanThreadBinder serverSpanThreadBinder) {
+    public BraveCallable(final Callable<T> wrappedCallable, final ServerSpanThreadBinder serverSpanThreadBinder) {
         this.wrappedCallable = wrappedCallable;
         this.serverTracer = serverSpanThreadBinder;
         this.currentServerSpan = serverSpanThreadBinder.getCurrentServerSpan();
