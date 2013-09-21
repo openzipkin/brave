@@ -7,6 +7,7 @@ import java.util.Random;
 
 import org.apache.commons.lang3.Validate;
 
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
@@ -15,11 +16,10 @@ import com.twitter.zipkin.gen.zipkinCoreConstants;
  * 
  * @author kristof
  */
-class ServerTracerImpl implements ServerTracer {
+class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTracer {
 
     private final ServerSpanState state;
     private final SpanCollector collector;
-    private final CommonAnnotationSubmitter annotationSubmitter;
     private final List<TraceFilter> traceFilters = new ArrayList<TraceFilter>();
     private final Random randomGenerator;
 
@@ -28,34 +28,34 @@ class ServerTracerImpl implements ServerTracer {
      * 
      * @param state Server span state.
      * @param spanCollector Span collector.
-     * @param traceFilters List of trace filters.
-     * @param randomGenerator Random generator.
-     */
-    public ServerTracerImpl(final ServerSpanState state, final SpanCollector spanCollector,
-        final List<TraceFilter> traceFilters, final Random randomGenerator) {
-        this(state, spanCollector, traceFilters, randomGenerator, new CommonAnnotationSubmitter());
-    }
-
-    /**
-     * Creates a new instance.
-     * 
-     * @param state Server span state.
-     * @param spanCollector Span collector.
      * @param traceFilters Trace Filters.
-     * @param annotationSubmitter Annotation submitter.
      */
     ServerTracerImpl(final ServerSpanState state, final SpanCollector spanCollector, final List<TraceFilter> traceFilters,
-        final Random randomGenerator, final CommonAnnotationSubmitter annotationSubmitter) {
+        final Random randomGenerator) {
         Validate.notNull(state);
         Validate.notNull(spanCollector);
         Validate.notNull(traceFilters);
         Validate.notNull(randomGenerator);
-        Validate.notNull(annotationSubmitter);
         this.state = state;
         collector = spanCollector;
         this.traceFilters.addAll(traceFilters);
         this.randomGenerator = randomGenerator;
-        this.annotationSubmitter = annotationSubmitter;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    Span getSpan() {
+        return state.getCurrentServerSpan().getSpan();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    Endpoint getEndPoint() {
+        return state.getEndPoint();
     }
 
     /**
@@ -104,53 +104,6 @@ class ServerTracerImpl implements ServerTracer {
      * {@inheritDoc}
      */
     @Override
-    public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
-
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void submitAnnotation(final String annotationName) {
-
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void submitBinaryAnnotation(final String key, final String value) {
-
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void submitBinaryAnnotation(final String key, final int value) {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void setServerReceived() {
         submitAnnotation(zipkinCoreConstants.SERVER_RECV);
     }
@@ -162,11 +115,10 @@ class ServerTracerImpl implements ServerTracer {
     public void setServerSend() {
         final Span currentSpan = state.getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), zipkinCoreConstants.SERVER_SEND);
+            submitAnnotation(zipkinCoreConstants.SERVER_SEND);
             final long threadDuration = state.getServerSpanThreadDuration();
             if (threadDuration > 0) {
-                annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(),
-                    BraveAnnotations.THREAD_DURATION, String.valueOf(threadDuration));
+                submitBinaryAnnotation(BraveAnnotations.THREAD_DURATION, String.valueOf(threadDuration));
             }
 
             collector.collect(currentSpan);
@@ -192,10 +144,6 @@ class ServerTracerImpl implements ServerTracer {
 
     List<TraceFilter> getTraceFilters() {
         return Collections.unmodifiableList(traceFilters);
-    }
-
-    long currentTimeMicroseconds() {
-        return System.currentTimeMillis() * 1000;
     }
 
 }

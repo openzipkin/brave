@@ -2,6 +2,7 @@ package com.github.kristofa.brave;
 
 import org.apache.commons.lang.Validate;
 
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
@@ -9,51 +10,34 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author kristof
  */
-class AnnotationSubmitterImpl implements AnnotationSubmitter {
+class AnnotationSubmitterImpl extends AbstractAnnotationSubmitter {
 
     private final ServerSpanState state;
-    private final CommonAnnotationSubmitter annotationSubmitter;
 
-    AnnotationSubmitterImpl(final ServerSpanState state, final CommonAnnotationSubmitter annotationSubmitter) {
+    /**
+     * Constructor.
+     * 
+     * @param state ServerSpanState.
+     */
+    AnnotationSubmitterImpl(final ServerSpanState state) {
         Validate.notNull(state);
-        Validate.notNull(annotationSubmitter);
         this.state = state;
-        this.annotationSubmitter = annotationSubmitter;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void submitAnnotation(final String annotationName, final long startTime, final long endTime) {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName, startTime, endTime);
-        }
-
+    Span getSpan() {
+        return state.getCurrentServerSpan().getSpan();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void submitAnnotation(final String annotationName) {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitAnnotation(currentSpan, state.getEndPoint(), annotationName);
-        }
-
-    }
-
-    @Override
-    public void submitBinaryAnnotation(final String key, final String value) {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
-        }
-
-    }
-
-    @Override
-    public void submitBinaryAnnotation(final String key, final int value) {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            annotationSubmitter.submitBinaryAnnotation(currentSpan, state.getEndPoint(), key, value);
-        }
+    Endpoint getEndPoint() {
+        return state.getEndPoint();
     }
 
 }

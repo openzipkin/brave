@@ -1,11 +1,11 @@
 package com.github.kristofa.brave;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -16,30 +16,39 @@ import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
-public class CommonAnnotationSubmitterTest {
+public class AbstractAnnotationSubmitterTest {
 
     private final static String ANNOTATION_NAME = "AnnotationName";
     protected static final long CURRENT_TIME = 20;
     private static final String KEY = "key";
     private static final String STRING_VALUE = "stringValue";
     private static final int INT_VALUE = 23;
-    private static final ByteBuffer CUSTOM_VALUE = ByteBuffer.allocate(1);
 
-    private CommonAnnotationSubmitter commonAnnotationSubmitter;
+    private AbstractAnnotationSubmitter abstractAnnotationSubmitter;
     private Endpoint endPoint;
     private Span mockSpan;
 
     @Before
     public void setup() {
-        commonAnnotationSubmitter = new CommonAnnotationSubmitter() {
+        endPoint = new Endpoint();
+        mockSpan = mock(Span.class);
+        abstractAnnotationSubmitter = new AbstractAnnotationSubmitter() {
+
+            @Override
+            Span getSpan() {
+                return mockSpan;
+            }
+
+            @Override
+            Endpoint getEndPoint() {
+                return endPoint;
+            }
 
             @Override
             long currentTimeMicroseconds() {
                 return CURRENT_TIME;
             }
         };
-        endPoint = new Endpoint();
-        mockSpan = mock(Span.class);
     }
 
     @Test
@@ -47,7 +56,7 @@ public class CommonAnnotationSubmitterTest {
         final long startDateMs = 1000;
         final long endDateMs = 2000;
         final int durationMs = (int)(endDateMs - startDateMs);
-        commonAnnotationSubmitter.submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME, startDateMs, endDateMs);
+        abstractAnnotationSubmitter.submitAnnotation(ANNOTATION_NAME, startDateMs, endDateMs);
 
         final Annotation expectedAnnotation = new Annotation();
         expectedAnnotation.setHost(endPoint);
@@ -60,7 +69,7 @@ public class CommonAnnotationSubmitterTest {
 
     @Test
     public void testSubmitAnnotationSpanEndpointString() {
-        commonAnnotationSubmitter.submitAnnotation(mockSpan, endPoint, ANNOTATION_NAME);
+        abstractAnnotationSubmitter.submitAnnotation(ANNOTATION_NAME);
 
         final Annotation expectedAnnotation = new Annotation();
         expectedAnnotation.setHost(endPoint);
@@ -73,18 +82,18 @@ public class CommonAnnotationSubmitterTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testSubmitBinaryAnnotationStringValueEmptyKey() throws UnsupportedEncodingException {
-        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, " ", STRING_VALUE);
+        abstractAnnotationSubmitter.submitBinaryAnnotation(" ", STRING_VALUE);
     }
 
     @Test(expected = NullPointerException.class)
     public void testSubmitBinaryAnnotationStringValueNullValue() throws UnsupportedEncodingException {
-        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, null);
+        abstractAnnotationSubmitter.submitBinaryAnnotation(KEY, null);
 
     }
 
     @Test
     public void testSubmitBinaryAnnotationStringValue() throws UnsupportedEncodingException {
-        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, STRING_VALUE);
+        abstractAnnotationSubmitter.submitBinaryAnnotation(KEY, STRING_VALUE);
 
         final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
         expectedAnnodation.setHost(endPoint);
@@ -98,7 +107,7 @@ public class CommonAnnotationSubmitterTest {
 
     @Test
     public void testSubmitBinaryAnnotationIntValue() {
-        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, INT_VALUE);
+        abstractAnnotationSubmitter.submitBinaryAnnotation(KEY, INT_VALUE);
 
         final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
         expectedAnnodation.setHost(endPoint);
@@ -111,17 +120,24 @@ public class CommonAnnotationSubmitterTest {
     }
 
     @Test
-    public void testSubmitBinaryAnnotationCustomValue() {
-        commonAnnotationSubmitter.submitBinaryAnnotation(mockSpan, endPoint, KEY, CUSTOM_VALUE, AnnotationType.BOOL);
+    public void testCurrentTimeMicroSeconds() throws InterruptedException {
+        final AbstractAnnotationSubmitter anotherAbstractAnnotationSubmitter = new AbstractAnnotationSubmitter() {
 
-        final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
-        expectedAnnodation.setHost(endPoint);
-        expectedAnnodation.setKey(KEY);
-        expectedAnnodation.setValue(CUSTOM_VALUE);
-        expectedAnnodation.setAnnotation_type(AnnotationType.BOOL);
+            @Override
+            Span getSpan() {
+                return null;
+            }
 
-        verify(mockSpan).addToBinary_annotations(expectedAnnodation);
-        verifyNoMoreInteractions(mockSpan);
+            @Override
+            Endpoint getEndPoint() {
+                return null;
+            }
+        };
+
+        final long start = anotherAbstractAnnotationSubmitter.currentTimeMicroseconds();
+        Thread.sleep(130);
+        final long end = anotherAbstractAnnotationSubmitter.currentTimeMicroseconds();
+        assertTrue(end - start > 1000);
 
     }
 
