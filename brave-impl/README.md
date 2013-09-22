@@ -62,7 +62,18 @@ Code example of the ClientTracer logic (blue box) can be found in brave-resteasy
 
 ## about EndPointSubmitter ##
 
-TODO
+Each Annotation part of a Span can have an EndPoint assigned. 
+The EndPoint specifies the service/application from which the annotation is submitted, identified by
+ip address, port, service name.
+
+During the lifecycle of an application the EndPoint is fixed. This means the Endpoint can
+be set up once ideally when initialising your application.
+
+Initialising the Endpoint for Brave is done through the EndPointSubmitter.  Once it is set up all
+annotations submitted through ClientTracer, ServerTracer or AnnotationSubmitter will use the EndPoint.
+
+In the brave-resteasy-spring project the EndPoint is set up in `BravePreProcessInterceptor` when it
+receives the first request so before any annotations are submitted.
 
 ## about span collectors ##
 
@@ -113,10 +124,10 @@ time see brave-tracefilters project which contains a TraceFilter with ZooKeeper 
 
 ## brave-impl public api ##
 
-All api access is centralized in com.github.kristofa.brave.Brave
+All api access is centralized in `com.github.kristofa.brave.Brave`.
 
 This class contains only static methods. Reason is that the returned components should
-share the same trace/span state which is maintained as a singleton in com.github.kristofa.brave.Brave.
+share the same trace/span state which is maintained as a singleton in `com.github.kristofa.brave.Brave`.
 
 ### Brave.getEndPointSubmitter ###
 
