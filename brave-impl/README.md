@@ -83,8 +83,8 @@ All spans that are submitted by brave end up in a SpanCollector of your choice
 A SpanCollector is responsible for receiving spans and acting upon them. There are 2 
 SpanCollector implementations part of brave-impl: 
 
-*    com.github.kristofa.brave.LoggingSpanCollectorImpl: This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
-*    com.github.kristofa.brave.EmptySpanCollectorImpl : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
+*    `com.github.kristofa.brave.LoggingSpanCollectorImpl` : This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
+*    `com.github.kristofa.brave.EmptySpanCollectorImpl` : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
 
 The most interesting SpanCollector is the ZipkinSpanCollector. This one can be found in 
 [brave-zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) project.
@@ -99,18 +99,18 @@ You might not want to trace all requests that are being submitted:
 
 and you don't need to trace all requests to come to usable data.
 
-A TraceFilter's purpose (com.github.kristofa.brave.TraceFilter) is to decide if a given 
+A TraceFilter's purpose (`com.github.kristofa.brave.TraceFilter`) is to decide if a given 
 request should get traced or not. Both
 the ClientTracer and ServerTracer take a List of TraceFilters which should be the same
 and before starting with a new Span they will check the TraceFilters. If one of 
 the TraceFilters says we should not trace the request it will not be traced.
 
-The decision, should trace (true) or not (false), is taken by the first request and should
+The decision, should trace (true) or not (false) is taken by the first request and should
 be passed through to all subsequent requests. This has as a consequence that we either
 trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
 
 There is a TraceFilter implementation that comes with brave-impl which is 
-com.github.kristofa.brave.FixedSampleRateTraceFilter. This 
+`com.github.kristofa.brave.FixedSampleRateTraceFilter`. This 
 TraceFilter is created with a fixed sample rate provided through its constructor. The
 sample rate can't be adapted at run time.  Behaviour:
 
@@ -119,7 +119,7 @@ sample rate can't be adapted at run time.  Behaviour:
 *   sample rate > 1 : For example 3, every third request will be traced.
 
 If you want to use a TraceFilter implementation which allows adapting sample rate at run
-time see brave-tracefilters project which contains a TraceFilter with ZooKeeper support.
+time see `brave-tracefilters` project which contains a TraceFilter with ZooKeeper support.
 
 
 ## brave-impl public api ##
@@ -132,7 +132,7 @@ share the same trace/span state which is maintained as a singleton in `com.githu
 ### Brave.getEndPointSubmitter ###
 
 > public static EndPointSubmitter getEndPointSubmitter()
-.
+
 Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoint 
 (host, port, service name) assigned. For a given service/application instance the endpoint 
 only needs to be set once and will be reused for all submitted annotations.
