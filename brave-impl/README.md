@@ -127,7 +127,8 @@ time see `brave-tracefilters` project which contains a TraceFilter with ZooKeepe
 All api access is centralized in `com.github.kristofa.brave.Brave`.
 
 This class contains only static methods. Reason is that the returned components should
-share the same trace/span state which is maintained as a singleton in `com.github.kristofa.brave.Brave`.
+share the same trace/span state. This state is maintained as a static singleton in this
+class.
 
 ### Brave.getEndPointSubmitter ###
 
@@ -137,11 +138,12 @@ Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoi
 (host, port, service name) assigned. For a given service/application instance the endpoint 
 only needs to be set once and will be reused for all submitted annotations.
 
-The EndPoint needs to be set using the EndPointSubmitter before any annotation/span is
-created.
+The EndPoint should be set using the EndPointSubmitter before any annotation/span is
+created.  
 
 In the brave-resteasy-spring module the EndPoint is set in 
-com.github.kristofa.brave.resteasy.BravePreProcessInterceptor.
+`com.github.kristofa.brave.resteasy.BravePreProcessInterceptor` when receiving the first
+request.
 
 ### Brave.getClientTracer ###
 
@@ -153,7 +155,7 @@ The ClientTracer is used to initiate a new span when doing a request to another 
 (client send) and cr (client received) annotations. When the cr annotation is set the span 
 will be submitted to SpanCollector if not filtered by one of the TraceFilters.
 
-For mor information on TraceFilters, see section below 'about trace filters'
+For more information on TraceFilters, see earlier section 'about trace filters'.
 
 
 ### Brave.getServerTracer ###
@@ -195,10 +197,13 @@ Brave uses ThreadLocal variables to keep track of trace/span state. By doing thi
 able to support keeping track of state for multiple requests (multiple threads).
 
 However when you start a new Thread yourself from a request Thread brave will lose its trace/span state.
-To bind the same state to your new Thread you can use the ServerSpanThreadBinder yourself as explained earlier
+To bind the same state to your new Thread you can use the `ServerSpanThreadBinder` yourself as explained earlier
 or you can use `com.github.kristofa.brave.BraveExecutorService`.
 
 BraveExecutorService implements the java.util.concurrent.ExecutorService interface and acts as a decorator for
 an existing ExecutorService.  It also uses the ServerSpanThreadBinder which it takes in its constructor but
 once set up if is transparent for your code and will make sure any thread you start through the ExecutorService
 will get proper trace/span state.
+
+Instead of using BraveExecutorService or the ServerSpanThreadBinder directly you can also
+use the `BraveCallable` and `BraveRunnable`. These are used internally by the BraveExecutorService.
