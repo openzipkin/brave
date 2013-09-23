@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.ZipkinCollector;
+import com.twitter.zipkin.gen.ZipkinCollector.Client;
 
 /**
  * Thread implementation that is responsible for submitting spans to the Zipkin span collector or Scribe. The thread takes
@@ -37,7 +37,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
-    private final ZipkinCollector.Client client;
+    private final ZipkinCollectorClientProvider clientProvider;
     private final Base64 base64 = new Base64();
     private final TProtocolFactory protocolFactory;
     private boolean stop = false;
@@ -48,11 +48,12 @@ class SpanProcessingThread implements Callable<Integer> {
      * Creates a new instance.
      * 
      * @param queue BlockingQueue that will provide spans.
-     * @param client Client used to submit spans to zipkin span collector or Scribe.
+     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector
+     *            or Scribe.
      */
-    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollector.Client client) {
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider) {
         this.queue = queue;
-        this.client = client;
+        this.clientProvider = clientProvider;
         protocolFactory = new TBinaryProtocol.Factory();
         logEntries = new ArrayList<LogEntry>(MAX_BATCH_SIZE);
     }
@@ -94,17 +95,34 @@ class SpanProcessingThread implements Callable<Integer> {
 
     private void log(final List<LogEntry> logEntries) {
         final long start = System.currentTimeMillis();
+        final boolean succes = log(clientProvider.getClient(), logEntries);
+        processedSpans += logEntries.size();
+        if (succes && LOGGER.isDebugEnabled()) {
+            final long end = System.currentTimeMillis();
+            LOGGER.debug("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
+        }
+    }
+
+    private boolean log(final Client client, final List<LogEntry> logEntries) {
         try {
-            client.Log(logEntries);
+            clientProvider.getClient().Log(logEntries);
+            return true;
         } catch (final TException e) {
             LOGGER.error("Exception when trying to log Span.", e);
-        } finally {
-            if (LOGGER.isDebugEnabled()) {
-                final long end = System.currentTimeMillis();
-                LOGGER.debug("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
+            final Client newClient = clientProvider.exception(e);
+            if (newClient != null) {
+                LOGGER.info("Got new client with new connection. Logging with new client.");
+                try {
+                    newClient.Log(logEntries);
+                    return true;
+                } catch (final TException e2) {
+                    LOGGER.error("Logging spans with new client also failed. " + logEntries.size() + " spans are lost!", e2);
+                }
+            } else {
+                LOGGER.error("Logging spans failed. " + logEntries.size() + " spans are lost!");
             }
         }
-        processedSpans += logEntries.size();
+        return false;
     }
 
     private LogEntry create(final Span span) throws TException {

@@ -14,12 +14,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PreDestroy;
 
 import org.apache.commons.lang.Validate;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +24,6 @@ import com.github.kristofa.brave.SpanCollector;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.ZipkinCollector;
 
 /**
  * Sends spans to Zipkin collector or Scribe.
@@ -50,8 +44,7 @@ public class ZipkinSpanCollector implements SpanCollector {
     private static final int DEFAULT_MAX_QUEUESIZE = 100;
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
-    private final TTransport transport;
-    private final ZipkinCollector.Client client;
+    private final ZipkinCollectorClientProvider clientProvider;
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
     private final SpanProcessingThread spanProcessingThread;
@@ -77,16 +70,14 @@ public class ZipkinSpanCollector implements SpanCollector {
      */
     public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort, final int maxQueueSize) {
         Validate.notEmpty(zipkinCollectorHost);
-        transport = new TFramedTransport(new TSocket(zipkinCollectorHost, zipkinCollectorPort));
-        final TProtocol protocol = new TBinaryProtocol(transport);
-        client = new ZipkinCollector.Client(protocol);
+        clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort);
         try {
-            transport.open();
-        } catch (final TTransportException e) {
+            clientProvider.setup();
+        } catch (final TException e) {
             throw new IllegalStateException(e);
         }
         spanQueue = new ArrayBlockingQueue<Span>(maxQueueSize);
-        spanProcessingThread = new SpanProcessingThread(spanQueue, client);
+        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider);
         executorService = Executors.newSingleThreadExecutor();
         future = executorService.submit(spanProcessingThread);
     }
@@ -158,7 +149,7 @@ public class ZipkinSpanCollector implements SpanCollector {
             LOGGER.error("Exception when getting result of SpanProcessingThread.", e);
         }
         executorService.shutdown();
-        transport.close();
+        clientProvider.close();
         LOGGER.info("ZipkinSpanCollector closed.");
     }
 
