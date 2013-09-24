@@ -65,15 +65,9 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
         super.start();
         lifeCycleState = LifecycleState.START;
         sinkCounter.start();
-        transport = new TFramedTransport(new TSocket(hostName, port));
-        final TProtocol protocol = new TBinaryProtocol(transport);
-        client = new ZipkinCollector.Client(protocol);
         try {
-            transport.open();
-            sinkCounter.incrementConnectionCreatedCount();
+            connect();
         } catch (final TTransportException e) {
-            LOGGER.error("Staring ZipkinSpanCollectorSink failed!", e);
-            sinkCounter.incrementConnectionFailedCount();
             lifeCycleState = LifecycleState.ERROR;
             throw new IllegalStateException(e);
         }
@@ -129,6 +123,15 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
                 sinkCounter.incrementBatchEmptyCount();
             }
             txn.commit();
+        } catch (final TTransportException e) {
+            txn.rollback();
+            LOGGER.error("Got a TTransportException. Will close current Transport and create new connection/client.");
+            try {
+                connect();
+                LOGGER.info("Reconnect succeeded.");
+            } catch (final TTransportException e1) {
+                LOGGER.error("Trying to reconnect failed.", e1);
+            }
         } catch (final Throwable e) {
             txn.rollback();
             throw new EventDeliveryException(e);
@@ -163,6 +166,25 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
         logEntry.setCategory(event.getHeaders().get(SCRIBE_CATEGORY));
         logEntry.setMessage(new String(body));
         return logEntry;
+    }
+
+    private void connect() throws TTransportException {
+        if (transport != null) {
+            transport.close();
+        }
+        transport = new TFramedTransport(new TSocket(hostName, port));
+        final TProtocol protocol = new TBinaryProtocol(transport);
+        client = new ZipkinCollector.Client(protocol);
+        try {
+            transport.open();
+            sinkCounter.incrementConnectionCreatedCount();
+        } catch (final TTransportException e) {
+            LOGGER.error("Staring ZipkinSpanCollectorSink failed!", e);
+            sinkCounter.incrementConnectionFailedCount();
+            lifeCycleState = LifecycleState.ERROR;
+            throw e;
+        }
+
     }
 
 }
