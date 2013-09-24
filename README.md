@@ -71,8 +71,8 @@ For other dependencies see README.md files for sub modules.
 
 ### 2.0.1-SNAPSHOT ###
 
-*  Done: Adapt ZipkinSpanCollector so it is able to reconnect in case of temporary network connectivity issues. 
-*  Todo: Adapt Flume ZipkinSpanCollectorSink so it is able to reconnect in case of temporary network connectivity issues.
+*  Done: Adapt ZipkinSpanCollector so it is able to reconnect to Scribe / Zipkin Collector in case of temporary network connectivity issues. 
+*  Done: Adapt Flume ZipkinSpanCollectorSink so it is able to reconnect to Zipkin Collector in case of temporary network connectivity issues.
 
 ### 2.0 ###
 
