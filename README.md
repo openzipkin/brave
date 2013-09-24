@@ -73,6 +73,7 @@ For other dependencies see README.md files for sub modules.
 
 *  Done: Adapt ZipkinSpanCollector so it is able to reconnect to Scribe / Zipkin Collector in case of temporary network connectivity issues. 
 *  Done: Adapt Flume ZipkinSpanCollectorSink so it is able to reconnect to Zipkin Collector in case of temporary network connectivity issues.
+*  Done: BraveCallable constructor is public.
 
 ### 2.0 ###
 
