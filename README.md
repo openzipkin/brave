@@ -69,7 +69,11 @@ For other dependencies see README.md files for sub modules.
 
 ## Version history ##
 
-### 2.0.1-SNAPSHOT ###
+### 2.0.2-SNAPSHOT ###
+
+* In progress: flume graphite sink implementation
+
+### 2.0.1 ###
 
 *  Done: Adapt ZipkinSpanCollector so it is able to reconnect to Scribe / Zipkin Collector in case of temporary network connectivity issues. 
 *  Done: Adapt Flume ZipkinSpanCollectorSink so it is able to reconnect to Zipkin Collector in case of temporary network connectivity issues.
