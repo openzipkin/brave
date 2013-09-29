@@ -28,7 +28,7 @@ Zipkin! Is is by seeing their [Zipkin video and presentation](http://www.infoq.c
 I got to know Zipkin/Dapper and that I saw the potential and the simplicity of the solution.
 
 
-## about spans and traces ##
+## about spans, traces and architecture ##
 
 *   span: A single client/server request/response. Can have an optional parent span id and is part of a trace.
 *   trace: A tree of spans.
@@ -41,10 +41,17 @@ So as you can see a single span is submitted twice:
 *   from the client side, the initiator, with cs (client send) and cr (client received) annotations 
 *   from the server side with sr (server received) and ss (server send) annotations.
 
-The above image shows how Brave integrates with Zipkin back-end components. This is probably what you want
-to do as those components have already proven themselves. However you can 
-create new SpanCollector implementations that submit Span/Trace data to other data stores or processing
-engines.
+The above image shows how I intend to use Brave in production and also how it integrates with the Zipkin back-end components. 
+I introduced [Flume](http://flume.apache.org/) instead of Scribe as Flume is still actively maintained, easier to deploy,
+has good documentation and extensions are written in Java.
+
+The `ZipkinSpanCollectorSink` from `flume-zipkin-collector-sink` module submits spans to the Zipkin collector service.
+The `ZipkinGraphiteSink` is still work in progress but will be used to submit custom annotations with duration (to measure certain sections
+of the code) to [graphite](http://graphite.wikidot.com) for aggregation and visualisation.
+
+If you use the `ZooKeeperSamplingTraceFilter` from `brave-tracefilters` module you can enable/disable tracing or adjust
+sample rate using [ZooKeeper](http://zookeeper.apache.org).
+
 
 
 ## Example implementation ##
