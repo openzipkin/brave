@@ -46,7 +46,7 @@ Finally you edit your just created flume-env.sh file and uncomment and complete 
 FLUME_CLASSPATH property:
 
     # Note that the Flume conf directory is always included in the classpath.
-    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.0-SNAPSHOT.jar"
+    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.0.2-SNAPSHOT.jar"
      
 When you will start flume after doing this configuration change the flume-zipkin-collector-sink
 should be available for flume to use.
@@ -70,7 +70,7 @@ that uses persistence iso the memory channel.
     agent1.sinks.zipkin-sink1.type = com.github.kristofa.flume.ZipkinSpanCollectorSink
     agent1.sinks.zipkin-sink1.hostname = 10.0.1.8
     agent1.sinks.zipkin-sink1.port = 9410 # Zipkin collector port
-    agent1.sinks.zipkin-sink1.batchsize = 100 # Optional, default value = 100
+    agent1.sinks.zipkin-sink1.batchsize = 25
  
     # Finally, now that we've defined all of our components, tell
     # agent1 which ones we want to activate.
