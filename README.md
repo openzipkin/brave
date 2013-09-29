@@ -61,14 +61,14 @@ to get you up to speed on how you can implement brave in your own apps.
 
 ## Maven artifacts ##
 
-Version 2.0 is available in Maven central. So you can simply add the dependencies you want
+Version 2.0.1 is available in Maven central. So you can simply add the dependencies you want
  to your pom.xml. You will need at least:
 
     
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.0</version>
+        <version>2.0.1</version>
     </dependency>
     
 For other dependencies see README.md files for sub modules.
