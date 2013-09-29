@@ -72,6 +72,7 @@ For other dependencies see README.md files for sub modules.
 ### 2.0.2-SNAPSHOT ###
 
 * In progress: flume graphite sink implementation
+* Done: Rename 'batchSize' config property of `ZipkinSpanCollectorSink` to 'batchsize' to bring it inline with other config parameters (all lower case).
 
 ### 2.0.1 ###
 
