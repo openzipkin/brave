@@ -45,7 +45,7 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollectorSink.class);
     private static final String PORT_CONFIG_PROP_NAME = "port";
     private static final String HOSTNAME_CONFIG_PROP_NAME = "hostname";
-    private static final String BATCH_SIZE_PROP_NAME = "batchSize";
+    private static final String BATCH_SIZE_PROP_NAME = "batchsize";
     private static final String SCRIBE_CATEGORY = "category";
     private static final int DEFAULT_BATCH_SIZE = 100;
 
