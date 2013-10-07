@@ -9,7 +9,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
 
@@ -41,7 +40,7 @@ import com.twitter.zipkin.gen.Span;
 public class ZipkinSpanCollector implements SpanCollector {
 
     private static final String UTF_8 = "UTF-8";
-    private static final int DEFAULT_MAX_QUEUESIZE = 100;
+    private static final int DEFAULT_MAX_QUEUESIZE = 300;
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
     private final ZipkinCollectorClientProvider clientProvider;
@@ -52,13 +51,13 @@ public class ZipkinSpanCollector implements SpanCollector {
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
-     * Create a new instance with default queue size (=50).
+     * Create a new instance with default queue size (=300) and default batch size (=10).
      * 
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
      */
     public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort) {
-        this(zipkinCollectorHost, zipkinCollectorPort, DEFAULT_MAX_QUEUESIZE);
+        this(zipkinCollectorHost, zipkinCollectorPort, DEFAULT_MAX_QUEUESIZE, SpanProcessingThread.DEFAULT_MAX_BATCH_SIZE);
     }
 
     /**
@@ -67,8 +66,10 @@ public class ZipkinSpanCollector implements SpanCollector {
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
      * @param maxQueueSize Maximum queue size.
+     * @param maxBatchSize Maximum number of spans that is sent to collector in 1 go.
      */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort, final int maxQueueSize) {
+    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort, final int maxQueueSize,
+        final int maxBatchSize) {
         Validate.notEmpty(zipkinCollectorHost);
         clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort);
         try {
@@ -77,7 +78,7 @@ public class ZipkinSpanCollector implements SpanCollector {
             throw new IllegalStateException(e);
         }
         spanQueue = new ArrayBlockingQueue<Span>(maxQueueSize);
-        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider);
+        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider, maxBatchSize);
         executorService = Executors.newSingleThreadExecutor();
         future = executorService.submit(spanProcessingThread);
     }
@@ -89,25 +90,21 @@ public class ZipkinSpanCollector implements SpanCollector {
     public void collect(final Span span) {
 
         final long start = System.currentTimeMillis();
-        try {
 
-            if (!defaultAnnotations.isEmpty()) {
-                for (final BinaryAnnotation ba : defaultAnnotations) {
-                    span.addToBinary_annotations(ba);
-                }
+        if (!defaultAnnotations.isEmpty()) {
+            for (final BinaryAnnotation ba : defaultAnnotations) {
+                span.addToBinary_annotations(ba);
             }
+        }
 
-            final boolean offer = spanQueue.offer(span, 5, TimeUnit.SECONDS);
-            if (!offer) {
-                LOGGER.error("It took to long to offer Span to queue (more than 5 seconds). Span not submitted: " + span);
-            } else {
-                final long end = System.currentTimeMillis();
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Adding span to queue took " + (end - start) + "ms.");
-                }
+        final boolean offer = spanQueue.offer(span);
+        if (!offer) {
+            LOGGER.error("Queue rejected Span, span not submitted: " + span);
+        } else {
+            final long end = System.currentTimeMillis();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Adding span to queue took " + (end - start) + "ms.");
             }
-        } catch (final InterruptedException e1) {
-            LOGGER.error("Unable to submit span to queue: " + span, e1);
         }
     }
 

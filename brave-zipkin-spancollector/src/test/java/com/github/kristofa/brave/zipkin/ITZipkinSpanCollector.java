@@ -51,7 +51,7 @@ public class ITZipkinSpanCollector {
         zipkinCollectorServer.start();
         try {
 
-            final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, QUEUE_SIZE);
+            final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, 100, 50);
             try {
 
                 final Span span = new Span();
@@ -103,7 +103,7 @@ public class ITZipkinSpanCollector {
         try {
             final int hunderdTen = 110;
 
-            final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, QUEUE_SIZE);
+            final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, QUEUE_SIZE, 50);
             try {
 
                 final Span span = new Span();

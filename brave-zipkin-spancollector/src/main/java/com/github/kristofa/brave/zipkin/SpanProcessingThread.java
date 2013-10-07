@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.Validate;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -22,18 +23,19 @@ import com.twitter.zipkin.gen.ZipkinCollector.Client;
 
 /**
  * Thread implementation that is responsible for submitting spans to the Zipkin span collector or Scribe. The thread takes
- * spans from a queue. The spans are produced by {@link ZipkinSpanCollector}, put on a queue and consumed and processed by
+ * spans from a queue. The spans are produced by {@link ZipkinSpanCollector} put on a queue and consumed and processed by
  * this thread.
  * <p/>
  * We will try to buffer spans and send them in batches to minimize communication overhead. However if the batch size is not
  * reached within 2 polls (max 10 seconds) the available spans will be sent over anyway.
  * 
- * @author adriaens
+ * @see ZipkinSpanCollector
+ * @author kristof
  */
 class SpanProcessingThread implements Callable<Integer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpanProcessingThread.class);
-    private static final int MAX_BATCH_SIZE = 50;
+    static final int DEFAULT_MAX_BATCH_SIZE = 10;
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
@@ -43,19 +45,37 @@ class SpanProcessingThread implements Callable<Integer> {
     private boolean stop = false;
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
+    private final int maxBatchSize;
+
+    /**
+     * Creates a new instance with a default max batch size of 10.
+     * 
+     * @param queue BlockingQueue that will provide spans.
+     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
+     *            or Scribe.
+     */
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider) {
+
+        this(queue, clientProvider, DEFAULT_MAX_BATCH_SIZE);
+    }
 
     /**
      * Creates a new instance.
      * 
      * @param queue BlockingQueue that will provide spans.
-     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector
-     *            or Scribe.
+     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
+     * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
      */
-    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider) {
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
+        final int maxBatchSize) {
+        Validate.notNull(queue);
+        Validate.notNull(clientProvider);
+        Validate.isTrue(maxBatchSize > 0);
         this.queue = queue;
         this.clientProvider = clientProvider;
         protocolFactory = new TBinaryProtocol.Factory();
-        logEntries = new ArrayList<LogEntry>(MAX_BATCH_SIZE);
+        this.maxBatchSize = maxBatchSize;
+        logEntries = new ArrayList<LogEntry>(maxBatchSize);
     }
 
     /**
@@ -83,7 +103,7 @@ class SpanProcessingThread implements Callable<Integer> {
             }
 
             if (subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty()
-                || logEntries.size() >= MAX_BATCH_SIZE || !logEntries.isEmpty() && stop) {
+                || logEntries.size() >= maxBatchSize || !logEntries.isEmpty() && stop) {
                 log(logEntries);
                 logEntries.clear();
                 subsequentEmptyBatches = 0;
