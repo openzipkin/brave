@@ -25,6 +25,7 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
 
     private final String host;
     private final int port;
+    private final int timeout;
     private TTransport transport;
     private ZipkinCollector.Client client;
 
@@ -33,11 +34,13 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
      * 
      * @param host Host. Should not be empty.
      * @param port Port.
+     * @param timeout Socket time out in milliseconds.
      */
-    public ZipkinCollectorClientProvider(final String host, final int port) {
+    public ZipkinCollectorClientProvider(final String host, final int port, final int timeout) {
         Validate.notEmpty(host);
         this.host = host;
         this.port = port;
+        this.timeout = timeout;
     }
 
     /**
@@ -45,7 +48,9 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
      */
     @Override
     public void setup() throws TException {
-        transport = new TFramedTransport(new TSocket(host, port));
+        final TSocket socket = new TSocket(host, port);
+        socket.setTimeout(timeout);
+        transport = new TFramedTransport(socket);
         final TProtocol protocol = new TBinaryProtocol(transport);
         client = new ZipkinCollector.Client(protocol);
         transport.open();

@@ -35,7 +35,6 @@ import com.twitter.zipkin.gen.ZipkinCollector.Client;
 class SpanProcessingThread implements Callable<Integer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpanProcessingThread.class);
-    static final int DEFAULT_MAX_BATCH_SIZE = 10;
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
@@ -46,18 +45,6 @@ class SpanProcessingThread implements Callable<Integer> {
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
     private final int maxBatchSize;
-
-    /**
-     * Creates a new instance with a default max batch size of 10.
-     * 
-     * @param queue BlockingQueue that will provide spans.
-     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
-     *            or Scribe.
-     */
-    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider) {
-
-        this(queue, clientProvider, DEFAULT_MAX_BATCH_SIZE);
-    }
 
     /**
      * Creates a new instance.

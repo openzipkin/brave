@@ -2,7 +2,9 @@ package com.github.kristofa.brave.zipkin;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -40,14 +42,13 @@ import com.twitter.zipkin.gen.Span;
 public class ZipkinSpanCollector implements SpanCollector {
 
     private static final String UTF_8 = "UTF-8";
-    private static final int DEFAULT_MAX_QUEUESIZE = 300;
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
     private final ZipkinCollectorClientProvider clientProvider;
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
     private final SpanProcessingThread spanProcessingThread;
-    private final Future<Integer> future;
+    private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
@@ -57,7 +58,7 @@ public class ZipkinSpanCollector implements SpanCollector {
      * @param zipkinCollectorPort Port for zipkin collector.
      */
     public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort) {
-        this(zipkinCollectorHost, zipkinCollectorPort, DEFAULT_MAX_QUEUESIZE, SpanProcessingThread.DEFAULT_MAX_BATCH_SIZE);
+        this(zipkinCollectorHost, zipkinCollectorPort, new ZipkinSpanCollectorParams());
     }
 
     /**
@@ -65,22 +66,25 @@ public class ZipkinSpanCollector implements SpanCollector {
      * 
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
-     * @param maxQueueSize Maximum queue size.
-     * @param maxBatchSize Maximum number of spans that is sent to collector in 1 go.
+     * @param params Zipkin Span Collector parameters.
      */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort, final int maxQueueSize,
-        final int maxBatchSize) {
+    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
+        final ZipkinSpanCollectorParams params) {
         Validate.notEmpty(zipkinCollectorHost);
-        clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort);
+        Validate.notNull(params);
+        clientProvider =
+            new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort, params.getSocketTimeout());
         try {
             clientProvider.setup();
         } catch (final TException e) {
             throw new IllegalStateException(e);
         }
-        spanQueue = new ArrayBlockingQueue<Span>(maxQueueSize);
-        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider, maxBatchSize);
-        executorService = Executors.newSingleThreadExecutor();
-        future = executorService.submit(spanProcessingThread);
+        spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
+        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
+        executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
+        for (int i = 1; i <= params.getNrOfThreads(); i++) {
+            futures.add(executorService.submit(spanProcessingThread));
+        }
     }
 
     /**
@@ -139,11 +143,13 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         LOGGER.info("Stopping SpanProcessingThread.");
         spanProcessingThread.stop();
-        try {
-            final Integer spansProcessed = future.get();
-            LOGGER.info("SpanProcessingThread processed " + spansProcessed + " spans.");
-        } catch (final Exception e) {
-            LOGGER.error("Exception when getting result of SpanProcessingThread.", e);
+        for (final Future<Integer> future : futures) {
+            try {
+                final Integer spansProcessed = future.get();
+                LOGGER.info("SpanProcessingThread processed " + spansProcessed + " spans.");
+            } catch (final Exception e) {
+                LOGGER.error("Exception when getting result of SpanProcessingThread.", e);
+            }
         }
         executorService.shutdown();
         clientProvider.close();
