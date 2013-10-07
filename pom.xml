@@ -51,8 +51,8 @@
         <module>brave-resteasy-spring</module>
         <module>brave-zipkin-spancollector</module>
         <module>flume-zipkin-collector-sink</module>
-    <module>brave-tracefilters</module>
-    <module>flume-graphite-sink</module>
+    	<module>brave-tracefilters</module>
+    	<!-- <module>flume-graphite-sink</module> -->
   </modules>
   
   <dependencyManagement>
