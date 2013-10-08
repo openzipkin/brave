@@ -47,7 +47,7 @@ public class ZipkinSpanCollector implements SpanCollector {
     private final ZipkinCollectorClientProvider clientProvider;
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
-    private final SpanProcessingThread spanProcessingThread;
+    private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<SpanProcessingThread>();
     private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
@@ -80,9 +80,11 @@ public class ZipkinSpanCollector implements SpanCollector {
             throw new IllegalStateException(e);
         }
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
-        spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
+            final SpanProcessingThread spanProcessingThread =
+                new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
+            spanProcessingThreads.add(spanProcessingThread);
             futures.add(executorService.submit(spanProcessingThread));
         }
     }
@@ -142,7 +144,9 @@ public class ZipkinSpanCollector implements SpanCollector {
     public void close() {
 
         LOGGER.info("Stopping SpanProcessingThread.");
-        spanProcessingThread.stop();
+        for (final SpanProcessingThread thread : spanProcessingThreads) {
+            thread.stop();
+        }
         for (final Future<Integer> future : futures) {
             try {
                 final Integer spansProcessed = future.get();
