@@ -76,24 +76,28 @@ class SpanProcessingThread implements Callable<Integer> {
      * {@inheritDoc}
      */
     @Override
-    public Integer call() throws Exception {
+    public Integer call() {
 
         int subsequentEmptyBatches = 0;
         do {
 
-            final Span span = queue.poll(5, TimeUnit.SECONDS);
-            if (span == null) {
-                subsequentEmptyBatches++;
+            try {
+                final Span span = queue.poll(5, TimeUnit.SECONDS);
+                if (span == null) {
+                    subsequentEmptyBatches++;
 
-            } else {
-                logEntries.add(create(span));
-            }
+                } else {
+                    logEntries.add(create(span));
+                }
 
-            if (subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty()
-                || logEntries.size() >= maxBatchSize || !logEntries.isEmpty() && stop) {
-                log(logEntries);
-                logEntries.clear();
-                subsequentEmptyBatches = 0;
+                if (subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty()
+                    || logEntries.size() >= maxBatchSize || !logEntries.isEmpty() && stop) {
+                    log(logEntries);
+                    logEntries.clear();
+                    subsequentEmptyBatches = 0;
+                }
+            } catch (final Exception e) {
+                LOGGER.error("Unexpected exception.", e);
             }
 
         } while (stop == false);
