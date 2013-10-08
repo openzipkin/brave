@@ -52,7 +52,8 @@ public class ZipkinSpanCollector implements SpanCollector {
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
-     * Create a new instance with default queue size (=300) and default batch size (=10).
+     * Create a new instance with default queue size (= {@link ZipkinSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
+     * batch size (= {@link ZipkinSpanCollectorParams#DEFAULT_BATCH_SIZE}).
      * 
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
