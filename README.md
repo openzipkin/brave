@@ -78,7 +78,8 @@ For other dependencies see README.md files for sub modules.
 
 ### 2.0.2-SNAPSHOT ###
 
-* In progress: flume graphite sink implementation
+* Done: Make `ZipkinSpanCollector` more configurable. Allow configuration of queue size, batch size, nr of processing threads, socket time out.
+* Done: Important bugfix in `ZipkinSpanCollector`. The processing thread(s) catch and log all exceptions to prevent they end prematurely.
 * Done: Rename 'batchSize' config property of `ZipkinSpanCollectorSink` to 'batchsize' to bring it inline with other config parameters (all lower case).
 
 ### 2.0.1 ###
