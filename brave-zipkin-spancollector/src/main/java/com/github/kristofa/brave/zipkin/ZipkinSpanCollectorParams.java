@@ -29,6 +29,9 @@ public class ZipkinSpanCollectorParams {
     private int nrOfThreads;
     private int socketTimeout;
 
+    /**
+     * Create a new instance with default values.
+     */
     public ZipkinSpanCollectorParams() {
         queueSize = 200;
         batchSize = 10;
