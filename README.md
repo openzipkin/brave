@@ -85,6 +85,11 @@ Feel free to submit pull requests.
 
 ## Version history ##
 
+Unfortunately I did not use [Semantic Versioning](http://semver.org) from the start.
+The 2.x versions of brave are currently being extensively tested and will soon end up in 
+production.  However from now on I'll try to stick to Semantic Versioning when it comes to
+bugfixing/  new functionality / backwards compatibility.
+
 ### 2.0.2-SNAPSHOT ###
 
 * Done: Make `ZipkinSpanCollector` more configurable. Allow configuration of queue size, batch size, nr of processing threads, socket time out.
