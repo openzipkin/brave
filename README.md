@@ -61,14 +61,14 @@ to get you up to speed on how you can implement brave in your own apps.
 
 ## Maven artifacts ##
 
-Version 2.0.1 is available in Maven central. So you can simply add the dependencies you want
+Version 2.0.2 is available in Maven central. So you can simply add the dependencies you want
  to your pom.xml. You will need at least:
 
     
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.0.1</version>
+        <version>2.0.2</version>
     </dependency>
     
 For other dependencies see README.md files for sub modules.
@@ -86,12 +86,17 @@ Feel free to submit pull requests.
 ## Version history ##
 
 Unfortunately I did not use [Semantic Versioning](http://semver.org) from the start.
-The 2.x versions of brave are currently being extensively tested and will soon end up in 
+The 2.x.x versions of brave are currently being extensively tested and will soon end up in 
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
-bugfixing/  new functionality / backwards compatibility.
+bug fixing /  new functionality / backwards compatibility.
 
-### 2.0.2-SNAPSHOT ###
+### 2.0.3 ###
 
+Nothing so far.
+
+### 2.0.2 ###
+
+* Done: `ZipkinSpanCollector`: Give the option to log error but not throw exception when connection with collector can't be set up during initialisation.
 * Done: Make `ZipkinSpanCollector` more configurable. Allow configuration of queue size, batch size, nr of processing threads, socket time out.
 * Done: Important bugfix in `ZipkinSpanCollector`. The processing thread(s) catch and log all exceptions to prevent they end prematurely.
 * Done: Rename 'batchSize' config property of `ZipkinSpanCollectorSink` to 'batchsize' to bring it inline with other config parameters (all lower case).
