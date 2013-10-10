@@ -13,6 +13,8 @@ import org.apache.commons.lang.Validate;
  * <li>number of threads: The number of parallel threads for submitting spans to collector.</li>
  * <li>socket time out: Time in milliseconds after which our socket connections will time out. When it times out an exception
  * will be thrown.</li>
+ * <li>fail on setup: Indicates if {@link ZipkinSpanCollector} should fail on creation when connection with collector can't
+ * be established or just log error message.</li>
  * </ul>
  * 
  * @author kristof
@@ -28,15 +30,16 @@ public class ZipkinSpanCollectorParams {
     private int batchSize;
     private int nrOfThreads;
     private int socketTimeout;
+    private boolean failOnSetup = true;
 
     /**
      * Create a new instance with default values.
      */
     public ZipkinSpanCollectorParams() {
-        queueSize = 200;
-        batchSize = 10;
-        nrOfThreads = 1;
-        socketTimeout = 5000;
+        queueSize = DEFAULT_QUEUE_SIZE;
+        batchSize = DEFAULT_BATCH_SIZE;
+        nrOfThreads = DEFAULT_NR_OF_THREADS;
+        socketTimeout = DEFAULT_SOCKET_TIMEOUT;
     }
 
     /**
@@ -114,6 +117,27 @@ public class ZipkinSpanCollectorParams {
     public void setSocketTimeout(final int socketTimeout) {
         Validate.isTrue(socketTimeout >= 100);
         this.socketTimeout = socketTimeout;
+    }
+
+    /**
+     * Sets fail on setup value.
+     * 
+     * @param failOnSetup <code>true</code> in case {@link ZipkinSpanCollector} will throw exception when connection can't be
+     *            established during setup. Or <code>false</code> in case we should log message but not throw exception.
+     */
+    public void setFailOnSetup(final boolean failOnSetup) {
+        this.failOnSetup = failOnSetup;
+    }
+
+    /**
+     * Indicates if {@link ZipkinSpanCollector} should fail on creation when connection with collector can't be established.
+     * 
+     * @return <code>true</code> in case {@link ZipkinSpanCollector} will throw exception when connection can't be
+     *         established during setup. Or <code>false</code> in case we should log message but not throw exception. Default
+     *         value = <code>true</code>.
+     */
+    public boolean failOnSetup() {
+        return failOnSetup;
     }
 
 }

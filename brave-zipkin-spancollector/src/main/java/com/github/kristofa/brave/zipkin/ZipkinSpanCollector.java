@@ -78,7 +78,11 @@ public class ZipkinSpanCollector implements SpanCollector {
         try {
             clientProvider.setup();
         } catch (final TException e) {
-            throw new IllegalStateException(e);
+            if (params.failOnSetup()) {
+                throw new IllegalStateException(e);
+            } else {
+                LOGGER.error("Connection could not be established during setup.", e);
+            }
         }
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
