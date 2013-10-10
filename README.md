@@ -90,7 +90,7 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.0.3 ###
+### 2.0.3-SNAPSHOT ###
 
 Nothing so far.
 
