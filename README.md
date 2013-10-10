@@ -47,7 +47,7 @@ has good documentation and extensions are written in Java.
 
 The `ZipkinSpanCollectorSink` from `flume-zipkin-collector-sink` module submits spans to the Zipkin collector service.
 The `ZipkinGraphiteSink` is still work in progress but will be used to submit custom annotations with duration (to measure certain sections
-of the code) to [graphite](http://graphite.wikidot.com) for aggregation and visualisation.
+of the code) to [graphite](http://graphite.wikidot.com) for visualisation.
 
 If you use the `ZooKeeperSamplingTraceFilter` from `brave-tracefilters` module you can enable/disable tracing or adjust
 sample rate using [ZooKeeper](http://zookeeper.apache.org).
