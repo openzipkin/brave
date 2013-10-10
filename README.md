@@ -72,7 +72,16 @@ Version 2.0.1 is available in Maven central. So you can simply add the dependenc
     </dependency>
     
 For other dependencies see README.md files for sub modules.
-   
+
+## Contribution ##
+
+If you would like to contribute to brave, here are some topics that might give you inspiration :wink:
+
+* Database tracing: Hibernate / Spring JDBC template support
+* ca / sa annotation support: Submitting Client Address and Server Address annotations.
+* Support for other frameworks for example guice, jersey,...
+
+Feel free to submit pull requests.   
 
 ## Version history ##
 
