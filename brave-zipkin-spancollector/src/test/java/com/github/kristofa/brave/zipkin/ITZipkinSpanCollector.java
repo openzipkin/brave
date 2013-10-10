@@ -24,7 +24,7 @@ public class ITZipkinSpanCollector {
     private static final int FIRST_BURST_OF_SPANS = 100;
     private static final int SECOND_BURST_OF_SPANS = 20;
 
-    private static final int PORT = 9410;
+    private static final int PORT = 9110;
     private static final long SPAN_ID = 1;
     private static final long TRACE_ID = 2;
     private static final String SPAN_NAME = "SpanName";
