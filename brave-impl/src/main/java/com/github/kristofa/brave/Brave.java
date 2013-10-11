@@ -64,7 +64,7 @@ public class Brave {
      * @return {@link ServerTracer} instance.
      */
     public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, collector, traceFilters, RANDOM_GENERATOR);
+        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters);
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 import org.apache.commons.lang3.Validate;
 
@@ -22,7 +22,7 @@ import com.twitter.zipkin.gen.Span;
  */
 abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
 
-    private static final String UTF_8 = "UTF-8";
+    private static final Charset UTF_8 = Charset.forName("UTF-8");
 
     /**
      * Gets the span to which to add annotations.
@@ -81,12 +81,8 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
         final Span span = getSpan();
         if (span != null) {
             Validate.notNull(value);
-            try {
-                final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
-                submitBinaryAnnotation(span, getEndPoint(), key, bb, AnnotationType.STRING);
-            } catch (final UnsupportedEncodingException e) {
-                throw new IllegalStateException(e);
-            }
+            final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
+            submitBinaryAnnotation(span, getEndPoint(), key, bb, AnnotationType.STRING);
         }
     }
 

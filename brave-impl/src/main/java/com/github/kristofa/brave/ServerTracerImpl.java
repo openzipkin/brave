@@ -30,8 +30,8 @@ class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTrac
      * @param spanCollector Span collector.
      * @param traceFilters Trace Filters.
      */
-    ServerTracerImpl(final ServerSpanState state, final SpanCollector spanCollector, final List<TraceFilter> traceFilters,
-        final Random randomGenerator) {
+    ServerTracerImpl(final ServerSpanState state, final Random randomGenerator, final SpanCollector spanCollector,
+    		final List<TraceFilter> traceFilters) {
         Validate.notNull(state);
         Validate.notNull(spanCollector);
         Validate.notNull(traceFilters);
