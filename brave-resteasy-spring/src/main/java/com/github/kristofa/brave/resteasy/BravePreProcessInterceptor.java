@@ -74,48 +74,47 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     public ServerResponse preProcess(final HttpRequest request, final ResourceMethod method) throws Failure,
         WebApplicationException {
 
-        if (!endPointSubmitter.endPointSubmitted()) {
-            final String localAddr = servletRequest.getLocalAddr();
-            final int localPort = servletRequest.getLocalPort();
-            final String contextPath = servletRequest.getContextPath();
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Setting endpoint: addr: " + localAddr + ", port: " + localPort + ", contextpath: "
-                    + contextPath);
-            }
-            endPointSubmitter.submit(localAddr, localPort, contextPath);
-        }
+        submitEndpoint();
 
         serverTracer.clearCurrentSpan();
         final TraceData traceData = getTraceData(request);
 
         if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
             serverTracer.setStateNoTracing();
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Received indication that we should NOT trace.");
-            }
+            LOGGER.debug("Received indication that we should NOT trace.");
         } else {
-            String spanName = null;
-            if (StringUtils.isNotBlank(traceData.getSpanName())) {
-                spanName = traceData.getSpanName();
-            } else {
-                spanName = request.getPreprocessedPath();
-            }
+            String spanName = getSpanName(request, traceData);
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received span information as part of request.");
-                }
+                LOGGER.debug("Received span information as part of request.");
                 serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
                     traceData.getParentSpanId(), spanName);
             } else {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received no span state.");
-                }
+                LOGGER.debug("Received no span state.");
                 serverTracer.setStateUnknown(spanName);
             }
             serverTracer.setServerReceived();
         }
         return null;
+    }
+
+    private String getSpanName(HttpRequest request, TraceData traceData) {
+        if (StringUtils.isNotBlank(traceData.getSpanName())) {
+            return traceData.getSpanName();
+        } else {
+            return request.getPreprocessedPath();
+        }
+    }
+
+    private void submitEndpoint() {
+        if (!endPointSubmitter.endPointSubmitted()) {
+            final String localAddr = servletRequest.getLocalAddr();
+            final int localPort = servletRequest.getLocalPort();
+            final String contextPath = servletRequest.getContextPath();
+            LOGGER.debug("Setting endpoint: addr: " + localAddr + ", port: " + localPort +
+                    ", contextpath: " + contextPath);
+            endPointSubmitter.submit(localAddr, localPort, contextPath);
+        }
     }
 
     private TraceData getTraceData(final HttpRequest request) {
@@ -125,9 +124,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         final TraceData traceData = new TraceData();
 
         for (final Entry<String, List<String>> headerEntry : requestHeaders.entrySet()) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(headerEntry.getKey() + "=" + headerEntry.getValue());
-            }
+            LOGGER.debug(headerEntry.getKey() + "=" + headerEntry.getValue());
             if (BraveHttpHeaders.TraceId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setTraceId(getFirstLongValueFor(headerEntry));
             } else if (BraveHttpHeaders.SpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {

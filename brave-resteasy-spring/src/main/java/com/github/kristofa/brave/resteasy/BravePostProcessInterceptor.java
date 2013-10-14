@@ -42,9 +42,7 @@ public class BravePostProcessInterceptor implements PostProcessInterceptor {
     public void postProcess(final ServerResponse response) {
         // We can submit this in any case. When server state is not set or
         // we should not trace this request nothing will happen.
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Sending server send.");
-        }
+        LOGGER.debug("Sending server send.");
         serverTracer.setServerSend();
     }
 
