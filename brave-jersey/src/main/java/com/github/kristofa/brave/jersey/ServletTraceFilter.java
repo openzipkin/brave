@@ -40,7 +40,7 @@ public class ServletTraceFilter implements Filter {
         if (request instanceof HttpServletRequest) {
             submitEndpoint((HttpServletRequest) request);
 
-            TraceData traceData = getTraceData(request);
+            TraceData traceData = getTraceDataFromHeaders(request);
             if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
                 serverTracer.setStateNoTracing();
                 logger.debug("Not tracing request");
@@ -79,7 +79,7 @@ public class ServletTraceFilter implements Filter {
         return traceData.getSpanName();
     }
 
-    private TraceData getTraceData(ServletRequest request) {
+    private TraceData getTraceDataFromHeaders(ServletRequest request) {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         TraceData traceData = new TraceData();
         traceData.setTraceId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.TraceId.getName())));
