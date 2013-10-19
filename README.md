@@ -90,9 +90,9 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.0.3-SNAPSHOT ###
+### 2.1.0-SNAPSHOT ###
 
-Nothing so far.
+* [Henrik Nordvik](https://github.com/zerd): Jersey support. See brave-jersey module.
 
 ### 2.0.2 ###
 
