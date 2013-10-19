@@ -32,6 +32,15 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
 
+/**
+ * The {@link ZipkinGraphiteSink} will get annotations with duration from the spans, feed them into <a
+ * href="http://metrics.codahale.com">Metrics</a> which will periodically send them to <a
+ * href="http://graphite.wikidot.com">Graphite</a>.
+ * <p/>
+ * So this sink is used to centralize, aggregate and visualize custom application specific annotations with duration.
+ * 
+ * @author kristof
+ */
 public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
 
     private static final String SCRIBE_CATEGORY = "category";
@@ -49,6 +58,9 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
     private MetricRegistry metricRegistry;
     private GraphiteReporter reporter;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public synchronized void start() {
         super.start();
@@ -62,6 +74,9 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
         reporter.start(1, TimeUnit.MINUTES);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public synchronized void stop() {
         LOGGER.info("Stopping ZipkinGraphiteSink.");
@@ -80,6 +95,9 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
         return lifeCycleState;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Status process() throws EventDeliveryException {
         Status status = Status.BACKOFF;
@@ -119,6 +137,9 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
         return status;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void configure(final Context context) {
         hostName = context.getString(HOSTNAME_CONFIG_PROP_NAME);
