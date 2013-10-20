@@ -4,29 +4,15 @@
   <formats>
     <format>jar</format>
   </formats>
-  <fileSets>
-    <fileSet>
-        <directory>${project.build.directory}/</directory>
-        <outputDirectory>/</outputDirectory>
-        <includes>
-            <include>${project.artifactId}-${project.version}*.jar</include>
-        </includes>
-        <excludes>
-            <exclude>${project.artifactId}-${project.version}*javadoc*.jar</exclude>
-            <exclude>${project.artifactId}-${project.version}*sources*.jar</exclude>
-        </excludes>
-        </fileSet>
-        <fileSet>
-            <directory>${project.build.directory}/dependency</directory>
-            <outputDirectory>/lib</outputDirectory>
-        </fileSet>      
-    </fileSets>
+  <includeBaseDirectory>false</includeBaseDirectory>
   <dependencySets>
     <dependencySet>
+        <useProjectArtifact>true</useProjectArtifact>
+        <unpack>true</unpack>
       <excludes>
-        <exclude>org.apache.flume:flume-ng-sdk</exclude>
-        <exclude>org.apache.flume:flume-ng-configuration</exclude>
-        <exclude>org.apache.flume:flume-ng-core</exclude>
+        <exclude>org.apache.flume:*</exclude>
+        <exclude>org.slf4j:*</exclude>
+        <exclude>log4j:*</exclude>
       </excludes>
       <useTransitiveFiltering>true</useTransitiveFiltering>
     </dependencySet>
