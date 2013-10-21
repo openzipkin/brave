@@ -53,7 +53,7 @@
         <module>flume-zipkin-collector-sink</module>
     	<module>brave-tracefilters</module>
         <module>brave-jersey</module>
-      <!-- <module>flume-graphite-sink</module> -->
+        <module>flume-zipkin-metrics-sink</module>
   </modules>
   
   <dependencyManagement>
