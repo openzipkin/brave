@@ -10,6 +10,7 @@
   <groupId>com.github.kristofa</groupId>
   <artifactId>flume-graphite-sink</artifactId>
   <name>flume-graphite-sink</name>
+  <description>Flume Sink that will get application submitted metrics from Zipkin spans and submit them to Graphite using Metrics.</description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
     <license>
