@@ -2,8 +2,6 @@ package com.github.kristofa.flume;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.flume.Channel;
@@ -23,40 +21,28 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.graphite.Graphite;
-import com.codahale.metrics.graphite.GraphiteReporter;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * The {@link ZipkinGraphiteSink} will get annotations with duration from the spans, feed them into <a
- * href="http://metrics.codahale.com">Metrics</a> which will periodically send them to <a
- * href="http://graphite.wikidot.com">Graphite</a>.
- * <p/>
- * So this sink is used to centralize, aggregate and visualize custom application specific annotations with duration.
+ * The {@link ZipkinMetricsSink} will get annotations with duration from the spans, feed them into <a
+ * href="http://metrics.codahale.com">Metrics</a> which will periodically send them to a reporting back-end.
  * 
  * @author kristof
  */
-public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
+public class ZipkinMetricsSink extends AbstractSink implements Configurable {
 
     private static final String SCRIBE_CATEGORY = "category";
-    private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinGraphiteSink.class);
-    private static final int DEFAULT_BATCH_SIZE = 100;
-    private static final String PORT_CONFIG_PROP_NAME = "port";
-    private static final String HOSTNAME_CONFIG_PROP_NAME = "hostname";
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinMetricsSink.class);
+    private static final int DEFAULT_BATCH_SIZE = 25;
     private static final String BATCH_SIZE_PROP_NAME = "batchsize";
 
-    private String hostName;
-    private int port;
     private SinkCounter sinkCounter;
     private int batchSize = DEFAULT_BATCH_SIZE;
     private LifecycleState lifeCycleState;
-    private MetricRegistry metricRegistry;
-    private GraphiteReporter reporter;
+    private final MetricReporterBuilder metricReporterBuilder = new MetricReporterBuilder();
+    private MetricReporter metricReporter;
 
     /**
      * {@inheritDoc}
@@ -66,12 +52,7 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
         super.start();
         lifeCycleState = LifecycleState.START;
         sinkCounter.start();
-        metricRegistry = new MetricRegistry();
-        final Graphite graphite = new Graphite(new InetSocketAddress(hostName, port));
-        reporter =
-            GraphiteReporter.forRegistry(metricRegistry).convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL).build(graphite);
-        reporter.start(1, TimeUnit.MINUTES);
+        metricReporter = metricReporterBuilder.build();
     }
 
     /**
@@ -80,7 +61,7 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
     @Override
     public synchronized void stop() {
         LOGGER.info("Stopping ZipkinGraphiteSink.");
-        reporter.close();
+        metricReporter.close();
         lifeCycleState = LifecycleState.STOP;
         sinkCounter.stop();
         super.stop();
@@ -142,16 +123,14 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
      */
     @Override
     public void configure(final Context context) {
-        hostName = context.getString(HOSTNAME_CONFIG_PROP_NAME);
-        port = context.getInteger(PORT_CONFIG_PROP_NAME);
-        batchSize = context.getInteger(BATCH_SIZE_PROP_NAME, DEFAULT_BATCH_SIZE);
 
+        batchSize = context.getInteger(BATCH_SIZE_PROP_NAME, DEFAULT_BATCH_SIZE);
+        metricReporterBuilder.configure(context);
         if (sinkCounter == null) {
             sinkCounter = new SinkCounter(getName());
         }
 
-        LOGGER.info("Configuring ZipkinGraphiteSink. hostname: " + hostName + ", port: " + port + ", batchsize: "
-            + batchSize);
+        LOGGER.info("batchsize: " + batchSize);
 
     }
 
@@ -186,12 +165,7 @@ public class ZipkinGraphiteSink extends AbstractSink implements Configurable {
                 } else {
                     metricName = annotation.getValue();
                 }
-                Histogram histogram = metricRegistry.getHistograms().get(metricName);
-                if (histogram == null) {
-                    histogram = metricRegistry.histogram(metricName);
-                }
-                histogram.update(duration);
-
+                metricReporter.update(metricName, duration);
             }
         }
 
