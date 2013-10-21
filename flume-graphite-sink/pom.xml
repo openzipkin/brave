@@ -8,9 +8,9 @@
     <version>2.1.0-SNAPSHOT</version>
   </parent>
   <groupId>com.github.kristofa</groupId>
-  <artifactId>flume-graphite-sink</artifactId>
-  <name>flume-graphite-sink</name>
-  <description>Flume Sink that will get application submitted metrics from Zipkin spans and submit them to Graphite using Metrics.</description>
+  <artifactId>flume-zipkin-metrics-sink</artifactId>
+  <name>flume-zipkin-metrics-sink</name>
+  <description>Flume Sink that will get application submitted annotations with duration from Zipkin spans and submit them to Metrics. Metrics can be configured to send metrics to several back-ends. Today this sink supports Graphite as back-end.</description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
     <license>
