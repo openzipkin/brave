@@ -30,9 +30,8 @@ duration to Graphite.
 
 ### Make flume-zipkin-metrics-sink available on flume classpath ###
 
-The flume-zipkin-metrics-sink project has an assembly descriptor which builds a flume distribution jar which contains the required dependencies
-and which should be put on the flume class path. You can create the distibution by executing:
-the jar file by executing
+The flume-zipkin-metrics-sink project has an assembly descriptor configured in its pom.xml which builds a flume distribution jar 
+which contains the required dependencies and which should be put on the flume class path. You can create the distribution by executing:
 
     mvn clean package
 
@@ -54,6 +53,36 @@ When you will start flume after doing this configuration change the flume-zipkin
 should be available for flume to use.
 
 ### Configuration ###
+
+We use the [Metrics](http://metrics.codahale.com) library to calculate statistical distribution of the metrics and we use the [Histogram](http://metrics.codahale.com/getting-started/#histograms) functionality of
+the Metrics library. The way the Metrics library calculates statistical distribution (min, max, median, percentiles,...) can be configured.
+
+The different configuration settings mostly have impact on accuracy over time (eg more accurate for recent measurements) or the number of measurements it should take into account.
+We support most of the configuration options also through the sink.
+
+The minimum configuration properties you need are `graphitehost` and `graphiteport` :
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+
+If you don't specific the reservoir we will use [UniformReservoir](http://metrics.codahale.com/manual/core/#uniform-reservoirs) with default configuration.
+
+#### Configuring Uniform Reservoir ####
+
+TODO
+
+#### Using Exponentially Decaying Reservoir ####
+
+TODO
+
+#### Using Sliding Time Window Reservoir ####
+
+TODO
+
+#### Using Sliding Window Reservoir ####
 
 TODO
 
