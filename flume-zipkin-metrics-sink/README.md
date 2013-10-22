@@ -72,27 +72,107 @@ If you don't specific the reservoir we will use [UniformReservoir](http://metric
 
 #### Configuring Uniform Reservoir ####
 
-TODO
+The [UniformReservoir](http://metrics.codahale.com/manual/core/#uniform-reservoirs) has an optional configuration entry `nrofsamples`.
+If not specified the default value will be used which is 1028 in current version of Metrics.
+
+Example configuration:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.reservoir = uniform
+    agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
 
 #### Using Exponentially Decaying Reservoir ####
 
-TODO
+The [Exponentially Decaying Reservoir](http://metrics.codahale.com/manual/core/#exponentially-decaying-reservoirs) has an optional configuration entries
+which should be used together: `nrofsamples` and `decayfactor`.  The nrofsamples indicates the number of samples to keep in reservoir. The decayfactor indicate how much the reservoir 
+is biased towards newer values. The higher the more biased to newer values. If you don't specify `nrofsamples` and `decayfactor` default values will be used (nrofsamples = 1028, decayfactor = 0.015).
+
+Example configuration:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.reservoir = exponentiallydecaying
+    agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
+    agent1.sinks.zipkin-metrics-sink1.decayfactor = 0.012
 
 #### Using Sliding Time Window Reservoir ####
 
-TODO
+The [Sliding Time Window Reservoir](http://metrics.codahale.com/manual/core/#sliding-time-window-reservoirs) has a mandatory configuration option,
+`windowseconds`. This defines the 'window in seconds' to take into account in the reservoir. It has no maximum on nr of measurements to keep track
+of so in case lots of metrics are submitted this implementation can result in high memory usage. It is also the slowest reservoir to use.
+
+Example configuration:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.reservoir = slidingtimewindow
+    agent1.sinks.zipkin-metrics-sink1.windowseconds = 120
+
 
 #### Using Sliding Window Reservoir ####
 
-TODO
+The [Sliding Window Reservoir ](http://metrics.codahale.com/manual/core/#sliding-window-reservoirs) has a mandatory configuration option, `nrofsamples`.
+It defines how many measurements to take into account.
+
+Example configuration:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.reservoir = slidingwindow
+    agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
 
 ### Example flume.conf file ###
 
 This is an example configuration file (apache-flume-1.4.0-bin/conf/flume.conf) 
-that I used during testing. When using it in production you should probably use a channel
-that uses persistence iso the memory channel. 
+that I used during testing with 2 channels and both the `ZipkinMetricsSink` and the `ZipkinSpanCollectorSink` configured. 
 
-TODO
+    # Finally, now that we've defined all of our components, tell
+    # agent1 which ones we want to activate.
+    agent1.sources = scribe-source1
+    agent1.channels = ch1 ch2
+    agent1.sinks = zipkin-sink1 graphite-sink1
+
+
+    # Define a memory channel called ch1 on agent1, for sending to zipkin collector
+    agent1.channels.ch1.type = memory
+    agent1.channels.ch1.capacity = 1000
+    # Define a memory channel called ch2 on agent1, for sending to graphite sink
+    agent1.channels.ch2.type = memory
+    agent1.channels.ch2.capacity = 1000
+
+    # Define an Scribe source.
+    agent1.sources.scribe-source1.channels = ch1 ch2
+    agent1.sources.scribe-source1.type = org.apache.flume.source.scribe.ScribeSource
+    agent1.sources.scribe-source1.port = 1463
+    agent1.sources.scribe-source1.selector.type = replicating
+
+    # Define a sink that sends all events to zipkin span collector.
+    agent1.sinks.zipkin-sink1.channel = ch1
+    agent1.sinks.zipkin-sink1.type = com.github.kristofa.flume.ZipkinSpanCollectorSink
+    agent1.sinks.zipkin-sink1.hostname = collectorhost
+    agent1.sinks.zipkin-sink1.port = 9410
+    agent1.sinks.zipkin-sink1.batchsize = 25
+
+    # Define a sink that sends all annotations with durations to graphite using default
+    # Uniform reservoir with default configuration.
+    agent1.sinks.graphite-sink1.channel = ch2
+    agent1.sinks.graphite-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.graphite-sink1.graphitehost = graphitehost
+    agent1.sinks.graphite-sink1.graphiteport = 2003
+    agent1.sinks.graphite-sink1.batchsize = 25
 
 
 ### Starting flume ###
@@ -102,9 +182,4 @@ apache-flume-1.4.0-bin directory:
 
     ./bin/flume-ng agent -n agent1 -c conf -f conf/flume.conf
     
-Before starting the agent you should make sure you have the Zipkin collector running
-(in example config it is expected to run at host 10.0.1.8).
-
-Once flume is running you can submit spans using the brave-zipkin-spancollector (ZipkinSpanCollector)
-or the original Twitter Zipkin stack to the host where the flume agent is running and port 1463.
 
