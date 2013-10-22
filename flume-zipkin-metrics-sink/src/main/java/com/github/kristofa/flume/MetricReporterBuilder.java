@@ -35,7 +35,6 @@ class MetricReporterBuilder {
     private static final String WINDOW_IN_SECONDS = "windowseconds";
 
     private static final String SLIDING_WINDOW_RESERVOIR = "slidingwindow";
-    private static final String NR_OF_MEASUREMENTS = "nrmeasurements";
 
     private static final String DEFAULT_RESERVOIR = UNIFORM_RESERVOIR;
     private static final String GRAPHITE_HOST = "graphitehost";
@@ -150,10 +149,10 @@ class MetricReporterBuilder {
     }
 
     private void initializeSlidingWindowReservoir(final Context context) {
-        final Integer nrOfMeasurements = context.getInteger(NR_OF_MEASUREMENTS);
+        final Integer nrOfMeasurements = context.getInteger(NR_OF_SAMPLES);
         if (nrOfMeasurements == null) {
-            throw new IllegalStateException(SLIDING_WINDOW_RESERVOIR + " configuration needs mandatory "
-                + NR_OF_MEASUREMENTS + " config entry.");
+            throw new IllegalStateException(SLIDING_WINDOW_RESERVOIR + " configuration needs mandatory " + NR_OF_SAMPLES
+                + " config entry.");
         }
         histogramBuilder = new SlidingWindowHistogramBuilder(nrOfMeasurements);
 
