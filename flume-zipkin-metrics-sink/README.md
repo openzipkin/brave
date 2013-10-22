@@ -52,7 +52,7 @@ FLUME_CLASSPATH property:
 When you will start flume after doing this configuration change the flume-zipkin-metrics-sink
 should be available for flume to use.
 
-### Configuration ###
+### Sink Configuration ###
 
 We use the [Metrics](http://metrics.codahale.com) library to calculate statistical distribution of the metrics and we use the [Histogram](http://metrics.codahale.com/getting-started/#histograms) functionality of
 the Metrics library. The way the Metrics library calculates statistical distribution (min, max, median, percentiles,...) can be configured.
@@ -65,10 +65,38 @@ The minimum configuration properties you need are `graphitehost` and `graphitepo
     # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
     agent1.sinks.zipkin-metrics-sink1.channel = ch1
     agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
-    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
     agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
 
 If you don't specific the reservoir we will use [UniformReservoir](http://metrics.codahale.com/manual/core/#uniform-reservoirs) with default configuration.
+
+#### Metric prefix ####
+
+You can add a default prefix to all metrics that are being submitted but defining the `metricprefix` property. Example:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.metricprefix = prefix
+    
+So in this case a metric submitted by your application named `app.expensivecalculation` will end up being `prefix.app.expensivecalculation`.
+
+If not specified there will be no prefix added.
+
+#### Poll time ####
+
+You can change the interval in minutes after which collected metrics are polled by the reporter and submitted to the back-end (graphite).
+If you don't specify this option the default value is 1 minute. Example:
+
+    # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
+    agent1.sinks.zipkin-metrics-sink1.channel = ch1
+    agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
+    agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
+    agent1.sinks.zipkin-metrics-sink1.polltime = 2
+
 
 #### Configuring Uniform Reservoir ####
 
@@ -80,7 +108,7 @@ Example configuration:
     # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
     agent1.sinks.zipkin-metrics-sink1.channel = ch1
     agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
-    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
     agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
     agent1.sinks.zipkin-metrics-sink1.reservoir = uniform
     agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
@@ -96,7 +124,7 @@ Example configuration:
     # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
     agent1.sinks.zipkin-metrics-sink1.channel = ch1
     agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
-    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
     agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
     agent1.sinks.zipkin-metrics-sink1.reservoir = exponentiallydecaying
     agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
@@ -113,7 +141,7 @@ Example configuration:
     # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
     agent1.sinks.zipkin-metrics-sink1.channel = ch1
     agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
-    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
     agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
     agent1.sinks.zipkin-metrics-sink1.reservoir = slidingtimewindow
     agent1.sinks.zipkin-metrics-sink1.windowseconds = 120
@@ -129,7 +157,7 @@ Example configuration:
     # Define a sink that calculates statistical distribution of all annotations with duration and sends them to graphite.
     agent1.sinks.zipkin-metrics-sink1.channel = ch1
     agent1.sinks.zipkin-metrics-sink1.type = com.github.kristofa.flume.ZipkinMetricsSink
-    agent1.sinks.zipkin-metrics-sink1.graphitehost = localhost
+    agent1.sinks.zipkin-metrics-sink1.graphitehost = graphitehost
     agent1.sinks.zipkin-metrics-sink1.graphiteport = 2003
     agent1.sinks.zipkin-metrics-sink1.reservoir = slidingwindow
     agent1.sinks.zipkin-metrics-sink1.nrofsamples = 2056
