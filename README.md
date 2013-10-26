@@ -94,6 +94,8 @@ bug fixing /  new functionality / backwards compatibility.
 
 * [Henrik Nordvik](https://github.com/zerd): Add Jersey support. See `brave-jersey` module.
 * Add `flume-zipkin-metrics` module.
+* [pettyjamesm](https://github.com/pettyjamesm): Added alternative Brave public api for use cases where the ThreadLocal
+approach is not working and you want to have more control over the context scope.
 
 ### 2.0.2 ###
 
