@@ -29,12 +29,12 @@ them to a central Flume agent which will submit them to the Zipkin collector.
 
 ### Make flume-zipkin-collector-sink available on flume classpath ###
 
-The flume-zipkin-collector-sink only relies on flume dependencies so you can simply create
-the jar file by executing
+The flume-zipkin-metrics-sink project has an assembly descriptor configured in its pom.xml which builds a flume distribution jar 
+which contains the required dependencies and which should be put on the flume class path. You can create the distribution by executing:
 
     mvn clean package
 
-and copy the resulting jar file (./target/flume-zipkin-collector-sink-x.y-SNAPSHOT.jar)
+and copy the resulting flume distribution jar file (./target/flume-zipkin-collector-sink-x.y.z-SNAPSHOT-flume-dist.jar)
 to a location where Flume can access it.
 
 Next you make flume-env.sh available by going into the apache-flume-1.4.0-bin/conf directory
@@ -46,7 +46,7 @@ Finally you edit your just created flume-env.sh file and uncomment and complete 
 FLUME_CLASSPATH property:
 
     # Note that the Flume conf directory is always included in the classpath.
-    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.0.2-SNAPSHOT.jar"
+    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.1.0-SNAPSHOT-flume-dist.jar"
      
 When you will start flume after doing this configuration change the flume-zipkin-collector-sink
 should be available for flume to use.
