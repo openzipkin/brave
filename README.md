@@ -79,7 +79,7 @@ If you would like to contribute to brave, here are some topics that might give y
 
 * Database tracing: Hibernate / Spring JDBC template support
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
-* Support for other frameworks for example guice, jersey,...
+* Support for other frameworks for example guice,...
 
 Feel free to submit pull requests.   
 
@@ -92,7 +92,8 @@ bug fixing /  new functionality / backwards compatibility.
 
 ### 2.1.0-SNAPSHOT ###
 
-* [Henrik Nordvik](https://github.com/zerd): Jersey support. See brave-jersey module.
+* [Henrik Nordvik](https://github.com/zerd): Add Jersey support. See `brave-jersey` module.
+* Add `flume-zipkin-metrics` module.
 
 ### 2.0.2 ###
 
