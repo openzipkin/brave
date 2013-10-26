@@ -60,7 +60,7 @@ public class ServerTracerImplTest {
 
         traceFilters = Arrays.asList(mockTraceFilter1, mockTraceFilter2);
 
-        serverTracer = new ServerTracerImpl(mockServerSpanState, mockSpanCollector, traceFilters, mockRandom) {
+        serverTracer = new ServerTracerImpl(mockServerSpanState, mockRandom,  mockSpanCollector, traceFilters) {
 
             @Override
             long currentTimeMicroseconds() {
@@ -72,22 +72,22 @@ public class ServerTracerImplTest {
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
-        new ServerTracerImpl(null, mockSpanCollector, traceFilters, mockRandom);
+        new ServerTracerImpl(null, mockRandom, mockSpanCollector, traceFilters);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullCollector() {
-        new ServerTracerImpl(mockServerSpanState, null, traceFilters, mockRandom);
+        new ServerTracerImpl(mockServerSpanState, mockRandom, null, traceFilters);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullTraceFilters() {
-        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, null, mockRandom);
+        new ServerTracerImpl(mockServerSpanState, mockRandom, mockSpanCollector, null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullRandom() {
-        new ServerTracerImpl(mockServerSpanState, mockSpanCollector, traceFilters, null);
+        new ServerTracerImpl(mockServerSpanState, null, mockSpanCollector, traceFilters);
     }
 
     @Test
