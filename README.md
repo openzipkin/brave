@@ -80,6 +80,7 @@ If you would like to contribute to brave, here are some topics that might give y
 * Database tracing: Hibernate / Spring JDBC template support
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
 * Support for other frameworks for example guice,...
+* Aggregation of data. Realtime (eg Storm) or batch (Hadoop).
 
 Feel free to submit pull requests.   
 
