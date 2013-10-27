@@ -93,9 +93,10 @@ bug fixing /  new functionality / backwards compatibility.
 ### 2.1.0-SNAPSHOT ###
 
 * [Henrik Nordvik](https://github.com/zerd): Add Jersey support. See `brave-jersey` module.
-* Add `flume-zipkin-metrics` module.
+* Add `flume-zipkin-metrics` module. See README.md of that module for more information.
 * [pettyjamesm](https://github.com/pettyjamesm): Added alternative Brave public api for use cases where the ThreadLocal
 approach is not working and you want to have more control over the context scope.
+* Also add RestEasy client support in brave-resteasy-spring module.
 
 ### 2.0.2 ###
 
