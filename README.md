@@ -97,7 +97,8 @@ bug fixing /  new functionality / backwards compatibility.
 * Add `flume-zipkin-metrics` module. See README.md of that module for more information.
 * [pettyjamesm](https://github.com/pettyjamesm): Added alternative Brave public api for use cases where the ThreadLocal
 approach is not working and you want to have more control over the context scope.
-* Also add RestEasy client support in brave-resteasy-spring module.
+* Update `brave-resteasy-spring` module by adding `BraveClientExecutionInterceptor`. This interceptor can be used with the 
+RestEasy client framework and makes the usage of Brave with rest easy even easier as it adds support for server and client side.
 
 ### 2.0.2 ###
 
