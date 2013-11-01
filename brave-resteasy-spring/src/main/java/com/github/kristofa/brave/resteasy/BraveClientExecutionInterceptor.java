@@ -11,6 +11,9 @@ import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.interception.ClientExecutionContext;
 import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
@@ -37,6 +40,7 @@ import com.github.kristofa.brave.SpanId;
 @ClientInterceptor
 public class BraveClientExecutionInterceptor implements ClientExecutionInterceptor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BraveClientExecutionInterceptor.class);
     private static final String REQUEST_ANNOTATION = "request";
     private static final String FAILURE_ANNOTATION = "failure";
     private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
@@ -72,6 +76,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final SpanId newSpanId = clientTracer.startNewSpan(spanName);
         if (newSpanId != null) {
+            LOGGER.debug("Will trace request. Span Id returned from ClientTracer: " + newSpanId.toString());
             request.header(BraveHttpHeaders.Sampled.getName(), TRUE);
             request.header(BraveHttpHeaders.TraceId.getName(), newSpanId.getTraceId());
             request.header(BraveHttpHeaders.SpanId.getName(), newSpanId.getSpanId());
@@ -79,6 +84,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
                 request.header(BraveHttpHeaders.ParentSpanId.getName(), newSpanId.getParentSpanId());
             }
         } else {
+            LOGGER.debug("Will not trace request.");
             request.header(BraveHttpHeaders.Sampled.getName(), FALSE);
         }
 
