@@ -50,6 +50,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      * 
      * @param clientTracer ClientTracer.
      */
+    @Autowired
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer) {
         Validate.notNull(clientTracer);
         this.clientTracer = clientTracer;
