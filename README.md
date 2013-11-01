@@ -105,7 +105,7 @@ bug fixing /  new functionality / backwards compatibility.
 * [pettyjamesm](https://github.com/pettyjamesm): Added alternative Brave public api for use cases where the ThreadLocal
 approach is not working and you want to have more control over the context scope.
 * Update `brave-resteasy-spring` module by adding `BraveClientExecutionInterceptor`. This interceptor can be used with the 
-RestEasy client framework and makes the usage of Brave with rest easy even easier as it adds support for server and client side.
+RestEasy client framework and makes the usage of Brave with RestEasy even easier as it now supports both server and client side.
 
 ### 2.0.2 ###
 
