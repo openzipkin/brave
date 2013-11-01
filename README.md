@@ -42,15 +42,21 @@ So as you can see a single span is submitted twice:
 *   from the server side with sr (server received) and ss (server send) annotations.
 
 The above image shows how I intend to use Brave in production and also how it integrates with the Zipkin back-end components. 
+
+The applications and services have Brave integration at client and server side, for example through the RestEasy support module.
+They submit spans to the `ZipkinSpanCollector` which submits them to Flume.
+
 I introduced [Flume](http://flume.apache.org/) instead of Scribe as Flume is still actively maintained, easier to deploy,
 has good documentation and extensions are written in Java.
 
-The `ZipkinSpanCollectorSink` from `flume-zipkin-collector-sink` module submits spans to the Zipkin collector service.
-The `ZipkinGraphiteSink` is still work in progress but will be used to submit custom annotations with duration (to measure certain sections
-of the code) to [graphite](http://graphite.wikidot.com) for visualisation.
+The `ZipkinSpanCollectorSink`, part of `flume-zipkin-collector-sink` module submits spans to the Zipkin collector service.
+The `ZipkinMetricsSink`, part of `flume-zipkin-metrics-sink` module submits custom annotations with duration (to measure certain sections
+of the code) to the [Metrics](http://metrics.codahale.com) library.  Metrics builds histograms for the metrics and sends the data
+to a back-end system for storage and visualisation. Metrics supports multiple back-ends but the sink implementation today supports
+[graphite](http://graphite.wikidot.com).
 
 If you use the `ZooKeeperSamplingTraceFilter` from `brave-tracefilters` module you can enable/disable tracing or adjust
-sample rate using [ZooKeeper](http://zookeeper.apache.org).
+sample rate using [ZooKeeper](http://zookeeper.apache.org) as also indicated on the drawing.
 
 
 
