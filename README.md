@@ -85,9 +85,10 @@ If you would like to contribute to brave here are some topics that might give yo
 
 * Database tracing: Hibernate / Spring JDBC template support
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
-* Support for other frameworks for example guice,...
-* Aggregation of data. Realtime (eg [Storm](http://storm-project.net)) or batch ([Hadoop](http://hadoop.apache.org)).
+* Support for other frameworks.
+* Aggregation of data. Realtime (eg using [Storm](http://storm-project.net)) or batch ([Hadoop](http://hadoop.apache.org)).
 * Extend `flume-zipkin-metrics-sink` with support for other back-ends next to graphite.
+* Improve [Jersey](https://jersey.java.net) support by updating Jersey to latest version and implements `ContainerRequestFilter` and `ContainerResponseFilter` iso current servlet filter.
 
 Feel free to submit pull requests.   
 
