@@ -11,8 +11,7 @@
 
   <name>brave-resteasy-spring</name>
   <description>
-    RestEasy pre- and postprocess interceptors that set up span state based provided HTTP headers. The preprocessor sets sr annotation (server received).
-    the postprocessor sets ss (server send) annotation at which the span is submitted to SpanCollector. 
+    RestEasy client and server side interceptors that use the brave api to submit client and server side span information.
   </description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
