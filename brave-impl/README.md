@@ -26,7 +26,7 @@ The sequence diagram shows a service that executes a request to another service.
 It shows interaction with the brave Client- , ServerTracer and SpanCollector.
 
 The actions taking place in both services are also indicated by the coloured boxes. The
-blue box indicates the caller service, the green box indicates the callee. Typically both
+blue box indicates the caller service (client), the green box indicates the callee (server). Typically both
 services run in separate JVM.
 
 Some explanation:
@@ -55,10 +55,10 @@ same JVM/Service.  In this case the span state between Server/Client Tracer is s
 new client request will use the incoming request as parent. Also the 
 Client and Server Tracers should use the same TraceFilter(s) and SpanCollector.
 
-The ServerTracer logic (green box) is implemented in brave-resteasy-spring project for
-integration in a RestEasy service.
+Both the client and server logic explained here are implemented in the `brave-resteasy-spring` project.
+The implementation is used in [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example).
 
-Code example of the ClientTracer logic (blue box) can be found in brave-resteasy-example.
+
 
 ## about EndPointSubmitter ##
 
