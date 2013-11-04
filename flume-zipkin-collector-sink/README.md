@@ -1,7 +1,7 @@
 # flume-zipkin-collector-sink #
 
-Latest release available in Maven central: 2.0.2 You normally don't have to include this in
-a project through Maven but can download the JAR from [here](http://search.maven.org/#search%7Cga%7C1%7Cbrave)
+Latest release available in Maven central: 2.1.0 You normally don't have to include this in
+a project through Maven but can download the flume distribution jar from [here](http://search.maven.org/#search%7Cga%7C1%7Cflume-zipkin-collector-sink)
 to add it to the Flume Agent class path.
 
 
@@ -35,7 +35,7 @@ which contains the required dependencies and which should be put on the flume cl
     mvn clean package
 
 and copy the resulting flume distribution jar file (./target/flume-zipkin-collector-sink-x.y.z-SNAPSHOT-flume-dist.jar)
-to a location where Flume can access it.
+to a location where Flume can access it.  Or instead of building one yourself you can also copy a released one, see above.
 
 Next you make flume-env.sh available by going into the apache-flume-1.4.0-bin/conf directory
 and execute:
@@ -46,7 +46,7 @@ Finally you edit your just created flume-env.sh file and uncomment and complete 
 FLUME_CLASSPATH property:
 
     # Note that the Flume conf directory is always included in the classpath.
-    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.1.0-SNAPSHOT-flume-dist.jar"
+    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-collector-sink-2.1.0-flume-dist.jar"
      
 When you will start flume after doing this configuration change the flume-zipkin-collector-sink
 should be available for flume to use.
