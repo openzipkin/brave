@@ -24,8 +24,17 @@ public class LoggingSpanCollectorImpl implements SpanCollector {
 
     private static final String UTF_8 = "UTF-8";
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(LoggingSpanCollectorImpl.class);
+    private final Logger logger;
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
+
+    public LoggingSpanCollectorImpl() {
+        logger = LoggerFactory.getLogger(LoggingSpanCollectorImpl.class);
+    }
+
+    public LoggingSpanCollectorImpl(final String loggerName) {
+        Validate.notEmpty(loggerName);
+        logger = LoggerFactory.getLogger(loggerName);
+    }
 
     /**
      * {@inheritDoc}
@@ -74,7 +83,7 @@ public class LoggingSpanCollectorImpl implements SpanCollector {
     }
 
     Logger getLogger() {
-        return LOGGER;
+        return logger;
     }
 
 }
