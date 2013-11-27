@@ -110,7 +110,7 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         final boolean offer = spanQueue.offer(span);
         if (!offer) {
-            LOGGER.error("Queue rejected Span, span not submitted: " + span);
+            LOGGER.error("Queue rejected Span, span not submitted: {}", span);
         } else {
             final long end = System.currentTimeMillis();
             if (LOGGER.isDebugEnabled()) {
@@ -155,7 +155,7 @@ public class ZipkinSpanCollector implements SpanCollector {
         for (final Future<Integer> future : futures) {
             try {
                 final Integer spansProcessed = future.get();
-                LOGGER.info("SpanProcessingThread processed " + spansProcessed + " spans.");
+                LOGGER.info("SpanProcessingThread processed {} spans.", spansProcessed);
             } catch (final Exception e) {
                 LOGGER.error("Exception when getting result of SpanProcessingThread.", e);
             }

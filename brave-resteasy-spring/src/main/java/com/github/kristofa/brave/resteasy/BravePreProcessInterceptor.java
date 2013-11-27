@@ -111,8 +111,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
             final String contextPath = servletRequest.getContextPath();
-            LOGGER.debug("Setting endpoint: addr: " + localAddr + ", port: " + localPort +
-                    ", contextpath: " + contextPath);
+            LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
             endPointSubmitter.submit(localAddr, localPort, contextPath);
         }
     }
@@ -124,7 +123,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         final TraceData traceData = new TraceData();
 
         for (final Entry<String, List<String>> headerEntry : requestHeaders.entrySet()) {
-            LOGGER.debug(headerEntry.getKey() + "=" + headerEntry.getValue());
+            LOGGER.debug("{}={}", headerEntry.getKey(), headerEntry.getValue());
             if (BraveHttpHeaders.TraceId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setTraceId(getFirstLongValueFor(headerEntry));
             } else if (BraveHttpHeaders.SpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {

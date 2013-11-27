@@ -112,7 +112,7 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
 
             if (sampleRateZNode.equals(path)) {
                 sampleRate = getSampleRate();
-                LOGGER.info("SampleRate znode [" + sampleRateZNode + "] changed. New value: " + sampleRate);
+                LOGGER.info("SampleRate znode [{}] changed. New value: {}", sampleRateZNode, sampleRate);
             }
         }
     }
