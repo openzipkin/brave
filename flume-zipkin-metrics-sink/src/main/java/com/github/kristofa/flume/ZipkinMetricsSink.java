@@ -130,7 +130,7 @@ public class ZipkinMetricsSink extends AbstractSink implements Configurable {
             sinkCounter = new SinkCounter(getName());
         }
 
-        LOGGER.info("batchsize: " + batchSize);
+        LOGGER.info("batchsize: {}", batchSize);
 
     }
 

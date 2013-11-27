@@ -67,8 +67,7 @@ public class ServletTraceFilter implements Filter {
             String localAddr = request.getLocalAddr();
             int localPort = request.getLocalPort();
             endPointSubmitter.submit(localAddr, localPort, contextPath);
-            logger.debug("Setting endpoint: addr: " + localAddr + ", port: " + localPort +
-                    ", contextpath: " + contextPath);
+            logger.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
         }
     }
 

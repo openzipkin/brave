@@ -64,26 +64,26 @@ class MetricReporterBuilder {
             throw new IllegalStateException(GRAPHITE_HOST + " and " + GRAPHITE_PORT + " properties are mandatory.");
         }
 
-        LOGGER.info("Graphite host: " + graphiteHost);
-        LOGGER.info("Graphite port: " + graphitePort);
+        LOGGER.info("Graphite host: {}", graphiteHost);
+        LOGGER.info("Graphite port: {}", graphitePort);
 
         metricPrefix = context.getString(METRIC_PREFIX);
         pollTimeMinutes = context.getInteger(POLL_TIME, 1);
-        LOGGER.info("Reporter poll time in minutes: " + pollTimeMinutes);
+        LOGGER.info("Reporter poll time in minutes: {}", pollTimeMinutes);
 
         final String reservoir = context.getString(METRICS_RESERVOIR, DEFAULT_RESERVOIR);
 
         if (UNIFORM_RESERVOIR.equals(reservoir)) {
-            LOGGER.info("Reservoir: " + UNIFORM_RESERVOIR);
+            LOGGER.info("Reservoir: {}", UNIFORM_RESERVOIR);
             initializeUniformHistogramBuilder(context);
         } else if (EXPONENTIALLY_DECAYING_RESERVOIR.equals(reservoir)) {
-            LOGGER.info("Reservoir: " + EXPONENTIALLY_DECAYING_RESERVOIR);
+            LOGGER.info("Reservoir: {}", EXPONENTIALLY_DECAYING_RESERVOIR);
             initializeExponentiallyDecayingReservoir(context);
         } else if (SLIDING_TIME_WINDOW_RESERVOIR.equals(reservoir)) {
-            LOGGER.info("Reservoir: " + SLIDING_TIME_WINDOW_RESERVOIR);
+            LOGGER.info("Reservoir: {}", SLIDING_TIME_WINDOW_RESERVOIR);
             initializeSlidingTimeWindowReservoir(context);
         } else if (SLIDING_WINDOW_RESERVOIR.equals(reservoir)) {
-            LOGGER.info("Reservoir: " + SLIDING_WINDOW_RESERVOIR);
+            LOGGER.info("Reservoir: {}", SLIDING_WINDOW_RESERVOIR);
             initializeSlidingWindowReservoir(context);
         } else {
             throw new IllegalStateException("Invalid value for reservoir: " + reservoir);
@@ -109,7 +109,7 @@ class MetricReporterBuilder {
             GraphiteReporter.forRegistry(metricRegistry).convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL);
         if (StringUtils.isNotBlank(metricPrefix)) {
-            LOGGER.info("Metric prefix: " + metricPrefix);
+            LOGGER.info("Metric prefix: {}", metricPrefix);
             builder.prefixedWith(metricPrefix);
         }
 

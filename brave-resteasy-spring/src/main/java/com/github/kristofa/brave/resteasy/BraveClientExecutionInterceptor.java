@@ -76,7 +76,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final SpanId newSpanId = clientTracer.startNewSpan(spanName);
         if (newSpanId != null) {
-            LOGGER.debug("Will trace request. Span Id returned from ClientTracer: " + newSpanId.toString());
+            LOGGER.debug("Will trace request. Span Id returned from ClientTracer: {}", newSpanId);
             request.header(BraveHttpHeaders.Sampled.getName(), TRUE);
             request.header(BraveHttpHeaders.TraceId.getName(), newSpanId.getTraceId());
             request.header(BraveHttpHeaders.SpanId.getName(), newSpanId.getSpanId());

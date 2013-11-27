@@ -155,8 +155,7 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
             sinkCounter = new SinkCounter(getName());
         }
 
-        LOGGER.info("Configuring ZipkinSpanCollectorSink. hostname: " + hostName + ", port: " + port + ", batchsize: "
-            + batchSize);
+        LOGGER.info("Configuring ZipkinSpanCollectorSink. hostname: {}, port: {}, batchsize: {}", hostName, port, batchSize);
     }
 
     private LogEntry create(final Event event) {
