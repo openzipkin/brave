@@ -101,7 +101,9 @@ bug fixing /  new functionality / backwards compatibility.
 
 ### 2.1.1-SNAPSHOT ###
 
-Nothing so far
+* BravePostProcessInterceptor clears span after server send annotation is submitted. This prevents ThreadLocal classloader leak when used in Tomcat.
+* [Ryan Tenney](https://github.com/ryantenney) : Make logger name configurable for `LoggingSpanCollectorImpl`.
+* [Ryan Tenney](https://github.com/ryantenney) : Update slf4j to version 1.7.5 and use parameters in log statements iso string concatenation.
 
 ### 2.1.0 ###
 
