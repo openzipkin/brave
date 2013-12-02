@@ -30,6 +30,7 @@ public class BravePostProcessorInterceptorTest {
 
         interceptor.postProcess(null);
         verify(mockServerTracer).setServerSend();
+        verify(mockServerTracer).clearCurrentSpan();
         verifyNoMoreInteractions(mockServerTracer);
     }
 
