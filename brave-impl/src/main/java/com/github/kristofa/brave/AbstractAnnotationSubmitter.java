@@ -53,7 +53,7 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
             annotation.setDuration(duration * 1000);
             // Duration is currently not supported in the ZipkinUI, so also add it as part of the annotation name.
             annotation.setValue(annotationName + "=" + duration + "ms");
-            span.addToAnnotations(annotation);
+            addAnnotation(span, annotation);
         }
     }
 
@@ -68,7 +68,7 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
             annotation.setTimestamp(currentTimeMicroseconds());
             annotation.setHost(getEndPoint());
             annotation.setValue(annotationName);
-            span.addToAnnotations(annotation);
+            addAnnotation(span, annotation);
         }
 
     }
@@ -118,7 +118,7 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
         binaryAnnotation.setValue(value);
         binaryAnnotation.setAnnotation_type(annotationType);
         binaryAnnotation.setHost(endPoint);
-        span.addToBinary_annotations(binaryAnnotation);
+        addBinaryAnnotation(span, binaryAnnotation);
     }
 
     /**
@@ -128,6 +128,18 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
      */
     long currentTimeMicroseconds() {
         return System.currentTimeMillis() * 1000;
+    }
+
+    private void addAnnotation(final Span span, final Annotation annotation) {
+        synchronized (span) {
+            span.addToAnnotations(annotation);
+        }
+    }
+
+    private void addBinaryAnnotation(final Span span, final BinaryAnnotation ba) {
+        synchronized (span) {
+            span.addToBinary_annotations(ba);
+        }
     }
 
 }
