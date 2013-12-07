@@ -74,7 +74,7 @@ Version 2.1.0 is available in Maven central. So you can simply add the dependenc
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
     </dependency>
     
 For other dependencies see README.md files for sub modules.
@@ -99,7 +99,11 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.1.1-SNAPSHOT ###
+### 2.1.2-SNAPSHOT ###
+
+Nothing so far.
+
+### 2.1.1 ###
 
 * Bugfix: Make submitting annotations thread-safe. Add synchronisation to avoid ArrayIndexOutOfBoundsException or lost annotations.
 * RestEasy BravePostProcessInterceptor clears span after 'server send' annotation is submitted. This prevents ThreadLocal classloader leak when used in Tomcat.
