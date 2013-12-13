@@ -45,6 +45,19 @@ class SpanProcessingThread implements Callable<Integer> {
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
     private final int maxBatchSize;
+    private final String scribeCategory;
+
+    /**
+     * Creates a new instance.
+     *
+     * @param queue BlockingQueue that will provide spans.
+     * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
+     * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
+     */
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
+                                final int maxBatchSize) {
+        this(queue, clientProvider, maxBatchSize, "zipkin");
+    }
 
     /**
      * Creates a new instance.
@@ -52,9 +65,10 @@ class SpanProcessingThread implements Callable<Integer> {
      * @param queue BlockingQueue that will provide spans.
      * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
      * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
+     * @param scribeCategory The Scribe category to use (default is "zipkin").
      */
     public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
-        final int maxBatchSize) {
+        final int maxBatchSize, final String scribeCategory) {
         Validate.notNull(queue);
         Validate.notNull(clientProvider);
         Validate.isTrue(maxBatchSize > 0);
@@ -62,6 +76,7 @@ class SpanProcessingThread implements Callable<Integer> {
         this.clientProvider = clientProvider;
         protocolFactory = new TBinaryProtocol.Factory();
         this.maxBatchSize = maxBatchSize;
+        this.scribeCategory = scribeCategory;
         logEntries = new ArrayList<LogEntry>(maxBatchSize);
     }
 
@@ -138,7 +153,7 @@ class SpanProcessingThread implements Callable<Integer> {
 
     private LogEntry create(final Span span) throws TException {
         final String spanAsString = base64.encodeToString(spanToBytes(span));
-        return new LogEntry("zipkin", spanAsString);
+        return new LogEntry(scribeCategory, spanAsString);
     }
 
     private byte[] spanToBytes(final Span thriftSpan) throws TException {
