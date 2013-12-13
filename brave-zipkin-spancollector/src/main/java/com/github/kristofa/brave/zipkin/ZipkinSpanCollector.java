@@ -88,7 +88,7 @@ public class ZipkinSpanCollector implements SpanCollector {
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
             final SpanProcessingThread spanProcessingThread =
-                new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
+                new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize(), params.getScribeCategory());
             spanProcessingThreads.add(spanProcessingThread);
             futures.add(executorService.submit(spanProcessingThread));
         }

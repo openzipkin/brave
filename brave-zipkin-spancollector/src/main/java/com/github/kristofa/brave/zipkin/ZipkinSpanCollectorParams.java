@@ -25,12 +25,14 @@ public class ZipkinSpanCollectorParams {
     public int DEFAULT_BATCH_SIZE = 10;
     public int DEFAULT_NR_OF_THREADS = 1;
     public int DEFAULT_SOCKET_TIMEOUT = 5000;
+    public String DEFAULT_SCRIBE_CATEGORY = "zipkin";
 
     private int queueSize;
     private int batchSize;
     private int nrOfThreads;
     private int socketTimeout;
     private boolean failOnSetup = true;
+    private String scribeCategory;
 
     /**
      * Create a new instance with default values.
@@ -40,6 +42,7 @@ public class ZipkinSpanCollectorParams {
         batchSize = DEFAULT_BATCH_SIZE;
         nrOfThreads = DEFAULT_NR_OF_THREADS;
         socketTimeout = DEFAULT_SOCKET_TIMEOUT;
+        scribeCategory = DEFAULT_SCRIBE_CATEGORY;
     }
 
     /**
@@ -140,4 +143,19 @@ public class ZipkinSpanCollectorParams {
         return failOnSetup;
     }
 
+    /**
+     * Gets the Scribe category.
+     * @return Scribe category
+     */
+    public String getScribeCategory() {
+        return scribeCategory;
+    }
+
+    /**
+     * Sets the Scribe category.
+     * @param scribeCategory Scribe category. Default is "zipkin".
+     */
+    public void setScribeCategory(String scribeCategory) {
+        this.scribeCategory = scribeCategory;
+    }
 }
