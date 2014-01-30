@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import java.util.LinkedList;
+
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -17,10 +19,14 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
             return new ServerSpanImpl(null);
         }
     };
-    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
+    private final static ThreadLocal<LinkedList<Span>> currentClientSpan = new ThreadLocal<LinkedList<Span>>();
 
     private Endpoint endPoint;
 
+    public ServerAndClientSpanStateImpl()
+    {
+    	currentClientSpan.set(new LinkedList<Span>());
+    }
     /**
      * {@inheritDoc}
      */
@@ -63,7 +69,8 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      */
     @Override
     public Span getCurrentClientSpan() {
-        return currentClientSpan.get();
+    	LinkedList<Span> spans = currentClientSpan.get();
+        return spans.size() == 0? null: spans.getLast();
     }
 
     /**
@@ -71,7 +78,19 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      */
     @Override
     public void setCurrentClientSpan(final Span span) {
-        currentClientSpan.set(span);
+    	LinkedList<Span> spans = currentClientSpan.get();
+    	
+    	if (span != null)
+    	{
+    		spans.addLast(span);
+    	}
+    	else
+    	{
+    		if (spans.size() != 0)
+    		{
+    			spans.removeLast();
+    		}
+    	}
     }
 
     /**
