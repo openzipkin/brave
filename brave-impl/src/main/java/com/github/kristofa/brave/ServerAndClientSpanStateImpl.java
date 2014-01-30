@@ -80,6 +80,11 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     public void setCurrentClientSpan(final Span span) {
     	LinkedList<Span> spans = currentClientSpan.get();
     	
+    	if (spans == null)
+    	{
+    		spans = new LinkedList<Span>();
+    		currentClientSpan.set(spans);
+    	}
     	if (span != null)
     	{
     		spans.addLast(span);
