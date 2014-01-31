@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import java.net.InetAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +86,7 @@ public class BraveTracer {
 			clientTracer.setClientReceived();
 		}
 	}
-	public void startServerTracer(String contextPath)
+	public void startServerTracer(String contextPath) throws Exception
 	{
 		if (enabled)
 		{
@@ -94,10 +96,10 @@ public class BraveTracer {
 	        serverTracer.setServerReceived();
 		}
 	}
-	public void submitEndpoint(String contextPath) {
+	public void submitEndpoint(String contextPath) throws Exception{
 		if (enabled)
 		{
-	        final String localAddr = "localhost";
+	        final String localAddr = InetAddress.getLocalHost().getHostAddress();
 	        final int localPort =0;
 	        LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
 	        if (!endPointSubmitter.endPointSubmitted())
