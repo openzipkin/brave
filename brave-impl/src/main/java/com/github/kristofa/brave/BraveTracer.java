@@ -96,7 +96,8 @@ public class BraveTracer {
 	        serverTracer.setServerReceived();
 		}
 	}
-	public void submitEndpoint(String contextPath) throws Exception{
+	public void submitEndpoint(String contextPath) throws Exception
+	{
 		if (enabled)
 		{
 	        final String localAddr = InetAddress.getLocalHost().getHostAddress();
@@ -108,5 +109,16 @@ public class BraveTracer {
 	        }
 		}
     }
-
+	public ClientTracer clientTracer()
+	{
+		return this.clientTracer;
+	}
+	public ServerTracer serverTracer()
+	{
+		return this.serverTracer;
+	}
+	public EndPointSubmitter endPointSubmitter()
+	{
+		return this.endPointSubmitter;
+	}
 }
