@@ -101,7 +101,7 @@ bug fixing /  new functionality / backwards compatibility.
 
 ### 2.1.2-SNAPSHOT ###
 
-* [leonly0224](https://github.com/leonly0224) Bugfix in Flume Zipkin SpanCollectorSink which results in lost spans. Thanks to leonly0224 for catching this.
+* Bugfix in Flume Zipkin SpanCollectorSink which results in lost spans. Thanks to [leonly0224](https://github.com/leonly0224) for catching this.
 * Add module with Apache HttpClient interceptors. 
 
 ### 2.1.1 ###
