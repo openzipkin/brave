@@ -111,7 +111,7 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
                 final List<LogEntry> logEntries = new ArrayList<LogEntry>(batchSize);
                 logEntries.add(create(event));
                 int count = 1;
-                while ((event = channel.take()) != null && count < batchSize) {
+                while (count < batchSize && (event = channel.take()) != null) {
                     count++;
                     logEntries.add(create(event));
                 }
