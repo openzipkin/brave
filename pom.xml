@@ -54,6 +54,7 @@
     	<module>brave-tracefilters</module>
         <module>brave-jersey</module>
         <module>flume-zipkin-metrics-sink</module>
+    <module>brave-apache-http-interceptors</module>
   </modules>
   
   <dependencyManagement>
