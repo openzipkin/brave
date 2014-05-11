@@ -83,6 +83,7 @@ For other dependencies see README.md files for sub modules.
 
 If you would like to contribute to brave here are some topics that might give you inspiration :wink:
 
+* Improve `flume-zipkin-collector-sink` so it can connect to multiple zipkin collectors. This will improve scalability.
 * Database tracing: Hibernate / Spring JDBC template support
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
 * Support for other frameworks.
