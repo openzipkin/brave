@@ -102,6 +102,7 @@ bug fixing /  new functionality / backwards compatibility.
 
 ### 2.1.2-SNAPSHOT ###
 
+* Bugfix in spring resteasy integration. Logic to set span name resulted in different values for client vs server side. As a result span names where not predictable when watched in zipkin-web.
 * Bugfix in Flume Zipkin SpanCollectorSink which results in lost spans. Thanks to [leonly0224](https://github.com/leonly0224) for catching this.
 * Add module with Apache HttpClient interceptors. 
 
