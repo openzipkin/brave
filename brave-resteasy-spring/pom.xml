@@ -24,6 +24,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <resteasy.version>2.3.5.Final</resteasy.version>
+    <jetty.version>8.1.9.v20130131</jetty.version>
+     <spring.version>3.2.2.RELEASE</spring.version>
   </properties>
   
   <dependencies>
@@ -48,13 +50,49 @@
 	    <artifactId>spring-context</artifactId>
 	    <scope>provided</scope>
     </dependency>
+	<!-- All dependencies below are added since adding integration test -->
 	<dependency>
-		<groupId>javax.servlet</groupId>
-		<artifactId>servlet-api</artifactId>
-		<version>2.5</version>
-		<scope>provided</scope>
-	</dependency>
-  
+        <groupId>org.jboss.resteasy</groupId>
+        <artifactId>resteasy-spring</artifactId>
+        <version>${resteasy.version}</version>
+        <scope>test</scope>
+    </dependency>
+	<dependency>
+       <groupId>org.eclipse.jetty</groupId>
+       <artifactId>jetty-webapp</artifactId>
+       <version>${jetty.version}</version>
+       <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-impl-spring</artifactId>
+        <version>2.1.2-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-beans</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-web</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-webmvc</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>  
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-servlet</artifactId>
+        <version>${jetty.version}</version>
+        <scope>provided</scope>
+    </dependency>
   </dependencies>
   
   <build>	
@@ -81,7 +119,7 @@
             </plugin>
             <plugin>
             	<groupId>org.apache.maven.plugins</groupId>
-		<artifactId>maven-failsafe-plugin</artifactId>		
+		          <artifactId>maven-failsafe-plugin</artifactId>		
 	    </plugin>        
         </plugins>
         

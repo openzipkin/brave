@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.resteasy;
 
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -26,11 +27,12 @@ import org.springframework.stereotype.Component;
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
+import com.twitter.zipkin.gen.Endpoint;
 
 /**
  * Rest Easy {@link PreProcessInterceptor} that will:
  * <ol>
- * <li>Set {@link EndPoint} information for our service in case it is not set yet.</li>
+ * <li>Set {@link Endpoint} information for our service in case it is not set yet.</li>
  * <li>Get trace data (trace id, span id, parent span id) from http headers and initialize state for request + submit 'server
  * received' for request.</li>
  * <li>If no trace information is submitted we will start a new span. In that case it means client does not support tracing
@@ -83,7 +85,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             serverTracer.setStateNoTracing();
             LOGGER.debug("Received indication that we should NOT trace.");
         } else {
-            String spanName = getSpanName(request, traceData);
+            final String spanName = getSpanName(request, traceData);
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
 
                 LOGGER.debug("Received span information as part of request.");
@@ -98,11 +100,15 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         return null;
     }
 
-    private String getSpanName(HttpRequest request, TraceData traceData) {
+    private String getSpanName(final HttpRequest request, final TraceData traceData) throws WebApplicationException {
         if (StringUtils.isNotBlank(traceData.getSpanName())) {
             return traceData.getSpanName();
         } else {
-            return request.getPreprocessedPath();
+            try {
+                return request.getUri().getAbsolutePath().toURL().getPath();
+            } catch (final MalformedURLException e) {
+                throw new WebApplicationException(e);
+            }
         }
     }
 
