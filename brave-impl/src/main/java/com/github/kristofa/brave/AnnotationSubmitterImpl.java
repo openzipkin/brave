@@ -37,7 +37,7 @@ class AnnotationSubmitterImpl extends AbstractAnnotationSubmitter {
      */
     @Override
     Endpoint getEndPoint() {
-        return state.getEndPoint();
+        return state.getServerEndPoint();
     }
 
 }

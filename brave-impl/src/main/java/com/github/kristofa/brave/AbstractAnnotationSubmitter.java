@@ -33,7 +33,7 @@ abstract class AbstractAnnotationSubmitter implements AnnotationSubmitter {
     abstract Span getSpan();
 
     /**
-     * Gets the Endpoint for the annotations.
+     * Gets the Endpoint for the annotations. (Server Endpoint or Client Endpoint depending on the context)
      * 
      * @return Endpoint for the annotations. Can be <code>null</code>.
      */

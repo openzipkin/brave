@@ -13,6 +13,7 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     private Endpoint endPoint;
     private Span currentClientSpan;
     private ServerSpan currentServerSpan;
+    private String currentClientServiceName;
 
     /**
      * {@inheritDoc}
@@ -34,7 +35,7 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public Endpoint getEndPoint() {
+    public Endpoint getServerEndPoint() {
         return endPoint;
     }
 
@@ -42,7 +43,7 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public void setEndPoint(final Endpoint endPoint) {
+    public void setServerEndPoint(final Endpoint endPoint) {
         this.endPoint = endPoint;
     }
 
@@ -54,12 +55,28 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
         return currentClientSpan;
     }
 
+    @Override
+    public Endpoint getClientEndPoint() {
+        if(currentClientServiceName == null){
+            return endPoint;
+        } else {
+            Endpoint newEndPoint = new Endpoint(endPoint);
+            newEndPoint.setService_name(currentClientServiceName);
+            return newEndPoint;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setCurrentClientSpan(final Span span) {
         currentClientSpan = span;
+    }
+
+    @Override
+    public void setCurrentClientServiceName(String serviceName) {
+        currentClientServiceName = serviceName;
     }
 
     /**

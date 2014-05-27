@@ -33,7 +33,7 @@ public class ServerAndClientSpanStateImplTest {
     public void tearDown() {
         serverAndClientSpanState.setCurrentClientSpan(null);
         serverAndClientSpanState.setCurrentServerSpan(null);
-        serverAndClientSpanState.setEndPoint(null);
+        serverAndClientSpanState.setServerEndPoint(null);
     }
 
     @Test
@@ -46,9 +46,9 @@ public class ServerAndClientSpanStateImplTest {
 
     @Test
     public void testGetAndSetEndPoint() {
-        assertNull(serverAndClientSpanState.getEndPoint());
-        serverAndClientSpanState.setEndPoint(mockEndPoint);
-        assertSame(mockEndPoint, serverAndClientSpanState.getEndPoint());
+        assertNull(serverAndClientSpanState.getServerEndPoint());
+        serverAndClientSpanState.setServerEndPoint(mockEndPoint);
+        assertSame(mockEndPoint, serverAndClientSpanState.getServerEndPoint());
     }
 
     @Test

@@ -55,7 +55,7 @@ class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTrac
      */
     @Override
     Endpoint getEndPoint() {
-        return state.getEndPoint();
+        return state.getServerEndPoint();
     }
 
     /**

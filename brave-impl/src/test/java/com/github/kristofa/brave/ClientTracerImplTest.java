@@ -42,7 +42,7 @@ public class ClientTracerImplTest {
         endPoint = new Endpoint();
         mockTraceFilter = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
-        when(mockState.getEndPoint()).thenReturn(endPoint);
+        when(mockState.getServerEndPoint()).thenReturn(endPoint);
         when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(true);
 
@@ -93,6 +93,7 @@ public class ClientTracerImplTest {
     public void testSetClientSent() {
 
         when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        when(mockState.getClientEndPoint()).thenReturn(endPoint);
         clientTracer.setClientSent();
 
         final Annotation expectedAnnotation = new Annotation();
@@ -100,7 +101,7 @@ public class ClientTracerImplTest {
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
         verify(mockState).getCurrentClientSpan();
-        verify(mockState).getEndPoint();
+        verify(mockState).getClientEndPoint();
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockState, mockRandom, mockSpan, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
@@ -117,6 +118,7 @@ public class ClientTracerImplTest {
     public void testSetClientReceived() {
 
         when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        when(mockState.getClientEndPoint()).thenReturn(endPoint);
         clientTracer.setClientReceived();
 
         final Annotation expectedAnnotation = new Annotation();
@@ -124,7 +126,7 @@ public class ClientTracerImplTest {
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_RECV);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
         verify(mockState, times(2)).getCurrentClientSpan();
-        verify(mockState).getEndPoint();
+        verify(mockState).getClientEndPoint();
         verify(mockState).setCurrentClientSpan(null);
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockCollector).collect(mockSpan);

@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
@@ -19,6 +20,15 @@ interface ClientSpanState extends CommonSpanState {
     Span getCurrentClientSpan();
 
     /**
+     * Gets the EndPoint (ip, port, service name) for this service.
+     * Service name might have been overridden.
+     * Should be thread-aware to the service name can be overridden per request.
+     *
+     * @return Endpoint for this service.
+     */
+    Endpoint getClientEndPoint();
+
+    /**
      * Sets current client span.
      * <p/>
      * Should be thread-aware to support multiple parallel requests.
@@ -26,4 +36,6 @@ interface ClientSpanState extends CommonSpanState {
      * @param span Client span.
      */
     void setCurrentClientSpan(final Span span);
+
+    void setCurrentClientServiceName(String serviceName);
 }

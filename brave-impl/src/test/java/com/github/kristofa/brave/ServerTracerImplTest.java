@@ -166,7 +166,7 @@ public class ServerTracerImplTest {
     public void testSetServerReceived() {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
         serverTracer.setServerReceived();
 
         final Annotation expectedAnnotation = new Annotation();
@@ -175,7 +175,7 @@ public class ServerTracerImplTest {
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
 
         verify(mockServerSpanState).getCurrentServerSpan();
-        verify(mockServerSpanState).getEndPoint();
+        verify(mockServerSpanState).getServerEndPoint();
         verify(mockSpan).addToAnnotations(expectedAnnotation);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpan, mockSpanCollector);
@@ -195,7 +195,7 @@ public class ServerTracerImplTest {
     public void testSetServerSend() {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
         serverTracer.setServerSend();
 
         final Annotation expectedAnnotation = new Annotation();
@@ -204,7 +204,7 @@ public class ServerTracerImplTest {
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
 
         verify(mockServerSpanState, times(2)).getCurrentServerSpan();
-        verify(mockServerSpanState).getEndPoint();
+        verify(mockServerSpanState).getServerEndPoint();
 
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockServerSpanState).getServerSpanThreadDuration();
@@ -218,10 +218,10 @@ public class ServerTracerImplTest {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockServerSpanState.getServerSpanThreadDuration()).thenReturn(DURATION_MS);
-        when(mockServerSpanState.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
         serverTracer.setServerSend();
         verify(mockServerSpanState, times(3)).getCurrentServerSpan();
-        verify(mockServerSpanState, times(2)).getEndPoint();
+        verify(mockServerSpanState, times(2)).getServerEndPoint();
 
         final Annotation expectedServerSendAnnotation = new Annotation();
         expectedServerSendAnnotation.setHost(mockEndPoint);
