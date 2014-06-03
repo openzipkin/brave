@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import java.net.InetSocketAddress;
+
 import com.twitter.zipkin.gen.Endpoint;
 
 /**
@@ -22,19 +24,4 @@ interface CommonSpanState {
      *         request.
      */
     Boolean sample();
-
-    /**
-     * Gets the EndPoint (ip, port, service name) for this service.
-     * 
-     * @return Endpoint for this service.
-     */
-    Endpoint getEndPoint();
-
-    /**
-     * Sets EndPoint for this service.
-     * 
-     * @param endPoint EndPoint for this service.
-     */
-    void setEndPoint(final Endpoint endPoint);
-
 }

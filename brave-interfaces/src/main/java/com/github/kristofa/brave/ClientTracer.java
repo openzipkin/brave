@@ -20,6 +20,13 @@ public interface ClientTracer extends AnnotationSubmitter {
     SpanId startNewSpan(final String requestName);
 
     /**
+     * Override the service name that will be submitted in the annotations.
+     *
+     * @param serviceName should be the same as the name of the service the client is calling.
+     */
+    void setCurrentClientServiceName(String serviceName);
+
+    /**
      * Sets 'client sent' event for current thread.
      */
     void setClientSent();

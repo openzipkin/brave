@@ -26,7 +26,7 @@ public class AnnotationSubmitterImplTest {
         when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
 
         mockEndPoint = mock(Endpoint.class);
-        when(mockState.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockState.getServerEndPoint()).thenReturn(mockEndPoint);
 
         annotationSubmitter = new AnnotationSubmitterImpl(mockState);
     }

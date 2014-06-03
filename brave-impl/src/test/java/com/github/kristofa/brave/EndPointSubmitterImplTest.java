@@ -21,13 +21,13 @@ public class EndPointSubmitterImplTest {
     private final static int PORT = 8080;
     private final static String SERVICE_NAME = "serviceName";
 
-    private CommonSpanState mockState;
+    private ServerAndClientSpanState mockState;
     private Endpoint mockEndPoint;
     private EndPointSubmitterImpl endPointSubmitter;
 
     @Before
     public void setUp() {
-        mockState = mock(CommonSpanState.class);
+        mockState = mock(ServerAndClientSpanState.class);
         mockEndPoint = new Endpoint();
         endPointSubmitter = new EndPointSubmitterImpl(mockState);
     }
@@ -41,16 +41,16 @@ public class EndPointSubmitterImplTest {
     public void testSubmit() {
         endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
         final Endpoint expectedEndPoint = new Endpoint(ipAddressToInt(IP), (short)PORT, SERVICE_NAME);
-        verify(mockState).setEndPoint(expectedEndPoint);
+        verify(mockState).setServerEndPoint(expectedEndPoint);
         verifyNoMoreInteractions(mockState);
     }
 
     @Test
     public void testEndPointSubmitted() {
 
-        when(mockState.getEndPoint()).thenReturn(mockEndPoint);
+        when(mockState.getServerEndPoint()).thenReturn(mockEndPoint);
         assertTrue(endPointSubmitter.endPointSubmitted());
-        verify(mockState).getEndPoint();
+        verify(mockState).getServerEndPoint();
         verifyNoMoreInteractions(mockState);
     }
 

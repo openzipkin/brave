@@ -15,14 +15,14 @@ import com.twitter.zipkin.gen.Endpoint;
  */
 class EndPointSubmitterImpl implements EndPointSubmitter {
 
-    private final CommonSpanState spanstate;
+    private final ServerAndClientSpanState spanstate;
 
     /**
      * Creates a new instance.
      * 
      * @param state {@link CommonSpanState}, should not be <code>null</code>.
      */
-    EndPointSubmitterImpl(final CommonSpanState state) {
+    EndPointSubmitterImpl(final ServerAndClientSpanState state) {
         Validate.notNull(state);
         spanstate = state;
     }
@@ -36,7 +36,7 @@ class EndPointSubmitterImpl implements EndPointSubmitter {
         final int ipv4 = ipAddressToInt(ip);
         final Endpoint endpoint = new Endpoint(ipv4, (short)port, serviceName);
 
-        spanstate.setEndPoint(endpoint);
+        spanstate.setServerEndPoint(endpoint);
     }
 
     /**
@@ -44,7 +44,7 @@ class EndPointSubmitterImpl implements EndPointSubmitter {
      */
     @Override
     public boolean endPointSubmitted() {
-        return spanstate.getEndPoint() != null;
+        return spanstate.getServerEndPoint() != null;
     }
 
     private int ipAddressToInt(final String ip) {

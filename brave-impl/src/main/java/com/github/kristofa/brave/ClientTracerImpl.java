@@ -60,7 +60,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
      */
     @Override
     Endpoint getEndPoint() {
-        return state.getEndPoint();
+        return state.getClientEndPoint();
     }
 
     /**
@@ -119,6 +119,14 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
         newSpan.setName(requestName);
         state.setCurrentClientSpan(newSpan);
         return newSpanId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCurrentClientServiceName(String serviceName) {
+        state.setCurrentClientServiceName(serviceName);
     }
 
     ServerAndClientSpanState getServerAndClientSpanState() {

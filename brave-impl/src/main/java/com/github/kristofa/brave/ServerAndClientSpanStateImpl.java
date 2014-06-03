@@ -21,6 +21,8 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     };
     private final static ThreadLocal<LinkedList<Span>> currentClientSpan = new ThreadLocal<LinkedList<Span>>();
 
+    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<String>();
+
     private Endpoint endPoint;
 
     public ServerAndClientSpanStateImpl()
@@ -33,6 +35,11 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     @Override
     public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();
+    }
+
+    @Override
+    public Endpoint getServerEndPoint() {
+        return endPoint;
     }
 
     /**
@@ -52,15 +59,22 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public Endpoint getEndPoint() {
-        return endPoint;
+    public Endpoint getClientEndPoint() {
+        String serviceName = currentClientServiceName.get();
+        if(serviceName == null){
+            return endPoint;
+        } else {
+            Endpoint ep = new Endpoint(endPoint);
+            ep.setService_name(serviceName);
+            return ep;
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setEndPoint(final Endpoint endPoint) {
+    public void setServerEndPoint(final Endpoint endPoint) {
         this.endPoint = endPoint;
     }
 
@@ -96,6 +110,11 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     			spans.removeLast();
     		}
     	}
+    }
+
+    @Override
+    public void setCurrentClientServiceName(String serviceName) {
+        currentClientServiceName.set(serviceName);
     }
 
     /**
