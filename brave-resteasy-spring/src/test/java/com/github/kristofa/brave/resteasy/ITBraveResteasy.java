@@ -78,8 +78,16 @@ public class ITBraveResteasy {
             assertEquals(200, response.getStatus());
             final List<Span> collectedSpans = SpanCollectorForTesting.getInstance().getCollectedSpans();
             assertEquals(2, collectedSpans.size());
+            assertEquals("Expected trace id's to be equal", collectedSpans.get(0).getTrace_id(), collectedSpans.get(1)
+                .getTrace_id());
+            assertEquals("Expected span id's to be equal", collectedSpans.get(0).getId(), collectedSpans.get(1).getId());
+            assertEquals("Expected parent span id's to be equal", collectedSpans.get(0).getParent_id(), collectedSpans
+                .get(1).getParent_id());
             assertEquals("Span names of client and server should be equal.", collectedSpans.get(0).getName(), collectedSpans
                 .get(1).getName());
+            assertEquals("Expect 2 annotations.", 2, collectedSpans.get(0).getAnnotations().size());
+            assertEquals("Expect 2 annotations.", 2, collectedSpans.get(1).getAnnotations().size());
+
         } finally {
             response.releaseConnection();
         }
