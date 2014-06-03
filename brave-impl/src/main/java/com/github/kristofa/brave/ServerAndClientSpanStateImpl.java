@@ -1,7 +1,5 @@
 package com.github.kristofa.brave;
 
-import java.util.LinkedList;
-
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -19,16 +17,16 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
             return new ServerSpanImpl(null);
         }
     };
-    private final static ThreadLocal<LinkedList<Span>> currentClientSpan = new ThreadLocal<LinkedList<Span>>();
+    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
     private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<String>();
 
     private Endpoint endPoint;
 
-    public ServerAndClientSpanStateImpl()
-    {
-    	currentClientSpan.set(new LinkedList<Span>());
+    public ServerAndClientSpanStateImpl() {
+
     }
+
     /**
      * {@inheritDoc}
      */
@@ -60,11 +58,11 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      */
     @Override
     public Endpoint getClientEndPoint() {
-        String serviceName = currentClientServiceName.get();
-        if(serviceName == null){
+        final String serviceName = currentClientServiceName.get();
+        if (serviceName == null) {
             return endPoint;
         } else {
-            Endpoint ep = new Endpoint(endPoint);
+            final Endpoint ep = new Endpoint(endPoint);
             ep.setService_name(serviceName);
             return ep;
         }
@@ -83,8 +81,7 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      */
     @Override
     public Span getCurrentClientSpan() {
-    	LinkedList<Span> spans = currentClientSpan.get();
-        return spans.size() == 0? null: spans.getLast();
+        return currentClientSpan.get();
     }
 
     /**
@@ -92,28 +89,12 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      */
     @Override
     public void setCurrentClientSpan(final Span span) {
-    	LinkedList<Span> spans = currentClientSpan.get();
-    	
-    	if (spans == null)
-    	{
-    		spans = new LinkedList<Span>();
-    		currentClientSpan.set(spans);
-    	}
-    	if (span != null)
-    	{
-    		spans.addLast(span);
-    	}
-    	else
-    	{
-    		if (spans.size() != 0)
-    		{
-    			spans.removeLast();
-    		}
-    	}
+
+        currentClientSpan.set(span);
     }
 
     @Override
-    public void setCurrentClientServiceName(String serviceName) {
+    public void setCurrentClientServiceName(final String serviceName) {
         currentClientServiceName.set(serviceName);
     }
 
