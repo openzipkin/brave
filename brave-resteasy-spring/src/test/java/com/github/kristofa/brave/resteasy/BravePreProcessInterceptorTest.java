@@ -7,11 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.net.URI;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.UriInfo;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.resteasy.specimpl.MultivaluedMapImpl;
@@ -51,10 +48,7 @@ public class BravePreProcessInterceptorTest {
         interceptor.servletRequest = mockHttpServletRequest;
 
         mockHttpRequest = mock(HttpRequest.class);
-        final UriInfo mockUriInfo = mock(UriInfo.class);
-        when(mockUriInfo.getAbsolutePath()).thenReturn(new URI(URI));
-        when(mockHttpRequest.getUri()).thenReturn(mockUriInfo);
-        // when(mockHttpRequest.getPreprocessedPath()).thenReturn(PATH);
+        when(mockHttpRequest.getPreprocessedPath()).thenReturn(PATH);
 
         when(mockHttpServletRequest.getLocalAddr()).thenReturn(LOCAL_ADDR);
         when(mockHttpServletRequest.getLocalPort()).thenReturn(PORT);
@@ -86,7 +80,7 @@ public class BravePreProcessInterceptorTest {
         inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
-        verify(mockHttpRequest).getUri();
+        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
         verify(mockHttpServletRequest).getLocalAddr();
         verify(mockHttpServletRequest).getLocalPort();
@@ -112,7 +106,7 @@ public class BravePreProcessInterceptorTest {
         inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
-        verify(mockHttpRequest).getUri();
+        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
 
         verifyNoMoreInteractions(mockEndPointSubmitter);
@@ -134,7 +128,7 @@ public class BravePreProcessInterceptorTest {
         inOrder.verify(mockServerTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
-        verify(mockHttpRequest).getUri();
+        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
 
         verifyNoMoreInteractions(mockEndPointSubmitter);
@@ -157,7 +151,7 @@ public class BravePreProcessInterceptorTest {
         inOrder.verify(mockServerTracer).setStateUnknown(PATH);
         inOrder.verify(mockServerTracer).setServerReceived();
 
-        verify(mockHttpRequest).getUri();
+        verify(mockHttpRequest).getPreprocessedPath();
         verify(mockHttpRequest).getHttpHeaders();
 
         verifyNoMoreInteractions(mockEndPointSubmitter);

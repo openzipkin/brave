@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.resteasy;
 
-import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -104,11 +103,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         if (StringUtils.isNotBlank(traceData.getSpanName())) {
             return traceData.getSpanName();
         } else {
-            try {
-                return request.getUri().getAbsolutePath().toURL().getPath();
-            } catch (final MalformedURLException e) {
-                throw new WebApplicationException(e);
-            }
+            return request.getPreprocessedPath();
         }
     }
 

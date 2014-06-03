@@ -67,11 +67,12 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
     public ClientResponse<?> execute(final ClientExecutionContext ctx) throws Exception {
 
         final ClientRequest request = ctx.getRequest();
-        String spanName = request.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
+        final URL url = new URL(request.getUri());
+        final String[] serviceAndSpanName = buildServiceNameAndSpanName(url);
 
+        String spanName = request.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
         if (StringUtils.isEmpty(spanName)) {
-            final URL url = new URL(request.getUri());
-            spanName = url.getPath();
+            spanName = serviceAndSpanName[1];
         }
 
         final SpanId newSpanId = clientTracer.startNewSpan(spanName);
@@ -82,6 +83,9 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
             request.header(BraveHttpHeaders.SpanId.getName(), newSpanId.getSpanId());
             if (newSpanId.getParentSpanId() != null) {
                 request.header(BraveHttpHeaders.ParentSpanId.getName(), newSpanId.getParentSpanId());
+            }
+            if (serviceAndSpanName[0] != null) {
+                clientTracer.setCurrentClientServiceName(serviceAndSpanName[0]);
             }
         } else {
             LOGGER.debug("Will not trace request.");
@@ -105,5 +109,20 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         } finally {
             clientTracer.setClientReceived();
         }
+    }
+
+    private String[] buildServiceNameAndSpanName(final URL url) {
+
+        final String[] parts = new String[2];
+        final String path = url.getPath();
+        final String[] split = path.split("/");
+        if (split.length > 2 && StringUtils.isEmpty(split[0])) {
+            final int contextPathSeparatorIndex = path.indexOf("/", 1);
+            parts[0] = path.substring(1, contextPathSeparatorIndex);
+            parts[1] = path.substring(contextPathSeparatorIndex);
+        } else {
+            parts[1] = path;
+        }
+        return parts;
     }
 }
