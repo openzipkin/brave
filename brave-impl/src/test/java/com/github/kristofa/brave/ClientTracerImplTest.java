@@ -128,6 +128,7 @@ public class ClientTracerImplTest {
         verify(mockState, times(2)).getCurrentClientSpan();
         verify(mockState).getClientEndPoint();
         verify(mockState).setCurrentClientSpan(null);
+        verify(mockState).setCurrentClientServiceName(null);
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockCollector).collect(mockSpan);
         verifyNoMoreInteractions(mockState, mockSpan, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
@@ -139,6 +140,7 @@ public class ClientTracerImplTest {
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
         verify(mockState).sample();
         verify(mockState).setCurrentClientSpan(null);
+        verify(mockState).setCurrentClientServiceName(null);
         verifyNoMoreInteractions(mockState, mockSpan, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
@@ -240,7 +242,7 @@ public class ClientTracerImplTest {
         verify(mockState).sample();
         verify(mockTraceFilter).trace(REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
-
+        verify(mockState).setCurrentClientServiceName(null);
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
 
     }
@@ -256,7 +258,7 @@ public class ClientTracerImplTest {
         verify(mockTraceFilter).trace(REQUEST_NAME);
         verify(mockTraceFilter2).trace(REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
-
+        verify(mockState).setCurrentClientServiceName(null);
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
 
     }

@@ -83,6 +83,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
             submitAnnotation(zipkinCoreConstants.CLIENT_RECV);
             spanCollector.collect(currentSpan);
             state.setCurrentClientSpan(null);
+            state.setCurrentClientServiceName(null);
         }
 
     }
@@ -96,6 +97,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
         final Boolean sample = state.sample();
         if (Boolean.FALSE.equals(sample)) {
             state.setCurrentClientSpan(null);
+            state.setCurrentClientServiceName(null);
             return null;
         }
 
@@ -104,6 +106,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
             for (final TraceFilter traceFilter : traceFilters) {
                 if (traceFilter.trace(requestName) == false) {
                     state.setCurrentClientSpan(null);
+                    state.setCurrentClientServiceName(null);
                     return null;
                 }
             }
@@ -125,7 +128,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
      * {@inheritDoc}
      */
     @Override
-    public void setCurrentClientServiceName(String serviceName) {
+    public void setCurrentClientServiceName(final String serviceName) {
         state.setCurrentClientServiceName(serviceName);
     }
 
