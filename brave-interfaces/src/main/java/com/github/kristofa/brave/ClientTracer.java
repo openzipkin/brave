@@ -21,7 +21,10 @@ public interface ClientTracer extends AnnotationSubmitter {
 
     /**
      * Override the service name that will be submitted in the annotations.
-     *
+     * <p/>
+     * This should be set before submitting any annotations. So after invoking {@link ClientTracer#startNewSpan(String)} and
+     * before {@link ClientTracer#setClientSent()}.
+     * 
      * @param serviceName should be the same as the name of the service the client is calling.
      */
     void setCurrentClientServiceName(String serviceName);
