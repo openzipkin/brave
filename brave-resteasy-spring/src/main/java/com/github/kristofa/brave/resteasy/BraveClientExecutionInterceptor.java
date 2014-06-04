@@ -31,7 +31,7 @@ import com.github.kristofa.brave.SpanId;
  * requests.
  * </ul>
  * If you add a http header with key: X-B3-SpanName, and with a custom span name as value this value will be used as span
- * name iso the path name.
+ * name iso the context path.
  * 
  * @author kristof
  */
@@ -68,7 +68,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final ClientRequest request = ctx.getRequest();
         final URL url = new URL(request.getUri());
-        final String[] serviceAndSpanName = buildServiceNameAndSpanName(url);
+        final String[] serviceAndSpanName = buildServiceAndSpanName(url);
 
         String spanName = request.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
         if (StringUtils.isEmpty(spanName)) {
@@ -111,12 +111,13 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         }
     }
 
-    private String[] buildServiceNameAndSpanName(final URL url) {
+    private String[] buildServiceAndSpanName(final URL url) {
 
         final String[] parts = new String[2];
         final String path = url.getPath();
         final String[] split = path.split("/");
-        if (split.length > 2 && StringUtils.isEmpty(split[0])) {
+        if (split.length > 2 && path.startsWith("/")) {
+            // Path starts with / and first part till 2nd / is context path. Left over is path for service.
             final int contextPathSeparatorIndex = path.indexOf("/", 1);
             parts[0] = path.substring(1, contextPathSeparatorIndex);
             parts[1] = path.substring(contextPathSeparatorIndex);
