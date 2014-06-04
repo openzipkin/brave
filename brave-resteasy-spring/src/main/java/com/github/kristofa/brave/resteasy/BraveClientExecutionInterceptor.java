@@ -31,7 +31,14 @@ import com.github.kristofa.brave.SpanId;
  * requests.
  * </ul>
  * If you add a http header with key: X-B3-SpanName, and with a custom span name as value this value will be used as span
- * name iso the context path.
+ * name iso the path.
+ * <p/>
+ * We assume the first part of the URI is the context path. The context name will be used as service name in endpoint.
+ * Remaining part of path will be used as span name unless X-B3-SpanName http header is set. For example, if we have URI:
+ * <p/>
+ * <code>http://localhost:8080/service/path/a/b</code>
+ * <p/>
+ * The service name will be 'service. The span name will be '/path/a/b'.
  * 
  * @author kristof
  */
