@@ -7,8 +7,6 @@ import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.github.kristofa.brave.ClientTracer;
 
@@ -19,8 +17,6 @@ import com.github.kristofa.brave.ClientTracer;
  * @author kristof
  */
 public class BraveHttpResponseInterceptor implements HttpResponseInterceptor {
-
-    private final static Logger LOGGER = LoggerFactory.getLogger(BraveHttpResponseInterceptor.class);
 
     private static final String FAILURE_ANNOTATION = "failure";
     private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
