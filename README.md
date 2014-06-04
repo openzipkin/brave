@@ -83,11 +83,10 @@ For other dependencies see README.md files for sub modules.
 
 If you would like to contribute to brave here are some topics that might give you inspiration :wink:
 
-* Improve `flume-zipkin-collector-sink` so it can connect to multiple zipkin collectors. This will improve scalability.
 * Database tracing: Hibernate / Spring JDBC template support
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
 * Support for other frameworks.
-* Aggregation of data. Realtime (eg using [Storm](http://storm-project.net)) or batch ([Hadoop](http://hadoop.apache.org)).
+* Aggregation of data. Realtime (eg using [Storm](http://storm-project.net)).
 * Extend `flume-zipkin-metrics-sink` with support for other back-ends next to graphite.
 * Improve [Jersey](https://jersey.java.net) support by updating Jersey to latest version and implements `ContainerRequestFilter` and `ContainerResponseFilter` iso current servlet filter.
 
@@ -100,11 +99,15 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.1.2-SNAPSHOT ###
+### 2.2.0-SNAPSHOT ###
 
-* Bugfix in spring resteasy integration. Logic to set span name resulted in different values for client vs server side. As a result span names where not predictable when watched in zipkin-web.
-* Bugfix in Flume Zipkin SpanCollectorSink which results in lost spans. Thanks to [leonly0224](https://github.com/leonly0224) for catching this.
-* Add module with Apache HttpClient interceptors. 
+* Bugfix in spring resteasy integration. Mentioned in issue [#3](https://github.com/kristofa/brave-resteasy-example/issues/3). Logic to set span name resulted in different values for client vs server side. As a result span names were not consistent in zipkin-web.
+* Bugfix for [#16](https://github.com/kristofa/brave/issues/16). Bug in Flume Zipkin SpanCollectorSink resulted in lost spans. Thanks to [leonly0224](https://github.com/leonly0224) for catching this.
+* Add `brave-apache-http-interceptors` module. Which adds Apache HttpClient support. 
+* Bugfix / improvement, see issues [#15](https://github.com/kristofa/brave/issues/15), [#18](https://github.com/kristofa/brave/issues/18), [#19](https://github.com/kristofa/brave/issues/19).
+Makes it possible to set Endpoint service name from ClientTracer. This means you can name a service yourself (eg when accessing cache, database,...). But it also means you can set same service name
+for client and server parts of span which result in better inspection in zipkin-web (see [#18](https://github.com/kristofa/brave/issues/18) ). Thanks to [eirslett](https://github.com/eirslett) for implementing this. Both RestEasy and apache http client integration
+have been adapted to make use of this.
 
 ### 2.1.1 ###
 
