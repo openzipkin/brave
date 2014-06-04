@@ -27,7 +27,6 @@ public class BravePreProcessInterceptorTest {
     private final static long SPAN_ID = 11l;
     private final static long PARENT_SPAN_ID = 12l;
     private static final String PATH = "/PATH";
-    private static final String URI = "http://localhost:8080" + PATH;
     private static final String LOCAL_ADDR = "localhost";
     private static final int PORT = 80;
     private static final String CONTEXT_PATH = "contextPath";
