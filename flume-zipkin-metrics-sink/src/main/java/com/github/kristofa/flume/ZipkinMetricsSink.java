@@ -91,7 +91,7 @@ public class ZipkinMetricsSink extends AbstractSink implements Configurable {
 
                 process(create(event));
                 int count = 1;
-                while ((event = channel.take()) != null && count < batchSize) {
+                while (count < batchSize && (event = channel.take()) != null) {
                     count++;
                     try {
                         process(create(event));
