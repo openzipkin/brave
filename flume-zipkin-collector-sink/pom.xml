@@ -20,7 +20,7 @@
    </licenses>  
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <flume.version>1.4.0</flume.version>
+    <flume.version>1.5.0</flume.version>
   </properties>
   <dependencies>
     <dependency>
