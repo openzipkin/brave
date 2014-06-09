@@ -80,6 +80,7 @@ that uses persistence iso the memory channel.
     agent1.sources = scribe-source1
     agent1.sinks = zipkin-sink1
 
+For details on how to set up a load balancing configuration, [see here](http://kdevlog.blogspot.be/2014/06/add-load-balancing-to-zipkin-flume.html).
 
 ### Starting flume ###
 
