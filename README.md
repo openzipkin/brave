@@ -109,6 +109,8 @@ bug fixing /  new functionality / backwards compatibility.
 Makes it possible to set Endpoint service name from ClientTracer. This means you can name a service yourself (eg when accessing cache, database,...). But it also means you can set same service name
 for client and server parts of span which result in better inspection in zipkin-web (see [#18](https://github.com/kristofa/brave/issues/18) ). Thanks to [eirslett](https://github.com/eirslett) for implementing this. Both RestEasy and apache http client integration
 have been adapted to make use of this.
+* Test `flume-zipkin-collector-sink` and `flume-zipkin-metrics-sink` with flume 1.5.0 + update libraries to 1.5.0
+* Update `flume-zipkin-collector-sink` to add connection and socket timeout config entry.
 
 ### 2.1.1 ###
 
