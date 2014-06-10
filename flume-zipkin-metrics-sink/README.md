@@ -11,7 +11,7 @@ The sink calculates statistical distribution for the annotations and sends them 
 is done using the [Metrics](http://metrics.codahale.com) library.  Currently as a back-end the sink supports [Graphite](http://graphite.wikidot.com) but it should be straightforward to support other back-ends
 supported by Metrics.
 
-flume-zipkin-metrics-sink is only tested with [Flume 1.4.0](http://flume.apache.org/releases/content/1.4.0/FlumeUserGuide.html#).
+flume-zipkin-metrics-sink is tested with Flume 1.4.0 and [Flume 1.5.0](http://flume.apache.org/FlumeUserGuide.html).
 
 We expect that you use the `org.apache.flume.source.scribe.ScribeSource` which will 
 receive spans from Brave Zipkin Span Collector or from the original Zipkin code.
@@ -42,7 +42,7 @@ which contains the required dependencies and which should be put on the flume cl
 and copy the resulting flume distribution jar file (./target/flume-zipkin-metrics-sink-x.y.z-SNAPSHOT-flume-dist.jar)
 to a location where Flume can access it. Or instead of building one yourself you can also copy a released one, see above.
 
-Next you make flume-env.sh available by going into the apache-flume-1.4.0-bin/conf directory
+Next you make flume-env.sh available by going into the apache-flume-1.5.0-bin/conf directory
 and execute:
 
     cp flume-env.sh.template flume-env.sh
@@ -51,7 +51,7 @@ Finally you edit your just created flume-env.sh file and uncomment and complete 
 FLUME_CLASSPATH property:
 
     # Note that the Flume conf directory is always included in the classpath.
-    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-metrics-sink-2.1.0-flume-dist.jar"
+    FLUME_CLASSPATH="/directory/to/jar/flume-zipkin-metrics-sink-2.2.0-SNAPSHOT-flume-dist.jar"
      
 When you will start flume after doing this configuration change the flume-zipkin-metrics-sink
 should be available for flume to use.
@@ -168,7 +168,7 @@ Example configuration:
 
 ### Example flume.conf file ###
 
-This is an example configuration file (apache-flume-1.4.0-bin/conf/flume.conf) 
+This is an example configuration file (apache-flume-1.5.0-bin/conf/flume.conf) 
 that I used during testing with 2 channels and both the `ZipkinMetricsSink` and the `ZipkinSpanCollectorSink` configured. 
 
     # Finally, now that we've defined all of our components, tell
@@ -176,7 +176,6 @@ that I used during testing with 2 channels and both the `ZipkinMetricsSink` and 
     agent1.sources = scribe-source1
     agent1.channels = ch1 ch2
     agent1.sinks = zipkin-sink1 graphite-sink1
-
 
     # Define a memory channel called ch1 on agent1, for sending to zipkin collector
     agent1.channels.ch1.type = memory
@@ -210,7 +209,7 @@ that I used during testing with 2 channels and both the `ZipkinMetricsSink` and 
 ### Starting flume ###
 
 If you want to start flume with the above example config file you can execute from the 
-apache-flume-1.4.0-bin directory:
+apache-flume-1.5.0-bin directory:
 
     ./bin/flume-ng agent -n agent1 -c conf -f conf/flume.conf
     
