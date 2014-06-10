@@ -5,7 +5,7 @@ Latest release available in Maven central:
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.1.1</version>
+        <version>2.2.0</version>
     </dependency>
 
 

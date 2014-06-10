@@ -67,14 +67,14 @@ to get you up to speed on how you can implement brave in your own apps.
 
 ## Maven artifacts ##
 
-Version 2.1.0 is available in Maven central. So you can simply add the dependencies you want
+Version 2.2.0 is available in Maven central. So you can simply add the dependencies you want
  to your pom.xml. You will need at least:
 
     
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.1.1</version>
+        <version>2.2.0</version>
     </dependency>
     
 For other dependencies see README.md files for sub modules.
@@ -99,7 +99,11 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.2.0-SNAPSHOT ###
+### 2.2.1-SNAPSHOT ###
+
+Nothing so far.
+
+### 2.2.0 ###
 
 * Bugfix in spring resteasy integration. Mentioned in issue [#3](https://github.com/kristofa/brave-resteasy-example/issues/3). Logic to set span name resulted in different values for client vs server side. As a result span names were not consistent in zipkin-web.
 * Bugfix for `flume-zipkin-collector-sink`, see [#16](https://github.com/kristofa/brave/issues/16). Bug in Flume Zipkin SpanCollectorSink resulted in lost spans. Thanks to [leonly0224](https://github.com/leonly0224) for catching this.
