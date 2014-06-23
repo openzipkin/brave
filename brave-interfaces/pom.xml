@@ -30,7 +30,17 @@
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
         <version>0.9.0</version>
+	<exclusions>
+	   <exclusion>
+		<artifactId>org.apache.httpcomponents</artifactId>
+		<groupId>httpcore</groupId>
+	    </exclusion>
+	</exclusions>
     </dependency>
+    <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpcore</artifactId>
+   </dependency>
   
   </dependencies>
   
