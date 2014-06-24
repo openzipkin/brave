@@ -60,15 +60,20 @@
   <dependencyManagement>
   	<dependencies>
   		<dependency>
-    		<groupId>org.springframework</groupId>
+    			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 			<version>${spring.version}</version>
-    	</dependency>
-    	<dependency>
+	    	</dependency>
+    		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-context</artifactId>
 			<version>${spring.version}</version>
-    	</dependency>
+	    	</dependency>
+		<dependency>
+		        <groupId>org.apache.httpcomponents</groupId>
+		        <artifactId>httpcore</artifactId>
+		        <version>4.3.2</version>
+    		</dependency>
   	</dependencies>
   </dependencyManagement>
 
