@@ -33,20 +33,27 @@ public class JerseyClientTraceFilter extends ClientFilter {
         String spanName = getSpanName(clientRequest);
         SpanId newSpan = clientTracer.startNewSpan(spanName);
 
-        MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
-        if (newSpan != null) {
-            headers.add(BraveHttpHeaders.TraceId.getName(), String.valueOf(newSpan.getTraceId()));
-            headers.add(BraveHttpHeaders.SpanId.getName(), String.valueOf(newSpan.getSpanId()));
-            headers.add(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(newSpan.getParentSpanId()));
-            headers.add(BraveHttpHeaders.Sampled.getName(), "true");
-        } else {
-            headers.add(BraveHttpHeaders.Sampled.getName(), "false");
-        }
+        addTracingHeaders(clientRequest, newSpan);
         clientTracer.setClientSent();
         ClientResponse clientResponse = getNext().handle(clientRequest);
         clientTracer.submitBinaryAnnotation("http.responsecode", clientResponse.getStatus());
         clientTracer.setClientReceived();
         return clientResponse;
+    }
+
+    //Visible for testing
+    void addTracingHeaders(ClientRequest clientRequest, SpanId newSpan) {
+        MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
+        if (newSpan != null) {
+            headers.add(BraveHttpHeaders.TraceId.getName(), String.valueOf(newSpan.getTraceId()));
+            headers.add(BraveHttpHeaders.SpanId.getName(), String.valueOf(newSpan.getSpanId()));
+            if(newSpan.getParentSpanId() != null) {
+                headers.add(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(newSpan.getParentSpanId()));
+            }
+            headers.add(BraveHttpHeaders.Sampled.getName(), "true");
+        } else {
+            headers.add(BraveHttpHeaders.Sampled.getName(), "false");
+        }
     }
 
     private String getSpanName(ClientRequest clientRequest) {
