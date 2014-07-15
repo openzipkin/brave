@@ -52,6 +52,7 @@
         <module>brave-zipkin-spancollector</module>
         <module>flume-zipkin-collector-sink</module>
     	<module>brave-tracefilters</module>
+    	<module>brave-client</module>
         <module>brave-jersey</module>
         <module>flume-zipkin-metrics-sink</module>
     <module>brave-apache-http-interceptors</module>
@@ -74,6 +75,12 @@
 		        <artifactId>httpcore</artifactId>
 		        <version>4.3.2</version>
     		</dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>14.0.1</version>
+        </dependency>
   	</dependencies>
   </dependencyManagement>
 

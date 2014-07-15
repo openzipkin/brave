@@ -4,11 +4,13 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.client.ClientRequestHeaders;
+import com.google.common.base.Optional;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.core.util.StringKeyObjectValueIgnoreCaseMultivaluedMap;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -36,18 +38,22 @@ public class ClientServletCompatibilityTest {
     @Mock
     EndPointSubmitter endPointSubmitter;
     @Mock
-    FilterChain filterChain = mock(FilterChain.class);
-    @InjectMocks
-    JerseyClientTraceFilter clientFilter = new JerseyClientTraceFilter(clientTracer);
-    @InjectMocks
-    ServletTraceFilter servletFilter = new ServletTraceFilter(serverTracer, endPointSubmitter);
-
+    FilterChain filterChain;
     @Mock
     ClientRequest clientRequest;
     @Mock
     HttpServletRequest servletRequest;
     @Mock
     ServletResponse servletResponse;
+
+    JerseyClientTraceFilter clientFilter;
+    ServletTraceFilter servletFilter;
+
+    @Before
+    public void setUp() {
+        clientFilter = new JerseyClientTraceFilter(clientTracer, Optional.<String>absent());
+        servletFilter = new ServletTraceFilter(serverTracer, endPointSubmitter);
+    }
 
     @Test
     public void shouldHandleAllProvidedIds() throws Exception {
@@ -72,7 +78,7 @@ public class ClientServletCompatibilityTest {
         when(clientRequest.getHeaders()).thenReturn(new StringKeyObjectValueIgnoreCaseMultivaluedMap());
         when(clientTracer.startNewSpan(anyString())).thenReturn(span);
 
-        clientFilter.addTracingHeaders(clientRequest, span);
+        ClientRequestHeaders.addTracingHeaders(new JerseyClientRequestAdapter(clientRequest), span);
 
         final MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
         when(servletRequest.getHeader(anyString())).thenAnswer(new Answer<Object>() {

@@ -36,6 +36,10 @@
         <artifactId>curator-framework</artifactId>
         <version>2.2.0-incubating</version>  
     </dependency>
+      <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+      </dependency>
     <dependency>
         <groupId>org.apache.curator</groupId>
         <artifactId>curator-test</artifactId>
