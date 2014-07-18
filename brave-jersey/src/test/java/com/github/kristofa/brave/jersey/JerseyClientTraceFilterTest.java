@@ -32,9 +32,9 @@ public class JerseyClientTraceFilterTest {
         when(clientRequest.getHeaders()).thenReturn(new StringKeyObjectValueIgnoreCaseMultivaluedMap());
         jerseyClientTraceFilter.addTracingHeaders(clientRequest, mockSpan(123L, 456L, 789L));
         MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
-        Assert.assertEquals("123", headers.getFirst(BraveHttpHeaders.TraceId.getName()));
-        Assert.assertEquals("456", headers.getFirst(BraveHttpHeaders.SpanId.getName()));
-        Assert.assertEquals("789", headers.getFirst(BraveHttpHeaders.ParentSpanId.getName()));
+        Assert.assertEquals("7b", headers.getFirst(BraveHttpHeaders.TraceId.getName()));
+        Assert.assertEquals("1c8", headers.getFirst(BraveHttpHeaders.SpanId.getName()));
+        Assert.assertEquals("315", headers.getFirst(BraveHttpHeaders.ParentSpanId.getName()));
         Assert.assertEquals("true", headers.getFirst(BraveHttpHeaders.Sampled.getName()));
     }
 
@@ -43,8 +43,8 @@ public class JerseyClientTraceFilterTest {
         when(clientRequest.getHeaders()).thenReturn(new StringKeyObjectValueIgnoreCaseMultivaluedMap());
         jerseyClientTraceFilter.addTracingHeaders(clientRequest, mockSpan(123L, 456L, null));
         MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
-        Assert.assertEquals("123", headers.getFirst(BraveHttpHeaders.TraceId.getName()));
-        Assert.assertEquals("456", headers.getFirst(BraveHttpHeaders.SpanId.getName()));
+        Assert.assertEquals("7b", headers.getFirst(BraveHttpHeaders.TraceId.getName()));
+        Assert.assertEquals("1c8", headers.getFirst(BraveHttpHeaders.SpanId.getName()));
         Assert.assertEquals(null, headers.getFirst(BraveHttpHeaders.ParentSpanId.getName()));
         Assert.assertEquals("true", headers.getFirst(BraveHttpHeaders.Sampled.getName()));
     }

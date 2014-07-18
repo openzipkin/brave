@@ -45,10 +45,10 @@ public class JerseyClientTraceFilter extends ClientFilter {
     void addTracingHeaders(ClientRequest clientRequest, SpanId newSpan) {
         MultivaluedMap<String, Object> headers = clientRequest.getHeaders();
         if (newSpan != null) {
-            headers.add(BraveHttpHeaders.TraceId.getName(), String.valueOf(newSpan.getTraceId()));
-            headers.add(BraveHttpHeaders.SpanId.getName(), String.valueOf(newSpan.getSpanId()));
+            headers.add(BraveHttpHeaders.TraceId.getName(), Long.toHexString(newSpan.getTraceId()));
+            headers.add(BraveHttpHeaders.SpanId.getName(), Long.toHexString(newSpan.getSpanId()));
             if(newSpan.getParentSpanId() != null) {
-                headers.add(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(newSpan.getParentSpanId()));
+                headers.add(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(newSpan.getParentSpanId()));
             }
             headers.add(BraveHttpHeaders.Sampled.getName(), "true");
         } else {
