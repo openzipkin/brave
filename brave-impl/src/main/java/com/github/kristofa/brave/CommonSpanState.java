@@ -1,9 +1,5 @@
 package com.github.kristofa.brave;
 
-import java.net.InetSocketAddress;
-
-import com.twitter.zipkin.gen.Endpoint;
-
 /**
  * Keeps track of common trace/span state information.
  * <p>
