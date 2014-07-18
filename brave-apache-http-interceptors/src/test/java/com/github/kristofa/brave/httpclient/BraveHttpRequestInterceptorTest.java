@@ -83,9 +83,9 @@ public class BraveHttpRequestInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
-        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
-        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(PARENT_SPAN_ID));
+        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID));
+        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID));
+        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(PARENT_SPAN_ID));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -108,8 +108,8 @@ public class BraveHttpRequestInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
-        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
+        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID));
+        inOrder.verify(httpRequest).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();

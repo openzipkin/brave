@@ -73,10 +73,10 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
         if (newSpanId != null) {
             LOGGER.debug("Will trace request. Span Id returned from ClientTracer: {}", newSpanId);
             request.addHeader(BraveHttpHeaders.Sampled.getName(), TRUE);
-            request.addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(newSpanId.getTraceId()));
-            request.addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(newSpanId.getSpanId()));
+            request.addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString((newSpanId.getTraceId())));
+            request.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(newSpanId.getSpanId()));
             if (newSpanId.getParentSpanId() != null) {
-                request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(newSpanId.getParentSpanId()));
+                request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(newSpanId.getParentSpanId()));
             }
             if (serviceAndSpanNames[0] != null) {
                 clientTracer.setCurrentClientServiceName(serviceAndSpanNames[0]);

@@ -94,7 +94,10 @@ public class ServletTraceFilter implements Filter {
     }
 
     private Long longOrNull(String value) {
-        return (value == null) ? null : Long.valueOf(value);
+        if (value == null) {
+            return null;
+        }
+        return Long.parseLong(value, 16);
     }
 
     @Override
