@@ -1,14 +1,14 @@
 package com.github.kristofa.brave.httpclient;
 
-import java.io.IOException;
-
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.client.ClientResponseInterceptor;
 import org.apache.commons.lang.Validate;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
 
-import com.github.kristofa.brave.ClientTracer;
+import java.io.IOException;
 
 /**
  * Apache HttpClient {@link HttpResponseInterceptor} that gets the HttpResponse, inspects the state. If the response
@@ -18,10 +18,7 @@ import com.github.kristofa.brave.ClientTracer;
  */
 public class BraveHttpResponseInterceptor implements HttpResponseInterceptor {
 
-    private static final String FAILURE_ANNOTATION = "failure";
-    private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
-
-    private final ClientTracer clientTracer;
+    private final ClientResponseInterceptor traceResponseBuilder;
 
     /**
      * Create a new instance.
@@ -30,7 +27,7 @@ public class BraveHttpResponseInterceptor implements HttpResponseInterceptor {
      */
     public BraveHttpResponseInterceptor(final ClientTracer clientTracer) {
         Validate.notNull(clientTracer);
-        this.clientTracer = clientTracer;
+        this.traceResponseBuilder = new ClientResponseInterceptor(clientTracer);
     }
 
     /**
@@ -38,18 +35,7 @@ public class BraveHttpResponseInterceptor implements HttpResponseInterceptor {
      */
     @Override
     public void process(final HttpResponse response, final HttpContext context) throws HttpException, IOException {
-        try {
-
-            final int responseStatus = response.getStatusLine().getStatusCode();
-            if (responseStatus < 200 || responseStatus > 299) {
-                // In this case response will be the error message.
-                clientTracer.submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, responseStatus);
-                clientTracer.submitAnnotation(FAILURE_ANNOTATION);
-            }
-        } finally {
-            clientTracer.setClientReceived();
-        }
-
+        traceResponseBuilder.handle(new ApacheClientResponseAdapter(response));
     }
 
 }
