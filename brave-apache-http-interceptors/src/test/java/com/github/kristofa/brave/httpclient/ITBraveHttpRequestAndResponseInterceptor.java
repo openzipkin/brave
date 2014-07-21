@@ -70,8 +70,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH)
-            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID))
-            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID))
+            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
+            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
             .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
@@ -143,8 +143,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH).queryParameter("x", "1").queryParameter("y", "2")
-            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID))
-            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID))
+            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
+            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
             .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
@@ -181,8 +181,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH)
-                .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID))
-                .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID))
+                .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
+                .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
                 .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);

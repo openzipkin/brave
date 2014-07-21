@@ -72,9 +72,9 @@ public class ServletTraceFilterTest {
     public void shouldGetTraceDataFromHeaders() throws Exception {
         when(endPointSubmitter.endPointSubmitted()).thenReturn(true);
 
-        when(servletRequest.getHeader(BraveHttpHeaders.TraceId.getName())).thenReturn(Long.toHexString(TRACE_ID));
-        when(servletRequest.getHeader(BraveHttpHeaders.SpanId.getName())).thenReturn(Long.toHexString(SPAN_ID));
-        when(servletRequest.getHeader(BraveHttpHeaders.ParentSpanId.getName())).thenReturn(Long.toHexString(PARENT_SPAN_ID));
+        when(servletRequest.getHeader(BraveHttpHeaders.TraceId.getName())).thenReturn(Long.toString(TRACE_ID, 16));
+        when(servletRequest.getHeader(BraveHttpHeaders.SpanId.getName())).thenReturn(Long.toString(SPAN_ID, 16));
+        when(servletRequest.getHeader(BraveHttpHeaders.ParentSpanId.getName())).thenReturn(Long.toString(PARENT_SPAN_ID, 16));
         when(servletRequest.getHeader(BraveHttpHeaders.Sampled.getName())).thenReturn(String.valueOf(SAMPLED_TRUE));
         when(servletRequest.getHeader(BraveHttpHeaders.SpanName.getName())).thenReturn(SPAN_NAME);
 

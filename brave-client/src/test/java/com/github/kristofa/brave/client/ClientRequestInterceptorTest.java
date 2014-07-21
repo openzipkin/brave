@@ -78,9 +78,9 @@ public class ClientRequestInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(PARENT_SPAN_ID));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toString(PARENT_SPAN_ID, 16));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -101,8 +101,8 @@ public class ClientRequestInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -123,9 +123,9 @@ public class ClientRequestInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(FULL_PATH);
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(TRACE_ID));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(SPAN_ID));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(PARENT_SPAN_ID));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toString(PARENT_SPAN_ID, 16));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
