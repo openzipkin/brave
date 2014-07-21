@@ -12,6 +12,10 @@ public class ClientRequestHeaders {
     private final static Logger LOGGER = LoggerFactory.getLogger(ClientRequestHeaders.class);
 
     public static void addTracingHeaders(ClientRequestAdapter clientRequestAdapter, SpanId spanId) {
+        addTracingHeaders(clientRequestAdapter, spanId, null);
+    }
+
+    public static void addTracingHeaders(ClientRequestAdapter clientRequestAdapter, SpanId spanId, String spanName) {
         if (spanId != null) {
             LOGGER.debug("Will trace request. Span Id returned from ClientTracer: {}", spanId);
             clientRequestAdapter.addHeader(BraveHttpHeaders.Sampled.getName(), TRUE);
@@ -19,6 +23,9 @@ public class ClientRequestHeaders {
             clientRequestAdapter.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(spanId.getSpanId(), 16));
             if (spanId.getParentSpanId() != null) {
                 clientRequestAdapter.addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toString(spanId.getParentSpanId(), 16));
+            }
+            if(spanName != null) {
+                clientRequestAdapter.addHeader(BraveHttpHeaders.SpanName.getName(), spanName);
             }
         } else {
             LOGGER.debug("Will not trace request.");
