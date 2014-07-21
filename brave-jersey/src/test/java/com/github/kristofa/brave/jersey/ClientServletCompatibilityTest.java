@@ -57,12 +57,12 @@ public class ClientServletCompatibilityTest {
 
     @Test
     public void shouldHandleAllProvidedIds() throws Exception {
-        validateUsingSpan(mockSpan(123L, 456L, 789L));
+        validateUsingSpan(mockSpan(-123L, 456L, 789L));
     }
 
     @Test
     public void shouldHandleMissingParentId() throws Exception {
-        validateUsingSpan(mockSpan(123L, 456L, null));
+        validateUsingSpan(mockSpan(-123L, 456L, null));
     }
 
     private SpanId mockSpan(long traceId, long spanId, Long parentSpanId) {
