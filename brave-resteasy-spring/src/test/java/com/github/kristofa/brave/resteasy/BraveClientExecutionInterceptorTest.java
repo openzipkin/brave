@@ -1,14 +1,8 @@
 package com.github.kristofa.brave.resteasy;
 
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
-import javax.ws.rs.core.MultivaluedMap;
-
+import com.github.kristofa.brave.BraveHttpHeaders;
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.SpanId;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.specimpl.MultivaluedMapImpl;
@@ -17,9 +11,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.SpanId;
+import javax.ws.rs.core.MultivaluedMap;
+
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 public class BraveClientExecutionInterceptorTest {
 
@@ -30,15 +29,20 @@ public class BraveClientExecutionInterceptorTest {
     private static final Integer OK_STATUS = 200;
     private static final String CUSTOM_SPAN_NAME = "ExecuteThisRequest";
     private static final String REQUEST_ANNOTATION = "request";
+    private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
     private static final Long TRACE_ID = new Long(254656);
     private static final Long SPAN_ID = new Long(548999);
     private static final Long PARENT_SPAN_ID = new Long(44564);
+    private static final String TRACE_ID_HEX = Long.toHexString(TRACE_ID);
+    private static final String SPAN_ID_HEX = Long.toHexString(SPAN_ID);
+    private static final String PARENT_SPAN_ID_HEX = Long.toHexString(PARENT_SPAN_ID);
     private static final Integer SERVER_ERROR_STATUS = 500;
     private ClientTracer mockClientTracer;
     private ClientExecutionContext mockExecutionContext;
     private ClientRequest mockClientRequest;
     private ClientResponse<?> mockClientResponse;
     private BraveClientExecutionInterceptor interceptor;
+
 
     @Before
     public void setup() throws Exception {
@@ -66,9 +70,11 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(CUSTOM_SPAN_NAME);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "false");
+        inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
         inOrder.verify(mockExecutionContext).proceed();
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, OK_STATUS);
         inOrder.verify(mockClientTracer).setClientReceived();
         verifyNoMoreInteractions(mockClientTracer);
     }
@@ -83,9 +89,11 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "false");
+        inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
         inOrder.verify(mockExecutionContext).proceed();
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, OK_STATUS);
         inOrder.verify(mockClientTracer).setClientReceived();
         verifyNoMoreInteractions(mockClientTracer);
     }
@@ -105,12 +113,13 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID_HEX);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
         inOrder.verify(mockExecutionContext).proceed();
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, OK_STATUS);
         inOrder.verify(mockClientTracer).setClientReceived();
         verifyNoMoreInteractions(mockClientTracer);
     }
@@ -130,13 +139,14 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), PARENT_SPAN_ID);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), PARENT_SPAN_ID_HEX);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
         inOrder.verify(mockExecutionContext).proceed();
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, OK_STATUS);
         inOrder.verify(mockClientTracer).setClientReceived();
         verifyNoMoreInteractions(mockClientTracer);
     }
@@ -158,9 +168,9 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), PARENT_SPAN_ID);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), PARENT_SPAN_ID_HEX);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -195,13 +205,14 @@ public class BraveClientExecutionInterceptorTest {
 
         inOrder.verify(mockClientTracer).startNewSpan(PATH);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "true");
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), PARENT_SPAN_ID);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID_HEX);
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(PARENT_SPAN_ID));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
         inOrder.verify(mockExecutionContext).proceed();
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, 0);
         inOrder.verify(mockClientTracer).submitAnnotation("failure");
         inOrder.verify(mockClientTracer).setClientReceived();
         verifyNoMoreInteractions(mockClientTracer);

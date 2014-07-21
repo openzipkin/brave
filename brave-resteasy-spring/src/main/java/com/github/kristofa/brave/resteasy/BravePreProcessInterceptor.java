@@ -143,7 +143,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     private Long getFirstLongValueFor(final Entry<String, List<String>> headerEntry) {
 
         final String firstStringValueFor = getFirstStringValueFor(headerEntry);
-        return firstStringValueFor == null ? null : Long.valueOf(firstStringValueFor);
+        return firstStringValueFor == null ? null : Long.valueOf(firstStringValueFor, 16);
 
     }
 

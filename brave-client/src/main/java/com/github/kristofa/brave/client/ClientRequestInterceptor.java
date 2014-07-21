@@ -29,7 +29,7 @@ public class ClientRequestInterceptor {
 
     private Optional<String> getServiceName(ClientRequestAdapter clientRequestAdapter, Optional<String> serviceNameOverride) {
         Optional<String> serviceName;
-        if(serviceNameOverride.isPresent()) {
+        if (serviceNameOverride.isPresent()) {
             serviceName = serviceNameOverride;
         } else {
             String path = clientRequestAdapter.getUri().getPath();
@@ -47,14 +47,13 @@ public class ClientRequestInterceptor {
 
     private String getSpanName(ClientRequestAdapter clientRequestAdapter, Optional<String> serviceNameOverride) {
         String spanName;
-        if(serviceNameOverride.isPresent()) {
-            if (clientRequestAdapter.getSpanName().isPresent()) {
-                spanName = clientRequestAdapter.getSpanName().get();
-            } else {
-                spanName = clientRequestAdapter.getUri().getPath();
-            }
+        Optional<String> spanNameFromRequest = clientRequestAdapter.getSpanName();
+        String path = clientRequestAdapter.getUri().getPath();
+        if (spanNameFromRequest.isPresent()) {
+            spanName = spanNameFromRequest.get();
+        } else if (serviceNameOverride.isPresent()) {
+            spanName = path;
         } else {
-            final String path = clientRequestAdapter.getUri().getPath();
             final String[] split = path.split("/");
             if (split.length > 2 && path.startsWith("/")) {
                 // If path starts with '/', then context is between first two '/'. Left over is path for service.

@@ -1,24 +1,19 @@
 package com.github.kristofa.brave.resteasy;
 
-import java.net.URL;
-
-import javax.ws.rs.ext.Provider;
-
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.client.ClientRequestInterceptor;
+import com.github.kristofa.brave.client.ClientResponseInterceptor;
+import com.google.common.base.Optional;
 import org.apache.commons.lang.Validate;
-import org.apache.commons.lang3.StringUtils;
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.interception.ClientExecutionContext;
 import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.SpanId;
+import javax.ws.rs.ext.Provider;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -47,14 +42,8 @@ import com.github.kristofa.brave.SpanId;
 @ClientInterceptor
 public class BraveClientExecutionInterceptor implements ClientExecutionInterceptor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(BraveClientExecutionInterceptor.class);
-    private static final String REQUEST_ANNOTATION = "request";
-    private static final String FAILURE_ANNOTATION = "failure";
-    private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
-    private static final String TRUE = "true";
-    private static final String FALSE = "false";
-
-    private final ClientTracer clientTracer;
+    private final ClientRequestInterceptor clientRequestInterceptor;
+    private final ClientResponseInterceptor clientResponseInterceptor;
 
     /**
      * Create a new instance.
@@ -64,7 +53,8 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
     @Autowired
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer) {
         Validate.notNull(clientTracer);
-        this.clientTracer = clientTracer;
+        this.clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
+        this.clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
     }
 
     /**
@@ -74,63 +64,21 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
     public ClientResponse<?> execute(final ClientExecutionContext ctx) throws Exception {
 
         final ClientRequest request = ctx.getRequest();
-        final URL url = new URL(request.getUri());
-        final String[] serviceAndSpanName = buildServiceAndSpanName(url);
 
-        String spanName = request.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
-        if (StringUtils.isEmpty(spanName)) {
-            spanName = serviceAndSpanName[1];
-        }
+        clientRequestInterceptor.handle(new RestEasyClientRequestAdapter(request), Optional.<String>absent());
 
-        final SpanId newSpanId = clientTracer.startNewSpan(spanName);
-        if (newSpanId != null) {
-            LOGGER.debug("Will trace request. Span Id returned from ClientTracer: {}", newSpanId);
-            request.header(BraveHttpHeaders.Sampled.getName(), TRUE);
-            request.header(BraveHttpHeaders.TraceId.getName(), newSpanId.getTraceId());
-            request.header(BraveHttpHeaders.SpanId.getName(), newSpanId.getSpanId());
-            if (newSpanId.getParentSpanId() != null) {
-                request.header(BraveHttpHeaders.ParentSpanId.getName(), newSpanId.getParentSpanId());
-            }
-            if (serviceAndSpanName[0] != null) {
-                clientTracer.setCurrentClientServiceName(serviceAndSpanName[0]);
-            }
-        } else {
-            LOGGER.debug("Will not trace request.");
-            request.header(BraveHttpHeaders.Sampled.getName(), FALSE);
-        }
-
-        clientTracer.submitBinaryAnnotation(REQUEST_ANNOTATION, request.getHttpMethod() + " " + request.getUri());
-        clientTracer.setClientSent();
+        ClientResponse<?> response = null;
+        Exception exception = null;
         try {
-            final ClientResponse<?> response = ctx.proceed();
-            final int responseStatus = response.getStatus();
-            if (responseStatus < 200 || responseStatus > 299) {
-                // In this case response will be the error message.
-                clientTracer.submitBinaryAnnotation(HTTP_RESPONSE_CODE_ANNOTATION, responseStatus);
-                clientTracer.submitAnnotation(FAILURE_ANNOTATION);
-            }
-            return response;
+            response = ctx.proceed();
         } catch (final Exception e) {
-            clientTracer.submitAnnotation(FAILURE_ANNOTATION);
-            throw e;
-        } finally {
-            clientTracer.setClientReceived();
+            exception = e;
         }
-    }
 
-    private String[] buildServiceAndSpanName(final URL url) {
-
-        final String[] parts = new String[2];
-        final String path = url.getPath();
-        final String[] split = path.split("/");
-        if (split.length > 2 && path.startsWith("/")) {
-            // Path starts with / and first part till 2nd / is context path. Left over is path for service.
-            final int contextPathSeparatorIndex = path.indexOf("/", 1);
-            parts[0] = path.substring(1, contextPathSeparatorIndex);
-            parts[1] = path.substring(contextPathSeparatorIndex);
-        } else {
-            parts[1] = path;
+        clientResponseInterceptor.handle(new RestEasyClientResponseAdapter(response));
+        if(exception != null) {
+            throw exception;
         }
-        return parts;
+        return response;
     }
 }
