@@ -1,16 +1,17 @@
 package com.github.kristofa.brave.jersey;
 
+import java.net.URI;
+
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientRequestAdapter;
 import com.google.common.base.Optional;
 import com.sun.jersey.api.client.ClientRequest;
 
-import java.net.URI;
+class JerseyClientRequestAdapter implements ClientRequestAdapter {
 
-public class JerseyClientRequestAdapter implements ClientRequestAdapter {
     private final ClientRequest clientRequest;
 
-    JerseyClientRequestAdapter(ClientRequest clientRequest) {
+    JerseyClientRequestAdapter(final ClientRequest clientRequest) {
         this.clientRequest = clientRequest;
     }
 
@@ -27,7 +28,7 @@ public class JerseyClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public Optional<String> getSpanName() {
         Optional<String> spanName = Optional.absent();
-        Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
+        final Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
         if (spanNameHeader != null) {
             spanName = Optional.fromNullable(spanNameHeader.toString());
         }
@@ -35,7 +36,7 @@ public class JerseyClientRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public void addHeader(String header, String value) {
+    public void addHeader(final String header, final String value) {
         clientRequest.getHeaders().add(header, value);
     }
 }
