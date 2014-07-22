@@ -86,11 +86,12 @@ For other dependencies see README.md files for sub modules.
 If you would like to contribute to brave here are some topics that might give you inspiration :wink:
 
 * Database tracing: Hibernate / Spring JDBC template support
+* Similar as introduction of brave-client in version 2.2.1, introduce brave-server which adds an abstraction about ServerTracer which should remove code duplication and improve consistency between implementations.
 * ca / sa annotation support: Submitting Client Address and Server Address annotations.
-* Support for other frameworks.
 * Aggregation of data. Realtime (eg using [Storm](http://storm-project.net)).
 * Extend `flume-zipkin-metrics-sink` with support for other back-ends next to graphite.
 * Improve [Jersey](https://jersey.java.net) support by updating Jersey to latest version and implements `ContainerRequestFilter` and `ContainerResponseFilter` iso current servlet filter.
+* Support for other frameworks.
 
 Feel free to submit pull requests.   
 
