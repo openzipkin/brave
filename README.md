@@ -17,10 +17,12 @@ short:
 > are reusable and don't interfere with the existing business logic or architecture. Besides not impacting
 > business logic or architecute we off course also want it to have a neglectable impact on performance.
 
-I looked into reusing zipkin 'as is' but did not find an elegant way to use the exising Scala code/api's 
-into the Java/Spring code I want to incorporate it.  
+You should use brave instead of Zipkin if:
 
-However Brave uses the Zipkin thrift generated classes as part of its api so it is easy to use existing
+*   You don't want to add Scala as a dependency to your Java project.
+*   OR you want out of the box integration support for [RESTEasy](http://resteasy.jboss.org), [Jersey](https://jersey.java.net), [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.3.x/index.html).
+
+Brave uses the Zipkin thrift generated classes as part of its api so it is easy to use existing
 Zipkin components with Brave (zipkin-collector, zipkin-query, zipkin-ui, cassandra store,...). 
 
 I'm very thankful to Twitter for open sourcing
