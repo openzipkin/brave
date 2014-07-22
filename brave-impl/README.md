@@ -20,6 +20,7 @@ own apps.
 
 ## sequence diagram ##
 
+
 ![Client and ServerTracer usage.](https://raw.github.com/wiki/kristofa/brave/brave-client-servertracer-usage.png)
 
 The sequence diagram shows a service that executes a request to another service.
@@ -28,6 +29,8 @@ It shows interaction with the brave Client- , ServerTracer and SpanCollector.
 The actions taking place in both services are also indicated by the coloured boxes. The
 blue box indicates the caller service (client), the green box indicates the callee (server). Typically both
 services run in separate JVM.
+
+As of version 2.2.1 you can use code present in `brave-client` which adds an abstraction layer around ClientTracer and makes it easier to integrate new clients with less code.
 
 Some explanation:
 
