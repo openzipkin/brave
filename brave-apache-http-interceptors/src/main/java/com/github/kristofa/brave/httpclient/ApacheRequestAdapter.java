@@ -1,17 +1,19 @@
 package com.github.kristofa.brave.httpclient;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
-import com.google.common.base.Optional;
+import java.net.URI;
+
 import org.apache.http.Header;
 import org.apache.http.HttpRequest;
 
-import java.net.URI;
+import com.github.kristofa.brave.BraveHttpHeaders;
+import com.github.kristofa.brave.ClientRequestAdapter;
+import com.google.common.base.Optional;
 
-public class ApacheRequestAdapter implements ClientRequestAdapter {
+class ApacheRequestAdapter implements ClientRequestAdapter {
+
     private final HttpRequest request;
 
-    public ApacheRequestAdapter(HttpRequest request) {
+    public ApacheRequestAdapter(final HttpRequest request) {
         this.request = request;
     }
 
@@ -28,15 +30,15 @@ public class ApacheRequestAdapter implements ClientRequestAdapter {
     @Override
     public Optional<String> getSpanName() {
         Optional<String> spanName = Optional.absent();
-        Header spanNameHeader = request.getFirstHeader(BraveHttpHeaders.SpanName.getName());
-        if(spanNameHeader != null) {
+        final Header spanNameHeader = request.getFirstHeader(BraveHttpHeaders.SpanName.getName());
+        if (spanNameHeader != null) {
             spanName = Optional.fromNullable(spanNameHeader.getValue());
         }
         return spanName;
     }
 
     @Override
-    public void addHeader(String header, String value) {
+    public void addHeader(final String header, final String value) {
         request.addHeader(header, value);
     }
 }

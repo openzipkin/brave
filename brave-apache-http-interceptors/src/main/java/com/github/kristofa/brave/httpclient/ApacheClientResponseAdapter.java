@@ -1,12 +1,14 @@
 package com.github.kristofa.brave.httpclient;
 
-import com.github.kristofa.brave.ClientResponseAdapter;
 import org.apache.http.HttpResponse;
 
-public class ApacheClientResponseAdapter implements ClientResponseAdapter {
+import com.github.kristofa.brave.ClientResponseAdapter;
+
+class ApacheClientResponseAdapter implements ClientResponseAdapter {
+
     private final HttpResponse response;
 
-    public ApacheClientResponseAdapter(HttpResponse response) {
+    public ApacheClientResponseAdapter(final HttpResponse response) {
         this.response = response;
     }
 
