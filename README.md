@@ -103,7 +103,9 @@ bug fixing /  new functionality / backwards compatibility.
 
 ### 2.2.1-SNAPSHOT ###
 
-Nothing so far.
+* Introduce `brave-client` module that prevents code duplication and adds consistency to different brave integration implementations. brave-client is used by all client implementations (RESTEasy, Jersey, Apache HttpClient). See [#27](https://github.com/kristofa/brave/issues/27) and [#29](https://github.com/kristofa/brave/issues/29) by [srapp](https://github.com/srapp). 
+* Improve compatibility with Zipkin. Hex encode trace id's. See [#26](https://github.com/kristofa/brave/issues/26) by [klette](https://github.com/klette) and fix [#28](https://github.com/kristofa/brave/issues/26) by [srapp](https://github.com/srapp).
+* Bug fix in Jersey implementation by [srapp](https://github.com/srapp) . See [#22](https://github.com/kristofa/brave/issues/22)
 
 ### 2.2.0 ###
 
