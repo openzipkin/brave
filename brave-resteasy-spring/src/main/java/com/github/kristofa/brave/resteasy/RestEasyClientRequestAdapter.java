@@ -1,17 +1,19 @@
 package com.github.kristofa.brave.resteasy;
 
+import java.net.URI;
+
+import org.jboss.resteasy.client.ClientRequest;
+
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientRequestAdapter;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
-import org.jboss.resteasy.client.ClientRequest;
 
-import java.net.URI;
+class RestEasyClientRequestAdapter implements ClientRequestAdapter {
 
-public class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     private final ClientRequest clientRequest;
 
-    public RestEasyClientRequestAdapter(ClientRequest clientRequest) {
+    public RestEasyClientRequestAdapter(final ClientRequest clientRequest) {
         this.clientRequest = clientRequest;
     }
 
@@ -19,7 +21,7 @@ public class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     public URI getUri() {
         try {
             return URI.create(clientRequest.getUri());
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw Throwables.propagate(e);
         }
     }
@@ -32,7 +34,7 @@ public class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public Optional<String> getSpanName() {
         Optional<String> spanName = Optional.absent();
-        Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
+        final Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
         if (spanNameHeader != null) {
             spanName = Optional.fromNullable(spanNameHeader.toString());
         }
@@ -40,7 +42,7 @@ public class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public void addHeader(String header, String value) {
+    public void addHeader(final String header, final String value) {
         clientRequest.header(header, value);
     }
 }
