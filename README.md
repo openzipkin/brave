@@ -19,8 +19,9 @@ short:
 
 You should use brave instead of Zipkin if:
 
+*   You can't use [Finagle](https://github.com/twitter/finagle).
 *   You don't want to add Scala as a dependency to your Java project.
-*   OR you want out of the box integration support for [RESTEasy](http://resteasy.jboss.org), [Jersey](https://jersey.java.net), [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.3.x/index.html).
+*   You want out of the box integration support for [RESTEasy](http://resteasy.jboss.org), [Jersey](https://jersey.java.net), [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.3.x/index.html).
 
 Brave uses the Zipkin thrift generated classes as part of its api so it is easy to use existing
 Zipkin components with Brave (zipkin-collector, zipkin-query, zipkin-ui, cassandra store,...). 
