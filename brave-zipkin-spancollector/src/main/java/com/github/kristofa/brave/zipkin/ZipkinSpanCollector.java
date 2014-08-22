@@ -14,7 +14,7 @@ import java.util.concurrent.Future;
 
 import javax.annotation.PreDestroy;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
