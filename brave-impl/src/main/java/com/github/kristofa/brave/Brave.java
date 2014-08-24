@@ -87,4 +87,14 @@ public class Brave {
         return new ServerSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
     }
 
+    /**
+     * Only relevant if you make async client call where the result is processed in the callback from a separate thread
+     * and you will use {@link ClientTracer},
+     *
+     * @see ClientSpanThreadBinder
+     * @return {@link ClientSpanThreadBinder}.
+     */
+    public static ClientSpanThreadBinder getClientSpanThreadBinder() {
+        return new ClientSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
+    }
 }
