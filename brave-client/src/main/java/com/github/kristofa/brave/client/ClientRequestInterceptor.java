@@ -5,6 +5,7 @@ import org.apache.commons.lang.Validate;
 import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
 import com.google.common.base.Optional;
 
 /**
@@ -16,7 +17,7 @@ import com.google.common.base.Optional;
  * abstraction instead of ClientTracer directly.
  * </p>
  * You will have to implement your own ClientRequestAdapter to provide necessary context.
- * 
+ *
  * @see ClientRequestAdapter
  * @see ClientResponseInterceptor
  */
@@ -24,15 +25,17 @@ public class ClientRequestInterceptor {
 
     private final ClientTracer clientTracer;
     private static final String REQUEST_ANNOTATION = "request";
+    private final Optional<SpanNameFilter> spanNameFilter;
 
-    public ClientRequestInterceptor(final ClientTracer clientTracer) {
+    public ClientRequestInterceptor(final ClientTracer clientTracer, final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
         this.clientTracer = clientTracer;
+        this.spanNameFilter = spanNameFilter;
     }
 
     /**
      * Handles a client request.
-     * 
+     *
      * @param clientRequestAdapter Provides context about the request.
      * @param serviceNameOverride Optional name of the service the client request calls. In case it is not specified the name
      *            will be derived from the URI of the request. It is important the used service name should be same on client
@@ -75,7 +78,7 @@ public class ClientRequestInterceptor {
         final Optional<String> spanNameFromRequest = clientRequestAdapter.getSpanName();
         final String path = clientRequestAdapter.getUri().getPath();
         if (spanNameFromRequest.isPresent()) {
-            spanName = spanNameFromRequest.get();
+            return spanNameFromRequest.get();
         } else if (serviceNameOverride.isPresent()) {
             spanName = path;
         } else {
@@ -87,6 +90,9 @@ public class ClientRequestInterceptor {
             } else {
                 spanName = path;
             }
+        }
+        if (spanNameFilter.isPresent()) {
+            spanName = spanNameFilter.get().filterSpanName(spanName);
         }
         return spanName;
     }
