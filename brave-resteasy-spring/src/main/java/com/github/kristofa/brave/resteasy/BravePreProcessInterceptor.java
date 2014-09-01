@@ -37,7 +37,7 @@ import com.twitter.zipkin.gen.Endpoint;
  * <li>If no trace information is submitted we will start a new span. In that case it means client does not support tracing
  * and should be adapted.</li>
  * </ol>
- * 
+ *
  * @author kristof
  */
 @Component
@@ -55,7 +55,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
     /**
      * Creates a new instance.
-     * 
+     *
      * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
      * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
      * @param randomGenerator Random generator.
@@ -111,9 +111,18 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         if (!endPointSubmitter.endPointSubmitted()) {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
-            final String contextPath = servletRequest.getContextPath();
+            final String contextPath = getContextPathWithoutFirstSlash();
             LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
             endPointSubmitter.submit(localAddr, localPort, contextPath);
+        }
+    }
+
+    private String getContextPathWithoutFirstSlash() {
+        final String contextPath = servletRequest.getContextPath();
+        if (contextPath.startsWith("/")) {
+            return contextPath.substring(1);
+        } else {
+            return contextPath;
         }
     }
 
