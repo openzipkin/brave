@@ -1,7 +1,9 @@
 package com.github.kristofa.brave.resteasy;
 
-import javax.ws.rs.ext.Provider;
-
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.client.ClientRequestInterceptor;
+import com.github.kristofa.brave.client.ClientResponseInterceptor;
+import com.google.common.base.Optional;
 import org.apache.commons.lang.Validate;
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
@@ -11,11 +13,7 @@ import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientRequestInterceptor;
-import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import com.google.common.base.Optional;
+import javax.ws.rs.ext.Provider;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -36,7 +34,7 @@ import com.google.common.base.Optional;
  * <code>http://localhost:8080/service/path/a/b</code>
  * <p/>
  * The service name will be 'service. The span name will be '/path/a/b'.
- *
+ * 
  * @author kristof
  */
 @Component
@@ -49,35 +47,14 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
     /**
      * Create a new instance.
-     *
+     * 
      * @param clientTracer ClientTracer.
      */
-    @Autowired(required = false)
+    @Autowired
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer) {
-        this(clientTracer, Optional.<SpanNameFilter>absent());
-    }
-
-    /**
-     * Create a new instance.
-     *
-     * @param clientTracer ClientTracer.
-     */
-    @Autowired(required = false)
-    public BraveClientExecutionInterceptor(final ClientTracer clientTracer, final SpanNameFilter spanNameFilter) {
-        this(clientTracer, Optional.of(spanNameFilter));
-    }
-
-    /**
-     * Private Constructor.
-     *
-     * @param clientTracer ClientTracer
-     * @param spanNameFilter {@link Optional} {@link SpanNameFilter}
-     */
-    private BraveClientExecutionInterceptor(final ClientTracer clientTracer, final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
-        Validate.notNull(spanNameFilter);
-        clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
-        clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
+        this.clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
+        this.clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
     }
 
     /**
@@ -99,7 +76,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         }
 
         clientResponseInterceptor.handle(new RestEasyClientResponseAdapter(response));
-        if (exception != null) {
+        if(exception != null) {
             throw exception;
         }
         return response;
