@@ -33,7 +33,6 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
      * @param spanCollector Will collect the spans.
      * @param traceFilters List of TraceFilters. Will be executed in order. If one returns <code>false</code> there will be
      *            no tracing and next ones will not be executed anymore. So order is important.
-     * @param commonAnnotationSubmitter Common Annotation Submitter.
      */
     ClientTracerImpl(final ServerAndClientSpanState state, final Random randomGenerator, final SpanCollector spanCollector,
         final List<TraceFilter> traceFilters) {
@@ -104,7 +103,7 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
         if (sample == null) {
             // No sample indication is present.
             for (final TraceFilter traceFilter : traceFilters) {
-                if (traceFilter.trace(requestName) == false) {
+                if (!traceFilter.trace(requestName)) {
                     state.setCurrentClientSpan(null);
                     state.setCurrentClientServiceName(null);
                     return null;

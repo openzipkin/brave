@@ -18,6 +18,8 @@ import com.twitter.zipkin.gen.zipkinCoreConstants;
  */
 class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTracer {
 
+    private static final ServerSpanImpl NOT_SAMPLED = new ServerSpanImpl(false);
+
     private final ServerSpanState state;
     private final SpanCollector collector;
     private final List<TraceFilter> traceFilters = new ArrayList<TraceFilter>();
@@ -80,7 +82,7 @@ class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTrac
      */
     @Override
     public void setStateNoTracing() {
-        state.setCurrentServerSpan(new ServerSpanImpl(false));
+        state.setCurrentServerSpan(NOT_SAMPLED);
 
     }
 
@@ -92,7 +94,7 @@ class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTrac
         Validate.notBlank(spanName, "Span name should not be null.");
         for (final TraceFilter traceFilter : traceFilters) {
             if (traceFilter.trace(spanName) == false) {
-                state.setCurrentServerSpan(new ServerSpanImpl(false));
+                state.setCurrentServerSpan(NOT_SAMPLED);
                 return;
             }
         }

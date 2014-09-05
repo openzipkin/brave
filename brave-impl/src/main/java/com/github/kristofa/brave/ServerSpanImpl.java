@@ -27,7 +27,6 @@ class ServerSpanImpl implements ServerSpan {
      * @param spanId Span id.
      * @param parentSpanId Parent span id, can be <code>null</code>.
      * @param name Span name.
-     * @param sample Indicates if we should sample this span.
      */
     ServerSpanImpl(final long traceId, final long spanId, final Long parentSpanId, final String name) {
 
@@ -43,6 +42,8 @@ class ServerSpanImpl implements ServerSpan {
 
     /**
      * Creates a new empty instance with no Span but with sample indication.
+     *
+     * @param sample Indicates if we should sample this span.
      */
     ServerSpanImpl(final Boolean sample) {
         span = null;
