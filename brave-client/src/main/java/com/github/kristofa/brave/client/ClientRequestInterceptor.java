@@ -44,7 +44,7 @@ public class ClientRequestInterceptor {
     public void handle(final ClientRequestAdapter clientRequestAdapter, final Optional<String> serviceNameOverride) {
         final String spanName = getSpanName(clientRequestAdapter, serviceNameOverride);
         final SpanId newSpanId = clientTracer.startNewSpan(spanName);
-        ClientRequestHeaders.addTracingHeaders(clientRequestAdapter, newSpanId);
+        ClientRequestHeaders.addTracingHeaders(clientRequestAdapter, newSpanId, spanName);
         final Optional<String> serviceName = getServiceName(clientRequestAdapter, serviceNameOverride);
         if (serviceName.isPresent()) {
             clientTracer.setCurrentClientServiceName(serviceName.get());

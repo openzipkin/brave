@@ -28,6 +28,7 @@ public class ClientRequestInterceptorTest {
     private static final String CONTEXT = "context";
     private static final String PATH = "/path/path2";
     private static final String FULL_PATH = "/" + CONTEXT + PATH;
+    private static final String FILTERED_PATH = "/path/<numeric>";
     private static final String METHOD = "GET";
     private static final Long SPAN_ID = 85446l;
     private static final Long PARENT_SPAN_ID = 58848l;
@@ -89,6 +90,7 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(),
             Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -111,8 +113,10 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
+
         inOrder.verify(mockClientTracer).setClientSent();
         verifyNoMoreInteractions(mockClientTracer, mockSpanNameFilter);
     }
@@ -135,6 +139,7 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(),
             Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), FULL_PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
@@ -147,18 +152,19 @@ public class ClientRequestInterceptorTest {
         when(spanId.getSpanId()).thenReturn(SPAN_ID);
         when(spanId.getParentSpanId()).thenReturn(PARENT_SPAN_ID);
         when(spanId.getTraceId()).thenReturn(TRACE_ID);
-        when(mockClientTracer.startNewSpan(PATH)).thenReturn(spanId);
-        when(mockSpanNameFilter.filterSpanName(PATH)).thenReturn(PATH);
+        when(mockClientTracer.startNewSpan(FILTERED_PATH)).thenReturn(spanId);
+        when(mockSpanNameFilter.filterSpanName(PATH)).thenReturn(FILTERED_PATH);
 
         interceptor = new ClientRequestInterceptor(mockClientTracer, Optional.of(mockSpanNameFilter));
         interceptor.handle(clientRequestAdapter, Optional.<String>absent());
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter, mockSpanNameFilter);
         inOrder.verify(mockSpanNameFilter).filterSpanName(PATH);
-        inOrder.verify(mockClientTracer).startNewSpan(PATH);
+        inOrder.verify(mockClientTracer).startNewSpan(FILTERED_PATH);
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), FILTERED_PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
