@@ -69,20 +69,22 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
      */
     @Override
     public Client exception(final TException exception) {
-        LOGGER.error("Thrift exception.", exception);
         if (exception instanceof TTransportException) {
+            LOGGER.debug("TransportException detected, closing current connection and opening new one", exception);
             // Close existing transport.
             close();
 
             try {
                 setup();
             } catch (final TException e) {
-                LOGGER.error("Trying to reconnect to Thrift server failed.", e);
+                LOGGER.warn("Trying to reconnect to Thrift server failed.", e);
                 return null;
             }
             return client;
+        } else {
+            LOGGER.warn("Thrift exception.", exception);
+            return null;
         }
-        return null;
     }
 
     /**

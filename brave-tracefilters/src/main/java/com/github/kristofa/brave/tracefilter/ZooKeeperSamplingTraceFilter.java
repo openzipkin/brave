@@ -152,7 +152,7 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
                 return zkCurator.getData().usingWatcher(this).forPath(znode);
             }
         } catch (final Exception e) {
-            LOGGER.error("Zookeeper exception.", e);
+            LOGGER.warn("Zookeeper exception.", e);
         }
         return null;
     }
