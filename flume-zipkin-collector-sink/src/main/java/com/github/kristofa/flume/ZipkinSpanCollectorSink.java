@@ -130,12 +130,12 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
             txn.commit();
         } catch (final TTransportException e) {
             txn.rollback();
-            LOGGER.error("Got a TTransportException. Will close current Transport and create new connection/client.");
+            LOGGER.info("Got a TTransportException. Will close current Transport and create new connection/client.");
             try {
                 connect();
                 LOGGER.info("Reconnect succeeded.");
             } catch (final TTransportException e1) {
-                LOGGER.error("Trying to reconnect failed.", e1);
+                LOGGER.warn("Trying to reconnect failed when recovering from " + e.getMessage(), e1);
                 throw new EventDeliveryException(e1);
             }
         } catch (final Throwable e) {
@@ -186,7 +186,7 @@ public class ZipkinSpanCollectorSink extends AbstractSink implements Configurabl
             transport.open();
             sinkCounter.incrementConnectionCreatedCount();
         } catch (final TTransportException e) {
-            LOGGER.error("Staring ZipkinSpanCollectorSink failed!", e);
+            LOGGER.warn("Staring ZipkinSpanCollectorSink failed!", e);
             sinkCounter.incrementConnectionFailedCount();
             lifeCycleState = LifecycleState.ERROR;
             throw e;

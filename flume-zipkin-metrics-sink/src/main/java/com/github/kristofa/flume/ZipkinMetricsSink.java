@@ -96,7 +96,7 @@ public class ZipkinMetricsSink extends AbstractSink implements Configurable {
                     try {
                         process(create(event));
                     } catch (final TException e) {
-                        LOGGER.error("We were unable to build spans from received data...", e);
+                        LOGGER.warn("We were unable to build spans from received data...", e);
                     }
                 }
                 sinkCounter.incrementBatchCompleteCount();
@@ -107,7 +107,7 @@ public class ZipkinMetricsSink extends AbstractSink implements Configurable {
             txn.commit();
         } catch (final IOException e) {
             txn.rollback();
-            LOGGER.error("IOException", e);
+            LOGGER.warn("IOException", e);
         } catch (final Throwable e) {
             txn.rollback();
             throw new EventDeliveryException(e);

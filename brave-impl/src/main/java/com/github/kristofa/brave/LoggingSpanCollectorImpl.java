@@ -48,7 +48,9 @@ public class LoggingSpanCollectorImpl implements SpanCollector {
             }
         }
 
-        getLogger().info(span.toString());
+        if (getLogger().isInfoEnabled()) {
+            getLogger().info(span.toString());
+        }
     }
 
     /**

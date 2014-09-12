@@ -97,7 +97,7 @@ class SpanProcessingThread implements Callable<Integer> {
                     subsequentEmptyBatches = 0;
                 }
             } catch (final Exception e) {
-                LOGGER.error("Unexpected exception.", e);
+                LOGGER.warn("Unexpected exception flushing spans", e);
             }
 
         } while (stop == false);
@@ -106,9 +106,9 @@ class SpanProcessingThread implements Callable<Integer> {
 
     private void log(final List<LogEntry> logEntries) {
         final long start = System.currentTimeMillis();
-        final boolean succes = log(clientProvider.getClient(), logEntries);
+        final boolean success = log(clientProvider.getClient(), logEntries);
         processedSpans += logEntries.size();
-        if (succes && LOGGER.isDebugEnabled()) {
+        if (success && LOGGER.isDebugEnabled()) {
             final long end = System.currentTimeMillis();
             LOGGER.debug("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
         }
@@ -119,18 +119,18 @@ class SpanProcessingThread implements Callable<Integer> {
             clientProvider.getClient().Log(logEntries);
             return true;
         } catch (final TException e) {
-            LOGGER.error("Exception when trying to log Span.", e);
+            LOGGER.debug("Exception when trying to log Span.  Will retry: ", e.getMessage());
             final Client newClient = clientProvider.exception(e);
             if (newClient != null) {
-                LOGGER.info("Got new client with new connection. Logging with new client.");
+                LOGGER.debug("Got new client with new connection. Logging with new client.");
                 try {
                     newClient.Log(logEntries);
                     return true;
                 } catch (final TException e2) {
-                    LOGGER.error("Logging spans with new client also failed. " + logEntries.size() + " spans are lost!", e2);
+                    LOGGER.warn("Logging spans failed. " + logEntries.size() + " spans are lost!", e2);
                 }
             } else {
-                LOGGER.error("Logging spans failed. " + logEntries.size() + " spans are lost!");
+                LOGGER.warn("Logging spans failed (couldn't establish connection). " + logEntries.size() + " spans are lost!");
             }
         }
         return false;
