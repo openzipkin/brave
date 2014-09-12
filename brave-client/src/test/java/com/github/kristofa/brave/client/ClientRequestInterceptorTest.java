@@ -1,29 +1,34 @@
 package com.github.kristofa.brave.client;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.SpanId;
-import com.google.common.base.Optional;
-import org.apache.http.HttpException;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.InOrder;
-
-import javax.xml.ws.http.HTTPException;
-import java.io.IOException;
-import java.net.URI;
-
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.net.URI;
+
+import javax.xml.ws.http.HTTPException;
+
+import org.apache.http.HttpException;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InOrder;
+
+import com.github.kristofa.brave.BraveHttpHeaders;
+import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+import com.google.common.base.Optional;
+
 public class ClientRequestInterceptorTest {
+
     private static final String SERVICE_NAME = "service";
     private static final String CONTEXT = "context";
     private static final String PATH = "/path/path2";
     private static final String FULL_PATH = "/" + CONTEXT + PATH;
+    private static final String FILTERED_PATH = "/path/<numeric>";
     private static final String METHOD = "GET";
     private static final Long SPAN_ID = 85446l;
     private static final Long PARENT_SPAN_ID = 58848l;
@@ -32,11 +37,14 @@ public class ClientRequestInterceptorTest {
     private ClientRequestInterceptor interceptor;
     private ClientTracer mockClientTracer;
     private ClientRequestAdapter clientRequestAdapter;
+    private SpanNameFilter mockSpanNameFilter;
 
     @Before
     public void setUp() throws Exception {
         mockClientTracer = mock(ClientTracer.class);
-        interceptor = new ClientRequestInterceptor(mockClientTracer);
+        mockSpanNameFilter = mock(SpanNameFilter.class);
+        final Optional<SpanNameFilter> optionalSpanNameFilter = Optional.absent();
+        interceptor = new ClientRequestInterceptor(mockClientTracer, optionalSpanNameFilter);
         clientRequestAdapter = mock(ClientRequestAdapter.class);
         when(clientRequestAdapter.getUri()).thenReturn(URI.create(FULL_PATH));
         when(clientRequestAdapter.getMethod()).thenReturn(METHOD);
@@ -45,7 +53,7 @@ public class ClientRequestInterceptorTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testBraveHttpRequestInterceptor() {
-        new ClientRequestInterceptor(null);
+        new ClientRequestInterceptor(null, Optional.of(mockSpanNameFilter));
     }
 
     @Test
@@ -80,11 +88,13 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(),
+            Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
-        verifyNoMoreInteractions(mockClientTracer);
+        verifyNoMoreInteractions(mockClientTracer, mockSpanNameFilter);
     }
 
     @Test
@@ -103,10 +113,12 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
+
         inOrder.verify(mockClientTracer).setClientSent();
-        verifyNoMoreInteractions(mockClientTracer);
+        verifyNoMoreInteractions(mockClientTracer, mockSpanNameFilter);
     }
 
     @Test
@@ -125,10 +137,37 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
         inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
-        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.ParentSpanId.getName(),
+            Long.toString(PARENT_SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), FULL_PATH);
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
         inOrder.verify(mockClientTracer).setClientSent();
-        verifyNoMoreInteractions(mockClientTracer);
+        verifyNoMoreInteractions(mockClientTracer, mockSpanNameFilter);
+    }
+
+    @Test
+    public void testHandleServiceWithSpanNameFilter() {
+        final SpanId spanId = mock(SpanId.class);
+        when(spanId.getSpanId()).thenReturn(SPAN_ID);
+        when(spanId.getParentSpanId()).thenReturn(PARENT_SPAN_ID);
+        when(spanId.getTraceId()).thenReturn(TRACE_ID);
+        when(mockClientTracer.startNewSpan(FILTERED_PATH)).thenReturn(spanId);
+        when(mockSpanNameFilter.filterSpanName(PATH)).thenReturn(FILTERED_PATH);
+
+        interceptor = new ClientRequestInterceptor(mockClientTracer, Optional.of(mockSpanNameFilter));
+        interceptor.handle(clientRequestAdapter, Optional.<String>absent());
+
+        final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter, mockSpanNameFilter);
+        inOrder.verify(mockSpanNameFilter).filterSpanName(PATH);
+        inOrder.verify(mockClientTracer).startNewSpan(FILTERED_PATH);
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16));
+        inOrder.verify(clientRequestAdapter).addHeader(BraveHttpHeaders.SpanName.getName(), FILTERED_PATH);
+        inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT);
+        inOrder.verify(mockClientTracer).submitBinaryAnnotation("request", METHOD + " " + FULL_PATH);
+        inOrder.verify(mockClientTracer).setClientSent();
+        verifyNoMoreInteractions(mockClientTracer, mockSpanNameFilter);
     }
 }

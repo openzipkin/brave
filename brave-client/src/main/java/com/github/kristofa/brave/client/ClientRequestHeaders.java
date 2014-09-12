@@ -13,10 +13,6 @@ public class ClientRequestHeaders {
     private static final String FALSE = "false";
     private final static Logger LOGGER = LoggerFactory.getLogger(ClientRequestHeaders.class);
 
-    public static void addTracingHeaders(final ClientRequestAdapter clientRequestAdapter, final SpanId spanId) {
-        addTracingHeaders(clientRequestAdapter, spanId, null);
-    }
-
     public static void addTracingHeaders(final ClientRequestAdapter clientRequestAdapter, final SpanId spanId,
         final String spanName) {
         if (spanId != null) {

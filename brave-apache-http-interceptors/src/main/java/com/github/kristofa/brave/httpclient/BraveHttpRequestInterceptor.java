@@ -1,12 +1,14 @@
 package com.github.kristofa.brave.httpclient;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientRequestInterceptor;
-import com.google.common.base.Optional;
 import org.apache.commons.lang.Validate;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.protocol.HttpContext;
+
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.client.ClientRequestInterceptor;
+import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+import com.google.common.base.Optional;
 
 /**
  * Apache HttpClient {@link HttpRequestInterceptor} that adds brave/zipkin annotations to outgoing client request.
@@ -17,22 +19,49 @@ import org.apache.http.protocol.HttpContext;
  * <code>/service/path/a/b</code>
  * <p/>
  * The service name will be 'service'. The span name will be '/path/a/b'.
- * 
+ *
  * @author kristof
  */
 public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
+
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final Optional<String> serviceName;
 
     /**
      * Creates a new instance.
-     * 
+     *
      * @param clientTracer ClientTracer should not be <code>null</code>.
+     * @param serviceName Optional Service Name override
+     * @param spanNameFilter
      */
-    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, Optional<String> serviceName) {
+    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, final Optional<String> serviceName,
+        final SpanNameFilter spanNameFilter) {
+        this(clientTracer, serviceName, Optional.of(spanNameFilter));
+    }
+
+    /**
+     * Creates a new instance.
+     *
+     * @param clientTracer ClientTracer should not be <code>null</code>.
+     * @param serviceName Optional Service Name override
+     */
+    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, final Optional<String> serviceName) {
+        this(clientTracer, serviceName, Optional.<SpanNameFilter>absent());
+
+    }
+
+    /**
+     * Private constructor, creates a new instance.
+     *
+     * @param clientTracer ClientTracer should not be <code>null</code>.
+     * @param serviceName Optional Service Name override
+     * @param spanNameFilter optional {@link SpanNameFilter}
+     */
+    private BraveHttpRequestInterceptor(final ClientTracer clientTracer, final Optional<String> serviceName,
+        final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
         Validate.notNull(serviceName);
-        this.clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
+        clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         this.serviceName = serviceName;
     }
 

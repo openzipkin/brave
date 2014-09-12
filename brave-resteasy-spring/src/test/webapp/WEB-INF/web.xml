@@ -29,6 +29,7 @@
           com.github.kristofa.brave.resteasy.BraveRestEasyResourceImpl
           com.github.kristofa.brave.resteasy.TraceFiltersConfiguration
           com.github.kristofa.brave.resteasy.SpanCollectorConfiguration
+          com.github.kristofa.brave.resteasy.SpanNameFilterConfig
 		   </param-value>
 	  </init-param>
 	  <load-on-startup>1</load-on-startup>
