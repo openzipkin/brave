@@ -103,10 +103,17 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
+### 2.2.2-SNAPSHOT ###
+
+* Add basic building blocks for asynch client support. See [#30](https://github.com/kristofa/brave/pull/30).
+* Bugfix for aligning service names in rest-easy implementation. See [#32](https://github.com/kristofa/brave/pull/32).
+* Lower log messages from ERROR to WARN. See [#36](https://github.com/kristofa/brave/pull/36).
+* Support for filtering span names with variable content. See [#33](https://github.com/kristofa/brave/pull/33).
+
 ### 2.2.1 ###
 
 * Introduce `brave-client` module that prevents code duplication and adds consistency to different brave integration implementations. brave-client is used by all client implementations (RESTEasy, Jersey, Apache HttpClient). See [#27](https://github.com/kristofa/brave/issues/27) and [#29](https://github.com/kristofa/brave/issues/29) by [srapp](https://github.com/srapp). 
-* Improve compatibility with Zipkin. Hex encode trace id's. See [#26](https://github.com/kristofa/brave/issues/26) by [klette](https://github.com/klette) and fix [#28](https://github.com/kristofa/brave/issues/26) by [srapp](https://github.com/srapp).
+* Improve compatibility with Zipkin. Hex encode trace id's. See [#26](https://github.com/kristofa/brave/issues/26) by [klette](https://github.com/klette) and fix [#28](https://github.com/kristofa/brave/issues/28) by [srapp](https://github.com/srapp).
 * Bug fix in Jersey implementation by [srapp](https://github.com/srapp) . See [#22](https://github.com/kristofa/brave/issues/22)
 * Fix dependency issue. See [#20](https://github.com/kristofa/brave/issues/20) by [K-jo](https://github.com/K-Jo).
 
