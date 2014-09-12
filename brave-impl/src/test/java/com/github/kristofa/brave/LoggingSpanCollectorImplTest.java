@@ -44,7 +44,7 @@ public class LoggingSpanCollectorImplTest {
     public void testCollect() {
         final Span mockSpan = mock(Span.class);
         spanCollector.collect(mockSpan);
-        verify(mockLogger).info(mockSpan.toString());
+        verify(mockLogger).isInfoEnabled();
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }
 
@@ -62,7 +62,7 @@ public class LoggingSpanCollectorImplTest {
         final InOrder inOrder = inOrder(mockSpan, mockLogger);
 
         inOrder.verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
-        inOrder.verify(mockLogger).info(mockSpan.toString());
+        inOrder.verify(mockLogger).isInfoEnabled();
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }
@@ -82,7 +82,7 @@ public class LoggingSpanCollectorImplTest {
 
         verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
         verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration2);
-        verify(mockLogger).info(mockSpan.toString());
+        verify(mockLogger).isInfoEnabled();
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }
