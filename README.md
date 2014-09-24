@@ -103,7 +103,7 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.3-SNAPSHOT ###
+### 2.3 ###
 
 * Add basic building blocks for asynch client support. See [#30](https://github.com/kristofa/brave/pull/30).
 * Bugfix for aligning service names in rest-easy implementation. See [#32](https://github.com/kristofa/brave/pull/32).
