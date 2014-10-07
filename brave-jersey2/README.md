@@ -21,10 +21,10 @@ In your web.xml:
 
 ```xml
 <init-param>
-<param-name>jersey.config.server.provider.packages</param-name>
-<param-value>
-my.existing.packages,com.github.kristofa.brave.jersey2
-</param-value>
+    <param-name>jersey.config.server.provider.packages</param-name>
+    <param-value>
+        my.existing.packages,com.github.kristofa.brave.jersey2
+    </param-value>
 </init-param>
 ```
 
