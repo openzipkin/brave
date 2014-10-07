@@ -18,14 +18,15 @@ For server side setup, you simply need to tell Jersey to scan the com.github.kri
 the container filters will be picked up and registered automatically.
 
 In your web.xml:
-    ```xml
-    <init-param>
-        <param-name>jersey.config.server.provider.packages</param-name>
-        <param-value>
-            my.existing.packages,com.github.kristofa.brave.jersey2
-        </param-value>
-    </init-param>
-    ```
+
+```xml
+<init-param>
+<param-name>jersey.config.server.provider.packages</param-name>
+<param-value>
+my.existing.packages,com.github.kristofa.brave.jersey2
+</param-value>
+</init-param>
+```
 
 For client side setup, you just have to register the client filters with your Jersey client before you make your request.
 
