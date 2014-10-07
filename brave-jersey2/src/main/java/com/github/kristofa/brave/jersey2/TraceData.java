@@ -1,16 +1,5 @@
-/*
- *
- *  * Copyright (C) 2014 by Teradata Corporation.
- *  * All Rights Reserved.
- *  * TERADATA CONFIDENTIAL AND TRADE SECRET
- *
- */
-
 package com.github.kristofa.brave.jersey2;
 
-/**
- * Created by ct186007 on 9/29/14.
- */
 public class TraceData {
 
     private Long traceId;
