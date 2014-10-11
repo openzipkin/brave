@@ -6,7 +6,7 @@ package com.github.kristofa.brave;
  * <li>Detect if we are part of existing trace/span. For example with services doing http requests this can be done by
  * detecting and getting values of http header that reresent trace/span ids.</li>
  * <li>Once detected we submit state using one of 3 following methods depending on the state we are in:
- * {@link ServerTracer#setStateExistingTrace(TraceContext)}, {@link ServerTracer#setStateNoTracing()} or
+ * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String), {@link ServerTracer#setStateNoTracing()} or
  * {@link ServerTracer#setStateUnknown(String)}.</li>
  * <li>Next we execute {@link ServerTracer#setServerReceived()} to mark the point in time at which we received the request.</li>
  * <li>Service request executes its logic...
