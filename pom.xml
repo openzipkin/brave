@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  
+
   <parent>
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
     <version>7</version>
   </parent>
-    
+
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.kristofa</groupId>
@@ -43,7 +43,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring.version>3.2.2.RELEASE</spring.version>
   </properties>
-  
+
   <modules>
   	<module>brave-interfaces</module>
     <module>brave-impl</module>
@@ -58,7 +58,7 @@
     <module>flume-zipkin-metrics-sink</module>
     <module>brave-apache-http-interceptors</module>
   </modules>
-  
+
   <dependencyManagement>
   	<dependencies>
   		<dependency>
@@ -102,12 +102,14 @@
 		<groupId>log4j</groupId>
 		<artifactId>log4j</artifactId>
 		<version>1.2.16</version>
+		<scope>provided</scope>
 	</dependency>
 	<!-- Slf4j is tricky to get right so put our dependencies here. -->
 	<dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-log4j12</artifactId>
         <version>1.7.5</version>
+		<scope>provided</scope>
     </dependency>
     <dependency>
         <groupId>org.slf4j</groupId>
@@ -118,9 +120,10 @@
         <groupId>org.slf4j</groupId>
         <artifactId>jcl-over-slf4j</artifactId>
         <version>1.7.5</version>
+		<scope>provided</scope>
     </dependency>
   </dependencies>
-  
+
   <build>
         <resources>
             <resource>
@@ -151,10 +154,10 @@
             </testResource>
             <testResource>
                 <filtering>false</filtering>
-                <directory>src/test/resources</directory>               
+                <directory>src/test/resources</directory>
             </testResource>
         </testResources>
-        
+
         <pluginManagement>
       	  <plugins>
        	     	<plugin>
@@ -228,8 +231,8 @@
 						</execution>
 					</executions>
 	    		</plugin>
-          </plugins>        
-        </pluginManagement> 
+          </plugins>
+        </pluginManagement>
     </build>
     <profiles>
         <profile>
