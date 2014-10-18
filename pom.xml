@@ -57,6 +57,7 @@
     <module>brave-jersey2</module>
     <module>flume-zipkin-metrics-sink</module>
     <module>brave-apache-http-interceptors</module>
+    <module>brave-databases</module>
   </modules>
 
   <dependencyManagement>
