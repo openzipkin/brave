@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.db;
+package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.google.common.base.Optional;
