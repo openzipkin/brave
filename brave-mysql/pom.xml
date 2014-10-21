@@ -10,7 +10,7 @@
    <packaging>jar</packaging>
    <name>brave-mysql</name>
   <description>
-    Database integration that uses the brave api to submit client span information.
+    MySQL integration that uses the brave api to submit client span information.
   </description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
