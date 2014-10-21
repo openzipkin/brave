@@ -14,7 +14,7 @@ brave-impl api objects (Java based container configuration).
 
 It does not use XML configuration but Java based container configuration using annotations.
 
-If you include his module on your classpath you can add the configurations to your Spring
+If you include this module on your classpath you can add the configurations to your Spring
 context by including com.github.kristofa.brave to the classpath scanning path or by adding 
 the individual config classes.
 
@@ -41,3 +41,22 @@ Reason is that injecting generic types is not possible to instead the ClientTrac
 relies on a TraceFilters instance to be available on the Spring Context.
 
 
+The `ServletHandlerInterceptor` can be used to handle the server side integration, which will set up the
+trace information or create as required. This can be configured in either XML or Java.
+
+```xml
+<mvc:interceptors>
+    <bean class="com.github.kristofa.brave.ServletHandlerInterceptor" />
+</mvc:interceptors>
+```
+
+```java
+public class WebConfig extends WebMvcConfigurerAdapter {
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new ServletHandlerInterceptor());
+    }
+
+}
+```
