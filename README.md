@@ -103,6 +103,13 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
+### 2.4-SNAPSHOT ###
+
+* New feature: Add server side tracing support for Spring mvc based services. [42](https://github.com/kristofa/brave/pull/42)
+* New feature: Add MySQL support (trace queries). [43](https://github.com/kristofa/brave/pull/43)
+* Improvement: Don't enforce log4j to users of brave. Make dependency `provided`. [41](https://github.com/kristofa/brave/pull/41)
+* New feature: Add Jersey 2 support [#38](https://github.com/kristofa/brave/pull/38)
+
 ### 2.3 ###
 
 * Add basic building blocks for asynch client support. See [#30](https://github.com/kristofa/brave/pull/30).
