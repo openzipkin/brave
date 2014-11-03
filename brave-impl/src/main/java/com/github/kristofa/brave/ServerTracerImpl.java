@@ -115,16 +115,33 @@ class ServerTracerImpl extends AbstractAnnotationSubmitter implements ServerTrac
      */
     @Override
     public void setServerSend() {
-        final Span currentSpan = state.getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            submitAnnotation(zipkinCoreConstants.SERVER_SEND);
-            final long threadDuration = state.getServerSpanThreadDuration();
-            if (threadDuration > 0) {
-                submitBinaryAnnotation(BraveAnnotations.THREAD_DURATION, String.valueOf(threadDuration));
-            }
+        final ServerSpan serverSpan = state.getCurrentServerSpan();
+        if (serverSpan != null) {
+            final Span currentSpan = serverSpan.getSpan();
+            if (currentSpan != null) {
+                submitAnnotation(zipkinCoreConstants.SERVER_SEND);
+                final long threadDuration = state.getServerSpanThreadDuration();
+                if (threadDuration > 0) {
+                    submitBinaryAnnotation(BraveAnnotations.THREAD_DURATION, String.valueOf(threadDuration));
+                }
 
-            collector.collect(currentSpan);
-            state.setCurrentServerSpan(null);
+                collector.collect(currentSpan);
+                state.setCurrentServerSpan(null);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateServerSpanName(final String spanName) {
+        final ServerSpan serverSpan = state.getCurrentServerSpan();
+        if (serverSpan != null) {
+            final Span currentSpan = serverSpan.getSpan();
+            if (currentSpan != null) {
+                currentSpan.setName(spanName);
+            }
         }
     }
 
