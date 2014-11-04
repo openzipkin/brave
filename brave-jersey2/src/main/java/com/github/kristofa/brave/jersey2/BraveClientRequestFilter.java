@@ -24,9 +24,13 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
 
     @Inject
     public BraveClientRequestFilter(final ClientTracer clientTracer, final Optional<String> serviceName) {
+        this(clientTracer, serviceName, Optional.<SpanNameFilter>absent());
+    }
+
+    public BraveClientRequestFilter(final ClientTracer clientTracer, final Optional<String> serviceName, final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
         Validate.notNull(serviceName);
-        final Optional<SpanNameFilter> spanNameFilter = Optional.absent();
+        Validate.notNull(spanNameFilter);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         this.serviceName = serviceName;
     }
