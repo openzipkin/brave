@@ -28,9 +28,13 @@ public class JerseyClientTraceFilter extends ClientFilter {
 
     @Inject
     public JerseyClientTraceFilter(final ClientTracer clientTracer, final Optional<String> serviceName) {
+        this(clientTracer, serviceName, Optional.<SpanNameFilter>absent());
+    }
+
+    public JerseyClientTraceFilter(final ClientTracer clientTracer, final Optional<String> serviceName, final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
         Validate.notNull(serviceName);
-        final Optional<SpanNameFilter> spanNameFilter = Optional.absent();
+        Validate.notNull(spanNameFilter);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
         this.serviceName = serviceName;
