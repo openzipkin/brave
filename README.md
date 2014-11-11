@@ -1,7 +1,7 @@
 # brave #
 
 
-Java implementation of [Zipkin](https://github.com/twitter/zipkin/).
+Java distributed tracing implementation compatible with [Zipkin](https://github.com/twitter/zipkin/).
 
 Zipkin is based on [Dapper](http://research.google.com/pubs/pub36356.html).
 
