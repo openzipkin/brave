@@ -1,0 +1,134 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+  	<groupId>com.github.kristofa</groupId>
+	<artifactId>brave</artifactId>
+    <version>2.4-SNAPSHOT</version>
+  </parent>   
+  
+  <artifactId>brave-resteasy3-spring</artifactId>
+  <packaging>jar</packaging>
+
+  <name>brave-resteasy3-spring</name>
+  <description>
+    RestEasy client and server side interceptors that use the brave api to submit client and server side span information.
+  </description>
+  <url>https://github.com/kristofa/brave</url>
+  <licenses>
+    <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+    </license>
+   </licenses>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <resteasy.version>3.0.8.Final</resteasy.version>
+    <jetty.version>8.1.9.v20130131</jetty.version>
+     <spring.version>3.2.2.RELEASE</spring.version>
+  </properties>
+  
+  <dependencies>
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-client</artifactId>
+        <version>2.4-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.1</version>
+    </dependency>
+    <dependency>
+		<groupId>org.jboss.resteasy</groupId>
+		<artifactId>resteasy-jaxrs</artifactId>
+		<version>${resteasy.version}</version>
+		<scope>provided</scope>
+	</dependency>
+	<dependency>
+    	<groupId>org.springframework</groupId>
+	    <artifactId>spring-core</artifactId>
+	    <scope>provided</scope>
+    </dependency>
+    <dependency>
+	    <groupId>org.springframework</groupId>
+	    <artifactId>spring-context</artifactId>
+	    <scope>provided</scope>
+    </dependency>
+	<!-- All dependencies below are added since adding integration test -->
+	<dependency>
+        <groupId>org.jboss.resteasy</groupId>
+        <artifactId>resteasy-spring</artifactId>
+        <version>${resteasy.version}</version>
+        <scope>test</scope>
+    </dependency>
+	<dependency>
+       <groupId>org.eclipse.jetty</groupId>
+       <artifactId>jetty-webapp</artifactId>
+       <version>${jetty.version}</version>
+       <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-impl-spring</artifactId>
+        <version>2.4-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-beans</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-web</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-webmvc</artifactId>
+        <version>${spring.version}</version>
+        <scope>provided</scope>
+    </dependency>  
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-servlet</artifactId>
+        <version>${jetty.version}</version>
+        <scope>provided</scope>
+    </dependency>
+  </dependencies>
+  
+  <build>	
+  	<plugins>
+            <plugin>           
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>                
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-eclipse-plugin</artifactId>                
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>                
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>                
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+            </plugin>
+            <plugin>
+            	<groupId>org.apache.maven.plugins</groupId>
+		          <artifactId>maven-failsafe-plugin</artifactId>		
+	    </plugin>        
+        </plugins>
+        
+  </build>
+  
+
+</project>

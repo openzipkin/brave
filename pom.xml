@@ -49,6 +49,7 @@
     <module>brave-impl</module>
     <module>brave-impl-spring</module>
     <module>brave-resteasy-spring</module>
+    <module>brave-resteasy3-spring</module>
     <module>brave-zipkin-spancollector</module>
     <module>flume-zipkin-collector-sink</module>
     <module>brave-tracefilters</module>
