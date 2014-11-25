@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.SpanId;
 
 public class ClientRequestHeaders {
@@ -18,11 +19,11 @@ public class ClientRequestHeaders {
         if (spanId != null) {
             LOGGER.debug("Will trace request. Span Id returned from ClientTracer: {}", spanId);
             clientRequestAdapter.addHeader(BraveHttpHeaders.Sampled.getName(), TRUE);
-            clientRequestAdapter.addHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(spanId.getTraceId(), 16));
-            clientRequestAdapter.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(spanId.getSpanId(), 16));
+            clientRequestAdapter.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(spanId.getTraceId()));
+            clientRequestAdapter.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId.getSpanId()));
             if (spanId.getParentSpanId() != null) {
                 clientRequestAdapter.addHeader(BraveHttpHeaders.ParentSpanId.getName(),
-                    Long.toString(spanId.getParentSpanId(), 16));
+                		IdConversion.convertToString(spanId.getParentSpanId()));
             }
             if (spanName != null) {
                 clientRequestAdapter.addHeader(BraveHttpHeaders.SpanName.getName(), spanName);

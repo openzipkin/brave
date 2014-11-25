@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 import com.twitter.zipkin.gen.Endpoint;
 
@@ -152,7 +153,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     private Long getFirstLongValueFor(final Entry<String, List<String>> headerEntry) {
 
         final String firstStringValueFor = getFirstStringValueFor(headerEntry);
-        return firstStringValueFor == null ? null : Long.valueOf(firstStringValueFor, 16);
+        return firstStringValueFor == null ? null : IdConversion.convertToLong(firstStringValueFor);
 
     }
 
