@@ -2,7 +2,9 @@ package com.github.kristofa.brave.jersey;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +12,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
+
 import java.io.IOException;
 
 /**
@@ -97,7 +100,7 @@ public class ServletTraceFilter implements Filter {
         if (value == null) {
             return null;
         }
-        return Long.parseLong(value, 16);
+        return IdConversion.convertToLong(value);
     }
 
     @Override
