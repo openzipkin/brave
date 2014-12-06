@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
+import com.google.common.base.Optional;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class JaxRS2ClientRequestAdapterTest {
 
-    public static final Object TEST_SPAN_NAME = "testSpanName";
+    public static final String TEST_SPAN_NAME = "testSpanName";
     @Mock
     private ClientRequestContext request;
 
@@ -66,7 +67,7 @@ public class JaxRS2ClientRequestAdapterTest {
 
     @Test
     public void testGetSpanName() throws Exception {
-        assertThat(jaxRS2ClientRequestAdapter.getSpanName(), is(TEST_SPAN_NAME));
+        assertThat(jaxRS2ClientRequestAdapter.getSpanName(), is(Optional.of(TEST_SPAN_NAME)));
 
         verify(request).getHeaders();
         verify(headers).getFirst(BraveHttpHeaders.SpanName.getName());
