@@ -8,9 +8,9 @@
         <groupId>com.github.kristofa</groupId>
         <version>2.4-SNAPSHOT</version>
     </parent>
-    <artifactId>brave-jersey2</artifactId>
+    <artifactId>brave-jaxrs2</artifactId>
     <packaging>jar</packaging>
-    <name>brave-jersey2</name>
+    <name>brave-jaxrs2</name>
     <description>
         Jersey 2.x integration that uses the brave api to submit client and server side span information.
     </description>
@@ -39,36 +39,32 @@
             <version>2.4-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>com.github.kristofa</groupId>
-            <artifactId>brave-jaxrs2</artifactId>
-            <version>2.4-SNAPSHOT</version>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <version>2.5</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>javax.ws.rs-api</artifactId>
+            <version>2.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!--Test Dependencies-->
-        <dependency>
-            <groupId>org.glassfish.jersey.ext</groupId>
-            <artifactId>jersey-spring3</artifactId>
-            <version>${jersey.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.test-framework.providers</groupId>
-            <artifactId>jersey-test-framework-provider-inmemory</artifactId>
-            <version>${jersey.version}</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-impl-spring</artifactId>
             <version>2.4-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.core</groupId>
-            <artifactId>jersey-client</artifactId>
-            <version>${jersey.version}</version>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
 
     <build>
@@ -78,8 +74,8 @@
                 	<artifactId>maven-compiler-plugin</artifactId>
                 	<version>2.5.1</version>
                 	<configuration>
-                   		<source>1.7</source>
-                    	<target>1.7</target>
+                   		<source>1.6</source>
+                    	<target>1.6</target>
                     	<optimize>true</optimize>
                     	<debug>true</debug>
                 	</configuration>

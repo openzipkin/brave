@@ -34,17 +34,17 @@
         <artifactId>brave-client</artifactId>
         <version>2.4-SNAPSHOT</version>
     </dependency>
+      <dependency>
+          <groupId>com.github.kristofa</groupId>
+          <artifactId>brave-jaxrs2</artifactId>
+          <version>2.4-SNAPSHOT</version>
+      </dependency>
     <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
         <version>3.1</version>
     </dependency>
-    <dependency>
-		<groupId>org.jboss.resteasy</groupId>
-		<artifactId>resteasy-jaxrs</artifactId>
-		<version>${resteasy.version}</version>
-		<scope>provided</scope>
-	</dependency>
+
 	<dependency>
     	<groupId>org.springframework</groupId>
 	    <artifactId>spring-core</artifactId>
@@ -59,6 +59,12 @@
 	<dependency>
         <groupId>org.jboss.resteasy</groupId>
         <artifactId>resteasy-spring</artifactId>
+        <version>${resteasy.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.jboss.resteasy</groupId>
+        <artifactId>resteasy-jaxrs</artifactId>
         <version>${resteasy.version}</version>
         <scope>test</scope>
     </dependency>
@@ -98,6 +104,12 @@
         <version>${jetty.version}</version>
         <scope>provided</scope>
     </dependency>
+      <dependency>
+          <groupId>org.jboss.resteasy</groupId>
+          <artifactId>resteasy-client</artifactId>
+          <version>${resteasy.version}</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
   
   <build>	
