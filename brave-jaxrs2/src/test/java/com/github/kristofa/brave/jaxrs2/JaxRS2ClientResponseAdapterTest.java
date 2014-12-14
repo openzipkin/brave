@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

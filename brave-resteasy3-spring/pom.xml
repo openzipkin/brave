@@ -98,12 +98,6 @@
         <version>${spring.version}</version>
         <scope>provided</scope>
     </dependency>  
-    <dependency>
-        <groupId>org.eclipse.jetty</groupId>
-        <artifactId>jetty-servlet</artifactId>
-        <version>${jetty.version}</version>
-        <scope>provided</scope>
-    </dependency>
       <dependency>
           <groupId>org.jboss.resteasy</groupId>
           <artifactId>resteasy-client</artifactId>
