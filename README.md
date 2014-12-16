@@ -111,6 +111,7 @@ bug fixing /  new functionality / backwards compatibility.
 * New feature: Add Jersey 2 support [#38](https://github.com/kristofa/brave/pull/38)
 * New feature: Add new SpanNameFilter that uses pattern matching. [#46](https://github.com/kristofa/brave/pull/46)
 * Bugfix: Make conversion of negative span id's from long <-> String compatible with zipkin / Finagle.  [#39](https://github.com/kristofa/brave/issues/39)
+* New feature: RestEasy 3 implementation. [#48](https://github.com/kristofa/brave/pull/48)
 
 ### 2.3 ###
 
