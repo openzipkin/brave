@@ -1,20 +1,12 @@
 # brave-jersey2 #
 
 The brave-jersey2 module provides Jersey 2.x client and server support which will allow Brave to be used with any
-existing Jersey 2.x application with minimal configuration.
-
-The module contains 4 filters:
-
-*   `BraveContainerRequestFilter`  - Intercepts incoming container requests and extracts any trace information from
-the request header. Also sends sr annotations.
-*   `BraveContainerResponseFilter` - Intercepts outgoing container responses and sends ss annotations.
-*   `BraveClientRequestFilter` - Intercepts Jersey client requests and adds or forwards tracing information in the header.
-Also sends cs annotations.
-*   `BraveClientResponseFilter` - Intercepts Jersey client responses and sends cr annotations. Also submits the completed span.
+existing Jersey 2.x application with minimal configuration. As both Jersey 2 and Resteasy 3 are both based on JAX-RS 2 
+common part is in brave-jaxrs2 module
 
 ## Usage ##
 
-For server side setup, you simply need to tell Jersey to scan the com.github.kristofa.brave.jersey2 package, and
+For server side setup, you simply need to tell Jersey to scan the com.github.kristofa.brave.jaxrs2 package, and
 the container filters will be picked up and registered automatically.
 
 In your web.xml:
@@ -23,7 +15,7 @@ In your web.xml:
 <init-param>
     <param-name>jersey.config.server.provider.packages</param-name>
     <param-value>
-        my.existing.packages,com.github.kristofa.brave.jersey2
+        my.existing.packages,com.github.kristofa.brave.jaxrs2
     </param-value>
 </init-param>
 ```
@@ -35,6 +27,4 @@ It should look something like:
     Client client = ClientBuilder.newClient();
     client.register(myBraveClientRequestFilter);
     client.register(myBraveClientResponseFilter);
-
-
 

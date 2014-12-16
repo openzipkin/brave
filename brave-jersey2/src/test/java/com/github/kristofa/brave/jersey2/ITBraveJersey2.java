@@ -3,6 +3,8 @@ package com.github.kristofa.brave.jersey2;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
+import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.google.common.base.Optional;
 import com.twitter.zipkin.gen.Span;
 import org.glassfish.jersey.test.JerseyTest;

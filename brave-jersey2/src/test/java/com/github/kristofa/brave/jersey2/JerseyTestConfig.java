@@ -5,7 +5,7 @@ import org.glassfish.jersey.server.ResourceConfig;
 public class JerseyTestConfig extends ResourceConfig {
 
     public JerseyTestConfig() {
-        packages("com.github.kristofa.brave.jersey2");
+        packages("com.github.kristofa.brave.jersey2", "com.github.kristofa.brave.jaxrs2");
     }
 
 }
