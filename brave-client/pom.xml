@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave</artifactId>
-        <version>2.4-SNAPSHOT</version>
+        <version>2.4</version>
     </parent>
 
     <artifactId>brave-client</artifactId>
@@ -29,7 +29,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-impl</artifactId>
-            <version>2.4-SNAPSHOT</version>
+            <version>2.4</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

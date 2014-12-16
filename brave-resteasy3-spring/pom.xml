@@ -3,7 +3,7 @@
   <parent>
   	<groupId>com.github.kristofa</groupId>
 	<artifactId>brave</artifactId>
-    <version>2.4-SNAPSHOT</version>
+    <version>2.4</version>
   </parent>   
   
   <artifactId>brave-resteasy3-spring</artifactId>
@@ -32,12 +32,12 @@
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-client</artifactId>
-        <version>2.4-SNAPSHOT</version>
+        <version>2.4</version>
     </dependency>
       <dependency>
           <groupId>com.github.kristofa</groupId>
           <artifactId>brave-jaxrs2</artifactId>
-          <version>2.4-SNAPSHOT</version>
+          <version>2.4</version>
       </dependency>
     <dependency>
         <groupId>org.apache.commons</groupId>
@@ -77,7 +77,7 @@
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl-spring</artifactId>
-        <version>2.4-SNAPSHOT</version>
+        <version>2.4</version>
         <scope>test</scope>
     </dependency>
     <dependency>
