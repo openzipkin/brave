@@ -17,7 +17,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     private static final Function<String, Long> TO_HEX = new Function<String, Long>() {
         @Override
         public Long apply(final String s) {
-            return Long.valueOf(s, 16);
+            return IdConversion.convertToLong(s);
         }
     };
     private final ServerSpanThreadBinder serverThreadBinder;
@@ -87,7 +87,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
         if (traceId.isPresent() && spanId.isPresent()) {
             final Optional<Long> parentSpanId = fromNullable(request.getHeader(BraveHttpHeaders.ParentSpanId.getName())).transform(TO_HEX);
-            serverTracer.setStateCurrentTrace(traceId.get(), spanId.get(), parentSpanId.get(), spanName);
+            serverTracer.setStateCurrentTrace(traceId.get(), spanId.get(), parentSpanId.orNull(), spanName);
         } else {
             serverTracer.setStateUnknown(spanName);
         }
