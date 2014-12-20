@@ -2,6 +2,7 @@ package com.github.kristofa.brave.resteasy;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.SpanId;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
@@ -30,12 +31,12 @@ public class BraveClientExecutionInterceptorTest {
     private static final String CUSTOM_SPAN_NAME = "ExecuteThisRequest";
     private static final String REQUEST_ANNOTATION = "request";
     private static final String HTTP_RESPONSE_CODE_ANNOTATION = "http.responsecode";
-    private static final Long TRACE_ID = new Long(254656);
-    private static final Long SPAN_ID = new Long(548999);
-    private static final Long PARENT_SPAN_ID = new Long(44564);
-    private static final String TRACE_ID_HEX = Long.toHexString(TRACE_ID);
-    private static final String SPAN_ID_HEX = Long.toHexString(SPAN_ID);
-    private static final String PARENT_SPAN_ID_HEX = Long.toHexString(PARENT_SPAN_ID);
+    private static final Long TRACE_ID = 254656L;
+    private static final Long SPAN_ID = 548999L;
+    private static final Long PARENT_SPAN_ID = 44564L;
+    private static final String TRACE_ID_HEX = IdConversion.convertToString(TRACE_ID);
+    private static final String SPAN_ID_HEX = IdConversion.convertToString(SPAN_ID);
+    private static final String PARENT_SPAN_ID_HEX = IdConversion.convertToString(PARENT_SPAN_ID);
     private static final Integer SERVER_ERROR_STATUS = 500;
     private ClientTracer mockClientTracer;
     private ClientExecutionContext mockExecutionContext;
@@ -207,7 +208,7 @@ public class BraveClientExecutionInterceptorTest {
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.Sampled.getName(), "true");
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.TraceId.getName(), TRACE_ID_HEX);
         inOrder.verify(mockClientRequest).header(BraveHttpHeaders.SpanId.getName(), SPAN_ID_HEX);
-        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(PARENT_SPAN_ID));
+        inOrder.verify(mockClientRequest).header(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(PARENT_SPAN_ID));
         inOrder.verify(mockClientTracer).setCurrentClientServiceName(CONTEXT_PATH);
         inOrder.verify(mockClientTracer).submitBinaryAnnotation(REQUEST_ANNOTATION, HTTP_METHOD + " " + URI);
         inOrder.verify(mockClientTracer).setClientSent();
