@@ -17,7 +17,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     private static final Function<String, Long> TO_HEX = new Function<String, Long>() {
         @Override
         public Long apply(final String s) {
-            return Long.valueOf(s, 16);
+            return IdConversion.convertToLong(s);
         }
     };
     private final ServerSpanThreadBinder serverThreadBinder;

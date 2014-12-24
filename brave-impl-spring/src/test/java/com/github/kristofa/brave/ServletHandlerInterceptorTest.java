@@ -131,9 +131,9 @@ public class ServletHandlerInterceptorTest {
         final long parentSpanId = 789L;
 
         request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(traceId));
-        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), Long.toHexString(parentSpanId));
+        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
+        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
+        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
 
         subject.preHandle(request, new MockHttpServletResponse(), this);
 
@@ -145,6 +145,70 @@ public class ServletHandlerInterceptorTest {
         verify(submitter).endPointSubmitted();
         verifyNoMoreInteractions(submitter);
     }
+
+    @Test
+    public void preHandleShouldSupportNegativeTraceId() {
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+
+        when(submitter.endPointSubmitted()).thenReturn(true);
+
+        final String name = randomAlphanumeric(20);
+        final long spanId = 123L;
+        final long traceId = -4667777584646200191L;
+        final long parentSpanId = 789L;
+
+        request.setRequestURI(name);
+        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
+        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
+        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
+
+        subject.preHandle(request, new MockHttpServletResponse(), this);
+
+        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(name));
+    }
+
+    @Test
+    public void preHandleShouldSupportNegativeSpanId() {
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+
+        when(submitter.endPointSubmitted()).thenReturn(true);
+
+        final String name = randomAlphanumeric(20);
+        final long spanId = -123L;
+        final long traceId = 456L;
+        final long parentSpanId = 789L;
+
+        request.setRequestURI(name);
+        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
+        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
+        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
+
+        subject.preHandle(request, new MockHttpServletResponse(), this);
+
+        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(name));
+    }
+
+    @Test
+    public void preHandleShouldSupportNegativeParentSpanId() {
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+
+        when(submitter.endPointSubmitted()).thenReturn(true);
+
+        final String name = randomAlphanumeric(20);
+        final long spanId = 123L;
+        final long traceId = 456L;
+        final long parentSpanId = -789L;
+
+        request.setRequestURI(name);
+        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
+        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
+        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
+
+        subject.preHandle(request, new MockHttpServletResponse(), this);
+
+        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(name));
+    }
+
 
     @Test
     public void afterConcurrentHandlingStartedShouldSaveStateAndClear() {
