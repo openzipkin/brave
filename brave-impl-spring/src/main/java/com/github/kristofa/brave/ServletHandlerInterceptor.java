@@ -87,7 +87,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
         if (traceId.isPresent() && spanId.isPresent()) {
             final Optional<Long> parentSpanId = fromNullable(request.getHeader(BraveHttpHeaders.ParentSpanId.getName())).transform(TO_HEX);
-            serverTracer.setStateCurrentTrace(traceId.get(), spanId.get(), parentSpanId.get(), spanName);
+            serverTracer.setStateCurrentTrace(traceId.get(), spanId.get(), parentSpanId.orNull(), spanName);
         } else {
             serverTracer.setStateUnknown(spanName);
         }

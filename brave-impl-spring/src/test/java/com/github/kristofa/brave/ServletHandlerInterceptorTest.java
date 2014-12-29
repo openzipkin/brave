@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 public class ServletHandlerInterceptorTest {
 
+    private static final Random RAND = new Random();
     private ServletHandlerInterceptor subject;
     private ServerTracer serverTracer;
     private EndPointSubmitter submitter;
@@ -60,6 +61,31 @@ public class ServletHandlerInterceptorTest {
     }
 
     @Test
+    public void preHandleShouldNotAssumeParentIdIsPresent() {
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+
+        when(submitter.endPointSubmitted()).thenReturn(true);
+
+        final String name = randomAlphanumeric(20);
+        final long spanId = RAND.nextLong();
+        final long traceId = RAND.nextLong();
+
+        request.setRequestURI(name);
+        request.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(spanId));
+        request.addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(traceId));
+
+        subject.preHandle(request, new MockHttpServletResponse(), this);
+
+        final InOrder order = inOrder(serverTracer);
+        order.verify(serverTracer).setStateCurrentTrace(traceId, spanId, null, name);
+        order.verify(serverTracer).setServerReceived();
+        order.verifyNoMoreInteractions();
+
+        verify(submitter).endPointSubmitted();
+        verifyNoMoreInteractions(submitter);
+    }
+
+    @Test
     public void preHandleShouldHonourSampledFlag() {
         final MockHttpServletRequest request = new MockHttpServletRequest();
 
@@ -77,7 +103,7 @@ public class ServletHandlerInterceptorTest {
     @Test
     public void preHandleShouldSubmitEndpointIfNotSubmitted() {
         final String address = randomAlphanumeric(20);
-        final int port = new Random().nextInt();
+        final int port = RAND.nextInt();
         final String serviceName = randomAlphanumeric(20);
 
         final MockHttpServletRequest request = new MockHttpServletRequest();
@@ -126,9 +152,9 @@ public class ServletHandlerInterceptorTest {
         when(submitter.endPointSubmitted()).thenReturn(true);
 
         final String name = randomAlphanumeric(20);
-        final long spanId = 123L;
-        final long traceId = 456L;
-        final long parentSpanId = 789L;
+        final long spanId = RAND.nextLong();
+        final long traceId = RAND.nextLong();
+        final long parentSpanId = RAND.nextLong();
 
         request.setRequestURI(name);
         request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
