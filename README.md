@@ -1,5 +1,6 @@
 # brave #
 
+[![Build Status](https://travis-ci.org/kristofa/brave.svg?branch=master)](https://travis-ci.org/kristofa/brave)
 
 Java distributed tracing implementation compatible with [Zipkin](https://github.com/twitter/zipkin/).
 
