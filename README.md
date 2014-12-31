@@ -78,7 +78,7 @@ Version 2.4 is available in Maven central. So you can simply add the dependencie
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl</artifactId>
-        <version>2.4</version>
+        <version>2.4.1</version>
     </dependency>
     
 For other dependencies see README.md files for sub modules.

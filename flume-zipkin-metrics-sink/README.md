@@ -1,6 +1,6 @@
 # flume-zipkin-metrics-sink #
 
-Latest release available in Maven central: 2.3. You normally don't have to include this in
+Latest release available in Maven central: 2.4.1. You normally don't have to include this in
 a project through Maven but can download the flume distribution jar from [here](http://search.maven.org/#search%7Cga%7C1%7Cflume-zipkin-metrics-sink)
 to add it to the Flume Agent class path.
 
