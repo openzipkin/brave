@@ -104,10 +104,10 @@ The 2.x.x versions of brave are currently being extensively tested and will soon
 production.  However from now on I'll try to stick to Semantic Versioning when it comes to
 bug fixing /  new functionality / backwards compatibility.
 
-### 2.4.1-SNAPSHOT ###
+### 2.4.1 ###
 
-* Bugfix for Spring server side support. Fix dealing with negative trace ids. [53](https://github.com/kristofa/brave/issues/53)
-* Bugfix for Spring server side support. Don't assume a parent id is always present. [52](https://github.com/kristofa/brave/pull/52)
+* Bugfix for Spring server side support: support negative trace ids. [#53](https://github.com/kristofa/brave/issues/53)
+* Bugfix for Spring server side support: don't assume a parent id is always present. [#52](https://github.com/kristofa/brave/pull/52)
 
 ### 2.4 ###
 
