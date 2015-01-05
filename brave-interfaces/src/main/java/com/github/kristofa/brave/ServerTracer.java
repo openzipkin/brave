@@ -4,9 +4,9 @@ package com.github.kristofa.brave;
  * Used for setting up trace information for a request. When a request is received we typically do this:
  * <ol>
  * <li>Detect if we are part of existing trace/span. For example with services doing http requests this can be done by
- * detecting and getting values of http header that reresent trace/span ids.</li>
+ * detecting and getting values of http header that represent trace/span ids.</li>
  * <li>Once detected we submit state using one of 3 following methods depending on the state we are in:
- * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String), {@link ServerTracer#setStateNoTracing()} or
+ * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String)}, {@link ServerTracer#setStateNoTracing()} or
  * {@link ServerTracer#setStateUnknown(String)}.</li>
  * <li>Next we execute {@link ServerTracer#setServerReceived()} to mark the point in time at which we received the request.</li>
  * <li>Service request executes its logic...
@@ -38,7 +38,7 @@ public interface ServerTracer extends AnnotationSubmitter {
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
      * trace the current request.
      * 
-     * @see ServerTracer#setStateExistingTrace(TraceContext)
+     * @see ServerTracer#setStateCurrentTrace(long, long, Long, String)
      * @see ServerTracer#setStateUnknown(String)
      */
     void setStateNoTracing();
@@ -54,7 +54,8 @@ public interface ServerTracer extends AnnotationSubmitter {
 
     /**
      * Sets server received event for current request. This should be done after setting state using one of 3 methods
-     * {@link ServerTracer#setStateExistingTrace(TraceContext)}, {@link ServerTracer#setStateNoTracing()} or
+     * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String)},
+     * {@link ServerTracer#setStateNoTracing()}, or
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     void setServerReceived();
@@ -63,6 +64,14 @@ public interface ServerTracer extends AnnotationSubmitter {
      * Sets the server sent event for current thread.
      */
     void setServerSend();
+
+    /**
+     * Update the name of the span.  This should be done after setting state using one of 3 methods
+     * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String)},
+     * {@link ServerTracer#setStateNoTracing()}, or
+     * {@link ServerTracer#setStateUnknown(String)}.
+     */
+    void updateServerSpanName(final String spanName);
 
     /**
      * Gets the thread execution duration for this span.
