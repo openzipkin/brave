@@ -7,6 +7,7 @@ import com.github.kristofa.brave.SpanCollector;
 import com.github.kristofa.brave.TraceFilter;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.zipkin.ZipkinSpanCollector;
+import com.github.kristofa.brave.LoggingSpanCollectorImpl;
 import org.apache.cxf.interceptor.InterceptorProvider;
 import com.google.common.base.Optional;
 
@@ -21,7 +22,8 @@ public class ZipkinConfig {
     final protected static SpanCollector zipkinSpanCollector;
 
     static {
-        zipkinSpanCollector = new ZipkinSpanCollector("localhost", 9410);
+        //zipkinSpanCollector = new ZipkinSpanCollector("localhost", 9410);
+        zipkinSpanCollector = new LoggingSpanCollectorImpl();
     }
 
     public static void InstallCXFZipkinInterceptors(InterceptorProvider provider){
@@ -52,8 +54,8 @@ public class ZipkinConfig {
         final ClientResponseZipkinInterceptor clientResponseZipkinInterceptor =
                 new ClientResponseZipkinInterceptor(clientTracer);
         provider.getInInterceptors().add(clientResponseZipkinInterceptor);
-        int a = 0;
-        int b = 4 / a;
+        //int a = 0;
+        //int b = 4 / a;
     }
 }
 
