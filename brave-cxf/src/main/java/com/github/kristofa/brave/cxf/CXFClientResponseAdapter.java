@@ -2,6 +2,9 @@ package com.github.kristofa.brave.cxf;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
 import org.apache.cxf.message.Message;
+import org.apache.cxf.transport.http.AbstractHTTPDestination;
+
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * User: fedor
@@ -17,6 +20,11 @@ class CXFClientResponseAdapter implements ClientResponseAdapter {
 
     @Override
     public int getStatusCode() {
-        return Integer.getInteger(message.get(Message.RESPONSE_CODE).toString(), 0);
+        //HttpServletResponse response = (HttpServletResponse)message.get(AbstractHTTPDestination.HTTP_RESPONSE);
+
+        Integer code = (Integer)message.getExchange().get(Message.RESPONSE_CODE);
+        if (code != null)
+            return code;
+        return 0;
     }
 }

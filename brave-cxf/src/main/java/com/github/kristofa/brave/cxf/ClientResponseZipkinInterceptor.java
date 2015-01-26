@@ -24,7 +24,7 @@ public class ClientResponseZipkinInterceptor extends AbstractPhaseInterceptor<Me
      * @param clientTracer ClientTracer. Should not be <code>null</code>.
      */
     public ClientResponseZipkinInterceptor(final ClientTracer clientTracer) {
-        super(Phase.RECEIVE);
+        super(Phase.INVOKE);
         org.apache.commons.lang.Validate.notNull(clientTracer);
         this.traceResponseBuilder = new ClientResponseInterceptor(clientTracer);
     }
