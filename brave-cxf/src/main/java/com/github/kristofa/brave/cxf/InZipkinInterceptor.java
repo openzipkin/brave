@@ -1,8 +1,10 @@
 package com.github.kristofa.brave.cxf;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
+import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
+import com.github.kristofa.brave.client.ClientResponseInterceptor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.cxf.interceptor.Fault;
@@ -28,16 +30,25 @@ public class InZipkinInterceptor extends AbstractPhaseInterceptor<Message> {
     private final EndPointSubmitter endPointSubmitter;
     private final ServerTracer serverTracer;
 
-    public InZipkinInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {
+    private final ClientResponseInterceptor traceResponseBuilder;
+
+    public InZipkinInterceptor(final EndPointSubmitter endPointSubmitter, final ClientTracer clientTracer, final ServerTracer serverTracer) {
         super(Phase.RECEIVE);
         Validate.notNull(endPointSubmitter);
+        Validate.notNull(clientTracer);
         Validate.notNull(serverTracer);
         this.endPointSubmitter = endPointSubmitter;
         this.serverTracer = serverTracer;
+        this.traceResponseBuilder = new ClientResponseInterceptor(clientTracer);
     }
 
     @Override
     public void handleMessage(Message message) throws Fault {
+        if (isRequestor(message)) {
+            traceResponseBuilder.handle(new CXFClientResponseAdapter(message));
+            return;
+        }
+
         HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
 
         if (request == null)
