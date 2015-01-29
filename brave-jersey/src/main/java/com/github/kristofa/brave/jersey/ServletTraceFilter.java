@@ -39,29 +39,58 @@ public class ServletTraceFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        serverTracer.clearCurrentSpan();
-        if (request instanceof HttpServletRequest) {
-            submitEndpoint((HttpServletRequest) request);
+        boolean traceEstablished = tryEstablishServerTrace(request);
 
-            TraceData traceData = getTraceDataFromHeaders(request);
-            if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
-                serverTracer.setStateNoTracing();
-                logger.debug("Not tracing request");
-            } else {
-                String spanName = getSpanName(traceData, (HttpServletRequest) request);
-                if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
-                    logger.debug("Received span information as part of request");
-                    serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
-                            traceData.getParentSpanId(), spanName);
+        chain.doFilter(request, response);
+
+        if (traceEstablished) {
+            finalizeServerTrace();
+        }
+    }
+
+    /**
+     * Clear current span and perhaps start a new one.  We do this all in a try/catch so that
+     * we are safe by default.
+     *
+     * @return true if we were able to establish a trace without exception
+     */
+    private boolean tryEstablishServerTrace(ServletRequest request) {
+        try {
+            serverTracer.clearCurrentSpan();
+            if (request instanceof HttpServletRequest) {
+                final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+                submitEndpoint(httpServletRequest);
+
+                TraceData traceData = getTraceDataFromHeaders(httpServletRequest);
+                if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
+                    serverTracer.setStateNoTracing();
+                    logger.debug("Not tracing request");
                 } else {
-                    logger.debug("Received no span state");
-                    serverTracer.setStateUnknown(spanName);
+                    String spanName = getSpanName(traceData, httpServletRequest);
+                    if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+                        logger.debug("Received span information as part of request");
+                        serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
+                                traceData.getParentSpanId(), spanName);
+                    } else {
+                        logger.debug("Received no span state");
+                        serverTracer.setStateUnknown(spanName);
+                    }
                 }
             }
+            serverTracer.setServerReceived();
+            return true;
+        } catch (Exception e) {
+            logger.warn("Exception establishing server trace", e);
+            return false;
         }
-        serverTracer.setServerReceived();
-        chain.doFilter(request, response);
-        serverTracer.setServerSend();
+    }
+
+    private void finalizeServerTrace() {
+        try {
+            serverTracer.setServerSend();
+        } catch (Exception e) {
+            logger.warn("Exception finalizing server trace", e);
+        }
     }
 
     private void submitEndpoint(HttpServletRequest request) {
@@ -81,8 +110,7 @@ public class ServletTraceFilter implements Filter {
         return traceData.getSpanName();
     }
 
-    private TraceData getTraceDataFromHeaders(ServletRequest request) {
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
+    private TraceData getTraceDataFromHeaders(HttpServletRequest httpRequest) {
         TraceData traceData = new TraceData();
         traceData.setTraceId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.TraceId.getName())));
         traceData.setSpanId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.SpanId.getName())));
