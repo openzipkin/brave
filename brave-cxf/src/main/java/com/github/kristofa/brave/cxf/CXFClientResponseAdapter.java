@@ -20,7 +20,6 @@ class CXFClientResponseAdapter implements ClientResponseAdapter {
 
     @Override
     public int getStatusCode() {
-        //HttpServletResponse response = (HttpServletResponse)message.get(AbstractHTTPDestination.HTTP_RESPONSE);
 
         Integer code = (Integer)message.getExchange().get(Message.RESPONSE_CODE);
         if (code != null)

@@ -13,6 +13,8 @@ import org.apache.cxf.phase.Phase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+
 /**
  * User: fedor
  * Date: 12.01.2015
@@ -46,13 +48,14 @@ public class OutZipkinInterceptor extends AbstractPhaseInterceptor<Message> {
     public OutZipkinInterceptor(final ClientTracer clientTracer,  final ServerTracer serverTracer,
                                 final Optional<String> serviceName) {
         this(clientTracer, serverTracer, serviceName, Optional.<SpanNameFilter>absent());
-
     }
 
     @Override
     public void handleMessage(Message message) throws Fault {
-        if (isRequestor(message)) {
-            clientRequestInterceptor.handle(new CXFRequestAdapter(message), serviceName);
+       if (isRequestor(message)) {
+            SpanAddress spanAddress = new SpanAddress(URI.create((String) message.get(Message.REQUEST_URI)));
+            clientRequestInterceptor.handle(new CXFRequestAdapter(message), Optional.fromNullable(spanAddress.getServiceName()));
+            //clientRequestInterceptor.handle(new CXFRequestAdapter(message), serviceName);
             return;
         }
         LOG.debug("Sending server send.");
