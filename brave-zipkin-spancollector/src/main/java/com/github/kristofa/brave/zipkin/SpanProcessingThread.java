@@ -66,10 +66,11 @@ class SpanProcessingThread implements Callable<Integer> {
     }
 
     /**
-     * Requests the thread to stop.
+     * Requests the thread to stop as well as closes the client connection for this thread.
      */
     public void stop() {
         stop = true;
+        clientProvider.close();
     }
 
     /**

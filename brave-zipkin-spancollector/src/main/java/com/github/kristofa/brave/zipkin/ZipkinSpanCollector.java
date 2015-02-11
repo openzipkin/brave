@@ -44,7 +44,6 @@ public class ZipkinSpanCollector implements SpanCollector {
     private static final String UTF_8 = "UTF-8";
     private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
 
-    private final ZipkinCollectorClientProvider clientProvider;
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
     private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<SpanProcessingThread>();
@@ -73,20 +72,24 @@ public class ZipkinSpanCollector implements SpanCollector {
         final ZipkinSpanCollectorParams params) {
         Validate.notEmpty(zipkinCollectorHost);
         Validate.notNull(params);
-        clientProvider =
-            new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort, params.getSocketTimeout());
-        try {
-            clientProvider.setup();
-        } catch (final TException e) {
-            if (params.failOnSetup()) {
-                throw new IllegalStateException(e);
-            } else {
-                LOGGER.warn("Connection could not be established during setup.", e);
-            }
-        }
+
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
+
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
+
+            //Creating a client provider for every spanProcessingThread.
+            ZipkinCollectorClientProvider clientProvider =
+                    new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort, params.getSocketTimeout());
+            try {
+                clientProvider.setup();
+            } catch (final TException e) {
+                if (params.failOnSetup()) {
+                    throw new IllegalStateException(e);
+                } else {
+                    LOGGER.warn("Connection could not be established during setup.", e);
+                }
+            }
             final SpanProcessingThread spanProcessingThread =
                 new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
             spanProcessingThreads.add(spanProcessingThread);
@@ -161,7 +164,6 @@ public class ZipkinSpanCollector implements SpanCollector {
             }
         }
         executorService.shutdown();
-        clientProvider.close();
         LOGGER.info("ZipkinSpanCollector closed.");
     }
 
