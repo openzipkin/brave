@@ -36,7 +36,7 @@ import com.twitter.zipkin.gen.Span;
  * submitting spans asynchronously and we should have minimal overhead on application performance.
  * <p/>
  * At this moment the number of processing threads is fixed and set to 1.
- * 
+ *
  * @author kristof
  */
 public class ZipkinSpanCollector implements SpanCollector {
@@ -53,7 +53,7 @@ public class ZipkinSpanCollector implements SpanCollector {
     /**
      * Create a new instance with default queue size (= {@link ZipkinSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
      * batch size (= {@link ZipkinSpanCollectorParams#DEFAULT_BATCH_SIZE}).
-     * 
+     *
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
      */
@@ -63,13 +63,13 @@ public class ZipkinSpanCollector implements SpanCollector {
 
     /**
      * Create a new instance.
-     * 
+     *
      * @param zipkinCollectorHost Host for zipkin collector.
      * @param zipkinCollectorPort Port for zipkin collector.
      * @param params Zipkin Span Collector parameters.
      */
     public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
-        final ZipkinSpanCollectorParams params) {
+            final ZipkinSpanCollectorParams params) {
         Validate.notEmpty(zipkinCollectorHost);
         Validate.notNull(params);
 
@@ -78,23 +78,30 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
 
-            //Creating a client provider for every spanProcessingThread.
-            ZipkinCollectorClientProvider clientProvider =
-                    new ZipkinCollectorClientProvider(zipkinCollectorHost, zipkinCollectorPort, params.getSocketTimeout());
-            try {
-                clientProvider.setup();
-            } catch (final TException e) {
-                if (params.failOnSetup()) {
-                    throw new IllegalStateException(e);
-                } else {
-                    LOGGER.warn("Connection could not be established during setup.", e);
-                }
-            }
-            final SpanProcessingThread spanProcessingThread =
-                new SpanProcessingThread(spanQueue, clientProvider, params.getBatchSize());
+            // Creating a client provider for every spanProcessingThread.
+            ZipkinCollectorClientProvider clientProvider = createZipkinCollectorClientProvider(zipkinCollectorHost,
+                    zipkinCollectorPort, params);
+            final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
+                    params.getBatchSize());
             spanProcessingThreads.add(spanProcessingThread);
             futures.add(executorService.submit(spanProcessingThread));
         }
+    }
+
+    private ZipkinCollectorClientProvider createZipkinCollectorClientProvider(String zipkinCollectorHost,
+            int zipkinCollectorPort, ZipkinSpanCollectorParams params) {
+        ZipkinCollectorClientProvider clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost,
+                zipkinCollectorPort, params.getSocketTimeout());
+        try {
+            clientProvider.setup();
+        } catch (final TException e) {
+            if (params.failOnSetup()) {
+                throw new IllegalStateException(e);
+            } else {
+                LOGGER.warn("Connection could not be established during setup.", e);
+            }
+        }
+        return clientProvider;
     }
 
     /**
