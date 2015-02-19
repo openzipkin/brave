@@ -41,7 +41,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private final ZipkinCollectorClientProvider clientProvider;
     private final Base64 base64 = new Base64();
     private final TProtocolFactory protocolFactory;
-    private boolean stop = false;
+    private volatile boolean stop = false;
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
     private final int maxBatchSize;
