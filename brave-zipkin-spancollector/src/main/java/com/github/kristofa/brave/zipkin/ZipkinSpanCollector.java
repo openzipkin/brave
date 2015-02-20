@@ -1,30 +1,24 @@
 package com.github.kristofa.brave.zipkin;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import javax.annotation.PreDestroy;
-
-import org.apache.commons.lang3.Validate;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanCollector;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
+import org.apache.commons.lang3.Validate;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PreDestroy;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.*;
 
 /**
  * Sends spans to Zipkin collector or Scribe.
@@ -51,27 +45,15 @@ public class ZipkinSpanCollector implements SpanCollector {
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
-     * Create a new instance with default queue size (= {@link ZipkinSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
-     * batch size (= {@link ZipkinSpanCollectorParams#DEFAULT_BATCH_SIZE}).
-     *
-     * @param zipkinCollectorHost Host for zipkin collector.
-     * @param zipkinCollectorPort Port for zipkin collector.
+     * Entry point in the transport layer.
      */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort) {
-        this(zipkinCollectorHost, zipkinCollectorPort, new ZipkinSpanCollectorParams());
-    }
+    private final ZipkinClientTransportProvider transportProvider;
 
-    /**
-     * Create a new instance.
-     *
-     * @param zipkinCollectorHost Host for zipkin collector.
-     * @param zipkinCollectorPort Port for zipkin collector.
-     * @param params Zipkin Span Collector parameters.
-     */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
-            final ZipkinSpanCollectorParams params) {
-        Validate.notEmpty(zipkinCollectorHost);
+    public ZipkinSpanCollector(final ZipkinClientTransportProvider transportProvider, ZipkinSpanCollectorParams params) {
+        Validate.notNull(transportProvider);
         Validate.notNull(params);
+
+        this.transportProvider = transportProvider;
 
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
@@ -79,8 +61,7 @@ public class ZipkinSpanCollector implements SpanCollector {
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
 
             // Creating a client provider for every spanProcessingThread.
-            ZipkinCollectorClientProvider clientProvider = createZipkinCollectorClientProvider(zipkinCollectorHost,
-                    zipkinCollectorPort, params);
+            ZipkinCollectorClientProvider clientProvider = createZipkinCollectorClientProvider(params);
             final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
                     params.getBatchSize());
             spanProcessingThreads.add(spanProcessingThread);
@@ -88,10 +69,35 @@ public class ZipkinSpanCollector implements SpanCollector {
         }
     }
 
-    private ZipkinCollectorClientProvider createZipkinCollectorClientProvider(String zipkinCollectorHost,
-            int zipkinCollectorPort, ZipkinSpanCollectorParams params) {
-        ZipkinCollectorClientProvider clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost,
-                zipkinCollectorPort, params.getSocketTimeout());
+    /**
+     * Create a new instance with default queue size (= {@link ZipkinSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
+     * batch size (= {@link ZipkinSpanCollectorParams#DEFAULT_BATCH_SIZE}). Uses SOCKET as underlying transport.
+     *
+     * @param zipkinCollectorHost Host for zipkin collector.
+     * @param zipkinCollectorPort Port for zipkin collector.
+     * @deprecated Use the transport based constructor instead.
+     */
+    @Deprecated
+    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort) {
+        this(new SocketTransportProvider(zipkinCollectorHost, zipkinCollectorPort), new ZipkinSpanCollectorParams());
+    }
+
+    /**
+     * Create a new instance.
+     *
+     * @param zipkinCollectorHost Host for zipkin collector.
+     * @param zipkinCollectorPort Port for zipkin collector.
+     * @param params              Zipkin Span Collector parameters.
+     * @deprecated Use the transport based constructor instead.
+     */
+    @Deprecated
+    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
+                               final ZipkinSpanCollectorParams params) {
+        this(new SocketTransportProvider(zipkinCollectorHost, zipkinCollectorPort), params);
+    }
+
+    private ZipkinCollectorClientProvider createZipkinCollectorClientProvider(ZipkinSpanCollectorParams params) {
+        ZipkinCollectorClientProvider clientProvider = new ZipkinCollectorClientProvider(transportProvider);
         try {
             clientProvider.setup();
         } catch (final TException e) {
