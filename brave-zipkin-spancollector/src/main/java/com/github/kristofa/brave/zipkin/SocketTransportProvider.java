@@ -28,6 +28,7 @@ public final class SocketTransportProvider implements ZipkinClientTransportProvi
 
     public SocketTransportProvider(String host, int port) {
         Validate.notEmpty(host);
+        Validate.isTrue(port > 0);
         this.host = host;
         this.port = port;
     }
