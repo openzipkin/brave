@@ -41,19 +41,21 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring.version>3.2.2.RELEASE</spring.version>
+    <!--<spring.version>3.2.2.RELEASE</spring.version>-->
+    <spring.version>4.0.5.RELEASE</spring.version>
   </properties>
 
   <modules>
   	<module>brave-interfaces</module>
     <module>brave-impl</module>
     <module>brave-impl-spring</module>
-    <module>brave-resteasy-spring</module>
+    <!--<module>brave-resteasy-spring</module>-->
     <module>brave-resteasy3-spring</module>
     <module>brave-zipkin-spancollector</module>
     <module>flume-zipkin-collector-sink</module>
     <module>brave-tracefilters</module>
     <module>brave-client</module>
+    <module>brave-cxf</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>
@@ -93,7 +95,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>14.0.1</version>
+            <version>17.0</version>
         </dependency>
   	</dependencies>
   </dependencyManagement>
@@ -121,20 +123,20 @@
 	<dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-log4j12</artifactId>
-        <version>1.7.5</version>
+        <version>1.7.7</version>
 		<scope>provided</scope>
     </dependency>
     <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.5</version>
+        <version>1.7.7</version>
     </dependency>
-    <dependency>
+    <!--<dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>jcl-over-slf4j</artifactId>
-        <version>1.7.5</version>
+        <version>1.7.7</version>
 		<scope>provided</scope>
-    </dependency>
+    </dependency>-->
   </dependencies>
 
   <build>
