@@ -11,14 +11,9 @@ import org.apache.cxf.phase.Phase;
 import org.apache.cxf.transport.http.AbstractHTTPDestination;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.util.UrlPathHelper;
 
 import javax.ws.rs.WebApplicationException;
 import javax.servlet.http.HttpServletRequest;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 
 /**
@@ -29,55 +24,70 @@ import java.util.*;
 public class InZipkinInterceptor extends AbstractPhaseInterceptor<Message> {
     private static final Logger LOG = LoggerFactory.getLogger(InZipkinInterceptor.class);
 
-    private final EndPointSubmitter endPointSubmitter;
-    private final ServerTracer serverTracer;
+    private final ZipkinConfig zipkinConfig;
 
     private final ClientResponseInterceptor traceResponseBuilder;
 
-    public InZipkinInterceptor(final EndPointSubmitter endPointSubmitter, final ClientTracer clientTracer, final ServerTracer serverTracer) {
+    public InZipkinInterceptor(final ZipkinConfig zipkinConfig) {
         super(Phase.RECEIVE);
-        Validate.notNull(endPointSubmitter);
-        Validate.notNull(clientTracer);
-        Validate.notNull(serverTracer);
-        this.endPointSubmitter = endPointSubmitter;
-        this.serverTracer = serverTracer;
-        this.traceResponseBuilder = new ClientResponseInterceptor(clientTracer);
+        Validate.notNull(zipkinConfig);
+        this.zipkinConfig = zipkinConfig; //Can be null in isRoot mode
+        this.traceResponseBuilder = new ClientResponseInterceptor(zipkinConfig.getClientTracer());
     }
 
     @Override
     public void handleMessage(Message message) throws Fault {
-       if (isRequestor(message)) {
-            traceResponseBuilder.handle(new CXFClientResponseAdapter(message));
+        ServerTracer serverTracer = zipkinConfig.getServerTracer();
+        AttemptLimiter attemptLimiter = zipkinConfig.getInAttemptLimiter();
+
+        if (!attemptLimiter.shouldTry())
             return;
-        }
+        try {
 
-        HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
-
-        if (request == null)
-            return;
-
-        SpanAddress spanAddress = new SpanAddress(request);
-
-        submitEndpoint(spanAddress);
-        serverTracer.clearCurrentSpan();
-
-        final ZipkinTraceData traceData = getTraceData(request);
-
-        if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
-            serverTracer.setStateNoTracing();
-            LOG.debug("Received indication that we should NOT trace.");
-        } else {
-            final String spanName = getSpanName(spanAddress, traceData);
-            if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
-
-                LOG.debug("Received span information as part of request.");
-                serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
-                        traceData.getParentSpanId(), spanName);
-            } else {
-                LOG.debug("Received no span state.");
-                serverTracer.setStateUnknown(spanName);
+            if (isRequestor(message)) {
+                traceResponseBuilder.handle(new CXFClientResponseAdapter(message));
+                attemptLimiter.reportSuccess();
+                return;
             }
-            serverTracer.setServerReceived();
+
+            //IsRoot mode, no incoming request tracing
+            if (zipkinConfig.IsRoot())
+                return;
+
+            HttpServletRequest request = (HttpServletRequest) message.get(AbstractHTTPDestination.HTTP_REQUEST);
+
+            if (request == null) {
+                attemptLimiter.reportFailure();
+                return;
+            }
+
+            SpanAddress spanAddress = new SpanAddress(request, zipkinConfig.getServiceName());
+
+            submitEndpoint(spanAddress);
+            serverTracer.clearCurrentSpan();
+
+            final ZipkinTraceData traceData = getTraceData(request);
+
+            if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
+                serverTracer.setStateNoTracing();
+                LOG.debug("Received indication that we should NOT trace.");
+            } else {
+                final String spanName = getSpanName(spanAddress, traceData);
+                if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+
+                    LOG.debug("Received span information as part of request.");
+                    serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
+                            traceData.getParentSpanId(), spanName);
+                } else {
+                    LOG.debug("Received no span state.");
+                    serverTracer.setStateUnknown(spanName);
+                }
+                serverTracer.setServerReceived();
+            }
+            attemptLimiter.reportSuccess();
+        } catch (Exception e) {
+            LOG.error("Zipkin interception exception", e);
+            attemptLimiter.reportFailure();
         }
     }
 
@@ -90,6 +100,7 @@ public class InZipkinInterceptor extends AbstractPhaseInterceptor<Message> {
     }
 
     private void submitEndpoint(SpanAddress address) {
+        EndPointSubmitter endPointSubmitter = zipkinConfig.getEndPointSubmitter();
         if (!endPointSubmitter.endPointSubmitted()) {
             LOG.debug("Setting endpoint: addr: {}, port: {}, servicename: {}",
                     address.getLocalIPv4(), address.getLocalPort(), address.getServiceName());

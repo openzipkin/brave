@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.cxf;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.web.util.UrlPathHelper;
 
 import javax.servlet.http.HttpServletRequest;
@@ -26,13 +27,13 @@ class SpanAddress
             serviceName = uriPath.substring(0, pos);
             spanName = uriPath.substring(pos+1);
         } else {
-            serviceName = uriPath;
-            spanName = "";
-        }
-        if (serviceName.isEmpty())
-            serviceName = uriPath;
-        if (spanName.isEmpty())
+            serviceName = "";
             spanName = uriPath;
+        }
+//        if (serviceName.isEmpty())
+//            serviceName = uriPath;
+//        if (spanName.isEmpty())
+//            spanName = uriPath;
         if (serviceName.isEmpty())
             serviceName = "default";
         if (spanName.isEmpty())
@@ -59,18 +60,28 @@ class SpanAddress
     }
 
 
-    public SpanAddress(HttpServletRequest request) {
+    public SpanAddress(HttpServletRequest request, String serviceNameOverride) {
         UrlPathHelper helper = new UrlPathHelper();
 
         parseNames(helper.getLookupPathForRequest(request));
+
+        if (StringUtils.isNotBlank(serviceNameOverride))
+            serviceName = serviceNameOverride;
 
         parseIP(request.getLocalAddr());
 
         localPort = request.getLocalPort();
     }
 
-    public SpanAddress(URI uri) {
+    public SpanAddress(HttpServletRequest request) {
+        this(request, null);
+    }
+
+    public SpanAddress(URI uri, String serviceNameOverride) {
         parseNames(uri.getPath());
+
+        if (StringUtils.isNotBlank(serviceNameOverride))
+            serviceName = serviceNameOverride;
 
         parseIP(uri.getHost());
 
@@ -83,6 +94,10 @@ class SpanAddress
                 localPort = 443;
             else localPort = 0;
         }
+    }
+
+    public SpanAddress(URI uri) {
+        this(uri, null);
     }
 
     public String getServiceName() { return serviceName; }
