@@ -53,7 +53,7 @@
     <module>brave-zipkin-spancollector</module>
     <module>flume-zipkin-collector-sink</module>
     <module>brave-tracefilters</module>
-    <module>brave-client</module>
+    <module>brave-http-client</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>

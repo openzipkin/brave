@@ -6,12 +6,12 @@
         <version>2.4.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>brave-client</artifactId>
+    <artifactId>brave-http-client</artifactId>
     <packaging>jar</packaging>
 
-    <name>brave-client</name>
+    <name>brave-http-client</name>
     <description>
-        Support classes for Brave-enabled clients.
+        Http client abstraction which makes it easier to implement brave in http clients.
     </description>
     <url>https://github.com/kristofa/brave</url>
     <licenses>
