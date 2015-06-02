@@ -31,11 +31,6 @@
             <artifactId>brave-impl</artifactId>
             <version>2.4.3-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcore</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>
