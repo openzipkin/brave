@@ -1,4 +1,4 @@
-package com.github.kristofa.brave;
+package com.github.kristofa.brave.client;
 
 import com.google.common.base.Optional;
 

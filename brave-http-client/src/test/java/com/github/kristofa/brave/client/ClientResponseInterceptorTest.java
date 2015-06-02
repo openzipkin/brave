@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.client;
 
-import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientTracer;
 import org.junit.Before;
 import org.junit.Test;

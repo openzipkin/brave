@@ -6,7 +6,7 @@ import org.apache.http.Header;
 import org.apache.http.HttpRequest;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.client.ClientRequestAdapter;
 import com.google.common.base.Optional;
 
 class ApacheRequestAdapter implements ClientRequestAdapter {

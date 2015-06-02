@@ -3,7 +3,7 @@ package com.github.kristofa.brave.jersey;
 import java.net.URI;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.client.ClientRequestAdapter;
 import com.google.common.base.Optional;
 import com.sun.jersey.api.client.ClientRequest;
 

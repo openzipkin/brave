@@ -1,7 +1,7 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.client.ClientRequestAdapter;
 import com.google.common.base.Optional;
 
 import javax.ws.rs.client.ClientRequestContext;

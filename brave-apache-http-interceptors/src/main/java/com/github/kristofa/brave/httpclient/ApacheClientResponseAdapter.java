@@ -2,7 +2,7 @@ package com.github.kristofa.brave.httpclient;
 
 import org.apache.http.HttpResponse;
 
-import com.github.kristofa.brave.ClientResponseAdapter;
+import com.github.kristofa.brave.client.ClientResponseAdapter;
 
 class ApacheClientResponseAdapter implements ClientResponseAdapter {
 

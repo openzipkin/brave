@@ -2,7 +2,7 @@ package com.github.kristofa.brave.resteasy;
 
 import org.jboss.resteasy.client.ClientResponse;
 
-import com.github.kristofa.brave.ClientResponseAdapter;
+import com.github.kristofa.brave.client.ClientResponseAdapter;
 
 class RestEasyClientResponseAdapter implements ClientResponseAdapter {
 
