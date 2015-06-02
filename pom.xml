@@ -45,15 +45,15 @@
   </properties>
 
   <modules>
-  	<module>brave-interfaces</module>
+    <module>brave-interfaces</module>
     <module>brave-impl</module>
+    <module>brave-http-client</module>
     <module>brave-impl-spring</module>
     <module>brave-resteasy-spring</module>
     <module>brave-resteasy3-spring</module>
     <module>brave-zipkin-spancollector</module>
     <module>flume-zipkin-collector-sink</module>
     <module>brave-tracefilters</module>
-    <module>brave-http-client</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>
