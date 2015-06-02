@@ -25,7 +25,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <resteasy.version>3.0.8.Final</resteasy.version>
     <jetty.version>8.1.9.v20130131</jetty.version>
-     <spring.version>3.2.2.RELEASE</spring.version>
   </properties>
   
   <dependencies>
