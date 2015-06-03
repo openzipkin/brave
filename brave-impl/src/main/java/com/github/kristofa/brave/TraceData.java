@@ -8,30 +8,16 @@ import java.util.Optional;
  */
 public class TraceData {
 
-    private final Optional<Long> traceId;
-    private final Optional<Long> spanId;
-    private final Optional<Long> parentSpanId;
+    private final Optional<SpanId> spanId;
     private final Optional<Boolean> sample;
 
     public static class Builder {
 
-        private  Optional<Long> traceId = Optional.empty();
-        private  Optional<Long> spanId = Optional.empty();
-        private  Optional<Long> parentSpanId = Optional.empty();
-        private  Optional<Boolean> sample = Optional.empty();
+        private Optional<SpanId> spanId = Optional.empty();
+        private Optional<Boolean> sample = Optional.empty();
 
-        public Builder traceId(long traceId) {
-            this.traceId = Optional.of(traceId);
-            return this;
-        }
-
-        public Builder spanId(long spanId) {
+        public Builder spanId(SpanId spanId) {
             this.spanId = Optional.of(spanId);
-            return this;
-        }
-
-        public Builder parentSpanId(long parentSpanId) {
-            this.parentSpanId = Optional.of(parentSpanId);
             return this;
         }
 
@@ -47,19 +33,8 @@ public class TraceData {
     }
 
     private TraceData(Builder builder) {
-        this.traceId = builder.traceId;
         this.spanId = builder.spanId;
-        this.parentSpanId = builder.parentSpanId;
         this.sample = builder.sample;
-    }
-
-    /**
-     * Trace id.
-     *
-     * @return Trace id.
-     */
-    public Optional<Long> getTraceId() {
-        return traceId;
     }
 
     /**
@@ -67,17 +42,8 @@ public class TraceData {
      *
      * @return Span id.
      */
-    public Optional<Long> getSpanId() {
+    public Optional<SpanId> getSpanId() {
         return spanId;
-    }
-
-    /**
-     * Parent span id.
-     *
-     * @return Optional parent span id.
-     */
-    public Optional<Long> getParentSpanId() {
-        return parentSpanId;
     }
 
     /**
@@ -91,11 +57,19 @@ public class TraceData {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(this);
+        return Objects.hash(spanId, sample);
     }
 
     @Override
     public boolean equals(Object obj) {
-        return Objects.equals(this, obj);
+        if (obj == null) {
+            return false;
+        }
+        if (obj instanceof TraceData) {
+            final TraceData other = (TraceData) obj;
+            return Objects.equals(this.sample, other.sample) &&
+                    Objects.equals(this.spanId, other.spanId);
+        }
+        return false;
     }
 }

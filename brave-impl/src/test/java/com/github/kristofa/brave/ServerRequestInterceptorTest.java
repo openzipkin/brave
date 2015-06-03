@@ -56,7 +56,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithParentSpanId() {
-        TraceData traceData = new TraceData.Builder().traceId(TRACE_ID).spanId(SPAN_ID).parentSpanId(PARENT_SPAN_ID).sample(true).build();
+        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.of(PARENT_SPAN_ID))).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.getRequestRepresentation()).thenReturn(Optional.of(REQUEST_NAME));
@@ -72,7 +72,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithoutParentSpanId() {
-        TraceData traceData = new TraceData.Builder().traceId(TRACE_ID).spanId(SPAN_ID).sample(true).build();
+        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.empty())).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.getRequestRepresentation()).thenReturn(Optional.empty());
@@ -81,42 +81,6 @@ public class ServerRequestInterceptorTest {
         InOrder inOrder = inOrder(serverTracer);
         inOrder.verify(serverTracer).clearCurrentSpan();
         inOrder.verify(serverTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, null, SPAN_NAME);
-        inOrder.verify(serverTracer).setServerReceived();
-        verifyNoMoreInteractions(serverTracer);
-    }
-
-    /**
-     * Invalid case. If we have trace id we should also have span id.
-     */
-    @Test
-    public void handleRequestWithOnlyTraceIdButNoSpanId() {
-        TraceData traceData = new TraceData.Builder().traceId(TRACE_ID).sample(true).build();
-        when(adapter.getTraceData()).thenReturn(traceData);
-        when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getRequestRepresentation()).thenReturn(Optional.empty());
-
-        interceptor.handle(adapter);
-        InOrder inOrder = inOrder(serverTracer);
-        inOrder.verify(serverTracer).clearCurrentSpan();
-        inOrder.verify(serverTracer).setStateUnknown(SPAN_NAME);
-        inOrder.verify(serverTracer).setServerReceived();
-        verifyNoMoreInteractions(serverTracer);
-    }
-
-    /**
-     * Invalid case. If we have span id we should also have trace id.
-     */
-    @Test
-    public void handleRequestWithOnlySpanIdButNoTraceId() {
-        TraceData traceData = new TraceData.Builder().spanId(SPAN_ID).sample(true).build();
-        when(adapter.getTraceData()).thenReturn(traceData);
-        when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getRequestRepresentation()).thenReturn(Optional.empty());
-
-        interceptor.handle(adapter);
-        InOrder inOrder = inOrder(serverTracer);
-        inOrder.verify(serverTracer).clearCurrentSpan();
-        inOrder.verify(serverTracer).setStateUnknown(SPAN_NAME);
         inOrder.verify(serverTracer).setServerReceived();
         verifyNoMoreInteractions(serverTracer);
     }

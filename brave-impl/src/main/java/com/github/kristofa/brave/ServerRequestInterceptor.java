@@ -37,10 +37,11 @@ public class ServerRequestInterceptor {
             serverTracer.setStateNoTracing();
             LOGGER.debug("Received indication that we should NOT trace.");
         } else {
-            if (traceData.getTraceId().isPresent() && traceData.getSpanId().isPresent()) {
+            if (traceData.getSpanId().isPresent()) {
                 LOGGER.debug("Received span information as part of request.");
-                serverTracer.setStateCurrentTrace(traceData.getTraceId().get(), traceData.getSpanId().get(),
-                        traceData.getParentSpanId().orElse(null), adapter.getSpanName());
+                SpanId spanId = traceData.getSpanId().get();
+                serverTracer.setStateCurrentTrace(spanId.getTraceId(), spanId.getSpanId(),
+                        spanId.getOptionalParentSpanId().orElse(null), adapter.getSpanName());
             } else {
                 LOGGER.debug("Received no span state.");
                 serverTracer.setStateUnknown(adapter.getSpanName());
