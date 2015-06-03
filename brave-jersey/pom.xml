@@ -27,7 +27,7 @@
     <dependencies>
         <dependency>
             <groupId>com.github.kristofa</groupId>
-            <artifactId>brave-http-client</artifactId>
+            <artifactId>brave-client</artifactId>
             <version>2.4.3-SNAPSHOT</version>
         </dependency>
         <dependency>

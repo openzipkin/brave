@@ -6,10 +6,10 @@
         <version>2.4.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>brave-http-client</artifactId>
+    <artifactId>brave-client</artifactId>
     <packaging>jar</packaging>
 
-    <name>brave-http-client</name>
+    <name>brave-client</name>
     <description>
         Http client abstraction which makes it easier to implement brave in http clients.
     </description>
