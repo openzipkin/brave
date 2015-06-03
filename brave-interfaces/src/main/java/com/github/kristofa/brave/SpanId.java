@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import java.util.Optional;
+
 /**
  * Identifies a {@link Span}.
  * 
@@ -22,10 +24,18 @@ public interface SpanId {
     long getSpanId();
 
     /**
-     * Get parent span id.
-     * 
+     * Deprecated. Please use getOptionalParentSpanId().
+     *
      * @return Parent span id. Can be <code>null</code>.
      */
+    @Deprecated
     Long getParentSpanId();
+
+    /**
+     * Get parent span id.
+     *
+     * @return Optional parent span id.
+     */
+    Optional<Long> getOptionalParentSpanId();
 
 }

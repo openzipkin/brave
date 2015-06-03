@@ -1,9 +1,6 @@
 package com.github.kristofa.brave;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import org.apache.commons.lang3.Validate;
 
@@ -148,10 +145,10 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
         final Span currentServerSpan = state.getCurrentServerSpan().getSpan();
         final long newSpanId = randomGenerator.nextLong();
         if (currentServerSpan == null) {
-            return new SpanIdImpl(newSpanId, newSpanId, null);
+            return new SpanIdImpl(newSpanId, newSpanId, Optional.<Long>empty());
         }
 
-        return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
+        return new SpanIdImpl(currentServerSpan.getTrace_id(), newSpanId, Optional.of(currentServerSpan.getId()));
     }
 
 }

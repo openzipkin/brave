@@ -1,5 +1,8 @@
 package com.github.kristofa.brave;
 
+import java.util.Objects;
+import java.util.Optional;
+
 /**
  * Identifies a Span.
  * 
@@ -9,7 +12,7 @@ class SpanIdImpl implements SpanId {
 
     private final long traceId;
     private final long spanId;
-    private final Long parentSpanId;
+    private final Optional<Long> parentSpanId;
 
     /**
      * Creates a new span id.
@@ -18,10 +21,10 @@ class SpanIdImpl implements SpanId {
      * @param spanId Span Id.
      * @param parentSpanId Optional parent span id.
      */
-    SpanIdImpl(final long traceId, final long spanId, final Long parentSpanId) {
+    SpanIdImpl(final long traceId, final long spanId, final Optional<Long> parentSpanId) {
         this.traceId = traceId;
         this.spanId = spanId;
-        this.parentSpanId = parentSpanId;
+        this.parentSpanId = Objects.requireNonNull(parentSpanId, "null is not allowed, you should use Optional.empty()");
     }
 
     /**
@@ -45,6 +48,11 @@ class SpanIdImpl implements SpanId {
      */
     @Override
     public Long getParentSpanId() {
+        return parentSpanId.orElse(null);
+    }
+
+    @Override
+    public Optional<Long> getOptionalParentSpanId() {
         return parentSpanId;
     }
 
@@ -92,7 +100,7 @@ class SpanIdImpl implements SpanId {
     @Override
     public String toString() {
         return "[trace id: " + traceId + ", span id: " + spanId + ", parent span id: "
-            + (parentSpanId == null ? "null" : parentSpanId.toString()) + "]";
+            + parentSpanId.toString() + "]";
     }
 
 }
