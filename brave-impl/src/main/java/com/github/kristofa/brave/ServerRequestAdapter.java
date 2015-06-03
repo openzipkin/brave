@@ -18,7 +18,8 @@ public interface ServerRequestAdapter {
 
     /**
      * Gets the span name for request.
-     * @return
+     *
+     * @return Span name for request.
      */
     String getSpanName();
 
