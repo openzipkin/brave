@@ -5,7 +5,7 @@ import java.net.URI;
 import org.jboss.resteasy.client.ClientRequest;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.client.ClientRequestAdapter;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 

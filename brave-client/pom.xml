@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave</artifactId>
-        <version>2.4.3-SNAPSHOT</version>
+        <version>3.0.0-beta-1-SNAPSHOT</version>
     </parent>
 
     <artifactId>brave-client</artifactId>
@@ -11,7 +11,7 @@
 
     <name>brave-client</name>
     <description>
-        Support classes for Brave-enabled clients.
+        Http client abstraction which makes it easier to implement brave in http clients.
     </description>
     <url>https://github.com/kristofa/brave</url>
     <licenses>
@@ -29,13 +29,8 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-impl</artifactId>
-            <version>2.4.3-SNAPSHOT</version>
+            <version>3.0.0-beta-1-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcore</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>

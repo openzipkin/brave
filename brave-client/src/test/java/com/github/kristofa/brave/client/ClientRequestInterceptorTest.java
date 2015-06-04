@@ -16,7 +16,6 @@ import org.junit.Test;
 import org.mockito.InOrder;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;

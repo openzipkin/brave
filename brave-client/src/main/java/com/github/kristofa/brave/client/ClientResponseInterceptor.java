@@ -2,7 +2,6 @@ package com.github.kristofa.brave.client;
 
 import org.apache.commons.lang.Validate;
 
-import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientTracer;
 
 /**

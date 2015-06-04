@@ -2,7 +2,6 @@ package com.github.kristofa.brave.client;
 
 import org.apache.commons.lang.Validate;
 
-import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;

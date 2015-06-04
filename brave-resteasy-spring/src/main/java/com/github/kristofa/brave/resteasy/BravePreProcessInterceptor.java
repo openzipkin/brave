@@ -59,7 +59,6 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      *
      * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
      * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
-     * @param randomGenerator Random generator.
      */
     @Autowired
     public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {

@@ -11,7 +11,7 @@
 
   <groupId>com.github.kristofa</groupId>
   <artifactId>brave</artifactId>
-  <version>2.4.3-SNAPSHOT</version>
+  <version>3.0.0-beta-1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>brave</name>
@@ -41,23 +41,21 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring.version>3.2.2.RELEASE</spring.version>
+    <spring.version>4.1.6.RELEASE</spring.version>
   </properties>
 
   <modules>
-  	<module>brave-interfaces</module>
+    <module>brave-interfaces</module>
     <module>brave-impl</module>
+    <module>brave-client</module>
     <module>brave-impl-spring</module>
     <module>brave-resteasy-spring</module>
     <module>brave-resteasy3-spring</module>
     <module>brave-zipkin-spancollector</module>
-    <module>flume-zipkin-collector-sink</module>
     <module>brave-tracefilters</module>
-    <module>brave-client</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>
-    <module>flume-zipkin-metrics-sink</module>
     <module>brave-apache-http-interceptors</module>
     <module>brave-mysql</module>
   </modules>
@@ -179,8 +177,8 @@
                 	<artifactId>maven-compiler-plugin</artifactId>
                 	<version>2.5.1</version>
                 	<configuration>
-                   		<source>1.6</source>
-                    	<target>1.6</target>
+                   		<source>1.8</source>
+                    	<target>1.8</target>
                     	<optimize>true</optimize>
                     	<debug>true</debug>
                 	</configuration>
@@ -219,6 +217,9 @@
                         	</goals>
                     	</execution>
                 	</executions>
+                    <configuration>
+                        <additionalJOption>-Xdoclint:none</additionalJOption>
+                    </configuration>
             	</plugin>
             	<plugin>
                 	<groupId>org.apache.maven.plugins</groupId>

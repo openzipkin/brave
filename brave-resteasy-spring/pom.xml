@@ -3,7 +3,7 @@
   <parent>
   	<groupId>com.github.kristofa</groupId>
 	<artifactId>brave</artifactId>
-    <version>2.4.3-SNAPSHOT</version>
+    <version>3.0.0-beta-1-SNAPSHOT</version>
   </parent>   
   
   <artifactId>brave-resteasy-spring</artifactId>
@@ -25,14 +25,13 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <resteasy.version>2.3.5.Final</resteasy.version>
     <jetty.version>8.1.9.v20130131</jetty.version>
-     <spring.version>3.2.2.RELEASE</spring.version>
   </properties>
   
   <dependencies>
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-client</artifactId>
-        <version>2.4.3-SNAPSHOT</version>
+        <version>3.0.0-beta-1-SNAPSHOT</version>
     </dependency>
     <dependency>
         <groupId>org.apache.commons</groupId>
@@ -71,7 +70,7 @@
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-impl-spring</artifactId>
-        <version>2.4.3-SNAPSHOT</version>
+        <version>3.0.0-beta-1-SNAPSHOT</version>
         <scope>test</scope>
     </dependency>
     <dependency>
