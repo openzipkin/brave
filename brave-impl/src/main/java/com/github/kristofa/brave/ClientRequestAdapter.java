@@ -16,7 +16,8 @@ public interface ClientRequestAdapter {
      * Enrich the request with the Spanid so we pass the state to the
      * service we are calling.
      *
-     * @param spanId Optional span id. If empty we don't need to trace request.
+     * @param spanId Optional span id. If empty we don't need to trace request and you
+     *               should pass an indication along with the request that indicates we won't trace this request.
      */
     void addSpanIdToRequest(Optional<SpanId> spanId);
 
