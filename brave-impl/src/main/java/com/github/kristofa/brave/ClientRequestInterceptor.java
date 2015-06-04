@@ -8,8 +8,6 @@ import java.util.Optional;
  */
 public class ClientRequestInterceptor {
 
-    private final static String CLIENT_REQUEST_ANNOTATION_NAME = "request";
-
     private final ClientTracer clientTracer;
 
     public ClientRequestInterceptor(ClientTracer clientTracer) {
@@ -30,8 +28,8 @@ public class ClientRequestInterceptor {
         } else {
             adapter.addSpanIdToRequest(Optional.of(spanId));
             clientTracer.setCurrentClientServiceName(adapter.getClientServiceName());
-            if (adapter.getRequestRepresentation().isPresent()) {
-                clientTracer.submitBinaryAnnotation(CLIENT_REQUEST_ANNOTATION_NAME, adapter.getRequestRepresentation().get());
+            for(KeyValueAnnotation annotation : adapter.requestAnnotations()) {
+                clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }
             clientTracer.setClientSent();
         }

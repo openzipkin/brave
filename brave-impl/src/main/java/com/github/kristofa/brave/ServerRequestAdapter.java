@@ -1,6 +1,6 @@
 package com.github.kristofa.brave;
 
-import java.util.Optional;
+import java.util.Collection;
 
 /**
  * Provides properties needed for dealing with server request.
@@ -24,9 +24,13 @@ public interface ServerRequestAdapter {
     String getSpanName();
 
     /**
-     * Optional request representation. If specified it will be added to the span as a binary annotation 'request'.
+     * Returns a collection of annotations that should be added to span
+     * for incoming request.
      *
-     * @return Optional request representation.
+     * Can be used to indicate more details about request next to span name.
+     * For example for http requests an annotation containing the uri path could be added.
+     *
+     * @return Collection of annotations.
      */
-    Optional<String> getRequestRepresentation();
+    Collection<KeyValueAnnotation> requestAnnotations();
 }

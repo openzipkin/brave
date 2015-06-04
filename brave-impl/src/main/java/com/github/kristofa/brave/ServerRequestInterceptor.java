@@ -15,7 +15,6 @@ import java.util.Optional;
 public class ServerRequestInterceptor {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(ServerRequestInterceptor.class);
-    private final static String SERVER_REQUEST_ANNOTATION_NAME = "request";
 
     private final ServerTracer serverTracer;
 
@@ -47,8 +46,9 @@ public class ServerRequestInterceptor {
                 serverTracer.setStateUnknown(adapter.getSpanName());
             }
             serverTracer.setServerReceived();
-            if (adapter.getRequestRepresentation().isPresent()) {
-                serverTracer.submitBinaryAnnotation(SERVER_REQUEST_ANNOTATION_NAME, adapter.getRequestRepresentation().get());
+            for(KeyValueAnnotation annotation : adapter.requestAnnotations())
+            {
+                serverTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }
         }
     }

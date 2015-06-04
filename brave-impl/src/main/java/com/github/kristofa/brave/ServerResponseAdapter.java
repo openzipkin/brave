@@ -3,13 +3,14 @@ package com.github.kristofa.brave;
 
 import java.util.Collection;
 
-public interface ClientResponseAdapter {
+public interface ServerResponseAdapter {
 
     /**
      * Returns a collection of annotations that should be added to span
-     * based on response.
+     * before returning response.
      *
-     * Can be used to indicate errors when response was not successful.
+     * Can be used to indicate more details about response.
+     * For example information on error or unsuccessful reponse.
      *
      * @return Collection of annotations.
      */

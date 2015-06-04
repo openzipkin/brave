@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface ClientRequestAdapter {
@@ -31,9 +32,14 @@ public interface ClientRequestAdapter {
     String getClientServiceName();
 
     /**
-     * Optional request representation. If specified it will be added to the span as a binary annotation 'request'.
+     * Returns a collection of annotations that should be added to span
+     * for given request.
      *
-     * @return Optional request representation.
+     * Can be used to indicate more details about request next to span name.
+     * For example for http requests an annotation containing the uri path could be added.
+     *
+     * @return Collection of annotations.
      */
-    Optional<String> getRequestRepresentation();
+    Collection<KeyValueAnnotation> requestAnnotations();
+
 }

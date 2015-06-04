@@ -19,11 +19,15 @@ public class ServerResponseInterceptor {
         this.serverTracer = Objects.requireNonNull(serverTracer, "serverTracer should not be null.");
     }
 
-    public void handle() {
+    public void handle(ServerResponseAdapter adapter) {
         // We can submit this in any case. When server state is not set or
         // we should not trace this request nothing will happen.
         LOGGER.debug("Sending server send.");
         try {
+            for(KeyValueAnnotation annotation : adapter.responseAnnotations())
+            {
+                serverTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
+            }
             serverTracer.setServerSend();
         } finally {
             serverTracer.clearCurrentSpan();

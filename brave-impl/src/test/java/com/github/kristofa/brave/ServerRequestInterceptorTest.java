@@ -5,6 +5,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.mockito.Mockito.*;
@@ -15,7 +17,8 @@ public class ServerRequestInterceptorTest {
     private final static long TRACE_ID = 3425;
     private final static long SPAN_ID = 43435;
     private final static long PARENT_SPAN_ID = 44334435;
-    private final static String REQUEST_NAME = "/user/1343";
+    private static final KeyValueAnnotation ANNOTATION1 = new KeyValueAnnotation("http.uri", "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION2 = new KeyValueAnnotation("http.code", "200");
 
     private ServerRequestInterceptor interceptor;
     private ServerTracer serverTracer;
@@ -44,7 +47,7 @@ public class ServerRequestInterceptorTest {
         TraceData traceData = new TraceData.Builder().build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getRequestRepresentation()).thenReturn(Optional.empty());
+        when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
 
         interceptor.handle(adapter);
         InOrder inOrder = inOrder(serverTracer);
@@ -59,14 +62,16 @@ public class ServerRequestInterceptorTest {
         TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.of(PARENT_SPAN_ID))).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getRequestRepresentation()).thenReturn(Optional.of(REQUEST_NAME));
+        when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
 
         interceptor.handle(adapter);
-        InOrder inOrder = inOrder(serverTracer);
+        InOrder inOrder = inOrder(serverTracer, adapter);
         inOrder.verify(serverTracer).clearCurrentSpan();
         inOrder.verify(serverTracer).setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SPAN_NAME);
         inOrder.verify(serverTracer).setServerReceived();
-        inOrder.verify(serverTracer).submitBinaryAnnotation("request", REQUEST_NAME);
+        inOrder.verify(adapter).requestAnnotations();
+        inOrder.verify(serverTracer).submitBinaryAnnotation(ANNOTATION1.getKey(), ANNOTATION1.getValue());
+        inOrder.verify(serverTracer).submitBinaryAnnotation(ANNOTATION2.getKey(), ANNOTATION2.getValue());
         verifyNoMoreInteractions(serverTracer);
     }
 
@@ -75,7 +80,7 @@ public class ServerRequestInterceptorTest {
         TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.empty())).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getRequestRepresentation()).thenReturn(Optional.empty());
+        when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
 
         interceptor.handle(adapter);
         InOrder inOrder = inOrder(serverTracer);
