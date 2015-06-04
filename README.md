@@ -53,8 +53,8 @@ They submit spans to the `ZipkinSpanCollector` which submits them to Flume.
 I introduced [Flume](http://flume.apache.org/) instead of Scribe as Flume is still actively maintained, easier to deploy,
 has good documentation and extensions are written in Java.
 
-The `ZipkinSpanCollectorSink`, part of `flume-zipkin-collector-sink` module submits spans to the Zipkin collector service.
-The `ZipkinMetricsSink`, part of `flume-zipkin-metrics-sink` module submits custom annotations with duration (to measure certain sections
+The `ZipkinSpanCollectorSink`, part of [flume-zipkin-collector-sink](http://github.com/kristofa/flume-zipkin-collector-sink) repo submits spans to the Zipkin collector service.
+The `ZipkinMetricsSink`, part of [flume-zipkin-metrics-sink](http://github.com/kristofa/flume-zipkin-metrics-sink) module submits custom annotations with duration (to measure certain sections
 of the code) to the [Metrics](http://metrics.codahale.com) library.  Metrics builds histograms for the metrics and sends the data
 to a back-end system for storage and visualisation. Metrics supports multiple back-ends but the sink implementation today supports
 [graphite](http://graphite.wikidot.com).
