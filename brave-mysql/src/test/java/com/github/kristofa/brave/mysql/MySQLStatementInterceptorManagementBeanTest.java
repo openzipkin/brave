@@ -1,14 +1,13 @@
 package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.google.common.base.Optional;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
 
@@ -23,13 +22,13 @@ public class MySQLStatementInterceptorManagementBeanTest {
 
     @After
     public void clearStatementInterceptor() {
-        MySQLStatementInterceptor.setClientTracer(Optional.<ClientTracer>absent());
+        MySQLStatementInterceptor.setClientTracer(null);
     }
 
     @Test
     public void afterPropertiesSetShouldSetTracerOnStatementInterceptor() {
         new MySQLStatementInterceptorManagementBean(clientTracer);
-        assertSame(clientTracer, MySQLStatementInterceptor.clientTracer.get());
+        assertSame(clientTracer, MySQLStatementInterceptor.clientTracer);
     }
 
     @Test
@@ -37,11 +36,11 @@ public class MySQLStatementInterceptorManagementBeanTest {
 
         final MySQLStatementInterceptorManagementBean subject = new MySQLStatementInterceptorManagementBean(clientTracer);
 
-        MySQLStatementInterceptor.setClientTracer(Optional.of(clientTracer));
+        MySQLStatementInterceptor.setClientTracer(clientTracer);
 
         subject.close();
 
-        assertEquals(Optional.<ClientTracer>absent(), MySQLStatementInterceptor.clientTracer);
+        assertNull(MySQLStatementInterceptor.clientTracer);
     }
 
 }

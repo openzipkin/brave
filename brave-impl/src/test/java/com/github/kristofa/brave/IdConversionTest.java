@@ -52,4 +52,23 @@ public class IdConversionTest {
 		assertEquals(longId, IdConversion.convertToLong(expectedId));
 	}
 
+	@Test(expected = NumberFormatException.class)
+	public void testIdTooLong() {
+	        IdConversion.convertToLong("7ffffffffffffffff");
+	}
+
+        @Test(expected = NumberFormatException.class)
+        public void testIdEmpty() {
+                IdConversion.convertToLong("");
+        }
+
+	@Test(expected = NumberFormatException.class)
+	public void testIdShouldntHavePrefix() {
+		IdConversion.convertToLong("0x7fffffffffffffff");
+	}
+
+	@Test(expected = NumberFormatException.class)
+	public void testIdShouldntBeUppercase() {
+	  	IdConversion.convertToLong("7FFFFFFFFFFFFFFF");
+	}
 }

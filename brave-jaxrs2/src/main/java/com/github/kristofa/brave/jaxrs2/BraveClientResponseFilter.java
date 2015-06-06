@@ -2,7 +2,6 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import com.google.common.base.Optional;
 import org.apache.commons.lang.Validate;
 
 import javax.inject.Inject;
@@ -21,9 +20,8 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
     private final ClientResponseInterceptor clientResponseInterceptor;
 
     @Inject
-    public BraveClientResponseFilter(final ClientTracer clientTracer, final Optional<String> serviceName) {
+    public BraveClientResponseFilter(final ClientTracer clientTracer, final String serviceName) {
         Validate.notNull(clientTracer);
-        Validate.notNull(serviceName);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
     }
 

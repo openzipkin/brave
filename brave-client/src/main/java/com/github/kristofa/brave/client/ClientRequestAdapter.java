@@ -1,7 +1,5 @@
 package com.github.kristofa.brave.client;
 
-import com.google.common.base.Optional;
-
 import java.net.URI;
 
 /**
@@ -28,10 +26,10 @@ public interface ClientRequestAdapter {
     /**
      * Get optional span name.
      *
-     * @return Optional span name. In case span name is not provided ClientRequestInterceptor will
+     * @return nullable span name. In case span name is not provided ClientRequestInterceptor will
      * use a default way to build span name.
      */
-    Optional<String> getSpanName();
+    String getSpanName();
 
     /**
      * ClientRequestInterceptor will submit http headers using this method

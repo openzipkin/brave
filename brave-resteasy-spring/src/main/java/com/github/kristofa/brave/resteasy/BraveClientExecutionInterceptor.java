@@ -15,7 +15,6 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;
 import com.github.kristofa.brave.client.ClientResponseInterceptor;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import com.google.common.base.Optional;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -54,28 +53,18 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      */
     @Autowired(required = false)
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer) {
-        this(clientTracer, Optional.<SpanNameFilter>absent());
+        this(clientTracer, null);
     }
 
     /**
      * Create a new instance.
      *
      * @param clientTracer ClientTracer.
+     * @param spanNameFilter Nullable {@link SpanNameFilter}
      */
     @Autowired(required = false)
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer, final SpanNameFilter spanNameFilter) {
-        this(clientTracer, Optional.of(spanNameFilter));
-    }
-
-    /**
-     * Private Constructor.
-     *
-     * @param clientTracer ClientTracer
-     * @param spanNameFilter {@link Optional} {@link SpanNameFilter}
-     */
-    private BraveClientExecutionInterceptor(final ClientTracer clientTracer, final Optional<SpanNameFilter> spanNameFilter) {
         Validate.notNull(clientTracer);
-        Validate.notNull(spanNameFilter);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
     }
@@ -88,7 +77,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final ClientRequest request = ctx.getRequest();
 
-        clientRequestInterceptor.handle(new RestEasyClientRequestAdapter(request), Optional.<String>absent());
+        clientRequestInterceptor.handle(new RestEasyClientRequestAdapter(request), null);
 
         ClientResponse<?> response = null;
         Exception exception = null;

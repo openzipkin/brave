@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.google.common.base.Optional;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
@@ -19,22 +18,24 @@ import java.util.Properties;
  *     To use it, append <code>?statementInterceptors=com.github.kristofa.brave.db.MySQLStatementInterceptor</code> to the end of the connection url.
  * </p>
  * <p>
- *     Note that this class must be injected with the {@linkplain ClientTracer} to use to communicate with Zipkin via the {@linkplain #setClientTracer(Optional)} method;
+ *     Note that this class must be injected with the {@linkplain ClientTracer} to use to communicate with Zipkin via the {@linkplain #setClientTracer} method;
  *     this is normally done by the {@linkplain MySQLStatementInterceptorManagementBean}.
  * </p>
  */
 public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 
-    static Optional<ClientTracer> clientTracer = Optional.absent();
+    // TODO: is static scope best? ex. preferred to thread local etc?
+    static volatile ClientTracer clientTracer;
 
-    public static void setClientTracer(final Optional<ClientTracer> tracer) {
+    public static void setClientTracer(final ClientTracer tracer) {
         clientTracer = tracer;
     }
 
     @Override
     public ResultSetInternalMethods preProcess(final String sql, final Statement interceptedStatement, final Connection connection) throws SQLException {
 
-        if (clientTracer.isPresent()) {
+        ClientTracer clientTracer = this.clientTracer;
+        if (clientTracer != null) {
             final String sqlToLog;
             // When running a prepared statement, sql will be null and we must fetch the sql from the statement itself
             if (interceptedStatement instanceof PreparedStatement) {
@@ -43,7 +44,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
                 sqlToLog = sql;
             }
 
-            beginTrace(clientTracer.get(), sqlToLog, connection);
+            beginTrace(clientTracer, sqlToLog, connection);
         }
 
         return null;
@@ -54,8 +55,9 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
                                                 final Connection connection, final int warningCount, final boolean noIndexUsed, final boolean noGoodIndexUsed,
                                                 final SQLException statementException) throws SQLException {
 
-        if (clientTracer.isPresent()) {
-            endTrace(clientTracer.get(), warningCount, statementException);
+        ClientTracer clientTracer = this.clientTracer;
+        if (clientTracer != null) {
+            endTrace(clientTracer, warningCount, statementException);
         }
 
         return null;

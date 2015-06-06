@@ -19,7 +19,6 @@ import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import com.google.common.base.Optional;
 
 public class ClientRequestInterceptorTest {
 
@@ -42,24 +41,23 @@ public class ClientRequestInterceptorTest {
     public void setUp() throws Exception {
         mockClientTracer = mock(ClientTracer.class);
         mockSpanNameFilter = mock(SpanNameFilter.class);
-        final Optional<SpanNameFilter> optionalSpanNameFilter = Optional.absent();
-        interceptor = new ClientRequestInterceptor(mockClientTracer, optionalSpanNameFilter);
+        interceptor = new ClientRequestInterceptor(mockClientTracer, null);
         clientRequestAdapter = mock(ClientRequestAdapter.class);
         when(clientRequestAdapter.getUri()).thenReturn(URI.create(FULL_PATH));
         when(clientRequestAdapter.getMethod()).thenReturn(METHOD);
-        when(clientRequestAdapter.getSpanName()).thenReturn(Optional.<String>absent());
+        when(clientRequestAdapter.getSpanName()).thenReturn(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testBraveHttpRequestInterceptor() {
-        new ClientRequestInterceptor(null, Optional.of(mockSpanNameFilter));
+        new ClientRequestInterceptor(null, mockSpanNameFilter);
     }
 
     @Test
     public void testProcessNoTracing() throws HttpException, IOException {
         when(mockClientTracer.startNewSpan(PATH)).thenReturn(null);
 
-        interceptor.handle(clientRequestAdapter, Optional.<String>absent());
+        interceptor.handle(clientRequestAdapter, null);
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter);
 
@@ -79,7 +77,7 @@ public class ClientRequestInterceptorTest {
         when(spanId.getTraceId()).thenReturn(TRACE_ID);
         when(mockClientTracer.startNewSpan(PATH)).thenReturn(spanId);
 
-        interceptor.handle(clientRequestAdapter, Optional.<String>absent());
+        interceptor.handle(clientRequestAdapter, null);
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter);
 
@@ -104,7 +102,7 @@ public class ClientRequestInterceptorTest {
         when(spanId.getTraceId()).thenReturn(TRACE_ID);
         when(mockClientTracer.startNewSpan(PATH)).thenReturn(spanId);
 
-        interceptor.handle(clientRequestAdapter, Optional.<String>absent());
+        interceptor.handle(clientRequestAdapter, null);
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter);
 
@@ -128,7 +126,7 @@ public class ClientRequestInterceptorTest {
         when(spanId.getTraceId()).thenReturn(TRACE_ID);
         when(mockClientTracer.startNewSpan(FULL_PATH)).thenReturn(spanId);
 
-        interceptor.handle(clientRequestAdapter, Optional.of(SERVICE_NAME));
+        interceptor.handle(clientRequestAdapter, SERVICE_NAME);
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter);
 
@@ -154,8 +152,8 @@ public class ClientRequestInterceptorTest {
         when(mockClientTracer.startNewSpan(FILTERED_PATH)).thenReturn(spanId);
         when(mockSpanNameFilter.filterSpanName(PATH)).thenReturn(FILTERED_PATH);
 
-        interceptor = new ClientRequestInterceptor(mockClientTracer, Optional.of(mockSpanNameFilter));
-        interceptor.handle(clientRequestAdapter, Optional.<String>absent());
+        interceptor = new ClientRequestInterceptor(mockClientTracer, mockSpanNameFilter);
+        interceptor.handle(clientRequestAdapter, null);
 
         final InOrder inOrder = inOrder(mockClientTracer, clientRequestAdapter, mockSpanNameFilter);
         inOrder.verify(mockSpanNameFilter).filterSpanName(PATH);

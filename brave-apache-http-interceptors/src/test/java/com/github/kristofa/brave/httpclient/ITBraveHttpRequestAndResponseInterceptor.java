@@ -9,7 +9,6 @@ import com.github.kristofa.test.http.HttpResponseImpl;
 import com.github.kristofa.test.http.Method;
 import com.github.kristofa.test.http.MockHttpServer;
 import com.github.kristofa.test.http.UnsatisfiedExpectationException;
-import com.google.common.base.Optional;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -77,7 +76,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, Optional.<String>absent()))
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
                 .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -112,7 +111,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, Optional.<String>absent()))
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
                 .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -150,7 +149,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, Optional.<String>absent()))
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
                 .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST_WITH_QUERY_PARAMS);
@@ -188,7 +187,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, Optional.of(SERVICE)))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, SERVICE))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);

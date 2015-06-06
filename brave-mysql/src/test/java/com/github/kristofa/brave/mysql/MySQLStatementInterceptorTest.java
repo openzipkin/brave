@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.google.common.base.Optional;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
@@ -30,12 +29,12 @@ public class MySQLStatementInterceptorTest {
     public void setUp() throws Exception {
         subject = new MySQLStatementInterceptor();
         clientTracer = mock(ClientTracer.class);
-        MySQLStatementInterceptor.setClientTracer(Optional.of(clientTracer));
+        MySQLStatementInterceptor.setClientTracer(clientTracer);
     }
 
     @Test
     public void preProcessShouldNotFailIfNoClientTracer() throws Exception {
-        MySQLStatementInterceptor.setClientTracer(Optional.<ClientTracer>absent());
+        MySQLStatementInterceptor.setClientTracer(null);
 
         assertNull(subject.preProcess("sql", mock(Statement.class), mock(Connection.class)));
 
@@ -84,7 +83,7 @@ public class MySQLStatementInterceptorTest {
 
     @Test
     public void postProcessShouldNotFailIfNoClientTracer() throws Exception {
-        MySQLStatementInterceptor.setClientTracer(Optional.<ClientTracer>absent());
+        MySQLStatementInterceptor.setClientTracer(null);
 
         assertNull(subject.postProcess("sql", mock(Statement.class), mock(ResultSetInternalMethods.class), mock(Connection.class), 1, true, true, null));
 

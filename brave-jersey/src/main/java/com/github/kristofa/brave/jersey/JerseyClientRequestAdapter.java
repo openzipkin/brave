@@ -4,7 +4,6 @@ import java.net.URI;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.client.ClientRequestAdapter;
-import com.google.common.base.Optional;
 import com.sun.jersey.api.client.ClientRequest;
 
 class JerseyClientRequestAdapter implements ClientRequestAdapter {
@@ -26,13 +25,9 @@ class JerseyClientRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public Optional<String> getSpanName() {
-        Optional<String> spanName = Optional.absent();
+    public String getSpanName() {
         final Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
-        if (spanNameHeader != null) {
-            spanName = Optional.fromNullable(spanNameHeader.toString());
-        }
-        return spanName;
+        return spanNameHeader != null ? spanNameHeader.toString() : null;
     }
 
     @Override

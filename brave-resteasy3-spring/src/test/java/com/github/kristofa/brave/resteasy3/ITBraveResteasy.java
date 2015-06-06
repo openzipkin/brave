@@ -5,7 +5,6 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
-import com.google.common.base.Optional;
 import com.twitter.zipkin.gen.Span;
 import org.apache.http.client.ClientProtocolException;
 import org.eclipse.jetty.server.Connector;
@@ -79,8 +78,8 @@ public class ITBraveResteasy {
         ClientTracer clientTracer = appContext.getBean(ClientTracer.class);
         final BraveRestEasyResource client =
                 new ResteasyClientBuilder().build().target("http://localhost:8080/BraveRestEasyIntegration")
-                        .register(new BraveClientRequestFilter(clientTracer, Optional.<String>absent()))
-                        .register(new BraveClientResponseFilter(clientTracer, Optional.<String>absent()))
+                        .register(new BraveClientRequestFilter(clientTracer, null))
+                        .register(new BraveClientResponseFilter(clientTracer, null))
                         .proxy(BraveRestEasyResource.class);
 
         @SuppressWarnings("unchecked")

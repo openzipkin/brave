@@ -87,12 +87,6 @@
 		        <artifactId>httpcore</artifactId>
 		        <version>4.3.2</version>
     		</dependency>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>14.0.1</version>
-        </dependency>
   	</dependencies>
   </dependencyManagement>
 
