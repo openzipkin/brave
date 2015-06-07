@@ -26,7 +26,6 @@ import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.ClientRequestHeaders;
-import com.google.common.base.Optional;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.core.util.StringKeyObjectValueIgnoreCaseMultivaluedMap;
 
@@ -53,7 +52,7 @@ public class ClientServletCompatibilityTest {
 
     @Before
     public void setUp() {
-        clientFilter = new JerseyClientTraceFilter(clientTracer, Optional.<String>absent());
+        clientFilter = new JerseyClientTraceFilter(clientTracer, null);
         servletFilter = new ServletTraceFilter(serverTracer, endPointSubmitter);
     }
 

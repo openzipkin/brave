@@ -5,7 +5,6 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.EndPointSubmitter;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
-import com.google.common.base.Optional;
 import com.twitter.zipkin.gen.Span;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.Test;
@@ -33,8 +32,8 @@ public class ITBraveJersey2 extends JerseyTest {
     @Test
     public void testBraveJersey2() {
         WebTarget target = target("/brave-jersey2/test");
-        target.register(new BraveClientRequestFilter(clientTracer, Optional.<String>absent()));
-        target.register(new BraveClientResponseFilter(clientTracer, Optional.<String>absent()));
+        target.register(new BraveClientRequestFilter(clientTracer, null));
+        target.register(new BraveClientResponseFilter(clientTracer, null));
 
         final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
         endPointSubmitter.submit("127.0.0.1", 9998, "brave-jersey2");

@@ -7,7 +7,6 @@ import org.apache.http.HttpRequest;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.client.ClientRequestAdapter;
-import com.google.common.base.Optional;
 
 class ApacheRequestAdapter implements ClientRequestAdapter {
 
@@ -28,13 +27,9 @@ class ApacheRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public Optional<String> getSpanName() {
-        Optional<String> spanName = Optional.absent();
+    public String getSpanName() {
         final Header spanNameHeader = request.getFirstHeader(BraveHttpHeaders.SpanName.getName());
-        if (spanNameHeader != null) {
-            spanName = Optional.fromNullable(spanNameHeader.getValue());
-        }
-        return spanName;
+        return spanNameHeader != null ? spanNameHeader.getValue() : null;
     }
 
     @Override

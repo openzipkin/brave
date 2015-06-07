@@ -3,7 +3,6 @@ package com.github.kristofa.brave.jaxrs2;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import com.google.common.base.Optional;
 import org.apache.commons.lang.Validate;
 
 import javax.inject.Inject;
@@ -20,17 +19,15 @@ import java.io.IOException;
 public class BraveClientRequestFilter implements ClientRequestFilter {
 
     private final ClientRequestInterceptor clientRequestInterceptor;
-    private final Optional<String> serviceName;
+    private final String serviceName;
 
     @Inject
-    public BraveClientRequestFilter(final ClientTracer clientTracer, final Optional<String> serviceName) {
-        this(clientTracer, serviceName, Optional.<SpanNameFilter>absent());
+    public BraveClientRequestFilter(final ClientTracer clientTracer, final String serviceName) {
+        this(clientTracer, serviceName, null);
     }
 
-    public BraveClientRequestFilter(final ClientTracer clientTracer, final Optional<String> serviceName, final Optional<SpanNameFilter> spanNameFilter) {
+    public BraveClientRequestFilter(final ClientTracer clientTracer, final String serviceName, final SpanNameFilter spanNameFilter) {
         Validate.notNull(clientTracer);
-        Validate.notNull(serviceName);
-        Validate.notNull(spanNameFilter);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         this.serviceName = serviceName;
     }

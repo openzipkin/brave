@@ -1,7 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
@@ -9,17 +7,11 @@ import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static com.google.common.base.Optional.fromNullable;
+import static com.github.kristofa.brave.IdConversion.convertToLong;
 
 public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
     static final String HTTP_SERVER_SPAN_ATTRIBUTE = ServletHandlerInterceptor.class.getName() + ".server-span";
-    private static final Function<String, Long> TO_HEX = new Function<String, Long>() {
-        @Override
-        public Long apply(final String s) {
-            return IdConversion.convertToLong(s);
-        }
-    };
     private final ServerSpanThreadBinder serverThreadBinder;
     private final ServerTracer serverTracer;
     private final EndPointSubmitter endPointSubmitter;
@@ -69,8 +61,8 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
             endPointSubmitter.submit(request.getLocalAddr(), request.getLocalPort(), getServiceName(request));
         }
 
-        final Optional<String> sampled = fromNullable(request.getHeader(BraveHttpHeaders.Sampled.getName()));
-        if (!Boolean.valueOf(sampled.or(Boolean.TRUE.toString()))) {
+        final String sampled = request.getHeader(BraveHttpHeaders.Sampled.getName());
+        if (!Boolean.valueOf(sampled != null ? sampled : Boolean.TRUE.toString())) {
             serverTracer.setStateNoTracing();
             return;
         }
@@ -81,13 +73,14 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     }
 
     private void updateServerState(final HttpServletRequest request) {
-        final Optional<Long> traceId = fromNullable(request.getHeader(BraveHttpHeaders.TraceId.getName())).transform(TO_HEX);
-        final Optional<Long> spanId = fromNullable(request.getHeader(BraveHttpHeaders.SpanId.getName())).transform(TO_HEX);
+        final String traceId = request.getHeader(BraveHttpHeaders.TraceId.getName());
+        final String spanId = request.getHeader(BraveHttpHeaders.SpanId.getName());
         final String spanName = getSpanName(request.getHeader(BraveHttpHeaders.SpanName.getName()), request);
 
-        if (traceId.isPresent() && spanId.isPresent()) {
-            final Optional<Long> parentSpanId = fromNullable(request.getHeader(BraveHttpHeaders.ParentSpanId.getName())).transform(TO_HEX);
-            serverTracer.setStateCurrentTrace(traceId.get(), spanId.get(), parentSpanId.orNull(), spanName);
+        if (traceId != null && spanId != null) {
+            final String parentSpanId = request.getHeader(BraveHttpHeaders.ParentSpanId.getName());
+            serverTracer.setStateCurrentTrace(convertToLong(traceId), convertToLong(spanId),
+                                              parentSpanId != null ? convertToLong(parentSpanId) : null, spanName);
         } else {
             serverTracer.setStateUnknown(spanName);
         }

@@ -1,8 +1,6 @@
 package com.github.kristofa.brave.client.spanfilter;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -11,7 +9,6 @@ import java.util.regex.Pattern;
  * this filter will only allow these span names to be set as the client span name (else "[span name not defined]").
  */
 public class PatternBasedSpanNameFilterImpl implements SpanNameFilter {
-    @VisibleForTesting
     static final String DEFAULT_SPAN_NAME = "[span name not defined]";
 
     private final Iterable<SpanNamePattern> spanNamePatterns;
@@ -22,7 +19,7 @@ public class PatternBasedSpanNameFilterImpl implements SpanNameFilter {
     }
 
     public PatternBasedSpanNameFilterImpl(Iterable<String> spanNamePatterns, String defaultSpanName) {
-        final List<SpanNamePattern> patternNamePairs = Lists.newArrayList();
+        final List<SpanNamePattern> patternNamePairs = new ArrayList<>();
         if (spanNamePatterns != null) {
             for (String spanNamePattern : spanNamePatterns) {
                 if (spanNamePattern != null) {

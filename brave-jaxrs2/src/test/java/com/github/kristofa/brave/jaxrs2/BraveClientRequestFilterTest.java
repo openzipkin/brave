@@ -2,7 +2,6 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.ClientTracer;
-import com.google.common.base.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,7 +43,7 @@ public class BraveClientRequestFilterTest {
         uri = new URI("/test-uri");
         when(clientRequestContext.getUri()).thenReturn(uri);
 
-        braveClientRequestFilter = new BraveClientRequestFilter(clientTracer, Optional.<String>absent());
+        braveClientRequestFilter = new BraveClientRequestFilter(clientTracer, null);
 
     }
 

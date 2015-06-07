@@ -6,8 +6,6 @@ import org.jboss.resteasy.client.ClientRequest;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
 import com.github.kristofa.brave.client.ClientRequestAdapter;
-import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 
 class RestEasyClientRequestAdapter implements ClientRequestAdapter {
 
@@ -21,8 +19,10 @@ class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     public URI getUri() {
         try {
             return URI.create(clientRequest.getUri());
+        } catch (final RuntimeException e) {
+            throw e;
         } catch (final Exception e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -32,13 +32,9 @@ class RestEasyClientRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public Optional<String> getSpanName() {
-        Optional<String> spanName = Optional.absent();
+    public String getSpanName() {
         final Object spanNameHeader = clientRequest.getHeaders().getFirst(BraveHttpHeaders.SpanName.getName());
-        if (spanNameHeader != null) {
-            spanName = Optional.fromNullable(spanNameHeader.toString());
-        }
-        return spanName;
+        return spanNameHeader != null ? spanNameHeader.toString() : null;
     }
 
     @Override

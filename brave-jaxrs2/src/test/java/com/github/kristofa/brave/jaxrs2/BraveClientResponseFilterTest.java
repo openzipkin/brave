@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.google.common.base.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,7 +27,7 @@ public class BraveClientResponseFilterTest {
 
     @Before
     public void setUp() throws Exception {
-        braveClientResponseFilter = new BraveClientResponseFilter(clientTracer, Optional.<String>absent());
+        braveClientResponseFilter = new BraveClientResponseFilter(clientTracer, null);
     }
 
     @Test
