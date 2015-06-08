@@ -7,7 +7,6 @@ import org.mockito.InOrder;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 
@@ -36,7 +35,7 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(Optional.empty());
+        inOrder.verify(adapter).addSpanIdToRequest(null);
         verifyNoMoreInteractions(clientTracer, adapter);
     }
 
@@ -52,7 +51,7 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(Optional.of(spanId));
+        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).getClientServiceName();
         inOrder.verify(clientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(adapter).requestAnnotations();
@@ -73,7 +72,7 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(Optional.of(spanId));
+        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).getClientServiceName();
         inOrder.verify(clientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(adapter).requestAnnotations();
