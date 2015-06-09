@@ -1,8 +1,5 @@
 package com.github.kristofa.brave;
 
-
-import java.util.Optional;
-
 /**
  * Contains logic for handling an outgoing client request.
  */
@@ -24,9 +21,9 @@ public class ClientRequestInterceptor {
         SpanId spanId = clientTracer.startNewSpan(adapter.getSpanName());
         if (spanId == null) {
             // We will not trace this request.
-            adapter.addSpanIdToRequest(Optional.empty());
+            adapter.addSpanIdToRequest(null);
         } else {
-            adapter.addSpanIdToRequest(Optional.of(spanId));
+            adapter.addSpanIdToRequest(spanId);
             clientTracer.setCurrentClientServiceName(adapter.getClientServiceName());
             for(KeyValueAnnotation annotation : adapter.requestAnnotations()) {
                 clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());

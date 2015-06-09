@@ -167,16 +167,49 @@
       	  <plugins>
        	     	<plugin>
                 	<inherited>true</inherited>
-                	<groupId>org.apache.maven.plugins</groupId>
                 	<artifactId>maven-compiler-plugin</artifactId>
-                	<version>2.5.1</version>
+                	<version>3.1</version>
                 	<configuration>
                    		<source>1.8</source>
                     	<target>1.8</target>
                     	<optimize>true</optimize>
                     	<debug>true</debug>
                 	</configuration>
+                    <executions>
+                        <!-- Ensure main source tree compiles to Java 7 bytecode. -->
+                        <execution>
+                            <id>default-compile</id>
+                            <phase>compile</phase>
+                            <goals>
+                                <goal>compile</goal>
+                            </goals>
+                            <configuration>
+                                <source>1.7</source>
+                                <target>1.7</target>
+                            </configuration>
+                        </execution>
+                    </executions>
        	     	</plugin>
+                <!-- Make sure Java 8 classes and methods aren't accidentally used -->
+                <plugin>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>animal-sniffer-maven-plugin</artifactId>
+                    <version>1.14</version>
+                    <configuration>
+                        <signature>
+                            <groupId>org.codehaus.mojo.signature</groupId>
+                            <artifactId>java17</artifactId>
+                            <version>1.0</version>
+                        </signature>
+                    </configuration>
+                </plugin>
             	<plugin>
                 	<groupId>org.apache.maven.plugins</groupId>
                 	<artifactId>maven-eclipse-plugin</artifactId>
