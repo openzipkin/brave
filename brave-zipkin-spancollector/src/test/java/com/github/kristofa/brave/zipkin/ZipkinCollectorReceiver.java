@@ -2,9 +2,9 @@ package com.github.kristofa.brave.zipkin;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -37,10 +37,8 @@ class ZipkinCollectorReceiver implements Iface {
     public ResultCode Log(final List<LogEntry> messages) throws TException {
         try {
 
-            final Base64 base64 = new Base64();
-
             for (final LogEntry logEntry : messages) {
-                final byte[] decodedSpan = base64.decode(logEntry.getMessage());
+                final byte[] decodedSpan = Base64.getDecoder().decode(logEntry.getMessage());
 
                 final ByteArrayInputStream buf = new ByteArrayInputStream(decodedSpan);
                 final TProtocolFactory factory = new TBinaryProtocol.Factory();
