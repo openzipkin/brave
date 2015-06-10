@@ -2,6 +2,8 @@ package com.github.kristofa.brave;
 
 import java.util.Collection;
 
+import javax.annotation.Nullable;
+
 public interface ClientRequestAdapter {
 
     /**
@@ -15,10 +17,10 @@ public interface ClientRequestAdapter {
      * Enrich the request with the Spanid so we pass the state to the
      * service we are calling.
      *
-     * @param spanId Nullable span id. If empty we don't need to trace request and you
+     * @param spanId Nullable span id. If null we don't need to trace request and you
      *               should pass an indication along with the request that indicates we won't trace this request.
      */
-    void addSpanIdToRequest(SpanId spanId);
+    void addSpanIdToRequest(@Nullable SpanId spanId);
 
     /**
      * Returns the service name for request. The service name is expected to be the same

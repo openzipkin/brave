@@ -3,7 +3,7 @@ package com.github.kristofa.brave.jersey;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;

@@ -25,7 +25,7 @@ public class ClientSpanThreadBinderImplTest {
         mockSpan = mock(Span.class);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
         new ClientSpanThreadBinderImpl(null);
     }

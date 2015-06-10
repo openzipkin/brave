@@ -1,10 +1,12 @@
 package com.github.kristofa.brave.client;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+
+import javax.annotation.Nullable;
 
 /**
  * Intercepts a client request and takes care of tracing the request. It will decide if we need to trace current request and
@@ -39,7 +41,7 @@ public class ClientRequestInterceptor {
      *            will be derived from the URI of the request. It is important the used service name should be same on client
      *            as on server side.
      */
-    public void handle(final ClientRequestAdapter clientRequestAdapter, final String serviceNameOverride) {
+    public void handle(final ClientRequestAdapter clientRequestAdapter, @Nullable final String serviceNameOverride) {
         final String spanName = getSpanName(clientRequestAdapter, serviceNameOverride);
         final SpanId newSpanId = clientTracer.startNewSpan(spanName);
         ClientRequestHeaders.addTracingHeaders(clientRequestAdapter, newSpanId, spanName);

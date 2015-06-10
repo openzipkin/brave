@@ -1,11 +1,8 @@
 package com.github.kristofa.brave;
 
-
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Contains logic for handling an incoming server request.
@@ -19,7 +16,7 @@ public class ServerRequestInterceptor {
     private final ServerTracer serverTracer;
 
     public ServerRequestInterceptor(ServerTracer serverTracer) {
-        this.serverTracer = Objects.requireNonNull(serverTracer, "serverTracer should not be null.");
+        this.serverTracer = Validate.notNull(serverTracer, "serverTracer should not be null.");
     }
 
     /**
@@ -31,16 +28,16 @@ public class ServerRequestInterceptor {
         serverTracer.clearCurrentSpan();
         final TraceData traceData = adapter.getTraceData();
 
-        Optional<Boolean> sample = traceData.getSample();
-        if (sample.isPresent() && Boolean.FALSE.equals(sample.get())) {
+        Boolean sample = traceData.getSample();
+        if (sample != null && Boolean.FALSE.equals(sample)) {
             serverTracer.setStateNoTracing();
             LOGGER.debug("Received indication that we should NOT trace.");
         } else {
-            if (traceData.getSpanId().isPresent()) {
+            if (traceData.getSpanId() != null) {
                 LOGGER.debug("Received span information as part of request.");
-                SpanId spanId = traceData.getSpanId().get();
+                SpanId spanId = traceData.getSpanId();
                 serverTracer.setStateCurrentTrace(spanId.getTraceId(), spanId.getSpanId(),
-                        spanId.getOptionalParentSpanId().orElse(null), adapter.getSpanName());
+                        spanId.getParentSpanId(), adapter.getSpanName());
             } else {
                 LOGGER.debug("Received no span state.");
                 serverTracer.setStateUnknown(adapter.getSpanName());

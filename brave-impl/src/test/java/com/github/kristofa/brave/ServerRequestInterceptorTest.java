@@ -7,7 +7,6 @@ import org.mockito.InOrder;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 
@@ -59,7 +58,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithParentSpanId() {
-        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.of(PARENT_SPAN_ID))).sample(true).build();
+        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, PARENT_SPAN_ID)).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
@@ -77,7 +76,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithoutParentSpanId() {
-        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, Optional.empty())).sample(true).build();
+        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, null)).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);

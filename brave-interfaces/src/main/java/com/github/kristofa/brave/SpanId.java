@@ -1,7 +1,9 @@
 package com.github.kristofa.brave;
 
-import java.util.Objects;
-import java.util.Optional;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import javax.annotation.Nullable;
 
 /**
  * Identifies a Span.
@@ -12,19 +14,19 @@ public class SpanId {
 
     private final long traceId;
     private final long spanId;
-    private final Optional<Long> parentSpanId;
+    private final Long parentSpanId;
 
     /**
      * Creates a new span id.
      *
      * @param traceId Trace Id.
      * @param spanId Span Id.
-     * @param parentSpanId Optional parent span id.
+     * @param parentSpanId Nullable parent span id.
      */
-    public SpanId(final long traceId, final long spanId, final Optional<Long> parentSpanId) {
+    public SpanId(final long traceId, final long spanId, @Nullable final Long parentSpanId) {
         this.traceId = traceId;
         this.spanId = spanId;
-        this.parentSpanId = Objects.requireNonNull(parentSpanId, "null is not allowed, you should use Optional.empty()");
+        this.parentSpanId = parentSpanId;
     }
 
     /**
@@ -46,27 +48,19 @@ public class SpanId {
     }
 
     /**
-     * Deprecated. Please use getOptionalParentSpanId().
+     * Get parent span id.
      *
      * @return Parent span id. Can be <code>null</code>.
      */
-    @Deprecated
+    @Nullable
     public Long getParentSpanId() {
-        return parentSpanId.orElse(null);
-    }
-
-    /**
-     * Get parent span id.
-     *
-     * @return Optional parent span id.
-     */
-    public Optional<Long> getOptionalParentSpanId() {
         return parentSpanId;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(traceId, spanId, parentSpanId);
+        return new HashCodeBuilder()
+            .append(traceId).append(spanId).append(parentSpanId).toHashCode();
     }
 
     @Override
@@ -76,9 +70,10 @@ public class SpanId {
         }
         if (obj instanceof SpanId) {
             final SpanId other = (SpanId) obj;
-            return Objects.equals(this.traceId, other.traceId) &&
-                    Objects.equals(this.spanId, other.spanId) &&
-                    Objects.equals(this.parentSpanId, other.parentSpanId);
+            return new EqualsBuilder()
+                .append(this.traceId, other.traceId)
+                .append(this.spanId, other.spanId)
+                .append(this.parentSpanId, other.parentSpanId).isEquals();
         }
         else
         {
@@ -92,6 +87,6 @@ public class SpanId {
     @Override
     public String toString() {
         return "[trace id: " + traceId + ", span id: " + spanId + ", parent span id: "
-                + parentSpanId.toString() + "]";
+                + parentSpanId + "]";
     }
 }

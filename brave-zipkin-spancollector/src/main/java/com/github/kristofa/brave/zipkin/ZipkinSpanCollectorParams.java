@@ -1,6 +1,6 @@
 package com.github.kristofa.brave.zipkin;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 /**
  * Optional parameters for {@link ZipkinSpanCollector}.
