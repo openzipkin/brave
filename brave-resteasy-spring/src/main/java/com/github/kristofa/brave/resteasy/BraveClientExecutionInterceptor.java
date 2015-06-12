@@ -1,8 +1,9 @@
 package com.github.kristofa.brave.resteasy;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
@@ -63,7 +64,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      * @param spanNameFilter Nullable {@link SpanNameFilter}
      */
     @Autowired(required = false)
-    public BraveClientExecutionInterceptor(final ClientTracer clientTracer, final SpanNameFilter spanNameFilter) {
+    public BraveClientExecutionInterceptor(final ClientTracer clientTracer, @Nullable final SpanNameFilter spanNameFilter) {
         Validate.notNull(clientTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);

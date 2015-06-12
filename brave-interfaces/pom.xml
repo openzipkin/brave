@@ -27,6 +27,15 @@
 
   <dependencies>
     <dependency>
+        <!-- For @javax.annotation.Nullable -->
+        <groupId>com.google.code.findbugs</groupId>
+        <artifactId>jsr305</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
         <version>0.9.0</version>
@@ -68,8 +77,12 @@
             <plugin>
             	<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>		
-	    	</plugin>        
-        </plugins>          
+	    	</plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>animal-sniffer-maven-plugin</artifactId>
+            </plugin>
+    </plugins>
   </build>
   
 

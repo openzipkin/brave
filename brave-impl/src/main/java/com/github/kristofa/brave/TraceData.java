@@ -1,28 +1,30 @@
 package com.github.kristofa.brave;
 
-import java.util.Objects;
-import java.util.Optional;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import javax.annotation.Nullable;
 
 /**
  * Trace properties we potentially get from incoming request.
  */
 public class TraceData {
 
-    private final Optional<SpanId> spanId;
-    private final Optional<Boolean> sample;
+    private final SpanId spanId;
+    private final Boolean sample;
 
     public static class Builder {
 
-        private Optional<SpanId> spanId = Optional.empty();
-        private Optional<Boolean> sample = Optional.empty();
+        private SpanId spanId;
+        private Boolean sample;
 
-        public Builder spanId(SpanId spanId) {
-            this.spanId = Optional.of(spanId);
+        public Builder spanId(@Nullable SpanId spanId) {
+            this.spanId = spanId;
             return this;
         }
 
-        public Builder sample(boolean sample) {
-            this.sample = Optional.of(sample);
+        public Builder sample(@Nullable boolean sample) {
+            this.sample = sample;
             return this;
         }
 
@@ -40,24 +42,26 @@ public class TraceData {
     /**
      * Span id.
      *
-     * @return Span id.
+     * @return Nullable Span id.
      */
-    public Optional<SpanId> getSpanId() {
+    @Nullable
+    public SpanId getSpanId() {
         return spanId;
     }
 
     /**
      * Indication of request should be sampled or not.
      *
-     * @return Indication if request should be sampled or not.
+     * @return Nullable Indication if request should be sampled or not.
      */
-    public Optional<Boolean> getSample() {
+    @Nullable
+    public Boolean getSample() {
         return sample;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(spanId, sample);
+        return new HashCodeBuilder().append(spanId).append(sample).toHashCode();
     }
 
     @Override
@@ -67,8 +71,9 @@ public class TraceData {
         }
         if (obj instanceof TraceData) {
             final TraceData other = (TraceData) obj;
-            return Objects.equals(this.sample, other.sample) &&
-                    Objects.equals(this.spanId, other.spanId);
+            return new EqualsBuilder()
+                .append(this.sample, other.sample)
+                .append(this.spanId, other.spanId).isEquals();
         }
         return false;
     }

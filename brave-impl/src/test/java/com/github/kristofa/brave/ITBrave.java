@@ -14,7 +14,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
@@ -135,7 +134,7 @@ public class ITBrave {
 
         @Override
         public void addDefaultAnnotation(final String name, final String value) {
-            throw new NotImplementedException();
+            throw new UnsupportedOperationException();
         }
 
     }

@@ -48,7 +48,7 @@ public class ClientRequestInterceptorTest {
         when(clientRequestAdapter.getSpanName()).thenReturn(null);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testBraveHttpRequestInterceptor() {
         new ClientRequestInterceptor(null, mockSpanNameFilter);
     }

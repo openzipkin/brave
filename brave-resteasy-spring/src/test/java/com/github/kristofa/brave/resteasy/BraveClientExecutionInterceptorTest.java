@@ -56,7 +56,7 @@ public class BraveClientExecutionInterceptorTest {
         interceptor = new BraveClientExecutionInterceptor(mockClientTracer);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testBraveClientExecutionInterceptor() {
         new BraveClientExecutionInterceptor(null);
     }

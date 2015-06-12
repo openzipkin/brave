@@ -145,10 +145,10 @@ class ClientTracerImpl extends AbstractAnnotationSubmitter implements ClientTrac
         final Span currentServerSpan = state.getCurrentServerSpan().getSpan();
         final long newSpanId = randomGenerator.nextLong();
         if (currentServerSpan == null) {
-            return new SpanId(newSpanId, newSpanId, Optional.<Long>empty());
+            return new SpanId(newSpanId, newSpanId, null);
         }
 
-        return new SpanId(currentServerSpan.getTrace_id(), newSpanId, Optional.of(currentServerSpan.getId()));
+        return new SpanId(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
     }
 
 }

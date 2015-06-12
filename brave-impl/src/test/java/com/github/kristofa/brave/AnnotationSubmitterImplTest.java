@@ -41,7 +41,7 @@ public class AnnotationSubmitterImplTest {
         assertSame(mockEndPoint, annotationSubmitter.getEndPoint());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testAnnotationSubmitterImpl() {
         new AnnotationSubmitterImpl(null);
     }

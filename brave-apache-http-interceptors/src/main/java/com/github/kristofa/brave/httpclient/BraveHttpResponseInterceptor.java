@@ -2,7 +2,7 @@ package com.github.kristofa.brave.httpclient;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;

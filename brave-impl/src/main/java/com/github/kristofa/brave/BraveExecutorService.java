@@ -12,7 +12,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.annotation.PreDestroy;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 /**
  * {@link ExecutorService} that wraps around an existing {@link ExecutorService} and that makes sure the threads are executed

@@ -1,6 +1,6 @@
 package com.github.kristofa.brave.httpclient;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.protocol.HttpContext;
@@ -8,6 +8,8 @@ import org.apache.http.protocol.HttpContext;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+
+import javax.annotation.Nullable;
 
 /**
  * Apache HttpClient {@link HttpRequestInterceptor} that adds brave/zipkin annotations to outgoing client request.
@@ -33,8 +35,8 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
      * @param serviceName Nullable Service Name override
      * @param spanNameFilter Nullable {@link SpanNameFilter}
      */
-    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, final String serviceName,
-        final SpanNameFilter spanNameFilter) {
+    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, @Nullable final String serviceName,
+        @Nullable final SpanNameFilter spanNameFilter) {
         Validate.notNull(clientTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         this.serviceName = serviceName;
@@ -46,9 +48,8 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
      * @param clientTracer ClientTracer should not be <code>null</code>.
      * @param serviceName Nullable Service Name override
      */
-    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, final String serviceName) {
+    public BraveHttpRequestInterceptor(final ClientTracer clientTracer, @Nullable final String serviceName) {
         this(clientTracer, serviceName, null);
-
     }
 
     /**

@@ -27,6 +27,11 @@
 
     <dependencies>
         <dependency>
+            <!-- For @javax.annotation.Nullable -->
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-impl</artifactId>
             <version>3.0.0-beta-1-SNAPSHOT</version>
@@ -59,8 +64,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>animal-sniffer-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
-
-
 </project>

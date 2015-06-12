@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.twitter.zipkin.gen.Span;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 /**
  * Created by hzhao on 8/11/14.

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -69,22 +68,19 @@ class ZipkinCollectorReceiver implements Iface {
     @Override
     public void storeTopAnnotations(final String service_name, final List<String> annotations)
         throws StoreAggregatesException, TException {
-        throw new NotImplementedException();
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void storeTopKeyValueAnnotations(final String service_name, final List<String> annotations)
         throws StoreAggregatesException, TException {
-        throw new NotImplementedException();
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void storeDependencies(final String service_name, final List<String> endpoints) throws StoreAggregatesException,
         TException {
-        throw new NotImplementedException();
-
+        throw new UnsupportedOperationException();
     }
 
     /**

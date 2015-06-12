@@ -2,7 +2,7 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
