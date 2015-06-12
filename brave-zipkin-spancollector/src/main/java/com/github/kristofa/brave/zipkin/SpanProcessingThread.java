@@ -7,7 +7,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -39,7 +38,6 @@ class SpanProcessingThread implements Callable<Integer> {
 
     private final BlockingQueue<Span> queue;
     private final ZipkinCollectorClientProvider clientProvider;
-    private final Base64 base64 = new Base64();
     private final TProtocolFactory protocolFactory;
     private volatile boolean stop = false;
     private int processedSpans = 0;
@@ -138,7 +136,7 @@ class SpanProcessingThread implements Callable<Integer> {
     }
 
     private LogEntry create(final Span span) throws TException {
-        final String spanAsString = base64.encodeToString(spanToBytes(span));
+        final String spanAsString = Base64.encode(spanToBytes(span));
         return new LogEntry("zipkin", spanAsString);
     }
 
