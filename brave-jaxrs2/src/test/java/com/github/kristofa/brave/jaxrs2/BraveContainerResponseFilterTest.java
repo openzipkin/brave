@@ -3,21 +3,17 @@ package com.github.kristofa.brave.jaxrs2;
 import com.github.kristofa.brave.ServerTracer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.io.IOException;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @RunWith(MockitoJUnitRunner.class)
 public class BraveContainerResponseFilterTest {
 
-    @Mock
-    private ServerTracer serverTracer;
-
-    @InjectMocks
+    private ServerTracer serverTracer = mock(ServerTracer.class);
     private BraveContainerResponseFilter containerResponseFilter = new BraveContainerResponseFilter(serverTracer);
 
     @Test

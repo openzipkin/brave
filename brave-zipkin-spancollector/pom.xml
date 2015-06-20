@@ -36,11 +36,16 @@
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-core</artifactId>
         <version>3.0.0-beta-1-SNAPSHOT</version>
-    </dependency>        
-      <dependency>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-lang3</artifactId>
-      </dependency>
+    </dependency>
+    <dependency>
+        <groupId>com.google.auto.value</groupId>
+        <artifactId>auto-value</artifactId>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+    </dependency>
   </dependencies>
   <build>	
   	<plugins>

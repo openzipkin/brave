@@ -1,9 +1,10 @@
 package com.github.kristofa.brave;
 
+import com.google.auto.value.AutoValue;
+
 import java.util.concurrent.Callable;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import javax.annotation.Nullable;
 
 /**
  * Callable implementation that wraps another Callable and makes sure the wrapped Callable will be executed in the same
@@ -15,53 +16,39 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * @param <T> Return type.
  * @see BraveExecutorService
  */
-public class BraveCallable<T> implements Callable<T> {
-
-    private final Callable<T> wrappedCallable;
-    private final ServerSpanThreadBinder serverTracer;
-    private final ServerSpan currentServerSpan;
+@AutoValue
+public abstract class BraveCallable<T> implements Callable<T> {
 
     /**
      * Creates a new instance.
-     * 
+     *
      * @param wrappedCallable The wrapped Callable.
      * @param serverSpanThreadBinder ServerSpan thread binder.
      */
-    public BraveCallable(final Callable<T> wrappedCallable, final ServerSpanThreadBinder serverSpanThreadBinder) {
-        this.wrappedCallable = wrappedCallable;
-        this.serverTracer = serverSpanThreadBinder;
-        this.currentServerSpan = serverSpanThreadBinder.getCurrentServerSpan();
+    public static <T> BraveCallable<T> create(Callable<T> wrappedCallable, ServerSpanThreadBinder serverSpanThreadBinder) {
+        return new AutoValue_BraveCallable<T>(wrappedCallable, serverSpanThreadBinder, serverSpanThreadBinder.getCurrentServerSpan());
     }
+
+    abstract Callable<T> wrappedCallable();
+    abstract ServerSpanThreadBinder serverSpanThreadBinder();
+    @Nullable
+    abstract ServerSpan currentServerSpan();
 
     /**
      * {@inheritDoc}
      */
     @Override
     public T call() throws Exception {
-        serverTracer.setCurrentSpan(currentServerSpan);
+        serverSpanThreadBinder().setCurrentSpan(currentServerSpan());
         final long start = System.currentTimeMillis();
         try {
-            return wrappedCallable.call();
+            return wrappedCallable().call();
         } finally {
             final long duration = System.currentTimeMillis() - start;
-            currentServerSpan.incThreadDuration(duration);
+            currentServerSpan().incThreadDuration(duration);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return HashCodeBuilder.reflectionHashCode(this, false);
+    BraveCallable() {
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(final Object arg0) {
-        return EqualsBuilder.reflectionEquals(this, arg0, false);
-    }
-
 }

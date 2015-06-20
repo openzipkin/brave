@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -14,13 +13,13 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     static final String HTTP_SERVER_SPAN_ATTRIBUTE = ServletHandlerInterceptor.class.getName() + ".server-span";
     private final ServerSpanThreadBinder serverThreadBinder;
     private final ServerTracer serverTracer;
-    private final EndPointSubmitter endPointSubmitter;
+    private final EndpointSubmitter endpointSubmitter;
 
     @Autowired
-    public ServletHandlerInterceptor(final ServerTracer serverTracer, final ServerSpanThreadBinder serverThreadBinder, final EndPointSubmitter endPointSubmitter) {
+    public ServletHandlerInterceptor(final ServerTracer serverTracer, final ServerSpanThreadBinder serverThreadBinder, final EndpointSubmitter endpointSubmitter) {
         this.serverTracer = serverTracer;
         this.serverThreadBinder = serverThreadBinder;
-        this.endPointSubmitter = endPointSubmitter;
+        this.endpointSubmitter = endpointSubmitter;
     }
 
     @Override
@@ -57,8 +56,8 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     }
 
     private void beginTrace(final HttpServletRequest request) {
-        if (!endPointSubmitter.endPointSubmitted()) {
-            endPointSubmitter.submit(request.getLocalAddr(), request.getLocalPort(), getServiceName(request));
+        if (!endpointSubmitter.endpointSubmitted()) {
+            endpointSubmitter.submit(request.getLocalAddr(), request.getLocalPort(), getServiceName(request));
         }
 
         final String sampled = request.getHeader(BraveHttpHeaders.Sampled.getName());
@@ -87,7 +86,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     }
 
     private String getSpanName(final String name, final HttpServletRequest request) {
-        if (StringUtils.isEmpty(name)) {
+        if (name == null || name.trim().isEmpty()) {
             return request.getRequestURI();
         }
         return name;

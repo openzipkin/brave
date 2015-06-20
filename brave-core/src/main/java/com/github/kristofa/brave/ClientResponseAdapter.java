@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-
 import java.util.Collection;
 
 public interface ClientResponseAdapter {

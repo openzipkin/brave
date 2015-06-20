@@ -3,7 +3,6 @@ package com.github.kristofa.brave.jaxrs2;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import org.apache.commons.lang3.Validate;
 
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
@@ -27,7 +26,6 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
     }
 
     public BraveClientRequestFilter(final ClientTracer clientTracer, final String serviceName, final SpanNameFilter spanNameFilter) {
-        Validate.notNull(clientTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         this.serviceName = serviceName;
     }

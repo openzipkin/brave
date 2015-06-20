@@ -1,13 +1,11 @@
 package com.github.kristofa.brave.jersey;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import javax.servlet.FilterChain;
@@ -29,18 +27,12 @@ public class ServletTraceFilterTest {
     private static final String SPAN_NAME = "TestRequest";
     private static final Boolean SAMPLED_FALSE = false;
 
-    @Mock
-    ServerTracer serverTracer;
-    @Mock
-    EndPointSubmitter endPointSubmitter;
-    @Mock
-    HttpServletRequest servletRequest;
-    @Mock
-    HttpServletResponse servletResponse;
-    @Mock
+    ServerTracer serverTracer = mock(ServerTracer.class);
+    EndpointSubmitter endpointSubmitter = mock(EndpointSubmitter.class);
+    HttpServletRequest servletRequest = mock(HttpServletRequest.class);
+    HttpServletResponse servletResponse = mock(HttpServletResponse.class);
     FilterChain filterChain = mock(FilterChain.class);
-    @InjectMocks
-    ServletTraceFilter filter = new ServletTraceFilter(serverTracer, endPointSubmitter);
+    ServletTraceFilter filter = new ServletTraceFilter(serverTracer, endpointSubmitter);
 
     @Test
     public void shouldClearSpanFirst() throws Exception {
@@ -53,24 +45,24 @@ public class ServletTraceFilterTest {
     public void shouldCheckSubmitSpanState() throws Exception {
         filter.doFilter(servletRequest, servletResponse, filterChain);
 
-        verify(endPointSubmitter).endPointSubmitted();
+        verify(endpointSubmitter).endpointSubmitted();
     }
 
     @Test
     public void shouldSubmitEndpointWithGivenPaths() throws Exception {
-        when(endPointSubmitter.endPointSubmitted()).thenReturn(false);
+        when(endpointSubmitter.endpointSubmitted()).thenReturn(false);
         when(servletRequest.getContextPath()).thenReturn(CONTEXT_PATH);
         when(servletRequest.getLocalAddr()).thenReturn(LOCAL_ADDR);
         when(servletRequest.getLocalPort()).thenReturn(LOCAL_PORT);
 
         filter.doFilter(servletRequest, servletResponse, filterChain);
 
-        verify(endPointSubmitter).submit(LOCAL_ADDR, LOCAL_PORT, CONTEXT_PATH);
+        verify(endpointSubmitter).submit(LOCAL_ADDR, LOCAL_PORT, CONTEXT_PATH);
     }
 
     @Test
     public void shouldGetTraceDataFromHeaders() throws Exception {
-        when(endPointSubmitter.endPointSubmitted()).thenReturn(true);
+        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
 
         when(servletRequest.getHeader(BraveHttpHeaders.TraceId.getName())).thenReturn(Long.toString(TRACE_ID, 16));
         when(servletRequest.getHeader(BraveHttpHeaders.SpanId.getName())).thenReturn(Long.toString(SPAN_ID, 16));
@@ -90,15 +82,15 @@ public class ServletTraceFilterTest {
 
     @Test
     public void shouldNotSubmitSpanWhenSampleIsFalse() throws Exception {
-        when(endPointSubmitter.endPointSubmitted()).thenReturn(true);
+        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
 
         when(servletRequest.getHeader(BraveHttpHeaders.Sampled.getName())).thenReturn(String.valueOf(SAMPLED_FALSE));
 
         filter.doFilter(servletRequest, servletResponse, filterChain);
 
-        final InOrder inOrder = inOrder(endPointSubmitter, serverTracer);
+        final InOrder inOrder = inOrder(endpointSubmitter, serverTracer);
         inOrder.verify(serverTracer).clearCurrentSpan();
-        inOrder.verify(endPointSubmitter).endPointSubmitted();
+        inOrder.verify(endpointSubmitter).endpointSubmitted();
         inOrder.verify(serverTracer, never()).setStateCurrentTrace(anyLong(), anyLong(), anyLong(), anyString());
         inOrder.verify(serverTracer).setStateNoTracing();
     }

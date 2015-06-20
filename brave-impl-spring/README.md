@@ -31,7 +31,7 @@ Configuration classes are available for:
 *   AnnotationSubmitter
 *   ClientTracer: A ClientTracer needs a SpanCollector and TraceFilters so you have to make
 sure you have these added to Spring context yourself otherwise instantiating of ClientTracer will fail.
-*   EndPointSubmitter
+*   EndpointSubmitter
 *   ServerSpanThreadBinder
 *   ServerTracer: A ServerTracer needs a SpanCollector so you have to make sure a configuration for
 SpanCollector is added to your Spring context.

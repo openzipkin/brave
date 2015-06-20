@@ -41,7 +41,7 @@ public class BraveExecutorServiceTest {
     public void testExecute() {
         final Runnable mockRunnable = mock(Runnable.class);
         braveExecutorService.execute(mockRunnable);
-        final BraveRunnable expectedRunnable = new BraveRunnable(mockRunnable, mockThreadBinder);
+        final BraveRunnable expectedRunnable = BraveRunnable.create(mockRunnable, mockThreadBinder);
         verify(mockThreadBinder, times(2)).getCurrentServerSpan();
         verify(wrappedExecutor).execute(expectedRunnable);
         verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
@@ -66,8 +66,8 @@ public class BraveExecutorServiceTest {
         braveExecutorService.invokeAll(Arrays.asList(mockCallable, mockCallable2));
 
         final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(new BraveCallable<String>(mockCallable, mockThreadBinder));
-        expectedCollection.add(new BraveCallable<String>(mockCallable2, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
 
         verify(mockThreadBinder, times(4)).getCurrentServerSpan();
         verify(wrappedExecutor).invokeAll(expectedCollection);
@@ -84,8 +84,8 @@ public class BraveExecutorServiceTest {
         braveExecutorService.invokeAll(Arrays.asList(mockCallable, mockCallable2), TIMEOUT, TIME_UNIT);
 
         final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(new BraveCallable<String>(mockCallable, mockThreadBinder));
-        expectedCollection.add(new BraveCallable<String>(mockCallable2, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
 
         verify(mockThreadBinder, times(4)).getCurrentServerSpan();
         verify(wrappedExecutor).invokeAll(expectedCollection, TIMEOUT, TIME_UNIT);
@@ -101,8 +101,8 @@ public class BraveExecutorServiceTest {
         braveExecutorService.invokeAny(Arrays.asList(mockCallable, mockCallable2));
 
         final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(new BraveCallable<String>(mockCallable, mockThreadBinder));
-        expectedCollection.add(new BraveCallable<String>(mockCallable2, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
 
         verify(mockThreadBinder, times(4)).getCurrentServerSpan();
         verify(wrappedExecutor).invokeAny(expectedCollection);
@@ -119,8 +119,8 @@ public class BraveExecutorServiceTest {
         braveExecutorService.invokeAny(Arrays.asList(mockCallable, mockCallable2), TIMEOUT, TIME_UNIT);
 
         final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(new BraveCallable<String>(mockCallable, mockThreadBinder));
-        expectedCollection.add(new BraveCallable<String>(mockCallable2, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
+        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
 
         verify(mockThreadBinder, times(4)).getCurrentServerSpan();
         verify(wrappedExecutor).invokeAny(expectedCollection, TIMEOUT, TIME_UNIT);
@@ -163,7 +163,7 @@ public class BraveExecutorServiceTest {
     @Test
     public void testSubmitCallableOfT() {
         final Callable<String> callable = mock(Callable.class);
-        final BraveCallable<String> expectedCallable = new BraveCallable<String>(callable, mockThreadBinder);
+        final BraveCallable<String> expectedCallable = BraveCallable.create(callable, mockThreadBinder);
         final Future<String> future = mock(Future.class);
         when(wrappedExecutor.submit(expectedCallable)).thenReturn(future);
         assertSame(future, braveExecutorService.submit(callable));
@@ -175,7 +175,7 @@ public class BraveExecutorServiceTest {
     @Test
     public void testSubmitRunnable() {
         final Runnable runnable = mock(Runnable.class);
-        final BraveRunnable expectedRunnable = new BraveRunnable(runnable, mockThreadBinder);
+        final BraveRunnable expectedRunnable = BraveRunnable.create(runnable, mockThreadBinder);
         braveExecutorService.submit(runnable);
         verify(mockThreadBinder, times(2)).getCurrentServerSpan();
         verify(wrappedExecutor).submit(expectedRunnable);
@@ -187,7 +187,7 @@ public class BraveExecutorServiceTest {
     @Test
     public void testSubmitRunnableT() {
         final Runnable runnable = mock(Runnable.class);
-        final BraveRunnable expectedRunnable = new BraveRunnable(runnable, mockThreadBinder);
+        final BraveRunnable expectedRunnable = BraveRunnable.create(runnable, mockThreadBinder);
         final String returnValue = "return value";
         final Future<String> future = mock(Future.class);
         when(wrappedExecutor.submit(expectedRunnable, returnValue)).thenReturn(future);

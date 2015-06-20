@@ -8,22 +8,22 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author kristof
  */
-class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
+final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanState {
 
     private final static ThreadLocal<ServerSpan> currentServerSpan = new ThreadLocal<ServerSpan>() {
 
         @Override
-        protected ServerSpanImpl initialValue() {
-            return new ServerSpanImpl(null);
+        protected ServerSpan initialValue() {
+            return ServerSpan.create(null);
         }
     };
-    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
+    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<>();
 
-    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<String>();
+    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<>();
 
-    private Endpoint endPoint;
+    private Endpoint endpoint;
 
-    public ServerAndClientSpanStateImpl() {
+    public ThreadLocalServerAndClientSpanState() {
 
     }
 
@@ -36,8 +36,8 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     }
 
     @Override
-    public Endpoint getServerEndPoint() {
-        return endPoint;
+    public Endpoint getServerEndpoint() {
+        return endpoint;
     }
 
     /**
@@ -50,19 +50,18 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
         } else {
             currentServerSpan.set(span);
         }
-
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Endpoint getClientEndPoint() {
+    public Endpoint getClientEndpoint() {
         final String serviceName = currentClientServiceName.get();
         if (serviceName == null) {
-            return endPoint;
+            return endpoint;
         } else {
-            final Endpoint ep = new Endpoint(endPoint);
+            final Endpoint ep = new Endpoint(endpoint);
             ep.setService_name(serviceName);
             return ep;
         }
@@ -72,8 +71,8 @@ class ServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public void setServerEndPoint(final Endpoint endPoint) {
-        this.endPoint = endPoint;
+    public void setServerEndpoint(final Endpoint endpoint) {
+        this.endpoint = endpoint;
     }
 
     /**

@@ -4,15 +4,15 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-public class DefaultSpanNameFilterImplTest {
+public class DefaultSpanNameFilterTest {
 
     private static final String SPAN = "/path/path/1a2a3";
 
     @Test
     public void testDefaulSpanNameFilter() {
-        final DefaultSpanNameFilterImpl defaultSpanNameFilterImpl = new DefaultSpanNameFilterImpl();
+        final DefaultSpanNameFilter defaultSpanNameFilter = new DefaultSpanNameFilter();
 
-        final String filterSpanName = defaultSpanNameFilterImpl.filterSpanName(SPAN);
+        final String filterSpanName = defaultSpanNameFilter.filterSpanName(SPAN);
 
         assertEquals(SPAN, filterSpanName);
     }

@@ -50,19 +50,19 @@ The implementation is used in [brave-resteasy-example](https://github.com/kristo
 
 
 
-## about EndPointSubmitter ##
+## about EndpointSubmitter ##
 
-Each Annotation part of a Span can have an EndPoint assigned. 
-The EndPoint specifies the service/application from which the annotation is submitted, identified by
+Each Annotation part of a Span can have an Endpoint assigned. 
+The Endpoint specifies the service/application from which the annotation is submitted, identified by
 ip address, port, service name.
 
-During the lifecycle of an application the EndPoint is fixed. This means the Endpoint can
+During the lifecycle of an application the Endpoint is fixed. This means the Endpoint can
 be set up once ideally when initialising your application.
 
-Initialising the Endpoint for Brave is done through the EndPointSubmitter.  Once it is set up all
-annotations submitted through ClientTracer, ServerTracer or AnnotationSubmitter will use the EndPoint.
+Initialising the Endpoint for Brave is done through the EndpointSubmitter.  Once it is set up all
+annotations submitted through ClientTracer, ServerTracer or AnnotationSubmitter will use the Endpoint.
 
-In the brave-resteasy-spring project the EndPoint is set up in `BravePreProcessInterceptor` when it
+In the brave-resteasy-spring project the Endpoint is set up in `BravePreProcessInterceptor` when it
 receives the first request so before any annotations are submitted.
 
 ## about span collectors ##
@@ -73,8 +73,8 @@ All spans that are submitted by brave end up in a SpanCollector of your choice
 A SpanCollector is responsible for receiving spans and acting upon them. There are 2 
 SpanCollector implementations part of brave-impl: 
 
-*    `com.github.kristofa.brave.LoggingSpanCollectorImpl` : This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
-*    `com.github.kristofa.brave.EmptySpanCollectorImpl` : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
+*    `com.github.kristofa.brave.LoggingSpanCollector` : This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
+*    `com.github.kristofa.brave.EmptySpanCollector` : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
 
 The most interesting SpanCollector is the ZipkinSpanCollector. This one can be found in 
 [brave-zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) project.
@@ -120,18 +120,18 @@ This class contains only static methods. Reason is that the returned components 
 share the same trace/span state. This state is maintained as a static singleton in this
 class.
 
-### Brave.getEndPointSubmitter ###
+### Brave.getEndpointSubmitter ###
 
-> public static EndPointSubmitter getEndPointSubmitter()
+> public static EndpointSubmitter getEndpointSubmitter()
 
 Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoint 
 (host, port, service name) assigned. For a given service/application instance the endpoint 
 only needs to be set once and will be reused for all submitted annotations.
 
-The EndPoint should be set using the EndPointSubmitter before any annotation/span is
+The Endpoint should be set using the EndpointSubmitter before any annotation/span is
 created.  
 
-In the brave-resteasy-spring module the EndPoint is set in 
+In the brave-resteasy-spring module the Endpoint is set in 
 `com.github.kristofa.brave.resteasy.BravePreProcessInterceptor` when receiving the first
 request.
 

@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,12 +12,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.commons.lang3.Validate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.twitter.zipkin.gen.Endpoint;
+import com.github.kristofa.brave.SpanAndEndpoint.StaticSpanAndEndpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
@@ -26,7 +26,7 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author kristof
  */
-public class ITAbstractAnnotationSubmitterConcurrency {
+public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
     private Span span;
@@ -45,12 +45,12 @@ public class ITAbstractAnnotationSubmitterConcurrency {
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
 
-        final MockAnnotationSubmitter mockAnnotationSubmitter = new MockAnnotationSubmitter();
+        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, null));
 
         final List<AnnotationSubmitThread> threadList =
-            Arrays.asList(new AnnotationSubmitThread(1, 100, mockAnnotationSubmitter), new AnnotationSubmitThread(101, 200,
-                mockAnnotationSubmitter), new AnnotationSubmitThread(201, 300, mockAnnotationSubmitter),
-                new AnnotationSubmitThread(301, 400, mockAnnotationSubmitter));
+            Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,
+                annotationSubmitter), new AnnotationSubmitThread(201, 300, annotationSubmitter),
+                new AnnotationSubmitThread(301, 400, annotationSubmitter));
 
         final List<Future<?>> resultList = new ArrayList<Future<?>>();
 
@@ -69,28 +69,14 @@ public class ITAbstractAnnotationSubmitterConcurrency {
 
     }
 
-    private final class MockAnnotationSubmitter extends AbstractAnnotationSubmitter {
-
-        @Override
-        Span getSpan() {
-            return span;
-        }
-
-        @Override
-        Endpoint getEndPoint() {
-            return null;
-        }
-
-    }
-
     private final class AnnotationSubmitThread implements Callable<Void> {
 
         private final int from;
         private final int to;
-        private final AbstractAnnotationSubmitter annotationSubmitter;
+        private final AnnotationSubmitter annotationSubmitter;
 
-        public AnnotationSubmitThread(final int from, final int to, final AbstractAnnotationSubmitter annotationSubmitter) {
-            Validate.isTrue(from <= to);
+        public AnnotationSubmitThread(final int from, final int to, final AnnotationSubmitter annotationSubmitter) {
+            assertTrue(from <= to);
             this.from = from;
             this.to = to;
             this.annotationSubmitter = annotationSubmitter;

@@ -6,36 +6,37 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
 
-public class ServerSpanImplTest {
+public class ServerSpanTest {
 
     private static final long TRACE_ID = 1;
     private static final long SPAN_ID = 2;
     private static final Long PARENT_SPAN_ID = Long.valueOf(3);
     private static final String NAME = "name";
-    private ServerSpanImpl serverSpan;
+    private ServerSpan serverSpan;
 
     @Before
     public void setup() {
-        serverSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
+        serverSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
     }
 
     @Test
-    public void testServerSpanImplSampleNull() {
-        final ServerSpanImpl serverSpanImpl = new ServerSpanImpl(null);
-        assertNull(serverSpanImpl.getSample());
-        assertNull(serverSpanImpl.getSpan());
+    public void testServerSpanSampleNull() {
+        final ServerSpan serverSpan = ServerSpan.create(null);
+        assertNull(serverSpan.getSample());
+        assertNull(serverSpan.getSpan());
     }
 
     @Test
-    public void testServerSpanImplSampleFalse() {
-        final ServerSpanImpl serverSpanImpl = new ServerSpanImpl(false);
-        assertFalse(serverSpanImpl.getSample());
-        assertNull(serverSpanImpl.getSpan());
+    public void testServerSpanSampleFalse() {
+        final ServerSpan serverSpan = ServerSpan.create(false);
+        assertFalse(serverSpan.getSample());
+        assertNull(serverSpan.getSpan());
     }
 
     @Test
@@ -54,14 +55,14 @@ public class ServerSpanImplTest {
     @Test
     public void testIncThreadDuration() {
         serverSpan.incThreadDuration(10);
-        assertEquals(10, serverSpan.getThreadDuration());
+        Assert.assertEquals(10, serverSpan.getThreadDuration());
         serverSpan.incThreadDuration(5);
-        assertEquals(15, serverSpan.getThreadDuration());
+        Assert.assertEquals(15, serverSpan.getThreadDuration());
     }
 
     @Test
     public void testGetThreadDuration() {
-        assertEquals(0, serverSpan.getThreadDuration());
+        Assert.assertEquals(0, serverSpan.getThreadDuration());
     }
 
     @Test
@@ -72,14 +73,14 @@ public class ServerSpanImplTest {
     @Test
     public void testEqualsObject() {
 
-        final ServerSpan equalServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
+        final ServerSpan equalServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
         assertTrue(serverSpan.equals(equalServerSpan));
     }
 
     @Test
     public void testHashCode() {
-        final ServerSpan equalServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
-        assertEquals(serverSpan.hashCode(), equalServerSpan.hashCode());
+        final ServerSpan equalServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
+        Assert.assertEquals(serverSpan.hashCode(), equalServerSpan.hashCode());
     }
 
 }

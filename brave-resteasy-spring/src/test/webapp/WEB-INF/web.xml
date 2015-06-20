@@ -22,7 +22,7 @@
 		  com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
 		  com.github.kristofa.brave.AnnotationSubmitterConfig
 		  com.github.kristofa.brave.ClientTracerConfig
-		  com.github.kristofa.brave.EndPointSubmitterConfig
+		  com.github.kristofa.brave.EndpointSubmitterConfig
 		  com.github.kristofa.brave.ServerSpanThreadBinderConfig
 		  com.github.kristofa.brave.ServerTracerConfig
 		  com.github.kristofa.brave.resteasy.ResteasySpringConfig

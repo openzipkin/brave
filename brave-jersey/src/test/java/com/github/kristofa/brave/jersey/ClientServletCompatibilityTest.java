@@ -22,7 +22,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.ClientRequestHeaders;
@@ -37,7 +37,7 @@ public class ClientServletCompatibilityTest {
     @Mock
     ServerTracer serverTracer;
     @Mock
-    EndPointSubmitter endPointSubmitter;
+    EndpointSubmitter endpointSubmitter;
     @Mock
     FilterChain filterChain;
     @Mock
@@ -53,7 +53,7 @@ public class ClientServletCompatibilityTest {
     @Before
     public void setUp() {
         clientFilter = new JerseyClientTraceFilter(clientTracer, null);
-        servletFilter = new ServletTraceFilter(serverTracer, endPointSubmitter);
+        servletFilter = new ServletTraceFilter(serverTracer, endpointSubmitter);
     }
 
     @Test

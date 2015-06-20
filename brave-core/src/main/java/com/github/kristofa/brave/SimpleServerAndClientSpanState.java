@@ -8,9 +8,9 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @see BraveContext
  */
-class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
+final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
 
-    private Endpoint endPoint;
+    private Endpoint endpoint;
     private Span currentClientSpan;
     private ServerSpan currentServerSpan;
     private String currentClientServiceName;
@@ -35,16 +35,16 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public Endpoint getServerEndPoint() {
-        return endPoint;
+    public Endpoint getServerEndpoint() {
+        return endpoint;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setServerEndPoint(final Endpoint endPoint) {
-        this.endPoint = endPoint;
+    public void setServerEndpoint(final Endpoint endpoint) {
+        this.endpoint = endpoint;
     }
 
     /**
@@ -56,13 +56,13 @@ class SimpleServerAndClientSpanStateImpl implements ServerAndClientSpanState {
     }
 
     @Override
-    public Endpoint getClientEndPoint() {
+    public Endpoint getClientEndpoint() {
         if(currentClientServiceName == null){
-            return endPoint;
+            return endpoint;
         } else {
-            Endpoint newEndPoint = new Endpoint(endPoint);
-            newEndPoint.setService_name(currentClientServiceName);
-            return newEndPoint;
+            Endpoint newEndpoint = new Endpoint(endpoint);
+            newEndpoint.setService_name(currentClientServiceName);
+            return newEndpoint;
         }
     }
 

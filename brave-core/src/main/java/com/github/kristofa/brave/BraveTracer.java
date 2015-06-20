@@ -5,10 +5,6 @@ import java.net.InetAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndPointSubmitter;
-import com.github.kristofa.brave.ServerTracer;
-
 public class BraveTracer {
     private static final String REQUEST_ANNOTATION = "request";
     private static final String FAILURE_ANNOTATION = "failure";
@@ -17,20 +13,20 @@ public class BraveTracer {
 
 	ClientTracer clientTracer;
 	ServerTracer serverTracer;
-	EndPointSubmitter endPointSubmitter;
+	EndpointSubmitter endpointSubmitter;
 	boolean enabled = true;
 	
 	public BraveTracer(ClientTracer clientTracer,
-			ServerTracer serverTracer, EndPointSubmitter endPointSubmitter) {
+			ServerTracer serverTracer, EndpointSubmitter endpointSubmitter) {
 		super();
 		this.clientTracer = clientTracer;
 		this.serverTracer = serverTracer;
-		this.endPointSubmitter = endPointSubmitter;
+		this.endpointSubmitter = endpointSubmitter;
 	}	
 	
 	public BraveTracer(ClientTracer clientTracer,
-			ServerTracer serverTracer, EndPointSubmitter endPointSubmitter, boolean enabled) {
-		this(clientTracer, serverTracer, endPointSubmitter);
+			ServerTracer serverTracer, EndpointSubmitter endpointSubmitter, boolean enabled) {
+		this(clientTracer, serverTracer, endpointSubmitter);
 		this.enabled = enabled;
 	}
 	
@@ -103,9 +99,9 @@ public class BraveTracer {
 	        final String localAddr = InetAddress.getLocalHost().getHostAddress();
 	        final int localPort =0;
 	        LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
-	        if (!endPointSubmitter.endPointSubmitted())
+	        if (!endpointSubmitter.endpointSubmitted())
 	        {
-	        	endPointSubmitter.submit(localAddr, localPort, contextPath);
+	        	endpointSubmitter.submit(localAddr, localPort, contextPath);
 	        }
 		}
     }
@@ -117,8 +113,8 @@ public class BraveTracer {
 	{
 		return this.serverTracer;
 	}
-	public EndPointSubmitter endPointSubmitter()
+	public EndpointSubmitter endpointSubmitter()
 	{
-		return this.endPointSubmitter;
+		return this.endpointSubmitter;
 	}
 }

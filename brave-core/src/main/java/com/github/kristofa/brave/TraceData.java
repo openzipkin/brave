@@ -1,42 +1,17 @@
 package com.github.kristofa.brave;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import com.google.auto.value.AutoValue;
 
 import javax.annotation.Nullable;
 
 /**
  * Trace properties we potentially get from incoming request.
  */
-public class TraceData {
+@AutoValue
+public abstract class TraceData {
 
-    private final SpanId spanId;
-    private final Boolean sample;
-
-    public static class Builder {
-
-        private SpanId spanId;
-        private Boolean sample;
-
-        public Builder spanId(@Nullable SpanId spanId) {
-            this.spanId = spanId;
-            return this;
-        }
-
-        public Builder sample(@Nullable boolean sample) {
-            this.sample = sample;
-            return this;
-        }
-
-        public TraceData build() {
-            return new TraceData(this);
-        }
-
-    }
-
-    private TraceData(Builder builder) {
-        this.spanId = builder.spanId;
-        this.sample = builder.sample;
+    public static Builder builder(){
+        return new AutoValue_TraceData.Builder();
     }
 
     /**
@@ -45,9 +20,7 @@ public class TraceData {
      * @return Nullable Span id.
      */
     @Nullable
-    public SpanId getSpanId() {
-        return spanId;
-    }
+    public abstract SpanId getSpanId();
 
     /**
      * Indication of request should be sampled or not.
@@ -55,26 +28,15 @@ public class TraceData {
      * @return Nullable Indication if request should be sampled or not.
      */
     @Nullable
-    public Boolean getSample() {
-        return sample;
-    }
+    public abstract Boolean getSample();
 
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder().append(spanId).append(sample).toHashCode();
-    }
+    @AutoValue.Builder
+    public interface Builder {
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (obj instanceof TraceData) {
-            final TraceData other = (TraceData) obj;
-            return new EqualsBuilder()
-                .append(this.sample, other.sample)
-                .append(this.spanId, other.spanId).isEquals();
-        }
-        return false;
+        Builder spanId(@Nullable SpanId spanId);
+
+        Builder sample(@Nullable Boolean sample);
+
+        TraceData build();
     }
 }

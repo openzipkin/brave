@@ -14,13 +14,19 @@ import java.util.Random;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
-public class ClientTracerImplTest {
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(AnnotationSubmitter.class)
+public class ClientTracerTest {
 
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private final static String REQUEST_NAME = "requestName";
@@ -30,19 +36,19 @@ public class ClientTracerImplTest {
     private ServerAndClientSpanState mockState;
     private Random mockRandom;
     private SpanCollector mockCollector;
-    private ClientTracerImpl clientTracer;
+    private ClientTracer clientTracer;
     private Span mockSpan;
-    private Endpoint endPoint;
+    private Endpoint endpoint;
     private TraceFilter mockTraceFilter;
     private TraceFilter mockTraceFilter2;
 
     @Before
     public void setup() {
         mockState = mock(ServerAndClientSpanState.class);
-        endPoint = new Endpoint();
+        endpoint = new Endpoint();
         mockTraceFilter = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
-        when(mockState.getServerEndPoint()).thenReturn(endPoint);
+        when(mockState.getServerEndpoint()).thenReturn(endpoint);
         when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(true);
 
@@ -50,35 +56,14 @@ public class ClientTracerImplTest {
         mockCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
 
-        clientTracer =
-            new ClientTracerImpl(mockState, mockRandom, mockCollector, Arrays.asList(mockTraceFilter, mockTraceFilter2)) {
-
-                @Override
-                long currentTimeMicroseconds() {
-                    return CURRENT_TIME_MICROSECONDS;
-                }
-            };
-
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullState() {
-        new ClientTracerImpl(null, mockRandom, mockCollector, Arrays.asList(mockTraceFilter));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullRandom() {
-        new ClientTracerImpl(mockState, null, mockCollector, Arrays.asList(mockTraceFilter));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullCollector() {
-        new ClientTracerImpl(mockState, mockRandom, null, Arrays.asList(mockTraceFilter));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullTraceFilter() {
-        new ClientTracerImpl(mockState, mockRandom, mockCollector, null);
+        PowerMockito.mockStatic(System.class);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
+        clientTracer = ClientTracer.builder()
+            .state(mockState)
+            .randomGenerator(mockRandom)
+            .spanCollector(mockCollector)
+            .traceFilters(Arrays.asList(mockTraceFilter, mockTraceFilter2))
+            .build();
     }
 
     @Test
@@ -93,15 +78,15 @@ public class ClientTracerImplTest {
     public void testSetClientSent() {
 
         when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
-        when(mockState.getClientEndPoint()).thenReturn(endPoint);
+        when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientSent();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endPoint);
+        expectedAnnotation.setHost(endpoint);
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
         verify(mockState).getCurrentClientSpan();
-        verify(mockState).getClientEndPoint();
+        verify(mockState).getClientEndpoint();
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockState, mockRandom, mockSpan, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
@@ -118,15 +103,15 @@ public class ClientTracerImplTest {
     public void testSetClientReceived() {
 
         when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
-        when(mockState.getClientEndPoint()).thenReturn(endPoint);
+        when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientReceived();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endPoint);
+        expectedAnnotation.setHost(endpoint);
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_RECV);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
         verify(mockState, times(2)).getCurrentClientSpan();
-        verify(mockState).getClientEndPoint();
+        verify(mockState).getClientEndpoint();
         verify(mockState).setCurrentClientSpan(null);
         verify(mockState).setCurrentClientServiceName(null);
         verify(mockSpan).addToAnnotations(expectedAnnotation);
@@ -207,7 +192,7 @@ public class ClientTracerImplTest {
 
         when(mockState.sample()).thenReturn(true);
 
-        final ServerSpan parentSpan = new ServerSpanImpl(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
+        final ServerSpan parentSpan = ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
 
         when(mockState.getCurrentServerSpan()).thenReturn(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);

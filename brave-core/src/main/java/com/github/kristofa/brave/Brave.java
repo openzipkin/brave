@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
+
 import java.util.List;
 import java.util.Random;
 
@@ -12,7 +14,7 @@ import java.util.Random;
  */
 public class Brave {
 
-    private final static ServerAndClientSpanState SERVER_AND_CLIENT_SPAN_STATE = new ServerAndClientSpanStateImpl();
+    private final static ServerAndClientSpanState SERVER_AND_CLIENT_SPAN_STATE = new ThreadLocalServerAndClientSpanState();
     private final static Random RANDOM_GENERATOR = new Random();
 
     private Brave() {
@@ -20,18 +22,18 @@ public class Brave {
     }
 
     /**
-     * Gets {@link EndPointSubmitter}. Allows you to set endpoint (ip, port, service name) for this service.
+     * Gets {@link EndpointSubmitter}. Allows you to set endpoint (ip, port, service name) for this service.
      * <p/>
      * Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoint (host, port, service name)
      * assigned. For a given service/application instance the endpoint only needs to be set once and will be reused for all
      * submitted annotations.
      * <p/>
-     * The EndPoint needs to be set using the EndPointSubmitter before any annotation/span is created.
+     * The Endpoint needs to be set using the EndpointSubmitter before any annotation/span is created.
      * 
-     * @return {@link EndPointSubmitter}.
+     * @return {@link EndpointSubmitter}.
      */
-    public static EndPointSubmitter getEndPointSubmitter() {
-        return new EndPointSubmitterImpl(SERVER_AND_CLIENT_SPAN_STATE);
+    public static EndpointSubmitter getEndpointSubmitter() {
+        return new EndpointSubmitter(SERVER_AND_CLIENT_SPAN_STATE);
     }
 
     /**
@@ -51,7 +53,12 @@ public class Brave {
      * @see Brave#getTraceAllTraceFilter()
      */
     public static ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ClientTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters);
+        return ClientTracer.builder()
+            .state(SERVER_AND_CLIENT_SPAN_STATE)
+            .randomGenerator(RANDOM_GENERATOR)
+            .spanCollector(collector)
+            .traceFilters(traceFilters)
+            .build();
     }
 
     /**
@@ -64,7 +71,12 @@ public class Brave {
      * @return {@link ServerTracer} instance.
      */
     public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ServerTracerImpl(SERVER_AND_CLIENT_SPAN_STATE, RANDOM_GENERATOR, collector, traceFilters);
+        return ServerTracer.builder()
+            .state(SERVER_AND_CLIENT_SPAN_STATE)
+            .randomGenerator(RANDOM_GENERATOR)
+            .spanCollector(collector)
+            .traceFilters(traceFilters)
+            .build();
     }
 
     /**
@@ -73,7 +85,7 @@ public class Brave {
      * @return Server span {@link AnnotationSubmitter}.
      */
     public static AnnotationSubmitter getServerSpanAnnotationSubmitter() {
-        return new AnnotationSubmitterImpl(SERVER_AND_CLIENT_SPAN_STATE);
+        return AnnotationSubmitter.create(ServerSpanAndEndpoint.create(SERVER_AND_CLIENT_SPAN_STATE));
     }
 
     /**
@@ -84,7 +96,7 @@ public class Brave {
      * @return {@link ServerSpanThreadBinder}.
      */
     public static ServerSpanThreadBinder getServerSpanThreadBinder() {
-        return new ServerSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
+        return new ServerSpanThreadBinder(SERVER_AND_CLIENT_SPAN_STATE);
     }
 
     /**
@@ -95,6 +107,6 @@ public class Brave {
      * @return {@link ClientSpanThreadBinder}.
      */
     public static ClientSpanThreadBinder getClientSpanThreadBinder() {
-        return new ClientSpanThreadBinderImpl(SERVER_AND_CLIENT_SPAN_STATE);
+        return new ClientSpanThreadBinder(SERVER_AND_CLIENT_SPAN_STATE);
     }
 }

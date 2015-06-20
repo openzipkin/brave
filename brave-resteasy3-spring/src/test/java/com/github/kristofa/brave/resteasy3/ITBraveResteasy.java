@@ -2,7 +2,7 @@ package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.twitter.zipkin.gen.Span;
@@ -66,8 +66,8 @@ public class ITBraveResteasy {
     public void test() throws ClientProtocolException, IOException, InterruptedException {
         // We need to set up our endpoint first because we start a client request from
         // in our test so the brave preprocessor did not set up end point yet.
-        final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-        endPointSubmitter.submit("127.0.0.1", 8080, "BraveRestEasyIntegration");
+        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
+        endpointSubmitter.submit("127.0.0.1", 8080, "BraveRestEasyIntegration");
 
         // this initialization only needs to be done once per VM
         RegisterBuiltin.register(ResteasyProviderFactory.getInstance());

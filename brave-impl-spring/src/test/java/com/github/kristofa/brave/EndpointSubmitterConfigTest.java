@@ -6,15 +6,15 @@ import static org.junit.Assert.assertSame;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-public class EndPointSubmitterConfigTest {
+public class EndpointSubmitterConfigTest {
 
     @Test
     public void test() {
-        final AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(EndPointSubmitterConfig.class);
+        final AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(EndpointSubmitterConfig.class);
         try {
-            final EndPointSubmitter bean1 = ctx.getBean(EndPointSubmitter.class);
+            final EndpointSubmitter bean1 = ctx.getBean(EndpointSubmitter.class);
             assertNotNull(bean1);
-            final EndPointSubmitter bean2 = ctx.getBean(EndPointSubmitter.class);
+            final EndpointSubmitter bean2 = ctx.getBean(EndpointSubmitter.class);
             assertSame("Expect singleton.", bean1, bean2);
 
         } finally {

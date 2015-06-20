@@ -24,7 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 import com.twitter.zipkin.gen.Endpoint;
@@ -48,7 +48,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(BravePreProcessInterceptor.class);
 
-    private final EndPointSubmitter endPointSubmitter;
+    private final EndpointSubmitter endpointSubmitter;
     private final ServerTracer serverTracer;
 
     @Context
@@ -57,14 +57,14 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     /**
      * Creates a new instance.
      *
-     * @param endPointSubmitter {@link EndPointSubmitter}. Should not be <code>null</code>.
+     * @param endpointSubmitter {@link EndpointSubmitter}. Should not be <code>null</code>.
      * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
      */
     @Autowired
-    public BravePreProcessInterceptor(final EndPointSubmitter endPointSubmitter, final ServerTracer serverTracer) {
-        Validate.notNull(endPointSubmitter);
+    public BravePreProcessInterceptor(final EndpointSubmitter endpointSubmitter, final ServerTracer serverTracer) {
+        Validate.notNull(endpointSubmitter);
         Validate.notNull(serverTracer);
-        this.endPointSubmitter = endPointSubmitter;
+        this.endpointSubmitter = endpointSubmitter;
         this.serverTracer = serverTracer;
     }
 
@@ -108,12 +108,12 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     }
 
     private void submitEndpoint() {
-        if (!endPointSubmitter.endPointSubmitted()) {
+        if (!endpointSubmitter.endpointSubmitted()) {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
             final String contextPath = getContextPathWithoutFirstSlash();
             LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
-            endPointSubmitter.submit(localAddr, localPort, contextPath);
+            endpointSubmitter.submit(localAddr, localPort, contextPath);
         }
     }
 

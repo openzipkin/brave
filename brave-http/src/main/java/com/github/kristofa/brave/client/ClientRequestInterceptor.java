@@ -1,12 +1,12 @@
 package com.github.kristofa.brave.client;
 
-import org.apache.commons.lang3.Validate;
-
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
 
 import javax.annotation.Nullable;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Intercepts a client request and takes care of tracing the request. It will decide if we need to trace current request and
@@ -28,8 +28,7 @@ public class ClientRequestInterceptor {
     private final SpanNameFilter spanNameFilter;
 
     public ClientRequestInterceptor(final ClientTracer clientTracer, final SpanNameFilter spanNameFilter) {
-        Validate.notNull(clientTracer);
-        this.clientTracer = clientTracer;
+        this.clientTracer = checkNotNull(clientTracer, "Null clientTracer");
         this.spanNameFilter = spanNameFilter;
     }
 

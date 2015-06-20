@@ -20,13 +20,13 @@ interface ClientSpanState extends CommonSpanState {
     Span getCurrentClientSpan();
 
     /**
-     * Gets the EndPoint (ip, port, service name) for this service.
+     * Gets the Endpoint (ip, port, service name) for this service.
      * Service name might have been overridden.
      * Should be thread-aware to the service name can be overridden per request.
      *
      * @return Endpoint for this service.
      */
-    Endpoint getClientEndPoint();
+    Endpoint getClientEndpoint();
 
     /**
      * Sets current client span.

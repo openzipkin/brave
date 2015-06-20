@@ -7,7 +7,7 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author adriaens
  */
-public class EmptySpanCollectorImpl implements SpanCollector {
+public class EmptySpanCollector implements SpanCollector {
 
     /**
      * {@inheritDoc}

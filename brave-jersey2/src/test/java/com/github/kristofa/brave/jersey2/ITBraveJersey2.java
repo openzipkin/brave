@@ -2,7 +2,7 @@ package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.twitter.zipkin.gen.Span;
@@ -35,8 +35,8 @@ public class ITBraveJersey2 extends JerseyTest {
         target.register(new BraveClientRequestFilter(clientTracer, null));
         target.register(new BraveClientResponseFilter(clientTracer, null));
 
-        final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-        endPointSubmitter.submit("127.0.0.1", 9998, "brave-jersey2");
+        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
+        endpointSubmitter.submit("127.0.0.1", 9998, "brave-jersey2");
         final Response response = target.request().get();
         assertEquals(200, response.getStatus());
 

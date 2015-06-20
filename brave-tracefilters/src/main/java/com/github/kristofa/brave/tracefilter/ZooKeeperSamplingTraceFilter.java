@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.PreDestroy;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -22,6 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.kristofa.brave.TraceFilter;
+
+import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
 /**
  * {@link TraceFilter} that gets sample rate from ZooKeeper. It watches a ZooKeeper znode which contains the sample rate. If
@@ -58,9 +59,8 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
      */
     public ZooKeeperSamplingTraceFilter(final String connectionString, final String sampleRateZNode)
         throws InterruptedException {
-        Validate.notEmpty(connectionString);
-        Validate.notEmpty(sampleRateZNode);
-        this.sampleRateZNode = sampleRateZNode;
+        checkNotBlank(connectionString, "Null or blank connectionString");
+        this.sampleRateZNode = checkNotBlank(sampleRateZNode, "Null or blank sampleRateZNode");
 
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         zkCurator = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);

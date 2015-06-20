@@ -1,7 +1,8 @@
 package com.github.kristofa.brave;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import com.google.auto.value.AutoValue;
+
+import javax.annotation.Nullable;
 
 /**
  * {@link Runnable} implementation that wraps another Runnable and makes sure the wrapped Runnable will be executed in the
@@ -12,54 +13,36 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * @author kristof
  * @see BraveExecutorService
  */
-public class BraveRunnable implements Runnable {
-
-    private final Runnable wrappedRunnable;
-    private final ServerSpan currentServerSpan;
-    private final ServerSpanThreadBinder serverSpanThreadBinder;
+@AutoValue
+public abstract class BraveRunnable implements Runnable {
 
     /**
      * Creates a new instance.
-     * 
-     * @param runnable The wrapped Runnable.
-     * @param serverTracer ServerTracer.
-     * @param currentServerSpan Current ServerSpan. This ServerSpan will also get binded to the wrapped thread.
+     *
+     * @param runnable The wrapped Callable.
+     * @param serverSpanThreadBinder ServerSpan thread binder.
      */
-    public BraveRunnable(final Runnable runnable, final ServerSpanThreadBinder serverTracer) {
-        wrappedRunnable = runnable;
-        serverSpanThreadBinder = serverTracer;
-        currentServerSpan = serverTracer.getCurrentServerSpan();
+    public static BraveRunnable create(Runnable runnable, ServerSpanThreadBinder serverSpanThreadBinder) {
+        return new AutoValue_BraveRunnable(runnable, serverSpanThreadBinder, serverSpanThreadBinder.getCurrentServerSpan());
     }
+
+    abstract Runnable wrappedRunnable();
+    abstract ServerSpanThreadBinder serverSpanThreadBinder();
+    @Nullable
+    abstract ServerSpan currentServerSpan();
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void run() {
-        serverSpanThreadBinder.setCurrentSpan(currentServerSpan);
+        serverSpanThreadBinder().setCurrentSpan(currentServerSpan());
         final long start = System.currentTimeMillis();
         try {
-            wrappedRunnable.run();
+            wrappedRunnable().run();
         } finally {
             final long duration = System.currentTimeMillis() - start;
-            currentServerSpan.incThreadDuration(duration);
+            currentServerSpan().incThreadDuration(duration);
         }
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return HashCodeBuilder.reflectionHashCode(this, false);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(final Object arg0) {
-        return EqualsBuilder.reflectionEquals(this, arg0, false);
-    }
-
 }

@@ -21,7 +21,7 @@
               com.github.kristofa.brave.jaxrs2.BraveContainerRequestFilter
               com.github.kristofa.brave.AnnotationSubmitterConfig
               com.github.kristofa.brave.ClientTracerConfig
-              com.github.kristofa.brave.EndPointSubmitterConfig
+              com.github.kristofa.brave.EndpointSubmitterConfig
               com.github.kristofa.brave.ServerSpanThreadBinderConfig
               com.github.kristofa.brave.ServerTracerConfig
               com.github.kristofa.brave.resteasy3.ResteasySpringConfig
