@@ -30,7 +30,7 @@
   <dependencies>
     <dependency>
         <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-client</artifactId>
+        <artifactId>brave-http</artifactId>
         <version>3.0.0-beta-1-SNAPSHOT</version>
     </dependency>
     <dependency>

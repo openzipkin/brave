@@ -6,12 +6,12 @@
         <version>3.0.0-beta-1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>brave-client</artifactId>
+    <artifactId>brave-http</artifactId>
     <packaging>jar</packaging>
 
-    <name>brave-client</name>
+    <name>brave-http</name>
     <description>
-        Http client abstraction which makes it easier to implement brave in http clients.
+        Abstraction that makes it easier to implement brave in http clients and servers.
     </description>
     <url>https://github.com/kristofa/brave</url>
     <licenses>
