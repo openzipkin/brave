@@ -45,7 +45,7 @@
   </properties>
 
   <modules>
-    <module>brave-interfaces</module>
+    <module>brave-core</module>
     <module>brave-http</module>
     <module>brave-impl-spring</module>
     <module>brave-resteasy-spring</module>

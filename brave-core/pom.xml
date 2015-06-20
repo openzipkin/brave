@@ -6,12 +6,12 @@
     <version>3.0.0-beta-1-SNAPSHOT</version>
   </parent>   
   
-  <artifactId>brave-interfaces</artifactId>
+  <artifactId>brave-core</artifactId>
   <packaging>jar</packaging>
 
-  <name>brave-interfaces</name>
+  <name>brave-core</name>
   <description>
-  	Brave interfaces.
+  	Brave core.
   </description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
