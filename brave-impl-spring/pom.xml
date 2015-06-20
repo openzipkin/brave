@@ -28,7 +28,7 @@
   <dependencies>
      <dependency>
         <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-impl</artifactId>
+        <artifactId>brave-interfaces</artifactId>
         <version>3.0.0-beta-1-SNAPSHOT</version>
      </dependency>
      
