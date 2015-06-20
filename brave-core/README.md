@@ -1,22 +1,9 @@
-# brave-impl #
-
-Latest release available in Maven central:
-
-    <dependency>
-        <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-impl</artifactId>
-        <version>2.4.1</version>
-    </dependency>
+# brave-core #
 
 
-brave-impl contains implementations of the components used to set up and keep track of
-tracing state. It has a ClientTracer implementation which is used to set up new spans when
-invoking new service requests and it has a ServerTracer implementation used to set up 
-existing span state when receiving service requests.  
 
-The [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example) is a 
-good starting point to get you up to speed on how you can implement brave in your 
-own apps.
+brave-core contains the core brave implementations used to set up and keep track of
+tracing state. 
 
 ## sequence diagram ##
 
