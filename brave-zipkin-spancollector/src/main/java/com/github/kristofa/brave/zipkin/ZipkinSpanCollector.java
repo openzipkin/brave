@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.zipkin;
 
+import java.io.Closeable;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -11,20 +12,21 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import javax.annotation.PreDestroy;
-
-import org.apache.commons.lang3.Validate;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanCollector;
+
+import org.apache.thrift.TException;
+
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
+
+import static com.github.kristofa.brave.internal.Util.checkNotBlank;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Sends spans to Zipkin collector or Scribe.
@@ -39,10 +41,10 @@ import com.twitter.zipkin.gen.Span;
  *
  * @author kristof
  */
-public class ZipkinSpanCollector implements SpanCollector {
+public class ZipkinSpanCollector implements SpanCollector, Closeable {
 
     private static final String UTF_8 = "UTF-8";
-    private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinSpanCollector.class);
+    private static final Logger LOGGER = Logger.getLogger(ZipkinSpanCollector.class.getName());
 
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
@@ -70,8 +72,8 @@ public class ZipkinSpanCollector implements SpanCollector {
      */
     public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
             final ZipkinSpanCollectorParams params) {
-        Validate.notEmpty(zipkinCollectorHost);
-        Validate.notNull(params);
+        checkNotBlank(zipkinCollectorHost, "Null or empty zipkinCollectorHost");
+        checkNotNull(params, "Null params");
 
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
@@ -98,7 +100,7 @@ public class ZipkinSpanCollector implements SpanCollector {
             if (params.failOnSetup()) {
                 throw new IllegalStateException(e);
             } else {
-                LOGGER.warn("Connection could not be established during setup.", e);
+                LOGGER.log(Level.WARNING, "Connection could not be established during setup.", e);
             }
         }
         return clientProvider;
@@ -120,11 +122,11 @@ public class ZipkinSpanCollector implements SpanCollector {
 
         final boolean offer = spanQueue.offer(span);
         if (!offer) {
-            LOGGER.warn("Queue rejected Span, span not submitted: {}", span);
+            LOGGER.warning("Queue rejected Span, span not submitted: "+ span);
         } else {
             final long end = System.currentTimeMillis();
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Adding span to queue took " + (end - start) + "ms.");
+            if (LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.fine("Adding span to queue took " + (end - start) + "ms.");
             }
         }
     }
@@ -134,8 +136,8 @@ public class ZipkinSpanCollector implements SpanCollector {
      */
     @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        Validate.notEmpty(key);
-        Validate.notNull(value);
+        checkNotBlank(key, "Null or blank key");
+        checkNotNull(value, "Null value");
 
         try {
             final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
@@ -155,7 +157,6 @@ public class ZipkinSpanCollector implements SpanCollector {
      * {@inheritDoc}
      */
     @Override
-    @PreDestroy
     public void close() {
 
         LOGGER.info("Stopping SpanProcessingThread.");
@@ -165,9 +166,9 @@ public class ZipkinSpanCollector implements SpanCollector {
         for (final Future<Integer> future : futures) {
             try {
                 final Integer spansProcessed = future.get();
-                LOGGER.info("SpanProcessingThread processed {} spans.", spansProcessed);
+                LOGGER.info("SpanProcessingThread processed " + spansProcessed + "spans.");
             } catch (final Exception e) {
-                LOGGER.warn("Exception when getting result of SpanProcessingThread.", e);
+                LOGGER.log(Level.WARNING, "Exception when getting result of SpanProcessingThread.", e);
             }
         }
         executorService.shutdown();

@@ -6,11 +6,6 @@
  */
 package com.twitter.zipkin.gen;
 
-
-import java.util.Map;
-import java.util.HashMap;
-import org.apache.thrift.TEnum;
-
 public enum ResultCode implements org.apache.thrift.TEnum {
   OK(0),
   TRY_LATER(1);

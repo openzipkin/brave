@@ -1,10 +1,9 @@
 package com.github.kristofa.brave;
 
-import com.google.auto.value.AutoValue;
-
 import java.util.concurrent.Callable;
 
-import javax.annotation.Nullable;
+import com.github.kristofa.brave.internal.Nullable;
+import com.google.auto.value.AutoValue;
 
 /**
  * Callable implementation that wraps another Callable and makes sure the wrapped Callable will be executed in the same

@@ -6,19 +6,21 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.ZipkinCollector.Client;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+import static java.lang.String.format;
 
 /**
  * Thread implementation that is responsible for submitting spans to the Zipkin span collector or Scribe. The thread takes
@@ -33,7 +35,7 @@ import com.twitter.zipkin.gen.ZipkinCollector.Client;
  */
 class SpanProcessingThread implements Callable<Integer> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpanProcessingThread.class);
+    private static final Logger LOGGER = Logger.getLogger(SpanProcessingThread.class.getName());
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
@@ -53,11 +55,9 @@ class SpanProcessingThread implements Callable<Integer> {
      */
     public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
         final int maxBatchSize) {
-        Validate.notNull(queue);
-        Validate.notNull(clientProvider);
-        Validate.isTrue(maxBatchSize > 0);
-        this.queue = queue;
-        this.clientProvider = clientProvider;
+        if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
+        this.queue = checkNotNull(queue, "Null queue");
+        this.clientProvider = checkNotNull(clientProvider, "Null clientProvider");
         protocolFactory = new TBinaryProtocol.Factory();
         this.maxBatchSize = maxBatchSize;
         logEntries = new ArrayList<LogEntry>(maxBatchSize);
@@ -96,7 +96,7 @@ class SpanProcessingThread implements Callable<Integer> {
                     subsequentEmptyBatches = 0;
                 }
             } catch (final Exception e) {
-                LOGGER.warn("Unexpected exception flushing spans", e);
+                LOGGER.log(Level.WARNING, "Unexpected exception flushing spans", e);
             }
 
         } while (stop == false);
@@ -107,9 +107,9 @@ class SpanProcessingThread implements Callable<Integer> {
         final long start = System.currentTimeMillis();
         final boolean success = log(clientProvider.getClient(), logEntries);
         processedSpans += logEntries.size();
-        if (success && LOGGER.isDebugEnabled()) {
+        if (success && LOGGER.isLoggable(Level.FINE)) {
             final long end = System.currentTimeMillis();
-            LOGGER.debug("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
+            LOGGER.fine("Submitting " + logEntries.size() + " spans to service took " + (end - start) + "ms.");
         }
     }
 
@@ -118,18 +118,18 @@ class SpanProcessingThread implements Callable<Integer> {
             clientProvider.getClient().Log(logEntries);
             return true;
         } catch (final TException e) {
-            LOGGER.debug("Exception when trying to log Span.  Will retry: ", e.getMessage());
+            LOGGER.fine(format("Exception when trying to log Span.  Will retry: %s", e.getMessage()));
             final Client newClient = clientProvider.exception(e);
             if (newClient != null) {
-                LOGGER.debug("Got new client with new connection. Logging with new client.");
+                LOGGER.fine("Got new client with new connection. Logging with new client.");
                 try {
                     newClient.Log(logEntries);
                     return true;
                 } catch (final TException e2) {
-                    LOGGER.warn("Logging spans failed. " + logEntries.size() + " spans are lost!", e2);
+                    LOGGER.log(Level.WARNING, "Logging spans failed. " + logEntries.size() + " spans are lost!", e2);
                 }
             } else {
-                LOGGER.warn("Logging spans failed (couldn't establish connection). " + logEntries.size() + " spans are lost!");
+                LOGGER.warning("Logging spans failed (couldn't establish connection). " + logEntries.size() + " spans are lost!");
             }
         }
         return false;

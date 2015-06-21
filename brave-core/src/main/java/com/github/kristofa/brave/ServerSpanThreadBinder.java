@@ -1,6 +1,6 @@
 package com.github.kristofa.brave;
 
-import javax.annotation.Nullable;
+import com.github.kristofa.brave.internal.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

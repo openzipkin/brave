@@ -7,11 +7,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
-import org.slf4j.Logger;
 
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -44,7 +45,7 @@ public class LoggingSpanCollectorTest {
     public void testCollect() {
         final Span mockSpan = mock(Span.class);
         spanCollector.collect(mockSpan);
-        verify(mockLogger).isInfoEnabled();
+        verify(mockLogger).isLoggable(Level.INFO);
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }
 
@@ -62,7 +63,7 @@ public class LoggingSpanCollectorTest {
         final InOrder inOrder = inOrder(mockSpan, mockLogger);
 
         inOrder.verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
-        inOrder.verify(mockLogger).isInfoEnabled();
+        inOrder.verify(mockLogger).isLoggable(Level.INFO);
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }
@@ -82,7 +83,7 @@ public class LoggingSpanCollectorTest {
 
         verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
         verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration2);
-        verify(mockLogger).isInfoEnabled();
+        verify(mockLogger).isLoggable(Level.INFO);
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
     }

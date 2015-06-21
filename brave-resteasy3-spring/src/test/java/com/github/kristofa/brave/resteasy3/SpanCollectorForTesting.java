@@ -2,16 +2,14 @@ package com.github.kristofa.brave.resteasy3;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Logger;
 
 import com.github.kristofa.brave.SpanCollector;
 import com.twitter.zipkin.gen.Span;
 
 public class SpanCollectorForTesting implements SpanCollector {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(SpanCollectorForTesting.class);
+    private final static Logger LOGGER = Logger.getLogger(SpanCollectorForTesting.class.getName());
 
     private final List<Span> spans = new ArrayList<Span>();
 

@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -10,8 +11,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import javax.annotation.PreDestroy;
-
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -20,14 +19,14 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * <p/>
  * It uses {@link ServerTracer} and {@link ServerSpanThreadBinder} to accomplish this in a transparent way for the user.
  * <p/>
- * It also has {@link PreDestroy} annotation on {@link BraveExecutorService#shutdown()} method so the executor service is
+ * It also implements {@link Closeable}, calling {@link BraveExecutorService#shutdown()}, so the executor service is
  * shut down properly when for example using Spring.
  * 
  * @author kristof
  * @see BraveCallable
  * @see BraveRunnable
  */
-public class BraveExecutorService implements ExecutorService {
+public class BraveExecutorService implements ExecutorService, Closeable {
 
     private final ExecutorService wrappedExecutor;
     private final ServerSpanThreadBinder threadBinder;
@@ -115,7 +114,6 @@ public class BraveExecutorService implements ExecutorService {
      * {@inheritDoc}
      */
     @Override
-    @PreDestroy
     public void shutdown() {
         wrappedExecutor.shutdown();
     }
@@ -164,4 +162,11 @@ public class BraveExecutorService implements ExecutorService {
         return collection;
     }
 
+    /**
+     * Convenience for try-with-resources, or frameworks such as Spring that automatically process this.
+     **/
+    @Override
+    public void close() {
+        shutdown();
+    }
 }

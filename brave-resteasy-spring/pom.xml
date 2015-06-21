@@ -34,15 +34,6 @@
         <version>3.0.0-alpha-2-SNAPSHOT</version>
     </dependency>
     <dependency>
-        <!-- For @javax.annotation.Nullable -->
-        <groupId>com.google.code.findbugs</groupId>
-        <artifactId>jsr305</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-    </dependency>
-    <dependency>
 		<groupId>org.jboss.resteasy</groupId>
 		<artifactId>resteasy-jaxrs</artifactId>
 		<version>${resteasy.version}</version>
@@ -63,6 +54,12 @@
         <groupId>org.jboss.resteasy</groupId>
         <artifactId>resteasy-spring</artifactId>
         <version>${resteasy.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <!-- Resteasy uses slf4j at runtime -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
         <scope>test</scope>
     </dependency>
 	<dependency>

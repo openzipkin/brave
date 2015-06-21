@@ -1,8 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-
-import javax.annotation.Nullable;
 
 /**
  * {@link Runnable} implementation that wraps another Runnable and makes sure the wrapped Runnable will be executed in the

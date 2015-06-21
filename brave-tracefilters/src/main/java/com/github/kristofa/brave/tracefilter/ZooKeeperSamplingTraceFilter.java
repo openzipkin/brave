@@ -1,11 +1,12 @@
 package com.github.kristofa.brave.tracefilter;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.PreDestroy;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -17,12 +18,11 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.github.kristofa.brave.TraceFilter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
+import static java.lang.String.format;
 
 /**
  * {@link TraceFilter} that gets sample rate from ZooKeeper. It watches a ZooKeeper znode which contains the sample rate. If
@@ -36,9 +36,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
  * 
  * @author kristof
  */
-public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
+public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher, Closeable {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ZooKeeperSamplingTraceFilter.class);
+    private final static Logger LOGGER = Logger.getLogger(ZooKeeperSamplingTraceFilter.class.getName());
     private final static int DEFAULT_SAMPLE_RATE = 0;
 
     private final CuratorFramework zkCurator;
@@ -112,7 +112,7 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
 
             if (sampleRateZNode.equals(path)) {
                 sampleRate = getSampleRate();
-                LOGGER.info("SampleRate znode [{}] changed. New value: {}", sampleRateZNode, sampleRate);
+                LOGGER.info(format("SampleRate znode [%s] changed. New value: %s", sampleRateZNode, sampleRate));
             }
         }
     }
@@ -120,7 +120,6 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
     /**
      * {@inheritDoc}
      */
-    @PreDestroy
     @Override
     public void close() {
         zkCurator.close();
@@ -152,7 +151,7 @@ public class ZooKeeperSamplingTraceFilter implements TraceFilter, Watcher {
                 return zkCurator.getData().usingWatcher(this).forPath(znode);
             }
         } catch (final Exception e) {
-            LOGGER.warn("Zookeeper exception.", e);
+            LOGGER.log(Level.WARNING, "Zookeeper exception.", e);
         }
         return null;
     }

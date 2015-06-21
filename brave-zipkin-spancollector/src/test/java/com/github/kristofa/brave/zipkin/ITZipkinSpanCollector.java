@@ -4,11 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
 import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.twitter.zipkin.gen.Span;
 
@@ -19,7 +18,7 @@ import com.twitter.zipkin.gen.Span;
  */
 public class ITZipkinSpanCollector {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ITZipkinSpanCollector.class);
+    private static final Logger LOGGER = Logger.getLogger(ITZipkinSpanCollector.class.getName());
     private static final int QUEUE_SIZE = 5;
     private static final int FIRST_BURST_OF_SPANS = 100;
     private static final int SECOND_BURST_OF_SPANS = 20;
@@ -59,7 +58,7 @@ public class ITZipkinSpanCollector {
      * <li>a full queue at which client will be blocked.</li>
      * <li>a wait time of longer than 5 seconds which means SpanProcessingThread will run into timeout.
      * </ol>
-     * 
+     *
      * @throws TTransportException
      * @throws InterruptedException
      */
@@ -106,7 +105,7 @@ public class ITZipkinSpanCollector {
      * end up in collector server.</li>
      * <li>it also shows that stopping ZipkinSpanCollector before all queued spans have been submitted works.</li>
      * </ol>
-     * 
+     *
      * @throws TTransportException
      * @throws InterruptedException
      */

@@ -2,6 +2,7 @@ package com.github.kristofa.brave.resteasy;
 
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
@@ -10,16 +11,12 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Validate;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ResourceMethod;
 import org.jboss.resteasy.core.ServerResponse;
 import org.jboss.resteasy.spi.Failure;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.interception.PreProcessInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +25,9 @@ import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 import com.twitter.zipkin.gen.Endpoint;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+import static java.lang.String.format;
 
 /**
  * Rest Easy {@link PreProcessInterceptor} that will:
@@ -46,7 +46,7 @@ import com.twitter.zipkin.gen.Endpoint;
 @ServerInterceptor
 public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(BravePreProcessInterceptor.class);
+    private final static Logger LOGGER = Logger.getLogger(BravePreProcessInterceptor.class.getName());
 
     private final EndpointSubmitter endpointSubmitter;
     private final ServerTracer serverTracer;
@@ -62,10 +62,8 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      */
     @Autowired
     public BravePreProcessInterceptor(final EndpointSubmitter endpointSubmitter, final ServerTracer serverTracer) {
-        Validate.notNull(endpointSubmitter);
-        Validate.notNull(serverTracer);
-        this.endpointSubmitter = endpointSubmitter;
-        this.serverTracer = serverTracer;
+        this.endpointSubmitter = checkNotNull(endpointSubmitter, "Null endpointSubmitter");
+        this.serverTracer = checkNotNull(serverTracer, "Null serverTracer");
     }
 
     /**
@@ -82,16 +80,16 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
 
         if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
             serverTracer.setStateNoTracing();
-            LOGGER.debug("Received indication that we should NOT trace.");
+            LOGGER.fine("Received indication that we should NOT trace.");
         } else {
             final String spanName = getSpanName(request, traceData);
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
 
-                LOGGER.debug("Received span information as part of request.");
+                LOGGER.fine("Received span information as part of request.");
                 serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
                     traceData.getParentSpanId(), spanName);
             } else {
-                LOGGER.debug("Received no span state.");
+                LOGGER.fine("Received no span state.");
                 serverTracer.setStateUnknown(spanName);
             }
             serverTracer.setServerReceived();
@@ -100,7 +98,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     }
 
     private String getSpanName(final HttpRequest request, final TraceData traceData) throws WebApplicationException {
-        if (StringUtils.isNotBlank(traceData.getSpanName())) {
+        if (traceData.getSpanName() != null && !"".equals(traceData.getSpanName().trim())) {
             return traceData.getSpanName();
         } else {
             return request.getPreprocessedPath();
@@ -112,7 +110,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
             final String contextPath = getContextPathWithoutFirstSlash();
-            LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
+            LOGGER.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
             endpointSubmitter.submit(localAddr, localPort, contextPath);
         }
     }
@@ -133,7 +131,7 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         final TraceData traceData = new TraceData();
 
         for (final Entry<String, List<String>> headerEntry : requestHeaders.entrySet()) {
-            LOGGER.debug("{}={}", headerEntry.getKey(), headerEntry.getValue());
+            LOGGER.fine(format("%s=%s", headerEntry.getKey(), headerEntry.getValue()));
             if (BraveHttpHeaders.TraceId.getName().equalsIgnoreCase(headerEntry.getKey())) {
                 traceData.setTraceId(getFirstLongValueFor(headerEntry));
             } else if (BraveHttpHeaders.SpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {

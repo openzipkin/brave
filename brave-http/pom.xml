@@ -27,14 +27,13 @@
 
     <dependencies>
         <dependency>
-            <!-- For @javax.annotation.Nullable -->
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-core</artifactId>
             <version>3.0.0-alpha-2-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
         </dependency>
     </dependencies>
 

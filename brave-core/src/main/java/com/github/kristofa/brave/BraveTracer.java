@@ -1,15 +1,15 @@
 package com.github.kristofa.brave;
 
 import java.net.InetAddress;
+import java.util.logging.Logger;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.lang.String.format;
 
 public class BraveTracer {
     private static final String REQUEST_ANNOTATION = "request";
     private static final String FAILURE_ANNOTATION = "failure";
     
-    private final static Logger LOGGER = LoggerFactory.getLogger(BraveTracer.class);
+    private final static Logger LOGGER = Logger.getLogger(BraveTracer.class.getName());
 
 	ClientTracer clientTracer;
 	ServerTracer serverTracer;
@@ -87,7 +87,7 @@ public class BraveTracer {
 		if (enabled)
 		{
 			submitEndpoint(contextPath);
-	        LOGGER.debug("Received no span state.");
+	        LOGGER.fine("Received no span state.");
 	        serverTracer.setStateUnknown(contextPath);
 	        serverTracer.setServerReceived();
 		}
@@ -98,7 +98,7 @@ public class BraveTracer {
 		{
 	        final String localAddr = InetAddress.getLocalHost().getHostAddress();
 	        final int localPort =0;
-	        LOGGER.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
+	        LOGGER.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
 	        if (!endpointSubmitter.endpointSubmitted())
 	        {
 	        	endpointSubmitter.submit(localAddr, localPort, contextPath);

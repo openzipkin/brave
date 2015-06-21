@@ -27,11 +27,6 @@
 
   <dependencies>
     <dependency>
-        <!-- For @javax.annotation.Nullable -->
-        <groupId>com.google.code.findbugs</groupId>
-        <artifactId>jsr305</artifactId>
-    </dependency>
-    <dependency>
         <groupId>com.google.auto.value</groupId>
         <artifactId>auto-value</artifactId>
         <scope>provided</scope>
@@ -39,17 +34,6 @@
     <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.9.0</version>
-	<exclusions>
-	   <exclusion>
-		<artifactId>org.apache.httpcomponents</artifactId>
-		<groupId>httpcore</groupId>
-	    </exclusion>
-	</exclusions>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpcore</artifactId>
     </dependency>
     <!-- to mock AnnotationSubmitter's calls to System.currentTimeMillis() -->
     <dependency>

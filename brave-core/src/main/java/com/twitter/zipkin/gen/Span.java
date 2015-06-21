@@ -6,30 +6,21 @@
  */
 package com.twitter.zipkin.gen;
 
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.thrift.EncodingUtils;
+import org.apache.thrift.protocol.TTupleProtocol;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
-
 import org.apache.thrift.scheme.TupleScheme;
-import org.apache.thrift.protocol.TTupleProtocol;
-import org.apache.thrift.protocol.TProtocolException;
-import org.apache.thrift.EncodingUtils;
-import org.apache.thrift.TException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.EnumMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.EnumSet;
-import java.util.Collections;
-import java.util.BitSet;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Span implements org.apache.thrift.TBase<Span, Span._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Span");
@@ -619,44 +610,22 @@ public class Span implements org.apache.thrift.TBase<Span, Span._Fields>, java.i
 
   @Override
   public int hashCode() {
-    HashCodeBuilder builder = new HashCodeBuilder();
-
-    boolean present_trace_id = true;
-    builder.append(present_trace_id);
-    if (present_trace_id)
-      builder.append(trace_id);
-
-    boolean present_name = true && (isSetName());
-    builder.append(present_name);
-    if (present_name)
-      builder.append(name);
-
-    boolean present_id = true;
-    builder.append(present_id);
-    if (present_id)
-      builder.append(id);
-
-    boolean present_parent_id = true && (isSetParent_id());
-    builder.append(present_parent_id);
-    if (present_parent_id)
-      builder.append(parent_id);
-
-    boolean present_annotations = true && (isSetAnnotations());
-    builder.append(present_annotations);
-    if (present_annotations)
-      builder.append(annotations);
-
-    boolean present_binary_annotations = true && (isSetBinary_annotations());
-    builder.append(present_binary_annotations);
-    if (present_binary_annotations)
-      builder.append(binary_annotations);
-
-    boolean present_debug = true && (isSetDebug());
-    builder.append(present_debug);
-    if (present_debug)
-      builder.append(debug);
-
-    return builder.toHashCode();
+    int h = 1;
+    h *= 1000003;
+    h ^= (trace_id >>> 32) ^ trace_id; // required
+    h *= 1000003;
+    h ^= isSetName() ? name.hashCode() : 0; // required
+    h *= 1000003;
+    h ^= (id >>> 32) ^ id; // required
+    h *= 1000003;
+    h ^= isSetParent_id() ? (parent_id >>> 32) ^ parent_id : 0; // optional
+    h *= 1000003;
+    h ^= isSetAnnotations() ? annotations.hashCode() : 0; // required
+    h *= 1000003;
+    h ^= isSetBinary_annotations() ? binary_annotations.hashCode() : 0; // required
+    h *= 1000003;
+    h ^= isSetDebug() && debug ? 1231 : 1237; // optional
+    return h;
   }
 
   public int compareTo(Span other) {

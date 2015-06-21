@@ -6,30 +6,19 @@
  */
 package com.twitter.zipkin.gen;
 
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.thrift.EncodingUtils;
+import org.apache.thrift.protocol.TTupleProtocol;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
-
 import org.apache.thrift.scheme.TupleScheme;
-import org.apache.thrift.protocol.TTupleProtocol;
-import org.apache.thrift.protocol.TProtocolException;
-import org.apache.thrift.EncodingUtils;
-import org.apache.thrift.TException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.EnumMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.EnumSet;
-import java.util.Collections;
-import java.util.BitSet;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Annotation implements org.apache.thrift.TBase<Annotation, Annotation._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Annotation");
@@ -401,29 +390,16 @@ public class Annotation implements org.apache.thrift.TBase<Annotation, Annotatio
 
   @Override
   public int hashCode() {
-    HashCodeBuilder builder = new HashCodeBuilder();
-
-    boolean present_timestamp = true;
-    builder.append(present_timestamp);
-    if (present_timestamp)
-      builder.append(timestamp);
-
-    boolean present_value = true && (isSetValue());
-    builder.append(present_value);
-    if (present_value)
-      builder.append(value);
-
-    boolean present_host = true && (isSetHost());
-    builder.append(present_host);
-    if (present_host)
-      builder.append(host);
-
-    boolean present_duration = true && (isSetDuration());
-    builder.append(present_duration);
-    if (present_duration)
-      builder.append(duration);
-
-    return builder.toHashCode();
+    int h = 1;
+    h *= 1000003;
+    h ^= (timestamp >>> 32) ^ timestamp; // required
+    h *= 1000003;
+    h ^= isSetValue() ? value.hashCode() : 0; // required
+    h *= 1000003;
+    h ^= isSetHost() ? host.hashCode() : 0; // optional
+    h *= 1000003;
+    h ^= isSetDuration() ? duration : 0; // optional
+    return h;
   }
 
   public int compareTo(Annotation other) {
