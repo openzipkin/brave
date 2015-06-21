@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-public class SpanNameFilterNumericImplTest {
+public class SpanNameFilterNumericTest {
 
     private static final String SPAN_WITH = "path/path/1s23q";
     private static final String SPAN_WITH_RESULT = "path/path/<numeric>";
@@ -12,11 +12,11 @@ public class SpanNameFilterNumericImplTest {
 
     @Test
     public void testSpanNameFilterNumeric() {
-        final SpanNameFilterNumericImpl spanNameFilterNumericImpl = new SpanNameFilterNumericImpl();
+        final SpanNameFilterNumeric spanNameFilterNumeric = new SpanNameFilterNumeric();
 
-        final String filterSpanName = spanNameFilterNumericImpl.filterSpanName(SPAN_WITHOUT);
+        final String filterSpanName = spanNameFilterNumeric.filterSpanName(SPAN_WITHOUT);
         assertEquals(SPAN_WITHOUT, filterSpanName);
-        final String filterSpanNameNumeric = spanNameFilterNumericImpl.filterSpanName(SPAN_WITH);
+        final String filterSpanNameNumeric = spanNameFilterNumeric.filterSpanName(SPAN_WITH);
         assertEquals(SPAN_WITH_RESULT, filterSpanNameNumeric);
     }
 }

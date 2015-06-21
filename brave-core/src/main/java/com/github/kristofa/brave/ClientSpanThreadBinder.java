@@ -1,7 +1,8 @@
 package com.github.kristofa.brave;
 
-
 import com.twitter.zipkin.gen.Span;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Allows binding span from client request thread to a async callback thread that process the result.
@@ -12,9 +13,18 @@ import com.twitter.zipkin.gen.Span;
  * In the callback method, call {@link #setCurrentSpan} before calling {@link com.github.kristofa.brave.ClientTracer#setClientReceived()}
  * @author hzhao on 8/11/14.
  */
+public final class ClientSpanThreadBinder {
 
-public interface ClientSpanThreadBinder
-{
+    private final ClientSpanState state;
+
+    /**
+     * Creates a new instance.
+     *
+     * @param state client span state, should not be <code>null</code>
+     */
+    public ClientSpanThreadBinder(ClientSpanState state) {
+        this.state = checkNotNull(state, "state");
+    }
 
     /**
      * This should be called in the thread in which the client request made after starting new client span.
@@ -23,8 +33,10 @@ public interface ClientSpanThreadBinder
      * @see #setCurrentSpan(Span)
      * @return Returned Span can be bound to different callback thread.
      */
-    Span getCurrentClientSpan();
-
+    public Span getCurrentClientSpan()
+    {
+        return state.getCurrentClientSpan();
+    }
 
     /**
      * Binds given span to current thread. This should typically be called when code is invoked in async client callback
@@ -32,6 +44,8 @@ public interface ClientSpanThreadBinder
      *
      * @param span Span to bind to current execution thread. Should not be <code>null</code>.
      */
-    void setCurrentSpan(final Span span);
-
+    public void setCurrentSpan(Span span)
+    {
+        state.setCurrentClientSpan(span);
+    }
 }

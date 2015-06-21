@@ -35,8 +35,8 @@ public class ClientResponseInterceptorTest {
 
     @Test
     public void testAnnotationsProvided() {
-        KeyValueAnnotation a1 = new KeyValueAnnotation("key1", "value1");
-        KeyValueAnnotation a2 = new KeyValueAnnotation("key2", "value2");
+        KeyValueAnnotation a1 = KeyValueAnnotation.create("key1", "value1");
+        KeyValueAnnotation a2 = KeyValueAnnotation.create("key2", "value2");
 
         when(adapter.responseAnnotations()).thenReturn(Arrays.asList(a1, a2));
         interceptor.handle(adapter);

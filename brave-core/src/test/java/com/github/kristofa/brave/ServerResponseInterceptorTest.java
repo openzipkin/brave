@@ -12,8 +12,8 @@ import static org.mockito.Mockito.*;
 
 public class ServerResponseInterceptorTest {
 
-    private final static KeyValueAnnotation ANNOTATION1 = new KeyValueAnnotation("key1", "value1");
-    private final static KeyValueAnnotation ANNOTATION2 = new KeyValueAnnotation("key2", "value2");
+    private final static KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create("key1", "value1");
+    private final static KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("key2", "value2");
 
     private ServerResponseInterceptor interceptor;
     private ServerTracer serverTracer;

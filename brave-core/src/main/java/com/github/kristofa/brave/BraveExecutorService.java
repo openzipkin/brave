@@ -12,7 +12,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.annotation.PreDestroy;
 
-import org.apache.commons.lang3.Validate;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * {@link ExecutorService} that wraps around an existing {@link ExecutorService} and that makes sure the threads are executed
@@ -36,14 +36,11 @@ public class BraveExecutorService implements ExecutorService {
      * Creates a new instance.
      * 
      * @param wrappedExecutor Wrapped ExecutorService to which execution will be delegated.
-     * @param serverTracer ServerTracer.
      * @param threadBinder Thread binder.
      */
     public BraveExecutorService(final ExecutorService wrappedExecutor, final ServerSpanThreadBinder threadBinder) {
-        Validate.notNull(wrappedExecutor);
-        Validate.notNull(threadBinder);
-        this.wrappedExecutor = wrappedExecutor;
-        this.threadBinder = threadBinder;
+        this.wrappedExecutor = checkNotNull(wrappedExecutor, "Null wrappedExecutor");
+        this.threadBinder = checkNotNull(threadBinder, "Null threadBinder");
     }
 
     /**
@@ -51,7 +48,7 @@ public class BraveExecutorService implements ExecutorService {
      */
     @Override
     public void execute(final Runnable arg0) {
-        final BraveRunnable braveRunnable = new BraveRunnable(arg0, threadBinder);
+        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
         wrappedExecutor.execute(braveRunnable);
     }
 
@@ -136,7 +133,7 @@ public class BraveExecutorService implements ExecutorService {
      */
     @Override
     public <T> Future<T> submit(final Callable<T> arg0) {
-        final BraveCallable<T> braveCallable = new BraveCallable<T>(arg0, threadBinder);
+        final BraveCallable<T> braveCallable = BraveCallable.create(arg0, threadBinder);
         return wrappedExecutor.submit(braveCallable);
     }
 
@@ -145,7 +142,7 @@ public class BraveExecutorService implements ExecutorService {
      */
     @Override
     public Future<?> submit(final Runnable arg0) {
-        final BraveRunnable braveRunnable = new BraveRunnable(arg0, threadBinder);
+        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
         return wrappedExecutor.submit(braveRunnable);
     }
 
@@ -154,7 +151,7 @@ public class BraveExecutorService implements ExecutorService {
      */
     @Override
     public <T> Future<T> submit(final Runnable arg0, final T arg1) {
-        final BraveRunnable braveRunnable = new BraveRunnable(arg0, threadBinder);
+        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
         return wrappedExecutor.submit(braveRunnable, arg1);
     }
 
@@ -162,7 +159,7 @@ public class BraveExecutorService implements ExecutorService {
         final Collection<? extends Callable<T>> originalCollection) {
         final Collection<Callable<T>> collection = new ArrayList<Callable<T>>();
         for (final Callable<T> t : originalCollection) {
-            collection.add(new BraveCallable<T>(t, threadBinder));
+            collection.add(BraveCallable.create(t, threadBinder));
         }
         return collection;
     }

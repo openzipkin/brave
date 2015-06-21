@@ -7,13 +7,13 @@ import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
 
-public class EmptySpanCollectorImplTest {
+public class EmptySpanCollectorTest {
 
     @Test
     public void testCollect() {
-        final EmptySpanCollectorImpl emptySpanCollectorImpl = new EmptySpanCollectorImpl();
+        final EmptySpanCollector emptySpanCollector = new EmptySpanCollector();
         final Span mockSpan = mock(Span.class);
-        emptySpanCollectorImpl.collect(mockSpan);
+        emptySpanCollector.collect(mockSpan);
         verifyNoMoreInteractions(mockSpan);
     }
 

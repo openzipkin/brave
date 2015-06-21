@@ -1,5 +1,18 @@
 package com.github.kristofa.brave;
 
+import com.google.auto.value.AutoValue;
+
+import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
+import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.zipkinCoreConstants;
+
+import java.util.List;
+import java.util.Random;
+
+import javax.annotation.Nullable;
+
+import static com.github.kristofa.brave.internal.Util.checkNotBlank;
+
 /**
  * Used for setting up trace information for a request. When a request is received we typically do this:
  * <ol>
@@ -15,16 +28,54 @@ package com.github.kristofa.brave;
  * 
  * @author kristof
  */
-public interface ServerTracer extends AnnotationSubmitter {
+@AutoValue
+public abstract class ServerTracer extends AnnotationSubmitter {
+
+    public static Builder builder() {
+        return new AutoValue_ServerTracer.Builder();
+    }
+
+    @Override
+    abstract ServerSpanAndEndpoint spanAndEndpoint();
+    abstract Random randomGenerator();
+    abstract SpanCollector spanCollector();
+    abstract List<TraceFilter> traceFilters();
+
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+        public Builder state(ServerSpanState state) {
+            return spanAndEndpoint(ServerSpanAndEndpoint.create(state));
+        }
+
+        abstract Builder spanAndEndpoint(ServerSpanAndEndpoint spanAndEndpoint);
+
+        /**
+         * Used to generate new trace/span ids.
+         */
+        public abstract Builder randomGenerator(Random randomGenerator);
+
+        public abstract Builder spanCollector(SpanCollector spanCollector);
+
+        /**
+         * Will be executed in order. If one returns <code>false</code> there will be no tracing and
+         * next ones will not be executed anymore. So order is important.
+         */
+        public abstract Builder traceFilters(List<TraceFilter> traceFilters);
+
+        abstract ServerTracer build();
+    }
 
     /**
      * Clears current span.
      */
-    void clearCurrentSpan();
+    public void clearCurrentSpan() {
+        spanAndEndpoint().state().setCurrentServerSpan(null);
+    }
 
     /**
      * Sets the current Trace/Span state. Using this method indicates we are part of an existing trace/span.
-     * 
+     *
      * @param traceId Trace id.
      * @param spanId Span id.
      * @param parentSpanId Parent span id. Can be <code>null</code>.
@@ -32,43 +83,78 @@ public interface ServerTracer extends AnnotationSubmitter {
      * @see ServerTracer#setStateNoTracing()
      * @see ServerTracer#setStateUnknown(String)
      */
-    void setStateCurrentTrace(final long traceId, final long spanId, final Long parentSpanId, final String name);
+    public void setStateCurrentTrace(long traceId, long spanId, @Nullable Long parentSpanId, @Nullable String name) {
+        checkNotBlank(name, "Null or blank span name");
+        spanAndEndpoint().state().setCurrentServerSpan(
+            ServerSpan.create(traceId, spanId, parentSpanId, name));
+    }
 
     /**
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
      * trace the current request.
-     * 
+     *
      * @see ServerTracer#setStateExistingTrace(TraceContext)
      * @see ServerTracer#setStateUnknown(String)
      */
-    void setStateNoTracing();
+    public void setStateNoTracing() {
+        spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+    }
 
     /**
      * Sets the current Trace/Span state. Using this method indicates that we got no information about being part of an
      * existing trace or about the fact that we should not trace the current request. In this case the ServerTracer will
      * decide what to do.
-     * 
+     *
      * @param spanName The name of our current request/span.
      */
-    void setStateUnknown(final String spanName);
+    public void setStateUnknown(String spanName) {
+        checkNotBlank(spanName, "Null or blank span name");
+        for (TraceFilter traceFilter : traceFilters()) {
+            if (traceFilter.trace(spanName) == false) {
+                spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+                return;
+            }
+        }
+        long newSpanId = randomGenerator().nextLong();
+        spanAndEndpoint().state().setCurrentServerSpan(
+            ServerSpan.create(newSpanId, newSpanId, null, spanName));
+    }
 
     /**
      * Sets server received event for current request. This should be done after setting state using one of 3 methods
      * {@link ServerTracer#setStateExistingTrace(TraceContext)}, {@link ServerTracer#setStateNoTracing()} or
      * {@link ServerTracer#setStateUnknown(String)}.
      */
-    void setServerReceived();
+    public void setServerReceived() {
+        submitAnnotation(zipkinCoreConstants.SERVER_RECV);
+    }
 
     /**
      * Sets the server sent event for current thread.
      */
-    void setServerSend();
+    public void setServerSend() {
+        Span currentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        if (currentSpan != null) {
+            submitAnnotation(zipkinCoreConstants.SERVER_SEND);
+            long threadDuration = spanAndEndpoint().state().getServerSpanThreadDuration();
+            if (threadDuration > 0) {
+                submitBinaryAnnotation(BraveAnnotations.THREAD_DURATION,
+                                       String.valueOf(threadDuration));
+            }
+            spanCollector().collect(currentSpan);
+            spanAndEndpoint().state().setCurrentServerSpan(null);
+        }
+    }
 
     /**
      * Gets the thread execution duration for this span.
-     * 
+     *
      * @return Thread execution duration for this span.
      */
-    long getThreadDuration();
+    public long getThreadDuration() {
+        return spanAndEndpoint().state().getServerSpanThreadDuration();
+    }
 
+    ServerTracer() {
+    }
 }

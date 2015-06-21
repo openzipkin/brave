@@ -54,9 +54,9 @@ public class ITBrave {
         @Override
         public Integer call() throws Exception {
 
-            final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-            if (!endPointSubmitter.endPointSubmitted()) {
-                endPointSubmitter.submit("10.0.1.6", 80, "serviceName");
+            final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
+            if (!endpointSubmitter.endpointSubmitted()) {
+                endpointSubmitter.submit("10.0.1.6", 80, "serviceName");
             }
 
             final IntegrationTestSpanCollector mockSpanCollector = new IntegrationTestSpanCollector();

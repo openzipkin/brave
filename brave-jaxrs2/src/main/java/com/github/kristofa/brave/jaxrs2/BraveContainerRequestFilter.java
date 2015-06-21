@@ -1,22 +1,21 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URI;
 
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
-
-import java.io.IOException;
-import java.net.URI;
 
 /**
  * Intercepts incoming container requests and extracts any trace information from the request header
@@ -28,12 +27,12 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
     private static Logger logger = LoggerFactory.getLogger(BraveContainerRequestFilter.class);
 
     private final ServerTracer serverTracer;
-    private final EndPointSubmitter endPointSubmitter;
+    private final EndpointSubmitter endpointSubmitter;
 
     @Inject
-    public BraveContainerRequestFilter(ServerTracer serverTracer, EndPointSubmitter endPointSubmitter) {
+    public BraveContainerRequestFilter(ServerTracer serverTracer, EndpointSubmitter endpointSubmitter) {
         this.serverTracer = serverTracer;
-        this.endPointSubmitter = endPointSubmitter;
+        this.endpointSubmitter = endpointSubmitter;
     }
 
     @Override
@@ -61,20 +60,24 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
     }
 
     private void submitEndpoint(UriInfo uri) {
-        if (!endPointSubmitter.endPointSubmitted()) {
+        if (!endpointSubmitter.endpointSubmitted()) {
             URI baseUri = uri.getBaseUri();
-            String contextPath = getContextPath(uri);
+            String contextPath = getContextPath(uri.getAbsolutePath().getPath());
             String localAddr = baseUri.getHost();
             int localPort = baseUri.getPort();
-            endPointSubmitter.submit(localAddr, localPort, contextPath);
+            endpointSubmitter.submit(localAddr, localPort, contextPath);
             logger.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
         }
     }
 
-    private String getContextPath(UriInfo uri) {
-        final String contextPath = uri.getAbsolutePath().getPath();
-        String[] parts = StringUtils.split(contextPath, "/");
-        return parts[0];
+    static String getContextPath(String absolutePath) {
+        StringBuilder contextPath = new StringBuilder(absolutePath);
+        // Delete any leading slashes
+        while (contextPath.charAt(0) == '/') {
+            contextPath.deleteCharAt(0);
+        }
+        int slashIndex = contextPath.indexOf("/");
+        return slashIndex == -1 ? contextPath.toString() : contextPath.substring(0, slashIndex);
     }
 
     private String getSpanName(TraceData traceData, UriInfo uri) {

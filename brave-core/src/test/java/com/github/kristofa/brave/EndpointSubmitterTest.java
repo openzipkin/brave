@@ -15,42 +15,42 @@ import org.junit.Test;
 
 import com.twitter.zipkin.gen.Endpoint;
 
-public class EndPointSubmitterImplTest {
+public class EndpointSubmitterTest {
 
     private final static String IP = "10.0.0.1";
     private final static int PORT = 8080;
     private final static String SERVICE_NAME = "serviceName";
 
     private ServerAndClientSpanState mockState;
-    private Endpoint mockEndPoint;
-    private EndPointSubmitterImpl endPointSubmitter;
+    private Endpoint mockEndpoint;
+    private EndpointSubmitter endpointSubmitter;
 
     @Before
     public void setUp() {
         mockState = mock(ServerAndClientSpanState.class);
-        mockEndPoint = new Endpoint();
-        endPointSubmitter = new EndPointSubmitterImpl(mockState);
+        mockEndpoint = new Endpoint();
+        endpointSubmitter = new EndpointSubmitter(mockState);
     }
 
     @Test(expected = NullPointerException.class)
-    public void testEndPointSubmitterImplNullState() {
-        new EndPointSubmitterImpl(null);
+    public void testEndpointSubmitterNullState() {
+        new EndpointSubmitter(null);
     }
 
     @Test
     public void testSubmit() {
-        endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
-        final Endpoint expectedEndPoint = new Endpoint(ipAddressToInt(IP), (short)PORT, SERVICE_NAME);
-        verify(mockState).setServerEndPoint(expectedEndPoint);
+        endpointSubmitter.submit(IP, PORT, SERVICE_NAME);
+        final Endpoint expectedEndpoint = new Endpoint(ipAddressToInt(IP), (short)PORT, SERVICE_NAME);
+        verify(mockState).setServerEndpoint(expectedEndpoint);
         verifyNoMoreInteractions(mockState);
     }
 
     @Test
-    public void testEndPointSubmitted() {
+    public void testEndpointSubmitted() {
 
-        when(mockState.getServerEndPoint()).thenReturn(mockEndPoint);
-        assertTrue(endPointSubmitter.endPointSubmitted());
-        verify(mockState).getServerEndPoint();
+        when(mockState.getServerEndpoint()).thenReturn(mockEndpoint);
+        assertTrue(endpointSubmitter.endpointSubmitted());
+        verify(mockState).getServerEndpoint();
         verifyNoMoreInteractions(mockState);
     }
 

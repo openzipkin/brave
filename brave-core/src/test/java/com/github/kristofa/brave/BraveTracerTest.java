@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -27,10 +26,10 @@ public class BraveTracerTest {
         mockTraceFilter = mock(TraceFilter.class);
         clientTracer = Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         serverTracer = Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
-        final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-        endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
+        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
+        endpointSubmitter.submit(IP, PORT, SERVICE_NAME);
         
-        braveTracer = new BraveTracer(clientTracer, serverTracer, endPointSubmitter);
+        braveTracer = new BraveTracer(clientTracer, serverTracer, endpointSubmitter);
     }
 
     @Test
@@ -38,11 +37,11 @@ public class BraveTracerTest {
     	final ClientTracer clientTracer = braveTracer.clientTracer;
         assertNotNull(clientTracer);
         assertTrue(this.clientTracer == clientTracer);
-        assertTrue("We expect instance of ClientTracerImpl", clientTracer instanceof ClientTracerImpl);
+        assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
         
     	final ServerTracer serverTracer = braveTracer.serverTracer;
         assertNotNull(serverTracer);
         assertTrue(this.serverTracer == serverTracer);
-        assertTrue("We expect instance of ServerTracerImpl", serverTracer instanceof ServerTracerImpl);
+        assertTrue("We expect instance of ServerTracer", serverTracer instanceof ServerTracer);
     }
 }

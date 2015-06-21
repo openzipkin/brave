@@ -2,6 +2,8 @@ package com.github.kristofa.brave;
 
 import com.twitter.zipkin.gen.Endpoint;
 
+import javax.annotation.Nullable;
+
 /**
  * Maintains server span state.
  * 
@@ -17,21 +19,22 @@ interface ServerSpanState extends CommonSpanState {
      * @return Server request span for current thread. This will return the span we are part of. In case we should not trace
      *         current request <code>null</code> will be returned.
      */
+    @Nullable
     ServerSpan getCurrentServerSpan();
 
     /**
-     * Gets the EndPoint (ip, port, service name) for this service.
+     * Gets the Endpoint (ip, port, service name) for this service.
      *
      * @return Endpoint for this service.
      */
-    Endpoint getServerEndPoint();
+    Endpoint getServerEndpoint();
 
     /**
-     * Sets EndPoint for this service.
+     * Sets Endpoint for this service.
      *
-     * @param endPoint EndPoint for this service.
+     * @param endpoint Endpoint for this service.
      */
-    void setServerEndPoint(final Endpoint endPoint);
+    void setServerEndpoint(final Endpoint endpoint);
 
     /**
      * Set span for current request.
@@ -45,13 +48,12 @@ interface ServerSpanState extends CommonSpanState {
      * 
      * @param durationMs Duration in milliseconds.
      */
-    public void incrementServerSpanThreadDuration(final long durationMs);
+    void incrementServerSpanThreadDuration(final long durationMs);
 
     /**
      * Gets the server span thread duration in milliseconds.
      * 
      * @return Server span thread duration in milliseconds.
      */
-    public long getServerSpanThreadDuration();
-
+    long getServerSpanThreadDuration();
 }

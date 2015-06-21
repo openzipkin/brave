@@ -12,73 +12,75 @@ public class SpanIdTest {
     private final static long SPANID = 11;
     private final static Long PARENT_SPANID = new Long(12);
 
-    private SpanId spanIdImpl;
+    private SpanId spanId;
 
     @Before
     public void setup() {
-        spanIdImpl = new SpanId(TRACEID, SPANID, PARENT_SPANID);
+        spanId = SpanId.create(TRACEID, SPANID, PARENT_SPANID);
     }
 
     @Test
     public void testSpanIdNullParentId() {
-        final SpanId spanIdImpl2 = new SpanId(TRACEID, SPANID, null);
-        assertNull(spanIdImpl2.getParentSpanId());
+        final SpanId spanId2 = SpanId.create(TRACEID, SPANID, null);
+        assertNull(spanId2.getParentSpanId());
     }
 
     @Test
     public void testGetTraceId() {
-        assertEquals(TRACEID, spanIdImpl.getTraceId());
+        assertEquals(TRACEID, spanId.getTraceId());
     }
 
     @Test
     public void testGetSpanId() {
-        assertEquals(SPANID, spanIdImpl.getSpanId());
+        assertEquals(SPANID, spanId.getSpanId());
     }
 
     @Test
     public void testGetParentSpanId() {
-        assertEquals(PARENT_SPANID, spanIdImpl.getParentSpanId());
+        assertEquals(PARENT_SPANID, spanId.getParentSpanId());
     }
 
     @Test
     public void testGetOptionalParentSpanId() {
-        assertEquals(PARENT_SPANID, spanIdImpl.getParentSpanId());
+        assertEquals(PARENT_SPANID, spanId.getParentSpanId());
     }
 
 
     @Test
     public void testHashCode() {
-        final SpanId equalSpanId = new SpanId(TRACEID, SPANID, PARENT_SPANID);
-        assertEquals(spanIdImpl.hashCode(), equalSpanId.hashCode());
+        final SpanId equalSpanId = SpanId.create(TRACEID, SPANID, PARENT_SPANID);
+        assertEquals(spanId.hashCode(), equalSpanId.hashCode());
     }
 
     @Test
     public void testEquals() {
-        assertTrue(spanIdImpl.equals(spanIdImpl));
-        assertFalse(spanIdImpl.equals(null));
-        assertFalse(spanIdImpl.equals(new String()));
+        assertTrue(spanId.equals(spanId));
+        assertFalse(spanId.equals(null));
+        assertFalse(spanId.equals(new String()));
 
-        final SpanId equalSpanId = new SpanId(TRACEID, SPANID, PARENT_SPANID);
-        assertTrue(spanIdImpl.equals(equalSpanId));
+        final SpanId equalSpanId = SpanId.create(TRACEID, SPANID, PARENT_SPANID);
+        assertTrue(spanId.equals(equalSpanId));
 
-        final SpanId nonEqualSpanId = new SpanId(TRACEID + 1, SPANID, PARENT_SPANID);
-        final SpanId nonEqualSpanId2 = new SpanId(TRACEID, SPANID + 1, PARENT_SPANID);
-        final SpanId nonEqualSpanId3 = new SpanId(TRACEID, SPANID, PARENT_SPANID + 1);
+        final SpanId nonEqualSpanId = SpanId.create(TRACEID + 1, SPANID, PARENT_SPANID);
+        final SpanId nonEqualSpanId2 = SpanId.create(TRACEID, SPANID + 1, PARENT_SPANID);
+        final SpanId nonEqualSpanId3 = SpanId.create(TRACEID, SPANID, PARENT_SPANID + 1);
 
-        assertFalse(spanIdImpl.equals(nonEqualSpanId));
-        assertFalse(spanIdImpl.equals(nonEqualSpanId2));
-        assertFalse(spanIdImpl.equals(nonEqualSpanId3));
+        assertFalse(spanId.equals(nonEqualSpanId));
+        assertFalse(spanId.equals(nonEqualSpanId2));
+        assertFalse(spanId.equals(nonEqualSpanId3));
     }
 
     @Test
     public void testToString() {
-        assertEquals("[trace id: " + TRACEID + ", span id: " + SPANID + ", parent span id: " + PARENT_SPANID + "]",
-                spanIdImpl.toString());
+        assertEquals(
+            "[trace id: " + TRACEID + ", span id: " + SPANID + ", parent span id: " + PARENT_SPANID
+            + "]",
+            spanId.toString());
     }
 
     @Test
     public void testToStringNullParent() {
-        final SpanId spanIdImpl2 = new SpanId(TRACEID, SPANID, null);
-        assertEquals("[trace id: " + TRACEID + ", span id: " + SPANID + ", parent span id: null]", spanIdImpl2.toString());
+        final SpanId spanId2 = SpanId.create(TRACEID, SPANID, null);
+        assertEquals("[trace id: " + TRACEID + ", span id: " + SPANID + ", parent span id: null]", spanId2.toString());
     }
 }

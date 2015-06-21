@@ -1,7 +1,7 @@
 package com.github.kristofa.brave.jersey;
 
 import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndPointSubmitter;
+import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 
@@ -24,12 +24,12 @@ public class ServletTraceFilter implements Filter {
 
     private static Logger logger = LoggerFactory.getLogger(ServletTraceFilter.class);
     private final ServerTracer serverTracer;
-    private final EndPointSubmitter endPointSubmitter;
+    private final EndpointSubmitter endpointSubmitter;
 
     @Inject
-    public ServletTraceFilter(ServerTracer serverTracer, EndPointSubmitter endPointSubmitter) {
+    public ServletTraceFilter(ServerTracer serverTracer, EndpointSubmitter endpointSubmitter) {
         this.serverTracer = serverTracer;
-        this.endPointSubmitter = endPointSubmitter;
+        this.endpointSubmitter = endpointSubmitter;
     }
 
     @Override
@@ -94,11 +94,11 @@ public class ServletTraceFilter implements Filter {
     }
 
     private void submitEndpoint(HttpServletRequest request) {
-        if (!endPointSubmitter.endPointSubmitted()) {
+        if (!endpointSubmitter.endpointSubmitted()) {
             String contextPath = request.getContextPath();
             String localAddr = request.getLocalAddr();
             int localPort = request.getLocalPort();
-            endPointSubmitter.submit(localAddr, localPort, contextPath);
+            endpointSubmitter.submit(localAddr, localPort, contextPath);
             logger.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
         }
     }

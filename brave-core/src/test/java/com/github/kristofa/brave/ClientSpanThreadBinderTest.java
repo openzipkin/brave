@@ -12,22 +12,22 @@ import static org.mockito.Mockito.when;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ClientSpanThreadBinderImplTest {
+public class ClientSpanThreadBinderTest {
 
     private ClientSpanState mockClientSpanState;
     private Span mockSpan;
-    private ClientSpanThreadBinderImpl binder;
+    private ClientSpanThreadBinder binder;
 
     @Before
     public void setup() {
         mockClientSpanState = mock(ClientSpanState.class);
-        binder = new ClientSpanThreadBinderImpl(mockClientSpanState);
+        binder = new ClientSpanThreadBinder(mockClientSpanState);
         mockSpan = mock(Span.class);
     }
 
     @Test(expected = NullPointerException.class)
     public void testConstructorNullState() {
-        new ClientSpanThreadBinderImpl(null);
+        new ClientSpanThreadBinder(null);
     }
 
     @Test

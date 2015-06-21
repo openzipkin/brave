@@ -16,8 +16,8 @@ public class ServerRequestInterceptorTest {
     private final static long TRACE_ID = 3425;
     private final static long SPAN_ID = 43435;
     private final static long PARENT_SPAN_ID = 44334435;
-    private static final KeyValueAnnotation ANNOTATION1 = new KeyValueAnnotation("http.uri", "/orders/user/4543");
-    private static final KeyValueAnnotation ANNOTATION2 = new KeyValueAnnotation("http.code", "200");
+    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create("http.uri", "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
 
     private ServerRequestInterceptor interceptor;
     private ServerTracer serverTracer;
@@ -32,7 +32,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleFalse() {
-        TraceData traceData = new TraceData.Builder().sample(false).build();
+        TraceData traceData = TraceData.builder().sample(false).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         interceptor.handle(adapter);
         InOrder inOrder = inOrder(serverTracer);
@@ -43,7 +43,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleNoState() {
-        TraceData traceData = new TraceData.Builder().build();
+        TraceData traceData = TraceData.builder().build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
@@ -58,7 +58,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithParentSpanId() {
-        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, PARENT_SPAN_ID)).sample(true).build();
+        TraceData traceData = TraceData.builder().spanId(SpanId.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID)).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
@@ -76,7 +76,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handleSampleRequestWithoutParentSpanId() {
-        TraceData traceData = new TraceData.Builder().spanId(new SpanId(TRACE_ID, SPAN_ID, null)).sample(true).build();
+        TraceData traceData = TraceData.builder().spanId(SpanId.create(TRACE_ID, SPAN_ID, null)).sample(true).build();
         when(adapter.getTraceData()).thenReturn(traceData);
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);

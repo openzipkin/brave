@@ -5,7 +5,7 @@ package com.github.kristofa.brave.client.spanfilter;
  *
  * @author Pieter Cailliau (K-Jo)
  */
-public class SpanNameFilterNumericImpl implements SpanNameFilter {
+public class SpanNameFilterNumeric implements SpanNameFilter {
 
     /**
      * Will replace numeric path parths with < numeric >

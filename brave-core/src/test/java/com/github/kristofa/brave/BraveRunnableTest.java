@@ -23,7 +23,7 @@ public class BraveRunnableTest {
         mockThreadBinder = mock(ServerSpanThreadBinder.class);
         mockSpan = mock(ServerSpan.class);
         when(mockThreadBinder.getCurrentServerSpan()).thenReturn(mockSpan);
-        braveRunnable = new BraveRunnable(mockWrappedRunnable, mockThreadBinder);
+        braveRunnable = BraveRunnable.create(mockWrappedRunnable, mockThreadBinder);
     }
 
     @Test

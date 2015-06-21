@@ -5,7 +5,7 @@ package com.github.kristofa.brave.client.spanfilter;
  *
  * @author Pieter Cailliau (K-Jo)
  */
-public class DefaultSpanNameFilterImpl implements SpanNameFilter {
+public class DefaultSpanNameFilter implements SpanNameFilter {
 
     /**
      * Returns the unfiltered Span name.

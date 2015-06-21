@@ -5,21 +5,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
 /**
- * Spring Java Dependency Injection Configuration for {@link EndPointSubmitter}.
+ * Spring Java Dependency Injection Configuration for {@link EndpointSubmitter}.
  * 
  * @author kristof
  */
 @Configuration
-public class EndPointSubmitterConfig {
+public class EndpointSubmitterConfig {
 
     /**
-     * Gets a singleton {@link EndPointSubmitter}.
+     * Gets a singleton {@link EndpointSubmitter}.
      * 
-     * @return Singleton {@link EndPointSubmitter}.
+     * @return Singleton {@link EndpointSubmitter}.
      */
     @Bean
     @Scope(value = "singleton")
-    public EndPointSubmitter endPointSubmitter() {
-        return Brave.getEndPointSubmitter();
+    public EndpointSubmitter endpointSubmitter() {
+        return Brave.getEndpointSubmitter();
     }
 }

@@ -16,7 +16,11 @@ import java.util.Random;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InOrder;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.AnnotationType;
@@ -25,7 +29,9 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
-public class ServerTracerImplTest {
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(AnnotationSubmitter.class)
+public class ServerTracerTest {
 
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private final static long TRACE_ID = 1l;
@@ -34,12 +40,12 @@ public class ServerTracerImplTest {
     private final static String SPAN_NAME = "span name";
     private static final long DURATION_MS = 13;
 
-    private ServerTracerImpl serverTracer;
+    private ServerTracer serverTracer;
     private ServerSpanState mockServerSpanState;
     private SpanCollector mockSpanCollector;
     private ServerSpan mockServerSpan;
     private Span mockSpan;
-    private Endpoint mockEndPoint;
+    private Endpoint mockEndpoint;
     private Random mockRandom;
     private TraceFilter mockTraceFilter1;
     private TraceFilter mockTraceFilter2;
@@ -47,47 +53,25 @@ public class ServerTracerImplTest {
 
     @Before
     public void setup() {
-
         mockServerSpanState = mock(ServerSpanState.class);
         mockSpanCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
         mockServerSpan = mock(ServerSpan.class);
 
-        mockEndPoint = new Endpoint();
+        mockEndpoint = new Endpoint();
         mockRandom = mock(Random.class);
         mockTraceFilter1 = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
 
         traceFilters = Arrays.asList(mockTraceFilter1, mockTraceFilter2);
 
-        serverTracer = new ServerTracerImpl(mockServerSpanState, mockRandom,  mockSpanCollector, traceFilters) {
-
-            @Override
-            long currentTimeMicroseconds() {
-                return CURRENT_TIME_MICROSECONDS;
-            }
-        };
-
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullState() {
-        new ServerTracerImpl(null, mockRandom, mockSpanCollector, traceFilters);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullCollector() {
-        new ServerTracerImpl(mockServerSpanState, mockRandom, null, traceFilters);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullTraceFilters() {
-        new ServerTracerImpl(mockServerSpanState, mockRandom, mockSpanCollector, null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testConstructorNullRandom() {
-        new ServerTracerImpl(mockServerSpanState, null, mockSpanCollector, traceFilters);
+        PowerMockito.mockStatic(System.class);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
+        serverTracer = ServerTracer.builder()
+            .state(mockServerSpanState)
+            .randomGenerator(mockRandom)
+            .spanCollector(mockSpanCollector)
+            .traceFilters(traceFilters).build();
     }
 
     @Test
@@ -100,7 +84,7 @@ public class ServerTracerImplTest {
     @Test
     public void testSetStateCurrentTrace() {
         serverTracer.setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
-        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
+        final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
@@ -108,7 +92,7 @@ public class ServerTracerImplTest {
     @Test
     public void testSetStateNoTracing() {
         serverTracer.setStateNoTracing();
-        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(false);
+        final ServerSpan expectedServerSpan = ServerSpan.create(false);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
@@ -121,7 +105,7 @@ public class ServerTracerImplTest {
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         serverTracer.setStateUnknown(SPAN_NAME);
-        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(TRACE_ID, TRACE_ID, null, SPAN_NAME);
+        final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, TRACE_ID, null, SPAN_NAME);
 
         final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
 
@@ -139,7 +123,7 @@ public class ServerTracerImplTest {
         when(mockTraceFilter1.trace(SPAN_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(SPAN_NAME)).thenReturn(false);
 
-        final ServerSpanImpl expectedServerSpan = new ServerSpanImpl(false);
+        final ServerSpan expectedServerSpan = ServerSpan.create(false);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
@@ -166,16 +150,16 @@ public class ServerTracerImplTest {
     public void testSetServerReceived() {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(mockEndPoint);
+        expectedAnnotation.setHost(mockEndpoint);
         expectedAnnotation.setValue(zipkinCoreConstants.SERVER_RECV);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
 
         verify(mockServerSpanState).getCurrentServerSpan();
-        verify(mockServerSpanState).getServerEndPoint();
+        verify(mockServerSpanState).getServerEndpoint();
         verify(mockSpan).addToAnnotations(expectedAnnotation);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpan, mockSpanCollector);
@@ -195,16 +179,16 @@ public class ServerTracerImplTest {
     public void testSetServerSend() {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerSend();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(mockEndPoint);
+        expectedAnnotation.setHost(mockEndpoint);
         expectedAnnotation.setValue(zipkinCoreConstants.SERVER_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
 
         verify(mockServerSpanState, times(2)).getCurrentServerSpan();
-        verify(mockServerSpanState).getServerEndPoint();
+        verify(mockServerSpanState).getServerEndpoint();
 
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verify(mockServerSpanState).getServerSpanThreadDuration();
@@ -218,19 +202,19 @@ public class ServerTracerImplTest {
         when(mockServerSpan.getSpan()).thenReturn(mockSpan);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockServerSpanState.getServerSpanThreadDuration()).thenReturn(DURATION_MS);
-        when(mockServerSpanState.getServerEndPoint()).thenReturn(mockEndPoint);
+        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerSend();
         verify(mockServerSpanState, times(3)).getCurrentServerSpan();
-        verify(mockServerSpanState, times(2)).getServerEndPoint();
+        verify(mockServerSpanState, times(2)).getServerEndpoint();
 
         final Annotation expectedServerSendAnnotation = new Annotation();
-        expectedServerSendAnnotation.setHost(mockEndPoint);
+        expectedServerSendAnnotation.setHost(mockEndpoint);
         expectedServerSendAnnotation.setValue(zipkinCoreConstants.SERVER_SEND);
         expectedServerSendAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
 
         final BinaryAnnotation expectedThreadDurationAnnotation = new BinaryAnnotation();
         expectedThreadDurationAnnotation.setAnnotation_type(AnnotationType.STRING);
-        expectedThreadDurationAnnotation.setHost(mockEndPoint);
+        expectedThreadDurationAnnotation.setHost(mockEndpoint);
         expectedThreadDurationAnnotation.setKey(BraveAnnotations.THREAD_DURATION);
         final ByteBuffer bb = ByteBuffer.wrap(String.valueOf(DURATION_MS).getBytes("UTF-8"));
         expectedThreadDurationAnnotation.setValue(bb);

@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import com.google.auto.value.AutoValue;
 
 import javax.annotation.Nullable;
 
@@ -10,23 +9,18 @@ import javax.annotation.Nullable;
  * 
  * @author kristof
  */
-public class SpanId {
-
-    private final long traceId;
-    private final long spanId;
-    private final Long parentSpanId;
+@AutoValue
+public abstract class SpanId {
 
     /**
      * Creates a new span id.
      *
-     * @param traceId Trace Id.
-     * @param spanId Span Id.
+     * @param traceId      Trace Id.
+     * @param spanId       Span Id.
      * @param parentSpanId Nullable parent span id.
      */
-    public SpanId(final long traceId, final long spanId, @Nullable final Long parentSpanId) {
-        this.traceId = traceId;
-        this.spanId = spanId;
-        this.parentSpanId = parentSpanId;
+    public static SpanId create(long traceId, long spanId, @Nullable Long parentSpanId) {
+        return new AutoValue_SpanId(traceId, spanId, parentSpanId);
     }
 
     /**
@@ -34,18 +28,14 @@ public class SpanId {
      *
      * @return Trace id.
      */
-    public long getTraceId() {
-        return traceId;
-    }
+    public abstract long getTraceId();
 
     /**
      * Get span id.
      *
      * @return span id.
      */
-    public long getSpanId() {
-        return spanId;
-    }
+    public abstract long getSpanId();
 
     /**
      * Get parent span id.
@@ -53,40 +43,14 @@ public class SpanId {
      * @return Parent span id. Can be <code>null</code>.
      */
     @Nullable
-    public Long getParentSpanId() {
-        return parentSpanId;
-    }
+    public abstract Long getParentSpanId();
 
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder()
-            .append(traceId).append(spanId).append(parentSpanId).toHashCode();
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (obj instanceof SpanId) {
-            final SpanId other = (SpanId) obj;
-            return new EqualsBuilder()
-                .append(this.traceId, other.traceId)
-                .append(this.spanId, other.spanId)
-                .append(this.parentSpanId, other.parentSpanId).isEquals();
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString() {
-        return "[trace id: " + traceId + ", span id: " + spanId + ", parent span id: "
-                + parentSpanId + "]";
+        return "[trace id: " + getTraceId() + ", span id: " + getSpanId() + ", parent span id: "
+               + getParentSpanId() + "]";
+    }
+
+    SpanId() {
     }
 }

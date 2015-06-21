@@ -28,7 +28,7 @@ public class BraveCallableTest {
         mockThreadBinder = mock(ServerSpanThreadBinder.class);
         mockServerSpan = mock(ServerSpan.class);
         when(mockThreadBinder.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        braveCallable = new BraveCallable<String>(mockWrappedCallable, mockThreadBinder);
+        braveCallable = BraveCallable.create(mockWrappedCallable, mockThreadBinder);
     }
 
     @Test

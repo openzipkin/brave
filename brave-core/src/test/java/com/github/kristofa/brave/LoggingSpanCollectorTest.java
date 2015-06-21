@@ -17,13 +17,13 @@ import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
-public class LoggingSpanCollectorImplTest {
+public class LoggingSpanCollectorTest {
 
     private static final String KEY1 = "key1";
     private static final String VALUE1 = "value1";
     private static final String KEY2 = "key1";
     private static final String VALUE2 = "value1";
-    private LoggingSpanCollectorImpl spanCollector;
+    private LoggingSpanCollector spanCollector;
     private Logger mockLogger;
 
     @Before
@@ -31,7 +31,7 @@ public class LoggingSpanCollectorImplTest {
 
         mockLogger = mock(Logger.class);
 
-        spanCollector = new LoggingSpanCollectorImpl() {
+        spanCollector = new LoggingSpanCollector() {
 
             @Override
             Logger getLogger() {
@@ -110,8 +110,8 @@ public class LoggingSpanCollectorImplTest {
 
     @Test
     public void testGetLogger() {
-        final LoggingSpanCollectorImpl loggingSpanCollectorImpl = new LoggingSpanCollectorImpl();
-        assertNotNull(loggingSpanCollectorImpl.getLogger());
+        final LoggingSpanCollector loggingSpanCollector = new LoggingSpanCollector();
+        assertNotNull(loggingSpanCollector.getLogger());
 
     }
 

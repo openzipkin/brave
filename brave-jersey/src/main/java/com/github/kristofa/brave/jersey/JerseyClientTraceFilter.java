@@ -3,8 +3,6 @@ package com.github.kristofa.brave.jersey;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.apache.commons.lang3.Validate;
-
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.client.ClientRequestInterceptor;
 import com.github.kristofa.brave.client.ClientResponseInterceptor;
@@ -13,6 +11,8 @@ import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.filter.ClientFilter;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * This filter creates or forwards trace headers and sends cs and cr annotations. Usage: Client client = Client.create()
@@ -31,7 +31,7 @@ public class JerseyClientTraceFilter extends ClientFilter {
     }
 
     public JerseyClientTraceFilter(final ClientTracer clientTracer, final String serviceName, final SpanNameFilter spanNameFilter) {
-        Validate.notNull(clientTracer);
+        checkNotNull(clientTracer, "Null clientTracer");
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
         this.serviceName = serviceName;

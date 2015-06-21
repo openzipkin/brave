@@ -1,8 +1,9 @@
 package com.github.kristofa.brave;
 
-import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Contains logic for handling an incoming server request.
@@ -16,7 +17,7 @@ public class ServerRequestInterceptor {
     private final ServerTracer serverTracer;
 
     public ServerRequestInterceptor(ServerTracer serverTracer) {
-        this.serverTracer = Validate.notNull(serverTracer, "serverTracer should not be null.");
+        this.serverTracer = checkNotNull(serverTracer, "Null serverTracer");
     }
 
     /**

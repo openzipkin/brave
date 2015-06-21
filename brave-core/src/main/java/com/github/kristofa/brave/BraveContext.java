@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
+
 import java.util.List;
 import java.util.Random;
 
@@ -12,11 +14,11 @@ import java.util.Random;
  */
 public class BraveContext {
 
-    private final SimpleServerAndClientSpanStateImpl spanState;
+    private final SimpleServerAndClientSpanState spanState;
 
     private final Random randomGenerator;
 
-    private final EndPointSubmitter endpointSubmitter;
+    private final EndpointSubmitter endpointSubmitter;
 
     private final AnnotationSubmitter annotationSubmitter;
 
@@ -24,18 +26,18 @@ public class BraveContext {
      * Initializes brave context.
      */
     public BraveContext() {
-        spanState = new SimpleServerAndClientSpanStateImpl();
+        spanState = new SimpleServerAndClientSpanState();
         randomGenerator = new Random();
-        endpointSubmitter = new EndPointSubmitterImpl(spanState);
-        annotationSubmitter = new AnnotationSubmitterImpl(spanState);
+        endpointSubmitter = new EndpointSubmitter(spanState);
+        annotationSubmitter = AnnotationSubmitter.create(ServerSpanAndEndpoint.create(spanState));
     }
 
     /**
-     * Gets {@link EndPointSubmitter}.
+     * Gets {@link EndpointSubmitter}.
      * 
-     * @return {@link EndPointSubmitter}.
+     * @return {@link EndpointSubmitter}.
      */
-    public EndPointSubmitter getEndPointSubmitter() {
+    public EndpointSubmitter getEndpointSubmitter() {
         return endpointSubmitter;
     }
 
@@ -48,7 +50,12 @@ public class BraveContext {
      * @return ClientTracer.
      */
     public ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ClientTracerImpl(spanState, randomGenerator, collector, traceFilters);
+        return ClientTracer.builder()
+            .state(spanState)
+            .randomGenerator(randomGenerator)
+            .spanCollector(collector)
+            .traceFilters(traceFilters)
+            .build();
     }
 
     /**
@@ -60,7 +67,12 @@ public class BraveContext {
      * @return ServerTracer.
      */
     public ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return new ServerTracerImpl(spanState, randomGenerator, collector, traceFilters);
+        return ServerTracer.builder()
+            .state(spanState)
+            .randomGenerator(randomGenerator)
+            .spanCollector(collector)
+            .traceFilters(traceFilters)
+            .build();
     }
 
     /**

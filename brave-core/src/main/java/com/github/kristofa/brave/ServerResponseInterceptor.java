@@ -1,10 +1,9 @@
 package com.github.kristofa.brave;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Contains logic for dealing with response being returned at server side.
@@ -16,7 +15,7 @@ public class ServerResponseInterceptor {
     private final ServerTracer serverTracer;
 
     public ServerResponseInterceptor(ServerTracer serverTracer) {
-        this.serverTracer = Objects.requireNonNull(serverTracer, "serverTracer should not be null.");
+        this.serverTracer = checkNotNull(serverTracer, "Null serverTracer");
     }
 
     public void handle(ServerResponseAdapter adapter) {

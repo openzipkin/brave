@@ -1,8 +1,8 @@
 package com.github.kristofa.brave.client;
 
-import org.apache.commons.lang3.Validate;
-
 import com.github.kristofa.brave.ClientTracer;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Intercepts a response of a Client Request. Abstraction on top of {@link ClientTracer}. Will submit CR annotation. Used
@@ -20,8 +20,7 @@ public class ClientResponseInterceptor {
     private final ClientTracer clientTracer;
 
     public ClientResponseInterceptor(final ClientTracer clientTracer) {
-        Validate.notNull(clientTracer);
-        this.clientTracer = clientTracer;
+        this.clientTracer = checkNotNull(clientTracer, "Null clientTracer");
     }
 
     /**

@@ -8,17 +8,17 @@ import java.util.regex.Pattern;
  * Given a list of span name patterns like "/api/{client}/{operation}" or "/api/{version}/{client}/save",
  * this filter will only allow these span names to be set as the client span name (else "[span name not defined]").
  */
-public class PatternBasedSpanNameFilterImpl implements SpanNameFilter {
+public class PatternBasedSpanNameFilter implements SpanNameFilter {
     static final String DEFAULT_SPAN_NAME = "[span name not defined]";
 
     private final Iterable<SpanNamePattern> spanNamePatterns;
     private final String defaultSpanName;
 
-    public PatternBasedSpanNameFilterImpl(Iterable<String> spanNamePatterns) {
+    public PatternBasedSpanNameFilter(Iterable<String> spanNamePatterns) {
         this(spanNamePatterns, DEFAULT_SPAN_NAME);
     }
 
-    public PatternBasedSpanNameFilterImpl(Iterable<String> spanNamePatterns, String defaultSpanName) {
+    public PatternBasedSpanNameFilter(Iterable<String> spanNamePatterns, String defaultSpanName) {
         final List<SpanNamePattern> patternNamePairs = new ArrayList<>();
         if (spanNamePatterns != null) {
             for (String spanNamePattern : spanNamePatterns) {

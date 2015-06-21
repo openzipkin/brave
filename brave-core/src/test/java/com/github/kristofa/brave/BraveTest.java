@@ -25,54 +25,52 @@ public class BraveTest {
     }
 
     @Test
-    public void testSetGetEndPoint() {
-        final EndPointSubmitter endPointSubmitter = Brave.getEndPointSubmitter();
-        endPointSubmitter.submit(IP, PORT, SERVICE_NAME);
-        assertTrue(Brave.getEndPointSubmitter().endPointSubmitted());
+    public void testSetGetEndpoint() {
+        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
+        endpointSubmitter.submit(IP, PORT, SERVICE_NAME);
+        assertTrue(Brave.getEndpointSubmitter().endpointSubmitted());
     }
 
     @Test
     public void testGetClientTracer() {
         final ClientTracer clientTracer = Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         assertNotNull(clientTracer);
-        assertTrue("We expect instance of ClientTracerImpl", clientTracer instanceof ClientTracerImpl);
-        final ClientTracerImpl clientTracerImpl = (ClientTracerImpl)clientTracer;
+        assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
         assertSame("ClientTracer should be configured with the spancollector we submitted.", mockSpanCollector,
-            clientTracerImpl.getSpanCollector());
-        assertSame("ClientTracer should be configured with the tracefilter we submitted.", mockTraceFilter, clientTracerImpl
-            .getTraceFilters().get(0));
+            clientTracer.spanCollector());
+        assertSame("ClientTracer should be configured with the tracefilter we submitted.",
+                   mockTraceFilter, clientTracer
+                       .traceFilters().get(0));
 
-        final ClientTracerImpl secondClientTracerImpl =
-            (ClientTracerImpl)Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
+        final ClientTracer secondClientTracer =
+            Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         assertSame("It is important that each client tracer we get shares same state.",
-            clientTracerImpl.getServerAndClientSpanState(), secondClientTracerImpl.getServerAndClientSpanState());
+                   clientTracer.spanAndEndpoint().state(), secondClientTracer.spanAndEndpoint().state());
     }
 
     @Test
     public void testGetServerTracer() {
         final ServerTracer serverTracer = Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         assertNotNull(serverTracer);
-        assertTrue(serverTracer instanceof ServerTracerImpl);
-        final ServerTracerImpl serverTracerImpl = (ServerTracerImpl)serverTracer;
-        assertSame(mockSpanCollector, serverTracerImpl.getSpanCollector());
-        assertSame("ServerTracer should be configured with the tracefilter we submitted.", mockTraceFilter, serverTracerImpl
-            .getTraceFilters().get(0));
+        assertSame(mockSpanCollector, serverTracer.spanCollector());
+        assertSame("ServerTracer should be configured with the tracefilter we submitted.", mockTraceFilter, serverTracer
+            .traceFilters().get(0));
 
-        final ServerTracerImpl secondServerTracer =
-            (ServerTracerImpl)Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
+        final ServerTracer secondServerTracer =
+            Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
         assertSame("It is important that each client tracer we get shares same state.",
-            serverTracerImpl.getServerSpanState(), secondServerTracer.getServerSpanState());
+                   serverTracer.spanAndEndpoint().state(), secondServerTracer.spanAndEndpoint().state());
     }
 
     @Test
     public void testStateBetweenServerAndClient() {
-        final ClientTracerImpl clientTracer =
-            (ClientTracerImpl)Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
-        final ServerTracerImpl serverTracer =
-            (ServerTracerImpl)Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
+        final ClientTracer clientTracer =
+            Brave.getClientTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
+        final ServerTracer serverTracer =
+            Brave.getServerTracer(mockSpanCollector, Arrays.asList(mockTraceFilter));
 
-        assertSame("Client and server tracers should share same state.", clientTracer.getServerAndClientSpanState(),
-            serverTracer.getServerSpanState());
+        assertSame("Client and server tracers should share same state.", clientTracer.spanAndEndpoint().state(),
+            serverTracer.spanAndEndpoint().state());
 
     }
 
