@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>com.github.kristofa</groupId>
-        <version>3.0.0-alpha-1</version>
+        <version>3.0.0-alpha-2-SNAPSHOT</version>
     </parent>
     <artifactId>brave-jaxrs2</artifactId>
     <packaging>jar</packaging>
@@ -29,7 +29,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-http</artifactId>
-            <version>3.0.0-alpha-1</version>
+            <version>3.0.0-alpha-2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
@@ -54,7 +54,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-impl-spring</artifactId>
-            <version>3.0.0-alpha-1</version>
+            <version>3.0.0-alpha-2-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
