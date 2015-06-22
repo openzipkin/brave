@@ -1,7 +1,5 @@
 package com.github.kristofa.brave.zipkin;
 
-import org.apache.commons.lang3.Validate;
-
 /**
  * Optional parameters for {@link ZipkinSpanCollector}.
  * <p/>
@@ -58,7 +56,7 @@ public class ZipkinSpanCollectorParams {
      * @param queueSize Queue size.
      */
     public void setQueueSize(final int queueSize) {
-        Validate.isTrue(queueSize > 0);
+        if (queueSize <= 0) throw new IllegalArgumentException("queueSize must be positive");
         this.queueSize = queueSize;
     }
 
@@ -77,7 +75,7 @@ public class ZipkinSpanCollectorParams {
      * @param batchSize Maximum batch size.
      */
     public void setBatchSize(final int batchSize) {
-        Validate.isTrue(batchSize > 0);
+        if (batchSize <= 0) throw new IllegalArgumentException("batchSize must be positive");
         this.batchSize = batchSize;
     }
 
@@ -96,7 +94,7 @@ public class ZipkinSpanCollectorParams {
      * @param nrOfThreads Number of parallel threads for submitting spans to collector.
      */
     public void setNrOfThreads(final int nrOfThreads) {
-        Validate.isTrue(nrOfThreads > 0);
+        if (nrOfThreads <= 0) throw new IllegalArgumentException("nrOfThreads must be positive");
         this.nrOfThreads = nrOfThreads;
     }
 
@@ -115,7 +113,7 @@ public class ZipkinSpanCollectorParams {
      * @param socketTimeout Socket time out in milliseconds. Should be >= 100;
      */
     public void setSocketTimeout(final int socketTimeout) {
-        Validate.isTrue(socketTimeout >= 100);
+        if (socketTimeout < 100) throw new IllegalArgumentException("socketTimeout must be >= 100");
         this.socketTimeout = socketTimeout;
     }
 

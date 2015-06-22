@@ -53,6 +53,13 @@
             <version>${spring.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- AbstractApplicationContext in ITBraveJersey2 requires commons-logging -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.test-framework.providers</groupId>
             <artifactId>jersey-test-framework-provider-inmemory</artifactId>

@@ -1,9 +1,13 @@
 package com.github.kristofa.brave.resteasy;
 
-import javax.annotation.Nullable;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.commons.lang3.Validate;
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.client.ClientRequestInterceptor;
+import com.github.kristofa.brave.client.ClientResponseInterceptor;
+import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+import com.github.kristofa.brave.internal.Nullable;
+
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
@@ -12,10 +16,7 @@ import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientRequestInterceptor;
-import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -65,7 +66,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      */
     @Autowired(required = false)
     public BraveClientExecutionInterceptor(final ClientTracer clientTracer, @Nullable final SpanNameFilter spanNameFilter) {
-        Validate.notNull(clientTracer);
+        checkNotNull(clientTracer, "Null clientTracer");
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
     }

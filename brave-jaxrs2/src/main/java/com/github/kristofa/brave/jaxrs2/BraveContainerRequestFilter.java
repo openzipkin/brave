@@ -5,17 +5,17 @@ import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
+
+import static java.lang.String.format;
 
 /**
  * Intercepts incoming container requests and extracts any trace information from the request header
@@ -24,7 +24,7 @@ import javax.ws.rs.ext.Provider;
 @Provider
 public class BraveContainerRequestFilter implements ContainerRequestFilter {
 
-    private static Logger logger = LoggerFactory.getLogger(BraveContainerRequestFilter.class);
+    private static Logger logger = Logger.getLogger(BraveContainerRequestFilter.class.getName());
 
     private final ServerTracer serverTracer;
     private final EndpointSubmitter endpointSubmitter;
@@ -44,15 +44,15 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
         TraceData traceData = getTraceDataFromHeaders(containerRequestContext);
         if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
             serverTracer.setStateNoTracing();
-            logger.debug("Not tracing request");
+            logger.fine("Not tracing request");
         } else {
             String spanName = getSpanName(traceData, uriInfo);
             if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
-                logger.debug("Received span information as part of request");
+                logger.fine("Received span information as part of request");
                 serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
                         traceData.getParentSpanId(), spanName);
             } else {
-                logger.debug("Received no span state");
+                logger.fine("Received no span state");
                 serverTracer.setStateUnknown(spanName);
             }
         }
@@ -66,7 +66,7 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
             String localAddr = baseUri.getHost();
             int localPort = baseUri.getPort();
             endpointSubmitter.submit(localAddr, localPort, contextPath);
-            logger.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
+            logger.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
         }
     }
 

@@ -4,14 +4,14 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.ResultCode;
@@ -21,7 +21,7 @@ import com.twitter.zipkin.gen.ZipkinCollector.Iface;
 
 class ZipkinCollectorReceiver implements Iface {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ZipkinCollectorReceiver.class);
+    private static final Logger LOGGER = Logger.getLogger(ZipkinCollectorReceiver.class.getName());
     private final List<Span> spans = new ArrayList<Span>();
     private final int delayMs;
 
@@ -52,12 +52,12 @@ class ZipkinCollectorReceiver implements Iface {
                 try {
                     Thread.sleep(delayMs);
                 } catch (final InterruptedException e) {
-                    LOGGER.error("Interrupted.", e);
+                    LOGGER.log(Level.SEVERE, "Interrupted.", e);
                 }
             }
 
         } catch (final TException e) {
-            LOGGER.error("TException when getting result.", e);
+            LOGGER.log(Level.SEVERE, "TException when getting result.", e);
             return ResultCode.TRY_LATER;
         }
         return ResultCode.OK;

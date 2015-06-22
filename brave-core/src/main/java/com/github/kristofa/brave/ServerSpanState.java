@@ -1,8 +1,8 @@
 package com.github.kristofa.brave;
 
-import com.twitter.zipkin.gen.Endpoint;
+import com.github.kristofa.brave.internal.Nullable;
 
-import javax.annotation.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 
 /**
  * Maintains server span state.

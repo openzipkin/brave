@@ -73,7 +73,7 @@ All spans that are submitted by brave end up in a SpanCollector of your choice
 A SpanCollector is responsible for receiving spans and acting upon them. There are 2 
 SpanCollector implementations part of brave-impl: 
 
-*    `com.github.kristofa.brave.LoggingSpanCollector` : This SpanCollector simply logs spans through log4j. This can be used for testing / during development.
+*    `com.github.kristofa.brave.LoggingSpanCollector` : This SpanCollector simply logs spans through jul. This can be used for testing / during development.
 *    `com.github.kristofa.brave.EmptySpanCollector` : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
 
 The most interesting SpanCollector is the ZipkinSpanCollector. This one can be found in 

@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Logger;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -10,7 +9,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  */
 public class ServerResponseInterceptor {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ServerResponseInterceptor.class);
+    private final static Logger LOGGER = Logger.getLogger(ServerResponseInterceptor.class.getName());
 
     private final ServerTracer serverTracer;
 
@@ -21,7 +20,7 @@ public class ServerResponseInterceptor {
     public void handle(ServerResponseAdapter adapter) {
         // We can submit this in any case. When server state is not set or
         // we should not trace this request nothing will happen.
-        LOGGER.debug("Sending server send.");
+        LOGGER.fine("Sending server send.");
         try {
             for(KeyValueAnnotation annotation : adapter.responseAnnotations())
             {

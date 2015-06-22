@@ -1,6 +1,8 @@
 package com.github.kristofa.brave.zipkin;
 
-import org.apache.commons.lang3.Validate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -8,11 +10,11 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.twitter.zipkin.gen.ZipkinCollector;
 import com.twitter.zipkin.gen.ZipkinCollector.Client;
+
+import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
 /**
  * {@link ThriftClientProvider} for ZipkinCollector.
@@ -21,7 +23,7 @@ import com.twitter.zipkin.gen.ZipkinCollector.Client;
  */
 class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollector.Client> {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ZipkinCollectorClientProvider.class);
+    private final static Logger LOGGER = Logger.getLogger(ZipkinCollectorClientProvider.class.getName());
 
     private final String host;
     private final int port;
@@ -37,8 +39,7 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
      * @param timeout Socket time out in milliseconds.
      */
     public ZipkinCollectorClientProvider(final String host, final int port, final int timeout) {
-        Validate.notEmpty(host);
-        this.host = host;
+        this.host = checkNotBlank(host, "Null or empty host");
         this.port = port;
         this.timeout = timeout;
     }
@@ -70,19 +71,19 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
     @Override
     public Client exception(final TException exception) {
         if (exception instanceof TTransportException) {
-            LOGGER.debug("TransportException detected, closing current connection and opening new one", exception);
+            LOGGER.log(Level.FINE, "TransportException detected, closing current connection and opening new one", exception);
             // Close existing transport.
             close();
 
             try {
                 setup();
             } catch (final TException e) {
-                LOGGER.warn("Trying to reconnect to Thrift server failed.", e);
+                LOGGER.log(Level.WARNING, "Trying to reconnect to Thrift server failed.", e);
                 return null;
             }
             return client;
         } else {
-            LOGGER.warn("Thrift exception.", exception);
+            LOGGER.log(Level.WARNING, "Thrift exception.", exception);
             return null;
         }
     }

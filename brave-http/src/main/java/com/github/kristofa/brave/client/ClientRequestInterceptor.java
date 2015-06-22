@@ -3,8 +3,7 @@ package com.github.kristofa.brave.client;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-
-import javax.annotation.Nullable;
+import com.github.kristofa.brave.internal.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

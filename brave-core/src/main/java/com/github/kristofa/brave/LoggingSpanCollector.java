@@ -4,9 +4,8 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.LinkedHashSet;
 import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -16,7 +15,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
- * Simple {@link SpanCollector} implementation which logs the span through slf4j at INFO level.
+ * Simple {@link SpanCollector} implementation which logs the span through jul at INFO level.
  * <p/>
  * Can be used for testing and debugging.
  * 
@@ -30,12 +29,12 @@ public class LoggingSpanCollector implements SpanCollector {
     private final Set<BinaryAnnotation> defaultAnnotations = new LinkedHashSet<>();
 
     public LoggingSpanCollector() {
-        logger = LoggerFactory.getLogger(LoggingSpanCollector.class);
+        logger = Logger.getLogger(LoggingSpanCollector.class.getName());
     }
 
     public LoggingSpanCollector(String loggerName) {
         checkNotBlank(loggerName, "Null or blank loggerName");
-        logger = LoggerFactory.getLogger(loggerName);
+        logger = Logger.getLogger(loggerName);
     }
 
     /**
@@ -50,7 +49,7 @@ public class LoggingSpanCollector implements SpanCollector {
             }
         }
 
-        if (getLogger().isInfoEnabled()) {
+        if (getLogger().isLoggable(Level.INFO)) {
             getLogger().info(span.toString());
         }
     }

@@ -1,12 +1,11 @@
 package com.github.kristofa.brave;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 
 import com.twitter.zipkin.gen.Span;
-
-import java.util.concurrent.atomic.AtomicLong;
-
-import javax.annotation.Nullable;
 
 /**
  * The ServerSpan is initialized by {@link ServerTracer} and keeps track of Trace/Span state of our service request.

@@ -24,29 +24,18 @@
   </properties>
   <dependencies>
     <dependency>
-       <!-- For @javax.annotation.Nullable -->
-       <groupId>com.google.code.findbugs</groupId>
-       <artifactId>jsr305</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpclient</artifactId>
-        <version>4.3.3</version>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>4.3.2</version>
     </dependency>
     <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-http</artifactId>
         <version>3.0.0-alpha-2-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <scope>test</scope>
     </dependency>
     <dependency>
         <groupId>com.github.kristofa</groupId>

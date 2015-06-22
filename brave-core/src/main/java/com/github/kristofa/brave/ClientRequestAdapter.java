@@ -2,7 +2,7 @@ package com.github.kristofa.brave;
 
 import java.util.Collection;
 
-import javax.annotation.Nullable;
+import com.github.kristofa.brave.internal.Nullable;
 
 public interface ClientRequestAdapter {
 

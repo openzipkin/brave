@@ -6,11 +6,6 @@
  */
 package com.twitter.zipkin.gen;
 
-
-import java.util.Map;
-import java.util.HashMap;
-import org.apache.thrift.TEnum;
-
 public enum AnnotationType implements org.apache.thrift.TEnum {
   BOOL(0),
   BYTES(1),

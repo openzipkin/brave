@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Logger;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -12,7 +11,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  */
 public class ServerRequestInterceptor {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ServerRequestInterceptor.class);
+    private final static Logger LOGGER = Logger.getLogger(ServerRequestInterceptor.class.getName());
 
     private final ServerTracer serverTracer;
 
@@ -32,15 +31,15 @@ public class ServerRequestInterceptor {
         Boolean sample = traceData.getSample();
         if (sample != null && Boolean.FALSE.equals(sample)) {
             serverTracer.setStateNoTracing();
-            LOGGER.debug("Received indication that we should NOT trace.");
+            LOGGER.fine("Received indication that we should NOT trace.");
         } else {
             if (traceData.getSpanId() != null) {
-                LOGGER.debug("Received span information as part of request.");
+                LOGGER.fine("Received span information as part of request.");
                 SpanId spanId = traceData.getSpanId();
                 serverTracer.setStateCurrentTrace(spanId.getTraceId(), spanId.getSpanId(),
                         spanId.getParentSpanId(), adapter.getSpanName());
             } else {
-                LOGGER.debug("Received no span state.");
+                LOGGER.fine("Received no span state.");
                 serverTracer.setStateUnknown(adapter.getSpanName());
             }
             serverTracer.setServerReceived();

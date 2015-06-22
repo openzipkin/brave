@@ -5,15 +5,16 @@ import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerTracer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static java.lang.String.format;
 
 /**
  * Servlet filter that will extract trace headers from the request and send
@@ -22,7 +23,7 @@ import java.io.IOException;
 @Singleton
 public class ServletTraceFilter implements Filter {
 
-    private static Logger logger = LoggerFactory.getLogger(ServletTraceFilter.class);
+    private static Logger logger = Logger.getLogger(ServletTraceFilter.class.getName());
     private final ServerTracer serverTracer;
     private final EndpointSubmitter endpointSubmitter;
 
@@ -64,15 +65,15 @@ public class ServletTraceFilter implements Filter {
                 TraceData traceData = getTraceDataFromHeaders(httpServletRequest);
                 if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
                     serverTracer.setStateNoTracing();
-                    logger.debug("Not tracing request");
+                    logger.fine("Not tracing request");
                 } else {
                     String spanName = getSpanName(traceData, httpServletRequest);
                     if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
-                        logger.debug("Received span information as part of request");
+                        logger.fine("Received span information as part of request");
                         serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
                                 traceData.getParentSpanId(), spanName);
                     } else {
-                        logger.debug("Received no span state");
+                        logger.fine("Received no span state");
                         serverTracer.setStateUnknown(spanName);
                     }
                 }
@@ -80,7 +81,7 @@ public class ServletTraceFilter implements Filter {
             serverTracer.setServerReceived();
             return true;
         } catch (Exception e) {
-            logger.warn("Exception establishing server trace", e);
+            logger.log(Level.WARNING, "Exception establishing server trace", e);
             return false;
         }
     }
@@ -89,7 +90,7 @@ public class ServletTraceFilter implements Filter {
         try {
             serverTracer.setServerSend();
         } catch (Exception e) {
-            logger.warn("Exception finalizing server trace", e);
+            logger.log(Level.WARNING, "Exception finalizing server trace", e);
         }
     }
 
@@ -99,7 +100,7 @@ public class ServletTraceFilter implements Filter {
             String localAddr = request.getLocalAddr();
             int localPort = request.getLocalPort();
             endpointSubmitter.submit(localAddr, localPort, contextPath);
-            logger.debug("Setting endpoint: addr: {}, port: {}, contextpath: {}", localAddr, localPort, contextPath);
+            logger.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
         }
     }
 
