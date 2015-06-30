@@ -16,7 +16,7 @@ import java.util.Properties;
  *     A MySQL statement interceptor that will report to Zipkin how long each statement takes.
  * </p>
  * <p>
- *     To use it, append <code>?statementInterceptors=com.github.kristofa.brave.db.MySQLStatementInterceptor</code> to the end of the connection url.
+ *     To use it, append <code>?statementInterceptors=com.github.kristofa.brave.mysql.MySQLStatementInterceptor</code> to the end of the connection url.
  * </p>
  * <p>
  *     Note that this class must be injected with the {@linkplain ClientTracer} to use to communicate with Zipkin via the {@linkplain #setClientTracer} method;
