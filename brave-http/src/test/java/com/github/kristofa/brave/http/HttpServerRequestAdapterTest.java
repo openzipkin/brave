@@ -47,6 +47,18 @@ public class HttpServerRequestAdapterTest {
         assertNull(traceData.getSpanId());
     }
 
+    /**
+     * This is according to the zipkin 'spec'.
+     */
+    @Test
+    public void getTraceDataSampledZero() {
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("0");
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertFalse(traceData.getSample());
+        assertNull(traceData.getSpanId());
+    }
+
     @Test
     public void getTraceDataSampledTrueNoOtherTraceHeaders() {
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("true");
@@ -61,6 +73,24 @@ public class HttpServerRequestAdapterTest {
     @Test
     public void getTraceDataSampledTrueNoParentId() {
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("true");
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(TRACE_ID);
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(SPAN_ID);
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertTrue(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.getTraceId());
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.getSpanId());
+        assertNull(spanId.getParentSpanId());
+    }
+
+    /**
+     * This is according to the zipkin 'spec'.
+     */
+    @Test
+    public void getTraceDataSampledOneNoParentId() {
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("1");
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(TRACE_ID);
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(SPAN_ID);
         TraceData traceData = adapter.getTraceData();

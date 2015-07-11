@@ -20,7 +20,7 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
     public TraceData getTraceData() {
         final String sampled = serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
         if (sampled != null) {
-            if (Boolean.valueOf(sampled) == false) {
+            if (sampled.equals("0") || sampled.equals("false")) {
                 return TraceData.builder().sample(false).build();
             } else {
                 final String parentSpanId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
