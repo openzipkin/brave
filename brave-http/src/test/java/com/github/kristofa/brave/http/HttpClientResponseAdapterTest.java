@@ -14,11 +14,11 @@ import static org.mockito.Mockito.*;
 public class HttpClientResponseAdapterTest {
 
     private HttpClientResponseAdapter adapter;
-    private HttpClientResponse response;
+    private HttpResponse response;
 
     @Before
     public void setup() {
-        response = mock(HttpClientResponse.class);
+        response = mock(HttpResponse.class);
         adapter = new HttpClientResponseAdapter(response);
     }
 

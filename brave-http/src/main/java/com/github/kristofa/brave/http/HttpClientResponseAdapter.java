@@ -11,9 +11,9 @@ import java.util.Collections;
 public class HttpClientResponseAdapter implements ClientResponseAdapter {
 
 
-    private final HttpClientResponse response;
+    private final HttpResponse response;
 
-    public HttpClientResponseAdapter(HttpClientResponse response) {
+    public HttpClientResponseAdapter(HttpResponse response) {
         this.response = response;
     }
 

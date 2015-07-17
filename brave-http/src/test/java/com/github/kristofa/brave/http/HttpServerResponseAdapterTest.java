@@ -15,11 +15,11 @@ import static org.mockito.Mockito.when;
 public class HttpServerResponseAdapterTest {
 
     private HttpServerResponseAdapter adapter;
-    private HttpServerResponse response;
+    private HttpResponse response;
 
     @Before
     public void setup() {
-        response = mock(HttpServerResponse.class);
+        response = mock(HttpResponse.class);
         adapter = new HttpServerResponseAdapter(response);
     }
 

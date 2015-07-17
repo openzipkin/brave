@@ -39,17 +39,17 @@ public class HttpClientRequestAdapterTest {
 
     @Test
     public void getClientServiceName() {
-        when(serviceNameProvider.serviceName()).thenReturn(CLIENT_SERVICE_NAME);
+        when(serviceNameProvider.serviceName(request)).thenReturn(CLIENT_SERVICE_NAME);
         assertEquals(CLIENT_SERVICE_NAME, clientRequestAdapter.getClientServiceName());
-        verify(serviceNameProvider).serviceName();
+        verify(serviceNameProvider).serviceName(request);
         verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
     }
 
     @Test
     public void getSpanName() {
-        when(spanNameProvider.spanName()).thenReturn(SPAN_NAME);
+        when(spanNameProvider.spanName(request)).thenReturn(SPAN_NAME);
         assertEquals(SPAN_NAME, clientRequestAdapter.getSpanName());
-        verify(spanNameProvider).spanName();
+        verify(spanNameProvider).spanName(request);
         verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
     }
 

@@ -9,9 +9,9 @@ import java.util.Collections;
 
 public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
-    private final HttpServerResponse response;
+    private final HttpResponse response;
 
-    public HttpServerResponseAdapter(HttpServerResponse response)
+    public HttpServerResponseAdapter(HttpResponse response)
     {
         this.response = response;
     }

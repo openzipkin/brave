@@ -18,13 +18,13 @@ public class DefaulSpanNameProviderTest {
     @Before
     public void setup() {
         mockRequest = mock(HttpClientRequest.class);
-        spanNameProvider = new DefaultSpanNameProvider(mockRequest);
+        spanNameProvider = new DefaultSpanNameProvider();
     }
 
     @Test
     public void getHttpMethod() {
         when(mockRequest.getHttpMethod()).thenReturn(HTTP_METHOD);
-        assertEquals(HTTP_METHOD, spanNameProvider.spanName());
+        assertEquals(HTTP_METHOD, spanNameProvider.spanName(mockRequest));
         verify(mockRequest).getHttpMethod();
         verifyNoMoreInteractions(mockRequest);
     }
