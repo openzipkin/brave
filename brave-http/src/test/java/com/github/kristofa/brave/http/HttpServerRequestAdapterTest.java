@@ -47,6 +47,15 @@ public class HttpServerRequestAdapterTest {
         assertNull(traceData.getSpanId());
     }
 
+    @Test
+    public void getTraceDataSampledFalseUpperCase() {
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("FALSE");
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertFalse(traceData.getSample());
+        assertNull(traceData.getSpanId());
+    }
+
     /**
      * This is according to the zipkin 'spec'.
      */
