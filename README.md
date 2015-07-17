@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/kristofa/brave.svg?branch=master)](https://travis-ci.org/kristofa/brave)
 
+**Brave moved to OpenZipkin.** [Read more about it here](http://kdevlog.blogspot.de/2015/07/brave-moved-to-openzipkin-org.html).
+
 Java distributed tracing implementation compatible with [Zipkin](https://github.com/twitter/zipkin/).
 
 Zipkin is based on [Dapper](http://research.google.com/pubs/pub36356.html).
