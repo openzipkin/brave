@@ -4,6 +4,9 @@ import java.util.logging.Logger;
 
 import javax.ws.rs.ext.Provider;
 
+import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ServerResponse;
 import org.jboss.resteasy.spi.interception.PostProcessInterceptor;
@@ -26,28 +29,30 @@ public class BravePostProcessInterceptor implements PostProcessInterceptor {
 
     private final static Logger LOGGER = Logger.getLogger(BravePostProcessInterceptor.class.getName());
 
-    private final ServerTracer serverTracer;
+    private final ServerResponseInterceptor respInterceptor;
 
     /**
      * Creates a new instance.
      * 
-     * @param serverTracer {@link ServerTracer}. Should not be null.
+     * @param respInterceptor {@link ServerTracer}. Should not be null.
      */
     @Autowired
-    public BravePostProcessInterceptor(ServerTracer serverTracer) {
-        this.serverTracer = checkNotNull(serverTracer, "Null serverTracer");
+    public BravePostProcessInterceptor(ServerResponseInterceptor respInterceptor) {
+        this.respInterceptor = respInterceptor;
     }
 
     @Override
     public void postProcess(final ServerResponse response) {
-        // We can submit this in any case. When server state is not set or
-        // we should not trace this request nothing will happen.
-        LOGGER.fine("Sending server send.");
-        try {
-            serverTracer.setServerSend();
-        } finally {
-            serverTracer.clearCurrentSpan();
-        }
+
+        HttpResponse httpResponse = new HttpResponse() {
+
+            @Override
+            public int getHttpStatusCode() {
+                return response.getStatus();
+            }
+        };
+        HttpServerResponseAdapter adapter = new HttpServerResponseAdapter(httpResponse);
+        respInterceptor.handle(adapter);
     }
 
 }

@@ -1,7 +1,7 @@
 package com.github.kristofa.brave.http;
 
 
-public interface HttpServerResponse {
+public interface HttpResponse {
 
     int getHttpStatusCode();
 }

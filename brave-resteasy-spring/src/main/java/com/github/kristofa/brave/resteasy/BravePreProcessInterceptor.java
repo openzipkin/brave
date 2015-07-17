@@ -11,6 +11,11 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
 
+import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.http.HttpServerRequestAdapter;
+import com.github.kristofa.brave.http.ServiceNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ResourceMethod;
 import org.jboss.resteasy.core.ServerResponse;
@@ -20,10 +25,6 @@ import org.jboss.resteasy.spi.interception.PreProcessInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndpointSubmitter;
-import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.ServerTracer;
 import com.twitter.zipkin.gen.Endpoint;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -49,7 +50,10 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     private final static Logger LOGGER = Logger.getLogger(BravePreProcessInterceptor.class.getName());
 
     private final EndpointSubmitter endpointSubmitter;
-    private final ServerTracer serverTracer;
+    private final ServerRequestInterceptor reqInterceptor;
+    private final ServerResponseInterceptor resInterceptor;
+    private final SpanNameProvider spanNameProvider;
+    private final ServiceNameProvider serviceNameProvider;
 
     @Context
     HttpServletRequest servletRequest;
@@ -58,12 +62,23 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
      * Creates a new instance.
      *
      * @param endpointSubmitter {@link EndpointSubmitter}. Should not be <code>null</code>.
-     * @param serverTracer {@link ServerTracer}. Should not be <code>null</code>.
+     * @param reqInterceptor Request interceptor.
+     * @param resInterceptor ResponseInterceptor.
+     * @param spanNameProvider Span name provider.
+     * @param serviceNameProvider Service name provider.
      */
     @Autowired
-    public BravePreProcessInterceptor(final EndpointSubmitter endpointSubmitter, final ServerTracer serverTracer) {
-        this.endpointSubmitter = checkNotNull(endpointSubmitter, "Null endpointSubmitter");
-        this.serverTracer = checkNotNull(serverTracer, "Null serverTracer");
+    public BravePreProcessInterceptor(final EndpointSubmitter endpointSubmitter,
+                                      ServerRequestInterceptor reqInterceptor,
+                                      ServerResponseInterceptor resInterceptor,
+                                      SpanNameProvider spanNameProvider,
+                                      ServiceNameProvider serviceNameProvider
+    ) {
+        this.endpointSubmitter = endpointSubmitter;
+        this.reqInterceptor = reqInterceptor;
+        this.resInterceptor = resInterceptor;
+        this.spanNameProvider = spanNameProvider;
+        this.serviceNameProvider = serviceNameProvider;
     }
 
     /**
@@ -73,98 +88,25 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     public ServerResponse preProcess(final HttpRequest request, final ResourceMethod method) throws Failure,
         WebApplicationException {
 
-        submitEndpoint();
+        HttpServerRequest req = new RestEasyHttpServerRequest(request);
+        submitEndpoint(req);
 
-        serverTracer.clearCurrentSpan();
-        final TraceData traceData = getTraceData(request);
 
-        if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
-            serverTracer.setStateNoTracing();
-            LOGGER.fine("Received indication that we should NOT trace.");
-        } else {
-            final String spanName = getSpanName(request, traceData);
-            if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
+        HttpServerRequestAdapter reqAdapter = new HttpServerRequestAdapter(req, spanNameProvider);
+        reqInterceptor.handle(reqAdapter);
 
-                LOGGER.fine("Received span information as part of request.");
-                serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
-                    traceData.getParentSpanId(), spanName);
-            } else {
-                LOGGER.fine("Received no span state.");
-                serverTracer.setStateUnknown(spanName);
-            }
-            serverTracer.setServerReceived();
-        }
         return null;
     }
 
-    private String getSpanName(final HttpRequest request, final TraceData traceData) throws WebApplicationException {
-        if (traceData.getSpanName() != null && !"".equals(traceData.getSpanName().trim())) {
-            return traceData.getSpanName();
-        } else {
-            return request.getPreprocessedPath();
-        }
-    }
-
-    private void submitEndpoint() {
+    private void submitEndpoint(HttpServerRequest request) {
         if (!endpointSubmitter.endpointSubmitted()) {
             final String localAddr = servletRequest.getLocalAddr();
             final int localPort = servletRequest.getLocalPort();
-            final String contextPath = getContextPathWithoutFirstSlash();
-            LOGGER.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
-            endpointSubmitter.submit(localAddr, localPort, contextPath);
+            final String serviceName = serviceNameProvider.serviceName(request);
+            LOGGER.fine(format("Setting endpoint: addr: %s, port: %s, serviceName: %s", localAddr, localPort, serviceName));
+            endpointSubmitter.submit(localAddr, localPort, serviceName);
         }
     }
 
-    private String getContextPathWithoutFirstSlash() {
-        final String contextPath = servletRequest.getContextPath();
-        if (contextPath.startsWith("/")) {
-            return contextPath.substring(1);
-        } else {
-            return contextPath;
-        }
-    }
-
-    private TraceData getTraceData(final HttpRequest request) {
-        final HttpHeaders httpHeaders = request.getHttpHeaders();
-        final MultivaluedMap<String, String> requestHeaders = httpHeaders.getRequestHeaders();
-
-        final TraceData traceData = new TraceData();
-
-        for (final Entry<String, List<String>> headerEntry : requestHeaders.entrySet()) {
-            LOGGER.fine(format("%s=%s", headerEntry.getKey(), headerEntry.getValue()));
-            if (BraveHttpHeaders.TraceId.getName().equalsIgnoreCase(headerEntry.getKey())) {
-                traceData.setTraceId(getFirstLongValueFor(headerEntry));
-            } else if (BraveHttpHeaders.SpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {
-                traceData.setSpanId(getFirstLongValueFor(headerEntry));
-            } else if (BraveHttpHeaders.ParentSpanId.getName().equalsIgnoreCase(headerEntry.getKey())) {
-                traceData.setParentSpanId(getFirstLongValueFor(headerEntry));
-            } else if (BraveHttpHeaders.Sampled.getName().equalsIgnoreCase(headerEntry.getKey())) {
-                traceData.setShouldBeSampled(getFirstBooleanValueFor(headerEntry));
-            } else if (BraveHttpHeaders.SpanName.getName().equalsIgnoreCase(headerEntry.getKey())) {
-                traceData.setSpanName(getFirstStringValueFor(headerEntry));
-            }
-        }
-        return traceData;
-    }
-
-    private Long getFirstLongValueFor(final Entry<String, List<String>> headerEntry) {
-
-        final String firstStringValueFor = getFirstStringValueFor(headerEntry);
-        return firstStringValueFor == null ? null : IdConversion.convertToLong(firstStringValueFor);
-
-    }
-
-    private Boolean getFirstBooleanValueFor(final Entry<String, List<String>> headerEntry) {
-        final String firstStringValueFor = getFirstStringValueFor(headerEntry);
-        return firstStringValueFor == null ? null : Boolean.valueOf(firstStringValueFor);
-    }
-
-    private String getFirstStringValueFor(final Entry<String, List<String>> headerEntry) {
-        final List<String> values = headerEntry.getValue();
-        if (values != null && values.size() > 0) {
-            return headerEntry.getValue().get(0);
-        }
-        return null;
-    }
 
 }

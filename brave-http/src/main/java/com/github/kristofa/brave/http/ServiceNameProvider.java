@@ -3,5 +3,5 @@ package com.github.kristofa.brave.http;
 
 public interface ServiceNameProvider {
 
-    String serviceName();
+    String serviceName(HttpRequest request);
 }

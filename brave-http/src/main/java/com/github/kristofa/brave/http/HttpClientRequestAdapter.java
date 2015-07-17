@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
@@ -25,7 +26,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
     @Override
     public String getSpanName() {
-        return spanNameProvider.spanName();
+        return spanNameProvider.spanName(request);
     }
 
     @Override
@@ -34,10 +35,10 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
             request.addHeader(BraveHttpHeaders.Sampled.getName(), "false");
         } else {
             request.addHeader(BraveHttpHeaders.Sampled.getName(), "true");
-            request.addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(spanId.getTraceId()));
-            request.addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(spanId.getSpanId()));
+            request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(spanId.getTraceId()));
+            request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId.getSpanId()));
             if (spanId.getParentSpanId() != null) {
-                request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(spanId.getParentSpanId()));
+                request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(spanId.getParentSpanId()));
             }
         }
     }
@@ -53,7 +54,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
     @Override
     public String getClientServiceName() {
-        return serviceNameProvider.serviceName();
+        return serviceNameProvider.serviceName(request);
     }
 
 }

@@ -38,7 +38,7 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
     @Override
     public String getSpanName() {
-        return spanNameProvider.spanName();
+        return spanNameProvider.spanName(serverRequest);
     }
 
     @Override

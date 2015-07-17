@@ -67,7 +67,7 @@ public class ITBraveResteasy {
         RegisterBuiltin.register(ResteasyProviderFactory.getInstance());
 
         // Create our client. The client will be configured using BraveClientExecutionInterceptor because
-        // we Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
+        // Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
         // in module brave-resteasy-spring-module which is on our class path.
         final BraveRestEasyResource client =
             ProxyFactory.create(BraveRestEasyResource.class, "http://localhost:8080/BraveRestEasyIntegration");
