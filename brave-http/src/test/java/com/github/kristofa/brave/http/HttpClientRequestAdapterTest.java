@@ -21,7 +21,7 @@ public class HttpClientRequestAdapterTest {
     private static final String SPAN_NAME = "span_name";
     private static final long TRACE_ID = 1;
     private static final long SPAN_ID = 2;
-    private static final Long PARENT_SPAN_ID = Long.valueOf(3);
+    private static final Long PARENT_SPAN_ID = 3L;
     private static final String TEST_URI = "http://abc.com/request";
 
     private HttpClientRequestAdapter clientRequestAdapter;
@@ -56,7 +56,7 @@ public class HttpClientRequestAdapterTest {
     @Test
     public void addSpanIdToRequest_NoSpanId() {
         clientRequestAdapter.addSpanIdToRequest(null);
-        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "false");
+        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "0");
         verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
     }
 
@@ -64,7 +64,7 @@ public class HttpClientRequestAdapterTest {
     public void addSpanIdToRequest_WithParentSpanId() {
         SpanId id = SpanId.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID);
         clientRequestAdapter.addSpanIdToRequest(id);
-        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
+        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
         verify(request).addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(PARENT_SPAN_ID));
@@ -75,7 +75,7 @@ public class HttpClientRequestAdapterTest {
     public void addSpanIdToRequest_WithoutParentSpanId() {
         SpanId id = SpanId.create(TRACE_ID, SPAN_ID, null);
         clientRequestAdapter.addSpanIdToRequest(id);
-        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "true");
+        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
         verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);

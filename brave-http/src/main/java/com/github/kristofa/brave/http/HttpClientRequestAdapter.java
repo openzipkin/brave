@@ -31,9 +31,9 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public void addSpanIdToRequest(@Nullable SpanId spanId) {
         if (spanId == null) {
-            request.addHeader(BraveHttpHeaders.Sampled.getName(), "false");
+            request.addHeader(BraveHttpHeaders.Sampled.getName(), "0");
         } else {
-            request.addHeader(BraveHttpHeaders.Sampled.getName(), "true");
+            request.addHeader(BraveHttpHeaders.Sampled.getName(), "1");
             request.addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(spanId.getTraceId()));
             request.addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(spanId.getSpanId()));
             if (spanId.getParentSpanId() != null) {
