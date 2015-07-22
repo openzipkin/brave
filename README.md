@@ -1,6 +1,6 @@
 # brave #
 
-[![Build Status](https://travis-ci.org/kristofa/brave.svg?branch=master)](https://travis-ci.org/kristofa/brave)
+[![Build Status](https://travis-ci.org/openzipkin/brave.svg?branch=master)](https://travis-ci.org/openzipkin/brave)
 
 **Brave moved to OpenZipkin.** [Read more about it here](http://kdevlog.blogspot.de/2015/07/brave-moved-to-openzipkin-org.html).
 
