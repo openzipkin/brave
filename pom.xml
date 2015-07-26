@@ -49,7 +49,7 @@
   <modules>
     <module>brave-core</module>
     <module>brave-http</module>
-    <module>brave-impl-spring</module>
+    <module>brave-core-spring</module>
     <module>brave-resteasy-spring</module>
     <module>brave-resteasy3-spring</module>
     <module>brave-zipkin-spancollector</module>

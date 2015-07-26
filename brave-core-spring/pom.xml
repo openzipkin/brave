@@ -7,11 +7,11 @@
     <version>3.0.0-alpha-2-SNAPSHOT</version>
   </parent>
   
-  <artifactId>brave-impl-spring</artifactId>
+  <artifactId>brave-core-spring</artifactId>
   <packaging>jar</packaging>
-  <name>brave-impl-spring</name>
+  <name>brave-core-spring</name>
   <description>
-    Spring Configuration and helper classes for using brave-impl with Spring as dependency injection
+    Spring Configuration and helper classes for using brave-core with Spring as dependency injection 
     framework.
   </description>
   <url>https://github.com/kristofa/brave</url>

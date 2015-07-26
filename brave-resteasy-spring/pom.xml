@@ -70,7 +70,7 @@
     </dependency>
     <dependency>
         <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-impl-spring</artifactId>
+        <artifactId>brave-core-spring</artifactId>
         <version>3.0.0-alpha-2-SNAPSHOT</version>
         <scope>test</scope>
     </dependency>
