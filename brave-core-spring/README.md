@@ -60,3 +60,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 
 }
 ```
+
+If you use `RestTemplate` to communicate between your services, you can add the `BraveClientHttpRequestInterceptor`
+to automatically add the headers to outgoing requests. To add the interceptor, use the the `RestTemplate.setInterceptors` method.

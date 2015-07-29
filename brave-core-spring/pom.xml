@@ -31,6 +31,11 @@
         <artifactId>brave-core</artifactId>
         <version>3.0.0-alpha-2-SNAPSHOT</version>
      </dependency>
+     <dependency>
+        <groupId>com.github.kristofa</groupId>
+        <artifactId>brave-http</artifactId>
+        <version>3.0.0-alpha-2-SNAPSHOT</version>
+     </dependency>
      
      <dependency>
         <groupId>org.springframework</groupId>
