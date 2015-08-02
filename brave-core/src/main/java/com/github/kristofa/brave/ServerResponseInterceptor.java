@@ -6,6 +6,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Contains logic for dealing with response being returned at server side.
+ *
+ * - Add custom annotations if adapter provides them.
+ * - Will submit server send annotation.
+ *
  */
 public class ServerResponseInterceptor {
 
