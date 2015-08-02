@@ -1,52 +1,70 @@
 # brave-core #
 
-
-
 brave-core contains the core brave implementations used to set up and keep track of
 tracing state. 
 
-## sequence diagram ##
+Since brave 3.0.0 you should use:
+ 
+   * At client side:
+      * `com.github.kristofa.brave.ClientRequestInterceptor` : Starts a new span for a new outgoing request. Submits cs annotation.
+      * `com.github.kristofa.brave.ClientResponseInterceptor` : Deals with response from request. Submits cr annotation.
+   * At server side:
+      * `com.github.kristofa.brave.ServerRequestInterceptor` : Intercepts incoming requests. Submits sr annotation.
+      * `com.github.kristofa.brave.ServerResponseInterceptor` : Intercepts response for request. Submits ss annotation.
 
+For each of these classes you will have to implement and adapter that will deal with platform specifics.
 
-![Client and ServerTracer usage.](https://raw.github.com/wiki/kristofa/brave/brave-client-servertracer-usage.png)
+Because http integration is very common there is a separate module: `brave-http` which builds upon `brave-core`.
+You should check this out of you want to do http integrations.
 
-The sequence diagram shows a service that executes a request to another service.
-It shows interaction with the brave Client- , ServerTracer and SpanCollector.
+## instantiating interceptor dependencies
 
-The actions taking place in both services are also indicated by the coloured boxes. The
-blue box indicates the caller service (client), the green box indicates the callee (server). Typically both
-services run in separate JVM.
+To instantiate the client interceptors you will need a `ClientTracer` instance and to
+instantiate the server interceptors you will need a `ServerTracer` instance. You can create those as following:
 
-As of version 2.2.1 you can use code present in `brave-client` which adds an abstraction layer around ClientTracer and makes it easier to integrate new clients with less code.
+`Brave.getClientTracer(SpanCollector, List<TraceFilter>)`
 
-Some explanation:
+`Brave.getServerTracer(SpanCollector, List<TraceFilter>)`
 
-*    002 : The ClientTracer can decide if we should trace the new request or not. It will
-internally use 1 or more TraceFilter implementations which will decide on tracing or not. 
-In case we should not trace the request null will be returned. Otherwise the new trace id,
-span id and parent span id will be returned.
-*    004 / 005 / 007 : We need to forward the trace state to the service which we call. When
-using HTTP this is typically done by adding specific HTTP headers. When using other protocols the
-trace data should be submitted in another way.
-*    012 : In case we receive a request without or with incomplete tracing state the ServerTracer will
-just as the ClientTracer decide if we should trace the current request or not by using 1 or more 
-TraceFilter implementations.
-*    016 : If the ServerTracer receives 'Server Send' and it has an active span it will add the 
-Server Send annotation to the span and submit it to the SpanCollector.
-*    019 : If the ClientTracer receives 'Client Received' and it has an active span it will add the
-Client Received annotation to the span and submit it to the SpanCollector.
+### SpanCollector ###
 
-The trace/span state is maintained in a ThreadLocal variable so parallel requests where each
-request is executed in a separate thread are supported.
+The `SpanCollector` will receive all spans and can do with them whatever needed. You can create your own
+implementations but have some implementations that you can use:
 
-The sequence diagram does not show this but off course typically a service receives requests and
-execute new requests. In that case the ClientTracer and ServerTracer logic exists in the 
-same JVM/Service.  In this case the span state between Server/Client Tracer is shared. A
-new client request will use the incoming request as parent. Also the 
-Client and Server Tracers should use the same TraceFilter(s) and SpanCollector.
+   * `LoggingSpanCollector` : Part of brave-core. This implementation will simply log the spans using 'java.util.Logger' (INFO log level).
+   * `EmptySpanCollector` : Part of brave-core. Does nothing.
+   * `ZipkinSpanCollector` : Part of `brave-zipkin-spancollector` module. Span collector that supports sending spans directly to `zipkin-collector` service or Scribe.
 
-Both the client and server logic explained here are implemented in the `brave-resteasy-spring` project.
-The implementation is used in [brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example).
+### TraceFilter ###
+
+You might not want to trace all requests that are being submitted:
+
+   * to avoid performance overhead
+   * to avoid running out of storage
+
+and you don't need to trace all requests to come to usable data.
+
+A TraceFilter's purpose (`com.github.kristofa.brave.TraceFilter`) is to decide if a given 
+request should get traced or not. Both
+the ClientTracer and ServerTracer take a List of TraceFilters which should be the same
+and before starting with a new Span they will check the TraceFilters. If one of 
+the TraceFilters says we should not trace the request it will not be traced.
+
+The decision, should trace (true) or not (false) is taken by the first request and should
+be passed through to all subsequent requests. This has as a consequence that we either
+trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
+
+There is a TraceFilter implementation that comes with brave-core which is 
+`com.github.kristofa.brave.FixedSampleRateTraceFilter`. This 
+TraceFilter is created with a fixed sample rate provided through its constructor. The
+sample rate can't be adapted at run time.  Behaviour:
+
+*   sample rate <= 0 : Non of the requests will be traced. Means tracing is disabled
+*   sample rate = 1 : All requests will be traced.
+*   sample rate > 1 : For example 3, every third request will be traced.
+
+If you want to use a TraceFilter implementation which allows adapting sample rate at run
+time see `brave-tracefilters` project which contains a TraceFilter with ZooKeeper support.
 
 
 
@@ -65,54 +83,8 @@ annotations submitted through ClientTracer, ServerTracer or AnnotationSubmitter 
 In the brave-resteasy-spring project the Endpoint is set up in `BravePreProcessInterceptor` when it
 receives the first request so before any annotations are submitted.
 
-## about span collectors ##
 
-All spans that are submitted by brave end up in a SpanCollector of your choice 
-(com.github.kristofa.brave.SpanCollector).
-
-A SpanCollector is responsible for receiving spans and acting upon them. There are 2 
-SpanCollector implementations part of brave-impl: 
-
-*    `com.github.kristofa.brave.LoggingSpanCollector` : This SpanCollector simply logs spans through jul. This can be used for testing / during development.
-*    `com.github.kristofa.brave.EmptySpanCollector` : This SpanCollector does nothing with the spans it receives. Can be used when disabling tracing.
-
-The most interesting SpanCollector is the ZipkinSpanCollector. This one can be found in 
-[brave-zipkin-span-collector](https://github.com/kristofa/brave/tree/master/brave-zipkin-spancollector) project.
-
-
-## about trace filters ##
-
-You might not want to trace all requests that are being submitted:
-
-*   to avoid performance overhead
-*   to avoid running out of storage
-
-and you don't need to trace all requests to come to usable data.
-
-A TraceFilter's purpose (`com.github.kristofa.brave.TraceFilter`) is to decide if a given 
-request should get traced or not. Both
-the ClientTracer and ServerTracer take a List of TraceFilters which should be the same
-and before starting with a new Span they will check the TraceFilters. If one of 
-the TraceFilters says we should not trace the request it will not be traced.
-
-The decision, should trace (true) or not (false) is taken by the first request and should
-be passed through to all subsequent requests. This has as a consequence that we either
-trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
-
-There is a TraceFilter implementation that comes with brave-impl which is 
-`com.github.kristofa.brave.FixedSampleRateTraceFilter`. This 
-TraceFilter is created with a fixed sample rate provided through its constructor. The
-sample rate can't be adapted at run time.  Behaviour:
-
-*   sample rate <= 0 : Non of the requests will be traced. Means tracing is disabled
-*   sample rate = 1 : All requests will be traced.
-*   sample rate > 1 : For example 3, every third request will be traced.
-
-If you want to use a TraceFilter implementation which allows adapting sample rate at run
-time see `brave-tracefilters` project which contains a TraceFilter with ZooKeeper support.
-
-
-## brave-impl public api ##
+## brave-core public api ##
 
 All api access is centralized in `com.github.kristofa.brave.Brave`.
 
@@ -120,7 +92,7 @@ This class contains only static methods. Reason is that the returned components 
 share the same trace/span state. This state is maintained as a static singleton in this
 class.
 
-### Brave.getEndpointSubmitter ###
+### Brave.getEndpointSubmitter ##
 
 > public static EndpointSubmitter getEndpointSubmitter()
 
