@@ -9,7 +9,6 @@ import com.github.kristofa.brave.internal.Nullable;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
