@@ -3,7 +3,13 @@ package com.github.kristofa.brave;
 import java.util.Objects;
 
 /**
- * Contains logic for dealing with incoming response.
+ * Contains logic for dealing with response from client request.
+ * This means it will:
+ *
+ * - Submit potential annotations
+ * - Submit client received annotation
+ *
+ * You will have to implement ClientResponseAdapter.
  *
  * @see ClientResponseAdapter
  */

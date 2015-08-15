@@ -7,6 +7,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 /**
  * Contains logic for handling an incoming server request.
  *
+ * - Get trace state from request
+ * - Set state for current request
+ * - Submit `Server Received` annotation
+ *
  * @see ServerRequestAdapter
  */
 public class ServerRequestInterceptor {

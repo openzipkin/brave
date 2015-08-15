@@ -2,6 +2,18 @@ package com.github.kristofa.brave;
 
 /**
  * Contains logic for handling an outgoing client request.
+ * This means it will:
+ *
+ * - Start a new span
+ * - Make sure span parameters are added to outgoing request
+ * - Set client service name
+ * - Submit client sent annotation
+ *
+ *
+ * The only thing you have to do is implement a ClientRequestAdapter.
+ *
+ * @see ClientRequestAdapter
+ *
  */
 public class ClientRequestInterceptor {
 
