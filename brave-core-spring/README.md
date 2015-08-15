@@ -1,15 +1,15 @@
-# brave-impl-spring #
+# brave-core-spring #
 
 Latest release available in Maven central:
 
     <dependency>
         <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-impl-spring</artifactId>
+        <artifactId>brave-core-spring</artifactId>
         <version>2.4.1</version>
     </dependency>
 
 
-The brave-impl-spring module has Spring dependency injection configuration classes for the
+The brave-core-spring module has Spring dependency injection configuration classes for the
 brave-impl api objects (Java based container configuration). 
 
 It does not use XML configuration but Java based container configuration using annotations.
@@ -60,6 +60,3 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 
 }
 ```
-
-If you use `RestTemplate` to communicate between your services, you can add the `BraveClientHttpRequestInterceptor`
-to automatically add the headers to outgoing requests. To add the interceptor, use the the `RestTemplate.setInterceptors` method.
