@@ -1,8 +1,10 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientRequestInterceptor;
-import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
+import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.http.HttpClientRequest;
+import com.github.kristofa.brave.http.HttpClientRequestAdapter;
+import com.github.kristofa.brave.http.ServiceNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
@@ -17,21 +19,21 @@ import java.io.IOException;
 @Provider
 public class BraveClientRequestFilter implements ClientRequestFilter {
 
-    private final ClientRequestInterceptor clientRequestInterceptor;
-    private final String serviceName;
+    private final ServiceNameProvider serviceNameProvider;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public BraveClientRequestFilter(final ClientTracer clientTracer, final String serviceName) {
-        this(clientTracer, serviceName, null);
+    public BraveClientRequestFilter(ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor) {
+        this.requestInterceptor = requestInterceptor;
+        this.serviceNameProvider = serviceNameProvider;
+        this.spanNameProvider = spanNameProvider;
     }
 
-    public BraveClientRequestFilter(final ClientTracer clientTracer, final String serviceName, final SpanNameFilter spanNameFilter) {
-        clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
-        this.serviceName = serviceName;
-    }
 
     @Override
     public void filter(ClientRequestContext clientRequestContext) throws IOException {
-        clientRequestInterceptor.handle(new JaxRS2ClientRequestAdapter(clientRequestContext), serviceName);
+        final HttpClientRequest req = new JaxRs2HttpClientRequest(clientRequestContext);
+        requestInterceptor.handle(new HttpClientRequestAdapter(req, serviceNameProvider, spanNameProvider));
     }
 }

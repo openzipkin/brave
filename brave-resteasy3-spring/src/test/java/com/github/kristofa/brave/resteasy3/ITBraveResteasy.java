@@ -1,8 +1,8 @@
 package com.github.kristofa.brave.resteasy3;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndpointSubmitter;
+import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.ServiceNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.twitter.zipkin.gen.Span;
@@ -73,13 +73,17 @@ public class ITBraveResteasy {
         RegisterBuiltin.register(ResteasyProviderFactory.getInstance());
 
         // Create our client. The client will be configured using BraveClientExecutionInterceptor because
-        // we Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
+        // Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
         // in module brave-resteasy-spring-module which is on our class path.
-        ClientTracer clientTracer = appContext.getBean(ClientTracer.class);
+        ServiceNameProvider serviceNameProvider = appContext.getBean(ServiceNameProvider.class);
+        SpanNameProvider spanNameProvider = appContext.getBean(SpanNameProvider.class);
+        ClientRequestInterceptor clientRequestInterceptor = appContext.getBean(ClientRequestInterceptor.class);
+        ClientResponseInterceptor clientResponseInterceptor = appContext.getBean(ClientResponseInterceptor.class);
+
         final BraveRestEasyResource client =
                 new ResteasyClientBuilder().build().target("http://localhost:8080/BraveRestEasyIntegration")
-                        .register(new BraveClientRequestFilter(clientTracer, null))
-                        .register(new BraveClientResponseFilter(clientTracer, null))
+                        .register(new BraveClientRequestFilter(serviceNameProvider, spanNameProvider, clientRequestInterceptor))
+                        .register(new BraveClientResponseFilter(serviceNameProvider, spanNameProvider, clientResponseInterceptor))
                         .proxy(BraveRestEasyResource.class);
 
         @SuppressWarnings("unchecked")

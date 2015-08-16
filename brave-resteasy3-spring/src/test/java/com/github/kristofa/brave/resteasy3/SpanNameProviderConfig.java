@@ -1,18 +1,17 @@
 package com.github.kristofa.brave.resteasy3;
 
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-import com.github.kristofa.brave.client.spanfilter.DefaultSpanNameFilter;
-import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-
 @Configuration
-public class SpanNameFilterConfig {
+public class SpanNameProviderConfig {
 
     @Bean
     @Scope(value = "singleton")
-    public SpanNameFilter spanNameFilter() {
-        return new DefaultSpanNameFilter();
+    public SpanNameProvider spanNameProvider() {
+        return new DefaultSpanNameProvider();
     }
 }

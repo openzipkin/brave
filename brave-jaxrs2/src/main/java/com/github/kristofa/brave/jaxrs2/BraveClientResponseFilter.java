@@ -1,7 +1,10 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientResponseInterceptor;
+import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.http.HttpClientResponseAdapter;
+import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.http.ServiceNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
@@ -16,15 +19,21 @@ import java.io.IOException;
 @Provider
 public class BraveClientResponseFilter implements ClientResponseFilter {
 
-    private final ClientResponseInterceptor clientResponseInterceptor;
+    private final ServiceNameProvider serviceNameProvider;
+    private final ClientResponseInterceptor responseInterceptor;
+    private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public BraveClientResponseFilter(final ClientTracer clientTracer, final String serviceName) {
-        clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
+    public BraveClientResponseFilter(ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider, ClientResponseInterceptor responseInterceptor) {
+        this.serviceNameProvider = serviceNameProvider;
+        this.spanNameProvider = spanNameProvider;
+        this.responseInterceptor = responseInterceptor;
     }
 
     @Override
     public void filter(ClientRequestContext clientRequestContext, ClientResponseContext clientResponseContext) throws IOException {
-        clientResponseInterceptor.handle(new JaxRS2ClientResponseAdapter(clientResponseContext));
+
+        final HttpResponse response = new JaxRs2HttpResponse(clientResponseContext);
+        responseInterceptor.handle(new HttpClientResponseAdapter(response));
     }
 }

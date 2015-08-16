@@ -20,16 +20,21 @@
 		  <param-value>com.github.kristofa.brave.jaxrs2.BraveContainerResponseFilter
               com.github.kristofa.brave.jaxrs2.BraveContainerRequestFilter
               com.github.kristofa.brave.AnnotationSubmitterConfig
-              com.github.kristofa.brave.ClientTracerConfig
+			  com.github.kristofa.brave.ClientRequestInterceptorConfig
+			  com.github.kristofa.brave.ClientResponseInterceptorConfig
+			  com.github.kristofa.brave.ClientTracerConfig
               com.github.kristofa.brave.EndpointSubmitterConfig
-              com.github.kristofa.brave.ServerSpanThreadBinderConfig
+			  com.github.kristofa.brave.ServerRequestInterceptorConfig
+			  com.github.kristofa.brave.ServerResponseInterceptorConfig
+			  com.github.kristofa.brave.ServerSpanThreadBinderConfig
               com.github.kristofa.brave.ServerTracerConfig
               com.github.kristofa.brave.resteasy3.ResteasySpringConfig
               com.github.kristofa.brave.resteasy3.BraveRestEasyResourceImpl
               com.github.kristofa.brave.resteasy3.TraceFiltersConfiguration
               com.github.kristofa.brave.resteasy3.SpanCollectorConfiguration
-              com.github.kristofa.brave.resteasy3.SpanNameFilterConfig
-              com.github.kristofa.brave.resteasy3.BraveContextAware
+              com.github.kristofa.brave.resteasy3.SpanNameProviderConfig
+			  com.github.kristofa.brave.resteasy3.ServiceNameProviderConfig
+			  com.github.kristofa.brave.resteasy3.BraveContextAware
           </param-value>
 	  </init-param>
 	  <load-on-startup>1</load-on-startup>

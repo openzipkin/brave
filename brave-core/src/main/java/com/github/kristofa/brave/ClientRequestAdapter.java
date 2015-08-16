@@ -4,6 +4,10 @@ import java.util.Collection;
 
 import com.github.kristofa.brave.internal.Nullable;
 
+/**
+ * Adapter used to get tracing information from and add tracing information to a new request.
+ *
+ */
 public interface ClientRequestAdapter {
 
     /**

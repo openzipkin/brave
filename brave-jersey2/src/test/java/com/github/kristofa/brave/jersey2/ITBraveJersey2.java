@@ -1,8 +1,8 @@
 package com.github.kristofa.brave.jersey2;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndpointSubmitter;
+import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.ServiceNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.twitter.zipkin.gen.Span;
@@ -20,20 +20,26 @@ import static org.junit.Assert.assertEquals;
 
 public class ITBraveJersey2 extends JerseyTest {
 
-    private ClientTracer clientTracer;
+    private ServiceNameProvider serviceNameProvider;
+    private SpanNameProvider spanNameProvider;
+    private ClientRequestInterceptor clientRequestInterceptor;
+    private ClientResponseInterceptor clientResponseInterceptor;
 
     @Override
     protected Application configure() {
         ApplicationContext context = new AnnotationConfigApplicationContext(JerseyTestSpringConfig.class);
-        clientTracer = context.getBean(ClientTracer.class);
+        serviceNameProvider = context.getBean(ServiceNameProvider.class);
+        spanNameProvider = context.getBean(SpanNameProvider.class);
+        clientRequestInterceptor = context.getBean(ClientRequestInterceptor.class);
+        clientResponseInterceptor = context.getBean(ClientResponseInterceptor.class);
         return new JerseyTestConfig().property("contextConfig", context);
     }
 
     @Test
     public void testBraveJersey2() {
         WebTarget target = target("/brave-jersey2/test");
-        target.register(new BraveClientRequestFilter(clientTracer, null));
-        target.register(new BraveClientResponseFilter(clientTracer, null));
+        target.register(new BraveClientRequestFilter(serviceNameProvider, spanNameProvider, clientRequestInterceptor));
+        target.register(new BraveClientResponseFilter(serviceNameProvider, spanNameProvider, clientResponseInterceptor));
 
         final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
         endpointSubmitter.submit("127.0.0.1", 9998, "brave-jersey2");

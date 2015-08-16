@@ -1,6 +1,10 @@
 package com.github.kristofa.brave.jaxrs2;
 
+import com.github.kristofa.brave.ServerResponseAdapter;
+import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerTracer;
+import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -15,19 +19,24 @@ import java.io.IOException;
 @Provider
 public class BraveContainerResponseFilter implements ContainerResponseFilter {
 
-    private final ServerTracer serverTracer;
+    private final ServerResponseInterceptor responseInterceptor;
 
     @Inject
-    public BraveContainerResponseFilter(ServerTracer serverTracer) {
-        this.serverTracer = serverTracer;
+    public BraveContainerResponseFilter(ServerResponseInterceptor responseInterceptor) {
+        this.responseInterceptor = responseInterceptor;
     }
 
     @Override
-    public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) throws IOException {
-        try {
-            serverTracer.setServerSend();
-        } finally {
-            serverTracer.clearCurrentSpan();
-        }
+    public void filter(final ContainerRequestContext containerRequestContext, final ContainerResponseContext containerResponseContext) throws IOException {
+
+        HttpResponse httpResponse = new HttpResponse() {
+
+            @Override
+            public int getHttpStatusCode() {
+                return containerResponseContext.getStatus();
+            }
+        };
+
+        responseInterceptor.handle(new HttpServerResponseAdapter(httpResponse));
     }
 }
