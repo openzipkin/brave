@@ -1,8 +1,12 @@
 package com.github.kristofa.brave.httpclient;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
+import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
 import com.github.kristofa.test.http.HttpRequestImpl;
 import com.github.kristofa.test.http.HttpResponseImpl;
@@ -65,19 +69,19 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
     @Test
     public void testTracingTrue() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
-        when(clientTracer.startNewSpan(PATH)).thenReturn(spanId);
+        when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH)
             .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
             .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
+            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -89,11 +93,48 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             mockServer.verify();
 
             final InOrder inOrder = inOrder(clientTracer);
-            inOrder.verify(clientTracer).startNewSpan(PATH);
+            inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
-            inOrder.verify(clientTracer).submitBinaryAnnotation("request", "GET " + FULL_PATH);
+            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
             inOrder.verify(clientTracer).setClientSent();
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", 200);
+            inOrder.verify(clientTracer).setClientReceived();
+            verifyNoMoreInteractions(clientTracer);
+        } finally {
+            httpclient.close();
+        }
+    }
+
+    @Test
+    public void testTracingTrueHttpNoOk() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
+        when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
+
+        final HttpRequestImpl request = new HttpRequestImpl();
+        request.method(Method.GET).path(FULL_PATH)
+                .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
+                .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
+                .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
+        final HttpResponseImpl response = new HttpResponseImpl(400, null, null);
+        responseProvider.set(request, response);
+
+        final CloseableHttpClient httpclient =
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+        try {
+            final HttpGet httpGet = new HttpGet(REQUEST);
+            final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
+            try {
+                assertEquals(400, httpClientResponse.getStatusLine().getStatusCode());
+            } finally {
+                httpClientResponse.close();
+            }
+            mockServer.verify();
+
+            final InOrder inOrder = inOrder(clientTracer);
+            inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
+            inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
+            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
+            inOrder.verify(clientTracer).setClientSent();
+            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", "400");
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
         } finally {
@@ -103,16 +144,16 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
     @Test
     public void testTracingFalse() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
-        when(clientTracer.startNewSpan(PATH)).thenReturn(null);
+        when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(null);
 
         final HttpRequestImpl request = new HttpRequestImpl();
-        request.method(Method.GET).path(FULL_PATH).httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "false");
+        request.method(Method.GET).path(FULL_PATH).httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "0");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -124,11 +165,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             mockServer.verify();
 
             final InOrder inOrder = inOrder(clientTracer);
-            inOrder.verify(clientTracer).startNewSpan(PATH);
-            inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
-            inOrder.verify(clientTracer).submitBinaryAnnotation("request", "GET " + FULL_PATH);
-            inOrder.verify(clientTracer).setClientSent();
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", 200);
+            inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
         } finally {
@@ -138,19 +175,19 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
     @Test
     public void testQueryParams() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
-        when(clientTracer.startNewSpan(PATH)).thenReturn(spanId);
+        when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH).queryParameter("x", "1").queryParameter("y", "2")
             .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
             .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
+            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, null))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST_WITH_QUERY_PARAMS);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -162,11 +199,10 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             mockServer.verify();
 
             final InOrder inOrder = inOrder(clientTracer);
-            inOrder.verify(clientTracer).startNewSpan(PATH);
+            inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
-            inOrder.verify(clientTracer).submitBinaryAnnotation("request", "GET " + FULL_PATH_WITH_QUERY_PARAMS);
+            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH_WITH_QUERY_PARAMS);
             inOrder.verify(clientTracer).setClientSent();
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", 200);
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
         } finally {
@@ -174,41 +210,5 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         }
     }
 
-    @Test
-    public void testTracingTrueWithServiceNameOverride() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
-        when(clientTracer.startNewSpan(FULL_PATH)).thenReturn(spanId);
 
-        final HttpRequestImpl request = new HttpRequestImpl();
-        request.method(Method.GET).path(FULL_PATH)
-                .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), Long.toString(TRACE_ID, 16))
-                .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-                .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "true");
-        final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
-        responseProvider.set(request, response);
-
-        final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer, SERVICE))
-                        .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
-        try {
-            final HttpGet httpGet = new HttpGet(REQUEST);
-            final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
-            try {
-                assertEquals(200, httpClientResponse.getStatusLine().getStatusCode());
-            } finally {
-                httpClientResponse.close();
-            }
-            mockServer.verify();
-
-            final InOrder inOrder = inOrder(clientTracer);
-            inOrder.verify(clientTracer).startNewSpan(FULL_PATH);
-            inOrder.verify(clientTracer).setCurrentClientServiceName(SERVICE);
-            inOrder.verify(clientTracer).submitBinaryAnnotation("request", "GET " + FULL_PATH);
-            inOrder.verify(clientTracer).setClientSent();
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", 200);
-            inOrder.verify(clientTracer).setClientReceived();
-            verifyNoMoreInteractions(clientTracer);
-        } finally {
-            httpclient.close();
-        }
-    }
 }
