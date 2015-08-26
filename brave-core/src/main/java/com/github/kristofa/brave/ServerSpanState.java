@@ -9,7 +9,7 @@ import com.twitter.zipkin.gen.Endpoint;
  * 
  * @author kristof
  */
-interface ServerSpanState extends CommonSpanState {
+public interface ServerSpanState extends CommonSpanState {
 
     /**
      * Gets the Span for the server request we are currently part of.

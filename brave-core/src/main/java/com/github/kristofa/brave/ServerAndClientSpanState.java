@@ -5,6 +5,6 @@ package com.github.kristofa.brave;
  * 
  * @author kristof
  */
-interface ServerAndClientSpanState extends ServerSpanState, ClientSpanState {
+public interface ServerAndClientSpanState extends ServerSpanState, ClientSpanState {
 
 }

@@ -8,7 +8,7 @@ package com.github.kristofa.brave;
  * 
  * @author kristof
  */
-interface CommonSpanState {
+public interface CommonSpanState {
 
     /**
      * Indicates if we should sample current request.

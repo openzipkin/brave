@@ -8,7 +8,7 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author kristof
  */
-interface ClientSpanState extends CommonSpanState {
+public interface ClientSpanState extends CommonSpanState {
 
     /**
      * Gets the Span for the client request that was started as part of current request.
