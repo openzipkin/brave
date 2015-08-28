@@ -1,20 +1,18 @@
 package com.github.kristofa.brave.jersey;
 
-import com.github.kristofa.brave.BraveHttpHeaders;
-import com.github.kristofa.brave.EndpointSubmitter;
-import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.ServerTracer;
+import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.*;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.servlet.*;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static java.lang.String.format;
+import java.io.PrintWriter;
+import java.util.Locale;
 
 /**
  * Servlet filter that will extract trace headers from the request and send
@@ -23,14 +21,18 @@ import static java.lang.String.format;
 @Singleton
 public class ServletTraceFilter implements Filter {
 
-    private static Logger logger = Logger.getLogger(ServletTraceFilter.class.getName());
-    private final ServerTracer serverTracer;
-    private final EndpointSubmitter endpointSubmitter;
+    private final ServerRequestInterceptor requestInterceptor;
+    private final ServerResponseInterceptor responseInterceptor;
+    private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public ServletTraceFilter(ServerTracer serverTracer, EndpointSubmitter endpointSubmitter) {
-        this.serverTracer = serverTracer;
-        this.endpointSubmitter = endpointSubmitter;
+    public ServletTraceFilter(
+            ServerRequestInterceptor requestInterceptor,
+            ServerResponseInterceptor responseInterceptor,
+            SpanNameProvider spanNameProvider) {
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
+        this.spanNameProvider = spanNameProvider;
     }
 
     @Override
@@ -40,99 +42,215 @@ public class ServletTraceFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        boolean traceEstablished = tryEstablishServerTrace(request);
 
-        chain.doFilter(request, response);
+        if (traceableRequest(request))
+        {
+            HttpServerRequest req = new ServletHttpServerRequest((HttpServletRequest) request);
+            requestInterceptor.handle(new HttpServerRequestAdapter(req, spanNameProvider));
 
-        if (traceEstablished) {
-            finalizeServerTrace();
-        }
-    }
+            final HttpServletResponseDecorator responseDecorator = new HttpServletResponseDecorator((HttpServletResponse) response);
+            chain.doFilter(request, responseDecorator);
 
-    /**
-     * Clear current span and perhaps start a new one.  We do this all in a try/catch so that
-     * we are safe by default.
-     *
-     * @return true if we were able to establish a trace without exception
-     */
-    private boolean tryEstablishServerTrace(ServletRequest request) {
-        try {
-            serverTracer.clearCurrentSpan();
-            if (request instanceof HttpServletRequest) {
-                final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-                submitEndpoint(httpServletRequest);
+            final HttpResponse braveResponse = new HttpResponse() {
 
-                TraceData traceData = getTraceDataFromHeaders(httpServletRequest);
-                if (Boolean.FALSE.equals(traceData.shouldBeTraced())) {
-                    serverTracer.setStateNoTracing();
-                    logger.fine("Not tracing request");
-                } else {
-                    String spanName = getSpanName(traceData, httpServletRequest);
-                    if (traceData.getTraceId() != null && traceData.getSpanId() != null) {
-                        logger.fine("Received span information as part of request");
-                        serverTracer.setStateCurrentTrace(traceData.getTraceId(), traceData.getSpanId(),
-                                traceData.getParentSpanId(), spanName);
-                    } else {
-                        logger.fine("Received no span state");
-                        serverTracer.setStateUnknown(spanName);
-                    }
+                @Override
+                public int getHttpStatusCode() {
+                    return responseDecorator.getStatusCode();
                 }
-            }
-            serverTracer.setServerReceived();
-            return true;
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Exception establishing server trace", e);
-            return false;
+            };
+            responseInterceptor.handle(new HttpServerResponseAdapter(braveResponse));
         }
-    }
-
-    private void finalizeServerTrace() {
-        try {
-            serverTracer.setServerSend();
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Exception finalizing server trace", e);
+        else
+        {
+            chain.doFilter(request, response);
         }
-    }
-
-    private void submitEndpoint(HttpServletRequest request) {
-        if (!endpointSubmitter.endpointSubmitted()) {
-            String contextPath = request.getContextPath();
-            String localAddr = request.getLocalAddr();
-            int localPort = request.getLocalPort();
-            endpointSubmitter.submit(localAddr, localPort, contextPath);
-            logger.fine(format("Setting endpoint: addr: %s, port: %s, contextpath: %s", localAddr, localPort, contextPath));
-        }
-    }
-
-    private String getSpanName(TraceData traceData, HttpServletRequest request) {
-        if (traceData.getSpanName() == null || traceData.getSpanName().isEmpty()) {
-            return request.getRequestURI();
-        }
-        return traceData.getSpanName();
-    }
-
-    private TraceData getTraceDataFromHeaders(HttpServletRequest httpRequest) {
-        TraceData traceData = new TraceData();
-        traceData.setTraceId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.TraceId.getName())));
-        traceData.setSpanId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.SpanId.getName())));
-        traceData.setParentSpanId(longOrNull(httpRequest.getHeader(BraveHttpHeaders.ParentSpanId.getName())));
-        traceData.setShouldBeSampled(nullOrBoolean(httpRequest.getHeader(BraveHttpHeaders.Sampled.getName())));
-        traceData.setSpanName(httpRequest.getHeader(BraveHttpHeaders.SpanName.getName()));
-        return traceData;
-    }
-
-    private Boolean nullOrBoolean(String value) {
-        return (value == null) ? null : Boolean.valueOf(value);
-    }
-
-    private Long longOrNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        return IdConversion.convertToLong(value);
     }
 
     @Override
     public void destroy() {
     }
+
+    private boolean traceableRequest(ServletRequest request) {
+        return request instanceof HttpServerRequest;
+    }
+
+    /**
+     * Implement decorator to get hold of status code. servlet 2.x api is not so good :(
+     */
+    static class HttpServletResponseDecorator implements HttpServletResponse {
+
+        private final HttpServletResponse res;
+        private int statusCode = 200;
+
+        public HttpServletResponseDecorator(HttpServletResponse res) {
+            this.res = res;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
+
+        @Override
+        public void addCookie(Cookie cookie) {
+            res.addCookie(cookie);
+        }
+
+        @Override
+        public boolean containsHeader(String name) {
+            return res.containsHeader(name);
+        }
+
+        @Override
+        public String encodeURL(String url) {
+            return res.encodeURL(url);
+        }
+
+        @Override
+        public String encodeRedirectURL(String url) {
+            return res.encodeRedirectURL(url);
+        }
+
+        @Override
+        public String encodeUrl(String url) {
+            return res.encodeUrl(url);
+        }
+
+        @Override
+        public String encodeRedirectUrl(String url) {
+            return res.encodeRedirectUrl(url);
+        }
+
+        @Override
+        public void sendError(int sc, String msg) throws IOException {
+            res.sendError(sc, msg);
+        }
+
+        @Override
+        public void sendError(int sc) throws IOException {
+            res.sendError(sc);
+        }
+
+        @Override
+        public void sendRedirect(String location) throws IOException {
+            res.sendRedirect(location);
+        }
+
+        @Override
+        public void setDateHeader(String name, long date) {
+            res.setDateHeader(name, date);
+        }
+
+        @Override
+        public void addDateHeader(String name, long date) {
+            res.addDateHeader(name, date);
+        }
+
+        @Override
+        public void setHeader(String name, String value) {
+            res.setHeader(name, value);
+        }
+
+        @Override
+        public void addHeader(String name, String value) {
+            res.addHeader(name, value);
+        }
+
+        @Override
+        public void setIntHeader(String name, int value) {
+            res.setIntHeader(name, value);
+        }
+
+        @Override
+        public void addIntHeader(String name, int value) {
+            res.addIntHeader(name, value);
+        }
+
+        @Override
+        public void setStatus(int sc) {
+            statusCode = sc;
+            res.setStatus(sc);
+        }
+
+        @Override
+        public void setStatus(int sc, String sm) {
+            statusCode = sc;
+            res.setStatus(sc, sm);
+        }
+
+        @Override
+        public String getCharacterEncoding() {
+            return res.getCharacterEncoding();
+        }
+
+        @Override
+        public String getContentType() {
+            return res.getContentType();
+        }
+
+        @Override
+        public ServletOutputStream getOutputStream() throws IOException {
+            return res.getOutputStream();
+        }
+
+        @Override
+        public PrintWriter getWriter() throws IOException {
+            return res.getWriter();
+        }
+
+        @Override
+        public void setCharacterEncoding(String charset) {
+            res.setCharacterEncoding(charset);
+        }
+
+        @Override
+        public void setContentLength(int len) {
+            res.setContentLength(len);
+        }
+
+        @Override
+        public void setContentType(String type) {
+            res.setContentType(type);
+        }
+
+        @Override
+        public void setBufferSize(int size) {
+            res.setBufferSize(size);
+        }
+
+        @Override
+        public int getBufferSize() {
+            return res.getBufferSize();
+        }
+
+        @Override
+        public void flushBuffer() throws IOException {
+            res.flushBuffer();
+        }
+
+        @Override
+        public void resetBuffer() {
+            res.resetBuffer();
+        }
+
+        @Override
+        public boolean isCommitted() {
+            return res.isCommitted();
+        }
+
+        @Override
+        public void reset() {
+            res.reset();
+        }
+
+        @Override
+        public void setLocale(Locale loc) {
+            res.setLocale(loc);
+        }
+
+        @Override
+        public Locale getLocale() {
+            return res.getLocale();
+        }
+    }
+
 }
