@@ -8,9 +8,6 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.URI;
 
-import javax.xml.ws.http.HTTPException;
-
-import org.apache.http.HttpException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -54,7 +51,7 @@ public class ClientRequestInterceptorTest {
     }
 
     @Test
-    public void testProcessNoTracing() throws HttpException, IOException {
+    public void testProcessNoTracing() throws IOException {
         when(mockClientTracer.startNewSpan(PATH)).thenReturn(null);
 
         interceptor.handle(clientRequestAdapter, null);
@@ -70,7 +67,7 @@ public class ClientRequestInterceptorTest {
     }
 
     @Test
-    public void testProcessTracing() throws HttpException, IOException {
+    public void testProcessTracing() throws IOException {
         final SpanId spanId = mock(SpanId.class);
         when(spanId.getSpanId()).thenReturn(SPAN_ID);
         when(spanId.getParentSpanId()).thenReturn(PARENT_SPAN_ID);
@@ -95,7 +92,7 @@ public class ClientRequestInterceptorTest {
     }
 
     @Test
-    public void testProcessTracingNoParentId() throws HttpException, IOException {
+    public void testProcessTracingNoParentId() throws IOException {
         final SpanId spanId = mock(SpanId.class);
         when(spanId.getSpanId()).thenReturn(SPAN_ID);
         when(spanId.getParentSpanId()).thenReturn(null);
@@ -119,7 +116,7 @@ public class ClientRequestInterceptorTest {
     }
 
     @Test
-    public void testHandleTracingWithServiceNameOverride() throws HTTPException, IOException {
+    public void testHandleTracingWithServiceNameOverride() throws IOException {
         final SpanId spanId = mock(SpanId.class);
         when(spanId.getSpanId()).thenReturn(SPAN_ID);
         when(spanId.getParentSpanId()).thenReturn(PARENT_SPAN_ID);

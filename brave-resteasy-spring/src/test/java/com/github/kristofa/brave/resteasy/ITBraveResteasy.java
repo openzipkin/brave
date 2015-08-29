@@ -5,7 +5,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.http.client.ClientProtocolException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.bio.SocketConnector;
@@ -57,7 +56,7 @@ public class ITBraveResteasy {
     }
 
     @Test
-    public void test() throws ClientProtocolException, IOException, InterruptedException {
+    public void test() throws IOException, InterruptedException {
         // We need to set up our endpoint first because we start a client request from
         // in our test so the brave preprocessor did not set up end point yet.
         final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
