@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.BraveHttpHeaders;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
