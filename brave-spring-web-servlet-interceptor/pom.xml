@@ -7,40 +7,40 @@
     <version>3.0.0-alpha-2-SNAPSHOT</version>
   </parent>
   
-  <artifactId>brave-core-spring</artifactId>
+  <artifactId>brave-spring-web-servlet-interceptor</artifactId>
   <packaging>jar</packaging>
-  <name>brave-core-spring</name>
   <description>
-    Spring Configuration and helper classes for using brave-core with Spring as dependency injection 
-    framework.
+      Spring HandlerInterceptorAdapter implementation.
   </description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-        <name>Apache 2</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-    </license>
-   </licenses>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+
   <dependencies>
      <dependency>
         <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-core</artifactId>
+        <artifactId>brave-http</artifactId>
         <version>3.0.0-alpha-2-SNAPSHOT</version>
      </dependency>
      <dependency>
         <groupId>org.springframework</groupId>
-        <artifactId>spring-core</artifactId>
+        <artifactId>spring-webmvc</artifactId>
         <scope>provided</scope>
      </dependency>
      <dependency>
         <groupId>org.springframework</groupId>
-        <artifactId>spring-context</artifactId>
-        <scope>provided</scope>
+        <artifactId>spring-test</artifactId>
+        <scope>test</scope>
      </dependency>
+     <!-- TODO: use something different for property-based testing -->
+     <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <scope>test</scope>
+     </dependency>
+     <dependency>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+          <version>3.0.1</version>
+          <scope>provided</scope>
+      </dependency>
   </dependencies>
   <build>   
     <plugins>

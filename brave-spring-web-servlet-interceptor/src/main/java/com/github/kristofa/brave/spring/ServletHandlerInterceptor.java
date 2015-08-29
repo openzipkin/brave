@@ -1,5 +1,10 @@
-package com.github.kristofa.brave;
+package com.github.kristofa.brave.spring;
 
+import com.github.kristofa.brave.EndpointSubmitter;
+import com.github.kristofa.brave.ServerSpan;
+import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.ServerTracer;
+import com.github.kristofa.brave.http.BraveHttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -74,7 +79,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     private void updateServerState(final HttpServletRequest request) {
         final String traceId = request.getHeader(BraveHttpHeaders.TraceId.getName());
         final String spanId = request.getHeader(BraveHttpHeaders.SpanId.getName());
-        final String spanName = getSpanName(request.getHeader(BraveHttpHeaders.SpanName.getName()), request);
+        final String spanName = request.getMethod();
 
         if (traceId != null && spanId != null) {
             final String parentSpanId = request.getHeader(BraveHttpHeaders.ParentSpanId.getName());
@@ -83,13 +88,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         } else {
             serverTracer.setStateUnknown(spanName);
         }
-    }
-
-    private String getSpanName(final String name, final HttpServletRequest request) {
-        if (name == null || name.trim().isEmpty()) {
-            return request.getRequestURI();
-        }
-        return name;
+        serverTracer.submitBinaryAnnotation("http.uri", request.getRequestURI());
     }
 
 }

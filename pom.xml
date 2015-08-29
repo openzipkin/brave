@@ -58,6 +58,7 @@
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>
     <module>brave-apache-http-interceptors</module>
+    <module>brave-spring-web-servlet-interceptor</module>
     <module>brave-spring-resttemplate-interceptors</module>
     <module>brave-mysql</module>
   </modules>
