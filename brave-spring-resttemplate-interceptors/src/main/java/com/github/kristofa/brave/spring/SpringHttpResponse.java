@@ -1,4 +1,4 @@
-package com.github.krisofa.brave.client;
+package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.http.HttpResponse;
 import org.springframework.http.client.ClientHttpResponse;
