@@ -135,23 +135,9 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         Span currentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
         if (currentSpan != null) {
             submitAnnotation(zipkinCoreConstants.SERVER_SEND);
-            long threadDuration = spanAndEndpoint().state().getServerSpanThreadDuration();
-            if (threadDuration > 0) {
-                submitBinaryAnnotation(BraveAnnotations.THREAD_DURATION,
-                                       String.valueOf(threadDuration));
-            }
             spanCollector().collect(currentSpan);
             spanAndEndpoint().state().setCurrentServerSpan(null);
         }
-    }
-
-    /**
-     * Gets the thread execution duration for this span.
-     *
-     * @return Thread execution duration for this span.
-     */
-    public long getThreadDuration() {
-        return spanAndEndpoint().state().getServerSpanThreadDuration();
     }
 
     ServerTracer() {

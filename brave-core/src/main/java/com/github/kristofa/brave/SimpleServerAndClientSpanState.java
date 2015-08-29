@@ -83,22 +83,6 @@ final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
      * {@inheritDoc}
      */
     @Override
-    public void incrementServerSpanThreadDuration(final long durationMs) {
-        currentServerSpan.incThreadDuration(durationMs);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public long getServerSpanThreadDuration() {
-        return currentServerSpan.getThreadDuration();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public Boolean sample() {
         return currentServerSpan.getSample();
     }

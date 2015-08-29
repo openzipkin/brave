@@ -41,7 +41,6 @@ public class BraveCallableTest {
         inOrder.verify(mockThreadBinder).getCurrentServerSpan();
         inOrder.verify(mockThreadBinder).setCurrentSpan(mockServerSpan);
         inOrder.verify(mockWrappedCallable).call();
-        inOrder.verify(mockServerSpan).incThreadDuration(anyLong());
 
         verifyNoMoreInteractions(mockWrappedCallable, mockThreadBinder, mockServerSpan);
     }

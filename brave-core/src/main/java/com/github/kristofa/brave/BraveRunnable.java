@@ -36,12 +36,6 @@ public abstract class BraveRunnable implements Runnable {
     @Override
     public void run() {
         serverSpanThreadBinder().setCurrentSpan(currentServerSpan());
-        final long start = System.currentTimeMillis();
-        try {
-            wrappedRunnable().run();
-        } finally {
-            final long duration = System.currentTimeMillis() - start;
-            currentServerSpan().incThreadDuration(duration);
-        }
+        wrappedRunnable().run();
     }
 }

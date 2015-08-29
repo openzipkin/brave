@@ -60,13 +60,4 @@ public class ThreadLocalServerAndClientSpanStateTest {
             serverAndClientSpanState.getCurrentServerSpan());
     }
 
-    @Test
-    public void testGetAndSetServerSpanThreadDuration() {
-        assertEquals(0, serverAndClientSpanState.getServerSpanThreadDuration());
-        serverAndClientSpanState.incrementServerSpanThreadDuration(DURATION1);
-        assertEquals(DURATION1, serverAndClientSpanState.getServerSpanThreadDuration());
-        serverAndClientSpanState.incrementServerSpanThreadDuration(DURATION2);
-        assertEquals(DURATION1 + DURATION2, serverAndClientSpanState.getServerSpanThreadDuration());
-    }
-
 }

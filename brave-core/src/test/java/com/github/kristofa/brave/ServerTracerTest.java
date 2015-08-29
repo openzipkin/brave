@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -23,8 +22,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.AnnotationType;
-import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
@@ -38,7 +35,6 @@ public class ServerTracerTest {
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;
     private final static String SPAN_NAME = "span name";
-    private static final long DURATION_MS = 13;
 
     private ServerTracer serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -191,50 +187,11 @@ public class ServerTracerTest {
         verify(mockServerSpanState).getServerEndpoint();
 
         verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verify(mockServerSpanState).getServerSpanThreadDuration();
         verify(mockSpanCollector).collect(mockSpan);
         verify(mockServerSpanState).setCurrentServerSpan(null);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockSpan);
     }
 
-    @Test
-    public void testSetServerSendInCaseOfThreadDuration() throws UnsupportedEncodingException {
-        when(mockServerSpan.getSpan()).thenReturn(mockSpan);
-        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerSpanThreadDuration()).thenReturn(DURATION_MS);
-        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
-        serverTracer.setServerSend();
-        verify(mockServerSpanState, times(3)).getCurrentServerSpan();
-        verify(mockServerSpanState, times(2)).getServerEndpoint();
 
-        final Annotation expectedServerSendAnnotation = new Annotation();
-        expectedServerSendAnnotation.setHost(mockEndpoint);
-        expectedServerSendAnnotation.setValue(zipkinCoreConstants.SERVER_SEND);
-        expectedServerSendAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-
-        final BinaryAnnotation expectedThreadDurationAnnotation = new BinaryAnnotation();
-        expectedThreadDurationAnnotation.setAnnotation_type(AnnotationType.STRING);
-        expectedThreadDurationAnnotation.setHost(mockEndpoint);
-        expectedThreadDurationAnnotation.setKey(BraveAnnotations.THREAD_DURATION);
-        final ByteBuffer bb = ByteBuffer.wrap(String.valueOf(DURATION_MS).getBytes("UTF-8"));
-        expectedThreadDurationAnnotation.setValue(bb);
-
-        verify(mockSpan).addToAnnotations(expectedServerSendAnnotation);
-        verify(mockSpan).addToBinary_annotations(expectedThreadDurationAnnotation);
-
-        verify(mockServerSpanState).getServerSpanThreadDuration();
-        verify(mockSpanCollector).collect(mockSpan);
-        verify(mockServerSpanState).setCurrentServerSpan(null);
-        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockSpan);
-    }
-
-    @Test
-    public void testGetThreadDuration() {
-        when(mockServerSpanState.getServerSpanThreadDuration()).thenReturn(DURATION_MS);
-        assertEquals(DURATION_MS, serverTracer.getThreadDuration());
-
-        verify(mockServerSpanState).getServerSpanThreadDuration();
-        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
-    }
 
 }

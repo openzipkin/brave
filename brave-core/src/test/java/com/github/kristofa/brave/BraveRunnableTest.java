@@ -34,7 +34,6 @@ public class BraveRunnableTest {
         inOrder.verify(mockThreadBinder).getCurrentServerSpan();
         inOrder.verify(mockThreadBinder).setCurrentSpan(mockSpan);
         inOrder.verify(mockWrappedRunnable).run();
-        inOrder.verify(mockSpan).incThreadDuration(anyLong());
 
         verifyNoMoreInteractions(mockWrappedRunnable, mockThreadBinder, mockSpan);
     }

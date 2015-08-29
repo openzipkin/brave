@@ -43,17 +43,4 @@ public interface ServerSpanState extends CommonSpanState {
      */
     void setCurrentServerSpan(final ServerSpan span);
 
-    /**
-     * Increment the duration of all threads being executed in this server span.
-     * 
-     * @param durationMs Duration in milliseconds.
-     */
-    void incrementServerSpanThreadDuration(final long durationMs);
-
-    /**
-     * Gets the server span thread duration in milliseconds.
-     * 
-     * @return Server span thread duration in milliseconds.
-     */
-    long getServerSpanThreadDuration();
 }

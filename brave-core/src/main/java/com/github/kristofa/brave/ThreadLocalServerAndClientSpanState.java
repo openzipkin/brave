@@ -97,22 +97,6 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
         currentClientServiceName.set(serviceName);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void incrementServerSpanThreadDuration(final long durationMs) {
-        currentServerSpan.get().incThreadDuration(durationMs);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public long getServerSpanThreadDuration() {
-        return currentServerSpan.get().getThreadDuration();
-    }
-
     @Override
     public Boolean sample() {
         return currentServerSpan.get().getSample();

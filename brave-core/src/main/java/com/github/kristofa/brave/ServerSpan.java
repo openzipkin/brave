@@ -26,15 +26,6 @@ public abstract class ServerSpan {
     public abstract Span getSpan();
 
     /**
-     * Gets the sum of the durations of all threads that are executed as part of current service request.
-     *
-     * @return the sum of the durations of all threads that are executed as part of current service request, in milliseconds.
-     */
-    public long getThreadDuration() {
-        return threadDuration.get();
-    }
-
-    /**
      * Indicates if we need to sample this request or not.
      *
      * @return <code>true</code> in case we should sample this request, <code>false</code> in case we should not sample this
@@ -43,17 +34,6 @@ public abstract class ServerSpan {
      */
     @Nullable
     public abstract Boolean getSample();
-
-    /**
-     * Increment the thread duration for this service request.
-     *
-     * @param durationMs Duration in milliseconds.
-     */
-    public void incThreadDuration(long durationMs){
-        threadDuration.addAndGet(durationMs);
-    }
-
-    private final AtomicLong threadDuration = new AtomicLong();
 
     static ServerSpan create(Span span, Boolean sample) {
         return new AutoValue_ServerSpan(span, sample);

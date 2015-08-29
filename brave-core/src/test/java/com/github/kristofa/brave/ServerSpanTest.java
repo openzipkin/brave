@@ -53,19 +53,6 @@ public class ServerSpanTest {
     }
 
     @Test
-    public void testIncThreadDuration() {
-        serverSpan.incThreadDuration(10);
-        Assert.assertEquals(10, serverSpan.getThreadDuration());
-        serverSpan.incThreadDuration(5);
-        Assert.assertEquals(15, serverSpan.getThreadDuration());
-    }
-
-    @Test
-    public void testGetThreadDuration() {
-        Assert.assertEquals(0, serverSpan.getThreadDuration());
-    }
-
-    @Test
     public void testGetSample() {
         assertTrue(serverSpan.getSample());
     }

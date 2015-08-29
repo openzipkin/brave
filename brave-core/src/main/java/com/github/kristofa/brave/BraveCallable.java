@@ -39,13 +39,7 @@ public abstract class BraveCallable<T> implements Callable<T> {
     @Override
     public T call() throws Exception {
         serverSpanThreadBinder().setCurrentSpan(currentServerSpan());
-        final long start = System.currentTimeMillis();
-        try {
-            return wrappedCallable().call();
-        } finally {
-            final long duration = System.currentTimeMillis() - start;
-            currentServerSpan().incThreadDuration(duration);
-        }
+        return wrappedCallable().call();
     }
 
     BraveCallable() {
