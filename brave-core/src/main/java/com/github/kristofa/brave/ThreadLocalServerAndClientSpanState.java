@@ -1,10 +1,14 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /**
- * {@link ServerAndClientSpanState} implementation.
+ * {@link ServerAndClientSpanState} implementation that keeps trace state using a ThreadLocal variable.
  * 
  * @author kristof
  */
@@ -21,10 +25,19 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
 
     private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<>();
 
-    private Endpoint endpoint;
+    private final Endpoint endpoint;
 
-    public ThreadLocalServerAndClientSpanState() {
-
+    /**
+     * Constructor
+     *
+     * @param ip InetAddress of current host. If you don't have access to InetAddress you can use InetAddressUtilities#getLocalHostLANAddress()
+     * @param port port on which current process is listening.
+     * @param serviceName Service name. Only relevant if we do server side tracing.
+     */
+    public ThreadLocalServerAndClientSpanState(InetAddress ip, int port, String serviceName) {
+        Util.checkNotNull(ip, "ip address must be specified.");
+        Util.checkNotBlank(serviceName, "Service name must be specified.");
+        endpoint = new Endpoint(InetAddressUtilities.toInt(ip), (short) port, serviceName);
     }
 
     /**
@@ -65,14 +78,6 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
             ep.setService_name(serviceName);
             return ep;
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setServerEndpoint(final Endpoint endpoint) {
-        this.endpoint = endpoint;
     }
 
     /**

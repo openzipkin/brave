@@ -1,34 +1,18 @@
 # brave-core-spring #
 
 
-The brave-core-spring module has Spring dependency injection configuration classes for the
-brave-impl api objects (Java based container configuration). 
+The `brave-core-spring` module has Spring dependency injection configuration support for `brave-core` 
 
 It does not use XML configuration but Java based container configuration using annotations.
 
 If you include this module on your classpath you can add the configurations to your Spring
-context by including `com.github.kristofa.brave` to the classpath scanning path or by adding 
-the individual config classes.
+context by including `com.github.kristofa.brave.BraveApiConfig`.
 
 Spring is added as a Maven dependency with 'provided' scope so you have to include Spring as compile scope
 dependency to you own application. This gives you the freedom to choose the Spring version of 
-your choice (the config classes are tested with Spring 3.2.2).
+your choice (the config classes are tested with Spring 4.1.6.RELEASE).
 
-There are no configuration classes provided for `SpanCollector` and `TraceFilters` because you
-probably want the freedom to choose these for yourself based on your application. There are
-however Configuration classes that need those as a dependency.
-
-Configuration classes are available for:
-
-*   AnnotationSubmitter
-*   ClientTracer: A ClientTracer needs a SpanCollector and TraceFilters so you have to make
-sure you have these added to Spring context yourself otherwise instantiating of ClientTracer will fail.
-*   EndpointSubmitter
-*   ServerSpanThreadBinder
-*   ServerTracer: A ServerTracer needs a SpanCollector so you have to make sure a configuration for
-SpanCollector is added to your Spring context.
-
-There is also a TraceFilters class which is a wrapper around a List of TraceFilter instances.
-Reason is that injecting generic types is not possible to instead the ClientTracerConfig class
-relies on a TraceFilters instance to be available on the Spring Context.
+There is no configuration provided for the `Brave` instance (see `brave-core`). You have to provide a Spring
+config class for this yourself as you probably want to decide anyway which `SpanCollector` and which `TraceFilters`
+to use.
 

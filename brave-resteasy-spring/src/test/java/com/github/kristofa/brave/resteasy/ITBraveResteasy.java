@@ -17,8 +17,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.EndpointSubmitter;
 import com.twitter.zipkin.gen.Span;
 
 public class ITBraveResteasy {
@@ -57,11 +55,6 @@ public class ITBraveResteasy {
 
     @Test
     public void test() throws IOException, InterruptedException {
-        // We need to set up our endpoint first because we start a client request from
-        // in our test so the brave preprocessor did not set up end point yet.
-        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
-        endpointSubmitter.submit("127.0.0.1", 8080, "BraveRestEasyIntegration");
-
         // this initialization only needs to be done once per VM
         RegisterBuiltin.register(ResteasyProviderFactory.getInstance());
 

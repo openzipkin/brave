@@ -10,11 +10,18 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Used by a client that submits a new service request. At the moment the ClientTracer is used we can already be part of a
- * trace/span or we can be the first one to submit a request. </p> Depending on the implementation it can be that each
- * request is traced or it can be that only some requests are traced to avoid too much overhead. This is all managed in the
- * {@link ClientTracer} implementation. The user should not be aware.
- * 
+ * Low level api that deals with client side of a request:
+ *
+ * <ol>
+ *     <li>Decide on tracing or not (sampling)</li>
+ *     <li>Sending client set / client received annotations</li>
+ * </ol>
+ *
+ * It is advised that you use ClientRequestInterceptor and ClientResponseInterceptor which build
+ * upon ClientTracer and provide a higher level api.
+ *
+ * @see ClientRequestInterceptor
+ * @see ClientResponseInterceptor
  * @author kristof
  */
 @AutoValue

@@ -15,14 +15,12 @@ import java.util.Arrays;
 @ComponentScan(basePackages={"com.github.kristofa.brave"})
 public class JerseyTestSpringConfig {
 
-    @Bean
-    public SpanCollector spanCollector() {
-        return SpanCollectorForTesting.getInstance();
-    }
+
 
     @Bean
-    public TraceFilters traceFilters() {
-        return new TraceFilters(Arrays.<TraceFilter>asList(new FixedSampleRateTraceFilter(1)));
+    public Brave brave() {
+        Brave.Builder builder = new Brave.Builder("brave-jersey2");
+        return builder.spanCollector(SpanCollectorForTesting.getInstance()).build();
     }
 
     @Bean

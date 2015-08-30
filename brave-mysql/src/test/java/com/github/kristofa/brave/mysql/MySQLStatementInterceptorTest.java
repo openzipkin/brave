@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndpointSubmitter;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
@@ -23,7 +22,6 @@ import static org.mockito.Mockito.when;
 
 public class MySQLStatementInterceptorTest {
 
-    private final EndpointSubmitter endpointSubmitter = mock(EndpointSubmitter.class);
     private final ClientTracer clientTracer = mock(ClientTracer.class);
     private MySQLStatementInterceptor subject;
 
@@ -31,30 +29,11 @@ public class MySQLStatementInterceptorTest {
     public void setUp() throws Exception {
         subject = new MySQLStatementInterceptor();
         MySQLStatementInterceptor.setClientTracer(clientTracer);
-        MySQLStatementInterceptor.setEndpointSubmitter(endpointSubmitter);
     }
 
     @Test
     public void preProcessShouldNotFailIfNoClientTracer() throws Exception {
         MySQLStatementInterceptor.setClientTracer(null);
-
-        assertNull(subject.preProcess("sql", mock(Statement.class), mock(Connection.class)));
-
-        verifyZeroInteractions(clientTracer);
-    }
-
-    @Test
-    public void preProcessShouldNotFailIfEndPointNotPresent() throws Exception {
-        MySQLStatementInterceptor.setEndpointSubmitter(null);
-
-        assertNull(subject.preProcess("sql", mock(Statement.class), mock(Connection.class)));
-
-        verifyZeroInteractions(clientTracer);
-    }
-
-    @Test
-    public void preProcessShouldNotFailIfEndPointNotSubmitted() throws Exception {
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(false);
 
         assertNull(subject.preProcess("sql", mock(Statement.class), mock(Connection.class)));
 
@@ -68,8 +47,6 @@ public class MySQLStatementInterceptorTest {
 
         final Connection connection = mock(Connection.class);
         when(connection.getSchema()).thenReturn(schema);
-
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
 
         assertNull(subject.preProcess(sql, mock(Statement.class), connection));
 
@@ -92,8 +69,6 @@ public class MySQLStatementInterceptorTest {
         final Connection connection = mock(Connection.class);
         when(connection.getSchema()).thenReturn(schema);
 
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
-
         assertNull(subject.preProcess(null, statement, connection));
 
         final InOrder order = inOrder(clientTracer);
@@ -115,30 +90,10 @@ public class MySQLStatementInterceptorTest {
     }
 
     @Test
-    public void postProcessShouldNotFailIfEndPointNotPresent() throws Exception {
-        MySQLStatementInterceptor.setEndpointSubmitter(null);
-
-        assertNull(subject.postProcess("sql", mock(Statement.class), mock(ResultSetInternalMethods.class), mock(Connection.class), 1, true, true, null));
-
-        verifyZeroInteractions(clientTracer);
-    }
-
-    @Test
-    public void postProcessShouldNotFailIfEndPointNotSubmitted() throws Exception {
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(false);
-
-        assertNull(subject.postProcess("sql", mock(Statement.class), mock(ResultSetInternalMethods.class), mock(Connection.class), 1, true, true, null));
-
-        verifyZeroInteractions(clientTracer);
-    }
-
-    @Test
     public void postProcessShouldFinishTracingFailedSQLCall() throws Exception {
 
         final int warningCount = 1;
         final int errorCode = 2;
-
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
 
         assertNull(subject.postProcess("sql", mock(Statement.class), mock(ResultSetInternalMethods.class), mock(Connection.class), warningCount, true, true,
                 new SQLException("", "", errorCode)));
@@ -153,8 +108,6 @@ public class MySQLStatementInterceptorTest {
 
     @Test
     public void postProcessShouldFinishTracingSuccessfulSQLCall() throws Exception {
-
-        when(endpointSubmitter.endpointSubmitted()).thenReturn(true);
 
         assertNull(subject.postProcess("sql", mock(Statement.class), mock(ResultSetInternalMethods.class), mock(Connection.class), 0, true, true, null));
 

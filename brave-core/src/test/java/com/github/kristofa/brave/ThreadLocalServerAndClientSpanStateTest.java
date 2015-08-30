@@ -12,18 +12,25 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class ThreadLocalServerAndClientSpanStateTest {
 
+    private static final short PORT = 80;
+    private static final String SERVICE_NAME = "service";
     private static final long DURATION1 = 10;
     private static final long DURATION2 = 30;
     private ThreadLocalServerAndClientSpanState serverAndClientSpanState;
     private ServerSpan mockServerSpan;
     private Span mockSpan;
     private Endpoint mockEndpoint;
+    private InetAddress address;
 
     @Before
-    public void setup() {
-        serverAndClientSpanState = new ThreadLocalServerAndClientSpanState();
+    public void setup() throws UnknownHostException {
+        address = InetAddress.getByName("192.168.0.1");
+        serverAndClientSpanState = new ThreadLocalServerAndClientSpanState(address, PORT, SERVICE_NAME);
         mockServerSpan = mock(ServerSpan.class);
         mockSpan = mock(Span.class);
         mockEndpoint = mock(Endpoint.class);
@@ -33,7 +40,6 @@ public class ThreadLocalServerAndClientSpanStateTest {
     public void tearDown() {
         serverAndClientSpanState.setCurrentClientSpan(null);
         serverAndClientSpanState.setCurrentServerSpan(null);
-        serverAndClientSpanState.setServerEndpoint(null);
     }
 
     @Test
@@ -42,13 +48,6 @@ public class ThreadLocalServerAndClientSpanStateTest {
         serverAndClientSpanState.setCurrentServerSpan(mockServerSpan);
         assertSame(mockServerSpan, serverAndClientSpanState.getCurrentServerSpan());
         assertNull("Should not have been modified.", serverAndClientSpanState.getCurrentClientSpan());
-    }
-
-    @Test
-    public void testGetAndSetEndpoint() {
-        assertNull(serverAndClientSpanState.getServerEndpoint());
-        serverAndClientSpanState.setServerEndpoint(mockEndpoint);
-        assertSame(mockEndpoint, serverAndClientSpanState.getServerEndpoint());
     }
 
     @Test

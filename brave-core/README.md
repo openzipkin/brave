@@ -3,7 +3,7 @@
 brave-core contains the core brave implementations used to set up and keep track of
 tracing state. 
 
-Since brave 3.0.0 you should use:
+Since brave 3.0.0 it is recommended to use:
  
    * At client side:
       * `com.github.kristofa.brave.ClientRequestInterceptor` : Starts a new span for a new outgoing request. Submits cs annotation.
@@ -14,17 +14,37 @@ Since brave 3.0.0 you should use:
 
 For each of these classes you will have to implement and adapter that will deal with platform specifics.
 
+These interceptors use the `ClientTracer` and `ServerTracer` which was the way to integrate with brave 2.x
+The interceptors are higher level and easier to use. In fact the common logic which was with brave 2.x implemented
+over and over with each integration is now implemented once in the interceptors.
+
 Because http integration is very common there is a separate module: `brave-http` which builds upon `brave-core`.
 You should check this out of you want to do http integrations.
 
-## instantiating interceptor dependencies
+## instantiating brave api
 
-To instantiate the client interceptors you will need a `ClientTracer` instance and to
-instantiate the server interceptors you will need a `ServerTracer` instance. You can create those as following:
+```java
+final Brave.Builder builder = new Brave.Builder();
+final Brave brave = builder
+  .spanCollector(aSpanCollector)
+  .traceFilters(Arrays.<TraceFilter>asList(aTraceFilter))
+  .build();
+  
+// Creates different interceptors  
+brave.clientRequestInterceptor();
+brave.clientResponseInterceptor();
+brave.serverRequestInterceptor();
+brave.serverResponseInterceptor(); 
+```
 
-`Brave.getClientTracer(SpanCollector, List<TraceFilter>)`
+As you can see in above example, Since brave 3.0 the way to instantiate the api has changed. 
+We use a Builder now that lets you configure custom:
 
-`Brave.getServerTracer(SpanCollector, List<TraceFilter>)`
+   * SpanCollector. Default value = `LoggingSpanCollector`
+   * list of TraceFilters. Default value is `FixedSampleRateTraceFilter` with value = 1.
+   * ServerAndClientSpanState. Default value is `ThreadLocalServerAndClientSpanState`.
+
+Once the `Brave` object is created you can get the different interceptors. 
 
 ### SpanCollector ###
 
@@ -45,12 +65,9 @@ You might not want to trace all requests that are being submitted:
 and you don't need to trace all requests to come to usable data.
 
 A TraceFilter's purpose (`com.github.kristofa.brave.TraceFilter`) is to decide if a given 
-request should get traced or not. Both
-the ClientTracer and ServerTracer take a List of TraceFilters which should be the same
-and before starting with a new Span they will check the TraceFilters. If one of 
-the TraceFilters says we should not trace the request it will not be traced.
+request should get traced or not. 
 
-The decision, should trace (true) or not (false) is taken by the first request and should
+The decision, should trace (true) or not (false) is taken by the first request (client side or server side) and should
 be passed through to all subsequent requests. This has as a consequence that we either
 trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
 
@@ -68,104 +85,20 @@ time see `brave-tracefilters` project which contains a TraceFilter with ZooKeepe
 
 
 
-## about EndpointSubmitter ##
-
-Each Annotation part of a Span can have an Endpoint assigned. 
-The Endpoint specifies the service/application from which the annotation is submitted, identified by
-ip address, port, service name.
-
-During the lifecycle of an application the Endpoint is fixed. This means the Endpoint can
-be set up once ideally when initialising your application.
-
-Initialising the Endpoint for Brave is done through the EndpointSubmitter.  Once it is set up all
-annotations submitted through ClientTracer, ServerTracer or AnnotationSubmitter will use the Endpoint.
-
-In the brave-resteasy-spring project the Endpoint is set up in `BravePreProcessInterceptor` when it
-receives the first request so before any annotations are submitted.
-
-
-## brave-core public api ##
-
-All api access is centralized in `com.github.kristofa.brave.Brave`.
-
-This class contains only static methods. Reason is that the returned components should
-share the same trace/span state. This state is maintained as a static singleton in this
-class.
-
-### Brave.getEndpointSubmitter ##
-
-> public static EndpointSubmitter getEndpointSubmitter()
-
-Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoint 
-(host, port, service name) assigned. For a given service/application instance the endpoint 
-only needs to be set once and will be reused for all submitted annotations.
-
-The Endpoint should be set using the EndpointSubmitter before any annotation/span is
-created.  
-
-In the brave-resteasy-spring module the Endpoint is set in 
-`com.github.kristofa.brave.resteasy.BravePreProcessInterceptor` when receiving the first
-request.
-
-### Brave.getClientTracer ###
-
-> public static ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilter)
-
-Get a ClientTracer that will be initialized with a specific SpanCollector and a List of custom TraceFilters.
-
-The ClientTracer is used to initiate a new span when doing a request to another service. It will generate the cs 
-(client send) and cr (client received) annotations. When the cr annotation is set the span 
-will be submitted to SpanCollector if not filtered by one of the TraceFilters.
-
-For more information on TraceFilters, see earlier section 'about trace filters'.
-
-
-### Brave.getServerTracer ###
-
-> public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilter)
-
-Get a ServerTracer that will be initialized with a specific SpanCollector and a List of custom TraceFilters.
-The ServerTracer and ClientTracer should share the same SpanCollector and the same TraceFilters!
-
-The ServerTracer will generate sr (server received) and ss (server send) annotations. When ss annotation is set
-the span will be submitted to SpanCollector if our span needs to get traced (as decided by ClientTracer).
-
-The ServerTracer sets the span state for an incoming request. You can see how it is
-used in the brave-resteasy-spring module in the com.github.kristofa.brave.resteasy.BravePreProcessInterceptor
-and the com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
-
-
-### Brave.getServerSpanAnnotationSubmitter ###
-
-> public static AnnotationSubmitter getServerSpanAnnotationSubmitter()
-
-The AnnotationSubmitter is used to submit application specific annotations.
-
-### Brave.getServerSpanThreadBinder ###
-
-> public static ServerSpanThreadBinder getServerSpanThreadBinder()
-
-To be used in case you execute logic in new threads within you service and if you submit 
-annotations or new requests from those threads.
-The span state is bound to the request thread using ThreadLocal variable. When you start new threads it means
-that the span state that was set in the request thread is not available in those new
-threads. The ServerSpanThreadBinder allows you to bind the original span state to the
-new thread. See also the section below: 'brave and multi threading'.
-
-
 ## brave and multi threading ##
 
-Brave uses ThreadLocal variables to keep track of trace/span state. By doing this it is
-able to support keeping track of state for multiple requests (multiple threads).
+In its default configuration Brave uses ThreadLocal variables to keep track of trace/span state 
+(`ThreadLocalServerAndClientSpanState`). By doing this it is
+able to support tracking state for multiple requests in the model where 1 request = 1 thread.
 
 However when you start a new Thread yourself from a request Thread brave will lose its trace/span state.
-To bind the same state to your new Thread you can use the `ServerSpanThreadBinder` yourself as explained earlier
-or you can use `com.github.kristofa.brave.BraveExecutorService`.
+To bind the same state to your new Thread you can use the `ServerSpanThreadBinder` accessible through `Brave`or 
+you can use `com.github.kristofa.brave.BraveExecutorService`.
 
-BraveExecutorService implements the java.util.concurrent.ExecutorService interface and acts as a decorator for
-an existing ExecutorService.  It also uses the ServerSpanThreadBinder which it takes in its constructor but
+BraveExecutorService implements the `java.util.concurrent.ExecutorService` interface and acts as a decorator for
+an existing `ExecutorService`.  It also uses the `ServerSpanThreadBinder` which it takes in its constructor but
 once set up if is transparent for your code and will make sure any thread you start through the ExecutorService
 will get proper trace/span state.
 
-Instead of using BraveExecutorService or the ServerSpanThreadBinder directly you can also
+Instead of using `BraveExecutorService` or the `ServerSpanThreadBinder` directly you can also
 use the `BraveCallable` and `BraveRunnable`. These are used internally by the BraveExecutorService.

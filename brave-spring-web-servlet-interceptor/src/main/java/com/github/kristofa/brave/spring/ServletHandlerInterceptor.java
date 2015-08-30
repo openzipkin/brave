@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.spring;
 
-import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.ServerTracer;
@@ -18,13 +17,11 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     static final String HTTP_SERVER_SPAN_ATTRIBUTE = ServletHandlerInterceptor.class.getName() + ".server-span";
     private final ServerSpanThreadBinder serverThreadBinder;
     private final ServerTracer serverTracer;
-    private final EndpointSubmitter endpointSubmitter;
 
     @Autowired
-    public ServletHandlerInterceptor(final ServerTracer serverTracer, final ServerSpanThreadBinder serverThreadBinder, final EndpointSubmitter endpointSubmitter) {
+    public ServletHandlerInterceptor(final ServerTracer serverTracer, final ServerSpanThreadBinder serverThreadBinder) {
         this.serverTracer = serverTracer;
         this.serverThreadBinder = serverThreadBinder;
-        this.endpointSubmitter = endpointSubmitter;
     }
 
     @Override
@@ -56,14 +53,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         }
     }
 
-    protected String getServiceName(final HttpServletRequest request) {
-        return request.getContextPath();
-    }
-
     private void beginTrace(final HttpServletRequest request) {
-        if (!endpointSubmitter.endpointSubmitted()) {
-            endpointSubmitter.submit(request.getLocalAddr(), request.getLocalPort(), getServiceName(request));
-        }
 
         final String sampled = request.getHeader(BraveHttpHeaders.Sampled.getName());
         if (!Boolean.valueOf(sampled != null ? sampled : Boolean.TRUE.toString())) {

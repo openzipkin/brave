@@ -1,12 +1,14 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+
+import java.net.InetAddress;
 
 /**
  * {@link ServerAndClientSpanState} implementation that is used with {@link BraveContext}.
  * 
- * @see BraveContext
  */
 final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
 
@@ -14,6 +16,19 @@ final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
     private Span currentClientSpan;
     private ServerSpan currentServerSpan;
     private String currentClientServiceName;
+
+    /**
+     * Constructor
+     *
+     * @param ip InetAddress of current host. If you don't have access to InetAddress you can use InetAddressUtilities#getLocalHostLANAddress()
+     * @param port port on which current process is listening.
+     * @param serviceName Service name. Only relevant if we do server side tracing.
+     */
+    public SimpleServerAndClientSpanState(InetAddress ip, int port, String serviceName) {
+        Util.checkNotNull(ip, "ip address must be specified.");
+        Util.checkNotBlank(serviceName, "Service name must be specified.");
+        endpoint = new Endpoint(InetAddressUtilities.toInt(ip), (short) port, serviceName);
+    }
 
     /**
      * {@inheritDoc}
@@ -39,13 +54,6 @@ final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
         return endpoint;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setServerEndpoint(final Endpoint endpoint) {
-        this.endpoint = endpoint;
-    }
 
     /**
      * {@inheritDoc}

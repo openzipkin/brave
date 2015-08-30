@@ -1,112 +1,192 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Public Brave api. Makes sure all returned instances share the same trace/span state.
- * <p>
- * This api should be used to create new instances for usage in your applications.
- * 
- * @author kristof
+ * Builds brave api objects.
  */
 public class Brave {
 
-    private final static ServerAndClientSpanState SERVER_AND_CLIENT_SPAN_STATE = new ThreadLocalServerAndClientSpanState();
-    private final static Random RANDOM_GENERATOR = new Random();
-
-    private Brave() {
-        // Only static access.
-    }
+    private final ServerTracer serverTracer;
+    private final ClientTracer clientTracer;
+    private final ServerRequestInterceptor serverRequestInterceptor;
+    private final ServerResponseInterceptor serverResponseInterceptor;
+    private final ClientRequestInterceptor clientRequestInterceptor;
+    private final ClientResponseInterceptor clientResponseInterceptor;
+    private final AnnotationSubmitter serverSpanAnnotationSubmitter;
+    private final ServerSpanThreadBinder serverSpanThreadBinder;
+    private final ClientSpanThreadBinder clientSpanThreadBinder;
 
     /**
-     * Gets {@link EndpointSubmitter}. Allows you to set endpoint (ip, port, service name) for this service.
-     * <p/>
-     * Each annotation that is being submitted (including cs, cr, sr, ss) has an endpoint (host, port, service name)
-     * assigned. For a given service/application instance the endpoint only needs to be set once and will be reused for all
-     * submitted annotations.
-     * <p/>
-     * The Endpoint needs to be set using the EndpointSubmitter before any annotation/span is created.
-     * 
-     * @return {@link EndpointSubmitter}.
+     * Builds Brave api objects with following defaults if not overridden:
+     *
+     * <ul>
+     *     <li>ThreadLocalServerAndClientSpanState which binds trace/span state to current thread.</li>
+     *     <li>FixedSampleRateTraceFilter which traces every request.</li>
+     *     <li>LoggingSpanCollector</li>
+     * </ul>
+     *
      */
-    public static EndpointSubmitter getEndpointSubmitter() {
-        return new EndpointSubmitter(SERVER_AND_CLIENT_SPAN_STATE);
+    public static class Builder {
+
+        private List<TraceFilter> traceFilters = new ArrayList<>();
+        private SpanCollector spanCollector = new LoggingSpanCollector();
+        private ServerAndClientSpanState state;
+        private Random random = new Random();
+
+        /**
+         * Builder which initializes with serviceName = "unknown"
+         */
+        public Builder() {
+            this("unknown");
+        }
+
+        /**
+         * Builder.
+         * @param serviceName Name of service. Is only relevant when we do server side tracing.
+         */
+        public Builder(String serviceName) {
+            try {
+                InetAddress a = InetAddressUtilities.getLocalHostLANAddress();
+                state = new ThreadLocalServerAndClientSpanState(a, 0, serviceName);
+            } catch (UnknownHostException e) {
+                throw new IllegalStateException("Unable to get Inet address", e);
+            }
+            traceFilters.add(new FixedSampleRateTraceFilter(1));
+        }
+
+        /**
+         * Initialize trace filters. If not specified a default filter will be configured which traces every request.
+         *
+         * @param filters trace filters.
+         */
+        public Builder traceFilters(List<TraceFilter> filters) {
+            traceFilters.clear();
+            traceFilters.addAll(filters);
+            return this;
+        }
+
+        /**
+         * Allows you to use custom trace state object.
+         *
+         * @param state
+         */
+        public Builder traceState(ServerAndClientSpanState state) {
+            this.state = state;
+            return this;
+        }
+
+        /**
+         *
+         * @param spanCollector
+         */
+        public Builder spanCollector(SpanCollector spanCollector) {
+            this.spanCollector = spanCollector;
+            return this;
+        }
+
+        public Brave build() {
+            return new Brave(this);
+        }
+
     }
 
     /**
-     * Gets a {@link ClientTracer} that will be initialized with a custom {@link SpanCollector} and a custom list of
-     * {@link TraceFilter trace filters}.
-     * <p/>
-     * The ClientTracer is used to initiate a new span when doing a request to another service. It will generate the cs
-     * (client send) and cr (client received) annotations. When the cr annotation is set the span will be submitted to
-     * SpanCollector if not filtered by one of the trace filters.
-     * 
-     * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
-     * @param traceFilters List of Trace filters. List can be empty if you don't want trace filtering (sampling). The trace
-     *            filters will be executed in order. If one returns false there will not be tracing and the next trace
-     *            filters will not be executed anymore.
-     * @return {@link ClientTracer} instance.
-     * @see Brave#getLoggingSpanCollector()
-     * @see Brave#getTraceAllTraceFilter()
+     * Client Tracer.
+     * <p>
+     * It is advised that you use ClientRequestInterceptor and ClientResponseInterceptor instead.
+     * Those api's build upon ClientTracer and have a higher level api.
+     * </p>
+     *
+     * @return ClientTracer implementation.
      */
-    public static ClientTracer getClientTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return ClientTracer.builder()
-            .state(SERVER_AND_CLIENT_SPAN_STATE)
-            .randomGenerator(RANDOM_GENERATOR)
-            .spanCollector(collector)
-            .traceFilters(traceFilters)
-            .build();
+    public ClientTracer clientTracer() {
+        return clientTracer;
     }
 
     /**
-     * Gets a {@link ServerTracer}.
-     * <p/>
-     * The ServerTracer is used to generate sr (server received) and ss (server send) annotations. When ss annotation is set
-     * the span will be submitted to SpanCollector if our span needs to get traced (as decided by ClientTracer).
-     * 
-     * @param collector Custom {@link SpanCollector}. Should not be <code>null</code>.
-     * @return {@link ServerTracer} instance.
+     * Server Tracer.
+     * <p>
+     * It is advised that you use ServerRequestInterceptor and ServerResponseInterceptor instead.
+     * Those api's build upon ServerTracer and have a higher level api.
+     * </p>
+     *
+     * @return ClientTracer implementation.
      */
-    public static ServerTracer getServerTracer(final SpanCollector collector, final List<TraceFilter> traceFilters) {
-        return ServerTracer.builder()
-            .state(SERVER_AND_CLIENT_SPAN_STATE)
-            .randomGenerator(RANDOM_GENERATOR)
-            .spanCollector(collector)
-            .traceFilters(traceFilters)
-            .build();
+    public ServerTracer serverTracer() {
+        return serverTracer;
+    }
+
+    public ClientRequestInterceptor clientRequestInterceptor() {
+        return clientRequestInterceptor;
+    }
+
+    public ClientResponseInterceptor clientResponseInterceptor() {
+        return clientResponseInterceptor;
+    }
+
+    public ServerRequestInterceptor serverRequestInterceptor() {
+        return serverRequestInterceptor;
+    }
+
+    public ServerResponseInterceptor serverResponseInterceptor() {
+        return serverResponseInterceptor;
     }
 
     /**
-     * Can be used to submit application specific annotations to the current server span.
-     * 
-     * @return Server span {@link AnnotationSubmitter}.
-     */
-    public static AnnotationSubmitter getServerSpanAnnotationSubmitter() {
-        return AnnotationSubmitter.create(ServerSpanAndEndpoint.create(SERVER_AND_CLIENT_SPAN_STATE));
-    }
-
-    /**
-     * Only relevant if you start multiple threads in your server side code and you will use {@link ClientTracer},
-     * {@link AnnotationSubmitter} from those threads.
-     * 
+     * Helper object that can be used to propogate server trace state. Typically over different threads.
+     *
      * @see ServerSpanThreadBinder
      * @return {@link ServerSpanThreadBinder}.
      */
-    public static ServerSpanThreadBinder getServerSpanThreadBinder() {
-        return new ServerSpanThreadBinder(SERVER_AND_CLIENT_SPAN_STATE);
+    public ServerSpanThreadBinder serverSpanThreadBinder() {
+        return serverSpanThreadBinder;
     }
 
     /**
-     * Only relevant if you make async client call where the result is processed in the callback from a separate thread
-     * and you will use {@link ClientTracer},
+     * Helper object that can be used to propagate client trace state. Typically over different threads.
      *
      * @see ClientSpanThreadBinder
      * @return {@link ClientSpanThreadBinder}.
      */
-    public static ClientSpanThreadBinder getClientSpanThreadBinder() {
-        return new ClientSpanThreadBinder(SERVER_AND_CLIENT_SPAN_STATE);
+    public ClientSpanThreadBinder clientSpanThreadBinder() {
+        return clientSpanThreadBinder;
+    }
+
+    /**
+     * Can be used to submit application specific annotations to the current server span.
+     *
+     * @return Server span {@link AnnotationSubmitter}.
+     */
+    public AnnotationSubmitter serverSpanAnnotationSubmitter() {
+        return serverSpanAnnotationSubmitter;
+    }
+
+    private Brave(Builder builder) {
+        serverTracer = ServerTracer.builder()
+                .randomGenerator(builder.random)
+                .spanCollector(builder.spanCollector)
+                .state(builder.state)
+                .traceFilters(builder.traceFilters).build();
+
+        clientTracer = ClientTracer.builder()
+                .randomGenerator(builder.random)
+                .spanCollector(builder.spanCollector)
+                .state(builder.state)
+                .traceFilters(builder.traceFilters).build();
+
+        serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
+        serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
+        clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
+        clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(SpanAndEndpoint.ServerSpanAndEndpoint.create(builder.state));
+        serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
+        clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
     }
 }

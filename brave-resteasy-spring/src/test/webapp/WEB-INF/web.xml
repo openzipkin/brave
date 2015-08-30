@@ -15,25 +15,15 @@
 	  </init-param>	  
 	  <init-param>
 		  <param-name>contextConfigLocation</param-name>
-		  <!--  By including package com.github.kristofa.brave this package and all sub packages will be scanned for Spring beans. This means that the Configuration classes
-		        of brave-impl-spring will be detected, the RestEasy pre- and postprocessors will be detected as well as the Resteasy resources for our test. -->
-		  <param-value>com.github.kristofa.brave.resteasy.BraveClientExecutionInterceptor 
+		  <param-value>
+		  com.github.kristofa.brave.resteasy.BraveConfig
+		  com.github.kristofa.brave.BraveApiConfig
+		  com.github.kristofa.brave.resteasy.BraveClientExecutionInterceptor
 		  com.github.kristofa.brave.resteasy.BravePreProcessInterceptor
 		  com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
-		  com.github.kristofa.brave.AnnotationSubmitterConfig
-		  com.github.kristofa.brave.ClientTracerConfig
-		  com.github.kristofa.brave.EndpointSubmitterConfig
-		  com.github.kristofa.brave.ServerSpanThreadBinderConfig
-		  com.github.kristofa.brave.ServerTracerConfig
-		  com.github.kristofa.brave.ClientRequestInterceptorConfig
-	      com.github.kristofa.brave.ClientResponseInterceptorConfig
-		  com.github.kristofa.brave.ServerRequestInterceptorConfig
-		  com.github.kristofa.brave.ServerResponseInterceptorConfig
 		  com.github.kristofa.brave.resteasy.ResteasySpringConfig
           com.github.kristofa.brave.resteasy.BraveRestEasyResourceImpl
-          com.github.kristofa.brave.resteasy.TraceFiltersConfiguration
-          com.github.kristofa.brave.resteasy.SpanCollectorConfiguration
-		  com.github.kristofa.brave.resteasy.ServiceNameProviderConfig
+          com.github.kristofa.brave.resteasy.ServiceNameProviderConfig
 		  com.github.kristofa.brave.resteasy.SpanNameProviderConfig
 		  </param-value>
 	  </init-param>

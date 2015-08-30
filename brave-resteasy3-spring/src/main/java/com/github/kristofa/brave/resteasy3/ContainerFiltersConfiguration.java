@@ -1,9 +1,7 @@
 package com.github.kristofa.brave.resteasy3;
 
-import com.github.kristofa.brave.EndpointSubmitter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveContainerRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveContainerResponseFilter;

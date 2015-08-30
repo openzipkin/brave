@@ -30,13 +30,6 @@ public interface ServerSpanState extends CommonSpanState {
     Endpoint getServerEndpoint();
 
     /**
-     * Sets Endpoint for this service.
-     *
-     * @param endpoint Endpoint for this service.
-     */
-    void setServerEndpoint(final Endpoint endpoint);
-
-    /**
      * Set span for current request.
      * 
      * @param span Span for current request.

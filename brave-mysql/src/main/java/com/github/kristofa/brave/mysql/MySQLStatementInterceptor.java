@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.mysql;
 
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.EndpointSubmitter;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
@@ -27,21 +26,16 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 
     // TODO: is static scope best? ex. preferred to thread local etc?
     static volatile ClientTracer clientTracer;
-    static volatile EndpointSubmitter endpointSubmitter;
 
     public static void setClientTracer(final ClientTracer tracer) {
         clientTracer = tracer;
-    }
-
-    public static void setEndpointSubmitter(final EndpointSubmitter submitter) {
-        endpointSubmitter = submitter;
     }
 
     @Override
     public ResultSetInternalMethods preProcess(final String sql, final Statement interceptedStatement, final Connection connection) throws SQLException {
 
         ClientTracer clientTracer = MySQLStatementInterceptor.clientTracer;
-        if (clientTracer != null && endPointSubmitted()) {
+        if (clientTracer != null) {
             final String sqlToLog;
             // When running a prepared statement, sql will be null and we must fetch the sql from the statement itself
             if (interceptedStatement instanceof PreparedStatement) {
@@ -62,20 +56,11 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
                                                 final SQLException statementException) throws SQLException {
 
         ClientTracer clientTracer = MySQLStatementInterceptor.clientTracer;
-        if (clientTracer != null && endPointSubmitted()) {
+        if (clientTracer != null) {
             endTrace(clientTracer, warningCount, statementException);
         }
 
         return null;
-    }
-
-    /**
-     * It is possible that this interceptor can be called before any HTTP requests have been served which means information about the end point, which
-     * is used when submitting a client trace, will be missing.
-     * @return True if the end point information is present and so is safe to proceed with the tracing.
-     */
-    private boolean endPointSubmitted() {
-        return endpointSubmitter != null && endpointSubmitter.endpointSubmitted();
     }
 
     private void beginTrace(final ClientTracer tracer, final String sql, final Connection connection) throws SQLException {

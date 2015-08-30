@@ -41,8 +41,6 @@ public class ITBraveJersey2 extends JerseyTest {
         target.register(new BraveClientRequestFilter(serviceNameProvider, spanNameProvider, clientRequestInterceptor));
         target.register(new BraveClientResponseFilter(serviceNameProvider, spanNameProvider, clientResponseInterceptor));
 
-        final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
-        endpointSubmitter.submit("127.0.0.1", 9998, "brave-jersey2");
         final Response response = target.request().get();
         assertEquals(200, response.getStatus());
 

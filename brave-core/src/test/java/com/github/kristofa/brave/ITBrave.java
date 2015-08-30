@@ -54,14 +54,12 @@ public class ITBrave {
         @Override
         public Integer call() throws Exception {
 
-            final EndpointSubmitter endpointSubmitter = Brave.getEndpointSubmitter();
-            if (!endpointSubmitter.endpointSubmitted()) {
-                endpointSubmitter.submit("10.0.1.6", 80, "serviceName");
-            }
-
             final IntegrationTestSpanCollector mockSpanCollector = new IntegrationTestSpanCollector();
-            final ServerTracer serverTracer =
-                Brave.getServerTracer(mockSpanCollector, Arrays.<TraceFilter>asList(new FixedSampleRateTraceFilter(1)));
+            final Brave.Builder builder = new Brave.Builder("serviceName");
+            final Brave brave = builder.spanCollector(mockSpanCollector).build();
+
+
+            final ServerTracer serverTracer = brave.serverTracer();
 
             final Random random = new Random();
 
@@ -74,8 +72,7 @@ public class ITBrave {
             serverTracer.submitAnnotation("custom annotation", startDate, startDate + 1000);
 
             // Simulate client.
-            final ClientTracer clientTracer =
-                Brave.getClientTracer(mockSpanCollector, Arrays.<TraceFilter>asList(new FixedSampleRateTraceFilter(1)));
+            final ClientTracer clientTracer = brave.clientTracer();
             final String clientSpanName = "client span name " + random.nextLong();
             clientTracer.startNewSpan(clientSpanName);
             clientTracer.setClientSent();
