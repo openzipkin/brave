@@ -1,14 +1,5 @@
 # brave-tracefilters #
 
-Latest release available in Maven central:
-
-    <dependency>
-        <groupId>com.github.kristofa</groupId>
-        <artifactId>brave-tracefilters</artifactId>
-        <version>2.4.1</version>
-    </dependency>
-
-
 This package contains additional TraceFilters. They are put in a separate project because
 they might rely on external libraries (eg ZooKeeper) that you might not want to use.
 
