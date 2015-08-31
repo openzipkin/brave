@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>com.github.kristofa</groupId>
-        <version>3.0.0-rc-1</version>
+        <version>3.0.0-rc-2-SNAPSHOT</version>
     </parent>
    <artifactId>brave-jersey</artifactId>
    <packaging>jar</packaging>
@@ -28,7 +28,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-http</artifactId>
-            <version>3.0.0-rc-1</version>
+            <version>3.0.0-rc-2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
