@@ -15,6 +15,7 @@ import com.twitter.zipkin.gen.Span;
 @AutoValue
 public abstract class ServerSpan {
 
+    public final static ServerSpan EMPTY = ServerSpan.create(null);
     static final ServerSpan NOT_SAMPLED = ServerSpan.create(false);
 
     /**
