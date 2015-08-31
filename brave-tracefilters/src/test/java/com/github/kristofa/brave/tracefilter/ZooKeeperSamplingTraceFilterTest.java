@@ -14,6 +14,7 @@ import org.junit.Test;
 public class ZooKeeperSamplingTraceFilterTest {
 
     private final static String SAMPLE_RATE_NODE = "/zipkin/sampleRate";
+    private final static long SPAN_ID = 45345;
 
     private TestingServer zooKeeperTestServer;
     private ZooKeeperSamplingTraceFilter traceFilter;
@@ -35,32 +36,32 @@ public class ZooKeeperSamplingTraceFilterTest {
     public void testShouldTrace() throws Exception {
 
         final CuratorFramework zkCurator = traceFilter.getZkCurator();
-        assertFalse("znode does not exist.", traceFilter.trace(null));
+        assertFalse("znode does not exist.", traceFilter.trace(SPAN_ID, null));
         zkCurator.create().creatingParentsIfNeeded().forPath(SAMPLE_RATE_NODE, new String("1").getBytes());
         Thread.sleep(100);
-        assertTrue(traceFilter.trace(null));
-        assertTrue(traceFilter.trace(null));
-        assertTrue(traceFilter.trace(null));
+        assertTrue(traceFilter.trace(SPAN_ID, null));
+        assertTrue(traceFilter.trace(SPAN_ID, null));
+        assertTrue(traceFilter.trace(SPAN_ID, null));
         setValue(zkCurator, 0);
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
         setValue(zkCurator, 3);
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertTrue(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertTrue(traceFilter.trace(null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertTrue(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertTrue(traceFilter.trace(SPAN_ID, null));
         setValue(zkCurator, -1);
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
         zkCurator.delete().forPath(SAMPLE_RATE_NODE);
         Thread.sleep(100);
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
-        assertFalse(traceFilter.trace(null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
+        assertFalse(traceFilter.trace(SPAN_ID, null));
 
     }
 

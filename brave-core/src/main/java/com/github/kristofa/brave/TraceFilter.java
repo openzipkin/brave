@@ -12,11 +12,11 @@ public interface TraceFilter {
     /**
      * Indicates if we should trace request with given name.
      * 
-     * @param requestName Name of request/span.
+     * @param spanName Span name.
      * @return <code>true</code> in case we should trace this request, <code>false</code> in case we should not trace this
      *         request.
      */
-    boolean trace(final String requestName);
+    boolean trace(final long spanId, final String spanName);
 
     /**
      * Should be called when TraceFilter will not be used anymore. Used to close/clean resources.

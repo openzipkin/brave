@@ -92,7 +92,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
      * trace the current request.
      *
-     * @see ServerTracer#setStateExistingTrace(TraceContext)
+     * @see ServerTracer#setStateCurrentTrace(long, long, Long, String)
      * @see ServerTracer#setStateUnknown(String)
      */
     public void setStateNoTracing() {
@@ -108,20 +108,20 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
+        long newSpanId = randomGenerator().nextLong();
         for (TraceFilter traceFilter : traceFilters()) {
-            if (traceFilter.trace(spanName) == false) {
+            if (traceFilter.trace(newSpanId, spanName) == false) {
                 spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
                 return;
             }
         }
-        long newSpanId = randomGenerator().nextLong();
         spanAndEndpoint().state().setCurrentServerSpan(
             ServerSpan.create(newSpanId, newSpanId, null, spanName));
     }
 
     /**
      * Sets server received event for current request. This should be done after setting state using one of 3 methods
-     * {@link ServerTracer#setStateExistingTrace(TraceContext)}, {@link ServerTracer#setStateNoTracing()} or
+     * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String)} , {@link ServerTracer#setStateNoTracing()} or
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     public void setServerReceived() {

@@ -32,6 +32,7 @@ public class ClientTracerTest {
     private final static String REQUEST_NAME = "requestName";
     private static final long PARENT_SPAN_ID = 103;
     private static final long PARENT_TRACE_ID = 105;
+    private static final long TRACE_ID = 32534;
 
     private ServerAndClientSpanState mockState;
     private Random mockRandom;
@@ -49,8 +50,8 @@ public class ClientTracerTest {
         mockTraceFilter = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
         when(mockState.getServerEndpoint()).thenReturn(endpoint);
-        when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(true);
-        when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(true);
+        when(mockTraceFilter.trace(TRACE_ID, REQUEST_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(TRACE_ID, REQUEST_NAME)).thenReturn(true);
 
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
@@ -136,22 +137,22 @@ public class ClientTracerTest {
         when(mockServerSpan.getSpan()).thenReturn(null);
         when(mockState.sample()).thenReturn(null);
         when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID).thenReturn(2l);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(1l, newSpanId.getTraceId());
-        assertEquals(1l, newSpanId.getSpanId());
+        assertEquals(TRACE_ID, newSpanId.getTraceId());
+        assertEquals(TRACE_ID, newSpanId.getSpanId());
         assertNull(newSpanId.getParentSpanId());
 
         final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(1);
-        expectedSpan.setId(1);
+        expectedSpan.setTrace_id(TRACE_ID);
+        expectedSpan.setId(TRACE_ID);
         expectedSpan.setName(REQUEST_NAME);
 
         verify(mockState).sample();
-        verify(mockTraceFilter).trace(REQUEST_NAME);
-        verify(mockTraceFilter2).trace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
+        verify(mockTraceFilter2).trace(TRACE_ID, REQUEST_NAME);
         verify(mockRandom, times(1)).nextLong();
         verify(mockState).getCurrentServerSpan();
         verify(mockState).setCurrentClientSpan(expectedSpan);
@@ -220,14 +221,18 @@ public class ClientTracerTest {
     @Test
     public void testFirstTraceFilterFalse() {
         when(mockState.sample()).thenReturn(null);
-        when(mockTraceFilter.trace(REQUEST_NAME)).thenReturn(false);
+        when(mockState.getCurrentServerSpan()).thenReturn(ServerSpan.create(null, null));
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        when(mockTraceFilter.trace(TRACE_ID, REQUEST_NAME)).thenReturn(false);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
+        verify(mockState).getCurrentServerSpan();
         verify(mockState).sample();
-        verify(mockTraceFilter).trace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
         verify(mockState).setCurrentClientServiceName(null);
+        verify(mockRandom).nextLong();
         verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
 
     }
@@ -235,16 +240,20 @@ public class ClientTracerTest {
     @Test
     public void testSecondTraceFilterFalse() {
         when(mockState.sample()).thenReturn(null);
-        when(mockTraceFilter2.trace(REQUEST_NAME)).thenReturn(false);
+        when(mockState.getCurrentServerSpan()).thenReturn(ServerSpan.create(null, null));
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        when(mockTraceFilter2.trace(TRACE_ID, REQUEST_NAME)).thenReturn(false);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
+        verify(mockState).getCurrentServerSpan();
         verify(mockState).sample();
-        verify(mockTraceFilter).trace(REQUEST_NAME);
-        verify(mockTraceFilter2).trace(REQUEST_NAME);
+        verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
+        verify(mockTraceFilter2).trace(TRACE_ID, REQUEST_NAME);
         verify(mockState).setCurrentClientSpan(null);
         verify(mockState).setCurrentClientServiceName(null);
-        verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
+        verify(mockRandom).nextLong();
+        verifyNoMoreInteractions(mockTraceFilter, mockTraceFilter2, mockState, mockRandom, mockCollector);
 
     }
 

@@ -7,46 +7,48 @@ import org.junit.Test;
 
 public class FixedSampleRateTraceFilterTest {
 
+    private static final long SPAN_ID = 454464;
+
     @Test
     public void testSampleRateZero() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(0);
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
     }
 
     @Test
     public void testSampleRateNegative() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(-1);
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
     }
 
     @Test
     public void testSampleRateOne() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(1);
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
     }
 
     @Test
     public void testSampleRateBiggerThanOne() {
         final FixedSampleRateTraceFilter fixedSampleRateTraceFilter = new FixedSampleRateTraceFilter(3);
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
-        assertTrue(fixedSampleRateTraceFilter.trace(null));
-        assertFalse(fixedSampleRateTraceFilter.trace(null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertTrue(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
+        assertFalse(fixedSampleRateTraceFilter.trace(SPAN_ID, null));
     }
 
 }

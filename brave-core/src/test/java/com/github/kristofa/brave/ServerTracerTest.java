@@ -96,18 +96,18 @@ public class ServerTracerTest {
     @Test
     public void testSetStateUnknownTraceFiltersTrue() {
 
-        when(mockTraceFilter1.trace(SPAN_NAME)).thenReturn(true);
-        when(mockTraceFilter2.trace(SPAN_NAME)).thenReturn(true);
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        when(mockTraceFilter1.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
         final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, TRACE_ID, null, SPAN_NAME);
 
         final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
 
-        inOrder.verify(mockTraceFilter1).trace(SPAN_NAME);
-        inOrder.verify(mockTraceFilter2).trace(SPAN_NAME);
         inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockTraceFilter1).trace(TRACE_ID, SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
@@ -116,8 +116,9 @@ public class ServerTracerTest {
     @Test
     public void testSetStateUnknownTraceFiltersFalse() {
 
-        when(mockTraceFilter1.trace(SPAN_NAME)).thenReturn(true);
-        when(mockTraceFilter2.trace(SPAN_NAME)).thenReturn(false);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        when(mockTraceFilter1.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
+        when(mockTraceFilter2.trace(TRACE_ID, SPAN_NAME)).thenReturn(false);
 
         final ServerSpan expectedServerSpan = ServerSpan.create(false);
 
@@ -125,8 +126,9 @@ public class ServerTracerTest {
 
         final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
 
-        inOrder.verify(mockTraceFilter1).trace(SPAN_NAME);
-        inOrder.verify(mockTraceFilter2).trace(SPAN_NAME);
+        inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockTraceFilter1).trace(TRACE_ID, SPAN_NAME);
+        inOrder.verify(mockTraceFilter2).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
@@ -191,7 +193,5 @@ public class ServerTracerTest {
         verify(mockServerSpanState).setCurrentServerSpan(null);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockSpan);
     }
-
-
 
 }

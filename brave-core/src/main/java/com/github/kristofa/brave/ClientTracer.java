@@ -101,10 +101,11 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
+        SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
             for (TraceFilter traceFilter : traceFilters()) {
-                if (!traceFilter.trace(requestName)) {
+                if (!traceFilter.trace(newSpanId.getSpanId(), requestName)) {
                     spanAndEndpoint().state().setCurrentClientSpan(null);
                     spanAndEndpoint().state().setCurrentClientServiceName(null);
                     return null;
@@ -112,7 +113,6 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             }
         }
 
-        SpanId newSpanId = getNewSpanId();
         Span newSpan = new Span();
         newSpan.setId(newSpanId.getSpanId());
         newSpan.setTrace_id(newSpanId.getTraceId());
