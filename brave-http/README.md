@@ -1,7 +1,5 @@
 # brave-http #
 
-**The com.github.kristofa.brave.client package is deprecated.** 
-You should only use code in `com.github.kristofa.brave.http`.
  
 This module contains adapters to be used with the `brave-core` interceptors
 which are tailored for http clients/servers.
@@ -18,7 +16,7 @@ To use these adapters you will have to implement `HttpRequest`, `HttpResponse` f
 and `HttpServerRequest` and `HttpResponse` for server integrations. These HttpRequest/HttpResponse/HttpServerRequest
 interfaces are adapters that let you integrate with your library of choice.
 
-The `brave-resteasy-spring` module is already adapted to use these new http adapters and can be used as an example.
+`brave-resteasy-spring`, `brave-jaxrs2` modules are good candidates to see how the integration works and is implemented.
 
 The Client/Server Request adapters are also configurable. You can for example choose how a span name is represented.
 There is an implementation called `DefaultSpanNameProvider` which takes the http method as span name.
