@@ -13,7 +13,11 @@
       Spring HandlerInterceptorAdapter implementation.
   </description>
 
-  <dependencies>
+    <properties>
+        <jetty.version>8.1.9.v20130131</jetty.version>
+    </properties>
+
+    <dependencies>
      <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-http</artifactId>
@@ -24,7 +28,13 @@
         <artifactId>spring-webmvc</artifactId>
         <scope>provided</scope>
      </dependency>
-     <dependency>
+        <dependency>
+            <groupId>com.github.kristofa</groupId>
+            <artifactId>brave-core-spring</artifactId>
+            <version>3.0.0-rc-2-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
         <groupId>org.springframework</groupId>
         <artifactId>spring-test</artifactId>
         <scope>test</scope>
@@ -35,6 +45,12 @@
         <artifactId>commons-lang3</artifactId>
         <scope>test</scope>
      </dependency>
+      <dependency>
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-webapp</artifactId>
+          <version>${jetty.version}</version>
+          <scope>test</scope>
+      </dependency>
      <dependency>
           <groupId>javax.servlet</groupId>
           <artifactId>javax.servlet-api</artifactId>

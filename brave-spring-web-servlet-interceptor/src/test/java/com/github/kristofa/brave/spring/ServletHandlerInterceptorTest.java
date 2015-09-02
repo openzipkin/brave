@@ -1,48 +1,48 @@
 package com.github.kristofa.brave.spring;
 
-import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseAdapter;
+import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.ServerSpan;
+import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import java.util.Random;
-
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.junit.Assert.assertSame;
-import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.same;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 public class ServletHandlerInterceptorTest {
 
-    private static final String HTTP_METHOD = "GET";
-    private static final Random RAND = new Random();
     private ServletHandlerInterceptor subject;
-    private ServerTracer serverTracer;
     private ServerSpanThreadBinder serverThreadBinder;
+    private ServerRequestInterceptor requestInterceptor;
+    private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+    private ServerResponseInterceptor responseInterceptor;
 
     @Before
     public void setUp() throws Exception {
-        serverTracer = mock(ServerTracer.class);
+        requestInterceptor = mock(ServerRequestInterceptor.class);
+        responseInterceptor = mock(ServerResponseInterceptor.class);
+
         serverThreadBinder = mock(ServerSpanThreadBinder.class);
-        subject = new ServletHandlerInterceptor(serverTracer, serverThreadBinder);
+        subject = new ServletHandlerInterceptor(requestInterceptor, responseInterceptor, spanNameProvider, serverThreadBinder);
     }
 
     @Test
-    public void afterCompletionShouldNotifyOfCompletionAndTidyUp() {
+    public void afterCompletionShouldNotifyOfCompletion() {
         subject.afterCompletion(new MockHttpServletRequest(), new MockHttpServletResponse(), this, null);
 
-        final InOrder order = inOrder(serverTracer);
-
-        order.verify(serverTracer).setServerSend();
-        order.verify(serverTracer).clearCurrentSpan();
+        verify(responseInterceptor).handle(any(ServerResponseAdapter.class));
     }
 
     @Test
@@ -54,167 +54,11 @@ public class ServletHandlerInterceptorTest {
 
         subject.afterCompletion(request, new MockHttpServletResponse(), this, null);
 
-        final InOrder order = inOrder(serverThreadBinder, serverTracer);
+        final InOrder order = inOrder(serverThreadBinder, responseInterceptor);
 
         order.verify(serverThreadBinder).setCurrentSpan(same(span));
-        order.verify(serverTracer).setServerSend();
-        order.verify(serverTracer).clearCurrentSpan();
+        order.verify(responseInterceptor).handle(any(ServerResponseAdapter.class));
     }
-
-    @Test
-    public void preHandleShouldNotAssumeParentIdIsPresent() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        final String name = randomAlphanumeric(20);
-        final long spanId = RAND.nextLong();
-        final long traceId = RAND.nextLong();
-
-        request.setMethod(HTTP_METHOD);
-        request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), Long.toHexString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), Long.toHexString(traceId));
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        final InOrder order = inOrder(serverTracer);
-        order.verify(serverTracer).setStateCurrentTrace(traceId, spanId, null, HTTP_METHOD);
-        order.verify(serverTracer).setServerReceived();
-        order.verifyNoMoreInteractions();
-
-    }
-
-    @Test
-    public void preHandleShouldHonourSampledFlag() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-
-        request.addHeader(BraveHttpHeaders.Sampled.getName(), false);
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        verify(serverTracer).setStateNoTracing();
-    }
-
-    @Test
-    public void preHandleShouldSubmitEndpointIfNotSubmitted() {
-        final String address = randomAlphanumeric(20);
-        final int port = RAND.nextInt();
-        final String serviceName = randomAlphanumeric(20);
-
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        request.addHeader(BraveHttpHeaders.Sampled.getName(), false);
-        request.setLocalAddr(address);
-        request.setLocalPort(port);
-        request.setContextPath(serviceName);
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        verify(serverTracer).setStateNoTracing();
-        verifyNoMoreInteractions(serverTracer);
-    }
-
-    @Test
-    public void preHandleShouldSetUnknownStateIfSpanIdMissing() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-
-        final String name = randomAlphanumeric(20);
-
-        request.setRequestURI(name);
-        request.setMethod(HTTP_METHOD);
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        final InOrder order = inOrder(serverTracer);
-        order.verify(serverTracer).setStateUnknown(eq(HTTP_METHOD));
-        order.verify(serverTracer).setServerReceived();
-        order.verifyNoMoreInteractions();
-    }
-
-    @Test
-    public void preHandleShouldSetCurrentTraceIfSpanAndTraceAreKnown() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        final String name = randomAlphanumeric(20);
-        final long spanId = RAND.nextLong();
-        final long traceId = RAND.nextLong();
-        final long parentSpanId = RAND.nextLong();
-
-        request.setMethod(HTTP_METHOD);
-        request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
-        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        final InOrder order = inOrder(serverTracer);
-        order.verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(HTTP_METHOD));
-        order.verify(serverTracer).setServerReceived();
-        order.verifyNoMoreInteractions();
-    }
-
-    @Test
-    public void preHandleShouldSupportNegativeTraceId() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        final String name = randomAlphanumeric(20);
-        final long spanId = 123L;
-        final long traceId = -4667777584646200191L;
-        final long parentSpanId = 789L;
-
-        request.setMethod(HTTP_METHOD);
-        request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
-        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(HTTP_METHOD));
-    }
-
-    @Test
-    public void preHandleShouldSupportNegativeSpanId() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        final String name = randomAlphanumeric(20);
-        final long spanId = -123L;
-        final long traceId = 456L;
-        final long parentSpanId = 789L;
-
-        request.setMethod(HTTP_METHOD);
-        request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
-        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(HTTP_METHOD));
-    }
-
-    @Test
-    public void preHandleShouldSupportNegativeParentSpanId() {
-        final MockHttpServletRequest request = new MockHttpServletRequest();
-
-        final String name = randomAlphanumeric(20);
-        final long spanId = 123L;
-        final long traceId = 456L;
-        final long parentSpanId = -789L;
-
-        request.setMethod(HTTP_METHOD);
-        request.setRequestURI(name);
-        request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId));
-        request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(traceId));
-        request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(parentSpanId));
-
-        subject.preHandle(request, new MockHttpServletResponse(), this);
-
-        verify(serverTracer).setStateCurrentTrace(eq(traceId), eq(spanId), eq(parentSpanId), eq(HTTP_METHOD));
-    }
-
 
     @Test
     public void afterConcurrentHandlingStartedShouldSaveStateAndClear() {
@@ -228,6 +72,6 @@ public class ServletHandlerInterceptorTest {
 
         assertSame(serverSpan, request.getAttribute(ServletHandlerInterceptor.HTTP_SERVER_SPAN_ATTRIBUTE));
 
-        verify(serverTracer).clearCurrentSpan();
+        verify(serverThreadBinder).setCurrentSpan(null);
     }
 }
