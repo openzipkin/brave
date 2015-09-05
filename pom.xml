@@ -61,6 +61,7 @@
     <module>brave-spring-web-servlet-interceptor</module>
     <module>brave-spring-resttemplate-interceptors</module>
     <module>brave-mysql</module>
+    <module>brave-web-servlet-filter</module>
   </modules>
 
   <dependencyManagement>
