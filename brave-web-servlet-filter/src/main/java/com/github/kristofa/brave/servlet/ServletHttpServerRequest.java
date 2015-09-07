@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.jersey;
+package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
 
