@@ -1,32 +1,61 @@
 package com.github.kristofa.brave.spring;
 
+import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.github.kristofa.brave.ServerTracer;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.http.HttpServerRequestAdapter;
+import com.github.kristofa.brave.http.HttpServerResponseAdapter;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import static com.github.kristofa.brave.IdConversion.convertToLong;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
     static final String HTTP_SERVER_SPAN_ATTRIBUTE = ServletHandlerInterceptor.class.getName() + ".server-span";
+
+    private final ServerRequestInterceptor requestInterceptor;
+    private final SpanNameProvider spanNameProvider;
+    private final ServerResponseInterceptor responseInterceptor;
     private final ServerSpanThreadBinder serverThreadBinder;
-    private final ServerTracer serverTracer;
 
     @Autowired
-    public ServletHandlerInterceptor(final ServerTracer serverTracer, final ServerSpanThreadBinder serverThreadBinder) {
-        this.serverTracer = serverTracer;
+    public ServletHandlerInterceptor(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider, final ServerSpanThreadBinder serverThreadBinder) {
+        this.requestInterceptor = requestInterceptor;
+        this.spanNameProvider = spanNameProvider;
+        this.responseInterceptor = responseInterceptor;
         this.serverThreadBinder = serverThreadBinder;
     }
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
-        beginTrace(request);
+        requestInterceptor.handle(new HttpServerRequestAdapter(new HttpServerRequest() {
+            @Override
+            public String getHttpHeaderValue(String headerName) {
+                return request.getHeader(headerName);
+            }
+
+            @Override
+            public URI getUri() {
+                try {
+                    return new URI(request.getRequestURI());
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public String getHttpMethod() {
+                return request.getMethod();
+            }
+        }, spanNameProvider));
 
         return true;
     }
@@ -34,7 +63,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     @Override
     public void afterConcurrentHandlingStarted(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
         request.setAttribute(HTTP_SERVER_SPAN_ATTRIBUTE, serverThreadBinder.getCurrentServerSpan());
-        serverTracer.clearCurrentSpan();
+        serverThreadBinder.setCurrentSpan(null);
     }
 
     @Override
@@ -46,39 +75,12 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
             serverThreadBinder.setCurrentSpan(span);
         }
 
-        try {
-            serverTracer.setServerSend();
-        } finally {
-            serverTracer.clearCurrentSpan();
-        }
-    }
-
-    private void beginTrace(final HttpServletRequest request) {
-
-        final String sampled = request.getHeader(BraveHttpHeaders.Sampled.getName());
-        if (!Boolean.valueOf(sampled != null ? sampled : Boolean.TRUE.toString())) {
-            serverTracer.setStateNoTracing();
-            return;
-        }
-
-        updateServerState(request);
-
-        serverTracer.setServerReceived();
-    }
-
-    private void updateServerState(final HttpServletRequest request) {
-        final String traceId = request.getHeader(BraveHttpHeaders.TraceId.getName());
-        final String spanId = request.getHeader(BraveHttpHeaders.SpanId.getName());
-        final String spanName = request.getMethod();
-
-        if (traceId != null && spanId != null) {
-            final String parentSpanId = request.getHeader(BraveHttpHeaders.ParentSpanId.getName());
-            serverTracer.setStateCurrentTrace(convertToLong(traceId), convertToLong(spanId),
-                                              parentSpanId != null ? convertToLong(parentSpanId) : null, spanName);
-        } else {
-            serverTracer.setStateUnknown(spanName);
-        }
-        serverTracer.submitBinaryAnnotation("http.uri", request.getRequestURI());
+       responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
+           @Override
+           public int getHttpStatusCode() {
+               return response.getStatus();
+           }
+       }));
     }
 
 }

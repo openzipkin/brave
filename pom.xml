@@ -11,7 +11,7 @@
 
   <groupId>com.github.kristofa</groupId>
   <artifactId>brave</artifactId>
-  <version>3.0.0-rc-1</version>
+  <version>3.0.0-rc-2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>brave</name>
@@ -61,6 +61,7 @@
     <module>brave-spring-web-servlet-interceptor</module>
     <module>brave-spring-resttemplate-interceptors</module>
     <module>brave-mysql</module>
+    <module>brave-web-servlet-filter</module>
   </modules>
 
   <dependencyManagement>
