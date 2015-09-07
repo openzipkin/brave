@@ -72,7 +72,7 @@ to get you up to speed on how you can implement brave in your own apps.
 
 ## Maven artifacts ##
 
-Maven artifacts for each release are published to Maven central. 
+Maven artifacts for each release are published to Maven Central. 
 
 ## Changelog ##
 
