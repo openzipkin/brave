@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
 
@@ -20,8 +23,6 @@ public class ITZipkinSpanCollector {
 
     private static final Logger LOGGER = Logger.getLogger(ITZipkinSpanCollector.class.getName());
     private static final int QUEUE_SIZE = 5;
-    private static final int FIRST_BURST_OF_SPANS = 100;
-    private static final int SECOND_BURST_OF_SPANS = 20;
 
     private static final int PORT = 9110;
     private static final long SPAN_ID = 1;
@@ -34,7 +35,6 @@ public class ITZipkinSpanCollector {
     public static void setupBeforeClass() throws TTransportException {
         zipkinCollectorServer = new ZipkinCollectorServer(PORT);
         zipkinCollectorServer.start();
-
     }
 
     @AfterClass
@@ -62,38 +62,35 @@ public class ITZipkinSpanCollector {
      * @throws TTransportException
      * @throws InterruptedException
      */
-    @Ignore(value="It seems to sometimes end with a failure because it received 140 spans iso 120.")
+    @Test
     public void testStressTestAndCauseSpanProcessingThreadTimeOut() throws TTransportException, InterruptedException {
+        final int firstBurstOfSpans = 100;
+        final int secondBurstOfSpans = 20;
 
         final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
         params.setQueueSize(100);
         params.setBatchSize(50);
 
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params);
-        try {
-
+        try (ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params)) {
             final Span span = new Span();
             span.setId(SPAN_ID);
             span.setTrace_id(TRACE_ID);
             span.setName(SPAN_NAME);
 
-            for (int i = 1; i <= FIRST_BURST_OF_SPANS; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + FIRST_BURST_OF_SPANS);
+            for (int i = 1; i <= firstBurstOfSpans; i++) {
+                LOGGER.info("Submitting Span nr " + i + "/" + firstBurstOfSpans);
                 zipkinSpanCollector.collect(span);
             }
             LOGGER.info("Sleep 8 seconds");
             Thread.sleep(8000);
-            for (int i = 1; i <= SECOND_BURST_OF_SPANS; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + SECOND_BURST_OF_SPANS);
+            for (int i = 1; i <= secondBurstOfSpans; i++) {
+                LOGGER.info("Submitting Span nr " + i + "/" + secondBurstOfSpans);
                 zipkinSpanCollector.collect(span);
             }
             LOGGER.info("Sleep 5 seconds");
             Thread.sleep(5000);
-        } finally {
-            zipkinSpanCollector.close();
         }
-        final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
-        assertEquals(120, serverCollectedSpans.size());
+        assertEquals(firstBurstOfSpans + secondBurstOfSpans, zipkinCollectorServer.getReceivedSpans().size());
     }
 
     /**
@@ -112,7 +109,7 @@ public class ITZipkinSpanCollector {
     @Test
     public void testOfferTimeOut() throws TTransportException, InterruptedException {
 
-        final int hunderdTen = 110;
+        final int hundredTen = 110;
 
         final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
         params.setQueueSize(QUEUE_SIZE);
@@ -126,8 +123,8 @@ public class ITZipkinSpanCollector {
             span.setTrace_id(TRACE_ID);
             span.setName(SPAN_NAME);
 
-            for (int i = 1; i <= hunderdTen; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + hunderdTen);
+            for (int i = 1; i <= hundredTen; i++) {
+                LOGGER.info("Submitting Span nr " + i + "/" + hundredTen);
                 zipkinSpanCollector.collect(span);
             }
             LOGGER.info("Sleep 5 seconds");
@@ -136,7 +133,7 @@ public class ITZipkinSpanCollector {
             zipkinSpanCollector.close();
         }
         final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
-        assertTrue(serverCollectedSpans.size() < hunderdTen);
+        assertTrue(serverCollectedSpans.size() < hundredTen);
 
     }
 
