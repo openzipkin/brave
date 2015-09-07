@@ -4,6 +4,8 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,13 +18,12 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.ResultCode;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.StoreAggregatesException;
-import com.twitter.zipkin.gen.ZipkinCollector.Iface;
+import com.twitter.zipkin.gen.scribe.Iface;
 
 class ZipkinCollectorReceiver implements Iface {
 
     private static final Logger LOGGER = Logger.getLogger(ZipkinCollectorReceiver.class.getName());
-    private final List<Span> spans = new ArrayList<Span>();
+    private final BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
     private final int delayMs;
 
     public ZipkinCollectorReceiver(final int delayMs) {
@@ -63,31 +64,15 @@ class ZipkinCollectorReceiver implements Iface {
         return ResultCode.OK;
     }
 
-    @Override
-    public void storeTopAnnotations(final String service_name, final List<String> annotations)
-        throws StoreAggregatesException, TException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void storeTopKeyValueAnnotations(final String service_name, final List<String> annotations)
-        throws StoreAggregatesException, TException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void storeDependencies(final String service_name, final List<String> endpoints) throws StoreAggregatesException,
-        TException {
-        throw new UnsupportedOperationException();
-    }
-
     /**
      * Gets the received spans in the order as they were received.
      * 
      * @return Received spans.
      */
     public List<Span> getSpans() {
-        return new ArrayList<Span>(spans);
+        List<Span> result = new ArrayList<>();
+        spans.drainTo(result);
+        return result;
     }
 
 }

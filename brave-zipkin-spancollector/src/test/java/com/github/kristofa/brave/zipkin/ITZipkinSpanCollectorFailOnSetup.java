@@ -2,8 +2,6 @@ package com.github.kristofa.brave.zipkin;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.List;
-
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
@@ -43,9 +41,8 @@ public class ITZipkinSpanCollectorFailOnSetup {
         try {
             zipkinSpanCollector.collect(span);
             zipkinSpanCollector.close();
-            final List<Span> receivedSpans = server.getReceivedSpans();
-            assertEquals(2, receivedSpans.size());
 
+            assertEquals(2, server.getReceivedSpans().size());
         } finally {
             server.stop();
         }

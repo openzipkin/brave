@@ -11,8 +11,7 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import com.twitter.zipkin.gen.ZipkinCollector;
-import com.twitter.zipkin.gen.ZipkinCollector.Client;
+import com.twitter.zipkin.gen.scribe.Client;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
@@ -21,7 +20,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
  * 
  * @author adriaens
  */
-class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollector.Client> {
+class ZipkinCollectorClientProvider implements ThriftClientProvider<Client> {
 
     private final static Logger LOGGER = Logger.getLogger(ZipkinCollectorClientProvider.class.getName());
 
@@ -29,7 +28,7 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
     private final int port;
     private final int timeout;
     private TTransport transport;
-    private ZipkinCollector.Client client;
+    private Client client;
 
     /**
      * Create a new instance.
@@ -53,7 +52,7 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<ZipkinCollec
         socket.setTimeout(timeout);
         transport = new TFramedTransport(socket);
         final TProtocol protocol = new TBinaryProtocol(transport);
-        client = new ZipkinCollector.Client(protocol);
+        client = new Client(protocol);
         transport.open();
     }
 

@@ -17,7 +17,7 @@ import org.apache.thrift.transport.TIOStreamTransport;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.ZipkinCollector.Client;
+import com.twitter.zipkin.gen.scribe.Client;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static java.lang.String.format;
