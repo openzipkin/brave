@@ -1,6 +1,7 @@
 # brave #
 
 [![Build Status](https://travis-ci.org/openzipkin/brave.svg?branch=master)](https://travis-ci.org/openzipkin/brave)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.kristofa/brave.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.kristofa/brave)
 
 **Brave moved to OpenZipkin.** [Read more about it here](http://kdevlog.blogspot.de/2015/07/brave-moved-to-openzipkin-org.html).
 
