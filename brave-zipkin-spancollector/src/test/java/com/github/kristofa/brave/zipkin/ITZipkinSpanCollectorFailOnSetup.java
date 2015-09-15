@@ -3,6 +3,7 @@ package com.github.kristofa.brave.zipkin;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.thrift.transport.TTransportException;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
@@ -21,7 +22,7 @@ public class ITZipkinSpanCollectorFailOnSetup {
      * @throws TTransportException
      * @throws InterruptedException
      */
-    @Test
+    @Ignore
     public void testFailOnSetupFalse() throws TTransportException, InterruptedException {
         final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
         params.setFailOnSetup(false);

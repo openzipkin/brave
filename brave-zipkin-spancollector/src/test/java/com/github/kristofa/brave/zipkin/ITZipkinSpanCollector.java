@@ -7,10 +7,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 
 import com.twitter.zipkin.gen.Span;
 
@@ -62,7 +59,7 @@ public class ITZipkinSpanCollector {
      * @throws TTransportException
      * @throws InterruptedException
      */
-    @Test
+    @Ignore
     public void testStressTestAndCauseSpanProcessingThreadTimeOut() throws TTransportException, InterruptedException {
         final int firstBurstOfSpans = 100;
         final int secondBurstOfSpans = 20;
