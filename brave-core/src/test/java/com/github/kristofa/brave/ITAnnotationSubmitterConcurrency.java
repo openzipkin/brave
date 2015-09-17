@@ -64,7 +64,7 @@ public class ITAnnotationSubmitterConcurrency {
             result.get();
         }
 
-        assertEquals(800, span.getAnnotations().size());
+        assertEquals(400, span.getAnnotations().size());
         assertEquals(400, span.getBinary_annotations().size());
 
     }
@@ -86,7 +86,6 @@ public class ITAnnotationSubmitterConcurrency {
         public Void call() throws Exception {
             for (int index = from; index <= to; index++) {
                 annotationSubmitter.submitAnnotation("annotation" + index);
-                annotationSubmitter.submitAnnotation("annotationWithTime" + index, 0, 5);
                 annotationSubmitter.submitBinaryAnnotation("binaryAnnotation" + index, "value");
             }
             return null;

@@ -28,28 +28,6 @@ public abstract class AnnotationSubmitter {
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
     /**
-     * Submits custom annotation that represents an event with duration.
-     *
-     * @param annotationName Custom annotation.
-     * @param startTime Start time, <a href="http://en.wikipedia.org/wiki/Unix_time">Unix time</a> in milliseconds. eg
-     *            System.currentTimeMillis().
-     * @param endTime End time, Unix time in milliseconds. eg System.currentTimeMillis().
-     */
-    public void submitAnnotation(String annotationName, long startTime, long endTime) {
-        Span span = spanAndEndpoint().span();
-        if (span != null) {
-            Annotation annotation = new Annotation();
-            int duration = (int)(endTime - startTime);
-            annotation.setTimestamp(startTime * 1000);
-            annotation.setHost(spanAndEndpoint().endpoint());
-            annotation.setDuration(duration * 1000);
-            // Duration is currently not supported in the ZipkinUI, so also add it as part of the annotation name.
-            annotation.setValue(annotationName + "=" + duration + "ms");
-            addAnnotation(span, annotation);
-        }
-    }
-
-    /**
      * Submits custom annotation for current span. Use this method if your annotation has no duration assigned to it.
      *
      * @param annotationName Custom annotation for current span.

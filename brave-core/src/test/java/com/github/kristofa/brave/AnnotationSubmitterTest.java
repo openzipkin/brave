@@ -46,22 +46,6 @@ public class AnnotationSubmitterTest {
     }
 
     @Test
-    public void testSubmitAnnotationStartEndTime() {
-        final long startDateMs = 1000;
-        final long endDateMs = 2000;
-        final int durationMs = (int)(endDateMs - startDateMs);
-        annotationSubmitter.submitAnnotation(ANNOTATION_NAME, startDateMs, endDateMs);
-
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endpoint);
-        expectedAnnotation.setValue(ANNOTATION_NAME + "=" + durationMs + "ms");
-        expectedAnnotation.setTimestamp(startDateMs * 1000);
-        expectedAnnotation.setDuration(durationMs * 1000);
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verifyNoMoreInteractions(mockSpan);
-    }
-
-    @Test
     public void testSubmitAnnotationSpanEndpointString() {
         annotationSubmitter.submitAnnotation(ANNOTATION_NAME);
 
