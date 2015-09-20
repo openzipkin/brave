@@ -3,7 +3,6 @@ package com.github.kristofa.brave.zipkin;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
@@ -19,14 +18,13 @@ import com.twitter.zipkin.gen.Span;
 public class ITZipkinSpanCollector {
 
     private static final Logger LOGGER = Logger.getLogger(ITZipkinSpanCollector.class.getName());
-    private static final int QUEUE_SIZE = 5;
 
-    private static final int PORT = 9110;
-    private static final long SPAN_ID = 1;
-    private static final long TRACE_ID = 2;
+    private static final int PORT = FreePortProvider.getNewFreePort();
     private static final String SPAN_NAME = "SpanName";
 
     private static ZipkinCollectorServer zipkinCollectorServer;
+
+    private long traceId = 1;
 
     @BeforeClass
     public static void setupBeforeClass() throws TTransportException {
@@ -41,25 +39,25 @@ public class ITZipkinSpanCollector {
 
     @Before
     public void setup() {
+        traceId = 1;
         zipkinCollectorServer.clearReceivedSpans();
     }
 
     /**
-     * The test will submit a first burst of spans (configured to 100) in a for loop without delay while only having a small
-     * queue size (configured to 5). After those 100 the test will sleep for 8 seconds which is longer than the timeout time
-     * for the blocking queue. Next it will submit another 20 spans in a for loop without delay, wait for 5 seconds and shut
-     * down the collector. At this point we expect to have received all 120 spans.
-     * <p/>
+     * The test will submit a first burst of spans (configured to 100) in a for loop without delay.
+     * After those 100 the test will sleep for 8 seconds. Next it will submit another 20 spans in a for
+     * loop without delay, wait for 5 seconds and shut down the collector. At this point we expect to have received all 120 spans.
+     *
      * So implicitly this test tests:
-     * <ol>
-     * <li>a full queue at which client will be blocked.</li>
-     * <li>a wait time of longer than 5 seconds which means SpanProcessingThread will run into timeout.
-     * </ol>
+     * <ul>
+     * <li>a wait time of longer than 5 seconds which means SpanProcessingThread will run into timeout.</li>
+     * <li>test that on shut down the remaining collected spans are submitted</li>
+     * </ul>
      *
      * @throws TTransportException
      * @throws InterruptedException
      */
-    @Ignore
+    @Test
     public void testStressTestAndCauseSpanProcessingThreadTimeOut() throws TTransportException, InterruptedException {
         final int firstBurstOfSpans = 100;
         final int secondBurstOfSpans = 20;
@@ -68,70 +66,35 @@ public class ITZipkinSpanCollector {
         params.setQueueSize(100);
         params.setBatchSize(50);
 
+        long traceId = 1;
         try (ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params)) {
-            final Span span = new Span();
-            span.setId(SPAN_ID);
-            span.setTrace_id(TRACE_ID);
-            span.setName(SPAN_NAME);
 
-            for (int i = 1; i <= firstBurstOfSpans; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + firstBurstOfSpans);
-                zipkinSpanCollector.collect(span);
-            }
+            submitSpans(zipkinSpanCollector, firstBurstOfSpans);
             LOGGER.info("Sleep 8 seconds");
             Thread.sleep(8000);
-            for (int i = 1; i <= secondBurstOfSpans; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + secondBurstOfSpans);
-                zipkinSpanCollector.collect(span);
-            }
+            submitSpans(zipkinSpanCollector, secondBurstOfSpans);
             LOGGER.info("Sleep 5 seconds");
             Thread.sleep(5000);
         }
         assertEquals(firstBurstOfSpans + secondBurstOfSpans, zipkinCollectorServer.getReceivedSpans().size());
     }
 
-    /**
-     * The test will submit a burst of 110 spans in a for loop without delay while only having a small queue size (configured
-     * to 5). But the server is configured to take a long time to consume span, longer than the 5 seconds. So implicitly this
-     * tests:
-     * <ol>
-     * <li>a full queue at which client will be blocked for more then its time out value. This means spans are lost, do not
-     * end up in collector server.</li>
-     * <li>it also shows that stopping ZipkinSpanCollector before all queued spans have been submitted works.</li>
-     * </ol>
-     *
-     * @throws TTransportException
-     * @throws InterruptedException
-     */
-    @Test
-    public void testOfferTimeOut() throws TTransportException, InterruptedException {
 
-        final int hundredTen = 110;
-
-        final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
-        params.setQueueSize(QUEUE_SIZE);
-        params.setBatchSize(50);
-
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params);
-        try {
-
-            final Span span = new Span();
-            span.setId(SPAN_ID);
-            span.setTrace_id(TRACE_ID);
-            span.setName(SPAN_NAME);
-
-            for (int i = 1; i <= hundredTen; i++) {
-                LOGGER.info("Submitting Span nr " + i + "/" + hundredTen);
-                zipkinSpanCollector.collect(span);
-            }
-            LOGGER.info("Sleep 5 seconds");
-            Thread.sleep(5000);
-        } finally {
-            zipkinSpanCollector.close();
+    private void submitSpans(ZipkinSpanCollector zipkinSpanCollector, int nrOfSpans) {
+        for (int i = 1; i <= nrOfSpans; i++) {
+            LOGGER.info("Submitting Span nr " + i + "/" + nrOfSpans);
+            final Span span = span(traceId);
+            traceId++;
+            zipkinSpanCollector.collect(span);
         }
-        final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
-        assertTrue(serverCollectedSpans.size() < hundredTen);
+    }
 
+    private Span span(long traceId) {
+        final Span span = new Span();
+        span.setId(traceId);
+        span.setTrace_id(traceId);
+        span.setName(SPAN_NAME);
+        return span;
     }
 
 }

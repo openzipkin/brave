@@ -68,7 +68,6 @@ class SpanProcessingThread implements Callable<Integer> {
      */
     public void stop() {
         stop = true;
-        clientProvider.close();
     }
 
     /**

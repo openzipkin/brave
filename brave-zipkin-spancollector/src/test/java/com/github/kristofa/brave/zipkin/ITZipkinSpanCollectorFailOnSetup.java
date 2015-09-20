@@ -3,14 +3,13 @@ package com.github.kristofa.brave.zipkin;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.thrift.transport.TTransportException;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
 
 public class ITZipkinSpanCollectorFailOnSetup {
 
-    private static final int PORT = 9210;
+    private static final int PORT = FreePortProvider.getNewFreePort();
     private static final long SPAN_ID = 1;
     private static final long TRACE_ID = 2;
     private static final String SPAN_NAME = "SpanName";
@@ -22,7 +21,7 @@ public class ITZipkinSpanCollectorFailOnSetup {
      * @throws TTransportException
      * @throws InterruptedException
      */
-    @Ignore
+    @Test
     public void testFailOnSetupFalse() throws TTransportException, InterruptedException {
         final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
         params.setFailOnSetup(false);

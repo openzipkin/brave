@@ -49,6 +49,7 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
     private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<SpanProcessingThread>();
+    private final List<ZipkinCollectorClientProvider> clientProviders = new ArrayList<>();
     private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
@@ -86,6 +87,7 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
             final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
                     params.getBatchSize());
             spanProcessingThreads.add(spanProcessingThread);
+            clientProviders.add(clientProvider);
             futures.add(executorService.submit(spanProcessingThread));
         }
     }
@@ -170,6 +172,9 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
             } catch (final Exception e) {
                 LOGGER.log(Level.WARNING, "Exception when getting result of SpanProcessingThread.", e);
             }
+        }
+        for(final ZipkinCollectorClientProvider clientProvider : clientProviders) {
+            clientProvider.close();
         }
         executorService.shutdown();
         LOGGER.info("ZipkinSpanCollector closed.");
