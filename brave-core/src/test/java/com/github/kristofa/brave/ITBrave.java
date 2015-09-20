@@ -68,8 +68,7 @@ public class ITBrave {
 
             serverTracer.setServerReceived();
 
-            final long startDate = System.currentTimeMillis();
-            serverTracer.submitAnnotation("custom annotation", startDate, startDate + 1000);
+            serverTracer.submitAnnotation("custom annotation");
 
             // Simulate client.
             final ClientTracer clientTracer = brave.clientTracer();
