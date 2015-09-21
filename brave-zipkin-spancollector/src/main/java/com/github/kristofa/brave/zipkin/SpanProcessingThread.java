@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.twitter.zipkin.gen.ZipkinCollector;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -39,7 +40,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
-    private final ZipkinCollectorClientProvider clientProvider;
+    private final ThriftClientProvider<ZipkinCollector.Client> clientProvider;
     private final TProtocolFactory protocolFactory;
     private volatile boolean stop = false;
     private int processedSpans = 0;
@@ -53,7 +54,7 @@ class SpanProcessingThread implements Callable<Integer> {
      * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
      * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
      */
-    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ThriftClientProvider<ZipkinCollector.Client> clientProvider,
         final int maxBatchSize) {
         if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
         this.queue = checkNotNull(queue, "Null queue");

@@ -19,6 +19,7 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanCollector;
 
+import com.twitter.zipkin.gen.ZipkinCollector;
 import org.apache.thrift.TException;
 
 import com.twitter.zipkin.gen.AnnotationType;
@@ -82,7 +83,7 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
 
             // Creating a client provider for every spanProcessingThread.
-            ZipkinCollectorClientProvider clientProvider = createZipkinCollectorClientProvider(zipkinCollectorHost,
+            ThriftClientProvider<ZipkinCollector.Client> clientProvider = createZipkinCollectorClientProvider(zipkinCollectorHost,
                     zipkinCollectorPort, params);
             final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
                     params.getBatchSize());
@@ -92,9 +93,9 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
         }
     }
 
-    private ZipkinCollectorClientProvider createZipkinCollectorClientProvider(String zipkinCollectorHost,
+    protected ThriftClientProvider<ZipkinCollector.Client> createZipkinCollectorClientProvider(String zipkinCollectorHost,
             int zipkinCollectorPort, ZipkinSpanCollectorParams params) {
-        ZipkinCollectorClientProvider clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost,
+        ThriftClientProvider<ZipkinCollector.Client> clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost,
                 zipkinCollectorPort, params.getSocketTimeout());
         try {
             clientProvider.setup();
