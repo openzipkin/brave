@@ -62,7 +62,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
          */
         public abstract Builder traceFilters(List<TraceFilter> traceFilters);
 
-        abstract ServerTracer build();
+        public abstract ServerTracer build();
     }
 
     /**
