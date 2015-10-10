@@ -1,5 +1,8 @@
 sudo: false
+cache:
+  directories:
+  - $HOME/.m2
 language: java
-script: "mvn verify"
+script: "./mvnw verify"
 jdk:
   - oraclejdk8
