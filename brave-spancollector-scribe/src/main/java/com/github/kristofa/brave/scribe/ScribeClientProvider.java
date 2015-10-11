@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -16,13 +16,13 @@ import com.twitter.zipkin.gen.scribe.Client;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
 /**
- * {@link ThriftClientProvider} for ZipkinCollector.
+ * {@link ThriftClientProvider} for ScribeSpanCollector.
  * 
- * @author adriaens
+ * @author kristof
  */
-class ZipkinCollectorClientProvider implements ThriftClientProvider<Client> {
+class ScribeClientProvider implements ThriftClientProvider<Client> {
 
-    private final static Logger LOGGER = Logger.getLogger(ZipkinCollectorClientProvider.class.getName());
+    private final static Logger LOGGER = Logger.getLogger(ScribeClientProvider.class.getName());
 
     private final String host;
     private final int port;
@@ -37,7 +37,7 @@ class ZipkinCollectorClientProvider implements ThriftClientProvider<Client> {
      * @param port Port.
      * @param timeout Socket time out in milliseconds.
      */
-    public ZipkinCollectorClientProvider(final String host, final int port, final int timeout) {
+    public ScribeClientProvider(final String host, final int port, final int timeout) {
         this.host = checkNotBlank(host, "Null or empty host");
         this.port = port;
         this.timeout = timeout;

@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import org.apache.thrift.TException;
 

@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import java.io.Closeable;
 import java.io.UnsupportedEncodingException;
@@ -15,8 +15,6 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.SpanCollector;
 
 import org.apache.thrift.TException;
@@ -29,51 +27,48 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
- * Sends spans to Zipkin collector or Scribe.
- * <p/>
- * Typically the {@link ZipkinSpanCollector} should be a singleton in your application that can be used by both
- * {@link ClientTracer} as {@link ServerTracer}.
- * <p/>
+ * Sends spans to Scribe or any compatible service. This includes
+ * the original Zipkin Collector Service which implements the Scribe interface.
+ * <p>
  * This SpanCollector is implemented so it puts spans on a queue which are processed by a separate thread. In this way we are
  * submitting spans asynchronously and we should have minimal overhead on application performance.
- * <p/>
- * At this moment the number of processing threads is fixed and set to 1.
+ * </p>
  *
  * @author kristof
  */
-public class ZipkinSpanCollector implements SpanCollector, Closeable {
+public class ScribeSpanCollector implements SpanCollector, Closeable {
 
     private static final String UTF_8 = "UTF-8";
-    private static final Logger LOGGER = Logger.getLogger(ZipkinSpanCollector.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ScribeSpanCollector.class.getName());
 
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
     private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<SpanProcessingThread>();
-    private final List<ZipkinCollectorClientProvider> clientProviders = new ArrayList<>();
+    private final List<ScribeClientProvider> clientProviders = new ArrayList<>();
     private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
 
     /**
-     * Create a new instance with default queue size (= {@link ZipkinSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
-     * batch size (= {@link ZipkinSpanCollectorParams#DEFAULT_BATCH_SIZE}).
+     * Create a new instance with default queue size (= {@link ScribeSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
+     * batch size (= {@link ScribeSpanCollectorParams#DEFAULT_BATCH_SIZE}).
      *
-     * @param zipkinCollectorHost Host for zipkin collector.
-     * @param zipkinCollectorPort Port for zipkin collector.
+     * @param host Host
+     * @param port Port
      */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort) {
-        this(zipkinCollectorHost, zipkinCollectorPort, new ZipkinSpanCollectorParams());
+    public ScribeSpanCollector(final String host, final int port) {
+        this(host, port, new ScribeSpanCollectorParams());
     }
 
     /**
      * Create a new instance.
      *
-     * @param zipkinCollectorHost Host for zipkin collector.
-     * @param zipkinCollectorPort Port for zipkin collector.
+     * @param host Host for zipkin collector.
+     * @param port Port for zipkin collector.
      * @param params Zipkin Span Collector parameters.
      */
-    public ZipkinSpanCollector(final String zipkinCollectorHost, final int zipkinCollectorPort,
-            final ZipkinSpanCollectorParams params) {
-        checkNotBlank(zipkinCollectorHost, "Null or empty zipkinCollectorHost");
+    public ScribeSpanCollector(final String host, final int port,
+                               final ScribeSpanCollectorParams params) {
+        checkNotBlank(host, "Null or empty host");
         checkNotNull(params, "Null params");
 
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
@@ -82,8 +77,8 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
         for (int i = 1; i <= params.getNrOfThreads(); i++) {
 
             // Creating a client provider for every spanProcessingThread.
-            ZipkinCollectorClientProvider clientProvider = createZipkinCollectorClientProvider(zipkinCollectorHost,
-                    zipkinCollectorPort, params);
+            ScribeClientProvider clientProvider = createZipkinCollectorClientProvider(host,
+                    port, params);
             final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
                     params.getBatchSize());
             spanProcessingThreads.add(spanProcessingThread);
@@ -92,9 +87,9 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
         }
     }
 
-    private ZipkinCollectorClientProvider createZipkinCollectorClientProvider(String zipkinCollectorHost,
-            int zipkinCollectorPort, ZipkinSpanCollectorParams params) {
-        ZipkinCollectorClientProvider clientProvider = new ZipkinCollectorClientProvider(zipkinCollectorHost,
+    private ScribeClientProvider createZipkinCollectorClientProvider(String zipkinCollectorHost,
+            int zipkinCollectorPort, ScribeSpanCollectorParams params) {
+        ScribeClientProvider clientProvider = new ScribeClientProvider(zipkinCollectorHost,
                 zipkinCollectorPort, params.getSocketTimeout());
         try {
             clientProvider.setup();
@@ -173,11 +168,11 @@ public class ZipkinSpanCollector implements SpanCollector, Closeable {
                 LOGGER.log(Level.WARNING, "Exception when getting result of SpanProcessingThread.", e);
             }
         }
-        for(final ZipkinCollectorClientProvider clientProvider : clientProviders) {
+        for(final ScribeClientProvider clientProvider : clientProviders) {
             clientProvider.close();
         }
         executorService.shutdown();
-        LOGGER.info("ZipkinSpanCollector closed.");
+        LOGGER.info("ScribeSpanCollector closed.");
     }
 
 }

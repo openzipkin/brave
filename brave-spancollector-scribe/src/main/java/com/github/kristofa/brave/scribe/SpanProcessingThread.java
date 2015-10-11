@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -23,14 +23,14 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static java.lang.String.format;
 
 /**
- * Thread implementation that is responsible for submitting spans to the Zipkin span collector or Scribe. The thread takes
- * spans from a queue. The spans are produced by {@link ZipkinSpanCollector} put on a queue and consumed and processed by
+ * Thread implementation that is responsible for submitting spans to a Scribe compatible destination. The thread takes
+ * spans from a queue. The spans are produced by {@link ScribeSpanCollector} put on a queue and consumed and processed by
  * this thread.
  * <p/>
  * We will try to buffer spans and send them in batches to minimize communication overhead. However if the batch size is not
  * reached within 2 polls (max 10 seconds) the available spans will be sent over anyway.
  * 
- * @see ZipkinSpanCollector
+ * @see ScribeSpanCollector
  * @author kristof
  */
 class SpanProcessingThread implements Callable<Integer> {
@@ -39,7 +39,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private static final int MAX_SUBSEQUENT_EMPTY_BATCHES = 2;
 
     private final BlockingQueue<Span> queue;
-    private final ZipkinCollectorClientProvider clientProvider;
+    private final ScribeClientProvider clientProvider;
     private final TProtocolFactory protocolFactory;
     private volatile boolean stop = false;
     private int processedSpans = 0;
@@ -53,7 +53,7 @@ class SpanProcessingThread implements Callable<Integer> {
      * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
      * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
      */
-    public SpanProcessingThread(final BlockingQueue<Span> queue, final ZipkinCollectorClientProvider clientProvider,
+    public SpanProcessingThread(final BlockingQueue<Span> queue, final ScribeClientProvider clientProvider,
         final int maxBatchSize) {
         if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
         this.queue = checkNotNull(queue, "Null queue");

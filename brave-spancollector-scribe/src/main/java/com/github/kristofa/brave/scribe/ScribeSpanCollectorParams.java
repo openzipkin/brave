@@ -1,7 +1,7 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 /**
- * Optional parameters for {@link ZipkinSpanCollector}.
+ * Optional parameters for {@link ScribeSpanCollector}.
  * <p/>
  * If not specified we will use the default values. We support following parameters:
  * <ul>
@@ -11,13 +11,13 @@ package com.github.kristofa.brave.zipkin;
  * <li>number of threads: The number of parallel threads for submitting spans to collector.</li>
  * <li>socket time out: Time in milliseconds after which our socket connections will time out. When it times out an exception
  * will be thrown.</li>
- * <li>fail on setup: Indicates if {@link ZipkinSpanCollector} should fail on creation when connection with collector can't
+ * <li>fail on setup: Indicates if {@link ScribeSpanCollector} should fail on creation when connection with collector can't
  * be established or just log error message.</li>
  * </ul>
  * 
  * @author kristof
  */
-public class ZipkinSpanCollectorParams {
+public class ScribeSpanCollectorParams {
 
     public int DEFAULT_QUEUE_SIZE = 200;
     public int DEFAULT_BATCH_SIZE = 10;
@@ -33,7 +33,7 @@ public class ZipkinSpanCollectorParams {
     /**
      * Create a new instance with default values.
      */
-    public ZipkinSpanCollectorParams() {
+    public ScribeSpanCollectorParams() {
         queueSize = DEFAULT_QUEUE_SIZE;
         batchSize = DEFAULT_BATCH_SIZE;
         nrOfThreads = DEFAULT_NR_OF_THREADS;
@@ -120,7 +120,7 @@ public class ZipkinSpanCollectorParams {
     /**
      * Sets fail on setup value.
      * 
-     * @param failOnSetup <code>true</code> in case {@link ZipkinSpanCollector} will throw exception when connection can't be
+     * @param failOnSetup <code>true</code> in case {@link ScribeSpanCollector} will throw exception when connection can't be
      *            established during setup. Or <code>false</code> in case we should log message but not throw exception.
      */
     public void setFailOnSetup(final boolean failOnSetup) {
@@ -128,9 +128,9 @@ public class ZipkinSpanCollectorParams {
     }
 
     /**
-     * Indicates if {@link ZipkinSpanCollector} should fail on creation when connection with collector can't be established.
+     * Indicates if {@link ScribeSpanCollector} should fail on creation when connection with collector can't be established.
      * 
-     * @return <code>true</code> in case {@link ZipkinSpanCollector} will throw exception when connection can't be
+     * @return <code>true</code> in case {@link ScribeSpanCollector} will throw exception when connection can't be
      *         established during setup. Or <code>false</code> in case we should log message but not throw exception. Default
      *         value = <code>true</code>.
      */

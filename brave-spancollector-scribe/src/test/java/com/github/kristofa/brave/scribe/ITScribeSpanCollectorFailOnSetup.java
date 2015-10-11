@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import static org.junit.Assert.assertEquals;
 
@@ -7,7 +7,7 @@ import org.junit.Test;
 
 import com.twitter.zipkin.gen.Span;
 
-public class ITZipkinSpanCollectorFailOnSetup {
+public class ITScribeSpanCollectorFailOnSetup {
 
     private static final int PORT = FreePortProvider.getNewFreePort();
     private static final long SPAN_ID = 1;
@@ -23,7 +23,7 @@ public class ITZipkinSpanCollectorFailOnSetup {
      */
     @Test
     public void testFailOnSetupFalse() throws TTransportException, InterruptedException {
-        final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
+        final ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setFailOnSetup(false);
 
         final Span span = new Span();
@@ -32,15 +32,15 @@ public class ITZipkinSpanCollectorFailOnSetup {
         span.setName(SPAN_NAME);
 
         // Should not throw exception but log error.
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params);
+        final ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT, params);
 
-        zipkinSpanCollector.collect(span);
+        scribeSpanCollector.collect(span);
 
-        final ZipkinCollectorServer server = new ZipkinCollectorServer(PORT);
+        final ScribeServer server = new ScribeServer(PORT);
         server.start();
         try {
-            zipkinSpanCollector.collect(span);
-            zipkinSpanCollector.close();
+            scribeSpanCollector.collect(span);
+            scribeSpanCollector.close();
 
             assertEquals(2, server.getReceivedSpans().size());
         } finally {

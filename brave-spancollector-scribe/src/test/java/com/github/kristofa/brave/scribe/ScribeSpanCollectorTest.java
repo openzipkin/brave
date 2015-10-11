@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import static org.junit.Assert.assertEquals;
 
@@ -13,7 +13,7 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
-public class ZipkinSpanCollectorTest {
+public class ScribeSpanCollectorTest {
 
     private static final int PORT = 9500;
     private static final long SPAN_ID = 1;
@@ -22,44 +22,44 @@ public class ZipkinSpanCollectorTest {
     private static final String KEY1 = "key1";
     private static final String VALUE1 = "value1";
 
-    private static ZipkinCollectorServer zipkinCollectorServer;
+    private static ScribeServer scribeServer;
 
     @BeforeClass
     public static void beforeClass() throws TTransportException {
-        zipkinCollectorServer = new ZipkinCollectorServer(PORT);
-        zipkinCollectorServer.start();
+        scribeServer = new ScribeServer(PORT);
+        scribeServer.start();
     }
 
     @AfterClass
     public static void afterClass() {
-        zipkinCollectorServer.stop();
+        scribeServer.stop();
     }
 
     @Before
     public void setup() {
-        zipkinCollectorServer.clearReceivedSpans();
+        scribeServer.clearReceivedSpans();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testZipkinSpanCollector() {
-        new ZipkinSpanCollector("", PORT);
+        new ScribeSpanCollector("", PORT);
     }
 
     @Test
     public void testCollect() throws TTransportException {
 
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT);
+        final ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT);
         try {
             final Span span = new Span();
             span.setId(SPAN_ID);
             span.setTrace_id(TRACE_ID);
             span.setName(SPAN_NAME);
-            zipkinSpanCollector.collect(span);
+            scribeSpanCollector.collect(span);
 
         } finally {
-            zipkinSpanCollector.close();
+            scribeSpanCollector.close();
         }
-        final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
+        final List<Span> serverCollectedSpans = scribeServer.getReceivedSpans();
         assertEquals(1, serverCollectedSpans.size());
         assertEquals(SPAN_ID, serverCollectedSpans.get(0).getId());
         assertEquals(TRACE_ID, serverCollectedSpans.get(0).getTrace_id());
@@ -70,19 +70,19 @@ public class ZipkinSpanCollectorTest {
     @Test
     public void testCollectWithDefaultAnnotation() throws TTransportException {
 
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT);
-        zipkinSpanCollector.addDefaultAnnotation(KEY1, VALUE1);
+        final ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT);
+        scribeSpanCollector.addDefaultAnnotation(KEY1, VALUE1);
         try {
             final Span span = new Span();
             span.setId(SPAN_ID);
             span.setTrace_id(TRACE_ID);
             span.setName(SPAN_NAME);
-            zipkinSpanCollector.collect(span);
+            scribeSpanCollector.collect(span);
 
         } finally {
-            zipkinSpanCollector.close();
+            scribeSpanCollector.close();
         }
-        final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
+        final List<Span> serverCollectedSpans = scribeServer.getReceivedSpans();
         assertEquals(1, serverCollectedSpans.size());
         final Span span = serverCollectedSpans.get(0);
         assertEquals(SPAN_ID, span.getId());

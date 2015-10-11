@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -20,13 +20,19 @@ import com.twitter.zipkin.gen.ResultCode;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.scribe.Iface;
 
-class ZipkinCollectorReceiver implements Iface {
+/**
+ * ScribeReceiver served through ScribeServer. Keeps received spans in memory.
+ * Used for testing.
+ *
+ * @see ScribeServer
+ */
+class ScribeReceiver implements Iface {
 
-    private static final Logger LOGGER = Logger.getLogger(ZipkinCollectorReceiver.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ScribeReceiver.class.getName());
     private final BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
     private final int delayMs;
 
-    public ZipkinCollectorReceiver(final int delayMs) {
+    public ScribeReceiver(final int delayMs) {
         this.delayMs = delayMs;
     }
 

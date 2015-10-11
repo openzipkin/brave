@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -11,36 +11,36 @@ import org.junit.*;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * Integration test for {@link ZipkinSpanCollector} that stress tests the {@link ZipkinSpanCollector}.
+ * Integration test for {@link ScribeSpanCollector} that stress tests the {@link ScribeSpanCollector}.
  * 
  * @author kristof
  */
-public class ITZipkinSpanCollector {
+public class ITScribeSpanCollector {
 
-    private static final Logger LOGGER = Logger.getLogger(ITZipkinSpanCollector.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ITScribeSpanCollector.class.getName());
 
     private static final int PORT = FreePortProvider.getNewFreePort();
     private static final String SPAN_NAME = "SpanName";
 
-    private static ZipkinCollectorServer zipkinCollectorServer;
+    private static ScribeServer scribeServer;
 
     private long traceId = 1;
 
     @BeforeClass
     public static void setupBeforeClass() throws TTransportException {
-        zipkinCollectorServer = new ZipkinCollectorServer(PORT);
-        zipkinCollectorServer.start();
+        scribeServer = new ScribeServer(PORT);
+        scribeServer.start();
     }
 
     @AfterClass
     public static void tearDownAfterClass() {
-        zipkinCollectorServer.stop();
+        scribeServer.stop();
     }
 
     @Before
     public void setup() {
         traceId = 1;
-        zipkinCollectorServer.clearReceivedSpans();
+        scribeServer.clearReceivedSpans();
     }
 
     /**
@@ -62,30 +62,30 @@ public class ITZipkinSpanCollector {
         final int firstBurstOfSpans = 100;
         final int secondBurstOfSpans = 20;
 
-        final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
+        final ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setQueueSize(100);
         params.setBatchSize(50);
 
         long traceId = 1;
-        try (ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params)) {
+        try (ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT, params)) {
 
-            submitSpans(zipkinSpanCollector, firstBurstOfSpans);
+            submitSpans(scribeSpanCollector, firstBurstOfSpans);
             LOGGER.info("Sleep 8 seconds");
             Thread.sleep(8000);
-            submitSpans(zipkinSpanCollector, secondBurstOfSpans);
+            submitSpans(scribeSpanCollector, secondBurstOfSpans);
             LOGGER.info("Sleep 5 seconds");
             Thread.sleep(5000);
         }
-        assertEquals(firstBurstOfSpans + secondBurstOfSpans, zipkinCollectorServer.getReceivedSpans().size());
+        assertEquals(firstBurstOfSpans + secondBurstOfSpans, scribeServer.getReceivedSpans().size());
     }
 
 
-    private void submitSpans(ZipkinSpanCollector zipkinSpanCollector, int nrOfSpans) {
+    private void submitSpans(ScribeSpanCollector scribeSpanCollector, int nrOfSpans) {
         for (int i = 1; i <= nrOfSpans; i++) {
             LOGGER.info("Submitting Span nr " + i + "/" + nrOfSpans);
             final Span span = span(traceId);
             traceId++;
-            zipkinSpanCollector.collect(span);
+            scribeSpanCollector.collect(span);
         }
     }
 

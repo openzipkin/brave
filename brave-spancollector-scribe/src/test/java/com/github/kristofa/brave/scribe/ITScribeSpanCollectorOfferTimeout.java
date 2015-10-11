@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import com.twitter.zipkin.gen.Span;
 import org.apache.thrift.transport.TTransportException;
@@ -10,9 +10,9 @@ import java.util.logging.Logger;
 import static org.junit.Assert.assertTrue;
 
 
-public class ITZipkinSpanCollectorOfferTimeout {
+public class ITScribeSpanCollectorOfferTimeout {
 
-    private static final Logger LOGGER = Logger.getLogger(ITZipkinSpanCollector.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ITScribeSpanCollector.class.getName());
     private static final int QUEUE_SIZE = 5;
 
     private static final int PORT = FreePortProvider.getNewFreePort();
@@ -20,22 +20,22 @@ public class ITZipkinSpanCollectorOfferTimeout {
     private static final long TRACE_ID = 2;
     private static final String SPAN_NAME = "SpanName";
 
-    private static ZipkinCollectorServer zipkinCollectorServer;
+    private static ScribeServer scribeServer;
 
     @BeforeClass
     public static void setupBeforeClass() throws TTransportException {
-        zipkinCollectorServer = new ZipkinCollectorServer(PORT);
-        zipkinCollectorServer.start();
+        scribeServer = new ScribeServer(PORT);
+        scribeServer.start();
     }
 
     @AfterClass
     public static void tearDownAfterClass() {
-        zipkinCollectorServer.stop();
+        scribeServer.stop();
     }
 
     @Before
     public void setup() {
-        zipkinCollectorServer.clearReceivedSpans();
+        scribeServer.clearReceivedSpans();
     }
 
     /**
@@ -45,7 +45,7 @@ public class ITZipkinSpanCollectorOfferTimeout {
      * <ol>
      * <li>a full queue at which client will be blocked for more then its time out value. This means spans are lost, do not
      * end up in collector server.</li>
-     * <li>it also shows that stopping ZipkinSpanCollector before all queued spans have been submitted works.</li>
+     * <li>it also shows that stopping ScribeSpanCollector before all queued spans have been submitted works.</li>
      * </ol>
      *
      * @throws TTransportException
@@ -56,11 +56,11 @@ public class ITZipkinSpanCollectorOfferTimeout {
 
         final int hundredTen = 110;
 
-        final ZipkinSpanCollectorParams params = new ZipkinSpanCollectorParams();
+        final ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setQueueSize(QUEUE_SIZE);
         params.setBatchSize(50);
 
-        final ZipkinSpanCollector zipkinSpanCollector = new ZipkinSpanCollector("localhost", PORT, params);
+        final ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT, params);
         try {
 
             final Span span = new Span();
@@ -70,14 +70,14 @@ public class ITZipkinSpanCollectorOfferTimeout {
 
             for (int i = 1; i <= hundredTen; i++) {
                 LOGGER.info("Submitting Span nr " + i + "/" + hundredTen);
-                zipkinSpanCollector.collect(span);
+                scribeSpanCollector.collect(span);
             }
             LOGGER.info("Sleep 5 seconds");
             Thread.sleep(5000);
         } finally {
-            zipkinSpanCollector.close();
+            scribeSpanCollector.close();
         }
-        final List<Span> serverCollectedSpans = zipkinCollectorServer.getReceivedSpans();
+        final List<Span> serverCollectedSpans = scribeServer.getReceivedSpans();
         assertTrue(serverCollectedSpans.size() < hundredTen);
 
     }

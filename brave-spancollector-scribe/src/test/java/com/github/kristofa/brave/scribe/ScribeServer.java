@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.zipkin;
+package com.github.kristofa.brave.scribe;
 
 import com.twitter.zipkin.gen.scribe;
 import java.util.List;
@@ -15,17 +15,20 @@ import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.scribe.Iface;
 import com.twitter.zipkin.gen.scribe.Processor;
 
-class ZipkinCollectorServer {
+/**
+ * Scribe server used for testing.
+ */
+class ScribeServer {
 
     private final TServer server;
-    private final ZipkinCollectorReceiver receiver;
+    private final ScribeReceiver receiver;
 
-    public ZipkinCollectorServer(final int port) throws TTransportException {
+    public ScribeServer(final int port) throws TTransportException {
         this(port, -1);
     }
 
-    public ZipkinCollectorServer(final int port, final int delayMs) throws TTransportException {
-        receiver = new ZipkinCollectorReceiver(delayMs);
+    public ScribeServer(final int port, final int delayMs) throws TTransportException {
+        receiver = new ScribeReceiver(delayMs);
 
         final Processor<Iface> processor = new scribe.Processor<>(receiver);
 

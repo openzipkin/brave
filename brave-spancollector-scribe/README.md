@@ -1,12 +1,12 @@
-# brave-zipkin-spancollector #
+# brave-spancollector-scribe #
 
+SpanCollector that is used to submit spans to a Scribe compatible source.
+This can be Scribe itself or the [Zipkin Collector Service](https://github.com/openzipkin/zipkin/tree/master/zipkin-collector-service)
+or another Scribe compatible source like Flume configured with Scribe source.
 
-SpanCollector that is used to submit spans to the [Zipkin](https://github.com/openzipkin/zipkin) span-collector-service or Scribe
-or Flume configured with Scribe source.
+![Scribe SpanCollector overview](https://raw.github.com/wiki/kristofa/brave/ZipkinSpanCollector.png)
 
-![Zipkin SpanCollector overview](https://raw.github.com/wiki/kristofa/brave/ZipkinSpanCollector.png)
-
-The `ZipkinSpanCollector` is build in such a way that it has no or very minimal impact on your application performance:
+The `ScribeSpanCollector` is build in such a way that it has no or very minimal impact on your application performance:
 
 *    Submitted spans are put on an in memory queue to be processed by 1 or more threads. This means that submitting the spans to the back-end service is
 asynchronous.  The number of threads that is being used is configurable.
@@ -16,8 +16,5 @@ This approach has again been chosen to minimize the impact on the application. H
 However it makes sure that it does not keeps holding onto spans. If the buffer is not full after 10 seconds it sends the received spans in any case.
 
 
-If you use this SpanCollector you can reuse the the Zipkin back-end (zipkin-collector-service, Cassandra back-end store, zipkin-query, zipkin-web zipkin web).
+If you use this SpanCollector you can reuse the the Zipkin back-end (zipkin-collector-service, Cassandra back-end store, zipkin-query, zipkin-web).
 For information on how to set up the Zipkin backend components see [here](https://github.com/openzipkin/zipkin).
-
-The brave-zipkin-spancollector can also be used as an example of how to communicate with the Zipkin Collector from Java.
-It uses the Zipkin Core and ZipKin Collector Thrift generated Java classes and does not depend on Finagle.
