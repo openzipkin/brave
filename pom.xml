@@ -21,9 +21,9 @@
 	</license>
    </licenses>
    <scm>
-   		<connection>scm:git:git@github.com:kristofa/brave.git</connection>
-    	<url>git@github.com:kristofa/brave.git</url>
-    	<developerConnection>scm:git:git@github.com:kristofa/brave.git</developerConnection>
+   		<connection>scm:git:git@github.com:openzipkin/brave.git</connection>
+    	<url>git@github.com:openzipkin/brave.git</url>
+    	<developerConnection>scm:git:git@github.com:openzipkin/brave.git</developerConnection>
    </scm>
    <developers>
    		<developer>
