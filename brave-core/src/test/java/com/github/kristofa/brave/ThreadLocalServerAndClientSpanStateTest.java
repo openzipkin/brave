@@ -12,9 +12,6 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 public class ThreadLocalServerAndClientSpanStateTest {
 
     private static final short PORT = 80;
@@ -25,12 +22,11 @@ public class ThreadLocalServerAndClientSpanStateTest {
     private ServerSpan mockServerSpan;
     private Span mockSpan;
     private Endpoint mockEndpoint;
-    private InetAddress address;
 
     @Before
-    public void setup() throws UnknownHostException {
-        address = InetAddress.getByName("192.168.0.1");
-        serverAndClientSpanState = new ThreadLocalServerAndClientSpanState(address, PORT, SERVICE_NAME);
+    public void setup() {
+        // -1062731775 = 192.168.0.1
+        serverAndClientSpanState = new ThreadLocalServerAndClientSpanState(-1062731775, PORT, SERVICE_NAME);
         mockServerSpan = mock(ServerSpan.class);
         mockSpan = mock(Span.class);
         mockEndpoint = mock(Endpoint.class);

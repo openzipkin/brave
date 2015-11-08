@@ -12,9 +12,6 @@ import org.junit.Test;
 
 public class BraveTest {
 
-    private static final String SERVICE_NAME = "service";
-    private static final int PORT = 80;
-    private static final String IP = "10.0.1.5";
     private SpanCollector mockSpanCollector;
     private TraceFilter mockTraceFilter;
     private Brave brave;
@@ -23,7 +20,8 @@ public class BraveTest {
     public void setup() {
         mockSpanCollector = mock(SpanCollector.class);
         mockTraceFilter = mock(TraceFilter.class);
-        final Brave.Builder builder = new Brave.Builder();
+        // -1062731775 = 192.168.0.1
+        final Brave.Builder builder = new Brave.Builder(-1062731775, 8080, "unknown");
         brave = builder.spanCollector(mockSpanCollector).traceFilters(Arrays.asList(mockTraceFilter)).build();
     }
 

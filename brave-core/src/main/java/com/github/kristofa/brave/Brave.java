@@ -1,12 +1,11 @@
 package com.github.kristofa.brave;
 
-
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+
+import static com.github.kristofa.brave.InetAddressUtilities.*;
 
 /**
  * Builds brave api objects.
@@ -25,13 +24,12 @@ public class Brave {
 
     /**
      * Builds Brave api objects with following defaults if not overridden:
-     *
+     * <p>
      * <ul>
-     *     <li>ThreadLocalServerAndClientSpanState which binds trace/span state to current thread.</li>
-     *     <li>FixedSampleRateTraceFilter which traces every request.</li>
-     *     <li>LoggingSpanCollector</li>
+     * <li>ThreadLocalServerAndClientSpanState which binds trace/span state to current thread.</li>
+     * <li>FixedSampleRateTraceFilter which traces every request.</li>
+     * <li>LoggingSpanCollector</li>
      * </ul>
-     *
      */
     public static class Builder {
 
@@ -41,7 +39,12 @@ public class Brave {
         private Random random = new Random();
 
         /**
-         * Builder which initializes with serviceName = "unknown"
+         * Builder which initializes with serviceName = "unknown".
+         * <p>
+         * When using this builder constructor we will try to 'guess' ip address by using java.net.* utility classes.
+         * This might be convenient but not necessary what you want.
+         * It is preferred to use constructor that takes ip, port and service name instead.
+         * </p>
          */
         public Builder() {
             this("unknown");
@@ -49,15 +52,33 @@ public class Brave {
 
         /**
          * Builder.
+         * <p>
+         * When using this builder constructor we will try to 'guess' ip address by using java.net.* utility classes.
+         * This might be convenient but not necessary what you want.
+         * It is preferred to use constructor that takes ip, port and service name instead.
+         * </p>
+         *
          * @param serviceName Name of service. Is only relevant when we do server side tracing.
          */
         public Builder(String serviceName) {
             try {
-                InetAddress a = InetAddressUtilities.getLocalHostLANAddress();
-                state = new ThreadLocalServerAndClientSpanState(a, 0, serviceName);
+                int ip = toInt(getLocalHostLANAddress());
+                state = new ThreadLocalServerAndClientSpanState(ip, 0, serviceName);
             } catch (UnknownHostException e) {
                 throw new IllegalStateException("Unable to get Inet address", e);
             }
+            traceFilters.add(new FixedSampleRateTraceFilter(1));
+        }
+
+        /**
+         * Builder.
+         *
+         * @param ip          ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+         * @param port        Port for service
+         * @param serviceName Name of service. Is only relevant when we do server side tracing.
+         */
+        public Builder(int ip, int port, String serviceName) {
+            state = new ThreadLocalServerAndClientSpanState(ip, port, serviceName);
             traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
 
@@ -83,7 +104,6 @@ public class Brave {
         }
 
         /**
-         *
          * @param spanCollector
          */
         public Builder spanCollector(SpanCollector spanCollector) {
@@ -142,8 +162,8 @@ public class Brave {
     /**
      * Helper object that can be used to propogate server trace state. Typically over different threads.
      *
-     * @see ServerSpanThreadBinder
      * @return {@link ServerSpanThreadBinder}.
+     * @see ServerSpanThreadBinder
      */
     public ServerSpanThreadBinder serverSpanThreadBinder() {
         return serverSpanThreadBinder;
@@ -152,8 +172,8 @@ public class Brave {
     /**
      * Helper object that can be used to propagate client trace state. Typically over different threads.
      *
-     * @see ClientSpanThreadBinder
      * @return {@link ClientSpanThreadBinder}.
+     * @see ClientSpanThreadBinder
      */
     public ClientSpanThreadBinder clientSpanThreadBinder() {
         return clientSpanThreadBinder;

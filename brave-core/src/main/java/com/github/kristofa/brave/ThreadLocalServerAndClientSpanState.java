@@ -33,11 +33,27 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
      * @param ip InetAddress of current host. If you don't have access to InetAddress you can use InetAddressUtilities#getLocalHostLANAddress()
      * @param port port on which current process is listening.
      * @param serviceName Service name. Only relevant if we do server side tracing.
+     * @deprecated Please switch to constructor that takes 'int' for ip. This only does a conversion from the InetAddress to integer anyway
+     * and using InetAddress can result in ns lookup and nasty side effects.
      */
+    @Deprecated
     public ThreadLocalServerAndClientSpanState(InetAddress ip, int port, String serviceName) {
         Util.checkNotNull(ip, "ip address must be specified.");
         Util.checkNotBlank(serviceName, "Service name must be specified.");
         endpoint = new Endpoint(InetAddressUtilities.toInt(ip), (short) port, serviceName);
+    }
+
+    /**
+     * Constructor
+     *
+     * @param ip Int representation of ipv4 address.
+     * @param port port on which current process is listening.
+     * @param serviceName Service name. Only relevant if we do server side tracing.
+     */
+    public ThreadLocalServerAndClientSpanState(int ip, int port, String serviceName) {
+        Util.checkNotNull(ip, "ip address must be specified.");
+        Util.checkNotBlank(serviceName, "Service name must be specified.");
+        endpoint = new Endpoint(ip, (short) port, serviceName);
     }
 
     /**
