@@ -7,6 +7,10 @@ import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
 import com.mysql.jdbc.StatementInterceptorV2;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.URI;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -68,7 +72,24 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
         tracer.startNewSpan("query");
         tracer.setCurrentClientServiceName(schema == null ? "MySQL" : schema);
         tracer.submitBinaryAnnotation("executed.query", sql);
-        tracer.setClientSent();
+
+        try {
+            setClientSent(tracer, connection);
+        } catch (Exception e) { // logging the server address is optional
+            tracer.setClientSent();
+        }
+    }
+
+    /**
+     * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
+     * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/test}, or 3306 if absent.
+     */
+    private void setClientSent(ClientTracer tracer, Connection connection) throws Exception {
+        InetAddress address = Inet4Address.getByName(connection.getHost());
+        int ipv4 = ByteBuffer.wrap(address.getAddress()).getInt();
+        URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
+        int port = url.getPort() == -1 ? 3306 : url.getPort();
+        tracer.setClientSent(ipv4, port, null);
     }
 
     private void endTrace(final ClientTracer tracer, final int warningCount, final SQLException statementException) {
