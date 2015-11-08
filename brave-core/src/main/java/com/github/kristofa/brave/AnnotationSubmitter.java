@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -28,7 +29,7 @@ public abstract class AnnotationSubmitter {
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
     /**
-     * Submits custom annotation for current span. Use this method if your annotation has no duration assigned to it.
+     * Submits custom annotation for current span.
      *
      * @param annotationName Custom annotation for current span.
      */
@@ -40,6 +41,64 @@ public abstract class AnnotationSubmitter {
             annotation.setHost(spanAndEndpoint().endpoint());
             annotation.setValue(annotationName);
             addAnnotation(span, annotation);
+        }
+    }
+
+    /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
+    void submitStartAnnotation(String annotationName) {
+        Span span = spanAndEndpoint().span();
+        if (span != null) {
+            Annotation annotation = new Annotation();
+            annotation.setTimestamp(currentTimeMicroseconds());
+            annotation.setHost(spanAndEndpoint().endpoint());
+            annotation.setValue(annotationName);
+            synchronized (span) {
+                span.setTimestamp(annotation.getTimestamp());
+                span.addToAnnotations(annotation);
+            }
+        }
+    }
+
+    /**
+     * This adds an annotation that corresponds with {@link Span#getDuration()}, and sends the span
+     * for collection.
+     *
+     * @return true if a span was sent for collection.
+     */
+    boolean submitEndAnnotation(String annotationName, SpanCollector spanCollector) {
+        Span span = spanAndEndpoint().span();
+        if (span == null) {
+          return false;
+        }
+        Annotation annotation = new Annotation();
+        annotation.setTimestamp(currentTimeMicroseconds());
+        annotation.setHost(spanAndEndpoint().endpoint());
+        annotation.setValue(annotationName);
+        span.addToAnnotations(annotation);
+        span.setDuration(annotation.getTimestamp() - span.getTimestamp());
+        spanCollector.collect(span);
+        return true;
+    }
+
+    /**
+     * Internal api for submitting an address. Until a naming function is added, this coerces null
+     * {@code serviceName} to "unknown", as that's zipkin's convention.
+     *
+     * @param ipv4        ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+     * @param port        Port for service
+     * @param serviceName Name of service. Should be lowercase and not empty. {@code null} will coerce to "unknown", as that's zipkin's convention.
+     */
+    void submitAddress(String key, int ipv4, int port, @Nullable String serviceName) {
+        Span span = spanAndEndpoint().span();
+        if (span != null) {
+            serviceName = serviceName != null ? serviceName : "unknown";
+            Endpoint endpoint = new Endpoint(ipv4, (short) port, serviceName);
+            BinaryAnnotation ba = new BinaryAnnotation();
+            ba.setKey(key);
+            ba.setValue(new byte[]{1});
+            ba.setAnnotation_type(AnnotationType.BOOL);
+            ba.setHost(endpoint);
+            addBinaryAnnotation(span, ba);
         }
     }
 

@@ -1,14 +1,14 @@
 package com.github.kristofa.brave;
 
-import java.util.List;
-import java.util.Random;
+import com.google.auto.value.AutoValue;
 
 import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
-import com.google.auto.value.AutoValue;
-
-import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
+
+import java.util.List;
+import java.util.Random;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
@@ -125,17 +125,28 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     public void setServerReceived() {
-        submitAnnotation(zipkinCoreConstants.SERVER_RECV);
+        submitStartAnnotation(zipkinCoreConstants.SERVER_RECV);
+    }
+
+    /**
+     * Like {@link #setServerReceived()}, except you can log the network context of the caller, for
+     * example an IP address from the {@code X-Forwarded-For} header.
+     *
+     * @param ipv4          ipv4 of the client as an int. Ex for 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+     * @param port          port for client-side of the socket, or 0 if unknown
+     * @param clientService lowercase {@link Endpoint#service_name name} of the callee service or
+     *                      null if unknown
+     */
+    public void setServerReceived(int ipv4, int port, @Nullable String clientService) {
+        submitAddress(zipkinCoreConstants.CLIENT_ADDR, ipv4, port, clientService);
+        submitStartAnnotation(zipkinCoreConstants.SERVER_RECV);
     }
 
     /**
      * Sets the server sent event for current thread.
      */
     public void setServerSend() {
-        Span currentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
-        if (currentSpan != null) {
-            submitAnnotation(zipkinCoreConstants.SERVER_SEND);
-            spanCollector().collect(currentSpan);
+        if (submitEndAnnotation(zipkinCoreConstants.SERVER_SEND, spanCollector())) {
             spanAndEndpoint().state().setCurrentServerSpan(null);
         }
     }

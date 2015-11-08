@@ -3,6 +3,8 @@ package com.github.kristofa.brave;
 import com.google.auto.value.AutoValue;
 
 import com.github.kristofa.brave.SpanAndEndpoint.ClientSpanAndEndpoint;
+import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
@@ -66,7 +68,20 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * Sets 'client sent' event for current thread.
      */
     public void setClientSent() {
-        submitAnnotation(zipkinCoreConstants.CLIENT_SEND);
+        submitStartAnnotation(zipkinCoreConstants.CLIENT_SEND);
+    }
+
+    /**
+     * Like {@link #setClientSent()}, except you can log the network context of the destination.
+     *
+     * @param ipv4        ipv4 of the server as an int. Ex for 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+     * @param port        listen port the client is connecting to, or 0 if unknown
+     * @param serviceName lowercase {@link Endpoint#service_name name} of the service being called
+     *                    or null if unknown
+     */
+    public void setClientSent(int ipv4, int port, @Nullable String serviceName) {
+        submitAddress(zipkinCoreConstants.SERVER_ADDR, ipv4, port, serviceName);
+        submitStartAnnotation(zipkinCoreConstants.CLIENT_SEND);
     }
 
     /**
@@ -74,22 +89,17 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * event means this span is finished.
      */
     public void setClientReceived() {
-
-        Span currentSpan = spanAndEndpoint().span();
-        if (currentSpan != null) {
-            submitAnnotation(zipkinCoreConstants.CLIENT_RECV);
-            spanCollector().collect(currentSpan);
+        if (submitEndAnnotation(zipkinCoreConstants.CLIENT_RECV, spanCollector())) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
             spanAndEndpoint().state().setCurrentClientServiceName(null);
         }
-
     }
 
     /**
      * Start a new span for a new client request that will be bound to current thread. The ClientTracer can decide to return
      * <code>null</code> in case this request should not be traced (eg sampling).
      *
-     * @param requestName Request name. Should not be <code>null</code> or empty.
+     * @param requestName Request name. Should be lowercase and not <code>null</code> or empty.
      * @return Span id for new request or <code>null</code> in case we should not trace this new client request.
      */
     public SpanId startNewSpan(String requestName) {
@@ -130,7 +140,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * This should be set before submitting any annotations. So after invoking {@link ClientTracer#startNewSpan(String)} and
      * before {@link ClientTracer#setClientSent()}.
      *
-     * @param serviceName should be the same as the name of the service the client is calling.
+     * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
      */
     public void setCurrentClientServiceName(String serviceName) {
         spanAndEndpoint().state().setCurrentClientServiceName(serviceName);

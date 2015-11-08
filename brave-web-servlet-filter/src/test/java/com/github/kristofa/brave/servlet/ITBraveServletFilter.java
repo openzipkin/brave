@@ -111,10 +111,10 @@ public class ITBraveServletFilter {
             assertEquals("Expected trace id", serverSpan.getTrace_id(), 1l);
             assertEquals("Expected span id", serverSpan.getId(), 2l);
             assertEquals("Expected parent id", serverSpan.getParent_id(), 3l);
-            assertEquals("Span name.", "GET", serverSpan.getName());
+            assertEquals("Span name.", "get", serverSpan.getName());
             assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
             assertEquals("Expected service name.", serverSpan.getAnnotations().get(0).getHost()
-                    .getService_name(), "BraveServletFilterService");
+                    .getService_name(), "braveservletfilterservice");
 
         } finally {
             connection.disconnect();
