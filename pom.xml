@@ -5,7 +5,7 @@
 
   <groupId>com.github.kristofa</groupId>
   <artifactId>brave</artifactId>
-  <version>3.0.1-SNAPSHOT</version>
+  <version>3.1.0</version>
   <packaging>pom</packaging>
 
   <name>brave</name>
@@ -24,7 +24,8 @@
    		<connection>scm:git:git@github.com:openzipkin/brave.git</connection>
     	<url>git@github.com:openzipkin/brave.git</url>
     	<developerConnection>scm:git:git@github.com:openzipkin/brave.git</developerConnection>
-   </scm>
+     <tag>brave-3.1.0</tag>
+  </scm>
    <developers>
    		<developer>
       		<id>kristofa</id>
