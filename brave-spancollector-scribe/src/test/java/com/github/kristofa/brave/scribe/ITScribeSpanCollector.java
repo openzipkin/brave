@@ -20,7 +20,7 @@ public class ITScribeSpanCollector {
     private static final Logger LOGGER = Logger.getLogger(ITScribeSpanCollector.class.getName());
 
     private static final int PORT = FreePortProvider.getNewFreePort();
-    private static final String SPAN_NAME = "SpanName";
+    private static final String SPAN_NAME = "spanname";
 
     private static ScribeServer scribeServer;
 

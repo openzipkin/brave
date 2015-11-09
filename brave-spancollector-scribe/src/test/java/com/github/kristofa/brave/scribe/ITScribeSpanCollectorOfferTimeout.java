@@ -18,7 +18,7 @@ public class ITScribeSpanCollectorOfferTimeout {
     private static final int PORT = FreePortProvider.getNewFreePort();
     private static final long SPAN_ID = 1;
     private static final long TRACE_ID = 2;
-    private static final String SPAN_NAME = "SpanName";
+    private static final String SPAN_NAME = "spanname";
 
     private static ScribeServer scribeServer;
 

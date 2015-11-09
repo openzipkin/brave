@@ -22,7 +22,7 @@ final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
      *
      * @param ip InetAddress of current host. If you don't have access to InetAddress you can use InetAddressUtilities#getLocalHostLANAddress()
      * @param port port on which current process is listening.
-     * @param serviceName Service name. Only relevant if we do server side tracing.
+     * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
      */
     public SimpleServerAndClientSpanState(InetAddress ip, int port, String serviceName) {
         Util.checkNotNull(ip, "ip address must be specified.");
@@ -82,6 +82,9 @@ final class SimpleServerAndClientSpanState implements ServerAndClientSpanState {
         currentClientSpan = span;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setCurrentClientServiceName(String serviceName) {
         currentClientServiceName = serviceName;

@@ -20,6 +20,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.AnnotationType;
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
@@ -29,7 +31,7 @@ import com.twitter.zipkin.gen.zipkinCoreConstants;
 public class ClientTracerTest {
 
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
-    private final static String REQUEST_NAME = "requestName";
+    private final static String REQUEST_NAME = "requestname";
     private static final long PARENT_SPAN_ID = 103;
     private static final long PARENT_TRACE_ID = 105;
     private static final long TRACE_ID = 32534;
@@ -77,8 +79,9 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientSent() {
+        Span clientSent = new Span();
 
-        when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
         when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientSent();
 
@@ -88,8 +91,51 @@ public class ClientTracerTest {
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
         verify(mockState).getCurrentClientSpan();
         verify(mockState).getClientEndpoint();
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verifyNoMoreInteractions(mockState, mockRandom, mockSpan, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
+        assertEquals(expectedAnnotation, clientSent.annotations.get(0));
+    }
+
+    @Test
+    public void testSetClientSentServerAddress() {
+        Span clientSent = new Span();
+
+        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
+        when(mockState.getClientEndpoint()).thenReturn(endpoint);
+        clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
+
+        final Annotation expectedAnnotation = new Annotation();
+        expectedAnnotation.setHost(endpoint);
+        expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
+        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        verify(mockState, times(2)).getCurrentClientSpan();
+        verify(mockState).getClientEndpoint();
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
+        assertEquals(expectedAnnotation, clientSent.annotations.get(0));
+
+        BinaryAnnotation serverAddress = new BinaryAnnotation()
+            .setKey(zipkinCoreConstants.SERVER_ADDR)
+            .setValue(new byte[]{1})
+            .setAnnotation_type(AnnotationType.BOOL)
+            .setHost(new Endpoint()
+                .setService_name("foobar")
+                .setIpv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
+                .setPort((short) 9999));
+        assertEquals(serverAddress, clientSent.binary_annotations.get(0));
+    }
+
+    @Test
+    public void testSetClientSentServerAddress_noServiceName() {
+        Span clientSent = new Span();
+
+        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
+        when(mockState.getClientEndpoint()).thenReturn(endpoint);
+        clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
+
+        assertEquals("unknown", clientSent.binary_annotations.get(0).getHost().getService_name());
     }
 
     @Test
@@ -102,8 +148,9 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientReceived() {
+        Span clientRecv = new Span().setTimestamp(100L);
 
-        when(mockState.getCurrentClientSpan()).thenReturn(mockSpan);
+        when(mockState.getCurrentClientSpan()).thenReturn(clientRecv);
         when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientReceived();
 
@@ -111,13 +158,16 @@ public class ClientTracerTest {
         expectedAnnotation.setHost(endpoint);
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_RECV);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockState, times(2)).getCurrentClientSpan();
+        verify(mockState).getCurrentClientSpan();
         verify(mockState).getClientEndpoint();
         verify(mockState).setCurrentClientSpan(null);
         verify(mockState).setCurrentClientServiceName(null);
-        verify(mockSpan).addToAnnotations(expectedAnnotation);
-        verify(mockCollector).collect(mockSpan);
-        verifyNoMoreInteractions(mockState, mockSpan, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        verify(mockCollector).collect(clientRecv);
+        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        assertEquals(CURRENT_TIME_MICROSECONDS - clientRecv.timestamp, clientRecv.duration);
+        assertEquals(expectedAnnotation, clientRecv.annotations.get(0));
     }
 
     @Test
@@ -190,7 +240,6 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-
         when(mockState.sample()).thenReturn(true);
 
         final ServerSpan parentSpan = ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");

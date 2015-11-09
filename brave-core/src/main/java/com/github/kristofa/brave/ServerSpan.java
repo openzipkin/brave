@@ -1,7 +1,5 @@
 package com.github.kristofa.brave;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 
@@ -46,7 +44,7 @@ public abstract class ServerSpan {
      * @param traceId Trace id.
      * @param spanId Span id.
      * @param parentSpanId Parent span id, can be <code>null</code>.
-     * @param name Span name.
+     * @param name Span name. Should be lowercase and not <code>null</code> or empty.
      */
      static ServerSpan create(long traceId, long spanId, Long parentSpanId, String name) {
         Span span = new Span();

@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -37,5 +38,8 @@ public interface ClientSpanState extends CommonSpanState {
      */
     void setCurrentClientSpan(final Span span);
 
-    void setCurrentClientServiceName(String serviceName);
+    /**
+     * @param serviceName Name of the local service being traced. If specified, should be lowercase and not empty.
+     */
+    void setCurrentClientServiceName(@Nullable String serviceName);
 }

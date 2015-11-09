@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
+import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
@@ -17,6 +18,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +59,57 @@ public class MySQLStatementInterceptorTest {
         order.verify(clientTracer).submitBinaryAnnotation(eq("executed.query"), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void preProcessShouldLogServerAddress() throws Exception {
+        final String sql = randomAlphanumeric(20);
+        final String schema = randomAlphanumeric(20);
+
+        final Connection connection = mock(Connection.class);
+        when(connection.getSchema()).thenReturn(schema);
+        when(connection.getHost()).thenReturn("1.2.3.4");
+        final DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getURL()).thenReturn("jdbc:mysql://foo:9999/test");
+
+
+        subject.preProcess(sql, mock(Statement.class), connection);
+
+        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
+    }
+
+    @Test
+    public void preProcessShouldLogServerAddress_defaultsPortTo3306() throws Exception {
+        final String sql = randomAlphanumeric(20);
+        final String schema = randomAlphanumeric(20);
+
+        final Connection connection = mock(Connection.class);
+        when(connection.getSchema()).thenReturn(schema);
+        when(connection.getHost()).thenReturn("1.2.3.4");
+        final DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getURL()).thenReturn("jdbc:mysql://foo/test");
+
+
+        subject.preProcess(sql, mock(Statement.class), connection);
+
+        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, null);
+    }
+
+    @Test
+    public void preProcessShouldIgnoreExceptionsLoggingServerAddress() throws Exception {
+        final String sql = randomAlphanumeric(20);
+        final String schema = randomAlphanumeric(20);
+
+        final Connection connection = mock(Connection.class);
+        when(connection.getSchema()).thenReturn(schema);
+        when(connection.getHost()).thenReturn("1.2.3.4");
+        when(connection.getMetaData()).thenThrow(new SQLException());
+
+        subject.preProcess(sql, mock(Statement.class), connection);
+
+        verify(clientTracer).setClientSent();
     }
 
     @Test

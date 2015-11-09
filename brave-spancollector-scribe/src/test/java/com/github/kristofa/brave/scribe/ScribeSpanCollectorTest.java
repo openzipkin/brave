@@ -18,7 +18,7 @@ public class ScribeSpanCollectorTest {
     private static final int PORT = 9500;
     private static final long SPAN_ID = 1;
     private static final long TRACE_ID = 2;
-    private static final String SPAN_NAME = "SpanName";
+    private static final String SPAN_NAME = "spanname";
     private static final String KEY1 = "key1";
     private static final String VALUE1 = "value1";
 
