@@ -11,7 +11,7 @@ import java.net.InetAddress;
  * 
  * @author kristof
  */
-final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanState {
+public final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanState {
 
     private final static ThreadLocal<ServerSpan> currentServerSpan = new ThreadLocal<ServerSpan>() {
 
@@ -50,7 +50,6 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
      * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
      */
     public ThreadLocalServerAndClientSpanState(int ip, int port, String serviceName) {
-        Util.checkNotNull(ip, "ip address must be specified.");
         Util.checkNotBlank(serviceName, "Service name must be specified.");
         endpoint = new Endpoint(ip, (short) port, serviceName);
     }
@@ -89,9 +88,7 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
         if (serviceName == null) {
             return endpoint;
         } else {
-            final Endpoint ep = new Endpoint(endpoint);
-            ep.setService_name(serviceName);
-            return ep;
+            return new Endpoint(endpoint).setService_name(serviceName);
         }
     }
 
@@ -108,7 +105,6 @@ final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanSt
      */
     @Override
     public void setCurrentClientSpan(final Span span) {
-
         currentClientSpan.set(span);
     }
 

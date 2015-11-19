@@ -1,15 +1,15 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Util;
+
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static com.github.kristofa.brave.InetAddressUtilities.*;
+import static com.github.kristofa.brave.InetAddressUtilities.getLocalHostLANAddress;
+import static com.github.kristofa.brave.InetAddressUtilities.toInt;
 
-/**
- * Builds brave api objects.
- */
 public class Brave {
 
     private final ServerTracer serverTracer;
@@ -33,9 +33,9 @@ public class Brave {
      */
     public static class Builder {
 
-        private List<TraceFilter> traceFilters = new ArrayList<>();
+        private final ServerAndClientSpanState state;
+        private final List<TraceFilter> traceFilters = new ArrayList<>();
         private SpanCollector spanCollector = new LoggingSpanCollector();
-        private ServerAndClientSpanState state;
         private Random random = new Random();
 
         /**
@@ -83,6 +83,14 @@ public class Brave {
         }
 
         /**
+         * Use for control of how tracing state propagates across threads.
+         */
+        public Builder(ServerAndClientSpanState state) {
+            this.state = Util.checkNotNull(state, "state must be specified.");
+            traceFilters.add(new FixedSampleRateTraceFilter(1));
+        }
+
+        /**
          * Initialize trace filters. If not specified a default filter will be configured which traces every request.
          *
          * @param filters trace filters.
@@ -90,16 +98,6 @@ public class Brave {
         public Builder traceFilters(List<TraceFilter> filters) {
             traceFilters.clear();
             traceFilters.addAll(filters);
-            return this;
-        }
-
-        /**
-         * Allows you to use custom trace state object.
-         *
-         * @param state
-         */
-        public Builder traceState(ServerAndClientSpanState state) {
-            this.state = state;
             return this;
         }
 
