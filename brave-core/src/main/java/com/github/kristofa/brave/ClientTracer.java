@@ -1,15 +1,13 @@
 package com.github.kristofa.brave;
 
-import com.google.auto.value.AutoValue;
-
 import com.github.kristofa.brave.SpanAndEndpoint.ClientSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
+import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
 import java.util.List;
-import java.util.Random;
 
 /**
  * Low level api that deals with client side of a request:
@@ -35,7 +33,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
-    abstract Random randomGenerator();
+    abstract SpanIdGenerator idGenerator();
     abstract SpanCollector spanCollector();
     abstract List<TraceFilter> traceFilters();
 
@@ -51,7 +49,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         /**
          * Used to generate new trace/span ids.
          */
-        public abstract Builder randomGenerator(Random randomGenerator);
+        public abstract Builder idGenerator(SpanIdGenerator spanIdGenerator);
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
@@ -147,14 +145,11 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     }
 
     private SpanId getNewSpanId() {
-
         Span currentServerSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
-        long newSpanId = randomGenerator().nextLong();
         if (currentServerSpan == null) {
-            return SpanId.create(newSpanId, newSpanId, null);
+            return idGenerator().nextSpanId(null);
         }
-
-        return SpanId.create(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
+        return idGenerator().nextSpanId(SpanId.create(currentServerSpan.trace_id, currentServerSpan.id, null));
     }
 
     ClientTracer() {
