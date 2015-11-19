@@ -3,9 +3,9 @@ package com.github.kristofa.brave;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import static com.github.kristofa.brave.InetAddressUtilities.*;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Builds brave api objects.
@@ -36,7 +36,7 @@ public class Brave {
         private List<TraceFilter> traceFilters = new ArrayList<>();
         private SpanCollector spanCollector = new LoggingSpanCollector();
         private ServerAndClientSpanState state;
-        private Random random = new Random();
+        private SpanIdGenerator spanIdGenerator = new SpanIdGenerator.Default();
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -108,6 +108,12 @@ public class Brave {
          */
         public Builder spanCollector(SpanCollector spanCollector) {
             this.spanCollector = spanCollector;
+            return this;
+        }
+
+        /** Used to generate new trace/span ids. */
+        public Builder idGenerator(SpanIdGenerator spanIdGenerator) {
+            this.spanIdGenerator = checkNotNull(spanIdGenerator, "Null spanIdGenerator");
             return this;
         }
 
@@ -190,13 +196,13 @@ public class Brave {
 
     private Brave(Builder builder) {
         serverTracer = ServerTracer.builder()
-                .randomGenerator(builder.random)
+                .idGenerator(builder.spanIdGenerator)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
                 .traceFilters(builder.traceFilters).build();
 
         clientTracer = ClientTracer.builder()
-                .randomGenerator(builder.random)
+                .idGenerator(builder.spanIdGenerator)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
                 .traceFilters(builder.traceFilters).build();

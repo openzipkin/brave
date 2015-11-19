@@ -17,7 +17,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.inOrder;
@@ -36,6 +35,12 @@ public class ServerTracerTest {
     private final static long SPAN_ID = 2l;
     private final static Long PARENT_SPANID = 3l;
     private final static String SPAN_NAME = "span name";
+    private static final SpanIdGenerator ID_GENERATOR = parent -> {
+        if (parent == null) {
+            return SpanId.create(TRACE_ID, TRACE_ID, null);
+        }
+        throw new AssertionError("unexpected parent: " + parent);
+    };
 
     private ServerTracer serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -43,7 +48,6 @@ public class ServerTracerTest {
     private ServerSpan mockServerSpan;
     private Span mockSpan;
     private Endpoint mockEndpoint;
-    private Random mockRandom;
     private TraceFilter mockTraceFilter1;
     private TraceFilter mockTraceFilter2;
     private List<TraceFilter> traceFilters;
@@ -56,7 +60,6 @@ public class ServerTracerTest {
         mockServerSpan = mock(ServerSpan.class);
 
         mockEndpoint = new Endpoint();
-        mockRandom = mock(Random.class);
         mockTraceFilter1 = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
 
@@ -66,7 +69,7 @@ public class ServerTracerTest {
         PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
         serverTracer = ServerTracer.builder()
             .state(mockServerSpanState)
-            .randomGenerator(mockRandom)
+            .idGenerator(ID_GENERATOR)
             .spanCollector(mockSpanCollector)
             .traceFilters(traceFilters).build();
     }
@@ -97,27 +100,24 @@ public class ServerTracerTest {
     @Test
     public void testSetStateUnknownTraceFiltersTrue() {
 
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
         when(mockTraceFilter1.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
         final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, TRACE_ID, null, SPAN_NAME);
 
-        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
+        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockServerSpanState);
 
-        inOrder.verify(mockRandom).nextLong();
         inOrder.verify(mockTraceFilter1).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockTraceFilter2).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
-        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
 
     @Test
     public void testSetStateUnknownTraceFiltersFalse() {
 
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
         when(mockTraceFilter1.trace(TRACE_ID, SPAN_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(TRACE_ID, SPAN_NAME)).thenReturn(false);
 
@@ -125,14 +125,13 @@ public class ServerTracerTest {
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockRandom, mockServerSpanState);
+        final InOrder inOrder = inOrder(mockTraceFilter1, mockTraceFilter2, mockServerSpanState);
 
-        inOrder.verify(mockRandom).nextLong();
         inOrder.verify(mockTraceFilter1).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockTraceFilter2).trace(TRACE_ID, SPAN_NAME);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
-        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
 
     @Test

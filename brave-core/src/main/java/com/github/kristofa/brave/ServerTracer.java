@@ -8,7 +8,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
 import java.util.List;
-import java.util.Random;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
@@ -36,7 +35,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
-    abstract Random randomGenerator();
+    abstract SpanIdGenerator idGenerator();
     abstract SpanCollector spanCollector();
     abstract List<TraceFilter> traceFilters();
 
@@ -52,7 +51,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         /**
          * Used to generate new trace/span ids.
          */
-        public abstract Builder randomGenerator(Random randomGenerator);
+        public abstract Builder idGenerator(SpanIdGenerator spanIdGenerator);
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
@@ -108,15 +107,15 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        long newSpanId = randomGenerator().nextLong();
+        SpanId nextTraceId = idGenerator().nextSpanId(null);
         for (TraceFilter traceFilter : traceFilters()) {
-            if (traceFilter.trace(newSpanId, spanName) == false) {
+            if (traceFilter.trace(nextTraceId.getTraceId(), spanName) == false) {
                 spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
                 return;
             }
         }
-        spanAndEndpoint().state().setCurrentServerSpan(
-            ServerSpan.create(newSpanId, newSpanId, null, spanName));
+        ServerSpan span = ServerSpan.create(nextTraceId.getTraceId(), nextTraceId.getSpanId(), null, spanName);
+        spanAndEndpoint().state().setCurrentServerSpan(span);
     }
 
     /**
