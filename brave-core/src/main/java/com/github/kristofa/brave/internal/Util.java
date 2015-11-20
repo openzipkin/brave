@@ -1,11 +1,15 @@
 package com.github.kristofa.brave.internal;
 
+import java.nio.charset.Charset;
+
 import static java.lang.String.format;
 
 /**
  * Utilities, typically copied in from guava, so as to avoid dependency conflicts.
  */
 public final class Util {
+
+  public static final Charset UTF_8 = Charset.forName("UTF-8");
 
   /**
    * Copy of {@code com.google.common.base.Preconditions#checkNotNull}.

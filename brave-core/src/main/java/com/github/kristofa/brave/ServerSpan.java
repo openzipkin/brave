@@ -46,7 +46,7 @@ public abstract class ServerSpan {
      * @param parentSpanId Parent span id, can be <code>null</code>.
      * @param name Span name. Should be lowercase and not <code>null</code> or empty.
      */
-     static ServerSpan create(long traceId, long spanId, Long parentSpanId, String name) {
+     static ServerSpan create(long traceId, long spanId, @Nullable Long parentSpanId, String name) {
         Span span = new Span();
         span.setTrace_id(traceId);
         span.setId(spanId);

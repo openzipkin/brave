@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -8,7 +9,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -26,20 +26,38 @@ public abstract class AnnotationSubmitter {
 
     abstract SpanAndEndpoint spanAndEndpoint();
 
-    private static final Charset UTF_8 = Charset.forName("UTF-8");
-
     /**
-     * Submits custom annotation for current span.
+     * Associates an event that explains latency with the current system time.
      *
-     * @param annotationName Custom annotation for current span.
+     * @param value A short tag indicating the event, like "finagle.retry"
      */
-    public void submitAnnotation(String annotationName) {
+    public void submitAnnotation(String value) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
             Annotation annotation = new Annotation();
             annotation.setTimestamp(currentTimeMicroseconds());
             annotation.setHost(spanAndEndpoint().endpoint());
-            annotation.setValue(annotationName);
+            annotation.setValue(value);
+            addAnnotation(span, annotation);
+        }
+    }
+
+    /**
+     * Associates an event that explains latency with a timestamp.
+     *
+     * <p/> This is an alternative to {@link #submitAnnotation(String)}, when
+     * you have a timestamp more precise or accurate than {@link System#currentTimeMillis()}.
+     *
+     * @param value     A short tag indicating the event, like "finagle.retry"
+     * @param timestamp microseconds from epoch
+     */
+    public void submitAnnotation(String value, long timestamp) {
+        Span span = spanAndEndpoint().span();
+        if (span != null) {
+            Annotation annotation = new Annotation();
+            annotation.setTimestamp(timestamp);
+            annotation.setHost(spanAndEndpoint().endpoint());
+            annotation.setValue(value);
             addAnnotation(span, annotation);
         }
     }
@@ -103,16 +121,17 @@ public abstract class AnnotationSubmitter {
     }
 
     /**
-     * Submits a binary (key/value) annotation with String value.
+     * Binary annotations are tags applied to a Span to give it context. For
+     * example, a key "your_app.version" would let you lookup spans by version.
      *
-     * @param key Key, should not be blank.
+     * @param key Name used to lookup spans, such as "your_app.version"
      * @param value String value, should not be <code>null</code>.
      */
     public void submitBinaryAnnotation(String key, String value) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
             checkNotNull(value, "Null value");
-            ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
+            ByteBuffer bb = ByteBuffer.wrap(value.getBytes(Util.UTF_8));
             submitBinaryAnnotation(span, spanAndEndpoint().endpoint(), key, bb, AnnotationType.STRING);
         }
     }

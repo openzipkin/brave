@@ -1,10 +1,10 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -30,7 +31,7 @@ public class ITBrave {
     private final static int NUMBER_OF_REQUESTS = 1000;
 
     @Test
-    public void testServerAndClientSpanCycle() throws InterruptedException, ExecutionException {
+    public void testServerClientAndLocalSpanCycle() throws InterruptedException, ExecutionException {
         final ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(NUMBER_PARALLEL_THREADS);
         try {
             final Collection<Future<Integer>> futures = new ArrayList<Future<Integer>>();
@@ -64,7 +65,7 @@ public class ITBrave {
             final Random random = new Random();
 
             final String serverSpanName = "server span name " + random.nextLong();
-            serverTracer.setStateCurrentTrace(random.nextLong(), random.nextLong(), random.nextLong(), serverSpanName);
+            serverTracer.setStateCurrentTrace(random.nextLong(), random.nextLong(), null, serverSpanName);
 
             serverTracer.setServerReceived();
 
@@ -77,28 +78,39 @@ public class ITBrave {
             clientTracer.setClientSent();
             clientTracer.setClientReceived();
 
+            // Simulate local.
+            final LocalTracer localTracer = brave.localTracer();
+            final String localSpanName = "local span name " + random.nextLong();
+            localTracer.startSpan("test", localSpanName);
+            localTracer.finishSpan();
+
             serverTracer.setServerSend();
 
             final List<Span> collectedSpans = mockSpanCollector.getCollectedSpans();
-            assertEquals("Expected 2 collected spans.", 2, collectedSpans.size());
+            assertEquals("Expected 3 collected spans.", 3, collectedSpans.size());
             final Span clientSpan = collectedSpans.get(0);
-            final Span serverSpan = collectedSpans.get(1);
+            final Span localSpan = collectedSpans.get(1);
+            final Span serverSpan = collectedSpans.get(2);
 
-            assertTrue(serverSpan.getTrace_id() != 0);
-            assertTrue(serverSpan.getId() != 0);
-            assertTrue(serverSpan.getParent_id() != 0);
+            assertTrue(serverSpan.trace_id != 0);
+            assertFalse(serverSpan.isSetParent_id());
+            assertTrue(serverSpan.id != 0);
+            assertEquals(serverSpanName, serverSpan.name);
 
-            assertTrue(clientSpan.getTrace_id() != 0);
-            assertTrue(clientSpan.getId() != 0);
-            assertTrue(clientSpan.getParent_id() != 0);
+            assertEquals(serverSpan.trace_id, clientSpan.trace_id);
+            assertEquals(serverSpan.id, clientSpan.parent_id);
+            assertTrue(clientSpan.id != 0);
+            assertEquals(clientSpanName, clientSpan.name);
 
-            assertEquals("Should belong to same trace.", serverSpan.getTrace_id(), clientSpan.getTrace_id());
-            assertTrue("Span ids should be different.", serverSpan.getId() != clientSpan.getId());
-            assertEquals("Parent span id of client span should be equal to server span id.", serverSpan.getId(),
-                clientSpan.getParent_id());
+            assertEquals(serverSpan.trace_id, localSpan.trace_id);
+            assertEquals(serverSpan.id, localSpan.parent_id);
+            assertTrue(localSpan.id != 0);
+            assertEquals(localSpanName, localSpan.name);
 
+            assertEquals("Span ids should be different.", 3, Stream.of(serverSpan.id, clientSpan.id, localSpan.id).distinct().count());
             assertEquals("Expect sr, ss and 1 custom annotation.", 3, serverSpan.getAnnotations().size());
             assertEquals(2, clientSpan.getAnnotations().size());
+            assertFalse(localSpan.isSetAnnotations());
 
             return 2;
 
