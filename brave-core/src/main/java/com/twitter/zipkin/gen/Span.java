@@ -52,6 +52,11 @@ public class Span implements org.apache.thrift.TBase<Span, Span._Fields>, java.i
     schemes.put(TupleScheme.class, new SpanTupleSchemeFactory());
   }
 
+  /**
+   * Internal field, used for deriving duration with {@link System#nanoTime()}.
+   */
+  public volatile Long startTick;
+
   public long trace_id; // required
   /**
    * Span name in lowercase, rpc method for example

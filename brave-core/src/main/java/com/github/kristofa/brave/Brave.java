@@ -14,6 +14,7 @@ public class Brave {
 
     private final ServerTracer serverTracer;
     private final ClientTracer clientTracer;
+    private final LocalTracer localTracer;
     private final ServerRequestInterceptor serverRequestInterceptor;
     private final ServerResponseInterceptor serverResponseInterceptor;
     private final ClientRequestInterceptor clientRequestInterceptor;
@@ -129,6 +130,15 @@ public class Brave {
     }
 
     /**
+     * Returns a tracer used to log in-process activity.
+     *
+     * @since 3.2
+     */
+    public LocalTracer localTracer() {
+        return localTracer;
+    }
+
+    /**
      * Server Tracer.
      * <p>
      * It is advised that you use ServerRequestInterceptor and ServerResponseInterceptor instead.
@@ -199,6 +209,7 @@ public class Brave {
                 .state(builder.state)
                 .traceFilters(builder.traceFilters).build();
 
+        localTracer = LocalTracer.create(clientTracer, builder.spanCollector, builder.state);
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);

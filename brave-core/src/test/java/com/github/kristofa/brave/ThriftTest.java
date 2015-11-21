@@ -1,16 +1,13 @@
 package com.github.kristofa.brave;
 
-
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 /**
- * Zipkin's thrift specifies that span and service name are lowercase. This makes sure that folks
- * modify generated thrifts to enforce that.
+ * This enforces the thrifts are modified to enforce certain behavior or use cases.
  */
 public class ThriftTest {
 
@@ -24,5 +21,11 @@ public class ThriftTest {
   public void testEndpointServiceNameLowercase() {
     assertEquals("servicename", new Endpoint(1, (short) 1, "ServiceName").getService_name());
     assertEquals("servicename", new Endpoint().setService_name("ServiceName").getService_name());
+  }
+
+  @Test
+  public void canStoreNanoTimeForDurationCalculation() {
+    Span span = new Span();
+    span.startTick = System.nanoTime();
   }
 }

@@ -123,4 +123,28 @@ public class zipkinCoreConstants {
    */
   public static final String SERVER_ADDR = "sa";
 
+  /**
+   * The {@link BinaryAnnotation#value value} of "lc" is the component or namespace of a local
+   * span.
+   *
+   * <p/>{@link BinaryAnnotation#host} adds service context needed to support queries.
+   *
+   * <p/>Local Component("lc") supports three key features: flagging, query by service and filtering
+   * Span.name by namespace.
+   *
+   * <p/>While structurally the same, local spans are fundamentally different than RPC spans in how
+   * they should be interpreted. For example, zipkin v1 tools center on RPC latency and service
+   * graphs. Root local-spans are neither indicative of critical path RPC latency, nor have impact
+   * on the shape of a service graph. By flagging with "lc", tools can special-case local spans.
+   *
+   * <p/>Zipkin v1 Spans are unqueryable unless they can be indexed by service name. The only path
+   * to a {@link Endpoint#service_name service name} is via {@link BinaryAnnotation#host
+   * host}. By logging "lc", a local span can be queried even if no other annotations are logged.
+   *
+   * <p/>The value of "lc" is the namespace of {@link Span#name}. For example, it might be
+   * "finatra2", for a span named "bootstrap". "lc" allows you to resolves conflicts for the same
+   * Span.name, for example "finatra/bootstrap" vs "finch/bootstrap". Using local component, you'd
+   * search for spans named "bootstrap" where "lc=finch"
+   */
+  public static final String LOCAL_COMPONENT = "lc";
 }
