@@ -2,6 +2,7 @@ package com.github.kristofa.brave.scribe;
 
 import com.twitter.zipkin.gen.scribe;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.THsHaServer;
@@ -24,11 +25,7 @@ class ScribeServer {
     private final ScribeReceiver receiver;
 
     public ScribeServer(final int port) throws TTransportException {
-        this(port, -1);
-    }
-
-    public ScribeServer(final int port, final int delayMs) throws TTransportException {
-        receiver = new ScribeReceiver(delayMs);
+        receiver = new ScribeReceiver();
 
         final Processor<Iface> processor = new scribe.Processor<>(receiver);
 
@@ -63,6 +60,14 @@ class ScribeServer {
 
     public List<Span> getReceivedSpans() {
         return receiver.getSpans();
+    }
+
+    public void introduceDelay(int duration, TimeUnit unit) {
+        receiver.setDelayMs((int) TimeUnit.MILLISECONDS.convert(duration, unit));
+    }
+
+    public void clearDelay() {
+        receiver.setDelayMs(0);
     }
 
     public void stop() {

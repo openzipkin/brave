@@ -47,6 +47,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
     private final List<ScribeClientProvider> clientProviders = new ArrayList<>();
     private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
+    private final ScribeCollectorMetricsHandler metricsHandler;
 
     /**
      * Create a new instance with default queue size (= {@link ScribeSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default
@@ -71,6 +72,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
         checkNotBlank(host, "Null or empty host");
         checkNotNull(params, "Null params");
 
+        metricsHandler = params.getMetricsHandler();
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());
         executorService = Executors.newFixedThreadPool(params.getNrOfThreads());
 
@@ -80,7 +82,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
             ScribeClientProvider clientProvider = createZipkinCollectorClientProvider(host,
                     port, params);
             final SpanProcessingThread spanProcessingThread = new SpanProcessingThread(spanQueue, clientProvider,
-                    params.getBatchSize());
+                    params.getBatchSize(), metricsHandler);
             spanProcessingThreads.add(spanProcessingThread);
             clientProviders.add(clientProvider);
             futures.add(executorService.submit(spanProcessingThread));
@@ -109,6 +111,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
     @Override
     public void collect(final Span span) {
 
+        metricsHandler.incrementAcceptedSpans(1);
         final long start = System.currentTimeMillis();
 
         if (!defaultAnnotations.isEmpty()) {
@@ -120,6 +123,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
         final boolean offer = spanQueue.offer(span);
         if (!offer) {
             LOGGER.warning("Queue rejected Span, span not submitted: "+ span);
+            metricsHandler.incrementDroppedSpans(1);
         } else {
             final long end = System.currentTimeMillis();
             if (LOGGER.isLoggable(Level.FINE)) {
@@ -172,6 +176,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
             clientProvider.close();
         }
         executorService.shutdown();
+        metricsHandler.incrementDroppedSpans(spanQueue.size());
         LOGGER.info("ScribeSpanCollector closed.");
     }
 

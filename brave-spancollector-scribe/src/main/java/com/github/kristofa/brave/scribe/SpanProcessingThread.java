@@ -41,6 +41,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private final BlockingQueue<Span> queue;
     private final ScribeClientProvider clientProvider;
     private final TProtocolFactory protocolFactory;
+    private final ScribeCollectorMetricsHandler metricsHandler;
     private volatile boolean stop = false;
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
@@ -52,12 +53,14 @@ class SpanProcessingThread implements Callable<Integer> {
      * @param queue BlockingQueue that will provide spans.
      * @param clientProvider {@link ThriftClientProvider} that provides client used to submit spans to zipkin span collector.
      * @param maxBatchSize Max batch size. Indicates how many spans we submit to collector in 1 go.
+     * @param metricsHandler Handler to be notified of span logging events.
      */
     public SpanProcessingThread(final BlockingQueue<Span> queue, final ScribeClientProvider clientProvider,
-        final int maxBatchSize) {
+        final int maxBatchSize, ScribeCollectorMetricsHandler metricsHandler) {
         if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
         this.queue = checkNotNull(queue, "Null queue");
         this.clientProvider = checkNotNull(clientProvider, "Null clientProvider");
+        this.metricsHandler = checkNotNull(metricsHandler, "Null metricsHandler");
         protocolFactory = new TBinaryProtocol.Factory();
         this.maxBatchSize = maxBatchSize;
         logEntries = new ArrayList<LogEntry>(maxBatchSize);
@@ -131,6 +134,7 @@ class SpanProcessingThread implements Callable<Integer> {
                 LOGGER.warning("Logging spans failed (couldn't establish connection). " + logEntries.size() + " spans are lost!");
             }
         }
+        metricsHandler.incrementDroppedSpans(logEntries.size());
         return false;
     }
 
