@@ -30,11 +30,7 @@ class ScribeReceiver implements Iface {
 
     private static final Logger LOGGER = Logger.getLogger(ScribeReceiver.class.getName());
     private final BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-    private final int delayMs;
-
-    public ScribeReceiver(final int delayMs) {
-        this.delayMs = delayMs;
-    }
+    private volatile int delayMs;
 
     public void clearReceivedSpans() {
         spans.clear();
@@ -81,4 +77,11 @@ class ScribeReceiver implements Iface {
         return result;
     }
 
+    public void setDelayMs(int delayMs) {
+        if (delayMs < 0) {
+            throw new IllegalArgumentException("Invalid delay of " + delayMs + " ms");
+        }
+
+        this.delayMs = delayMs;
+    }
 }
