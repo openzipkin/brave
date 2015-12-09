@@ -12,13 +12,13 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
-public class ThreadLocalServerAndClientSpanStateTest {
+public class ThreadLocalServerClientAndLocalSpanStateTest {
 
     private static final short PORT = 80;
     private static final String SERVICE_NAME = "service";
     private static final long DURATION1 = 10;
     private static final long DURATION2 = 30;
-    private ThreadLocalServerAndClientSpanState serverAndClientSpanState;
+    private ThreadLocalServerClientAndLocalSpanState serverAndClientSpanState;
     private ServerSpan mockServerSpan;
     private Span mockSpan;
     private Endpoint mockEndpoint;
@@ -26,7 +26,7 @@ public class ThreadLocalServerAndClientSpanStateTest {
     @Before
     public void setup() {
         // -1062731775 = 192.168.0.1
-        serverAndClientSpanState = new ThreadLocalServerAndClientSpanState(-1062731775, PORT, SERVICE_NAME);
+        serverAndClientSpanState = new ThreadLocalServerClientAndLocalSpanState(-1062731775, PORT, SERVICE_NAME);
         mockServerSpan = mock(ServerSpan.class);
         mockSpan = mock(Span.class);
         mockEndpoint = mock(Endpoint.class);

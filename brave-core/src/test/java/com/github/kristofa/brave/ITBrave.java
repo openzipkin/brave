@@ -81,7 +81,7 @@ public class ITBrave {
             // Simulate local.
             final LocalTracer localTracer = brave.localTracer();
             final String localSpanName = "local span name " + random.nextLong();
-            localTracer.startSpan("test", localSpanName);
+            localTracer.startNewSpan("test", localSpanName);
             localTracer.finishSpan();
 
             serverTracer.setServerSend();

@@ -5,8 +5,14 @@ import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 
 /**
- * Maintains server span state.
- * 
+ * Maintains state for a single server span.
+ *
+ * <p/>Server spans can be at the following locations in the span tree.
+ * <ul>
+ *     <li>The root-span of a trace originated by Brave</li>
+ *     <li>A child of a span propagated to Brave</li>
+ * </ul>
+ *
  * @author kristof
  */
 public interface ServerSpanState extends CommonSpanState {

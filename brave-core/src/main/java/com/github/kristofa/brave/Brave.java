@@ -27,14 +27,14 @@ public class Brave {
      * Builds Brave api objects with following defaults if not overridden:
      * <p>
      * <ul>
-     * <li>ThreadLocalServerAndClientSpanState which binds trace/span state to current thread.</li>
+     * <li>ThreadLocalServerClientAndLocalSpanState which binds trace/span state to current thread.</li>
      * <li>FixedSampleRateTraceFilter which traces every request.</li>
      * <li>LoggingSpanCollector</li>
      * </ul>
      */
     public static class Builder {
 
-        private final ServerAndClientSpanState state;
+        private final ServerClientAndLocalSpanState state;
         private final List<TraceFilter> traceFilters = new ArrayList<>();
         private SpanCollector spanCollector = new LoggingSpanCollector();
         private Random random = new Random();
@@ -64,7 +64,7 @@ public class Brave {
         public Builder(String serviceName) {
             try {
                 int ip = toInt(getLocalHostLANAddress());
-                state = new ThreadLocalServerAndClientSpanState(ip, 0, serviceName);
+                state = new ThreadLocalServerClientAndLocalSpanState(ip, 0, serviceName);
             } catch (UnknownHostException e) {
                 throw new IllegalStateException("Unable to get Inet address", e);
             }
@@ -79,14 +79,14 @@ public class Brave {
          * @param serviceName Name of service. Is only relevant when we do server side tracing.
          */
         public Builder(int ip, int port, String serviceName) {
-            state = new ThreadLocalServerAndClientSpanState(ip, port, serviceName);
+            state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
             traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
 
         /**
          * Use for control of how tracing state propagates across threads.
          */
-        public Builder(ServerAndClientSpanState state) {
+        public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
             traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
@@ -209,7 +209,12 @@ public class Brave {
                 .state(builder.state)
                 .traceFilters(builder.traceFilters).build();
 
-        localTracer = LocalTracer.create(clientTracer, builder.spanCollector, builder.state);
+        localTracer = LocalTracer.builder()
+                .randomGenerator(builder.random)
+                .spanCollector(builder.spanCollector)
+                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
+                .traceFilters(builder.traceFilters).build();
+        
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);

@@ -1,7 +1,17 @@
 package com.github.kristofa.brave;
 
-import com.twitter.zipkin.gen.Endpoint;
-import com.twitter.zipkin.gen.Span;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import java.util.Collections;
+import java.util.Random;
+
+import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
+import com.github.kristofa.brave.internal.Util;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -9,36 +19,36 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.*;
+import com.twitter.zipkin.gen.Span;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(LocalTracer.class)
+@PrepareForTest({AnnotationSubmitter.class, LocalTracer.class})
 public class LocalTracerTest {
 
-    private final static String COMPONENT_NAME = "componentname";
-    private final static String OPERATION_NAME = "operationname";
+    private static final long PARENT_TRACE_ID = 105;
+    private static final long PARENT_SPAN_ID = 103;
+    private static final String COMPONENT_NAME = "componentname";
+    private static final String OPERATION_NAME = "operationname";
 
-    private ServerAndClientSpanState mockState;
-    private ClientTracer mockClientTracer;
-    private SpanCollector mockSpanCollector;
-    private Endpoint endpoint;
-
+    private ServerClientAndLocalSpanState state = new TestServerClientAndLocalSpanStateCompilation();
+    private Random mockRandom;
+    private SpanCollector mockCollector;
     private LocalTracer localTracer;
 
     @Before
     public void setup() {
-        mockState = mock(ServerAndClientSpanState.class);
-        endpoint = new Endpoint();
-        when(mockState.getServerEndpoint()).thenReturn(endpoint);
+        mockRandom = mock(Random.class);
+        when(mockRandom.nextLong()).thenReturn(555l);
+
+        mockCollector = mock(SpanCollector.class);
 
         PowerMockito.mockStatic(System.class);
-        mockClientTracer = mock(ClientTracer.class);
-        mockSpanCollector = mock(SpanCollector.class);
-
-        localTracer = LocalTracer.create(mockClientTracer, mockSpanCollector, mockState);
+        localTracer = LocalTracer.builder()
+                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
+                .randomGenerator(mockRandom)
+                .spanCollector(mockCollector)
+                .traceFilters(Collections.emptyList())
+                .build();
     }
 
     /**
@@ -47,27 +57,28 @@ public class LocalTracerTest {
      * <p>
      * <p/>Ex.
      * <pre>
-     * localTracer.startSpan(component, operation); // internally time and nanos are recorded
+     * localTracer.startNewSpan(component, operation); // internally time and nanos are recorded
      * </pre>
      */
     @Test
-    public void startSpan() {
-        SpanId spanId = mock(SpanId.class);
-        Span started = new Span();
-        when(mockClientTracer.startNewSpan(OPERATION_NAME)).thenReturn(spanId);
-        when(mockState.getCurrentClientSpan()).thenReturn(started);
-        when(mockClientTracer.currentTimeMicroseconds()).thenReturn(1000L);
+    public void startNewSpan() {
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name"));
+
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(1L);
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        assertEquals(spanId, localTracer.startSpan(COMPONENT_NAME, OPERATION_NAME));
+        SpanId expectedSpanId = SpanId.create(PARENT_TRACE_ID, 555l, PARENT_SPAN_ID);
+
+        assertEquals(expectedSpanId, localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
+
+        Span started = state.getCurrentLocalSpan();
+
         assertEquals(1000L, started.timestamp);
         assertEquals(500L, started.startTick.longValue());
-
-        verify(mockClientTracer).startNewSpan(OPERATION_NAME);
-        verify(mockClientTracer).submitBinaryAnnotation(LOCAL_COMPONENT, COMPONENT_NAME); // for lookup by service
-        verify(mockState).getCurrentClientSpan();
-        verify(mockClientTracer).currentTimeMicroseconds();
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+        assertEquals("lc", started.binary_annotations.get(0).getKey());
+        assertEquals(COMPONENT_NAME, new String(started.binary_annotations.get(0).getValue(), Util.UTF_8));
+        assertEquals(state.getClientEndpoint(), started.binary_annotations.get(0).host);
+        assertEquals(OPERATION_NAME, started.getName());
     }
 
     /**
@@ -76,34 +87,38 @@ public class LocalTracerTest {
      * <p>
      * <p/>Ex.
      * <pre>
-     * localTracer.startSpan(component, operation, startTime);
+     * localTracer.startNewSpan(component, operation, startTime);
      *
      * </pre>
      */
     @Test
     public void startSpan_userSuppliedTimestamp() {
-        SpanId spanId = mock(SpanId.class);
-        Span started = new Span();
-        when(mockClientTracer.startNewSpan(OPERATION_NAME)).thenReturn(spanId);
-        when(mockState.getCurrentClientSpan()).thenReturn(started);
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name"));
 
-        assertEquals(spanId, localTracer.startSpan(COMPONENT_NAME, OPERATION_NAME, 1000L));
+        localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
+
+        Span started = state.getCurrentLocalSpan();
         assertEquals(1000L, started.timestamp);
         assertNull(started.startTick);
-
-        verify(mockClientTracer).startNewSpan(OPERATION_NAME);
-        verify(mockClientTracer).submitBinaryAnnotation(LOCAL_COMPONENT, COMPONENT_NAME); // for lookup by service
-        verify(mockState).getCurrentClientSpan();
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
     }
 
     @Test
     public void startSpan_unsampled() {
-        when(mockClientTracer.startNewSpan(OPERATION_NAME)).thenReturn(null);
-        assertNull(localTracer.startSpan(COMPONENT_NAME, OPERATION_NAME));
+        localTracer = LocalTracer
+                .builder(localTracer)
+                .traceFilters(Collections.singletonList(new TraceFilter() {
+                    @Override
+                    public boolean trace(long spanId, String spanName) {
+                        return false;
+                    }
 
-        verify(mockClientTracer).startNewSpan(OPERATION_NAME);
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+                    @Override
+                    public void close() {
+
+                    }
+                })).build();
+
+        assertNull(localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
     }
 
     /**
@@ -120,17 +135,14 @@ public class LocalTracerTest {
     public void finishSpan() {
         Span finished = new Span().setTimestamp(1000L); // set in start span
         finished.startTick = 500000L; // set in start span
+        state.setCurrentLocalSpan(finished);
 
         PowerMockito.when(System.nanoTime()).thenReturn(1000000L);
-        when(mockState.getCurrentClientSpan()).thenReturn(finished);
 
         localTracer.finishSpan();
 
-        verify(mockState, times(2)).getCurrentClientSpan(); // 2 times, since Span.duration is derived
-        verify(mockSpanCollector).collect(finished);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockState).setCurrentClientSpan(null);
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(500L, finished.duration);
     }
@@ -148,20 +160,16 @@ public class LocalTracerTest {
     @Test
     public void finishSpan_userSuppliedTimestamp() {
         Span finished = new Span().setTimestamp(1000L); // Set by user
+        state.setCurrentLocalSpan(finished);
 
-        when(mockState.getCurrentClientSpan()).thenReturn(finished);
-        when(mockClientTracer.currentTimeMicroseconds()).thenReturn(1500L);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(2L);
 
         localTracer.finishSpan();
 
-        verify(mockState, times(2)).getCurrentClientSpan(); // 2 times, since Span.duration is derived
-        verify(mockClientTracer).currentTimeMicroseconds();
-        verify(mockSpanCollector).collect(finished);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockState).setCurrentClientSpan(null);
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(500L, finished.duration);
+        assertEquals(1000L, finished.duration);
     }
 
     /**
@@ -178,16 +186,12 @@ public class LocalTracerTest {
     public void finishSpan_userSuppliedDuration() {
         Span finished = new Span().setTimestamp(1000L); // set in start span
         finished.startTick = 500L; // set in start span
-
-        when(mockState.getCurrentClientSpan()).thenReturn(finished);
+        state.setCurrentLocalSpan(finished);
 
         localTracer.finishSpan(500L);
 
-        verify(mockState).getCurrentClientSpan();
-        verify(mockSpanCollector).collect(finished);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockState).setCurrentClientSpan(null);
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(500L, finished.duration);
     }
@@ -205,33 +209,31 @@ public class LocalTracerTest {
     @Test
     public void finishSpan_userSuppliedTimestampAndDuration() {
         Span finished = new Span().setTimestamp(1000L); // Set by user
-
-        when(mockState.getCurrentClientSpan()).thenReturn(finished);
+        state.setCurrentLocalSpan(finished);
 
         localTracer.finishSpan(500L);
 
-        verify(mockState).getCurrentClientSpan();
-        verify(mockSpanCollector).collect(finished);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockState).setCurrentClientSpan(null);
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(500L, finished.duration);
     }
 
     @Test
     public void finishSpan_unsampled() {
-        when(mockState.getCurrentClientSpan()).thenReturn(null);
+        state.setCurrentLocalSpan(null);
+
         localTracer.finishSpan();
-        verify(mockState).getCurrentClientSpan();
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void finishSpan_unsampled_userSuppliedDuration() {
-        when(mockState.getCurrentClientSpan()).thenReturn(null);
+        state.setCurrentLocalSpan(null);
+
         localTracer.finishSpan(5000L);
-        verify(mockState).getCurrentClientSpan();
-        verifyNoMoreInteractions(mockClientTracer, mockState, mockClientTracer);
+
+        verifyNoMoreInteractions(mockCollector);
     }
 }

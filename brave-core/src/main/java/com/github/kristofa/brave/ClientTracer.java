@@ -42,7 +42,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     @AutoValue.Builder
     public abstract static class Builder {
 
-        public Builder state(ServerAndClientSpanState state) {
+        public Builder state(ServerClientAndLocalSpanState state) {
             return spanAndEndpoint(ClientSpanAndEndpoint.create(state));
         }
 
@@ -148,13 +148,19 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
     private SpanId getNewSpanId() {
 
-        Span currentServerSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
+        if (parentSpan == null) {
+            ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
+            if (serverSpan != null) {
+                parentSpan = serverSpan.getSpan();
+            }
+        }
         long newSpanId = randomGenerator().nextLong();
-        if (currentServerSpan == null) {
+        if (parentSpan == null) {
             return SpanId.create(newSpanId, newSpanId, null);
         }
 
-        return SpanId.create(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
+        return SpanId.create(parentSpan.getTrace_id(), newSpanId, parentSpan.getId());
     }
 
     ClientTracer() {

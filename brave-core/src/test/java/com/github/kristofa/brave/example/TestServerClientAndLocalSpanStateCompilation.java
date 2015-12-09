@@ -1,26 +1,20 @@
 package com.github.kristofa.brave.example;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ServerAndClientSpanState;
+import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import org.junit.Test;
 
 /**
- * Example that shows ServerAndClientSpanState can be implemented outside brave's package.
+ * Example that shows ServerClientAndLocalSpanState can be implemented outside brave's package.
  */
-public class ServerAndClientSpanStateCompilationTest implements ServerAndClientSpanState {
-
-    @Test
-    public void buildsWithoutError() throws Exception {
-        new Brave.Builder(this).build();
-    }
+public class TestServerClientAndLocalSpanStateCompilation implements ServerClientAndLocalSpanState {
 
     private Endpoint endpoint = new Endpoint(127 << 24 | 1, (short) 8080, "tomcat");
-    private Span currentClientSpan = null;
     private ServerSpan currentServerSpan = ServerSpan.EMPTY;
+    private Span currentClientSpan = null;
     private String currentClientServiceName;
+    private Span currentLocalSpan = null;
 
     @Override
     public ServerSpan getCurrentServerSpan() {
@@ -52,7 +46,7 @@ public class ServerAndClientSpanStateCompilationTest implements ServerAndClientS
     }
 
     @Override
-    public void setCurrentClientSpan(final Span span) {
+    public void setCurrentClientSpan(Span span) {
         currentClientSpan = span;
     }
 
@@ -63,6 +57,16 @@ public class ServerAndClientSpanStateCompilationTest implements ServerAndClientS
 
     @Override
     public Boolean sample() {
-        return currentServerSpan.getSample();
+        return currentServerSpan == null ? null : currentServerSpan.getSample();
+    }
+
+    @Override
+    public Span getCurrentLocalSpan() {
+        return currentLocalSpan;
+    }
+
+    @Override
+    public void setCurrentLocalSpan(Span span) {
+        currentLocalSpan = span;
     }
 }

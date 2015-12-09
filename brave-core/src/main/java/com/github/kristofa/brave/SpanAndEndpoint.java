@@ -62,9 +62,9 @@ public interface SpanAndEndpoint {
 
     @AutoValue
     abstract class ClientSpanAndEndpoint implements SpanAndEndpoint {
-        abstract ServerAndClientSpanState state();
+        abstract ServerClientAndLocalSpanState state();
 
-        static ClientSpanAndEndpoint create(ServerAndClientSpanState state) {
+        static ClientSpanAndEndpoint create(ServerClientAndLocalSpanState state) {
             return new AutoValue_SpanAndEndpoint_ClientSpanAndEndpoint(state);
         }
 
@@ -79,6 +79,26 @@ public interface SpanAndEndpoint {
         /**
          * {@inheritDoc}
          */
+        @Override
+        public Endpoint endpoint() {
+            return state().getClientEndpoint();
+        }
+    }
+
+    @AutoValue
+    abstract class LocalSpanAndEndpoint implements SpanAndEndpoint {
+        abstract ServerClientAndLocalSpanState state();
+
+        static LocalSpanAndEndpoint create(ServerClientAndLocalSpanState state) {
+            return new AutoValue_SpanAndEndpoint_LocalSpanAndEndpoint(state);
+        }
+
+        @Override
+        public Span span() {
+            return state().getCurrentLocalSpan();
+        }
+
+        /** The local endpoint is the same as the client endpoint. */
         @Override
         public Endpoint endpoint() {
             return state().getClientEndpoint();
