@@ -5,8 +5,15 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * Maintains client span state.
- * 
+ * Maintains state for a single client span.
+ *
+ * <p/>Client spans can be at the following locations in the span tree.
+ * <ul>
+ *     <li>The root-span of a trace originated by Brave</li>
+ *     <li>A child of a server span originated by Brave</li>
+ *     <li>A child of a local span originated by Brave</li>
+ * </ul>
+ *
  * @author kristof
  */
 public interface ClientSpanState extends CommonSpanState {

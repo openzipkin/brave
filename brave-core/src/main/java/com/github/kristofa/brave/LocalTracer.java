@@ -1,8 +1,16 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.SpanAndEndpoint.LocalSpanAndEndpoint;
+import com.github.kristofa.brave.internal.Util;
 import com.google.auto.value.AutoValue;
+import com.twitter.zipkin.gen.AnnotationType;
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Random;
 
 import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
 
@@ -18,7 +26,7 @@ import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
  *
  * <p/>Here's an example of allocating precise duration for a local span:
  * <pre>
- * tracer.startSpan("codec", "encode");
+ * tracer.startNewSpan("codec", "encode");
  * try {
  *   return codec.encode(input);
  * } finally {
@@ -29,14 +37,38 @@ import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
  * @see zipkinCoreConstants#LOCAL_COMPONENT
  */
 @AutoValue
-public abstract class LocalTracer {
+public abstract class LocalTracer extends AnnotationSubmitter {
 
-    abstract ClientTracer clientTracer();
+    static Builder builder() {
+        return new AutoValue_LocalTracer.Builder();
+    }
+
+    // visible for testing
+    static Builder builder(LocalTracer source) {
+        return new AutoValue_LocalTracer.Builder(source);
+    }
+
+    @Override
+    abstract LocalSpanAndEndpoint spanAndEndpoint();
+
+    abstract Random randomGenerator();
+
     abstract SpanCollector spanCollector();
-    abstract ServerAndClientSpanState state();
 
-    static LocalTracer create(ClientTracer clientTracer, SpanCollector spanCollector, ServerAndClientSpanState state) {
-        return new AutoValue_LocalTracer(clientTracer, spanCollector, state);
+    abstract List<TraceFilter> traceFilters();
+
+    @AutoValue.Builder
+    abstract static class Builder {
+
+        abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
+
+        abstract Builder randomGenerator(Random randomGenerator);
+
+        abstract Builder spanCollector(SpanCollector spanCollector);
+
+        abstract Builder traceFilters(List<TraceFilter> traceFilters);
+
+        abstract LocalTracer build();
     }
 
     /**
@@ -47,14 +79,21 @@ public abstract class LocalTracer {
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
      * @see zipkinCoreConstants#LOCAL_COMPONENT
      */
-    public SpanId startSpan(String component, String operation) {
-        SpanId spanId = clientTracer().startNewSpan(operation);
+    public SpanId startNewSpan(String component, String operation) {
+        SpanId spanId = startNewSpan(component, operation, currentTimeMicroseconds());
         if (spanId == null) return null;
-        clientTracer().submitBinaryAnnotation(LOCAL_COMPONENT, component);
-        state().getCurrentClientSpan()
-                .setTimestamp(clientTracer().currentTimeMicroseconds())
-                .startTick = System.nanoTime(); // embezzle start tick into an internal field.
+        spanAndEndpoint().span().startTick = System.nanoTime(); // embezzle start tick into an internal field.
         return spanId;
+    }
+
+    private SpanId getNewSpanId() {
+        Span currentServerSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        long newSpanId = randomGenerator().nextLong();
+        if (currentServerSpan == null) {
+            return SpanId.create(newSpanId, newSpanId, null);
+        }
+
+        return SpanId.create(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
     }
 
     /**
@@ -66,42 +105,40 @@ public abstract class LocalTracer {
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
      * @see zipkinCoreConstants#LOCAL_COMPONENT
      */
-    public SpanId startSpan(String component, String operation, long timestamp) {
-        SpanId spanId = clientTracer().startNewSpan(operation);
-        if (spanId == null) return null;
-        clientTracer().submitBinaryAnnotation(LOCAL_COMPONENT, component);
-        state().getCurrentClientSpan().setTimestamp(timestamp);
-        return spanId;
-    }
+    public SpanId startNewSpan(String component, String operation, long timestamp) {
 
-    /**
-     * Associates an event that explains latency with the current system time.
-     *
-     * @param value A short tag indicating the event, like "ApplicationReady"
-     */
-    public void submitAnnotation(String value) {
-        clientTracer().submitAnnotation(value);
-    }
+        Boolean sample = spanAndEndpoint().state().sample();
+        if (Boolean.FALSE.equals(sample)) {
+            spanAndEndpoint().state().setCurrentLocalSpan(null);
+            return null;
+        }
 
-    /**
-     * Associates an event that explains latency with a timestamp.
-     *
-     * @param value     A short tag indicating the event, like "ApplicationReady"
-     * @param timestamp microseconds from epoch
-     */
-    public void submitAnnotation(String value, long timestamp) {
-        clientTracer().submitAnnotation(value, timestamp);
-    }
+        SpanId newSpanId = getNewSpanId();
+        if (sample == null) {
+            // No sample indication is present.
+            for (TraceFilter traceFilter : traceFilters()) {
+                if (!traceFilter.trace(newSpanId.getSpanId(), operation)) {
+                    spanAndEndpoint().state().setCurrentLocalSpan(null);
+                    return null;
+                }
+            }
+        }
 
-    /**
-     * Binary annotations are tags applied to a Span to give it context. For
-     * example, a key "your_app.version" would let you lookup spans by version.
-     *
-     * @param key   Name used to lookup spans, such as "your_app.version"
-     * @param value String value, should not be <code>null</code>.
-     */
-    public void submitBinaryAnnotation(String key, String value) {
-        clientTracer().submitBinaryAnnotation(key, value);
+        Span newSpan = new Span();
+        newSpan.setId(newSpanId.getSpanId());
+        newSpan.setTrace_id(newSpanId.getTraceId());
+        if (newSpanId.getParentSpanId() != null) {
+            newSpan.setParent_id(newSpanId.getParentSpanId());
+        }
+        newSpan.setName(operation);
+        newSpan.setTimestamp(timestamp);
+        newSpan.addToBinary_annotations(new BinaryAnnotation()
+                .setKey(LOCAL_COMPONENT)
+                .setValue(ByteBuffer.wrap(component.getBytes(Util.UTF_8)))
+                .setAnnotation_type(AnnotationType.STRING)
+                .setHost(spanAndEndpoint().endpoint()));
+        spanAndEndpoint().state().setCurrentLocalSpan(newSpan);
+        return newSpanId;
     }
 
     /**
@@ -110,7 +147,7 @@ public abstract class LocalTracer {
     public void finishSpan() {
         long endTick = System.nanoTime();
 
-        Span span = state().getCurrentClientSpan();
+        Span span = spanAndEndpoint().span();
         if (span == null) return;
 
         Long startTick = span.startTick;
@@ -118,7 +155,7 @@ public abstract class LocalTracer {
         if (startTick != null) {
             duration = (endTick - startTick) / 1000;
         } else {
-            duration = clientTracer().currentTimeMicroseconds() - span.getTimestamp();
+            duration = currentTimeMicroseconds() - span.getTimestamp();
         }
         finishSpan(duration);
     }
@@ -127,7 +164,7 @@ public abstract class LocalTracer {
      * Completes the span, which took {@code duration} microseconds.
      */
     public void finishSpan(long duration) {
-        Span span = state().getCurrentClientSpan();
+        Span span = spanAndEndpoint().span();
         if (span == null) return;
 
         synchronized (span) {
@@ -135,8 +172,7 @@ public abstract class LocalTracer {
             spanCollector().collect(span);
         }
 
-        state().setCurrentClientSpan(null);
-        state().setCurrentClientServiceName(null);
+        spanAndEndpoint().state().setCurrentLocalSpan(null);
     }
 
     LocalTracer() {

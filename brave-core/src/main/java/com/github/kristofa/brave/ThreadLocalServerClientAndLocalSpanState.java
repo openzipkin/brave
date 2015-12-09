@@ -7,11 +7,11 @@ import com.twitter.zipkin.gen.Span;
 import java.net.InetAddress;
 
 /**
- * {@link ServerAndClientSpanState} implementation that keeps trace state using a ThreadLocal variable.
+ * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using a ThreadLocal variable.
  * 
  * @author kristof
  */
-public final class ThreadLocalServerAndClientSpanState implements ServerAndClientSpanState {
+public final class ThreadLocalServerClientAndLocalSpanState implements ServerClientAndLocalSpanState {
 
     private final static ThreadLocal<ServerSpan> currentServerSpan = new ThreadLocal<ServerSpan>() {
 
@@ -23,6 +23,8 @@ public final class ThreadLocalServerAndClientSpanState implements ServerAndClien
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<>();
 
     private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<>();
+
+    private final static ThreadLocal<Span> currentLocalSpan = new ThreadLocal<>();
 
     private final Endpoint endpoint;
 
@@ -36,7 +38,7 @@ public final class ThreadLocalServerAndClientSpanState implements ServerAndClien
      *             and using InetAddress can result in ns lookup and nasty side effects.
      */
     @Deprecated
-    public ThreadLocalServerAndClientSpanState(InetAddress ip, int port, String serviceName) {
+    public ThreadLocalServerClientAndLocalSpanState(InetAddress ip, int port, String serviceName) {
         Util.checkNotNull(ip, "ip address must be specified.");
         Util.checkNotBlank(serviceName, "Service name must be specified.");
         endpoint = new Endpoint(InetAddressUtilities.toInt(ip), (short) port, serviceName);
@@ -49,7 +51,7 @@ public final class ThreadLocalServerAndClientSpanState implements ServerAndClien
      * @param port port on which current process is listening.
      * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
      */
-    public ThreadLocalServerAndClientSpanState(int ip, int port, String serviceName) {
+    public ThreadLocalServerClientAndLocalSpanState(int ip, int port, String serviceName) {
         Util.checkNotBlank(serviceName, "Service name must be specified.");
         endpoint = new Endpoint(ip, (short) port, serviceName);
     }
@@ -118,4 +120,17 @@ public final class ThreadLocalServerAndClientSpanState implements ServerAndClien
         return currentServerSpan.get().getSample();
     }
 
+    @Override
+    public Span getCurrentLocalSpan() {
+        return currentLocalSpan.get();
+    }
+
+    @Override
+    public void setCurrentLocalSpan(Span span) {
+        if (span == null) {
+            currentLocalSpan.remove();
+        } else {
+            currentLocalSpan.set(span);
+        }
+    }
 }

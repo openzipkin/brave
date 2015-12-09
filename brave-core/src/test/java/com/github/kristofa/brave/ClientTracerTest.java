@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -12,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Random;
 
+import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,22 +36,18 @@ public class ClientTracerTest {
     private static final long PARENT_TRACE_ID = 105;
     private static final long TRACE_ID = 32534;
 
-    private ServerAndClientSpanState mockState;
+    private ServerClientAndLocalSpanState state = new TestServerClientAndLocalSpanStateCompilation();
     private Random mockRandom;
     private SpanCollector mockCollector;
     private ClientTracer clientTracer;
     private Span mockSpan;
-    private Endpoint endpoint;
     private TraceFilter mockTraceFilter;
     private TraceFilter mockTraceFilter2;
 
     @Before
     public void setup() {
-        mockState = mock(ServerAndClientSpanState.class);
-        endpoint = new Endpoint();
         mockTraceFilter = mock(TraceFilter.class);
         mockTraceFilter2 = mock(TraceFilter.class);
-        when(mockState.getServerEndpoint()).thenReturn(endpoint);
         when(mockTraceFilter.trace(TRACE_ID, REQUEST_NAME)).thenReturn(true);
         when(mockTraceFilter2.trace(TRACE_ID, REQUEST_NAME)).thenReturn(true);
 
@@ -62,7 +58,7 @@ public class ClientTracerTest {
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
         clientTracer = ClientTracer.builder()
-            .state(mockState)
+            .state(state)
             .randomGenerator(mockRandom)
             .spanCollector(mockCollector)
             .traceFilters(Arrays.asList(mockTraceFilter, mockTraceFilter2))
@@ -71,27 +67,22 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientSentNoClientSpan() {
-        when(mockState.getCurrentClientSpan()).thenReturn(null);
+        state.setCurrentClientSpan(null);
         clientTracer.setClientSent();
-        verify(mockState).getCurrentClientSpan();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter);
     }
 
     @Test
     public void testSetClientSent() {
         Span clientSent = new Span();
-
-        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
-        when(mockState.getClientEndpoint()).thenReturn(endpoint);
+        state.setCurrentClientSpan(clientSent);
         clientTracer.setClientSent();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endpoint);
+        expectedAnnotation.setHost(state.getClientEndpoint());
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockState).getCurrentClientSpan();
-        verify(mockState).getClientEndpoint();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
 
         assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
         assertEquals(expectedAnnotation, clientSent.annotations.get(0));
@@ -100,18 +91,15 @@ public class ClientTracerTest {
     @Test
     public void testSetClientSentServerAddress() {
         Span clientSent = new Span();
+        state.setCurrentClientSpan(clientSent);
 
-        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
-        when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endpoint);
+        expectedAnnotation.setHost(state.getClientEndpoint());
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockState, times(2)).getCurrentClientSpan();
-        verify(mockState).getClientEndpoint();
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
 
         assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
         assertEquals(expectedAnnotation, clientSent.annotations.get(0));
@@ -130,9 +118,8 @@ public class ClientTracerTest {
     @Test
     public void testSetClientSentServerAddress_noServiceName() {
         Span clientSent = new Span();
+        state.setCurrentClientSpan(clientSent);
 
-        when(mockState.getCurrentClientSpan()).thenReturn(clientSent);
-        when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
         assertEquals("unknown", clientSent.binary_annotations.get(0).getHost().getService_name());
@@ -140,31 +127,30 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientReceivedNoClientSpan() {
-        when(mockState.getCurrentClientSpan()).thenReturn(null);
+        state.setCurrentClientSpan(null);
+
         clientTracer.setClientReceived();
-        verify(mockState).getCurrentClientSpan();
-        verifyNoMoreInteractions(mockState, mockSpan, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        verifyNoMoreInteractions(mockSpan, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
     public void testSetClientReceived() {
         Span clientRecv = new Span().setTimestamp(100L);
+        state.setCurrentClientSpan(clientRecv);
 
-        when(mockState.getCurrentClientSpan()).thenReturn(clientRecv);
-        when(mockState.getClientEndpoint()).thenReturn(endpoint);
         clientTracer.setClientReceived();
 
         final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endpoint);
+        expectedAnnotation.setHost(state.getClientEndpoint());
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_RECV);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verify(mockState).getCurrentClientSpan();
-        verify(mockState).getClientEndpoint();
-        verify(mockState).setCurrentClientSpan(null);
-        verify(mockState).setCurrentClientServiceName(null);
+
+        assertNull(state.getCurrentClientSpan());
+        assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
 
         verify(mockCollector).collect(clientRecv);
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
 
         assertEquals(CURRENT_TIME_MICROSECONDS - clientRecv.timestamp, clientRecv.duration);
         assertEquals(expectedAnnotation, clientRecv.annotations.get(0));
@@ -172,22 +158,18 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleFalse() {
-        when(mockState.sample()).thenReturn(false);
+        state.setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
-        verify(mockState).sample();
-        verify(mockState).setCurrentClientSpan(null);
-        verify(mockState).setCurrentClientServiceName(null);
-        verifyNoMoreInteractions(mockState, mockSpan, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+
+        verifyNoMoreInteractions(mockSpan, mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
     public void testStartNewSpanSampleNullNotPartOfExistingSpan() {
+        state.setCurrentServerSpan(ServerSpan.create(null));
 
-        final ServerSpan mockServerSpan = mock(ServerSpan.class);
-        when(mockServerSpan.getSpan()).thenReturn(null);
-        when(mockState.sample()).thenReturn(null);
-        when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID).thenReturn(2l);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
@@ -195,57 +177,42 @@ public class ClientTracerTest {
         assertEquals(TRACE_ID, newSpanId.getSpanId());
         assertNull(newSpanId.getParentSpanId());
 
-        final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(TRACE_ID);
-        expectedSpan.setId(TRACE_ID);
-        expectedSpan.setName(REQUEST_NAME);
+        assertEquals(
+                new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
+                state.getCurrentClientSpan()
+        );
 
-        verify(mockState).sample();
         verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
         verify(mockTraceFilter2).trace(TRACE_ID, REQUEST_NAME);
-        verify(mockRandom, times(1)).nextLong();
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).setCurrentClientSpan(expectedSpan);
 
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
     public void testStartNewSpanSampleTrueNotPartOfExistingSpan() {
+        state.setCurrentServerSpan(ServerSpan.create(true));
 
-        final ServerSpan mockServerSpan = mock(ServerSpan.class);
-        when(mockServerSpan.getSpan()).thenReturn(null);
-        when(mockState.sample()).thenReturn(true);
-        when(mockState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(1l, newSpanId.getTraceId());
-        assertEquals(1l, newSpanId.getSpanId());
+        assertEquals(TRACE_ID, newSpanId.getTraceId());
+        assertEquals(TRACE_ID, newSpanId.getSpanId());
         assertNull(newSpanId.getParentSpanId());
 
-        final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(1);
-        expectedSpan.setId(1);
-        expectedSpan.setName(REQUEST_NAME);
+        assertEquals(
+                new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
+                state.getCurrentClientSpan()
+        );
 
-        verify(mockState).sample();
-        verify(mockRandom, times(1)).nextLong();
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).setCurrentClientSpan(expectedSpan);
-
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-        when(mockState.sample()).thenReturn(true);
-
         final ServerSpan parentSpan = ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
-
-        when(mockState.getCurrentServerSpan()).thenReturn(parentSpan);
-        when(mockRandom.nextLong()).thenReturn(1l).thenReturn(2l);
+        state.setCurrentServerSpan(parentSpan);
+        when(mockRandom.nextLong()).thenReturn(1L);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
@@ -253,57 +220,45 @@ public class ClientTracerTest {
         assertEquals(1l, newSpanId.getSpanId());
         assertEquals(Long.valueOf(PARENT_SPAN_ID), newSpanId.getParentSpanId());
 
-        final Span expectedSpan = new Span();
-        expectedSpan.setTrace_id(PARENT_TRACE_ID);
-        expectedSpan.setId(1);
-        expectedSpan.setParent_id(PARENT_SPAN_ID);
-        expectedSpan.setName(REQUEST_NAME);
+        assertEquals(
+                new Span().setTrace_id(PARENT_TRACE_ID).setId(1).setParent_id(PARENT_SPAN_ID).setName(REQUEST_NAME),
+                state.getCurrentClientSpan()
+        );
 
-        verify(mockState).sample();
-        verify(mockRandom, times(1)).nextLong();
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).setCurrentClientSpan(expectedSpan);
-
-        verifyNoMoreInteractions(mockState, mockRandom, mockCollector, mockTraceFilter, mockTraceFilter2);
+        verifyNoMoreInteractions(mockCollector, mockTraceFilter, mockTraceFilter2);
     }
 
     @Test
     public void testFirstTraceFilterFalse() {
-        when(mockState.sample()).thenReturn(null);
-        when(mockState.getCurrentServerSpan()).thenReturn(ServerSpan.create(null, null));
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        state.setCurrentServerSpan(ServerSpan.create(null, null));
         when(mockTraceFilter.trace(TRACE_ID, REQUEST_NAME)).thenReturn(false);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).sample();
         verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
-        verify(mockState).setCurrentClientSpan(null);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockRandom).nextLong();
-        verifyNoMoreInteractions(mockState, mockTraceFilter, mockTraceFilter2, mockRandom, mockCollector);
 
+        assertNull(state.getCurrentClientSpan());
+        assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
+
+        verifyNoMoreInteractions(mockTraceFilter, mockTraceFilter2, mockCollector);
     }
 
     @Test
     public void testSecondTraceFilterFalse() {
-        when(mockState.sample()).thenReturn(null);
-        when(mockState.getCurrentServerSpan()).thenReturn(ServerSpan.create(null, null));
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        state.setCurrentServerSpan(ServerSpan.create(null, null));
+
         when(mockTraceFilter2.trace(TRACE_ID, REQUEST_NAME)).thenReturn(false);
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
-        verify(mockState).getCurrentServerSpan();
-        verify(mockState).sample();
         verify(mockTraceFilter).trace(TRACE_ID, REQUEST_NAME);
         verify(mockTraceFilter2).trace(TRACE_ID, REQUEST_NAME);
-        verify(mockState).setCurrentClientSpan(null);
-        verify(mockState).setCurrentClientServiceName(null);
-        verify(mockRandom).nextLong();
-        verifyNoMoreInteractions(mockTraceFilter, mockTraceFilter2, mockState, mockRandom, mockCollector);
 
+        assertNull(state.getCurrentClientSpan());
+        assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
+
+        verifyNoMoreInteractions(mockTraceFilter, mockTraceFilter2, mockCollector);
     }
-
 }
