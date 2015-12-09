@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.github.kristofa</groupId>
     <artifactId>brave</artifactId>
-    <version>3.1.1-SNAPSHOT</version>
+    <version>3.2.0</version>
   </parent>
   
   <artifactId>brave-spring-resttemplate-interceptors</artifactId>
@@ -17,7 +17,7 @@
      <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-http</artifactId>
-        <version>3.1.1-SNAPSHOT</version>
+        <version>3.2.0</version>
      </dependency>
 
      <dependency>
