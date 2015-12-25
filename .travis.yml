@@ -6,3 +6,10 @@ language: java
 script: "./mvnw verify"
 jdk:
   - oraclejdk8
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/637e968b45032d16ee26
+    on_success: change
+    on_failure: always
+    on_start: false
