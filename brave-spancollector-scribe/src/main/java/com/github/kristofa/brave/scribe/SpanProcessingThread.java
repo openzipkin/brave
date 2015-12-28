@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -41,7 +42,7 @@ class SpanProcessingThread implements Callable<Integer> {
     private final BlockingQueue<Span> queue;
     private final ScribeClientProvider clientProvider;
     private final TProtocolFactory protocolFactory;
-    private final ScribeCollectorMetricsHandler metricsHandler;
+    private final SpanCollectorMetricsHandler metricsHandler;
     private volatile boolean stop = false;
     private int processedSpans = 0;
     private final List<LogEntry> logEntries;
@@ -56,7 +57,7 @@ class SpanProcessingThread implements Callable<Integer> {
      * @param metricsHandler Handler to be notified of span logging events.
      */
     public SpanProcessingThread(final BlockingQueue<Span> queue, final ScribeClientProvider clientProvider,
-        final int maxBatchSize, ScribeCollectorMetricsHandler metricsHandler) {
+        final int maxBatchSize, SpanCollectorMetricsHandler metricsHandler) {
         if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
         this.queue = checkNotNull(queue, "Null queue");
         this.clientProvider = checkNotNull(clientProvider, "Null clientProvider");

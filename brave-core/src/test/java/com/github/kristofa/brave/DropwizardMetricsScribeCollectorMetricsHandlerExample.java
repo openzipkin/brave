@@ -1,8 +1,9 @@
-package com.github.kristofa.brave.scribe;
+package com.github.kristofa.brave;
 
 import com.codahale.metrics.MetricRegistry;
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 
-class DropwizardMetricsScribeCollectorMetricsHandlerExample implements ScribeCollectorMetricsHandler {
+class DropwizardMetricsScribeCollectorMetricsHandlerExample implements SpanCollectorMetricsHandler {
 
     static final String ACCEPTED_METER = "tracing.collector.scribe.span.accepted";
     static final String DROPPED_METER = "tracing.collector.scribe.span.dropped";

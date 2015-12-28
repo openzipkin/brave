@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.scribe;
 
-import com.codahale.metrics.MetricRegistry;
+
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.AfterClass;
@@ -10,8 +11,6 @@ import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.github.kristofa.brave.scribe.DropwizardMetricsScribeCollectorMetricsHandlerExample.ACCEPTED_METER;
-import static com.github.kristofa.brave.scribe.DropwizardMetricsScribeCollectorMetricsHandlerExample.DROPPED_METER;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -23,8 +22,24 @@ public class ScribeSpanCollectorMetricsTest {
     private static final Span SPAN = new Span(1, "span name", 2, emptyList(), emptyList());
 
     private static ScribeServer scribeServer;
+    private EventsHandler eventsHandler;
 
-    private MetricRegistry metricRegistry = new MetricRegistry();
+    private static class EventsHandler implements SpanCollectorMetricsHandler {
+
+        public int acceptedSpans = 0;
+        public int droppedSpans = 0;
+
+        @Override
+        public synchronized void incrementAcceptedSpans(int quantity) {
+            acceptedSpans += quantity;
+        }
+
+        @Override
+        public synchronized void incrementDroppedSpans(int quantity) {
+            droppedSpans += quantity;
+        }
+    }
+
 
     @BeforeClass
     public static void beforeClass() throws TTransportException {
@@ -39,6 +54,7 @@ public class ScribeSpanCollectorMetricsTest {
 
     @Before
     public void setup() {
+        eventsHandler = new EventsHandler();
         scribeServer.clearReceivedSpans();
         scribeServer.clearDelay();
     }
@@ -46,7 +62,6 @@ public class ScribeSpanCollectorMetricsTest {
     @Test
     public void testCollectorMetricsWhenSpansDeliveredSuccessfully() {
         // given
-        DropwizardMetricsScribeCollectorMetricsHandlerExample eventsHandler = new DropwizardMetricsScribeCollectorMetricsHandlerExample(metricRegistry);
         ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setMetricsHandler(eventsHandler);
 
@@ -56,14 +71,13 @@ public class ScribeSpanCollectorMetricsTest {
         }
 
         // then
-        assertEquals(1, metricRegistry.meter(ACCEPTED_METER).getCount());
-        assertEquals(0, metricRegistry.meter(DROPPED_METER).getCount());
+        assertEquals(1, eventsHandler.acceptedSpans);
+        assertEquals(0, eventsHandler.droppedSpans);
     }
 
     @Test
     public void testCollectorMetricsWhenSpansDroppedDueToFullQueue() throws InterruptedException {
         // given
-        final DropwizardMetricsScribeCollectorMetricsHandlerExample eventsHandler = new DropwizardMetricsScribeCollectorMetricsHandlerExample(metricRegistry);
         ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setMetricsHandler(eventsHandler);
         params.setQueueSize(1);
@@ -78,16 +92,15 @@ public class ScribeSpanCollectorMetricsTest {
         }
 
         // then
-        assertEquals(3, metricRegistry.meter(ACCEPTED_METER).getCount());
-        assertTrue(metricRegistry.meter(DROPPED_METER).getCount() > 0);
+        assertEquals(3, eventsHandler.acceptedSpans);
+        assertTrue(eventsHandler.droppedSpans > 0);
         assertEquals(scribeServer.getReceivedSpans().size(),
-                metricRegistry.meter(ACCEPTED_METER).getCount() - metricRegistry.meter(DROPPED_METER).getCount());
+                eventsHandler.acceptedSpans - eventsHandler.droppedSpans);
     }
 
     @Test
     public void testCollectorMetricsWhenSpansDroppedDueToConnectionFailure() {
         // given
-        final DropwizardMetricsScribeCollectorMetricsHandlerExample eventsHandler = new DropwizardMetricsScribeCollectorMetricsHandlerExample(metricRegistry);
         ScribeSpanCollectorParams params = new ScribeSpanCollectorParams();
         params.setMetricsHandler(eventsHandler);
         params.setFailOnSetup(false);
@@ -98,8 +111,8 @@ public class ScribeSpanCollectorMetricsTest {
         }
 
         // then
-        assertEquals(1, metricRegistry.meter(ACCEPTED_METER).getCount());
-        assertEquals(1, metricRegistry.meter(DROPPED_METER).getCount());
+        assertEquals(1, eventsHandler.acceptedSpans);
+        assertEquals(1, eventsHandler.droppedSpans);
     }
 
 }
