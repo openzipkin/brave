@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.kafka;
 
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -25,12 +26,15 @@ class SpanProcessingTask implements Callable<Integer> {
     private static final Logger LOGGER = Logger.getLogger(SpanProcessingTask.class.getName());
     private final BlockingQueue<Span> queue;
     private final Producer<byte[], byte[]> producer;
+    private final SpanCollectorMetricsHandler metricsHandler;
     private volatile boolean stop = false;
     private int numProcessedSpans = 0;
 
-    SpanProcessingTask(BlockingQueue<Span> queue, Producer<byte[], byte[]> producer) {
+
+    SpanProcessingTask(BlockingQueue<Span> queue, Producer<byte[], byte[]> producer, SpanCollectorMetricsHandler metricsHandler) {
         this.queue = queue;
         this.producer = producer;
+        this.metricsHandler = metricsHandler;
     }
 
     public void stop() {
@@ -53,6 +57,7 @@ class SpanProcessingTask implements Callable<Integer> {
                 producer.send(message);
                 numProcessedSpans++;
             } catch (TException e) {
+                metricsHandler.incrementDroppedSpans(1);
                 LOGGER.log(Level.WARNING, "TException when writing span.", e);
             }
         } while (!stop);

@@ -1,15 +1,11 @@
 package com.github.kristofa.brave.kafka;
 
 import com.github.charithe.kafka.KafkaJunitRule;
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanCollector;
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
-import kafka.consumer.ConsumerIterator;
-import kafka.consumer.ConsumerTimeoutException;
-import kafka.consumer.KafkaStream;
-import kafka.javaapi.consumer.ConsumerConnector;
-import kafka.producer.ProducerConfig;
 import kafka.serializer.DefaultDecoder;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -25,6 +21,24 @@ import static org.junit.Assert.assertEquals;
 public class ITKafkaSpanCollector {
 
     private final static String TOPIC = "zipkin";
+    private final EventsHandler metricsHandler = new EventsHandler();
+
+    private static class EventsHandler implements SpanCollectorMetricsHandler {
+
+        public int acceptedSpans = 0;
+        public int droppedSpans = 0;
+
+        @Override
+        public synchronized void incrementAcceptedSpans(int quantity) {
+            acceptedSpans += quantity;
+        }
+
+        @Override
+        public synchronized void incrementDroppedSpans(int quantity) {
+            droppedSpans += quantity;
+        }
+    }
+
 
     @Rule
     public KafkaJunitRule kafkaRule = new KafkaJunitRule();
@@ -32,7 +46,7 @@ public class ITKafkaSpanCollector {
     @Test
     public void submitSingleSpan() throws TException, TimeoutException {
 
-        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort());
+        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Span span = span(1l, "test_kafka_span");
         kafkaCollector.collect(span);
         kafkaCollector.close();
@@ -40,11 +54,14 @@ public class ITKafkaSpanCollector {
         List<Span> spans = getCollectedSpans(kafkaRule.readMessages("zipkin", 1, new DefaultDecoder(kafkaRule.consumerConfig().props())));
         assertEquals(1, spans.size());
         assertEquals(span, spans.get(0));
+        assertEquals(1, metricsHandler.acceptedSpans);
+        assertEquals(0, metricsHandler.droppedSpans);
+
     }
 
     @Test
     public void submitMultipleSpansInParallel() throws InterruptedException, ExecutionException, TimeoutException, TException {
-        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort());
+        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Callable<Void> spanProducer1 = new Callable<Void>() {
 
             @Override
@@ -78,6 +95,8 @@ public class ITKafkaSpanCollector {
 
         List<Span> spans = getCollectedSpans(kafkaRule.readMessages("zipkin", 400, new DefaultDecoder(kafkaRule.consumerConfig().props())));
         assertEquals(400, spans.size());
+        assertEquals(400, metricsHandler.acceptedSpans);
+        assertEquals(0, metricsHandler.droppedSpans);
         kafkaCollector.close();
     }
 
