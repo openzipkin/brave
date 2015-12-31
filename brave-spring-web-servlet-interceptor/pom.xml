@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.github.kristofa</groupId>
     <artifactId>brave</artifactId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>3.3.0</version>
   </parent>
   
   <artifactId>brave-spring-web-servlet-interceptor</artifactId>
@@ -21,7 +21,7 @@
      <dependency>
         <groupId>com.github.kristofa</groupId>
         <artifactId>brave-http</artifactId>
-        <version>3.2.1-SNAPSHOT</version>
+        <version>3.3.0</version>
      </dependency>
      <dependency>
         <groupId>org.springframework</groupId>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-core-spring</artifactId>
-            <version>3.2.1-SNAPSHOT</version>
+            <version>3.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
