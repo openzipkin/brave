@@ -12,6 +12,7 @@ import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
 
 /**
  * SpanCollector which submits spans to Kafka using <a href="http://kafka.apache.org/documentation.html#producerapi">Kafka Producer api</a>.
@@ -51,7 +52,7 @@ public class KafkaSpanCollector implements SpanCollector, Closeable {
      * @param bootstrapServers A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.
      *                         Like: host1:port1,host2:port2,... Does not to be all the servers part of Kafka cluster.
      * @param metricsHandler   Gets notified when spans are accepted or dropped. If you are not interested in these events you
-     *                         can use EmptySpanCollectorMetricsHandler
+     *                         can use {@linkplain EmptySpanCollectorMetricsHandler}
      */
     public KafkaSpanCollector(String bootstrapServers, SpanCollectorMetricsHandler metricsHandler) {
         this(KafkaSpanCollector.defaultPropertiesWith(bootstrapServers), metricsHandler);
@@ -64,7 +65,7 @@ public class KafkaSpanCollector implements SpanCollector, Closeable {
      *                        bootstrap.servers, key.serializer, value.serializer. For a
      *                        full list of config options, see http://kafka.apache.org/documentation.html#producerconfigs.
      * @param metricsHandler  Gets notified when spans are accepted or dropped. If you are not interested in these events you
-     *                        can use EmptySpanCollectorMetricsHandler
+     *                        can use {@linkplain EmptySpanCollectorMetricsHandler}
      */
     public KafkaSpanCollector(Properties kafkaProperties, SpanCollectorMetricsHandler metricsHandler) {
         producer = new KafkaProducer<>(kafkaProperties);

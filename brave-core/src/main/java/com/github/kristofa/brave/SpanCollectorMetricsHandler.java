@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 /**
- * Monitor SpanCollector by implementing reactions to these events, e.g. updating suitable metrics.
+ * Monitor {@linkplain SpanCollector} by implementing reactions to these events, e.g. updating suitable metrics.
  *
  * See DropwizardMetricsScribeCollectorMetricsHandlerExample in test sources for an example.
  */
