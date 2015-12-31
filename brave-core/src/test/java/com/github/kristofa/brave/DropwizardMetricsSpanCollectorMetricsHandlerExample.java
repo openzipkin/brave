@@ -1,15 +1,15 @@
-package com.github.kristofa.brave.scribe;
+package com.github.kristofa.brave;
 
 import com.codahale.metrics.MetricRegistry;
 
-class DropwizardMetricsScribeCollectorMetricsHandlerExample implements ScribeCollectorMetricsHandler {
+class DropwizardMetricsSpanCollectorMetricsHandlerExample implements SpanCollectorMetricsHandler {
 
     static final String ACCEPTED_METER = "tracing.collector.scribe.span.accepted";
     static final String DROPPED_METER = "tracing.collector.scribe.span.dropped";
 
     private final MetricRegistry registry;
 
-    DropwizardMetricsScribeCollectorMetricsHandlerExample(MetricRegistry registry) {
+    DropwizardMetricsSpanCollectorMetricsHandlerExample(MetricRegistry registry) {
         this.registry = registry;
     }
 

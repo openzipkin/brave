@@ -1,14 +1,14 @@
-package com.github.kristofa.brave.scribe;
+package com.github.kristofa.brave;
 
 /**
- * Monitor {@link ScribeSpanCollector} by implementing reactions to these events, e.g. updating suitable metrics.
+ * Monitor {@linkplain SpanCollector} by implementing reactions to these events, e.g. updating suitable metrics.
  *
  * See DropwizardMetricsScribeCollectorMetricsHandlerExample in test sources for an example.
  */
-public interface ScribeCollectorMetricsHandler {
+public interface SpanCollectorMetricsHandler {
 
     /**
-     * Called when spans are submitted to {@link ScribeSpanCollector} for processing.
+     * Called when spans are submitted to SpanCollector for processing.
      *
      * @param quantity the number of spans accepted.
      */

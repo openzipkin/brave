@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanCollector;
 
 import org.apache.thrift.TException;
@@ -47,7 +48,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
     private final List<ScribeClientProvider> clientProviders = new ArrayList<>();
     private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
     private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
-    private final ScribeCollectorMetricsHandler metricsHandler;
+    private final SpanCollectorMetricsHandler metricsHandler;
 
     /**
      * Create a new instance with default queue size (= {@link ScribeSpanCollectorParams#DEFAULT_QUEUE_SIZE}) and default

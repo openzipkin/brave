@@ -1,5 +1,8 @@
 package com.github.kristofa.brave.scribe;
 
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -15,7 +18,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * will be thrown.</li>
  * <li>fail on setup: Indicates if {@link ScribeSpanCollector} should fail on creation when connection with collector can't
  * be established or just log error message.</li>
- * <li>metrics handler: see {@link ScribeCollectorMetricsHandler}.</li>
+ * <li>metrics handler: see {@link SpanCollectorMetricsHandler}.</li>
  * </ul>
  * 
  * @author kristof
@@ -32,7 +35,7 @@ public class ScribeSpanCollectorParams {
     private int nrOfThreads;
     private int socketTimeout;
     private boolean failOnSetup = true;
-    private ScribeCollectorMetricsHandler metricsHandler = new EmptyScribeCollectorMetricsHandler();
+    private SpanCollectorMetricsHandler metricsHandler = new EmptySpanCollectorMetricsHandler();
 
     /**
      * Create a new instance with default values.
@@ -142,11 +145,11 @@ public class ScribeSpanCollectorParams {
         return failOnSetup;
     }
 
-    public ScribeCollectorMetricsHandler getMetricsHandler() {
+    public SpanCollectorMetricsHandler getMetricsHandler() {
         return metricsHandler;
     }
 
-    public void setMetricsHandler(ScribeCollectorMetricsHandler metricsHandler) {
+    public void setMetricsHandler(SpanCollectorMetricsHandler metricsHandler) {
         this.metricsHandler = checkNotNull(metricsHandler, "Null metricsHandler");
     }
 }

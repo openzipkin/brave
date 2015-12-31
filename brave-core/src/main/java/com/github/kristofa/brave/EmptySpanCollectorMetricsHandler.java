@@ -1,9 +1,10 @@
-package com.github.kristofa.brave.scribe;
+package com.github.kristofa.brave;
+
 
 /**
  * Empty implementation ignoring all events.
  */
-class EmptyScribeCollectorMetricsHandler implements ScribeCollectorMetricsHandler {
+public class EmptySpanCollectorMetricsHandler implements SpanCollectorMetricsHandler {
 
     @Override
     public void incrementAcceptedSpans(int quantity) {
