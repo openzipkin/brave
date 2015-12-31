@@ -2,8 +2,7 @@
 
 SpanCollector that is used to submit spans to Kafka.
 
-Spans are sent to kafka as keyed messages: the key is the topic `zipkin` 
-and the value is a TBinaryProtocol encoded Span.
+Spans are sent to a topic named `zipkin` and contain no key or partition only a value which is a TBinaryProtocol encoded Span.
 
 ## Monitoring ##
 
