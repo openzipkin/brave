@@ -7,7 +7,6 @@ import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
-import java.util.List;
 import java.util.Random;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
@@ -38,7 +37,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
-    abstract List<TraceFilter> traceFilters();
+    abstract TraceSampler traceSampler();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -56,11 +55,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        /**
-         * Will be executed in order. If one returns <code>false</code> there will be no tracing and
-         * next ones will not be executed anymore. So order is important.
-         */
-        public abstract Builder traceFilters(List<TraceFilter> traceFilters);
+        public abstract Builder traceSampler(TraceSampler traceSampler);
 
         public abstract ServerTracer build();
     }
@@ -108,15 +103,13 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        long newSpanId = randomGenerator().nextLong();
-        for (TraceFilter traceFilter : traceFilters()) {
-            if (traceFilter.trace(newSpanId, spanName) == false) {
-                spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
-                return;
-            }
+        long newTraceId = randomGenerator().nextLong();
+        if (!traceSampler().test(newTraceId)) {
+            spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+            return;
         }
         spanAndEndpoint().state().setCurrentServerSpan(
-            ServerSpan.create(newSpanId, newSpanId, null, spanName));
+            ServerSpan.create(newTraceId, newTraceId, null, spanName));
     }
 
     /**

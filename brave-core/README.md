@@ -27,7 +27,7 @@ You should check this out of you want to do http integrations.
 final Brave.Builder builder = new Brave.Builder();
 final Brave brave = builder
   .spanCollector(aSpanCollector)
-  .traceFilters(Arrays.<TraceFilter>asList(aTraceFilter))
+  .traceSampler(TraceSampler.create(0.1f)) // retain 10% of traces
   .build();
   
 // Creates different interceptors  
@@ -41,7 +41,7 @@ As you can see in above example, Since brave 3.0 the way to instantiate the api 
 We use a Builder now that lets you configure custom:
 
    * SpanCollector. Default value = `LoggingSpanCollector`
-   * list of TraceFilters. Default value is `FixedSampleRateTraceFilter` with value = 1.
+   * TraceSampler. Default value is to send every trace.
    * ServerAndClientSpanState. Default value is `ThreadLocalServerAndClientSpanState`.
 
 Once the `Brave` object is created you can get the different interceptors. 
@@ -55,33 +55,31 @@ implementations but have some implementations that you can use:
    * `EmptySpanCollector` : Part of brave-core. Does nothing.
    * `ZipkinSpanCollector` : Part of `brave-zipkin-spancollector` module. Span collector that supports sending spans directly to `zipkin-collector` service or Scribe.
 
-### TraceFilter ###
+### TraceSampler ###
 
 You might not want to trace all requests that are being submitted:
 
-   * to avoid performance overhead
+   * to avoid performance overhea
    * to avoid running out of storage
 
 and you don't need to trace all requests to come to usable data.
 
-A TraceFilter's purpose (`com.github.kristofa.brave.TraceFilter`) is to decide if a given 
-request should get traced or not. 
+A TraceSampler's purpose (`com.github.kristofa.brave.TraceSampler`) is to decide if a given
+request should get traced or not.
 
 The decision, should trace (true) or not (false) is taken by the first request (client side or server side) and should
 be passed through to all subsequent requests. This has as a consequence that we either
 trace a full request tree or none of the requests at all which is good. We don't want incomplete traces.
 
-There is a TraceFilter implementation that comes with brave-core which is 
-`com.github.kristofa.brave.FixedSampleRateTraceFilter`. This 
-TraceFilter is created with a fixed sample rate provided through its constructor. The
+TraceSampler has a factory method that accepts a a fixed sample rate as a percentage. The
 sample rate can't be adapted at run time.  Behaviour:
 
-*   sample rate <= 0 : Non of the requests will be traced. Means tracing is disabled
-*   sample rate = 1 : All requests will be traced.
-*   sample rate > 1 : For example 3, every third request will be traced.
+*   sample rate 0.0f : Non of the requests will be traced. Means tracing is disabled
+*   sample rate 1.0f : All requests will be traced.
+*   sample rate (0.0, 1.0) : For example 0.3f, 30% of requests will be traced.
 
-If you want to use a TraceFilter implementation which allows adapting sample rate at run
-time see `brave-tracefilters` project which contains a TraceFilter with ZooKeeper support.
+If you want to use a TraceSampler implementation which allows adapting sample rate at run
+time see `brave-tracesampler-zookeeper` project which contains a TraceSampler with ZooKeeper support.
 
 
 

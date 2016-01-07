@@ -9,7 +9,6 @@ import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Random;
 
 import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
@@ -55,7 +54,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract SpanCollector spanCollector();
 
-    abstract List<TraceFilter> traceFilters();
+    abstract TraceSampler traceSampler();
 
     @AutoValue.Builder
     abstract static class Builder {
@@ -66,7 +65,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
         abstract Builder spanCollector(SpanCollector spanCollector);
 
-        abstract Builder traceFilters(List<TraceFilter> traceFilters);
+        abstract Builder traceSampler(TraceSampler traceSampler);
 
         abstract LocalTracer build();
     }
@@ -116,11 +115,9 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            for (TraceFilter traceFilter : traceFilters()) {
-                if (!traceFilter.trace(newSpanId.getSpanId(), operation)) {
-                    spanAndEndpoint().state().setCurrentLocalSpan(null);
-                    return null;
-                }
+            if (!traceSampler().test(newSpanId.getTraceId())) {
+                spanAndEndpoint().state().setCurrentLocalSpan(null);
+                return null;
             }
         }
 
