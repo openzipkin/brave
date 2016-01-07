@@ -6,6 +6,7 @@
  */
 package com.twitter.zipkin.gen;
 
+import com.github.kristofa.brave.internal.Nullable;
 import org.apache.thrift.protocol.TTupleProtocol;
 import org.apache.thrift.scheme.IScheme;
 import org.apache.thrift.scheme.SchemeFactory;
@@ -24,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Generated;
+
+import static com.github.kristofa.brave.internal.Util.UTF_8;
+import static com.github.kristofa.brave.internal.Util.checkNotBlank;
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
 /**
@@ -170,6 +175,17 @@ public class BinaryAnnotation implements org.apache.thrift.TBase<BinaryAnnotatio
   }
 
   public BinaryAnnotation() {
+  }
+
+  public BinaryAnnotation(String key, String value) {
+    this.key = checkNotBlank(key, "Null or blank key");
+    this.value = ByteBuffer.wrap(checkNotNull(value, "Null value").getBytes(UTF_8));
+    this.annotation_type = AnnotationType.STRING;
+  }
+
+  public BinaryAnnotation(String key, String value, @Nullable Endpoint host) {
+    this(key, value);
+    this.host = host;
   }
 
   public BinaryAnnotation(

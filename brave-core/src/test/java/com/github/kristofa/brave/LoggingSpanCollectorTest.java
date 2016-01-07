@@ -104,12 +104,6 @@ public class LoggingSpanCollectorTest {
     }
 
     @Test
-    public void testClose() {
-        spanCollector.close();
-        verifyNoMoreInteractions(mockLogger);
-    }
-
-    @Test
     public void testGetLogger() {
         final LoggingSpanCollector loggingSpanCollector = new LoggingSpanCollector();
         assertNotNull(loggingSpanCollector.getLogger());

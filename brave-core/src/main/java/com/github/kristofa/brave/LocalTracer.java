@@ -1,14 +1,11 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.SpanAndEndpoint.LocalSpanAndEndpoint;
-import com.github.kristofa.brave.internal.Util;
 import com.google.auto.value.AutoValue;
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
-import java.nio.ByteBuffer;
 import java.util.Random;
 
 import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
@@ -129,11 +126,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         }
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
-        newSpan.addToBinary_annotations(new BinaryAnnotation()
-                .setKey(LOCAL_COMPONENT)
-                .setValue(ByteBuffer.wrap(component.getBytes(Util.UTF_8)))
-                .setAnnotation_type(AnnotationType.STRING)
-                .setHost(spanAndEndpoint().endpoint()));
+        newSpan.addToBinary_annotations(
+            new BinaryAnnotation(LOCAL_COMPONENT, component, spanAndEndpoint().endpoint()));
         spanAndEndpoint().state().setCurrentLocalSpan(newSpan);
         return newSpanId;
     }

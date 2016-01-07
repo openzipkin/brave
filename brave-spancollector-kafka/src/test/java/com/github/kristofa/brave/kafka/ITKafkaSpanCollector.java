@@ -1,16 +1,12 @@
 package com.github.kristofa.brave.kafka;
 
 import com.github.charithe.kafka.KafkaJunitRule;
-import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
-import com.github.kristofa.brave.SpanCollector;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
 import kafka.serializer.DefaultDecoder;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import java.util.*;
@@ -20,7 +16,6 @@ import static org.junit.Assert.assertEquals;
 
 public class ITKafkaSpanCollector {
 
-    private final static String TOPIC = "zipkin";
     private final EventsHandler metricsHandler = new EventsHandler();
 
     private static class EventsHandler implements SpanCollectorMetricsHandler {
@@ -46,7 +41,7 @@ public class ITKafkaSpanCollector {
     @Test
     public void submitSingleSpan() throws TException, TimeoutException {
 
-        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
+        KafkaSpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Span span = span(1l, "test_kafka_span");
         kafkaCollector.collect(span);
         kafkaCollector.close();
@@ -61,7 +56,7 @@ public class ITKafkaSpanCollector {
 
     @Test
     public void submitMultipleSpansInParallel() throws InterruptedException, ExecutionException, TimeoutException, TException {
-        SpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
+        KafkaSpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Callable<Void> spanProducer1 = new Callable<Void>() {
 
             @Override

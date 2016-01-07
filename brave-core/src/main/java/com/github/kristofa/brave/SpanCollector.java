@@ -24,12 +24,9 @@ public interface SpanCollector {
      * 
      * @param key Annotation name/key. Should not be empty or <code>null</code>.
      * @param value Annotation value. Should not be <code>null</code>.
+     *
+     * @deprecated decorate {@link #collect(Span)}, if you want to customize spans before they are sent.
      */
+    @Deprecated
     void addDefaultAnnotation(final String key, final String value);
-
-    /**
-     * Closes and cleans up resources. After close has been called SpanCollector will probably not be usable anymore.
-     */
-    void close();
-
 }

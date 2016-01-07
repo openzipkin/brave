@@ -26,14 +26,4 @@ public class EmptySpanCollector implements SpanCollector {
         // Nothing
 
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void close() {
-        // Nothing
-
-    }
-
 }
