@@ -41,10 +41,6 @@ public class SpanCollectorForTesting implements SpanCollector {
 
     }
 
-    @Override
-    public void close() {
-    }
-
     public void clear() {
         spans.clear();
     }

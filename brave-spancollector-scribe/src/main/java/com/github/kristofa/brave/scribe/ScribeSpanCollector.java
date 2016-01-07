@@ -1,8 +1,6 @@
 package com.github.kristofa.brave.scribe;
 
 import java.io.Closeable;
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,7 +18,6 @@ import com.github.kristofa.brave.SpanCollector;
 
 import org.apache.thrift.TException;
 
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
@@ -44,10 +41,10 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
 
     private final BlockingQueue<Span> spanQueue;
     private final ExecutorService executorService;
-    private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<SpanProcessingThread>();
+    private final List<SpanProcessingThread> spanProcessingThreads = new ArrayList<>();
     private final List<ScribeClientProvider> clientProviders = new ArrayList<>();
-    private final List<Future<Integer>> futures = new ArrayList<Future<Integer>>();
-    private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<BinaryAnnotation>();
+    private final List<Future<Integer>> futures = new ArrayList<>();
+    private final Set<BinaryAnnotation> defaultAnnotations = new HashSet<>();
     private final SpanCollectorMetricsHandler metricsHandler;
 
     /**
@@ -138,21 +135,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
      */
     @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        checkNotBlank(key, "Null or blank key");
-        checkNotNull(value, "Null value");
-
-        try {
-            final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
-
-            final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
-            binaryAnnotation.setKey(key);
-            binaryAnnotation.setValue(bb);
-            binaryAnnotation.setAnnotation_type(AnnotationType.STRING);
-            defaultAnnotations.add(binaryAnnotation);
-
-        } catch (final UnsupportedEncodingException e) {
-            throw new IllegalStateException(e);
-        }
+        defaultAnnotations.add(new BinaryAnnotation(key, value));
     }
 
     /**

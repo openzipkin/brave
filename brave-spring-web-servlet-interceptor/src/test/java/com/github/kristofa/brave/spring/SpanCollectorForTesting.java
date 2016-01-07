@@ -38,14 +38,7 @@ public class SpanCollectorForTesting implements SpanCollector {
 
     @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void close() {
-        // TODO Auto-generated method stub
-
+        throw new UnsupportedOperationException();
     }
 
     public void clear() {

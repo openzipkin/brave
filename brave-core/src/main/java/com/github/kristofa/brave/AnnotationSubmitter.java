@@ -1,16 +1,12 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
-import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
-import java.nio.ByteBuffer;
-
-import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -130,9 +126,8 @@ public abstract class AnnotationSubmitter {
     public void submitBinaryAnnotation(String key, String value) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
-            checkNotNull(value, "Null value");
-            ByteBuffer bb = ByteBuffer.wrap(value.getBytes(Util.UTF_8));
-            submitBinaryAnnotation(span, spanAndEndpoint().endpoint(), key, bb, AnnotationType.STRING);
+            BinaryAnnotation ba = new BinaryAnnotation(key, value, spanAndEndpoint().endpoint());
+            addBinaryAnnotation(span, ba);
         }
     }
 
@@ -143,34 +138,8 @@ public abstract class AnnotationSubmitter {
      * @param value Integer value.
      */
     public void submitBinaryAnnotation(String key, int value) {
+        // Zipkin v1 UI and query only support String annotations.
         submitBinaryAnnotation(key, String.valueOf(value));
-
-        // This code did not work in the UI, it looks like UI only supports String annotations.
-        // ByteBuffer bb = ByteBuffer.allocate(4);
-        // bb.putInt(value);
-        // submitBinaryAnnotation(span, endpoint, key, bb, AnnotationType.I32);
-
-    }
-
-    /**
-     * Submits a binary annotation with custom type.
-     *
-     * @param span Span.
-     * @param endpoint Endpoint, optional, can be <code>null</code>.
-     * @param key Key, should not be empty.
-     * @param value Should not be null.
-     * @param annotationType Indicates the type of the value.
-     */
-    private void submitBinaryAnnotation(Span span, Endpoint endpoint, String key, ByteBuffer value,
-                                        AnnotationType annotationType) {
-        checkNotBlank(key, "Null or blank key");
-        checkNotNull(value, "Null value");
-        BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
-        binaryAnnotation.setKey(key);
-        binaryAnnotation.setValue(value);
-        binaryAnnotation.setAnnotation_type(annotationType);
-        binaryAnnotation.setHost(endpoint);
-        addBinaryAnnotation(span, binaryAnnotation);
     }
 
     long currentTimeMicroseconds() {

@@ -1,13 +1,10 @@
 package com.github.kristofa.brave;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
@@ -58,30 +55,8 @@ public class LoggingSpanCollector implements SpanCollector {
      * {@inheritDoc}
      */
     @Override
-    public void close() {
-        // Nothing to do for this collector.
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        checkNotBlank(key, "Null or blank key");
-        checkNotNull(value, "Null value");
-
-        try {
-            final ByteBuffer bb = ByteBuffer.wrap(value.getBytes(UTF_8));
-
-            final BinaryAnnotation binaryAnnotation = new BinaryAnnotation();
-            binaryAnnotation.setKey(key);
-            binaryAnnotation.setValue(bb);
-            binaryAnnotation.setAnnotation_type(AnnotationType.STRING);
-            defaultAnnotations.add(binaryAnnotation);
-
-        } catch (final UnsupportedEncodingException e) {
-            throw new IllegalStateException(e);
-        }
+        defaultAnnotations.add(new BinaryAnnotation(key, value));
     }
 
     Logger getLogger() {
