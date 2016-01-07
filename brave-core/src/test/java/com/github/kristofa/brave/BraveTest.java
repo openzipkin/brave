@@ -5,24 +5,22 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import java.util.Arrays;
-
 import org.junit.Before;
 import org.junit.Test;
 
 public class BraveTest {
 
     private SpanCollector mockSpanCollector;
-    private TraceFilter mockTraceFilter;
+    private TraceSampler mockTraceSampler;
     private Brave brave;
 
     @Before
     public void setup() {
         mockSpanCollector = mock(SpanCollector.class);
-        mockTraceFilter = mock(TraceFilter.class);
+        mockTraceSampler = mock(TraceSampler.class);
         // -1062731775 = 192.168.0.1
         final Brave.Builder builder = new Brave.Builder(-1062731775, 8080, "unknown");
-        brave = builder.spanCollector(mockSpanCollector).traceFilters(Arrays.asList(mockTraceFilter)).build();
+        brave = builder.spanCollector(mockSpanCollector).traceSampler(mockTraceSampler).build();
     }
 
     @Test
@@ -32,9 +30,8 @@ public class BraveTest {
         assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
         assertSame("ClientTracer should be configured with the spancollector we submitted.", mockSpanCollector,
             clientTracer.spanCollector());
-        assertSame("ClientTracer should be configured with the tracefilter we submitted.",
-                mockTraceFilter, clientTracer
-                        .traceFilters().get(0));
+        assertSame("ClientTracer should be configured with the traceSampler we submitted.",
+            mockTraceSampler, clientTracer.traceSampler());
 
         final ClientTracer secondClientTracer =
             brave.clientTracer();
@@ -47,8 +44,8 @@ public class BraveTest {
         final ServerTracer serverTracer = brave.serverTracer();
         assertNotNull(serverTracer);
         assertSame(mockSpanCollector, serverTracer.spanCollector());
-        assertSame("ServerTracer should be configured with the tracefilter we submitted.", mockTraceFilter, serverTracer
-            .traceFilters().get(0));
+        assertSame("ServerTracer should be configured with the traceSampler we submitted.", mockTraceSampler, serverTracer
+            .traceSampler());
 
         final ServerTracer secondServerTracer =
             brave.serverTracer();

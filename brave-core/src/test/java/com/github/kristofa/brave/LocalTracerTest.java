@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.Random;
 
 import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
@@ -47,7 +46,7 @@ public class LocalTracerTest {
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .randomGenerator(mockRandom)
                 .spanCollector(mockCollector)
-                .traceFilters(Collections.emptyList())
+                .traceSampler(TraceSampler.create(1.0f))
                 .build();
     }
 
@@ -106,17 +105,7 @@ public class LocalTracerTest {
     public void startSpan_unsampled() {
         localTracer = LocalTracer
                 .builder(localTracer)
-                .traceFilters(Collections.singletonList(new TraceFilter() {
-                    @Override
-                    public boolean trace(long spanId, String spanName) {
-                        return false;
-                    }
-
-                    @Override
-                    public void close() {
-
-                    }
-                })).build();
+                .traceSampler(TraceSampler.create(0.0f)).build();
 
         assertNull(localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
     }

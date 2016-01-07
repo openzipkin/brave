@@ -1,9 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Util;
-
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -28,16 +26,17 @@ public class Brave {
      * <p>
      * <ul>
      * <li>ThreadLocalServerClientAndLocalSpanState which binds trace/span state to current thread.</li>
-     * <li>FixedSampleRateTraceFilter which traces every request.</li>
      * <li>LoggingSpanCollector</li>
+     * <li>TraceSampler that samples all traces</li>
      * </ul>
      */
     public static class Builder {
 
         private final ServerClientAndLocalSpanState state;
-        private final List<TraceFilter> traceFilters = new ArrayList<>();
         private SpanCollector spanCollector = new LoggingSpanCollector();
         private Random random = new Random();
+        // default added so callers don't need to check null.
+        private TraceSampler traceSampler = TraceSampler.create(1.0f);
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -68,7 +67,6 @@ public class Brave {
             } catch (UnknownHostException e) {
                 throw new IllegalStateException("Unable to get Inet address", e);
             }
-            traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
 
         /**
@@ -80,7 +78,6 @@ public class Brave {
          */
         public Builder(int ip, int port, String serviceName) {
             state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
-            traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
 
         /**
@@ -88,17 +85,18 @@ public class Brave {
          */
         public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
-            traceFilters.add(new FixedSampleRateTraceFilter(1));
         }
 
         /**
-         * Initialize trace filters. If not specified a default filter will be configured which traces every request.
-         *
-         * @param filters trace filters.
+         * @deprecated use {@link #traceSampler(TraceSampler)} as filters here will be ignored.
          */
-        public Builder traceFilters(List<TraceFilter> filters) {
-            traceFilters.clear();
-            traceFilters.addAll(filters);
+        @Deprecated
+        public Builder traceFilters(List<TraceFilter> ignored) {
+            return this; // noop
+        }
+
+        public Builder traceSampler(TraceSampler traceSampler) {
+            this.traceSampler = traceSampler;
             return this;
         }
 
@@ -201,19 +199,19 @@ public class Brave {
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceFilters(builder.traceFilters).build();
+                .traceSampler(builder.traceSampler).build();
 
         clientTracer = ClientTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceFilters(builder.traceFilters).build();
+                .traceSampler(builder.traceSampler).build();
 
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
-                .traceFilters(builder.traceFilters).build();
+                .traceSampler(builder.traceSampler).build();
         
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);

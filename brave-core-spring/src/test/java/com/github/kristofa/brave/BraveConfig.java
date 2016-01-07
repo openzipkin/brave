@@ -4,8 +4,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-import java.util.Arrays;
-
 import static org.mockito.Mockito.mock;
 
 @Configuration
@@ -17,7 +15,7 @@ public class BraveConfig {
             final Brave.Builder builder = new Brave.Builder();
             return builder
                     .spanCollector(mock(SpanCollector.class))
-                    .traceFilters(Arrays.asList(mock(TraceFilter.class)))
+                    .traceSampler(mock(TraceSampler.class))
                     .build();
         }
 }

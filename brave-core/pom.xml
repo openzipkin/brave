@@ -27,6 +27,11 @@
 
   <dependencies>
     <dependency>
+        <groupId>io.zipkin</groupId>
+        <artifactId>zipkin-java-core</artifactId>
+        <version>0.2.0</version>
+    </dependency>
+    <dependency>
         <groupId>com.google.auto.value</groupId>
         <artifactId>auto-value</artifactId>
         <scope>provided</scope>
@@ -55,4 +60,38 @@
         <scope>test</scope>
     </dependency>
   </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <!-- retain the thrift dependency (for now) -->
+                        <configuration>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>org.apache.thrift:libthrift</exclude>
+                                </excludes>
+                            </artifactSet>
+                            <shadeTestJar>false</shadeTestJar>
+                            <minimizeJar>true</minimizeJar>
+                            <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+                            <!-- Use of zipkin-java is internal only; don't add a dependency -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>io.zipkin</pattern>
+                                    <shadedPattern>com.github.kristofa.brave.internal.io.zipkin</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

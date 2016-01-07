@@ -8,7 +8,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
 
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -37,7 +36,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     abstract ClientSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
-    abstract List<TraceFilter> traceFilters();
+    abstract TraceSampler traceSampler();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -55,11 +54,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        /**
-         * Will be executed in order. If one returns <code>false</code> there will be no tracing and
-         * next ones will not be executed anymore. So order is important.
-         */
-        public abstract Builder traceFilters(List<TraceFilter> traceFilters);
+        public abstract Builder traceSampler(TraceSampler traceSampler);
 
         abstract ClientTracer build();
     }
@@ -114,12 +109,10 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            for (TraceFilter traceFilter : traceFilters()) {
-                if (!traceFilter.trace(newSpanId.getSpanId(), requestName)) {
-                    spanAndEndpoint().state().setCurrentClientSpan(null);
-                    spanAndEndpoint().state().setCurrentClientServiceName(null);
-                    return null;
-                }
+            if (!traceSampler().test(newSpanId.getTraceId())) {
+                spanAndEndpoint().state().setCurrentClientSpan(null);
+                spanAndEndpoint().state().setCurrentClientServiceName(null);
+                return null;
             }
         }
 
