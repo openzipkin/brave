@@ -62,7 +62,7 @@ of the code) to the [Metrics](http://metrics.codahale.com) library.  Metrics bui
 to a back-end system for storage and visualisation. Metrics supports multiple back-ends but the sink implementation today supports
 [graphite](http://graphite.wikidot.com).
 
-If you use the `ZooKeeperTraceSampler` from `brave-tracesampler-zookeeper` module you can enable/disable tracing or adjust
+If you use the `ZooKeeperSampler` from `brave-sampler-zookeeper` module you can enable/disable tracing or adjust
 sample rate using [ZooKeeper](http://zookeeper.apache.org) as also indicated on the drawing.
 
 

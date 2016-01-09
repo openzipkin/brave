@@ -42,7 +42,7 @@ public class ServerTracerTest {
     private Span mockSpan;
     private Endpoint mockEndpoint;
     private Random mockRandom;
-    private TraceSampler mockTraceSampler;
+    private Sampler mockSampler;
 
     @Before
     public void setup() {
@@ -53,7 +53,7 @@ public class ServerTracerTest {
 
         mockEndpoint = new Endpoint();
         mockRandom = mock(Random.class);
-        mockTraceSampler = mock(TraceSampler.class);
+        mockSampler = mock(Sampler.class);
 
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
@@ -61,7 +61,7 @@ public class ServerTracerTest {
             .state(mockServerSpanState)
             .randomGenerator(mockRandom)
             .spanCollector(mockSpanCollector)
-            .traceSampler(mockTraceSampler).build();
+            .traceSampler(mockSampler).build();
     }
 
     @Test
@@ -88,37 +88,37 @@ public class ServerTracerTest {
     }
 
     @Test
-    public void testSetStateUnknownTraceSamplerTrue() {
+    public void testSetStateUnknownSamplerTrue() {
 
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockTraceSampler.test(TRACE_ID)).thenReturn(true);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
         final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, TRACE_ID, null, SPAN_NAME);
 
-        final InOrder inOrder = inOrder(mockTraceSampler, mockRandom, mockServerSpanState);
+        final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
 
         inOrder.verify(mockRandom).nextLong();
-        inOrder.verify(mockTraceSampler).test(TRACE_ID);
+        inOrder.verify(mockSampler).isSampled(TRACE_ID);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
     }
 
     @Test
-    public void testSetStateUnknownTraceSamplerFalse() {
+    public void testSetStateUnknownSamplerFalse() {
 
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockTraceSampler.test(TRACE_ID)).thenReturn(false);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
 
         final ServerSpan expectedServerSpan = ServerSpan.create(false);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        final InOrder inOrder = inOrder(mockTraceSampler, mockRandom, mockServerSpanState);
+        final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
 
         inOrder.verify(mockRandom).nextLong();
-        inOrder.verify(mockTraceSampler).test(TRACE_ID);
+        inOrder.verify(mockSampler).isSampled(TRACE_ID);
         inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);

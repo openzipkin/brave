@@ -15,7 +15,7 @@ public class BraveConfig {
             final Brave.Builder builder = new Brave.Builder();
             return builder
                     .spanCollector(mock(SpanCollector.class))
-                    .traceSampler(mock(TraceSampler.class))
+                    .traceSampler(mock(Sampler.class))
                     .build();
         }
 }

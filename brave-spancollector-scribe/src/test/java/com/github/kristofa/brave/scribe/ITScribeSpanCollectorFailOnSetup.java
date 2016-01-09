@@ -15,7 +15,7 @@ public class ITScribeSpanCollectorFailOnSetup {
     private static final String SPAN_NAME = "spanname";
 
     /**
-     * Integration test that checks failOnSetup = false. The test basically shows that no exception is thrown when the server
+     * Integration isSampled that checks failOnSetup = false. The isSampled basically shows that no exception is thrown when the server
      * is down when initializing but we are still able to reconnect in case the server gets up at a later stage.
      * 
      * @throws TTransportException

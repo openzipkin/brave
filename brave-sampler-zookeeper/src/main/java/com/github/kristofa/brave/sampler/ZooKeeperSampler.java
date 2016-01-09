@@ -1,6 +1,6 @@
 package com.github.kristofa.brave.sampler;
 
-import com.github.kristofa.brave.TraceSampler;
+import com.github.kristofa.brave.Sampler;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -20,20 +20,20 @@ import org.apache.zookeeper.data.Stat;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static java.lang.String.format;
 
-public final class ZooKeeperTraceSampler extends TraceSampler implements Watcher, Closeable {
+public final class ZooKeeperSampler extends Sampler implements Watcher, Closeable {
 
-  private final static Logger LOGGER = Logger.getLogger(ZooKeeperTraceSampler.class.getName());
+  private final static Logger LOGGER = Logger.getLogger(ZooKeeperSampler.class.getName());
   private final static float DEFAULT_SAMPLE_RATE = 0.0f;
 
   private final CuratorFramework zkCurator;
   private final CountDownLatch connectionEstablished = new CountDownLatch(1);
   private final String sampleRateZNode;
 
-  private volatile TraceSampler delegate;
+  private volatile Sampler delegate;
 
   @Override
-  public boolean test(long traceId) {
-    return delegate.test(traceId);
+  public boolean isSampled(long traceId) {
+    return delegate.isSampled(traceId);
   }
 
   /**
@@ -47,7 +47,7 @@ public final class ZooKeeperTraceSampler extends TraceSampler implements Watcher
    * @throws IOException In case we can't connect with ZooKeeper.
    * @throws InterruptedException In case we can't connect with ZooKeeper.
    */
-  public ZooKeeperTraceSampler(final String connectionString, final String sampleRateZNode)
+  public ZooKeeperSampler(final String connectionString, final String sampleRateZNode)
       throws InterruptedException {
     checkNotBlank(connectionString, "Null or blank connectionString");
     this.sampleRateZNode = checkNotBlank(sampleRateZNode, "Null or blank sampleRateZNode");
@@ -63,7 +63,7 @@ public final class ZooKeeperTraceSampler extends TraceSampler implements Watcher
       throw new IllegalStateException("Connection with ZooKeeper failed.");
     }
     zkCurator.getConnectionStateListenable().removeListener(initialConnectionState);
-    delegate = TraceSampler.create(getSampleRate());
+    delegate = Sampler.create(getSampleRate());
   }
 
   @Override
@@ -76,7 +76,7 @@ public final class ZooKeeperTraceSampler extends TraceSampler implements Watcher
 
       if (sampleRateZNode.equals(path)) {
         float newRate = getSampleRate();
-        delegate = TraceSampler.create(newRate);
+        delegate = Sampler.create(newRate);
         LOGGER.info(format("SampleRate znode [%s] changed. New value: %s", sampleRateZNode, newRate));
       }
     }

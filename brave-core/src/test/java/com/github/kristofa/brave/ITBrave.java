@@ -20,7 +20,7 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * Integration test for Brave api. Tests submitting server/client spans in parallel threads. Each thread represents a
+ * Integration isSampled for Brave api. Tests submitting server/client spans in parallel threads. Each thread represents a
  * different trace. So this simulates having multiple parallel requests
  * 
  * @author kristof

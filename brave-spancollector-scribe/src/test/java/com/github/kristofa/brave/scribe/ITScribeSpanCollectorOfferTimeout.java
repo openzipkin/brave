@@ -39,7 +39,7 @@ public class ITScribeSpanCollectorOfferTimeout {
     }
 
     /**
-     * The test will submit a burst of 110 spans in a for loop without delay while only having a small queue size (configured
+     * The isSampled will submit a burst of 110 spans in a for loop without delay while only having a small queue size (configured
      * to 5). But the server is configured to take a long time to consume span, longer than the 5 seconds. So implicitly this
      * tests:
      * <ol>

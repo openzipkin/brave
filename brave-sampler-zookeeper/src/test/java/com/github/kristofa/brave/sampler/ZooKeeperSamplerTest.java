@@ -11,7 +11,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-public class ZooKeeperTraceSamplerTest {
+public class ZooKeeperSamplerTest {
   /**
    * Zipkin trace ids are random 64bit numbers. This creates a relatively large input to avoid
    * flaking out due to PRNG nuance.
@@ -21,12 +21,12 @@ public class ZooKeeperTraceSamplerTest {
   private final static String SAMPLE_RATE_NODE = "/zipkin/sampleRate";
 
   private TestingServer zooKeeperTestServer;
-  private ZooKeeperTraceSampler sampler;
+  private ZooKeeperSampler sampler;
 
   @Before
   public void setup() throws Exception {
     zooKeeperTestServer = new TestingServer();
-    sampler = new ZooKeeperTraceSampler(zooKeeperTestServer.getConnectString(), SAMPLE_RATE_NODE);
+    sampler = new ZooKeeperSampler(zooKeeperTestServer.getConnectString(), SAMPLE_RATE_NODE);
   }
 
   @After
@@ -37,7 +37,7 @@ public class ZooKeeperTraceSamplerTest {
 
   @Test
   public void dropsWhenZNodeIsAbsent() throws Exception {
-    assertThat(LongStream.of(traceIds).filter(sampler::test).toArray())
+    assertThat(LongStream.of(traceIds).filter(sampler::isSampled).toArray())
         .isEmpty();
   }
 
@@ -46,7 +46,7 @@ public class ZooKeeperTraceSamplerTest {
     float sampleRate = 0.1f;
     setRate(sampleRate);
 
-    long passCount = LongStream.of(traceIds).filter(sampler::test).count();
+    long passCount = LongStream.of(traceIds).filter(sampler::isSampled).count();
 
     assertThat(passCount)
         .isCloseTo((long) (traceIds.length * sampleRate), withPercentage(3));
@@ -56,7 +56,7 @@ public class ZooKeeperTraceSamplerTest {
   public void zeroMeansDropAllTraces() throws Exception {
     setRate(0.0f);
 
-    assertThat(LongStream.of(traceIds).filter(sampler::test).findAny())
+    assertThat(LongStream.of(traceIds).filter(sampler::isSampled).findAny())
         .isEmpty();
   }
 
@@ -64,7 +64,7 @@ public class ZooKeeperTraceSamplerTest {
   public void oneMeansKeepAllTraces() throws Exception {
     setRate(1.0f);
 
-    assertThat(LongStream.of(traceIds).filter(sampler::test).toArray())
+    assertThat(LongStream.of(traceIds).filter(sampler::isSampled).toArray())
         .containsExactly(traceIds);
   }
 

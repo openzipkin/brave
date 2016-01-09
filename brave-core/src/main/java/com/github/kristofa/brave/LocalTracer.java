@@ -51,7 +51,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract SpanCollector spanCollector();
 
-    abstract TraceSampler traceSampler();
+    abstract Sampler traceSampler();
 
     @AutoValue.Builder
     abstract static class Builder {
@@ -62,7 +62,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
         abstract Builder spanCollector(SpanCollector spanCollector);
 
-        abstract Builder traceSampler(TraceSampler traceSampler);
+        abstract Builder traceSampler(Sampler sampler);
 
         abstract LocalTracer build();
     }
@@ -112,7 +112,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().test(newSpanId.getTraceId())) {
+            if (!traceSampler().isSampled(newSpanId.getTraceId())) {
                 spanAndEndpoint().state().setCurrentLocalSpan(null);
                 return null;
             }

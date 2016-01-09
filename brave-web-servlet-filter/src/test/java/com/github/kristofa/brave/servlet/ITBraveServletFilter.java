@@ -30,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 
 /**
  *
- * Attention! This Test configured the BraveServletFilter on EnumSet.allOf(DispatcherType.class), to test the
+ * Attention! This Test configured the BraveServletFilter on EnumSet.allOf(DispatcherType.class), to isSampled the
  * once per request guard functionality. In production, please use DispatcherType.REQUEST.
  *
  */

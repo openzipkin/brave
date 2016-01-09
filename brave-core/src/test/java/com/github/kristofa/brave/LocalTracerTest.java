@@ -46,7 +46,7 @@ public class LocalTracerTest {
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .randomGenerator(mockRandom)
                 .spanCollector(mockCollector)
-                .traceSampler(TraceSampler.create(1.0f))
+                .traceSampler(Sampler.create(1.0f))
                 .build();
     }
 
@@ -105,7 +105,7 @@ public class LocalTracerTest {
     public void startSpan_unsampled() {
         localTracer = LocalTracer
                 .builder(localTracer)
-                .traceSampler(TraceSampler.create(0.0f)).build();
+                .traceSampler(Sampler.create(0.0f)).build();
 
         assertNull(localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
     }

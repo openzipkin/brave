@@ -1,11 +1,11 @@
-# brave-tracesampler-zookeeper #
+# brave-sampler-zookeeper #
 
 This package contains additional trace samplers. They are put in a separate project because
 they might rely on external libraries (eg ZooKeeper) that you might not want to use.
 
-## ZooKeeperTraceSampler ##
+## ZooKeeperSampler ##
 
-`com.github.kristofa.brave.sampler.ZooKeeperTraceSampler` is a trace sampler
+`com.github.kristofa.brave.sampler.ZooKeeperSampler` is a trace sampler
 that accesses ZooKeeper to get sample rate. It will also get updated in case sample rate
 is updated in ZooKeeper. This means it supports updating sample rate and switching tracing on/off at runtime.
 
