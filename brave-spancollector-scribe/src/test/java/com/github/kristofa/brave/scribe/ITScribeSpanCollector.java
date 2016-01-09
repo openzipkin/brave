@@ -11,7 +11,7 @@ import org.junit.*;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * Integration test for {@link ScribeSpanCollector} that stress tests the {@link ScribeSpanCollector}.
+ * Integration isSampled for {@link ScribeSpanCollector} that stress tests the {@link ScribeSpanCollector}.
  * 
  * @author kristof
  */
@@ -44,14 +44,14 @@ public class ITScribeSpanCollector {
     }
 
     /**
-     * The test will submit a first burst of spans (configured to 100) in a for loop without delay.
-     * After those 100 the test will sleep for 8 seconds. Next it will submit another 20 spans in a for
+     * The isSampled will submit a first burst of spans (configured to 100) in a for loop without delay.
+     * After those 100 the isSampled will sleep for 8 seconds. Next it will submit another 20 spans in a for
      * loop without delay, wait for 5 seconds and shut down the collector. At this point we expect to have received all 120 spans.
      *
-     * So implicitly this test tests:
+     * So implicitly this isSampled tests:
      * <ul>
      * <li>a wait time of longer than 5 seconds which means SpanProcessingThread will run into timeout.</li>
-     * <li>test that on shut down the remaining collected spans are submitted</li>
+     * <li>isSampled that on shut down the remaining collected spans are submitted</li>
      * </ul>
      *
      * @throws TTransportException

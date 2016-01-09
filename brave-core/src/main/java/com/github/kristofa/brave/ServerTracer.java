@@ -37,7 +37,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
-    abstract TraceSampler traceSampler();
+    abstract Sampler traceSampler();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -55,7 +55,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        public abstract Builder traceSampler(TraceSampler traceSampler);
+        public abstract Builder traceSampler(Sampler sampler);
 
         public abstract ServerTracer build();
     }
@@ -104,7 +104,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
         long newTraceId = randomGenerator().nextLong();
-        if (!traceSampler().test(newTraceId)) {
+        if (!traceSampler().isSampled(newTraceId)) {
             spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
             return;
         }

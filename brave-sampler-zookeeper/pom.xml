@@ -7,11 +7,11 @@
     <version>3.3.1-SNAPSHOT</version>
   </parent>
   
-  <artifactId>brave-tracesampler-zookeeper</artifactId>
+  <artifactId>brave-sampler-zookeeper</artifactId>
   <packaging>jar</packaging>
-  <name>brave-tracesampler-zookeeper</name>
+  <name>brave-sampler-zookeeper</name>
   <description>
-    Contains ZooKeeperTraceSampler which gets receives its sample rate from ZooKeeper.
+    Contains ZooKeeperSampler which gets receives its sample rate from ZooKeeper.
   </description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>

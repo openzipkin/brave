@@ -27,7 +27,7 @@ public class Brave {
      * <ul>
      * <li>ThreadLocalServerClientAndLocalSpanState which binds trace/span state to current thread.</li>
      * <li>LoggingSpanCollector</li>
-     * <li>TraceSampler that samples all traces</li>
+     * <li>Sampler that samples all traces</li>
      * </ul>
      */
     public static class Builder {
@@ -36,7 +36,7 @@ public class Brave {
         private SpanCollector spanCollector = new LoggingSpanCollector();
         private Random random = new Random();
         // default added so callers don't need to check null.
-        private TraceSampler traceSampler = TraceSampler.create(1.0f);
+        private Sampler sampler = Sampler.create(1.0f);
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -88,15 +88,15 @@ public class Brave {
         }
 
         /**
-         * @deprecated use {@link #traceSampler(TraceSampler)} as filters here will be ignored.
+         * @deprecated use {@link #traceSampler(Sampler)} as filters here will be ignored.
          */
         @Deprecated
         public Builder traceFilters(List<TraceFilter> ignored) {
             return this; // noop
         }
 
-        public Builder traceSampler(TraceSampler traceSampler) {
-            this.traceSampler = traceSampler;
+        public Builder traceSampler(Sampler sampler) {
+            this.sampler = sampler;
             return this;
         }
 
@@ -199,19 +199,19 @@ public class Brave {
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.traceSampler).build();
+                .traceSampler(builder.sampler).build();
 
         clientTracer = ClientTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.traceSampler).build();
+                .traceSampler(builder.sampler).build();
 
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
-                .traceSampler(builder.traceSampler).build();
+                .traceSampler(builder.sampler).build();
         
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);

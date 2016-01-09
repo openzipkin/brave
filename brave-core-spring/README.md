@@ -13,6 +13,6 @@ dependency to you own application. This gives you the freedom to choose the Spri
 your choice (the config classes are tested with Spring 4.1.6.RELEASE).
 
 There is no configuration provided for the `Brave` instance (see `brave-core`). You have to provide a Spring
-config class for this yourself as you probably want to decide anyway which `SpanCollector` and which `TraceSampler`
+config class for this yourself as you probably want to decide anyway which `SpanCollector` and which `Sampler`
 to use.
 

@@ -49,7 +49,7 @@
 	    <artifactId>spring-context</artifactId>
 	    <scope>provided</scope>
     </dependency>
-	<!-- All dependencies below are added since adding integration test -->
+	<!-- All dependencies below are added since adding integration isSampled -->
 	<dependency>
         <groupId>org.jboss.resteasy</groupId>
         <artifactId>resteasy-spring</artifactId>

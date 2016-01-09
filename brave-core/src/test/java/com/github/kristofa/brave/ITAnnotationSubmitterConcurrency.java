@@ -20,9 +20,9 @@ import com.github.kristofa.brave.SpanAndEndpoint.StaticSpanAndEndpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
- * This test proves that we have proper synchronisation when submitted annotations for the same span. Without proper
- * synchronisation this test fails with {@link ArrayIndexOutOfBoundsException} because adding items to an {@link ArrayList}
- * is not thread-safe. </p> This test proves that we fixed the threading bug.
+ * This isSampled proves that we have proper synchronisation when submitted annotations for the same span. Without proper
+ * synchronisation this isSampled fails with {@link ArrayIndexOutOfBoundsException} because adding items to an {@link ArrayList}
+ * is not thread-safe. </p> This isSampled proves that we fixed the threading bug.
  * 
  * @author kristof
  */

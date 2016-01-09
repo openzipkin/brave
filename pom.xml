@@ -54,7 +54,7 @@
     <module>brave-resteasy3-spring</module>
     <module>brave-spancollector-scribe</module>
     <module>brave-spancollector-kafka</module>
-    <module>brave-tracesampler-zookeeper</module>
+    <module>brave-sampler-zookeeper</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
     <module>brave-jaxrs2</module>

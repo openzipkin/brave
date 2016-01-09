@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link TraceFilter} that is initialized with a fixed sample rate.
  * 
  * @author kristof
- * @deprecated Use {@link TraceSampler} instead.
+ * @deprecated Use {@link Sampler} instead.
  */
 @Deprecated
 public class FixedSampleRateTraceFilter implements TraceFilter {

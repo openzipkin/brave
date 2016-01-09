@@ -6,7 +6,7 @@ package com.github.kristofa.brave;
  * Using a TraceFilter we can introduce sampling to avoid performance overhead or avoid we reach our storage limitations.
  * 
  * @author kristof
- * @deprecated Use {@link TraceSampler} instead.
+ * @deprecated Use {@link Sampler} instead.
  */
 @Deprecated
 public interface TraceFilter {

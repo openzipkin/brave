@@ -82,7 +82,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 
     /**
      * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
-     * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/test}, or 3306 if absent.
+     * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/isSampled}, or 3306 if absent.
      */
     private void setClientSent(ClientTracer tracer, Connection connection) throws Exception {
         InetAddress address = Inet4Address.getByName(connection.getHost());

@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Scope;
  * Spring configuration for Brave api components.
  * <p>
  * You will need to provide your own configuration for the Brave object which is
- * configured through the Brave.Builder and which configures SpanCollector, TraceSampler,...
+ * configured through the Brave.Builder and which configures SpanCollector, Sampler,...
  * </p>
  */
 @Configuration

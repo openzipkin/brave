@@ -40,11 +40,11 @@ public class ClientTracerTest {
     private SpanCollector mockCollector;
     private ClientTracer clientTracer;
     private Span mockSpan;
-    private TraceSampler mockTraceSampler;
+    private Sampler mockSampler;
 
     @Before
     public void setup() {
-        mockTraceSampler = mock(TraceSampler.class);
+        mockSampler = mock(Sampler.class);
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
         mockSpan = mock(Span.class);
@@ -55,7 +55,7 @@ public class ClientTracerTest {
             .state(state)
             .randomGenerator(mockRandom)
             .spanCollector(mockCollector)
-            .traceSampler(mockTraceSampler)
+            .traceSampler(mockSampler)
             .build();
     }
 
@@ -63,7 +63,7 @@ public class ClientTracerTest {
     public void testSetClientSentNoClientSpan() {
         state.setCurrentClientSpan(null);
         clientTracer.setClientSent();
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
@@ -76,7 +76,7 @@ public class ClientTracerTest {
         expectedAnnotation.setHost(state.getClientEndpoint());
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
 
         assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
         assertEquals(expectedAnnotation, clientSent.annotations.get(0));
@@ -93,7 +93,7 @@ public class ClientTracerTest {
         expectedAnnotation.setHost(state.getClientEndpoint());
         expectedAnnotation.setValue(zipkinCoreConstants.CLIENT_SEND);
         expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
 
         assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.timestamp);
         assertEquals(expectedAnnotation, clientSent.annotations.get(0));
@@ -125,7 +125,7 @@ public class ClientTracerTest {
 
         clientTracer.setClientReceived();
 
-        verifyNoMoreInteractions(mockSpan, mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockSpan, mockCollector, mockSampler);
     }
 
     @Test
@@ -144,7 +144,7 @@ public class ClientTracerTest {
         assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
 
         verify(mockCollector).collect(clientRecv);
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
 
         assertEquals(CURRENT_TIME_MICROSECONDS - clientRecv.timestamp, clientRecv.duration);
         assertEquals(expectedAnnotation, clientRecv.annotations.get(0));
@@ -156,7 +156,7 @@ public class ClientTracerTest {
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
-        verifyNoMoreInteractions(mockSpan, mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockSpan, mockCollector, mockSampler);
     }
 
     @Test
@@ -164,7 +164,7 @@ public class ClientTracerTest {
         state.setCurrentServerSpan(ServerSpan.create(null));
 
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockTraceSampler.test(TRACE_ID)).thenReturn(true);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
@@ -177,9 +177,9 @@ public class ClientTracerTest {
                 state.getCurrentClientSpan()
         );
 
-        verify(mockTraceSampler).test(TRACE_ID);
+        verify(mockSampler).isSampled(TRACE_ID);
 
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
@@ -199,7 +199,7 @@ public class ClientTracerTest {
                 state.getCurrentClientSpan()
         );
 
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
@@ -219,22 +219,22 @@ public class ClientTracerTest {
                 state.getCurrentClientSpan()
         );
 
-        verifyNoMoreInteractions(mockCollector, mockTraceSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
-    public void testTraceSamplerFalse() {
+    public void testSamplerFalse() {
         state.setCurrentServerSpan(ServerSpan.create(null, null));
-        when(mockTraceSampler.test(TRACE_ID)).thenReturn(false);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
-        verify(mockTraceSampler).test(TRACE_ID);
+        verify(mockSampler).isSampled(TRACE_ID);
 
         assertNull(state.getCurrentClientSpan());
         assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
 
-        verifyNoMoreInteractions(mockTraceSampler, mockCollector);
+        verifyNoMoreInteractions(mockSampler, mockCollector);
     }
 }

@@ -36,7 +36,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     abstract ClientSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
-    abstract TraceSampler traceSampler();
+    abstract Sampler traceSampler();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -54,7 +54,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        public abstract Builder traceSampler(TraceSampler traceSampler);
+        public abstract Builder traceSampler(Sampler sampler);
 
         abstract ClientTracer build();
     }
@@ -109,7 +109,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().test(newSpanId.getTraceId())) {
+            if (!traceSampler().isSampled(newSpanId.getTraceId())) {
                 spanAndEndpoint().state().setCurrentClientSpan(null);
                 spanAndEndpoint().state().setCurrentClientServiceName(null);
                 return null;
