@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>com.github.kristofa</groupId>
-        <version>3.3.1-SNAPSHOT</version>
+        <version>3.4.0</version>
     </parent>
     <artifactId>brave-jersey2</artifactId>
     <packaging>jar</packaging>
@@ -29,7 +29,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-jaxrs2</artifactId>
-            <version>3.3.1-SNAPSHOT</version>
+            <version>3.4.0</version>
         </dependency>
 
         <!--Test Dependencies-->
@@ -69,7 +69,7 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-core-spring</artifactId>
-            <version>3.3.1-SNAPSHOT</version>
+            <version>3.4.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
