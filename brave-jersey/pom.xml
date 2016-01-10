@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>com.github.kristofa</groupId>
-        <version>3.4.0</version>
+        <version>3.4.1-SNAPSHOT</version>
     </parent>
    <artifactId>brave-jersey</artifactId>
    <packaging>jar</packaging>
@@ -28,12 +28,12 @@
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-http</artifactId>
-            <version>3.4.0</version>
+            <version>3.4.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.github.kristofa</groupId>
             <artifactId>brave-web-servlet-filter</artifactId>
-            <version>3.4.0</version>
+            <version>3.4.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
