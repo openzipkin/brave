@@ -25,10 +25,10 @@ public abstract class Sampler {
 
   static final class ZipkinSampler extends Sampler {
 
-    private final io.zipkin.Sampler delegate;
+    private final zipkin.Sampler delegate;
 
     ZipkinSampler(float rate) {
-      this.delegate = io.zipkin.Sampler.create(rate);
+      this.delegate = zipkin.Sampler.create(rate);
     }
 
     @Override
