@@ -52,6 +52,7 @@
     <module>brave-core-spring</module>
     <module>brave-resteasy-spring</module>
     <module>brave-resteasy3-spring</module>
+    <module>brave-spancollector-http</module>
     <module>brave-spancollector-scribe</module>
     <module>brave-spancollector-kafka</module>
     <module>brave-sampler-zookeeper</module>
