@@ -16,12 +16,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import okio.Buffer;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TList;
 import org.apache.thrift.protocol.TType;
-import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TMemoryBuffer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -123,7 +122,7 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
 
     // Thrift-encode the spans for transport
     int spanCount = drained.size();
-    BufferTransport thrifts = new BufferTransport();
+    TMemoryBuffer thrifts = new TMemoryBuffer(spanCount * 200); // guess 200bytes/span
     try {
       TBinaryProtocol oprot = new TBinaryProtocol(thrifts);
       oprot.writeListBegin(new TList(TType.STRUCT, drained.size()));
@@ -138,7 +137,7 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
 
     // Send the thrifts to the zipkin endpoint
     try {
-      postSpans(thrifts.buffer);
+      postSpans(thrifts.getArray());
     } catch (IOException e) {
       metrics.incrementDroppedSpans(spanCount);
       return;
@@ -164,7 +163,7 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     }
   }
 
-  void postSpans(Buffer thrifts) throws IOException {
+  void postSpans(byte[] thrifts) throws IOException {
     // intentionally not closing the connection, so as to use keep-alives
     HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
     connection.setConnectTimeout(config.connectTimeout());
@@ -172,8 +171,8 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     connection.setRequestMethod("POST");
     connection.addRequestProperty("Content-Type", "application/x-thrift");
     connection.setDoOutput(true);
-    connection.setFixedLengthStreamingMode(thrifts.size());
-    thrifts.writeTo(connection.getOutputStream());
+    connection.setFixedLengthStreamingMode(thrifts.length);
+    connection.getOutputStream().write(thrifts);
 
     try (InputStream in = connection.getInputStream()) {
       while (in.read() != -1) ; // skip
@@ -202,33 +201,5 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     // throw any outstanding spans on the floor
     int dropped = pending.drainTo(new LinkedList<>());
     metrics.incrementDroppedSpans(dropped);
-  }
-
-  /** Uses a pooled buffer instead of churning byte arrays. */
-  static final class BufferTransport extends TTransport {
-    final Buffer buffer = new Buffer();
-
-    @Override
-    public boolean isOpen() {
-      return true;
-    }
-
-    @Override
-    public void open() {
-    }
-
-    @Override
-    public void close() {
-    }
-
-    @Override
-    public int read(byte[] buf, int off, int len) {
-      return buffer.read(buf, off, len);
-    }
-
-    @Override
-    public void write(byte[] buf, int off, int len) {
-      buffer.write(buf, off, len);
-    }
   }
 }
