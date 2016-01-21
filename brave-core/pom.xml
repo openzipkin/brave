@@ -78,24 +78,23 @@
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.3</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
-                        <!-- retain the thrift dependency (for now) -->
                         <configuration>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>org.apache.thrift:libthrift</exclude>
-                                </excludes>
-                            </artifactSet>
                             <shadeTestJar>false</shadeTestJar>
                             <minimizeJar>true</minimizeJar>
                             <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
-                            <!-- Use of okio and zipkin-java are internal only; don't add dependencies -->
+                            <!-- Use of thrift, okio and zipkin-java are internal only; don't add dependencies -->
                             <relocations>
+                                <relocation>
+                                    <pattern>org.apache.thrift</pattern>
+                                    <shadedPattern>com.github.kristofa.brave.internal.thrift</shadedPattern>
+                                </relocation>
                                 <relocation>
                                     <pattern>okio</pattern>
                                     <shadedPattern>com.github.kristofa.brave.internal.okio</shadedPattern>
