@@ -1,5 +1,6 @@
-package com.github.kristofa.brave;
+package com.github.kristofa.brave.http;
 
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

@@ -60,12 +60,6 @@
         <version>3.1.2</version>
         <scope>test</scope>
     </dependency>
-    <dependency>
-        <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>mockwebserver</artifactId>
-        <version>3.0.1</version>
-        <scope>test</scope>
-    </dependency>
   </dependencies>
 
     <build>
@@ -88,7 +82,7 @@
                             <shadeTestJar>false</shadeTestJar>
                             <minimizeJar>true</minimizeJar>
                             <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
-                            <!-- Use of zipkin-java are internal only; don't add dependencies -->
+                            <!-- Use of zipkin-java is internal only; don't add dependency -->
                             <relocations>
                                 <relocation>
                                     <pattern>zipkin</pattern>
