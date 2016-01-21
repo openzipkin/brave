@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+
 import java.util.Objects;
 
 /**
@@ -18,7 +20,7 @@ public class ClientResponseInterceptor {
     private final ClientTracer clientTracer;
 
     public ClientResponseInterceptor(ClientTracer clientTracer) {
-        this.clientTracer = Objects.requireNonNull(clientTracer);
+        this.clientTracer = checkNotNull(clientTracer, "Null clientTracer");
     }
 
     /**

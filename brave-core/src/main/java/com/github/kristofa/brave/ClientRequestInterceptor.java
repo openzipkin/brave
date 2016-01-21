@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+
 /**
  * Contains logic for handling an outgoing client request.
  * This means it will:
@@ -20,7 +22,7 @@ public class ClientRequestInterceptor {
     private final ClientTracer clientTracer;
 
     public ClientRequestInterceptor(ClientTracer clientTracer) {
-        this.clientTracer = clientTracer;
+        this.clientTracer = checkNotNull(clientTracer, "Null clientTracer");
     }
 
     /**
