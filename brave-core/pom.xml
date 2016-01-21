@@ -34,9 +34,9 @@
     </dependency>
     <!-- for sampler -->
     <dependency>
-        <groupId>io.zipkin</groupId>
-        <artifactId>zipkin-java-core</artifactId>
-        <version>0.4.0</version>
+        <groupId>io.zipkin.java</groupId>
+        <artifactId>zipkin</artifactId>
+        <version>0.4.3</version>
     </dependency>
     <dependency>
         <groupId>com.google.auto.value</groupId>
@@ -67,9 +67,9 @@
         <scope>test</scope>
     </dependency>
     <dependency>
-        <groupId>com.squareup.okhttp</groupId>
+        <groupId>com.squareup.okhttp3</groupId>
         <artifactId>mockwebserver</artifactId>
-        <version>2.7.2</version>
+        <version>3.0.1</version>
         <scope>test</scope>
     </dependency>
   </dependencies>
@@ -101,8 +101,8 @@
                                     <shadedPattern>com.github.kristofa.brave.internal.okio</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>io.zipkin</pattern>
-                                    <shadedPattern>com.github.kristofa.brave.internal.io.zipkin</shadedPattern>
+                                    <pattern>zipkin</pattern>
+                                    <shadedPattern>com.github.kristofa.brave.internal.zipkin</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

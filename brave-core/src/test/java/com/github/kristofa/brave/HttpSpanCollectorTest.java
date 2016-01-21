@@ -1,15 +1,15 @@
 package com.github.kristofa.brave;
 
-import com.squareup.okhttp.mockwebserver.MockResponse;
-import com.squareup.okhttp.mockwebserver.MockWebServer;
-import com.squareup.okhttp.mockwebserver.RecordedRequest;
-import com.squareup.okhttp.mockwebserver.SocketPolicy;
 import com.twitter.zipkin.gen.Span;
-import io.zipkin.Codec;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
+import okhttp3.mockwebserver.SocketPolicy;
 import org.junit.Rule;
 import org.junit.Test;
+import zipkin.Codec;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -62,7 +62,7 @@ public class HttpSpanCollectorTest {
     assertThat(request.getHeader("Content-Type")).isEqualTo("application/x-thrift");
 
     // Now, let's read back the spans we sent!
-    List<io.zipkin.Span> zipkinSpans = Codec.THRIFT.readSpans(request.getBody().readByteArray());
+    List<zipkin.Span> zipkinSpans = Codec.THRIFT.readSpans(request.getBody().readByteArray());
     assertThat(zipkinSpans).containsExactly(
         zipkinSpan(1L, "foo"),
         zipkinSpan(2L, "bar")
@@ -113,7 +113,7 @@ public class HttpSpanCollectorTest {
     return new Span().setTrace_id(traceId).setId(traceId).setName(spanName);
   }
 
-  static io.zipkin.Span zipkinSpan(long traceId, String spanName) {
-    return new io.zipkin.Span.Builder().traceId(traceId).id(traceId).name(spanName).build();
+  static zipkin.Span zipkinSpan(long traceId, String spanName) {
+    return new zipkin.Span.Builder().traceId(traceId).id(traceId).name(spanName).build();
   }
 }
