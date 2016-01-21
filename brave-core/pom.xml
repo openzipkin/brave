@@ -26,12 +26,6 @@
   </properties>
 
   <dependencies>
-    <!-- For gzipping buffer -->
-    <dependency>
-      <groupId>com.squareup.okio</groupId>
-      <artifactId>okio</artifactId>
-      <version>1.6.0</version>
-    </dependency>
     <!-- for sampler -->
     <dependency>
         <groupId>io.zipkin.java</groupId>
@@ -94,12 +88,8 @@
                             <shadeTestJar>false</shadeTestJar>
                             <minimizeJar>true</minimizeJar>
                             <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
-                            <!-- Use of okio and zipkin-java are internal only; don't add dependencies -->
+                            <!-- Use of zipkin-java are internal only; don't add dependencies -->
                             <relocations>
-                                <relocation>
-                                    <pattern>okio</pattern>
-                                    <shadedPattern>com.github.kristofa.brave.internal.okio</shadedPattern>
-                                </relocation>
                                 <relocation>
                                     <pattern>zipkin</pattern>
                                     <shadedPattern>com.github.kristofa.brave.internal.zipkin</shadedPattern>
