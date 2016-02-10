@@ -5,11 +5,9 @@ import com.twitter.zipkin.gen.Span;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
 
-import java.io.ByteArrayOutputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -43,17 +41,14 @@ class SpanProcessingTask implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
-        final TProtocol streamProtocol = new TBinaryProtocol.Factory().getProtocol(new TIOStreamTransport(baos));
+        final TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
         do {
             final Span span = queue.poll(5, TimeUnit.SECONDS);
             if (span == null) {
                 continue;
             }
-            baos.reset();
             try {
-                span.write(streamProtocol);
-                final ProducerRecord<byte[], byte[]> message = new ProducerRecord<>("zipkin", baos.toByteArray());
+                final ProducerRecord<byte[], byte[]> message = new ProducerRecord<>("zipkin", serializer.serialize(span));
                 producer.send(message);
                 numProcessedSpans++;
             } catch (TException e) {
