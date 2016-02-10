@@ -1,18 +1,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-  	<groupId>com.github.kristofa</groupId>
-	<artifactId>brave</artifactId>
+    <groupId>com.github.kristofa</groupId>
+    <artifactId>brave</artifactId>
     <version>3.4.1-SNAPSHOT</version>
-  </parent>   
-  
+  </parent>
+
   <artifactId>brave-core</artifactId>
   <packaging>jar</packaging>
 
   <name>brave-core</name>
-  <description>
-  	Brave core.
-  </description>
+  <description>Brave core.</description>
   <url>https://github.com/kristofa/brave</url>
   <licenses>
     <license>
@@ -64,6 +62,35 @@
 
     <build>
         <plugins>
+            <!-- To facilitate reuse of brave in agents ensure compatibility with Java 6 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>animal-sniffer-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check-java-api</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <signature>
+                                <groupId>org.codehaus.mojo.signature</groupId>
+                                <artifactId>java16</artifactId>
+                                <version>1.1</version>
+                            </signature>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
                 <executions>

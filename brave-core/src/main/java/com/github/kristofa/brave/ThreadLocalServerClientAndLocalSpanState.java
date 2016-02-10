@@ -20,11 +20,11 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
             return ServerSpan.create(null);
         }
     };
-    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<>();
+    private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
-    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<>();
+    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<String>();
 
-    private final static ThreadLocal<Span> currentLocalSpan = new ThreadLocal<>();
+    private final static ThreadLocal<Span> currentLocalSpan = new ThreadLocal<Span>();
 
     private final Endpoint endpoint;
 
