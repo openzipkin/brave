@@ -2,8 +2,6 @@ package com.github.kristofa.brave;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-import java.util.Objects;
-
 /**
  * Contains logic for dealing with response from client request.
  * This means it will:

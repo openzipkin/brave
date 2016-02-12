@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -107,7 +108,11 @@ public class ITBrave {
             assertTrue(localSpan.id != 0);
             assertEquals(localSpanName, localSpan.name);
 
-            assertEquals("Span ids should be different.", 3, Stream.of(serverSpan.id, clientSpan.id, localSpan.id).distinct().count());
+            HashSet<Long> ids = new HashSet<Long>();
+            ids.add(serverSpan.id);
+            ids.add(clientSpan.id);
+            ids.add(localSpan.id);
+            assertEquals("Span ids should be different.", 3, ids.size());
             assertEquals("Expect sr, ss and 1 custom annotation.", 3, serverSpan.getAnnotations().size());
             assertEquals(2, clientSpan.getAnnotations().size());
             assertFalse(localSpan.isSetAnnotations());

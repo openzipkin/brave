@@ -8,7 +8,7 @@ public class NoAnnotationsClientResponseAdapter implements ClientResponseAdapter
 
     private final static ClientResponseAdapter INSTANCE = new NoAnnotationsClientResponseAdapter();
 
-    private final static Collection<KeyValueAnnotation> EMPTY = Collections.EMPTY_LIST;
+    private final static Collection<KeyValueAnnotation> EMPTY = Collections.emptyList();
 
     private NoAnnotationsClientResponseAdapter() { }
 
