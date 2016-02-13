@@ -23,7 +23,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kafka.version>0.9.0.0</kafka.version>
+        <!-- This is pinned to Kafka 0.8.x client as 0.9.x brokers work with them, but not visa-versa
+             http://docs.confluent.io/2.0.0/upgrade.html -->
+        <kafka.version>0.8.2.2</kafka.version>
     </properties>
 
     <dependencies>
@@ -46,7 +48,8 @@
         <dependency>
             <groupId>com.github.charithe</groupId>
             <artifactId>kafka-junit</artifactId>
-            <version>1.8</version>
+            <!-- pinned to 0.8.2.2 -->
+            <version>1.7</version>
             <scope>test</scope>
         </dependency>
         <!-- org.apache.thrift.ProcessFunction v0.9 uses SLF4J at runtime -->
