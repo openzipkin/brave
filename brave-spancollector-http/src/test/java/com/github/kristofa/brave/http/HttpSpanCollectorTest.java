@@ -60,10 +60,10 @@ public class HttpSpanCollectorTest {
     // Ensure a proper request was sent
     RecordedRequest request = server.takeRequest();
     assertThat(request.getRequestLine()).isEqualTo("POST /api/v1/spans HTTP/1.1");
-    assertThat(request.getHeader("Content-Type")).isEqualTo("application/x-thrift");
+    assertThat(request.getHeader("Content-Type")).isEqualTo("application/json");
 
     // Now, let's read back the spans we sent!
-    List<zipkin.Span> zipkinSpans = Codec.THRIFT.readSpans(request.getBody().readByteArray());
+    List<zipkin.Span> zipkinSpans = Codec.JSON.readSpans(request.getBody().readByteArray());
     assertThat(zipkinSpans).containsExactly(
         zipkinSpan(1L, "foo"),
         zipkinSpan(2L, "bar")

@@ -3,6 +3,7 @@ package com.github.kristofa.brave.http;
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import com.twitter.zipkin.gen.SpanCodec;
 import com.twitter.zipkin.gen.Span;
 import java.io.Closeable;
 import java.io.Flushable;
@@ -10,18 +11,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TList;
-import org.apache.thrift.protocol.TType;
-import org.apache.thrift.transport.TMemoryBuffer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -117,28 +113,23 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
   @Override
   public void flush() {
     if (pending.isEmpty()) return;
-    Queue<Span> drained = new ArrayDeque<>(pending.size());
+    List<Span> drained = new ArrayList<>(pending.size());
     pending.drainTo(drained);
     if (drained.isEmpty()) return;
 
-    // Thrift-encode the spans for transport
+    // json-encode the spans for transport
     int spanCount = drained.size();
-    TMemoryBuffer thrifts = new TMemoryBuffer(spanCount * 200); // guess 200bytes/span
+    byte[] json;
     try {
-      TBinaryProtocol oprot = new TBinaryProtocol(thrifts);
-      oprot.writeListBegin(new TList(TType.STRUCT, drained.size()));
-      while (!drained.isEmpty()) {
-        drained.remove().write(oprot);
-      }
-      oprot.writeListEnd();
-    } catch (TException e) {
+      json = SpanCodec.JSON.writeSpans(drained);
+    } catch (RuntimeException e) {
       metrics.incrementDroppedSpans(spanCount);
       return;
     }
 
-    // Send the thrifts to the zipkin endpoint
+    // Send the json to the zipkin endpoint
     try {
-      postSpans(thrifts.getArray());
+      postSpans(json);
     } catch (IOException e) {
       metrics.incrementDroppedSpans(spanCount);
       return;
@@ -164,16 +155,16 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     }
   }
 
-  void postSpans(byte[] thrifts) throws IOException {
+  void postSpans(byte[] json) throws IOException {
     // intentionally not closing the connection, so as to use keep-alives
     HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
     connection.setConnectTimeout(config.connectTimeout());
     connection.setReadTimeout(config.readTimeout());
     connection.setRequestMethod("POST");
-    connection.addRequestProperty("Content-Type", "application/x-thrift");
+    connection.addRequestProperty("Content-Type", "application/json");
     connection.setDoOutput(true);
-    connection.setFixedLengthStreamingMode(thrifts.length);
-    connection.getOutputStream().write(thrifts);
+    connection.setFixedLengthStreamingMode(json.length);
+    connection.getOutputStream().write(json);
 
     try (InputStream in = connection.getInputStream()) {
       while (in.read() != -1) ; // skip

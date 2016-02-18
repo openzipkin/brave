@@ -1,12 +1,11 @@
 package com.github.kristofa.brave;
 
 import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.zipkinCoreConstants;
-
+import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,8 +13,6 @@ import org.mockito.InOrder;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-
-import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.inOrder;
@@ -51,7 +48,7 @@ public class ServerTracerTest {
         mockSpan = mock(Span.class);
         mockServerSpan = mock(ServerSpan.class);
 
-        mockEndpoint = new Endpoint();
+        mockEndpoint = mock(Endpoint.class);
         mockRandom = mock(Random.class);
         mockSampler = mock(Sampler.class);
 
@@ -142,18 +139,19 @@ public class ServerTracerTest {
         when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived();
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(mockEndpoint);
-        expectedAnnotation.setValue(zipkinCoreConstants.SERVER_RECV);
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        final Annotation expectedAnnotation = Annotation.create(
+            CURRENT_TIME_MICROSECONDS,
+            zipkinCoreConstants.SERVER_RECV,
+            mockEndpoint
+        );
 
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getServerEndpoint();
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.timestamp);
-        assertEquals(expectedAnnotation, serverRecv.annotations.get(0));
+        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
+        assertEquals(expectedAnnotation, serverRecv.getAnnotations().get(0));
     }
 
     @Test
@@ -164,28 +162,26 @@ public class ServerTracerTest {
         when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(mockEndpoint);
-        expectedAnnotation.setValue(zipkinCoreConstants.SERVER_RECV);
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+
+        final Annotation expectedAnnotation = Annotation.create(
+            CURRENT_TIME_MICROSECONDS,
+            zipkinCoreConstants.SERVER_RECV,
+            mockEndpoint
+        );
 
         verify(mockServerSpanState, times(2)).getCurrentServerSpan();
         verify(mockServerSpanState).getServerEndpoint();
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.timestamp);
-        assertEquals(expectedAnnotation, serverRecv.annotations.get(0));
+        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
+        assertEquals(expectedAnnotation, serverRecv.getAnnotations().get(0));
 
-        BinaryAnnotation serverAddress = new BinaryAnnotation()
-            .setKey(zipkinCoreConstants.CLIENT_ADDR)
-            .setValue(new byte[]{1})
-            .setAnnotation_type(AnnotationType.BOOL)
-            .setHost(new Endpoint()
-                .setService_name("foobar")
-                .setIpv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
-                .setPort((short) 9999));
-        assertEquals(serverAddress, serverRecv.binary_annotations.get(0));
+        BinaryAnnotation serverAddress = BinaryAnnotation.address(
+            zipkinCoreConstants.CLIENT_ADDR,
+            Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999)
+        );
+        assertEquals(serverAddress, serverRecv.getBinary_annotations().get(0));
     }
 
     @Test
@@ -196,7 +192,7 @@ public class ServerTracerTest {
         when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
-        assertEquals("unknown", serverRecv.binary_annotations.get(0).getHost().getService_name());
+        assertEquals("unknown", serverRecv.getBinary_annotations().get(0).host.service_name);
     }
 
     @Test
@@ -217,10 +213,11 @@ public class ServerTracerTest {
         when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerSend();
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(mockEndpoint);
-        expectedAnnotation.setValue(zipkinCoreConstants.SERVER_SEND);
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        final Annotation expectedAnnotation = Annotation.create(
+            CURRENT_TIME_MICROSECONDS,
+            zipkinCoreConstants.SERVER_SEND,
+            mockEndpoint
+        );
 
         verify(mockServerSpanState).getCurrentServerSpan();
         verify(mockServerSpanState).getServerEndpoint();
@@ -229,8 +226,8 @@ public class ServerTracerTest {
         verify(mockServerSpanState).setCurrentServerSpan(null);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS - serverSend.timestamp, serverSend.duration);
-        assertEquals(expectedAnnotation, serverSend.annotations.get(0));
+        assertEquals(CURRENT_TIME_MICROSECONDS - serverSend.getTimestamp().longValue(), serverSend.getDuration().longValue());
+        assertEquals(expectedAnnotation, serverSend.getAnnotations().get(0));
     }
 
 }

@@ -24,20 +24,16 @@
   </properties>
 
   <dependencies>
-    <!-- for sampler -->
+    <!-- for sampler... don't worry. this dependency is shaded out! -->
     <dependency>
         <groupId>io.zipkin.java</groupId>
         <artifactId>zipkin</artifactId>
-        <version>0.4.3</version>
     </dependency>
+    <!-- for value types... don't worry. this dependency is compile only! -->
     <dependency>
         <groupId>com.google.auto.value</groupId>
         <artifactId>auto-value</artifactId>
         <scope>provided</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.thrift</groupId>
-        <artifactId>libthrift</artifactId>
     </dependency>
     <!-- to mock AnnotationSubmitter's calls to System.currentTimeMillis() -->
     <dependency>
@@ -99,13 +95,7 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
-                        <!-- retain the thrift dependency (for now) -->
                         <configuration>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>org.apache.thrift:libthrift</exclude>
-                                </excludes>
-                            </artifactSet>
                             <shadeTestJar>false</shadeTestJar>
                             <minimizeJar>true</minimizeJar>
                             <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>

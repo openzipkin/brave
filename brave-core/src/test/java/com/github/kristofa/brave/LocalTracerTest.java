@@ -72,11 +72,11 @@ public class LocalTracerTest {
 
         Span started = state.getCurrentLocalSpan();
 
-        assertEquals(1000L, started.timestamp);
+        assertEquals(1000L, started.getTimestamp().longValue());
         assertEquals(500L, started.startTick.longValue());
-        assertEquals("lc", started.binary_annotations.get(0).getKey());
-        assertEquals(COMPONENT_NAME, new String(started.binary_annotations.get(0).getValue(), Util.UTF_8));
-        assertEquals(state.getClientEndpoint(), started.binary_annotations.get(0).host);
+        assertEquals("lc", started.getBinary_annotations().get(0).getKey());
+        assertEquals(COMPONENT_NAME, new String(started.getBinary_annotations().get(0).getValue(), Util.UTF_8));
+        assertEquals(state.getClientEndpoint(), started.getBinary_annotations().get(0).host);
         assertEquals(OPERATION_NAME, started.getName());
     }
 
@@ -97,7 +97,7 @@ public class LocalTracerTest {
         localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
 
         Span started = state.getCurrentLocalSpan();
-        assertEquals(1000L, started.timestamp);
+        assertEquals(1000L, started.getTimestamp().longValue());
         assertNull(started.startTick);
     }
 
@@ -133,7 +133,7 @@ public class LocalTracerTest {
         verify(mockCollector).collect(finished);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(500L, finished.duration);
+        assertEquals(500L, finished.getDuration().longValue());
     }
 
     /**
@@ -158,7 +158,7 @@ public class LocalTracerTest {
         verify(mockCollector).collect(finished);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(1000L, finished.duration);
+        assertEquals(1000L, finished.getDuration().longValue());
     }
 
     /**
@@ -182,7 +182,7 @@ public class LocalTracerTest {
         verify(mockCollector).collect(finished);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(500L, finished.duration);
+        assertEquals(500L, finished.getDuration().longValue());
     }
 
     /**
@@ -205,7 +205,7 @@ public class LocalTracerTest {
         verify(mockCollector).collect(finished);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(500L, finished.duration);
+        assertEquals(500L, finished.getDuration().longValue());
     }
 
     @Test

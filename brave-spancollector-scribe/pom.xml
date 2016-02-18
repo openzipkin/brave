@@ -42,6 +42,10 @@
         <artifactId>auto-value</artifactId>
         <scope>provided</scope>
     </dependency>
+    <dependency>
+        <groupId>org.apache.thrift</groupId>
+         <artifactId>libthrift</artifactId>
+    </dependency>
     <!-- org.apache.thrift.ProcessFunction v0.9 uses SLF4J at runtime -->
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>

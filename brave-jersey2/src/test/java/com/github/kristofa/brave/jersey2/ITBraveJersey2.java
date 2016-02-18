@@ -55,8 +55,9 @@ public class ITBraveJersey2 extends JerseyTest {
         assertEquals("Span names of client and server should be equal.", clientSpan.getName(), serverSpan.getName());
         assertEquals("Expect 2 annotations.", 2, clientSpan.getAnnotations().size());
         assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
-        assertEquals("service name of end points for both client and server annotations should be equal.", clientSpan
-                .getAnnotations().get(0).getHost().getService_name(), serverSpan.getAnnotations().get(0).getHost()
-                .getService_name());
+        assertEquals("service name of end points for both client and server annotations should be equal.",
+            clientSpan.getAnnotations().get(0).host.service_name,
+            serverSpan.getAnnotations().get(0).host.service_name
+        );
     }
 }
