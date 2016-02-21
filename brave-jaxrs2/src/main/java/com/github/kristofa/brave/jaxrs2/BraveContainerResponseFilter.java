@@ -1,11 +1,9 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
-
+import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
@@ -17,6 +15,7 @@ import java.io.IOException;
  * Intercepts outgoing container responses and sends ss annotations.
  */
 @Provider
+@Priority(0)
 public class BraveContainerResponseFilter implements ContainerResponseFilter {
 
     private final ServerResponseInterceptor responseInterceptor;
