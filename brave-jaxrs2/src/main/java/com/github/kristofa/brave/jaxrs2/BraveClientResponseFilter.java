@@ -5,7 +5,7 @@ import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
-
+import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientResponseContext;
@@ -17,6 +17,7 @@ import java.io.IOException;
  * Intercepts JAX-RS 2 client responses and sends cr annotations. Also submits the completed span.
  */
 @Provider
+@Priority(0)
 public class BraveClientResponseFilter implements ClientResponseFilter {
 
     private final ServiceNameProvider serviceNameProvider;
