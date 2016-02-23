@@ -6,22 +6,21 @@ import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.logging.Logger;
 
 import javax.inject.Inject;
+import javax.annotation.Priority;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.container.PreMatching;
 import javax.ws.rs.ext.Provider;
-
-import static java.lang.String.format;
 
 /**
  * Intercepts incoming container requests and extracts any trace information from the request header
  * Also sends sr annotations.
  */
 @Provider
+@PreMatching
+@Priority(0)
 public class BraveContainerRequestFilter implements ContainerRequestFilter {
 
     private final ServerRequestInterceptor requestInterceptor;

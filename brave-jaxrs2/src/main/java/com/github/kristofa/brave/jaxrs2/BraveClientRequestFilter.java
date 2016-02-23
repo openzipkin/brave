@@ -5,7 +5,7 @@ import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
-
+import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientRequestFilter;
@@ -17,6 +17,7 @@ import java.io.IOException;
  * Also sends cs annotations.
  */
 @Provider
+@Priority(0)
 public class BraveClientRequestFilter implements ClientRequestFilter {
 
     private final ServiceNameProvider serviceNameProvider;
