@@ -1,6 +1,6 @@
 package com.github.kristofa.brave.scribe;
 
-import java.io.ByteArrayInputStream;
+import com.twitter.zipkin.gen.SpanCodec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -8,12 +8,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TIOStreamTransport;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.ResultCode;
@@ -37,31 +31,19 @@ class ScribeReceiver implements Iface {
     }
 
     @Override
-    public ResultCode Log(final List<LogEntry> messages) throws TException {
-        try {
+    public ResultCode Log(final List<LogEntry> messages) {
+        for (final LogEntry logEntry : messages) {
+            final byte[] decodedSpan = Base64.getDecoder().decode(logEntry.getMessage());
+            final Span span = SpanCodec.THRIFT.readSpan(decodedSpan);
+            spans.add(span);
+        }
 
-            for (final LogEntry logEntry : messages) {
-                final byte[] decodedSpan = Base64.getDecoder().decode(logEntry.getMessage());
-
-                final ByteArrayInputStream buf = new ByteArrayInputStream(decodedSpan);
-                final TProtocolFactory factory = new TBinaryProtocol.Factory();
-                final TProtocol proto = factory.getProtocol(new TIOStreamTransport(buf));
-                final Span span = new Span();
-                span.read(proto);
-                spans.add(span);
+        if (delayMs > 0) {
+            try {
+                Thread.sleep(delayMs);
+            } catch (final InterruptedException e) {
+                LOGGER.log(Level.SEVERE, "Interrupted.", e);
             }
-
-            if (delayMs > 0) {
-                try {
-                    Thread.sleep(delayMs);
-                } catch (final InterruptedException e) {
-                    LOGGER.log(Level.SEVERE, "Interrupted.", e);
-                }
-            }
-
-        } catch (final TException e) {
-            LOGGER.log(Level.SEVERE, "TException when getting result.", e);
-            return ResultCode.TRY_LATER;
         }
         return ResultCode.OK;
     }

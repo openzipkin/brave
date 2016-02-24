@@ -45,11 +45,10 @@ public class ServerSpanTest {
         assertNotNull(span);
         assertEquals(TRACE_ID, span.getTrace_id());
         assertEquals(SPAN_ID, span.getId());
-        assertEquals(PARENT_SPAN_ID.longValue(), span.getParent_id());
+        assertEquals(PARENT_SPAN_ID.longValue(), span.getParent_id().longValue());
         assertEquals(NAME, span.getName());
-        assertNull(span.getAnnotations());
-        assertNull(span.getBinary_annotations());
-
+        assertTrue(span.getAnnotations().isEmpty());
+        assertTrue(span.getBinary_annotations().isEmpty());
     }
 
     @Test

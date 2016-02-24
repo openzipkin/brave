@@ -127,7 +127,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(
-            new BinaryAnnotation(LOCAL_COMPONENT, component, spanAndEndpoint().endpoint()));
+            BinaryAnnotation.create(LOCAL_COMPONENT, component, spanAndEndpoint().endpoint()));
         spanAndEndpoint().state().setCurrentLocalSpan(newSpan);
         return newSpanId;
     }

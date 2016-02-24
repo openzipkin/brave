@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -14,7 +14,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -93,29 +92,29 @@ public class ITBrave {
             final Span localSpan = collectedSpans.get(1);
             final Span serverSpan = collectedSpans.get(2);
 
-            assertTrue(serverSpan.trace_id != 0);
-            assertFalse(serverSpan.isSetParent_id());
-            assertTrue(serverSpan.id != 0);
-            assertEquals(serverSpanName, serverSpan.name);
+            assertTrue(serverSpan.getTrace_id() != 0);
+            assertNull(serverSpan.getParent_id());
+            assertTrue(serverSpan.getId() != 0);
+            assertEquals(serverSpanName, serverSpan.getName());
 
-            assertEquals(serverSpan.trace_id, clientSpan.trace_id);
-            assertEquals(serverSpan.id, clientSpan.parent_id);
-            assertTrue(clientSpan.id != 0);
-            assertEquals(clientSpanName, clientSpan.name);
+            assertEquals(serverSpan.getTrace_id(), clientSpan.getTrace_id());
+            assertEquals(serverSpan.getId(), clientSpan.getParent_id().longValue());
+            assertTrue(clientSpan.getId() != 0);
+            assertEquals(clientSpanName, clientSpan.getName());
 
-            assertEquals(serverSpan.trace_id, localSpan.trace_id);
-            assertEquals(serverSpan.id, localSpan.parent_id);
-            assertTrue(localSpan.id != 0);
-            assertEquals(localSpanName, localSpan.name);
+            assertEquals(serverSpan.getTrace_id(), localSpan.getTrace_id());
+            assertEquals(serverSpan.getId(), localSpan.getParent_id().longValue());
+            assertTrue(localSpan.getId() != 0);
+            assertEquals(localSpanName, localSpan.getName());
 
             HashSet<Long> ids = new HashSet<Long>();
-            ids.add(serverSpan.id);
-            ids.add(clientSpan.id);
-            ids.add(localSpan.id);
+            ids.add(serverSpan.getId());
+            ids.add(clientSpan.getId());
+            ids.add(localSpan.getId());
             assertEquals("Span ids should be different.", 3, ids.size());
             assertEquals("Expect sr, ss and 1 custom annotation.", 3, serverSpan.getAnnotations().size());
             assertEquals(2, clientSpan.getAnnotations().size());
-            assertFalse(localSpan.isSetAnnotations());
+            assertTrue(localSpan.getAnnotations().isEmpty());
 
             return 2;
 

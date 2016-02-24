@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,7 +13,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
@@ -58,11 +56,11 @@ public class LoggingSpanCollectorTest {
         spanCollector.collect(mockSpan);
 
         // Create expected annotation.
-        final BinaryAnnotation expectedBinaryAnnoration = create(KEY1, VALUE1);
+        final BinaryAnnotation expectedBinaryAnnotation = BinaryAnnotation.create(KEY1, VALUE1, null);
 
         final InOrder inOrder = inOrder(mockSpan, mockLogger);
 
-        inOrder.verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
+        inOrder.verify(mockSpan).addToBinary_annotations(expectedBinaryAnnotation);
         inOrder.verify(mockLogger).isLoggable(Level.INFO);
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
@@ -78,11 +76,11 @@ public class LoggingSpanCollectorTest {
         spanCollector.collect(mockSpan);
 
         // Create expected annotations.
-        final BinaryAnnotation expectedBinaryAnnoration = create(KEY1, VALUE1);
-        final BinaryAnnotation expectedBinaryAnnoration2 = create(KEY2, VALUE2);
+        final BinaryAnnotation expectedBinaryAnnotation = BinaryAnnotation.create(KEY1, VALUE1, null);
+        final BinaryAnnotation expectedBinaryAnnotation2 = BinaryAnnotation.create(KEY2, VALUE2, null);
 
-        verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration);
-        verify(mockSpan).addToBinary_annotations(expectedBinaryAnnoration2);
+        verify(mockSpan).addToBinary_annotations(expectedBinaryAnnotation);
+        verify(mockSpan).addToBinary_annotations(expectedBinaryAnnotation2);
         verify(mockLogger).isLoggable(Level.INFO);
 
         verifyNoMoreInteractions(mockLogger, mockSpan);
@@ -109,15 +107,4 @@ public class LoggingSpanCollectorTest {
         assertNotNull(loggingSpanCollector.getLogger());
 
     }
-
-    private BinaryAnnotation create(final String key, final String value) {
-        // Create expected annotation.
-        final ByteBuffer bb = ByteBuffer.wrap(value.getBytes());
-        final BinaryAnnotation expectedBinaryAnnoration = new BinaryAnnotation();
-        expectedBinaryAnnoration.setKey(key);
-        expectedBinaryAnnoration.setValue(bb);
-        expectedBinaryAnnoration.setAnnotation_type(AnnotationType.STRING);
-        return expectedBinaryAnnoration;
-    }
-
 }

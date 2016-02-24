@@ -10,7 +10,7 @@ import com.twitter.zipkin.gen.Span;
  */
 public class TestServerClientAndLocalSpanStateCompilation implements ServerClientAndLocalSpanState {
 
-    private Endpoint endpoint = new Endpoint(127 << 24 | 1, (short) 8080, "tomcat");
+    private Endpoint endpoint = Endpoint.create("tomcat", 127 << 24 | 1, 8080);
     private ServerSpan currentServerSpan = ServerSpan.EMPTY;
     private Span currentClientSpan = null;
     private String currentClientServiceName;
@@ -41,7 +41,7 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
         if (currentClientServiceName == null) {
             return endpoint;
         } else {
-            return new Endpoint(endpoint).setService_name(currentClientServiceName);
+            return Endpoint.create(currentClientServiceName, endpoint.ipv4, endpoint.port);
         }
     }
 

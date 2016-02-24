@@ -135,7 +135,7 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
      */
     @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        defaultAnnotations.add(new BinaryAnnotation(key, value));
+        defaultAnnotations.add(BinaryAnnotation.create(key, value, null));
     }
 
     /**

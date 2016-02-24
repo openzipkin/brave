@@ -2,11 +2,9 @@ package com.github.kristofa.brave.kafka;
 
 import com.github.charithe.kafka.KafkaJunitRule;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+import com.twitter.zipkin.gen.SpanCodec;
 import com.twitter.zipkin.gen.Span;
 import kafka.serializer.DefaultDecoder;
-import org.apache.thrift.TDeserializer;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Rule;
 import org.junit.Test;
 import java.util.*;
@@ -39,7 +37,7 @@ public class ITKafkaSpanCollector {
     public KafkaJunitRule kafkaRule = new KafkaJunitRule();
 
     @Test
-    public void submitSingleSpan() throws TException, TimeoutException {
+    public void submitSingleSpan() throws TimeoutException {
 
         KafkaSpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Span span = span(1l, "test_kafka_span");
@@ -55,7 +53,7 @@ public class ITKafkaSpanCollector {
     }
 
     @Test
-    public void submitMultipleSpansInParallel() throws InterruptedException, ExecutionException, TimeoutException, TException {
+    public void submitMultipleSpansInParallel() throws InterruptedException, ExecutionException, TimeoutException {
         KafkaSpanCollector kafkaCollector = new KafkaSpanCollector("localhost:"+kafkaRule.kafkaBrokerPort(), metricsHandler);
         Callable<Void> spanProducer1 = new Callable<Void>() {
 
@@ -95,14 +93,12 @@ public class ITKafkaSpanCollector {
         kafkaCollector.close();
     }
 
-    private List<Span> getCollectedSpans(List<byte[]> rawSpans) throws TException {
+    private List<Span> getCollectedSpans(List<byte[]> rawSpans) {
 
-        TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
         List<Span> spans = new ArrayList<>();
 
         for (byte[] rawSpan : rawSpans) {
-            Span span = new Span();
-            deserializer.deserialize(span, rawSpan);
+            Span span = SpanCodec.THRIFT.readSpan(rawSpan);
             spans.add(span);
         }
         return spans;

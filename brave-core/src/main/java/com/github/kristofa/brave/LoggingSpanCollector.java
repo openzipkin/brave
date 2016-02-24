@@ -54,7 +54,7 @@ public class LoggingSpanCollector implements SpanCollector {
      */
     @Override
     public void addDefaultAnnotation(final String key, final String value) {
-        defaultAnnotations.add(new BinaryAnnotation(key, value));
+        defaultAnnotations.add(BinaryAnnotation.create(key, value, null));
     }
 
     Logger getLogger() {

@@ -1,6 +1,6 @@
 package com.github.kristofa.brave.scribe;
 
-import java.io.ByteArrayOutputStream;
+import com.twitter.zipkin.gen.SpanCodec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -12,9 +12,7 @@ import java.util.logging.Logger;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TIOStreamTransport;
 
 import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
@@ -118,7 +116,7 @@ class SpanProcessingThread implements Callable<Integer> {
 
     private boolean log(final Client client, final List<LogEntry> logEntries) {
         try {
-            clientProvider.getClient().Log(logEntries);
+            client.Log(logEntries);
             return true;
         } catch (final TException e) {
             LOGGER.fine(format("Exception when trying to log Span.  Will retry: %s", e.getMessage()));
@@ -140,15 +138,7 @@ class SpanProcessingThread implements Callable<Integer> {
     }
 
     private LogEntry create(final Span span) throws TException {
-        final String spanAsString = Base64.encode(spanToBytes(span));
+        final String spanAsString = Base64.encode(SpanCodec.THRIFT.writeSpan(span));
         return new LogEntry("zipkin", spanAsString);
     }
-
-    private byte[] spanToBytes(final Span thriftSpan) throws TException {
-        final ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        final TProtocol proto = protocolFactory.getProtocol(new TIOStreamTransport(buf));
-        thriftSpan.write(proto);
-        return buf.toByteArray();
-    }
-
 }

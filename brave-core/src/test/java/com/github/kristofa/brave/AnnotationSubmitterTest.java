@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.SpanAndEndpoint.StaticSpanAndEndpoint;
 import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
@@ -33,13 +32,12 @@ public class AnnotationSubmitterTest {
     private static final int INT_VALUE = 23;
 
     private AnnotationSubmitter annotationSubmitter;
-    private Endpoint endpoint;
+    private Endpoint endpoint = Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999);
     private Span mockSpan;
 
     @Before
     public void setup() {
         mockSpan = mock(Span.class);
-        endpoint = new Endpoint();
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
         annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(mockSpan, endpoint));
@@ -49,10 +47,11 @@ public class AnnotationSubmitterTest {
     public void testSubmitAnnotationSpanEndpointString() {
         annotationSubmitter.submitAnnotation(ANNOTATION_NAME);
 
-        final Annotation expectedAnnotation = new Annotation();
-        expectedAnnotation.setHost(endpoint);
-        expectedAnnotation.setValue(ANNOTATION_NAME);
-        expectedAnnotation.setTimestamp(CURRENT_TIME_MICROSECONDS);
+        Annotation expectedAnnotation = Annotation.create(
+            CURRENT_TIME_MICROSECONDS,
+            ANNOTATION_NAME,
+            endpoint
+        );
 
         verify(mockSpan).addToAnnotations(expectedAnnotation);
         verifyNoMoreInteractions(mockSpan);
@@ -73,13 +72,13 @@ public class AnnotationSubmitterTest {
     public void testSubmitBinaryAnnotationStringValue() throws UnsupportedEncodingException {
         annotationSubmitter.submitBinaryAnnotation(KEY, STRING_VALUE);
 
-        final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
-        expectedAnnodation.setHost(endpoint);
-        expectedAnnodation.setKey(KEY);
-        expectedAnnodation.setValue(STRING_VALUE.getBytes("UTF-8"));
-        expectedAnnodation.setAnnotation_type(AnnotationType.STRING);
+        final BinaryAnnotation expectedAnnotation = BinaryAnnotation.create(
+            KEY,
+            STRING_VALUE,
+            endpoint
+        );
 
-        verify(mockSpan).addToBinary_annotations(expectedAnnodation);
+        verify(mockSpan).addToBinary_annotations(expectedAnnotation);
         verifyNoMoreInteractions(mockSpan);
     }
 
@@ -87,13 +86,13 @@ public class AnnotationSubmitterTest {
     public void testSubmitBinaryAnnotationIntValue() {
         annotationSubmitter.submitBinaryAnnotation(KEY, INT_VALUE);
 
-        final BinaryAnnotation expectedAnnodation = new BinaryAnnotation();
-        expectedAnnodation.setHost(endpoint);
-        expectedAnnodation.setKey(KEY);
-        expectedAnnodation.setValue(String.valueOf(INT_VALUE).getBytes());
-        expectedAnnodation.setAnnotation_type(AnnotationType.STRING);
+        final BinaryAnnotation expectedAnnotation = BinaryAnnotation.create(
+            KEY,
+            String.valueOf(INT_VALUE),
+            endpoint
+        );
 
-        verify(mockSpan).addToBinary_annotations(expectedAnnodation);
+        verify(mockSpan).addToBinary_annotations(expectedAnnotation);
         verifyNoMoreInteractions(mockSpan);
     }
 
