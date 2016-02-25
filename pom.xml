@@ -37,7 +37,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring.version>4.1.6.RELEASE</spring.version>
-    <zipkin.version>0.5.4</zipkin.version>
+    <zipkin.version>0.5.5</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
     <maven-release-plugin.version>2.5.2</maven-release-plugin.version>
@@ -83,6 +83,11 @@
         <dependency>
             <groupId>io.zipkin.java</groupId>
             <artifactId>zipkin</artifactId>
+            <version>${zipkin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin-junit</artifactId>
             <version>${zipkin.version}</version>
         </dependency>
         <dependency>
@@ -170,7 +175,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.10</version>
+      <version>4.12</version>
       <scope>test</scope>
     </dependency>
     <dependency>

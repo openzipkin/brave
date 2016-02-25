@@ -2,33 +2,30 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Span;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
-import okhttp3.mockwebserver.SocketPolicy;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.Codec;
+import zipkin.junit.HttpFailure;
+import zipkin.junit.ZipkinRule;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class HttpSpanCollectorTest {
 
   @Rule
-  public final MockWebServer server = new MockWebServer();
+  public final ZipkinRule zipkin = new ZipkinRule();
 
   TestMetricsHander metrics = new TestMetricsHander();
   // set flush interval to 0 so that tests can drive flushing explicitly
   HttpSpanCollector.Config config = HttpSpanCollector.Config.builder().flushInterval(0).build();
-  HttpSpanCollector collector = new HttpSpanCollector(server.url("").toString(), config, metrics);
+  HttpSpanCollector collector = new HttpSpanCollector(zipkin.httpUrl(), config, metrics);
 
   @Test
   public void collectDoesntDoIO() throws Exception {
     collector.collect(span(1L, "foo"));
 
-    assertThat(server.getRequestCount()).isZero();
+    assertThat(zipkin.httpRequestCount()).isZero();
   }
 
   @Test
@@ -50,29 +47,24 @@ public class HttpSpanCollectorTest {
 
   @Test
   public void postsSpans() throws Exception {
-    server.enqueue(new MockResponse());
-
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
 
     collector.flush(); // manually flush the spans
 
-    // Ensure a proper request was sent
-    RecordedRequest request = server.takeRequest();
-    assertThat(request.getRequestLine()).isEqualTo("POST /api/v1/spans HTTP/1.1");
-    assertThat(request.getHeader("Content-Type")).isEqualTo("application/json");
+    // Ensure only one request was sent
+    assertThat(zipkin.httpRequestCount()).isEqualTo(1);
 
     // Now, let's read back the spans we sent!
-    List<zipkin.Span> zipkinSpans = Codec.JSON.readSpans(request.getBody().readByteArray());
-    assertThat(zipkinSpans).containsExactly(
-        zipkinSpan(1L, "foo"),
-        zipkinSpan(2L, "bar")
+    assertThat(zipkin.getTraces()).containsExactly(
+        asList(zipkinSpan(1L, "foo")),
+        asList(zipkinSpan(2L, "bar"))
     );
   }
 
   @Test
   public void incrementsDroppedSpansWhenServerErrors() throws Exception {
-    server.enqueue(new MockResponse().setResponseCode(500));
+    zipkin.enqueueFailure(HttpFailure.sendErrorResponse(500, "Server Error!"));
 
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
@@ -84,7 +76,7 @@ public class HttpSpanCollectorTest {
 
   @Test
   public void incrementsDroppedSpansWhenServerDisconnects() throws Exception {
-    server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST));
+    zipkin.enqueueFailure(HttpFailure.disconnectDuringBody());
 
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
