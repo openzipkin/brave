@@ -1,7 +1,9 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,7 +43,9 @@ public class HttpSpanCollectorTest {
     for (int i = 0; i < 1001; i++)
       collector.collect(span(1L, "foo"));
 
-    assertThat(metrics.acceptedSpans.get()).isEqualTo(1001);
+    collector.flush(); // manually flush the spans
+
+    assertThat(zipkin.receivedSpanCount()).isEqualTo(1000);
     assertThat(metrics.droppedSpans.get()).isEqualTo(1);
   }
 
@@ -60,6 +64,32 @@ public class HttpSpanCollectorTest {
         asList(zipkinSpan(1L, "foo")),
         asList(zipkinSpan(2L, "bar"))
     );
+  }
+
+  @Test
+  public void postsCompressedSpans() throws Exception {
+    char[] annotation2K = new char[2048];
+    Arrays.fill(annotation2K, 'a');
+
+    ZipkinRule zipkin = new ZipkinRule();
+    try {
+      zipkin.start(0);
+
+      HttpSpanCollector.Config config = HttpSpanCollector.Config.builder()
+          .flushInterval(0).compressionEnabled(true).build();
+
+      HttpSpanCollector collector = new HttpSpanCollector(zipkin.httpUrl(), config, metrics);
+
+      collector.collect(span(1L, "foo")
+          .addToAnnotations(Annotation.create(1111L, new String(annotation2K), null)));
+
+      collector.flush(); // manually flush the span
+
+      // Ensure the span was compressed
+      assertThat(zipkin.receivedSpanBytes()).isLessThan(annotation2K.length);
+    } finally {
+      zipkin.shutdown();
+    }
   }
 
   @Test
