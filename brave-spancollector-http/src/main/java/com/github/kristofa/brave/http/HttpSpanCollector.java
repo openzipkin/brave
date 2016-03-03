@@ -1,10 +1,13 @@
 package com.github.kristofa.brave.http;
 
-import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
+import com.github.kristofa.brave.SpanCollector;
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import com.twitter.zipkin.gen.SpanCodec;
 import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.SpanCodec;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
@@ -18,6 +21,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.zip.GZIPOutputStream;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -32,6 +36,7 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
       return new AutoValue_HttpSpanCollector_Config.Builder()
           .connectTimeout(10 * 1000)
           .readTimeout(60 * 1000)
+          .compressionEnabled(false)
           .flushInterval(1);
     }
 
@@ -40,6 +45,8 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     abstract int readTimeout();
 
     abstract int flushInterval();
+
+    abstract boolean compressionEnabled();
 
     @AutoValue.Builder
     public interface Builder {
@@ -51,6 +58,13 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
 
       /** Default 1 second. 0 implies spans are {@link #flush() flushed} externally. */
       Builder flushInterval(int flushInterval);
+
+      /**
+       * Default false. true implies that spans will be gzipped before transport.
+       *
+       * <p>Note: This feature requires zipkin-scala 1.34+ or zipkin-java 0.6+
+       */
+      Builder compressionEnabled(boolean compressSpans);
 
       Config build();
     }
@@ -162,6 +176,14 @@ public final class HttpSpanCollector implements SpanCollector, Flushable, Closea
     connection.setReadTimeout(config.readTimeout());
     connection.setRequestMethod("POST");
     connection.addRequestProperty("Content-Type", "application/json");
+    if (config.compressionEnabled()) {
+      connection.addRequestProperty("Content-Encoding", "gzip");
+      ByteArrayOutputStream gzipped = new ByteArrayOutputStream();
+      try (GZIPOutputStream compressor = new GZIPOutputStream(gzipped)) {
+        compressor.write(json);
+      }
+      json = gzipped.toByteArray();
+    }
     connection.setDoOutput(true);
     connection.setFixedLengthStreamingMode(json.length);
     connection.getOutputStream().write(json);
