@@ -1,8 +1,17 @@
 # brave-spancollector-kafka #
 
-SpanCollector that is used to submit spans to Kafka.
+SpanCollector that encodes spans into a thrift list, sent to the Kafka topic `zipkin`.
 
-Spans are sent to a topic named `zipkin` and contain no key or partition only a value which is a TBinaryProtocol encoded Span.
+Kafka messages contain no key or partition, only a value which is a TBinaryProtocol encoded list of spans.
+
+*Important*
+If using zipkin-collector-service (or zipkin-receiver-kafka), you must run v1.35+
+
+## Configuration ##
+
+By default...
+
+* Spans are flushed to a Kafka message every second. Configure with `KafkaSpanCollector.Config.flushInterval`.
 
 ## Monitoring ##
 

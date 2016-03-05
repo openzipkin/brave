@@ -41,6 +41,11 @@
             <version>3.4.1-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>com.google.auto.value</groupId>
+            <artifactId>auto-value</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
@@ -52,10 +57,9 @@
             <version>1.7</version>
             <scope>test</scope>
         </dependency>
-        <!-- org.apache.thrift.ProcessFunction v0.9 uses SLF4J at runtime -->
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
