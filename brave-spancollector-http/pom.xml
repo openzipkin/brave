@@ -37,16 +37,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
-        <!-- org.apache.thrift.ProcessFunction v0.9 uses SLF4J at runtime -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>io.zipkin.java</groupId>
             <artifactId>zipkin-junit</artifactId>
             <scope>test</scope>

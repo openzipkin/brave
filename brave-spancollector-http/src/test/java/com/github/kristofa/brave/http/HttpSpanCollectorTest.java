@@ -5,6 +5,7 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import zipkin.junit.HttpFailure;
@@ -22,6 +23,11 @@ public class HttpSpanCollectorTest {
   // set flush interval to 0 so that tests can drive flushing explicitly
   HttpSpanCollector.Config config = HttpSpanCollector.Config.builder().flushInterval(0).build();
   HttpSpanCollector collector = new HttpSpanCollector(zipkin.httpUrl(), config, metrics);
+
+  @After
+  public void closeCollector(){
+    collector.close();
+  }
 
   @Test
   public void collectDoesntDoIO() throws Exception {

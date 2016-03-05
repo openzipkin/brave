@@ -1,107 +1,101 @@
 package com.github.kristofa.brave.kafka;
 
-import com.github.kristofa.brave.SpanCollector;
-
-import java.io.Closeable;
-import java.util.Properties;
-import java.util.concurrent.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import com.github.kristofa.brave.AbstractSpanCollector;
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
-import com.twitter.zipkin.gen.Span;
+import com.google.auto.value.AutoValue;
+import com.twitter.zipkin.gen.SpanCodec;
+import java.io.IOException;
+import java.util.Properties;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
-import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import zipkin.internal.ThriftCodec;
 
 /**
- * SpanCollector which submits spans to Kafka using <a href="http://kafka.apache.org/documentation.html#producerapi">Kafka Producer api</a>.
- * <p>
- * Spans are sent to kafka as keyed messages: the key is the topic zipkin and the value is a TBinaryProtocol encoded Span.
- * </p>
+ * SpanCollector which sends a thrift-encoded list of spans to the Kafka topic "zipkin".
+ *
+ * <p><b>Imporant</b> If using zipkin-collector-service (or zipkin-receiver-kafka), you must run v1.35+
  */
-public class KafkaSpanCollector implements SpanCollector, Closeable {
+public final class KafkaSpanCollector extends AbstractSpanCollector {
 
-    private static final Logger LOGGER = Logger.getLogger(KafkaSpanCollector.class.getName());
-    private static final Properties DEFAULT_PROPERTIES = new Properties();
-
-    static {
-        DEFAULT_PROPERTIES.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-        DEFAULT_PROPERTIES.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+  @AutoValue
+  public static abstract class Config {
+    public static Builder builder() {
+      return new AutoValue_KafkaSpanCollector_Config.Builder()
+          .flushInterval(1);
     }
 
-    private static Properties defaultPropertiesWith(String bootstrapServers) {
-        Properties props = new Properties();
-        for (String name : DEFAULT_PROPERTIES.stringPropertyNames()) {
-            props.setProperty(name, DEFAULT_PROPERTIES.getProperty(name));
-        }
-        props.setProperty("bootstrap.servers", bootstrapServers);
-        return props;
+    public static Builder builder(String bootstrapServers) {
+      Properties props = new Properties();
+      props.put("bootstrap.servers", bootstrapServers);
+      props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+      props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+      return builder().kafkaProperties(props);
     }
 
-    private final Producer<byte[], byte[]> producer;
-    private final ExecutorService executorService;
-    private final SpanProcessingTask spanProcessingTask;
-    private final Future<Integer> future;
-    private final BlockingQueue<Span> queue;
-    private final SpanCollectorMetricsHandler metricsHandler;
+    abstract Properties kafkaProperties();
 
-    /**
-     * Create a new instance with default configuration.
-     *
-     * @param bootstrapServers A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.
-     *                         Like: host1:port1,host2:port2,... Does not to be all the servers part of Kafka cluster.
-     * @param metricsHandler   Gets notified when spans are accepted or dropped. If you are not interested in these events you
-     *                         can use {@linkplain EmptySpanCollectorMetricsHandler}
-     */
-    public KafkaSpanCollector(String bootstrapServers, SpanCollectorMetricsHandler metricsHandler) {
-        this(KafkaSpanCollector.defaultPropertiesWith(bootstrapServers), metricsHandler);
-    }
+    abstract int flushInterval();
 
-    /**
-     * KafkaSpanCollector.
-     *
-     * @param kafkaProperties Configuration for Kafka producer. Essential configuration properties are:
-     *                        bootstrap.servers, key.serializer, value.serializer. For a
-     *                        full list of config options, see http://kafka.apache.org/documentation.html#producerconfigs.
-     * @param metricsHandler  Gets notified when spans are accepted or dropped. If you are not interested in these events you
-     *                        can use {@linkplain EmptySpanCollectorMetricsHandler}
-     */
-    public KafkaSpanCollector(Properties kafkaProperties, SpanCollectorMetricsHandler metricsHandler) {
-        producer = new KafkaProducer<>(kafkaProperties);
-        this.metricsHandler = metricsHandler;
-        executorService = Executors.newSingleThreadExecutor();
-        queue = new ArrayBlockingQueue<Span>(1000);
-        spanProcessingTask = new SpanProcessingTask(queue, producer, metricsHandler);
-        future = executorService.submit(spanProcessingTask);
-    }
+    @AutoValue.Builder
+    public interface Builder {
+      /**
+       * Configuration for Kafka producer. Essential configuration properties are:
+       * bootstrap.servers, key.serializer, value.serializer. For a full list of config options, see
+       * http://kafka.apache.org/documentation.html#kafkaPropertiess.
+       *
+       * <p>Must include the following mappings:
+       */
+      Builder kafkaProperties(Properties kafkaProperties);
 
-    @Override
-    public void collect(com.twitter.zipkin.gen.Span span) {
-        metricsHandler.incrementAcceptedSpans(1);
-        if (!queue.offer(span)) {
-            metricsHandler.incrementDroppedSpans(1);
-            LOGGER.log(Level.WARNING, "Queue rejected span!");
-        }
-    }
+      /** Default 1 second. 0 implies spans are {@link #flush() flushed} externally. */
+      Builder flushInterval(int flushInterval);
 
-    @Override
-    public void addDefaultAnnotation(String key, String value) {
-        throw new UnsupportedOperationException();
+      Config build();
     }
+  }
 
-    @Override
-    public void close() {
-        spanProcessingTask.stop();
-        try {
-            Integer nrProcessedSpans = future.get(6000, TimeUnit.MILLISECONDS);
-            LOGGER.info("SpanProcessingTask processed " + nrProcessedSpans + " spans.");
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Exception when waiting for SpanProcessTask to finish.", e);
-        }
-        executorService.shutdown();
-        producer.close();
-        metricsHandler.incrementDroppedSpans(queue.size());
-        LOGGER.info("KafkaSpanCollector closed.");
-    }
+  private final Config config;
+  private final Producer<byte[], byte[]> producer;
+  private final ThriftCodec thriftCodec = new ThriftCodec();
+
+  /**
+   * Create a new instance with default configuration.
+   *
+   * @param bootstrapServers A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.
+   *                         Like: host1:port1,host2:port2,... Does not to be all the servers part of Kafka cluster.
+   * @param metrics Gets notified when spans are accepted or dropped. If you are not interested in
+   *                these events you can use {@linkplain EmptySpanCollectorMetricsHandler}
+   */
+  public static KafkaSpanCollector create(String bootstrapServers, SpanCollectorMetricsHandler metrics) {
+    return new KafkaSpanCollector(Config.builder(bootstrapServers).build(), metrics);
+  }
+
+  /**
+   * @param config includes flush interval and kafka properties
+   * @param metrics Gets notified when spans are accepted or dropped. If you are not interested in
+   *                these events you can use {@linkplain EmptySpanCollectorMetricsHandler}
+   */
+  public static KafkaSpanCollector create(Config config, SpanCollectorMetricsHandler metrics) {
+    return new KafkaSpanCollector(config, metrics);
+  }
+
+  // Visible for testing. Ex when tests need to explicitly control flushing, set interval to 0.
+  KafkaSpanCollector(Config config, SpanCollectorMetricsHandler metrics) {
+    super(SpanCodec.THRIFT, metrics, config.flushInterval());
+    this.config = config;
+    this.producer = new KafkaProducer<>(config.kafkaProperties());
+  }
+
+  @Override
+  protected void sendSpans(byte[] thrift) throws IOException {
+    producer.send(new ProducerRecord<byte[], byte[]>("zipkin", thrift));
+  }
+
+  @Override
+  public void close() {
+    producer.close();
+    super.close();
+  }
 }
