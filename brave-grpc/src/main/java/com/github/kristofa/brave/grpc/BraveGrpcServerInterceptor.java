@@ -3,27 +3,23 @@ package com.github.kristofa.brave.grpc;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
-import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.TraceData;
+import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.http.HttpServerRequestAdapter;
+import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-import io.grpc.Status.Code;
 
-import java.util.Collection;
-import java.util.Collections;
+import java.net.URI;
 
 public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
@@ -42,81 +38,46 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
         return next.startCall(method, new SimpleForwardingServerCall<RespT>(call) {
             @Override
             public void request(int numMessages) {
-                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(method, requestHeaders));
+                serverRequestInterceptor.handle(new HttpServerRequestAdapter(
+                    new GrpcHttpServerRequest<>(method, requestHeaders),
+                    new MethodSpanNameProvider<>(method)));
                 super.request(numMessages);
             }
 
             @Override
             public void close(Status status, Metadata trailers) {
-                serverResponseInterceptor.handle(new GrpcServerResponseAdapter(status));
+                serverResponseInterceptor.handle(new HttpServerResponseAdapter(new GrpcHttpResponse(status)));
                 super.close(status, trailers);
             }
         }, requestHeaders);
     }
 
-    private class GrpcServerRequestAdapter<ReqT, RespT> implements ServerRequestAdapter {
+    private static final class GrpcHttpServerRequest<ReqT, RespT> implements HttpServerRequest {
 
-        private MethodDescriptor<ReqT, RespT> method;
-        private Metadata requestHeaders;
+        private final MethodDescriptor<ReqT, RespT> method;
+        private final Metadata requestHeaders;
 
-        public GrpcServerRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata requestHeaders) {
+        public GrpcHttpServerRequest(MethodDescriptor<ReqT, RespT> method, Metadata requestHeaders) {
             this.method = checkNotNull(method);
             this.requestHeaders = checkNotNull(requestHeaders);
         }
 
         @Override
-        public TraceData getTraceData() {
-            final String sampled = requestHeaders.get(GrpcHeaders.Sampled);
-            if (sampled != null) {
-                if (sampled.equals("0") || sampled.toLowerCase().equals("false")) {
-                    return TraceData.builder().sample(false).build();
-                } else {
-                    final String parentSpanId = requestHeaders.get(GrpcHeaders.ParentSpanId);
-                    final String traceId = requestHeaders.get(GrpcHeaders.TraceId);
-                    final String spanId = requestHeaders.get(GrpcHeaders.SpanId);
-                    if (traceId != null && spanId != null) {
-                        SpanId span = getSpanId(traceId, spanId, parentSpanId);
-                        return TraceData.builder().sample(true).spanId(span).build();
-                    }
-                }
-            }
-            return TraceData.builder().build();
+        public String getHttpHeaderValue(String headerName) {
+            Key<String> key = GrpcHeaders.HEADERS.get(headerName);
+            return key != null ? requestHeaders.get(key) : null;
         }
 
         @Override
-        public String getSpanName() {
-            return method.getFullMethodName().toLowerCase();
+        public URI getUri() {
+            return URI.create(method.getFullMethodName().toLowerCase());
         }
 
         @Override
-        public Collection<KeyValueAnnotation> requestAnnotations() {
-            return Collections.emptyList();
-        }
-
-        private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
-            if (parentSpanId != null) {
-                return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), IdConversion.convertToLong(parentSpanId));
-            }
-            return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), null);
+        public String getHttpMethod() {
+            return "POST";
         }
 
     }
 
-    private class GrpcServerResponseAdapter implements ServerResponseAdapter {
-
-        private Status status;
-
-        public GrpcServerResponseAdapter(Status status) {
-            this.status = status;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public Collection<KeyValueAnnotation> responseAnnotations() {
-            Code statusCode = status.getCode();
-            KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create("grpc.statuscode", statusCode.name());
-            return Collections.singletonList(statusAnnotation);
-        }
-
-    }
 }

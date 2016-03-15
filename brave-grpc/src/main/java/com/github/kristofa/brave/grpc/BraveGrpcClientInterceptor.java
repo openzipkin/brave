@@ -3,15 +3,13 @@ package com.github.kristofa.brave.grpc;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientSpanThreadBinder;
-import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.http.HttpClientRequest;
+import com.github.kristofa.brave.http.HttpClientRequestAdapter;
+import com.github.kristofa.brave.http.HttpClientResponseAdapter;
+import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.google.common.base.Strings;
 import com.twitter.zipkin.gen.Span;
 
@@ -22,12 +20,11 @@ import io.grpc.ClientInterceptor;
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
 import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
-import io.grpc.Status.Code;
 
-import java.util.Collection;
-import java.util.Collections;
+import java.net.URI;
 
 public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
@@ -53,14 +50,16 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(clientService, method, headers));
+                clientRequestInterceptor.handle(new HttpClientRequestAdapter(
+                    new GrpcHttpClientRequest<>(method, headers), new StringServiceNameProvider(clientService),
+                        new MethodSpanNameProvider<>(method)));
                 final Span currentClientSpan = clientSpanThreadBinder.getCurrentClientSpan();
                 super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     @Override
                     public void onClose(Status status, Metadata trailers) {
                         try {
                             clientSpanThreadBinder.setCurrentSpan(currentClientSpan);
-                            clientResponseInterceptor.handle(new GrpcClientResponseAdapter(status));
+                            clientResponseInterceptor.handle(new HttpClientResponseAdapter(new GrpcHttpResponse(status)));
                             super.onClose(status, trailers);
                         } finally {
                             clientSpanThreadBinder.setCurrentSpan(null);
@@ -72,64 +71,33 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
     }
 
-    private static final class GrpcClientRequestAdapter<ReqT, RespT> implements ClientRequestAdapter {
+    private static final class GrpcHttpClientRequest<ReqT, RespT> implements HttpClientRequest {
 
-        private final String clientService;
         private final MethodDescriptor<ReqT, RespT> method;
-        private final Metadata headers;
+        private Metadata headers;
 
-        public GrpcClientRequestAdapter(String clientService, MethodDescriptor<ReqT, RespT> method, Metadata headers) {
-            this.clientService = clientService;
+        public GrpcHttpClientRequest(MethodDescriptor<ReqT, RespT> method, Metadata headers) {
             this.method = checkNotNull(method);
             this.headers = checkNotNull(headers);
         }
 
         @Override
-        public String getSpanName() {
-            return method.getFullMethodName().toLowerCase();
+        public URI getUri() {
+            return URI.create(method.getFullMethodName().toLowerCase());
         }
 
         @Override
-        public void addSpanIdToRequest(@Nullable SpanId spanId) {
-            if (spanId == null) {
-                headers.put(GrpcHeaders.Sampled, "0");
-            } else {
-                headers.put(GrpcHeaders.Sampled, "1");
-                headers.put(GrpcHeaders.TraceId, IdConversion.convertToString(spanId.getTraceId()));
-                headers.put(GrpcHeaders.SpanId, IdConversion.convertToString(spanId.getSpanId()));
-                if (spanId.getParentSpanId() != null) {
-                    headers.put(GrpcHeaders.ParentSpanId, IdConversion.convertToString(spanId.getParentSpanId()));
-                }
+        public String getHttpMethod() {
+            return "POST";
+        }
+
+        @Override
+        public void addHeader(String header, String value) {
+            Key<String> key = GrpcHeaders.HEADERS.get(header);
+            if (key != null) {
+                headers.put(key, value);
             }
         }
-
-        @Override
-        public String getClientServiceName() {
-            return clientService;
-        }
-
-        @Override
-        public Collection<KeyValueAnnotation> requestAnnotations() {
-            return Collections.emptyList();
-        }
-
-    }
-
-    private static final class GrpcClientResponseAdapter implements ClientResponseAdapter {
-
-        private final Status status;
-
-        public GrpcClientResponseAdapter(Status status) {
-            this.status = checkNotNull(status);
-        }
-
-        @Override
-        public Collection<KeyValueAnnotation> responseAnnotations() {
-            Code statusCode = status.getCode();
-            KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create("grpc.statuscode", statusCode.name());
-            return Collections.singletonList(statusAnnotation);
-        }
-
     }
 
 }

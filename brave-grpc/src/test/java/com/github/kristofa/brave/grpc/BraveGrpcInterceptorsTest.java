@@ -33,7 +33,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -131,23 +130,37 @@ public class BraveGrpcInterceptorsTest {
         List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
         assertThat(spans.size(), is(equalTo(2)));
         assertThat(spans.get(0).getTrace_id(), is(equalTo(spans.get(1).getTrace_id())));
-        validateSpan(spans.get(0), Arrays.asList("ss", "sr"));
-        validateSpan(spans.get(1), Arrays.asList("cs", "cr"));
+        validateServerSpan(spans.get(0));
+        validateClientSpan(spans.get(1));
     }
 
-    private void validateSpan(Span span, Iterable<String> expectedAnnotations) {
+    private void validateClientSpan(Span span) {
         assertThat(span.getName(), is(equalTo("helloworld.greeter/sayhello")));
-        expectedAnnotations.forEach(a -> assertAnnotation(a, span.getAnnotations()));
+        List<BinaryAnnotation> binaryAnnotations = span.getBinary_annotations();
+        assertThat(binaryAnnotations.size(), is(equalTo(2)));
+        assertBinaryAnnotation(binaryAnnotations.get(0), "http.uri", "helloworld.greeter/sayhello");
+        assertBinaryAnnotation(binaryAnnotations.get(1), "http.responsecode", String.valueOf(Status.OK.getCode().value()));
+        assertAnnotation("cs", span.getAnnotations());
+        assertAnnotation("cr", span.getAnnotations());
+    }
+
+    private void validateServerSpan(Span span) {
+        assertThat(span.getName(), is(equalTo("helloworld.greeter/sayhello")));
         List<BinaryAnnotation> binaryAnnotations = span.getBinary_annotations();
         assertThat(binaryAnnotations.size(), is(equalTo(1)));
-        BinaryAnnotation binaryAnnotation = binaryAnnotations.get(0);
-        assertThat(binaryAnnotation.getKey(), is(equalTo("grpc.statuscode")));
-        assertThat(new String(binaryAnnotation.getValue(), StandardCharsets.UTF_8), is(equalTo(Status.OK.getCode().name())));
+        assertBinaryAnnotation(binaryAnnotations.get(0), "http.responsecode", String.valueOf(Status.OK.getCode().value()));
+        assertAnnotation("ss", span.getAnnotations());
+        assertAnnotation("sr", span.getAnnotations());
     }
 
     private void assertAnnotation(String annotationName, List<Annotation> annotations) {
         Optional<Annotation> annotation = annotations.stream().filter(a -> annotationName.equals(a.value)).findFirst();
         assertTrue("Could not find annotation: " + annotationName, annotation.isPresent());
+    }
+
+    private void assertBinaryAnnotation(BinaryAnnotation binaryAnnotation, String key, String value) {
+        assertThat(binaryAnnotation.getKey(), is(equalTo(key)));
+        assertThat(new String(binaryAnnotation.getValue(), StandardCharsets.UTF_8), is(equalTo(value)));
     }
 
     @After
