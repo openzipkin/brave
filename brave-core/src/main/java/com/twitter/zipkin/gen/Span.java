@@ -1,5 +1,6 @@
 package com.twitter.zipkin.gen;
 
+import com.github.kristofa.brave.internal.Util;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -247,6 +248,11 @@ public class Span implements Serializable {
     h *= 1000003;
     h ^= (debug == null) ? 0 : debug.hashCode();
     return h;
+  }
+
+  @Override
+  public String toString() {
+    return new String(SpanCodec.JSON.writeSpan(this), Util.UTF_8);
   }
 }
 
