@@ -56,7 +56,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
         public abstract Builder traceSampler(Sampler sampler);
 
-        abstract ClientTracer build();
+        public abstract ClientTracer build();
     }
 
     /**
