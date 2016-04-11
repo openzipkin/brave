@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
+import com.twitter.zipkin.gen.SpanCodec;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -45,7 +46,7 @@ public class LoggingSpanCollector implements SpanCollector {
         }
 
         if (getLogger().isLoggable(Level.INFO)) {
-            getLogger().info(span.toString());
+            getLogger().info(new String(SpanCodec.JSON.writeSpan(span)));
         }
     }
 
