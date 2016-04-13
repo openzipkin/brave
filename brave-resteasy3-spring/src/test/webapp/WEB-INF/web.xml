@@ -20,9 +20,8 @@
               com.github.kristofa.brave.BraveApiConfig
 			  com.github.kristofa.brave.resteasy3.BraveConfig
 			  com.github.kristofa.brave.resteasy3.ResteasySpringConfig
-              com.github.kristofa.brave.resteasy3.BraveRestEasyResourceImpl
-              com.github.kristofa.brave.resteasy3.SpanNameProviderConfig
-			  com.github.kristofa.brave.resteasy3.ServiceNameProviderConfig
+				com.github.kristofa.brave.resteasy3.BraveRestEasyResourceImpl
+				com.github.kristofa.brave.resteasy3.SpanNameProviderConfig
 			  com.github.kristofa.brave.resteasy3.BraveContextAware
           </param-value>
 	  </init-param>

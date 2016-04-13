@@ -76,7 +76,7 @@ public class LocalTracerTest {
         assertEquals(500L, started.startTick.longValue());
         assertEquals("lc", started.getBinary_annotations().get(0).getKey());
         assertEquals(COMPONENT_NAME, new String(started.getBinary_annotations().get(0).getValue(), Util.UTF_8));
-        assertEquals(state.getClientEndpoint(), started.getBinary_annotations().get(0).host);
+        assertEquals(state.endpoint(), started.getBinary_annotations().get(0).host);
         assertEquals(OPERATION_NAME, started.getName());
     }
 

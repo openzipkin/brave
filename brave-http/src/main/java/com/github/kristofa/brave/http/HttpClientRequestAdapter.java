@@ -13,12 +13,10 @@ import java.util.Collection;
 public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
     private final HttpClientRequest request;
-    private final ServiceNameProvider serviceNameProvider;
     private final SpanNameProvider spanNameProvider;
 
-    public HttpClientRequestAdapter(HttpClientRequest request, ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider) {
+    public HttpClientRequestAdapter(HttpClientRequest request, SpanNameProvider spanNameProvider) {
         this.request = request;
-        this.serviceNameProvider = serviceNameProvider;
         this.spanNameProvider = spanNameProvider;
     }
 
@@ -49,11 +47,4 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
         KeyValueAnnotation annotation = KeyValueAnnotation.create("http.uri", uri.toString());
         return Arrays.asList(annotation);
     }
-
-
-    @Override
-    public String getClientServiceName() {
-        return serviceNameProvider.serviceName(request);
-    }
-
 }

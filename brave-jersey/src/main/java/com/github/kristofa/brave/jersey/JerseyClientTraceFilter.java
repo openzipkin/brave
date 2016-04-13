@@ -7,7 +7,6 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientRequest;
@@ -28,12 +27,10 @@ public class JerseyClientTraceFilter extends ClientFilter {
 
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
-    private final ServiceNameProvider serviceNameProvider;
     private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public JerseyClientTraceFilter(ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
-        this.serviceNameProvider = serviceNameProvider;
+    public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
         this.spanNameProvider = spanNameProvider;
         this.clientRequestInterceptor = requestInterceptor;
         this.clientResponseInterceptor = responseInterceptor;
@@ -42,7 +39,7 @@ public class JerseyClientTraceFilter extends ClientFilter {
     @Override
     public ClientResponse handle(final ClientRequest clientRequest) throws ClientHandlerException {
 
-        clientRequestInterceptor.handle(new HttpClientRequestAdapter(new JerseyHttpRequest(clientRequest), serviceNameProvider, spanNameProvider));
+        clientRequestInterceptor.handle(new HttpClientRequestAdapter(new JerseyHttpRequest(clientRequest), spanNameProvider));
         final ClientResponse clientResponse = getNext().handle(clientRequest);
         clientResponseInterceptor.handle(new HttpClientResponseAdapter(new JerseyHttpResponse(clientResponse)));
         return clientResponse;

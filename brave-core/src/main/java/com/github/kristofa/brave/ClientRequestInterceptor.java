@@ -8,7 +8,6 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  *
  * - Start a new span
  * - Make sure span parameters are added to outgoing request
- * - Set client service name
  * - Submit client sent annotation
  *
  *
@@ -38,7 +37,6 @@ public class ClientRequestInterceptor {
             adapter.addSpanIdToRequest(null);
         } else {
             adapter.addSpanIdToRequest(spanId);
-            clientTracer.setCurrentClientServiceName(adapter.getClientServiceName());
             for(KeyValueAnnotation annotation : adapter.requestAnnotations()) {
                 clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }

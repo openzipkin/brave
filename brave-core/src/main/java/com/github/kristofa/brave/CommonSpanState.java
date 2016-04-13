@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Endpoint;
+
 /**
  * Keeps track of common trace/span state information.
  * <p>
@@ -20,4 +22,12 @@ public interface CommonSpanState {
      *         request.
      */
     Boolean sample();
+
+    /**
+     * Gets the Endpoint (ip, port, service name) for this service.
+     *
+     * @return Endpoint for this service.
+     */
+    Endpoint endpoint();
+
 }

@@ -22,8 +22,6 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
     };
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
 
-    private final static ThreadLocal<String> currentClientServiceName = new ThreadLocal<String>();
-
     private final static ThreadLocal<Span> currentLocalSpan = new ThreadLocal<Span>();
 
     private final Endpoint endpoint;
@@ -64,11 +62,6 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
         return currentServerSpan.get();
     }
 
-    @Override
-    public Endpoint getServerEndpoint() {
-        return endpoint;
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -85,13 +78,8 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
      * {@inheritDoc}
      */
     @Override
-    public Endpoint getClientEndpoint() {
-        final String serviceName = currentClientServiceName.get();
-        if (serviceName == null) {
-            return endpoint;
-        } else {
-            return Endpoint.create(serviceName, endpoint.ipv4, endpoint.port);
-        }
+    public Endpoint endpoint() {
+        return endpoint;
     }
 
     /**
@@ -108,11 +96,6 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
     @Override
     public void setCurrentClientSpan(final Span span) {
         currentClientSpan.set(span);
-    }
-
-    @Override
-    public void setCurrentClientServiceName(final String serviceName) {
-        currentClientServiceName.set(serviceName);
     }
 
     @Override

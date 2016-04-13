@@ -5,7 +5,6 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import com.github.kristofa.brave.http.StringServiceNameProvider;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.springframework.http.HttpMethod;
@@ -28,10 +27,9 @@ import static org.mockito.Mockito.when;
 public class BraveClientHttpRequestInterceptorTest {
 
     private final ClientTracer clientTracer = mock(ClientTracer.class);
-    private final String serviceName = randomAlphanumeric(20);
     private final SpanNameProvider spanNameProvider = mock(SpanNameProvider.class);
     private final BraveClientHttpRequestInterceptor subject = new BraveClientHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer),
-            new ClientResponseInterceptor(clientTracer), new StringServiceNameProvider(serviceName), spanNameProvider);
+            new ClientResponseInterceptor(clientTracer), spanNameProvider);
 
     @Test(expected = IOException.class)
     public void interceptShouldLetExceptionOccurringDuringExecuteBlowUp() throws Exception {
@@ -54,7 +52,6 @@ public class BraveClientHttpRequestInterceptorTest {
             final InOrder order = inOrder(clientTracer, execution);
 
             order.verify(clientTracer).startNewSpan(spanName);
-            order.verify(clientTracer).setCurrentClientServiceName(serviceName);
             order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
             order.verify(clientTracer).setClientSent();
             order.verify(execution).execute(request, body);
@@ -84,7 +81,6 @@ public class BraveClientHttpRequestInterceptorTest {
         final InOrder order = inOrder(clientTracer, execution);
 
         order.verify(clientTracer).startNewSpan(spanName);
-        order.verify(clientTracer).setCurrentClientServiceName(serviceName);
         order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
         order.verify(clientTracer).setClientSent();
         order.verify(execution).execute(request, body);
@@ -116,7 +112,6 @@ public class BraveClientHttpRequestInterceptorTest {
         final InOrder order = inOrder(clientTracer, execution);
 
         order.verify(clientTracer).startNewSpan(spanName);
-        order.verify(clientTracer).setCurrentClientServiceName(serviceName);
         order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
         order.verify(clientTracer).setClientSent();
         order.verify(execution).execute(request, body);

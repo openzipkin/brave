@@ -136,7 +136,7 @@ public class ServerTracerTest {
         Span serverRecv = new Span();
         when(mockServerSpan.getSpan()).thenReturn(serverRecv);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
+        when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived();
 
         final Annotation expectedAnnotation = Annotation.create(
@@ -146,7 +146,7 @@ public class ServerTracerTest {
         );
 
         verify(mockServerSpanState).getCurrentServerSpan();
-        verify(mockServerSpanState).getServerEndpoint();
+        verify(mockServerSpanState).endpoint();
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
@@ -159,7 +159,7 @@ public class ServerTracerTest {
         Span serverRecv = new Span();
         when(mockServerSpan.getSpan()).thenReturn(serverRecv);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
+        when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
 
 
@@ -170,7 +170,7 @@ public class ServerTracerTest {
         );
 
         verify(mockServerSpanState, times(2)).getCurrentServerSpan();
-        verify(mockServerSpanState).getServerEndpoint();
+        verify(mockServerSpanState).endpoint();
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
@@ -189,7 +189,7 @@ public class ServerTracerTest {
         Span serverRecv = new Span();
         when(mockServerSpan.getSpan()).thenReturn(serverRecv);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
+        when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
         assertEquals("unknown", serverRecv.getBinary_annotations().get(0).host.service_name);
@@ -210,7 +210,7 @@ public class ServerTracerTest {
         Span serverSend = new Span().setTimestamp(100L);
         when(mockServerSpan.getSpan()).thenReturn(serverSend);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        when(mockServerSpanState.getServerEndpoint()).thenReturn(mockEndpoint);
+        when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
         serverTracer.setServerSend();
 
         final Annotation expectedAnnotation = Annotation.create(
@@ -220,7 +220,7 @@ public class ServerTracerTest {
         );
 
         verify(mockServerSpanState).getCurrentServerSpan();
-        verify(mockServerSpanState).getServerEndpoint();
+        verify(mockServerSpanState).endpoint();
 
         verify(mockSpanCollector).collect(serverSend);
         verify(mockServerSpanState).setCurrentServerSpan(null);

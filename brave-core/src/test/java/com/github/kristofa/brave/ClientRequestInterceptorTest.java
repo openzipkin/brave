@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -42,7 +41,6 @@ public class ClientRequestInterceptorTest {
     @Test
     public void testSpanIdReturnedNoAnnotationsProvided() {
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getClientServiceName()).thenReturn(SERVICE_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
         SpanId spanId = mock(SpanId.class);
         when(clientTracer.startNewSpan(SPAN_NAME)).thenReturn(spanId);
@@ -52,8 +50,6 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
         inOrder.verify(adapter).addSpanIdToRequest(spanId);
-        inOrder.verify(adapter).getClientServiceName();
-        inOrder.verify(clientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(clientTracer).setClientSent();
 
@@ -63,7 +59,6 @@ public class ClientRequestInterceptorTest {
     @Test
     public void testSpanIdReturnedAnnotationsProvided() {
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
-        when(adapter.getClientServiceName()).thenReturn(SERVICE_NAME);
         when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
         SpanId spanId = mock(SpanId.class);
         when(clientTracer.startNewSpan(SPAN_NAME)).thenReturn(spanId);
@@ -73,8 +68,6 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
         inOrder.verify(adapter).addSpanIdToRequest(spanId);
-        inOrder.verify(adapter).getClientServiceName();
-        inOrder.verify(clientTracer).setCurrentClientServiceName(SERVICE_NAME);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(clientTracer).submitBinaryAnnotation(ANNOTATION1.getKey(), ANNOTATION1.getValue());
         inOrder.verify(clientTracer).submitBinaryAnnotation(ANNOTATION2.getKey(), ANNOTATION2.getValue());

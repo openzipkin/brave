@@ -3,6 +3,7 @@ package com.github.kristofa.brave;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.twitter.zipkin.gen.Endpoint;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +31,7 @@ public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
     private Span span;
+    private Endpoint endpoint = Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999);
 
     @Before
     public void setup() {
@@ -45,7 +47,7 @@ public class ITAnnotationSubmitterConcurrency {
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
 
-        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, null));
+        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint));
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

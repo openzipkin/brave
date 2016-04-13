@@ -70,7 +70,7 @@ public class BraveGrpcInterceptorsTest {
             .start();
 
         channel = ManagedChannelBuilder.forAddress("localhost", serverPort)
-            .intercept(new BraveGrpcClientInterceptor("helloWorldCaller", brave))
+            .intercept(new BraveGrpcClientInterceptor(brave))
             .usePlaintext(true)
             .build();
     }

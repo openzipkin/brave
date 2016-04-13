@@ -27,15 +27,6 @@ public interface ClientRequestAdapter {
     void addSpanIdToRequest(@Nullable SpanId spanId);
 
     /**
-     * Returns the service name for request. The service name is expected to be the same
-     * as the service we are calling. The service name will be used in the endpoint that we
-     * set when submitting annotations.
-     *
-     * @return service name.
-     */
-    String getClientServiceName();
-
-    /**
      * Returns a collection of annotations that should be added to span
      * for given request.
      *

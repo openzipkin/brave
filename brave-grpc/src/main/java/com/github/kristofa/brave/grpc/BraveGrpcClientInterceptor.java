@@ -30,16 +30,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
-    private final String clientService;
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final ClientSpanThreadBinder clientSpanThreadBinder;
 
-    public BraveGrpcClientInterceptor(String clientService, Brave brave) {
-        if (Strings.isNullOrEmpty(clientService)) {
-            throw new IllegalStateException("clientService name cannot be empty");
-        }
-        this.clientService = clientService;
+    public BraveGrpcClientInterceptor(Brave brave) {
         this.clientRequestInterceptor = checkNotNull(brave.clientRequestInterceptor());
         this.clientResponseInterceptor = checkNotNull(brave.clientResponseInterceptor());
         this.clientSpanThreadBinder = checkNotNull(brave.clientSpanThreadBinder());
@@ -52,7 +47,7 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(clientService, method, headers));
+                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(method, headers));
                 final Span currentClientSpan = clientSpanThreadBinder.getCurrentClientSpan();
                 super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     @Override
@@ -73,12 +68,10 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
     static final class GrpcClientRequestAdapter<ReqT, RespT> implements ClientRequestAdapter {
 
-        private final String clientService;
         private final MethodDescriptor<ReqT, RespT> method;
         private final Metadata headers;
 
-        public GrpcClientRequestAdapter(String clientService, MethodDescriptor<ReqT, RespT> method, Metadata headers) {
-            this.clientService = clientService;
+        public GrpcClientRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata headers) {
             this.method = checkNotNull(method);
             this.headers = checkNotNull(headers);
         }
@@ -100,11 +93,6 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
                     headers.put(BravePropagationKeys.ParentSpanId, IdConversion.convertToString(spanId.getParentSpanId()));
                 }
             }
-        }
-
-        @Override
-        public String getClientServiceName() {
-            return clientService;
         }
 
         @Override

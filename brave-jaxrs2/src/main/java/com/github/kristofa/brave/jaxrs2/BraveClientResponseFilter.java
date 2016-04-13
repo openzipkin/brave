@@ -3,8 +3,6 @@ package com.github.kristofa.brave.jaxrs2;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpResponse;
-import com.github.kristofa.brave.http.ServiceNameProvider;
-import com.github.kristofa.brave.http.SpanNameProvider;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
@@ -20,14 +18,10 @@ import java.io.IOException;
 @Priority(0)
 public class BraveClientResponseFilter implements ClientResponseFilter {
 
-    private final ServiceNameProvider serviceNameProvider;
     private final ClientResponseInterceptor responseInterceptor;
-    private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public BraveClientResponseFilter(ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider, ClientResponseInterceptor responseInterceptor) {
-        this.serviceNameProvider = serviceNameProvider;
-        this.spanNameProvider = spanNameProvider;
+    public BraveClientResponseFilter(ClientResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
     }
 

@@ -45,17 +45,14 @@ public class MySQLStatementInterceptorTest {
     @Test
     public void preProcessShouldBeginTracingSQLCall() throws Exception {
         final String sql = randomAlphanumeric(20);
-        final String schema = randomAlphanumeric(20);
 
         final Connection connection = mock(Connection.class);
-        when(connection.getSchema()).thenReturn(schema);
 
         assertNull(subject.preProcess(sql, mock(Statement.class), connection));
 
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).setCurrentClientServiceName(eq(schema));
         order.verify(clientTracer).submitBinaryAnnotation(eq("executed.query"), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
@@ -115,19 +112,16 @@ public class MySQLStatementInterceptorTest {
     @Test
     public void preProcessShouldBeginTracingPreparedStatementCall() throws Exception {
         final String sql = randomAlphanumeric(20);
-        final String schema = randomAlphanumeric(20);
 
         final PreparedStatement statement = mock(PreparedStatement.class);
         when(statement.getPreparedSql()).thenReturn(sql);
         final Connection connection = mock(Connection.class);
-        when(connection.getSchema()).thenReturn(schema);
 
         assertNull(subject.preProcess(null, statement, connection));
 
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).setCurrentClientServiceName(eq(schema));
         order.verify(clientTracer).submitBinaryAnnotation(eq("executed.query"), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();

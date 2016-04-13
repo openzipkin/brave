@@ -5,7 +5,6 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -31,29 +30,26 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
 
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
-    private final ServiceNameProvider serviceNameProvider;
     private final SpanNameProvider spanNameProvider;
 
     /**
      * Creates a new instance.
      *
-     * @param serviceNameProvider Provides service name.
      * @param spanNameProvider Provides span name.
      * @param requestInterceptor Client request interceptor.
      * @param responseInterceptor Client response interceptor.
      */
     public BraveClientHttpRequestInterceptor(final ClientRequestInterceptor requestInterceptor, final ClientResponseInterceptor responseInterceptor,
-                                             final ServiceNameProvider serviceNameProvider, final SpanNameProvider spanNameProvider) {
+                                             final SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
-        this.serviceNameProvider = serviceNameProvider;
         this.spanNameProvider = spanNameProvider;
     }
 
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
 
-        requestInterceptor.handle(new HttpClientRequestAdapter(new SpringHttpClientRequest(request), serviceNameProvider, spanNameProvider));
+        requestInterceptor.handle(new HttpClientRequestAdapter(new SpringHttpClientRequest(request), spanNameProvider));
 
         final ClientHttpResponse response;
 
