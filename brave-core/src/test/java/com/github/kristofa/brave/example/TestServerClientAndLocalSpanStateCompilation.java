@@ -13,7 +13,6 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
     private Endpoint endpoint = Endpoint.create("tomcat", 127 << 24 | 1, 8080);
     private ServerSpan currentServerSpan = ServerSpan.EMPTY;
     private Span currentClientSpan = null;
-    private String currentClientServiceName;
     private Span currentLocalSpan = null;
 
     @Override
@@ -27,32 +26,18 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
     }
 
     @Override
-    public Endpoint getServerEndpoint() {
-        return endpoint;
-    }
-
-    @Override
     public Span getCurrentClientSpan() {
         return currentClientSpan;
     }
 
     @Override
-    public Endpoint getClientEndpoint() {
-        if (currentClientServiceName == null) {
-            return endpoint;
-        } else {
-            return Endpoint.create(currentClientServiceName, endpoint.ipv4, endpoint.port);
-        }
+    public Endpoint endpoint() {
+        return endpoint;
     }
 
     @Override
     public void setCurrentClientSpan(Span span) {
         currentClientSpan = span;
-    }
-
-    @Override
-    public void setCurrentClientServiceName(String serviceName) {
-        currentClientServiceName = serviceName;
     }
 
     @Override

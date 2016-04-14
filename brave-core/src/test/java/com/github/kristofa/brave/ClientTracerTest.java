@@ -72,7 +72,7 @@ public class ClientTracerTest {
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
             zipkinCoreConstants.CLIENT_SEND,
-            state.getClientEndpoint()
+            state.endpoint()
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
@@ -90,7 +90,7 @@ public class ClientTracerTest {
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
             zipkinCoreConstants.CLIENT_SEND,
-            state.getClientEndpoint()
+            state.endpoint()
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
@@ -133,11 +133,11 @@ public class ClientTracerTest {
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
             zipkinCoreConstants.CLIENT_RECV,
-            state.getClientEndpoint()
+            state.endpoint()
         );
 
         assertNull(state.getCurrentClientSpan());
-        assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
+        assertEquals(state.endpoint(), state.endpoint());
 
         verify(mockCollector).collect(clientRecv);
         verifyNoMoreInteractions(mockCollector, mockSampler);
@@ -229,7 +229,7 @@ public class ClientTracerTest {
         verify(mockSampler).isSampled(TRACE_ID);
 
         assertNull(state.getCurrentClientSpan());
-        assertEquals(state.getServerEndpoint(), state.getClientEndpoint());
+        assertEquals(state.endpoint(), state.endpoint());
 
         verifyNoMoreInteractions(mockSampler, mockCollector);
     }

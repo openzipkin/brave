@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
@@ -20,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 
 public class ITBraveJersey2 extends JerseyTest {
 
-    private ServiceNameProvider serviceNameProvider;
     private SpanNameProvider spanNameProvider;
     private ClientRequestInterceptor clientRequestInterceptor;
     private ClientResponseInterceptor clientResponseInterceptor;
@@ -28,7 +26,6 @@ public class ITBraveJersey2 extends JerseyTest {
     @Override
     protected Application configure() {
         ApplicationContext context = new AnnotationConfigApplicationContext(JerseyTestSpringConfig.class);
-        serviceNameProvider = context.getBean(ServiceNameProvider.class);
         spanNameProvider = context.getBean(SpanNameProvider.class);
         clientRequestInterceptor = context.getBean(ClientRequestInterceptor.class);
         clientResponseInterceptor = context.getBean(ClientResponseInterceptor.class);
@@ -38,8 +35,8 @@ public class ITBraveJersey2 extends JerseyTest {
     @Test
     public void testBraveJersey2() {
         WebTarget target = target("/brave-jersey2/test");
-        target.register(new BraveClientRequestFilter(serviceNameProvider, spanNameProvider, clientRequestInterceptor));
-        target.register(new BraveClientResponseFilter(serviceNameProvider, spanNameProvider, clientResponseInterceptor));
+        target.register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor));
+        target.register(new BraveClientResponseFilter(clientResponseInterceptor));
 
         final Response response = target.request().get();
         assertEquals(200, response.getStatus());

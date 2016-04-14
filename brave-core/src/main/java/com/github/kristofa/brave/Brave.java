@@ -58,7 +58,7 @@ public class Brave {
          * It is preferred to use constructor that takes ip, port and service name instead.
          * </p>
          *
-         * @param serviceName Name of service. Is only relevant when we do server side tracing.
+         * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(String serviceName) {
             try {
@@ -74,7 +74,7 @@ public class Brave {
          *
          * @param ip          ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
          * @param port        Port for service
-         * @param serviceName Name of service. Is only relevant when we do server side tracing.
+         * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(int ip, int port, String serviceName) {
             state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);

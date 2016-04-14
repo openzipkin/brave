@@ -2,8 +2,6 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
 
-import com.twitter.zipkin.gen.Endpoint;
-
 /**
  * Maintains state for a single server span.
  *
@@ -29,17 +27,9 @@ public interface ServerSpanState extends CommonSpanState {
     ServerSpan getCurrentServerSpan();
 
     /**
-     * Gets the Endpoint (ip, port, service name) for this service.
-     *
-     * @return Endpoint for this service.
-     */
-    Endpoint getServerEndpoint();
-
-    /**
      * Set span for current request.
      * 
      * @param span Span for current request.
      */
     void setCurrentServerSpan(final ServerSpan span);
-
 }

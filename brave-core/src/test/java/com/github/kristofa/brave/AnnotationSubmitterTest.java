@@ -99,7 +99,7 @@ public class AnnotationSubmitterTest {
     @Test
     public void testCurrentTimeMicroSeconds() {
         AnnotationSubmitter anotherAnnotationSubmitter = AnnotationSubmitter.create(
-            StaticSpanAndEndpoint.create(null, null));
+            StaticSpanAndEndpoint.create(null, endpoint));
         assertEquals(CURRENT_TIME_MICROSECONDS, anotherAnnotationSubmitter.currentTimeMicroseconds());
     }
 }

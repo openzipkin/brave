@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -18,11 +17,10 @@ public interface SpanAndEndpoint {
     Span span();
 
     /**
-     * Gets the Endpoint for the annotations. (Server Endpoint or Client Endpoint depending on the context)
+     * Indicates the network context of the local service being traced.
      *
-     * @return Endpoint for the annotations. Can be <code>null</code>.
+     * @return Endpoint to add to annotations. Cannot be <code>null</code>.
      */
-    @Nullable
     Endpoint endpoint();
 
     /**
@@ -30,7 +28,7 @@ public interface SpanAndEndpoint {
      */
     @AutoValue
     abstract class StaticSpanAndEndpoint implements SpanAndEndpoint {
-      static StaticSpanAndEndpoint create(@Nullable Span span, @Nullable Endpoint endpoint) {
+      static StaticSpanAndEndpoint create(@Nullable Span span, Endpoint endpoint) {
         return new AutoValue_SpanAndEndpoint_StaticSpanAndEndpoint(span, endpoint);
       }
     }
@@ -56,7 +54,7 @@ public interface SpanAndEndpoint {
          */
         @Override
         public Endpoint endpoint() {
-            return state().getServerEndpoint();
+            return state().endpoint();
         }
     }
 
@@ -81,7 +79,7 @@ public interface SpanAndEndpoint {
          */
         @Override
         public Endpoint endpoint() {
-            return state().getClientEndpoint();
+            return state().endpoint();
         }
     }
 
@@ -98,10 +96,9 @@ public interface SpanAndEndpoint {
             return state().getCurrentLocalSpan();
         }
 
-        /** The local endpoint is the same as the client endpoint. */
         @Override
         public Endpoint endpoint() {
-            return state().getClientEndpoint();
+            return state().endpoint();
         }
     }
 }

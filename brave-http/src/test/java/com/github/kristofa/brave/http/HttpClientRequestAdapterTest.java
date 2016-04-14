@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.http;
 
-
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import org.junit.Before;
@@ -17,7 +16,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class HttpClientRequestAdapterTest {
 
-    private final static String CLIENT_SERVICE_NAME = "service_name";
     private static final String SPAN_NAME = "span_name";
     private static final long TRACE_ID = 1;
     private static final long SPAN_ID = 2;
@@ -26,23 +24,13 @@ public class HttpClientRequestAdapterTest {
 
     private HttpClientRequestAdapter clientRequestAdapter;
     private HttpClientRequest request;
-    private ServiceNameProvider serviceNameProvider;
     private SpanNameProvider spanNameProvider;
 
     @Before
     public void setup() {
         request = mock(HttpClientRequest.class);
-        serviceNameProvider = mock(ServiceNameProvider.class);
         spanNameProvider = mock(SpanNameProvider.class);
-        clientRequestAdapter = new HttpClientRequestAdapter(request, serviceNameProvider, spanNameProvider);
-    }
-
-    @Test
-    public void getClientServiceName() {
-        when(serviceNameProvider.serviceName(request)).thenReturn(CLIENT_SERVICE_NAME);
-        assertEquals(CLIENT_SERVICE_NAME, clientRequestAdapter.getClientServiceName());
-        verify(serviceNameProvider).serviceName(request);
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        clientRequestAdapter = new HttpClientRequestAdapter(request, spanNameProvider);
     }
 
     @Test
@@ -50,14 +38,14 @@ public class HttpClientRequestAdapterTest {
         when(spanNameProvider.spanName(request)).thenReturn(SPAN_NAME);
         assertEquals(SPAN_NAME, clientRequestAdapter.getSpanName());
         verify(spanNameProvider).spanName(request);
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        verifyNoMoreInteractions(request, spanNameProvider);
     }
 
     @Test
     public void addSpanIdToRequest_NoSpanId() {
         clientRequestAdapter.addSpanIdToRequest(null);
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "0");
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        verifyNoMoreInteractions(request, spanNameProvider);
     }
 
     @Test
@@ -68,7 +56,7 @@ public class HttpClientRequestAdapterTest {
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
         verify(request).addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(PARENT_SPAN_ID));
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        verifyNoMoreInteractions(request, spanNameProvider);
     }
 
     @Test
@@ -78,7 +66,7 @@ public class HttpClientRequestAdapterTest {
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        verifyNoMoreInteractions(request, spanNameProvider);
     }
 
     @Test
@@ -90,7 +78,7 @@ public class HttpClientRequestAdapterTest {
         assertEquals("http.uri", a.getKey());
         assertEquals(TEST_URI, a.getValue());
         verify(request).getUri();
-        verifyNoMoreInteractions(request, serviceNameProvider, spanNameProvider);
+        verifyNoMoreInteractions(request, spanNameProvider);
     }
 
 }

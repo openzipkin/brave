@@ -86,7 +86,6 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     public void setClientReceived() {
         if (submitEndAnnotation(zipkinCoreConstants.CLIENT_RECV, spanCollector())) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
-            spanAndEndpoint().state().setCurrentClientServiceName(null);
         }
     }
 
@@ -102,7 +101,6 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         Boolean sample = spanAndEndpoint().state().sample();
         if (Boolean.FALSE.equals(sample)) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
-            spanAndEndpoint().state().setCurrentClientServiceName(null);
             return null;
         }
 
@@ -111,7 +109,6 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             // No sample indication is present.
             if (!traceSampler().isSampled(newSpanId.getTraceId())) {
                 spanAndEndpoint().state().setCurrentClientSpan(null);
-                spanAndEndpoint().state().setCurrentClientServiceName(null);
                 return null;
             }
         }
@@ -125,18 +122,6 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         newSpan.setName(requestName);
         spanAndEndpoint().state().setCurrentClientSpan(newSpan);
         return newSpanId;
-    }
-
-    /**
-     * Override the service name that will be submitted in the annotations.
-     * <p/>
-     * This should be set before submitting any annotations. So after invoking {@link ClientTracer#startNewSpan(String)} and
-     * before {@link ClientTracer#setClientSent()}.
-     *
-     * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
-     */
-    public void setCurrentClientServiceName(String serviceName) {
-        spanAndEndpoint().state().setCurrentClientServiceName(serviceName);
     }
 
     private SpanId getNewSpanId() {

@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
@@ -70,15 +69,14 @@ public class ITBraveResteasy {
         // Create our client. The client will be configured using BraveClientExecutionInterceptor because
         // Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
         // in module brave-resteasy-spring-module which is on our class path.
-        ServiceNameProvider serviceNameProvider = appContext.getBean(ServiceNameProvider.class);
         SpanNameProvider spanNameProvider = appContext.getBean(SpanNameProvider.class);
         ClientRequestInterceptor clientRequestInterceptor = appContext.getBean(ClientRequestInterceptor.class);
         ClientResponseInterceptor clientResponseInterceptor = appContext.getBean(ClientResponseInterceptor.class);
 
         final BraveRestEasyResource client =
                 new ResteasyClientBuilder().build().target("http://localhost:8080/BraveRestEasyIntegration")
-                        .register(new BraveClientRequestFilter(serviceNameProvider, spanNameProvider, clientRequestInterceptor))
-                        .register(new BraveClientResponseFilter(serviceNameProvider, spanNameProvider, clientResponseInterceptor))
+                        .register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor))
+                        .register(new BraveClientResponseFilter(clientResponseInterceptor))
                         .proxy(BraveRestEasyResource.class);
 
         @SuppressWarnings("unchecked")

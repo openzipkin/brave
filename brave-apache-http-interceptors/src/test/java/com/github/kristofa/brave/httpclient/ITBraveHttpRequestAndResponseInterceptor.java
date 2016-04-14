@@ -6,7 +6,6 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
 import com.github.kristofa.test.http.HttpRequestImpl;
 import com.github.kristofa.test.http.HttpResponseImpl;
@@ -34,7 +33,6 @@ import static org.mockito.Mockito.when;
 public class ITBraveHttpRequestAndResponseInterceptor {
 
     private final static int PORT = 8082;
-    private final static String SERVICE = "service";
     private final static String CONTEXT = "context";
     private final static String PATH = "/a/b";
     private final static String FULL_PATH = "/" + CONTEXT + PATH;
@@ -80,7 +78,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
                 .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -94,7 +92,6 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
             inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();
@@ -117,7 +114,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -131,7 +128,6 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
             inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", "400");
@@ -152,7 +148,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -186,7 +182,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new StringServiceNameProvider(CONTEXT), new DefaultSpanNameProvider()))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST_WITH_QUERY_PARAMS);
@@ -200,7 +196,6 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).setCurrentClientServiceName(CONTEXT);
             inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH_WITH_QUERY_PARAMS);
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();

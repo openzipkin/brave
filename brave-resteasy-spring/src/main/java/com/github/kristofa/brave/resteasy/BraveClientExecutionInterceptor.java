@@ -13,7 +13,6 @@ import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
  * HTTP header parameters to the request to propagate trace information. It also adds some span annotations:
@@ -43,23 +42,20 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
-    private final ServiceNameProvider serviceNameProvider;
     private final SpanNameProvider spanNameProvider;
 
     /**
      * Create a new instance.
      *
-     * @param serviceNameProvider Provides service name.
      * @param spanNameProvider Provides span name.
      * @param requestInterceptor Client request interceptor.
      * @param responseInterceptor Client response interceptor.
      */
     @Autowired
-    public BraveClientExecutionInterceptor(ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+    public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
-        this.serviceNameProvider = serviceNameProvider;
     }
 
     /**
@@ -71,7 +67,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         final ClientRequest request = ctx.getRequest();
 
         final HttpClientRequest httpClientRequest = new RestEasyHttpClientRequest(request);
-        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(httpClientRequest, serviceNameProvider, spanNameProvider);
+        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(httpClientRequest, spanNameProvider);
         requestInterceptor.handle(adapter);
 
         ClientResponse<?> response = null;

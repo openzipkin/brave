@@ -22,8 +22,7 @@
 		  com.github.kristofa.brave.resteasy.BravePreProcessInterceptor
 		  com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
 		  com.github.kristofa.brave.resteasy.ResteasySpringConfig
-          com.github.kristofa.brave.resteasy.BraveRestEasyResourceImpl
-          com.github.kristofa.brave.resteasy.ServiceNameProviderConfig
+			com.github.kristofa.brave.resteasy.BraveRestEasyResourceImpl
 		  com.github.kristofa.brave.resteasy.SpanNameProviderConfig
 		  </param-value>
 	  </init-param>

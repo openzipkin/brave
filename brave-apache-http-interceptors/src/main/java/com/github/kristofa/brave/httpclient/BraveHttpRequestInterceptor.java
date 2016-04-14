@@ -2,7 +2,6 @@ package com.github.kristofa.brave.httpclient;
 
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
 import org.apache.http.HttpRequest;
@@ -14,7 +13,6 @@ import org.apache.http.protocol.HttpContext;
  */
 public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
 
-    private final ServiceNameProvider serviceNameProvider;
     private final SpanNameProvider spanNameProvider;
     private final ClientRequestInterceptor requestInterceptor;
 
@@ -22,12 +20,10 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
      * Creates a new instance.
      *
      * @param requestInterceptor
-     * @param serviceNameProvider Provides service name for request.
      * @param spanNameProvider Provides span name for request.
      */
-    public BraveHttpRequestInterceptor(ClientRequestInterceptor requestInterceptor, ServiceNameProvider serviceNameProvider, SpanNameProvider spanNameProvider) {
+    public BraveHttpRequestInterceptor(ClientRequestInterceptor requestInterceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
-        this.serviceNameProvider = serviceNameProvider;
         this.spanNameProvider = spanNameProvider;
     }
 
@@ -36,7 +32,7 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
      */
     @Override
     public void process(final HttpRequest request, final HttpContext context) {
-        HttpClientRequestAdapter adapter = new HttpClientRequestAdapter(new HttpClientRequestImpl(request), serviceNameProvider, spanNameProvider);
+        HttpClientRequestAdapter adapter = new HttpClientRequestAdapter(new HttpClientRequestImpl(request), spanNameProvider);
         requestInterceptor.handle(adapter);
     }
 }
