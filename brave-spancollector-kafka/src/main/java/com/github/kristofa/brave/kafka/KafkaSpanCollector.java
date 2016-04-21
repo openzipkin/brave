@@ -12,7 +12,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 /**
- * SpanCollector which sends a thrift-encoded list of spans to the Kafka topic "zipkin".
+ * SpanCollector which sends a thrift-encoded list of spans to a Kafka topic (default: "zipkin")
  *
  * <p><b>Important</b> If using zipkin-collector-service (or zipkin-receiver-kafka), you must run v1.35+
  */
@@ -22,6 +22,7 @@ public final class KafkaSpanCollector extends AbstractSpanCollector {
   public static abstract class Config {
     public static Builder builder() {
       return new AutoValue_KafkaSpanCollector_Config.Builder()
+          .topic("zipkin")
           .flushInterval(1);
     }
 
@@ -37,6 +38,8 @@ public final class KafkaSpanCollector extends AbstractSpanCollector {
 
     abstract int flushInterval();
 
+    abstract String topic();
+
     @AutoValue.Builder
     public interface Builder {
       /**
@@ -51,11 +54,16 @@ public final class KafkaSpanCollector extends AbstractSpanCollector {
       /** Default 1 second. 0 implies spans are {@link #flush() flushed} externally. */
       Builder flushInterval(int flushInterval);
 
+      /** Sets kafka-topic for zipkin to report to. Default topic zipkin. **/
+      Builder topic(String topic);
+
       Config build();
     }
   }
 
   private final Producer<byte[], byte[]> producer;
+
+  private final String topic;
 
   /**
    * Create a new instance with default configuration.
@@ -82,11 +90,12 @@ public final class KafkaSpanCollector extends AbstractSpanCollector {
   KafkaSpanCollector(Config config, SpanCollectorMetricsHandler metrics) {
     super(SpanCodec.THRIFT, metrics, config.flushInterval());
     this.producer = new KafkaProducer<>(config.kafkaProperties());
+    this.topic = config.topic();
   }
 
   @Override
   protected void sendSpans(byte[] thrift) throws IOException {
-    producer.send(new ProducerRecord<byte[], byte[]>("zipkin", thrift));
+    producer.send(new ProducerRecord<byte[], byte[]>(this.topic, thrift));
   }
 
   @Override

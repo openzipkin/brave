@@ -124,6 +124,15 @@ public class KafkaSpanCollectorTest {
     assertThat(Codec.THRIFT.readSpans(messages.get(0))).hasSize(400);
   }
 
+  @Test
+  public void submitsSpansToCorrectTopic() throws Exception {
+    Config config = Config.builder("localhost:" + kafka.kafkaBrokerPort()).topic("customzipkintopic").build();
+    KafkaSpanCollector collector = new KafkaSpanCollector(config, metrics);
+    collector.collect(span(123, "myspan"));
+    List<byte[]> messages = readMessages("customzipkintopic");
+    assertThat(messages).hasSize(1);
+  }
+
   class TestMetricsHander implements SpanCollectorMetricsHandler {
 
     final AtomicInteger acceptedSpans = new AtomicInteger();
@@ -148,7 +157,10 @@ public class KafkaSpanCollectorTest {
     return new zipkin.Span.Builder().traceId(traceId).id(traceId).name(spanName).build();
   }
 
+  private List<byte[]> readMessages(String topic) throws TimeoutException {
+    return kafka.readMessages(topic, 1, new DefaultDecoder(kafka.consumerConfig().props()));
+  }
   private List<byte[]> readMessages() throws TimeoutException {
-    return kafka.readMessages("zipkin", 1, new DefaultDecoder(kafka.consumerConfig().props()));
+    return readMessages("zipkin");
   }
 }
