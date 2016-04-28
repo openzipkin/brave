@@ -24,15 +24,7 @@ public class HttpServerResponseAdapterTest {
     }
 
     @Test
-    public void successResponse() {
-        when(response.getHttpStatusCode()).thenReturn(200);
-        assertTrue(adapter.responseAnnotations().isEmpty());
-        verify(response).getHttpStatusCode();
-        verifyNoMoreInteractions(response);
-    }
-
-    @Test
-    public void nonSuccessResponse() {
+    public void statusAnnotations() {
         when(response.getHttpStatusCode()).thenReturn(500);
         Collection<KeyValueAnnotation> annotations = adapter.responseAnnotations();
         assertEquals(1, annotations.size());

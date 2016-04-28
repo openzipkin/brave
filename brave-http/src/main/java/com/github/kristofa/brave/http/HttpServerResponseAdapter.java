@@ -18,12 +18,8 @@ public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
     @Override
     public Collection<KeyValueAnnotation> responseAnnotations() {
-        int httpStatus = response.getHttpStatusCode();
-
-        if ((httpStatus < 200) || (httpStatus > 299)) {
-            KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create("http.responsecode", String.valueOf(httpStatus));
-            return Arrays.asList(statusAnnotation);
-        }
-        return Collections.EMPTY_LIST;
+        KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create(
+                "http.responsecode", String.valueOf(response.getHttpStatusCode()));
+        return Arrays.asList(statusAnnotation);
     }
 }
