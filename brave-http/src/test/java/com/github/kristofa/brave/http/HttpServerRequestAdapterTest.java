@@ -10,6 +10,7 @@ import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin.TraceKeys;
 
 import static junit.framework.Assert.assertNull;
 import static org.junit.Assert.*;
@@ -139,7 +140,7 @@ public class HttpServerRequestAdapterTest {
         Collection<KeyValueAnnotation> annotations = adapter.requestAnnotations();
         assertEquals(1, annotations.size());
         KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals("http.uri", a.getKey());
+        assertEquals(TraceKeys.HTTP_URL, a.getKey());
         assertEquals("http://youruri.com", a.getValue());
     }
 

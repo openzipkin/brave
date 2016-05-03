@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.*;
+import zipkin.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,7 +46,7 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
-                "http.uri", serverRequest.getUri().toString());
+                TraceKeys.HTTP_URL, serverRequest.getUri().toString());
         return Arrays.asList(uriAnnotation);
     }
 

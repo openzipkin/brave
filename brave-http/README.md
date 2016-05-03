@@ -10,7 +10,7 @@ which are tailored for http clients/servers.
    * `HttpServerResponseAdapter` can be used with brave-core `ServerResponseInterceptor`
 
 These adapters take care of dealing with creating new spans and submitting required annotations and will also
-submit some default annotations like `http.uri` for all requests and `http.responsecode` in case of non success response code.
+submit some default annotations like `TraceKeys.HTTP_URL` and `TraceKeys.HTTP_STATUS_CODE` for all requests.
    
 To use these adapters you will have to implement `HttpRequest`, `HttpResponse` for client integrations
 and `HttpServerRequest` and `HttpResponse` for server integrations. These HttpRequest/HttpResponse/HttpServerRequest
