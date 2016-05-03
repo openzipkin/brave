@@ -1,11 +1,9 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.*;
-import zipkin.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {

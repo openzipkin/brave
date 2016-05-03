@@ -2,11 +2,10 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
-import zipkin.TraceKeys;
+import com.github.kristofa.brave.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
