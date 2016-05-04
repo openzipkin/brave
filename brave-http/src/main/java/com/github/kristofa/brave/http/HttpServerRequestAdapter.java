@@ -2,8 +2,8 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.*;
 
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
@@ -43,7 +43,9 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
-        return Collections.emptyList();
+        KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
+                TraceKeys.HTTP_URL, serverRequest.getUri().toString());
+        return Arrays.asList(uriAnnotation);
     }
 
     private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {

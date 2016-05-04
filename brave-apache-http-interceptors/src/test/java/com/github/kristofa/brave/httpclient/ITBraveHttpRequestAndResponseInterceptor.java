@@ -4,6 +4,7 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
@@ -92,7 +93,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH);
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
@@ -128,9 +129,9 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH);
             inOrder.verify(clientTracer).setClientSent();
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.responsecode", "400");
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, "400");
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
         } finally {
@@ -196,7 +197,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
-            inOrder.verify(clientTracer).submitBinaryAnnotation("http.uri", FULL_PATH_WITH_QUERY_PARAMS);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH_WITH_QUERY_PARAMS);
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);

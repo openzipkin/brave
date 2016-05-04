@@ -178,7 +178,7 @@ enum AnnotationType { BOOL, BYTES, I16, I32, I64, DOUBLE, STRING }
 
 /**
  * Binary annotations are tags applied to a Span to give it context. For
- * example, a binary annotation of "http.uri" could the path to a resource in a
+ * example, a binary annotation of "http.url" could be the path to a resource in a
  * RPC call.
  *
  * Binary annotations of type STRING are always queryable, though more a
@@ -187,7 +187,7 @@ enum AnnotationType { BOOL, BYTES, I16, I32, I64, DOUBLE, STRING }
  * Binary annotations can repeat, and vary on the host. Similar to Annotation,
  * the host indicates who logged the event. This allows you to tell the
  * difference between the client and server side of the same key. For example,
- * the key "http.uri" might be different on the client and server side due to
+ * the key "http.url" might be different on the client and server side due to
  * rewriting, like "/api/v1/myresource" vs "/myresource. Via the host field,
  * you can see the different points of view, which often help in debugging.
  */

@@ -2,6 +2,7 @@ package com.github.kristofa.brave.http;
 
 
 import com.github.kristofa.brave.KeyValueAnnotation;
+import com.github.kristofa.brave.TraceKeys;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -36,7 +37,7 @@ public class HttpClientResponseAdapterTest {
         Collection<KeyValueAnnotation> annotations = adapter.responseAnnotations();
         assertEquals(1, annotations.size());
         KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals("http.responsecode", a.getKey());
+        assertEquals(TraceKeys.HTTP_STATUS_CODE, a.getKey());
         assertEquals("500", a.getValue());
     }
 }

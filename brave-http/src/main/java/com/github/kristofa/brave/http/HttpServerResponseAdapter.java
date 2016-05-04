@@ -2,10 +2,10 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
+import com.github.kristofa.brave.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
@@ -18,12 +18,8 @@ public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
     @Override
     public Collection<KeyValueAnnotation> responseAnnotations() {
-        int httpStatus = response.getHttpStatusCode();
-
-        if ((httpStatus < 200) || (httpStatus > 299)) {
-            KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create("http.responsecode", String.valueOf(httpStatus));
-            return Arrays.asList(statusAnnotation);
-        }
-        return Collections.EMPTY_LIST;
+        KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create(
+                TraceKeys.HTTP_STATUS_CODE, String.valueOf(response.getHttpStatusCode()));
+        return Arrays.asList(statusAnnotation);
     }
 }

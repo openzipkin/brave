@@ -4,6 +4,7 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -52,7 +53,7 @@ public class BraveClientHttpRequestInterceptorTest {
             final InOrder order = inOrder(clientTracer, execution);
 
             order.verify(clientTracer).startNewSpan(spanName);
-            order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
+            order.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
             order.verify(clientTracer).setClientSent();
             order.verify(execution).execute(request, body);
             order.verify(clientTracer).setClientReceived();
@@ -81,7 +82,7 @@ public class BraveClientHttpRequestInterceptorTest {
         final InOrder order = inOrder(clientTracer, execution);
 
         order.verify(clientTracer).startNewSpan(spanName);
-        order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
+        order.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
         order.verify(clientTracer).setClientSent();
         order.verify(execution).execute(request, body);
         order.verify(clientTracer).setClientReceived();
@@ -112,10 +113,10 @@ public class BraveClientHttpRequestInterceptorTest {
         final InOrder order = inOrder(clientTracer, execution);
 
         order.verify(clientTracer).startNewSpan(spanName);
-        order.verify(clientTracer).submitBinaryAnnotation("http.uri", url);
+        order.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
         order.verify(clientTracer).setClientSent();
         order.verify(execution).execute(request, body);
-        order.verify(clientTracer).submitBinaryAnnotation("http.responsecode", String.valueOf(status.value()));
+        order.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status.value()));
         order.verify(clientTracer).setClientReceived();
     }
 

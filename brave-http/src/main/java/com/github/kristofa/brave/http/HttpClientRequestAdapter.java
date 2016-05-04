@@ -4,6 +4,7 @@ import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.internal.Nullable;
 
 import java.net.URI;
@@ -44,7 +45,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         URI uri = request.getUri();
-        KeyValueAnnotation annotation = KeyValueAnnotation.create("http.uri", uri.toString());
+        KeyValueAnnotation annotation = KeyValueAnnotation.create(TraceKeys.HTTP_URL, uri.toString());
         return Arrays.asList(annotation);
     }
 }

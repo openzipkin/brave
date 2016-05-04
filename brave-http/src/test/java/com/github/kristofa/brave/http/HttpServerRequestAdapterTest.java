@@ -1,9 +1,14 @@
 package com.github.kristofa.brave.http;
 
 
+import java.net.URI;
+import java.util.Collection;
+
 import com.github.kristofa.brave.IdConversion;
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
+import com.github.kristofa.brave.TraceKeys;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -128,5 +133,16 @@ public class HttpServerRequestAdapterTest {
         assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.getSpanId());
         assertEquals(Long.valueOf(IdConversion.convertToLong(PARENT_SPAN_ID)), spanId.getParentSpanId());
     }
+
+    @Test
+    public void fullUriAnnotation() throws Exception {
+        when(serverRequest.getUri()).thenReturn(new URI("http://youruri.com/a/b?myquery=you"));
+        Collection<KeyValueAnnotation> annotations = adapter.requestAnnotations();
+        assertEquals(1, annotations.size());
+        KeyValueAnnotation a = annotations.iterator().next();
+        assertEquals(TraceKeys.HTTP_URL, a.getKey());
+        assertEquals("http://youruri.com/a/b?myquery=you", a.getValue());
+    }
+
 
 }

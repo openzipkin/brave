@@ -13,7 +13,7 @@ public class ClientRequestInterceptorTest {
 
     private static final String SPAN_NAME = "getOrders";
     private static final String SERVICE_NAME = "orderService";
-    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create("http.uri", "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(TraceKeys.HTTP_URL, "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
     private ClientRequestInterceptor interceptor;
     private ClientTracer clientTracer;
