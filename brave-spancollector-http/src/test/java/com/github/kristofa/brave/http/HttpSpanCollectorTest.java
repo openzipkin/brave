@@ -5,6 +5,8 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -120,6 +122,31 @@ public class HttpSpanCollectorTest {
     collector.flush(); // manually flush the spans
 
     assertThat(metrics.droppedSpans.get()).isEqualTo(2);
+  }
+
+  @Test
+  public void disableTracingSendsB3Header() throws Exception {
+    MockWebServer zipkin = new MockWebServer();
+    try {
+      zipkin.start(0);
+      zipkin.enqueue(new MockResponse());
+
+      HttpSpanCollector.Config config = HttpSpanCollector.Config.builder()
+          .flushInterval(0).tracingEnabled(false).build();
+
+      HttpSpanCollector collector =
+          new HttpSpanCollector(zipkin.url("/").toString(), config, metrics);
+
+      collector.collect(span(1L, "foo"));
+
+      collector.flush(); // manually flush the span
+
+      // Ensure the sampled header set to false
+      assertThat(zipkin.takeRequest().getHeader("X-B3-Sampled"))
+          .isEqualTo("0");
+    } finally {
+      zipkin.shutdown();
+    }
   }
 
   class TestMetricsHander implements SpanCollectorMetricsHandler {
