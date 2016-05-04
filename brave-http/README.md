@@ -20,3 +20,7 @@ interfaces are adapters that let you integrate with your library of choice.
 
 The Client/Server Request adapters are also configurable. You can for example choose how a span name is represented.
 There is an implementation called `DefaultSpanNameProvider` which takes the http method as span name.
+
+It is also desirable to report remote services, for which a `ClientRemoteEndpointExtractor` can be added.
+These will be reported as `sa` binary annotations. A `MissingClientRemoteEndpointExtractor`
+default implementation is provided, which does not report the remote endpoint.

@@ -26,12 +26,14 @@ public class HttpClientRequestAdapterTest {
     private HttpClientRequestAdapter clientRequestAdapter;
     private HttpClientRequest request;
     private SpanNameProvider spanNameProvider;
+    private ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
     @Before
     public void setup() {
         request = mock(HttpClientRequest.class);
         spanNameProvider = mock(SpanNameProvider.class);
-        clientRequestAdapter = new HttpClientRequestAdapter(request, spanNameProvider);
+        clientRemoteEndpointExtractor = mock(ClientRemoteEndpointExtractor.class);
+        clientRequestAdapter = new HttpClientRequestAdapter(request, spanNameProvider, clientRemoteEndpointExtractor);
     }
 
     @Test
@@ -67,6 +69,13 @@ public class HttpClientRequestAdapterTest {
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
+        verifyNoMoreInteractions(request, spanNameProvider);
+    }
+
+    @Test
+    public void remoteEndpoint() {
+        clientRequestAdapter.serverAddress();
+        verify(clientRemoteEndpointExtractor).remoteEndpoint(request);
         verifyNoMoreInteractions(request, spanNameProvider);
     }
 

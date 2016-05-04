@@ -3,6 +3,7 @@ package com.github.kristofa.brave;
 import java.util.Collection;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 
 /**
  * Adapter used to get tracing information from and add tracing information to a new request.
@@ -36,5 +37,15 @@ public interface ClientRequestAdapter {
      * @return Collection of annotations.
      */
     Collection<KeyValueAnnotation> requestAnnotations();
+
+    /**
+     * Provides the remote server address information for additional tracking.
+     *
+     * Can be useful when communicating with non-traced services by adding server address to span
+     * i.e. {@link com.twitter.zipkin.gen.zipkinCoreConstants#SERVER_ADDR}
+     *
+     * @return request's target server endpoint information
+     */
+    @Nullable Endpoint serverAddress();
 
 }

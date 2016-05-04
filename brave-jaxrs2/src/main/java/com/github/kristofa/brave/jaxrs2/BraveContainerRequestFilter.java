@@ -1,18 +1,17 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
-import java.io.IOException;
-
-import javax.inject.Inject;
 import javax.annotation.Priority;
+import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.PreMatching;
 import javax.ws.rs.ext.Provider;
+import java.io.IOException;
 
 /**
  * Intercepts incoming container requests and extracts any trace information from the request header
@@ -34,7 +33,6 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
 
     @Override
     public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-
         HttpServerRequest request = new JaxRs2HttpServerRequest(containerRequestContext);
         requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
     }

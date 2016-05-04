@@ -10,7 +10,7 @@ import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
-import com.google.common.base.Strings;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -22,6 +22,7 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.Status.Code;
+
 import java.util.Collection;
 import java.util.Collections;
 
@@ -33,11 +34,13 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final ClientSpanThreadBinder clientSpanThreadBinder;
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
-    public BraveGrpcClientInterceptor(Brave brave) {
+    public BraveGrpcClientInterceptor(Brave brave, ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
         this.clientRequestInterceptor = checkNotNull(brave.clientRequestInterceptor());
         this.clientResponseInterceptor = checkNotNull(brave.clientResponseInterceptor());
         this.clientSpanThreadBinder = checkNotNull(brave.clientSpanThreadBinder());
+        this.clientRemoteEndpointExtractor = checkNotNull(clientRemoteEndpointExtractor);
     }
 
     @Override
@@ -47,7 +50,8 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(method, headers));
+                clientRequestInterceptor.handle(
+                        new GrpcClientRequestAdapter<>(next, method, headers, clientRemoteEndpointExtractor));
                 final Span currentClientSpan = clientSpanThreadBinder.getCurrentClientSpan();
                 super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     @Override
@@ -68,12 +72,19 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
     static final class GrpcClientRequestAdapter<ReqT, RespT> implements ClientRequestAdapter {
 
+        private final Channel channel;
         private final MethodDescriptor<ReqT, RespT> method;
         private final Metadata headers;
+        private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
-        public GrpcClientRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata headers) {
+        public GrpcClientRequestAdapter(Channel channel,
+                                        MethodDescriptor<ReqT, RespT> method,
+                                        Metadata headers,
+                                        ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
+            this.channel = checkNotNull(channel);
             this.method = checkNotNull(method);
             this.headers = checkNotNull(headers);
+            this.clientRemoteEndpointExtractor = checkNotNull(clientRemoteEndpointExtractor);
         }
 
         @Override
@@ -100,6 +111,10 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
             return Collections.emptyList();
         }
 
+        @Override
+        public Endpoint serverAddress() {
+            return clientRemoteEndpointExtractor.remoteEndpoint(channel, method);
+        }
     }
 
     static final class GrpcClientResponseAdapter implements ClientResponseAdapter {

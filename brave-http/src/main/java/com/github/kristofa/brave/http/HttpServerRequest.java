@@ -1,7 +1,5 @@
 package com.github.kristofa.brave.http;
 
-
-
 public interface HttpServerRequest extends HttpRequest {
 
     /**
@@ -11,5 +9,4 @@ public interface HttpServerRequest extends HttpRequest {
      * @return
      */
     String getHttpHeaderValue(String headerName);
-
 }

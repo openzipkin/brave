@@ -14,10 +14,13 @@ import com.github.kristofa.brave.SpanId;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
+import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.MethodDescriptor;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
@@ -28,6 +31,11 @@ import io.grpc.examples.helloworld.GreeterGrpc.GreeterFutureStub;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +58,7 @@ public class BraveGrpcInterceptorsTest {
     ManagedChannel channel;
     Brave brave;
     boolean enableSampling;
+    ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
     @Before
     public void before() throws Exception {
@@ -69,8 +78,9 @@ public class BraveGrpcInterceptorsTest {
             .build()
             .start();
 
+        clientRemoteEndpointExtractor = new MissingClientRemoteEndpointExtractor();
         channel = ManagedChannelBuilder.forAddress("localhost", serverPort)
-            .intercept(new BraveGrpcClientInterceptor(brave))
+            .intercept(new BraveGrpcClientInterceptor(brave, clientRemoteEndpointExtractor))
             .usePlaintext(true)
             .build();
     }

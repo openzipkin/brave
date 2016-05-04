@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.MissingClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
@@ -35,7 +36,8 @@ public class ITBraveJersey2 extends JerseyTest {
     @Test
     public void testBraveJersey2() {
         WebTarget target = target("/brave-jersey2/test");
-        target.register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor));
+        target.register(new BraveClientRequestFilter(
+                spanNameProvider, clientRequestInterceptor, new MissingClientRemoteEndpointExtractor()));
         target.register(new BraveClientResponseFilter(clientResponseInterceptor));
 
         final Response response = target.request().get();

@@ -6,6 +6,7 @@ import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.MissingClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
 import com.github.kristofa.test.http.HttpRequestImpl;
@@ -79,7 +80,10 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
+            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(
+                    new ClientRequestInterceptor(clientTracer),
+                    new DefaultSpanNameProvider(),
+                    new MissingClientRemoteEndpointExtractor()))
                 .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -115,8 +119,11 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
-                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(
+                        new ClientRequestInterceptor(clientTracer),
+                        new DefaultSpanNameProvider(),
+                        new MissingClientRemoteEndpointExtractor()))
+                    .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -149,7 +156,10 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(
+                        new ClientRequestInterceptor(clientTracer),
+                        new DefaultSpanNameProvider(),
+                        new MissingClientRemoteEndpointExtractor()))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
@@ -183,7 +193,10 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
+                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(
+                        new ClientRequestInterceptor(clientTracer),
+                        new DefaultSpanNameProvider(),
+                        new MissingClientRemoteEndpointExtractor()))
                         .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST_WITH_QUERY_PARAMS);
