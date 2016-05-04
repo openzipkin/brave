@@ -34,6 +34,13 @@
       <artifactId>brave-core</artifactId>
       <version>${project.version}</version>
     </dependency>
+
+    <!-- for benchmarking SpanId -->
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>finagle-core_2.11</artifactId>
+      <version>6.35.0</version>
+    </dependency>
   </dependencies>
 
   <build>

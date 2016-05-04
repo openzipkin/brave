@@ -1,10 +1,10 @@
 package com.github.kristofa.brave.grpc;
 
+import static com.github.kristofa.brave.IdConversion.convertToLong;
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
@@ -115,9 +115,9 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
     }
 
     static SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
-        if (parentSpanId != null) {
-            return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), IdConversion.convertToLong(parentSpanId));
-        }
-        return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), null);
+        return SpanId.builder()
+            .traceId(convertToLong(traceId))
+            .spanId(convertToLong(spanId))
+            .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();
     }
 }

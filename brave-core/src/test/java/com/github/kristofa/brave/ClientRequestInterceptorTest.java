@@ -42,7 +42,7 @@ public class ClientRequestInterceptorTest {
     public void testSpanIdReturnedNoAnnotationsProvided() {
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
-        SpanId spanId = mock(SpanId.class);
+        SpanId spanId = SpanId.builder().spanId(1L).build();
         when(clientTracer.startNewSpan(SPAN_NAME)).thenReturn(spanId);
         interceptor.handle(adapter);
 
@@ -60,7 +60,7 @@ public class ClientRequestInterceptorTest {
     public void testSpanIdReturnedAnnotationsProvided() {
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
-        SpanId spanId = mock(SpanId.class);
+        SpanId spanId = SpanId.builder().spanId(1L).build();
         when(clientTracer.startNewSpan(SPAN_NAME)).thenReturn(spanId);
         interceptor.handle(adapter);
 

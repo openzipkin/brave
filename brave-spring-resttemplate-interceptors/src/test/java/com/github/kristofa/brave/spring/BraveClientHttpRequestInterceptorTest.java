@@ -45,7 +45,8 @@ public class BraveClientHttpRequestInterceptorTest {
 
         when(execution.execute(request, body)).thenThrow(new IOException());
         when(spanNameProvider.spanName(any())).thenReturn(spanName);
-        when(clientTracer.startNewSpan(spanName)).thenReturn(SpanId.create(1, 1, 1L));
+        when(clientTracer.startNewSpan(spanName)).thenReturn(
+            SpanId.builder().traceId(1L).spanId(1L).parentId(1L).build());
 
         try {
             subject.intercept(request, body, execution);
@@ -75,7 +76,8 @@ public class BraveClientHttpRequestInterceptorTest {
         when(response.getRawStatusCode()).thenThrow(new IOException());
         when(execution.execute(request, body)).thenReturn(response);
         when(spanNameProvider.spanName(any())).thenReturn(spanName);
-        when(clientTracer.startNewSpan(spanName)).thenReturn(SpanId.create(1, 1, 1L));
+        when(clientTracer.startNewSpan(spanName)).thenReturn(
+            SpanId.builder().traceId(1L).spanId(1L).parentId(1L).build());
 
         subject.intercept(request, body, execution);
 
@@ -104,7 +106,8 @@ public class BraveClientHttpRequestInterceptorTest {
 
         when(execution.execute(request, body)).thenReturn(expected);
         when(spanNameProvider.spanName(any())).thenReturn(spanName);
-        when(clientTracer.startNewSpan(spanName)).thenReturn(SpanId.create(1, 1, 1L));
+        when(clientTracer.startNewSpan(spanName)).thenReturn(
+            SpanId.builder().traceId(1L).spanId(1L).parentId(1L).build());
 
         final ClientHttpResponse actual = subject.intercept(request, body, execution);
 

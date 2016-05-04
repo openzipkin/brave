@@ -10,7 +10,6 @@ import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
-import com.google.common.base.Strings;
 import com.twitter.zipkin.gen.Span;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -87,10 +86,10 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
                 headers.put(BravePropagationKeys.Sampled, "0");
             } else {
                 headers.put(BravePropagationKeys.Sampled, "1");
-                headers.put(BravePropagationKeys.TraceId, IdConversion.convertToString(spanId.getTraceId()));
-                headers.put(BravePropagationKeys.SpanId, IdConversion.convertToString(spanId.getSpanId()));
-                if (spanId.getParentSpanId() != null) {
-                    headers.put(BravePropagationKeys.ParentSpanId, IdConversion.convertToString(spanId.getParentSpanId()));
+                headers.put(BravePropagationKeys.TraceId, IdConversion.convertToString(spanId.traceId));
+                headers.put(BravePropagationKeys.SpanId, IdConversion.convertToString(spanId.spanId));
+                if (spanId.nullableParentId() != null) {
+                    headers.put(BravePropagationKeys.ParentSpanId, IdConversion.convertToString(spanId.parentId));
                 }
             }
         }

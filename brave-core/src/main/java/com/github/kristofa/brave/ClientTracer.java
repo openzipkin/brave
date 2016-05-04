@@ -107,25 +107,19 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().isSampled(newSpanId.getTraceId())) {
+            if (!traceSampler().isSampled(newSpanId.traceId)) {
                 spanAndEndpoint().state().setCurrentClientSpan(null);
                 return null;
             }
         }
 
-        Span newSpan = new Span();
-        newSpan.setId(newSpanId.getSpanId());
-        newSpan.setTrace_id(newSpanId.getTraceId());
-        if (newSpanId.getParentSpanId() != null) {
-            newSpan.setParent_id(newSpanId.getParentSpanId());
-        }
+        Span newSpan = newSpanId.toSpan();
         newSpan.setName(requestName);
         spanAndEndpoint().state().setCurrentClientSpan(newSpan);
         return newSpanId;
     }
 
     private SpanId getNewSpanId() {
-
         Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
         if (parentSpan == null) {
             ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
@@ -133,12 +127,11 @@ public abstract class ClientTracer extends AnnotationSubmitter {
                 parentSpan = serverSpan.getSpan();
             }
         }
-        long newSpanId = randomGenerator().nextLong();
-        if (parentSpan == null) {
-            return SpanId.create(newSpanId, newSpanId, null);
-        }
 
-        return SpanId.create(parentSpan.getTrace_id(), newSpanId, parentSpan.getId());
+        long newSpanId = randomGenerator().nextLong();
+        SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
+        if (parentSpan == null) return builder.build(); // new trace
+        return builder.traceId(parentSpan.getTrace_id()).parentId(parentSpan.getId()).build();
     }
 
     ClientTracer() {

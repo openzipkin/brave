@@ -164,9 +164,9 @@ public class ClientTracerTest {
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(TRACE_ID, newSpanId.getTraceId());
-        assertEquals(TRACE_ID, newSpanId.getSpanId());
-        assertNull(newSpanId.getParentSpanId());
+        assertEquals(TRACE_ID, newSpanId.traceId);
+        assertEquals(TRACE_ID, newSpanId.spanId);
+        assertNull(newSpanId.nullableParentId());
 
         assertEquals(
                 new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
@@ -186,9 +186,9 @@ public class ClientTracerTest {
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(TRACE_ID, newSpanId.getTraceId());
-        assertEquals(TRACE_ID, newSpanId.getSpanId());
-        assertNull(newSpanId.getParentSpanId());
+        assertEquals(TRACE_ID, newSpanId.traceId);
+        assertEquals(TRACE_ID, newSpanId.spanId);
+        assertNull(newSpanId.nullableParentId());
 
         assertEquals(
                 new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
@@ -206,9 +206,9 @@ public class ClientTracerTest {
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(PARENT_TRACE_ID, newSpanId.getTraceId());
-        assertEquals(1l, newSpanId.getSpanId());
-        assertEquals(Long.valueOf(PARENT_SPAN_ID), newSpanId.getParentSpanId());
+        assertEquals(PARENT_TRACE_ID, newSpanId.traceId);
+        assertEquals(1l, newSpanId.spanId);
+        assertEquals(PARENT_SPAN_ID, newSpanId.parentId);
 
         assertEquals(
                 new Span().setTrace_id(PARENT_TRACE_ID).setId(1).setParent_id(PARENT_SPAN_ID).setName(REQUEST_NAME),

@@ -51,10 +51,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     @Before
     public void setup() throws IOException {
         clientTracer = mock(ClientTracer.class);
-        spanId = mock(SpanId.class);
-        when(spanId.getParentSpanId()).thenReturn(null);
-        when(spanId.getSpanId()).thenReturn(SPAN_ID);
-        when(spanId.getTraceId()).thenReturn(TRACE_ID);
+        spanId = SpanId.builder().spanId(SPAN_ID).traceId(TRACE_ID).parentId(null).build();
 
         responseProvider = new DefaultHttpResponseProvider(true);
         mockServer = new MockHttpServer(PORT, responseProvider);

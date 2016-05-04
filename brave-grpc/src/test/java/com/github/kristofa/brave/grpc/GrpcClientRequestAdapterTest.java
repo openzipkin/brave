@@ -27,7 +27,7 @@ public class GrpcClientRequestAdapterTest {
 
   @Test
   public void sampled_rootSpan() throws Exception {
-    adapter.addSpanIdToRequest(SpanId.create(1234L, 1234L, null));
+    adapter.addSpanIdToRequest(SpanId.builder().traceId(1234L).spanId(1234L).build());
 
     assertThat(metadata.keys())
         .containsExactly("x-b3-sampled", "x-b3-traceid", "x-b3-spanid");
@@ -42,7 +42,7 @@ public class GrpcClientRequestAdapterTest {
 
   @Test
   public void sampled_childSpan() throws Exception {
-    adapter.addSpanIdToRequest(SpanId.create(1234L, 5678L, 1234L));
+    adapter.addSpanIdToRequest(SpanId.builder().traceId(1234L).parentId(1234L).spanId(5678L).build());
 
     assertThat(metadata.keys())
         .containsExactly("x-b3-sampled", "x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid");

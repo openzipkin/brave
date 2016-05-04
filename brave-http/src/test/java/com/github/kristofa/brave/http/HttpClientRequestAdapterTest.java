@@ -51,7 +51,7 @@ public class HttpClientRequestAdapterTest {
 
     @Test
     public void addSpanIdToRequest_WithParentSpanId() {
-        SpanId id = SpanId.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID);
+        SpanId id = SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).parentId(PARENT_SPAN_ID).build();
         clientRequestAdapter.addSpanIdToRequest(id);
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
@@ -62,7 +62,7 @@ public class HttpClientRequestAdapterTest {
 
     @Test
     public void addSpanIdToRequest_WithoutParentSpanId() {
-        SpanId id = SpanId.create(TRACE_ID, SPAN_ID, null);
+        SpanId id = SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).parentId(null).build();
         clientRequestAdapter.addSpanIdToRequest(id);
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
         verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));

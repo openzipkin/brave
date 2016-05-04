@@ -1,10 +1,14 @@
 package com.github.kristofa.brave.http;
 
-import com.github.kristofa.brave.*;
-
-import java.util.Arrays;
+import com.github.kristofa.brave.KeyValueAnnotation;
+import com.github.kristofa.brave.ServerRequestAdapter;
+import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.TraceData;
+import com.github.kristofa.brave.TraceKeys;
 import java.util.Collection;
+import java.util.Collections;
 
+import static com.github.kristofa.brave.IdConversion.convertToLong;
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
@@ -45,14 +49,13 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
                 TraceKeys.HTTP_URL, serverRequest.getUri().toString());
-        return Arrays.asList(uriAnnotation);
+        return Collections.singleton(uriAnnotation);
     }
 
     private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
-        if (parentSpanId != null)
-        {
-            return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), IdConversion.convertToLong(parentSpanId));
-        }
-        return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), null);
-    }
+        return SpanId.builder()
+            .traceId(convertToLong(traceId))
+            .spanId(convertToLong(spanId))
+            .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();
+   }
 }
