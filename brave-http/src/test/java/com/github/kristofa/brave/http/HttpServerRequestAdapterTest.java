@@ -135,13 +135,13 @@ public class HttpServerRequestAdapterTest {
     }
 
     @Test
-    public void uriAnnotation() throws Exception {
-        when(serverRequest.getUri()).thenReturn(new URI("http://youruri.com"));
+    public void fullUriAnnotation() throws Exception {
+        when(serverRequest.getUri()).thenReturn(new URI("http://youruri.com/a/b?myquery=you"));
         Collection<KeyValueAnnotation> annotations = adapter.requestAnnotations();
         assertEquals(1, annotations.size());
         KeyValueAnnotation a = annotations.iterator().next();
         assertEquals(TraceKeys.HTTP_URL, a.getKey());
-        assertEquals("http://youruri.com", a.getValue());
+        assertEquals("http://youruri.com/a/b?myquery=you", a.getValue());
     }
 
 
