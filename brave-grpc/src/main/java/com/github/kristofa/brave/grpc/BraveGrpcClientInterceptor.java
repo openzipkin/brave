@@ -10,6 +10,7 @@ import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -21,6 +22,7 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.Status.Code;
+
 import java.util.Collection;
 import java.util.Collections;
 
@@ -99,6 +101,10 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
             return Collections.emptyList();
         }
 
+        @Override
+        public Endpoint serverAddress() {
+            return null;
+        }
     }
 
     static final class GrpcClientResponseAdapter implements ClientResponseAdapter {
