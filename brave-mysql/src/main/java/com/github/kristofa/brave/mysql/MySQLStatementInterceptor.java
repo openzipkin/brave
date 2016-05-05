@@ -68,7 +68,6 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
     }
 
     private void beginTrace(final ClientTracer tracer, final String sql, final Connection connection) throws SQLException {
-        final String schema = connection.getSchema();
         tracer.startNewSpan("query");
         tracer.submitBinaryAnnotation("executed.query", sql);
 
