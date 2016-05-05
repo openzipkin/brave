@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.MissingClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
@@ -75,7 +76,8 @@ public class ITBraveResteasy {
 
         final BraveRestEasyResource client =
                 new ResteasyClientBuilder().build().target("http://localhost:8080/BraveRestEasyIntegration")
-                        .register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor))
+                        .register(new BraveClientRequestFilter(
+                                spanNameProvider, clientRequestInterceptor, new MissingClientRemoteEndpointExtractor()))
                         .register(new BraveClientResponseFilter(clientResponseInterceptor))
                         .proxy(BraveRestEasyResource.class);
 

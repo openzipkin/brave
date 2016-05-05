@@ -7,6 +7,7 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
+import com.github.kristofa.brave.http.ClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientRequest;
@@ -28,18 +29,24 @@ public class JerseyClientTraceFilter extends ClientFilter {
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final SpanNameProvider spanNameProvider;
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
     @Inject
-    public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+    public JerseyClientTraceFilter(SpanNameProvider spanNameProvider,
+                                   ClientRequestInterceptor requestInterceptor,
+                                   ClientResponseInterceptor responseInterceptor,
+                                   ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
         this.spanNameProvider = spanNameProvider;
         this.clientRequestInterceptor = requestInterceptor;
         this.clientResponseInterceptor = responseInterceptor;
+        this.clientRemoteEndpointExtractor = clientRemoteEndpointExtractor;
     }
 
     @Override
     public ClientResponse handle(final ClientRequest clientRequest) throws ClientHandlerException {
 
-        clientRequestInterceptor.handle(new HttpClientRequestAdapter(new JerseyHttpRequest(clientRequest), spanNameProvider));
+        clientRequestInterceptor.handle(new HttpClientRequestAdapter(
+                new JerseyHttpRequest(clientRequest), spanNameProvider, clientRemoteEndpointExtractor));
         final ClientResponse clientResponse = getNext().handle(clientRequest);
         clientResponseInterceptor.handle(new HttpClientResponseAdapter(new JerseyHttpResponse(clientResponse)));
         return clientResponse;

@@ -43,6 +43,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
     /**
      * Create a new instance.
@@ -52,10 +53,14 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      * @param responseInterceptor Client response interceptor.
      */
     @Autowired
-    public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+    public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider,
+                                           ClientRequestInterceptor requestInterceptor,
+                                           ClientResponseInterceptor responseInterceptor,
+                                           ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
+        this.clientRemoteEndpointExtractor = clientRemoteEndpointExtractor;
     }
 
     /**
@@ -67,7 +72,8 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         final ClientRequest request = ctx.getRequest();
 
         final HttpClientRequest httpClientRequest = new RestEasyHttpClientRequest(request);
-        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(httpClientRequest, spanNameProvider);
+        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(
+                httpClientRequest, spanNameProvider, clientRemoteEndpointExtractor);
         requestInterceptor.handle(adapter);
 
         ClientResponse<?> response = null;

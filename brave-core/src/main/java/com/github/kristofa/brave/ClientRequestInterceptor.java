@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Endpoint;
+
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -40,9 +42,16 @@ public class ClientRequestInterceptor {
             for(KeyValueAnnotation annotation : adapter.requestAnnotations()) {
                 clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }
-            clientTracer.setClientSent();
+            recordClientSentAnnotations(adapter.serverAddress());
         }
+    }
 
+    private void recordClientSentAnnotations(Endpoint serverAddress) {
+        if (serverAddress == null) {
+            clientTracer.setClientSent();
+        } else {
+            clientTracer.setClientSent(serverAddress.ipv4, serverAddress.port, serverAddress.service_name);
+        }
     }
 
 }

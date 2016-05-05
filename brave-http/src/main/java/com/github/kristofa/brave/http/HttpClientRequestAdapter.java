@@ -6,6 +6,7 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -15,10 +16,14 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
     private final HttpClientRequest request;
     private final SpanNameProvider spanNameProvider;
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
-    public HttpClientRequestAdapter(HttpClientRequest request, SpanNameProvider spanNameProvider) {
+    public HttpClientRequestAdapter(HttpClientRequest request,
+                                    SpanNameProvider spanNameProvider,
+                                    ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
         this.request = request;
         this.spanNameProvider = spanNameProvider;
+        this.clientRemoteEndpointExtractor = clientRemoteEndpointExtractor;
     }
 
 
@@ -47,5 +52,10 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
         URI uri = request.getUri();
         KeyValueAnnotation annotation = KeyValueAnnotation.create(TraceKeys.HTTP_URL, uri.toString());
         return Arrays.asList(annotation);
+    }
+
+    @Override
+    public Endpoint serverAddress() {
+        return clientRemoteEndpointExtractor.remoteEndpoint(request);
     }
 }

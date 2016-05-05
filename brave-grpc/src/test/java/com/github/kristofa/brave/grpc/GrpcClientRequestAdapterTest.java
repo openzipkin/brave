@@ -2,17 +2,21 @@ package com.github.kristofa.brave.grpc;
 
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.grpc.BraveGrpcClientInterceptor.GrpcClientRequestAdapter;
+import io.grpc.Channel;
 import io.grpc.Metadata;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /** Particularly, this demonstrates what metadata values look like for non-java developers. */
 public class GrpcClientRequestAdapterTest {
   Metadata metadata = new Metadata();
+  Channel channel = mock(Channel.class);
+
   GrpcClientRequestAdapter adapter =
-      new GrpcClientRequestAdapter(GreeterGrpc.METHOD_SAY_HELLO, metadata);
+      new GrpcClientRequestAdapter(channel, GreeterGrpc.METHOD_SAY_HELLO, metadata, new MissingClientRemoteEndpointExtractor());
 
   @Test
   public void nullSpanIdMeansUnsampled() throws Exception {

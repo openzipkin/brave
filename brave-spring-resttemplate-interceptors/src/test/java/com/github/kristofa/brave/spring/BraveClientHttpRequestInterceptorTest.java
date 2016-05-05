@@ -5,6 +5,7 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceKeys;
+import com.github.kristofa.brave.http.ClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -29,8 +30,12 @@ public class BraveClientHttpRequestInterceptorTest {
 
     private final ClientTracer clientTracer = mock(ClientTracer.class);
     private final SpanNameProvider spanNameProvider = mock(SpanNameProvider.class);
-    private final BraveClientHttpRequestInterceptor subject = new BraveClientHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer),
-            new ClientResponseInterceptor(clientTracer), spanNameProvider);
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor = mock(ClientRemoteEndpointExtractor.class);
+    private final BraveClientHttpRequestInterceptor subject = new BraveClientHttpRequestInterceptor(
+            new ClientRequestInterceptor(clientTracer),
+            new ClientResponseInterceptor(clientTracer),
+            spanNameProvider,
+            clientRemoteEndpointExtractor);
 
     @Test(expected = IOException.class)
     public void interceptShouldLetExceptionOccurringDuringExecuteBlowUp() throws Exception {

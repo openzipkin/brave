@@ -1,8 +1,5 @@
 package com.github.kristofa.brave.grpc;
 
-import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
@@ -12,7 +9,6 @@ import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -25,6 +21,9 @@ import io.grpc.Status.Code;
 
 import java.util.Collection;
 import java.util.Collections;
+
+import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
@@ -57,8 +56,8 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     static final class GrpcServerRequestAdapter<ReqT, RespT> implements ServerRequestAdapter {
 
-        private MethodDescriptor<ReqT, RespT> method;
-        private Metadata requestHeaders;
+        private final MethodDescriptor<ReqT, RespT> method;
+        private final Metadata requestHeaders;
 
         public GrpcServerRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata requestHeaders) {
             this.method = checkNotNull(method);

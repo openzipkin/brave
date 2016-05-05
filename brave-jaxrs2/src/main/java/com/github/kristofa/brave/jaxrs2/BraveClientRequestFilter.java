@@ -3,6 +3,7 @@ package com.github.kristofa.brave.jaxrs2;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
+import com.github.kristofa.brave.http.ClientRemoteEndpointExtractor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import javax.annotation.Priority;
 import javax.inject.Inject;
@@ -21,17 +22,21 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
 
     private final ClientRequestInterceptor requestInterceptor;
     private final SpanNameProvider spanNameProvider;
+    private final ClientRemoteEndpointExtractor clientRemoteEndpointExtractor;
 
     @Inject
-    public BraveClientRequestFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor) {
+    public BraveClientRequestFilter(SpanNameProvider spanNameProvider,
+                                    ClientRequestInterceptor requestInterceptor,
+                                    ClientRemoteEndpointExtractor clientRemoteEndpointExtractor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
+        this.clientRemoteEndpointExtractor = clientRemoteEndpointExtractor;
     }
 
 
     @Override
     public void filter(ClientRequestContext clientRequestContext) throws IOException {
         final HttpClientRequest req = new JaxRs2HttpClientRequest(clientRequestContext);
-        requestInterceptor.handle(new HttpClientRequestAdapter(req, spanNameProvider));
+        requestInterceptor.handle(new HttpClientRequestAdapter(req, spanNameProvider, clientRemoteEndpointExtractor));
     }
 }
