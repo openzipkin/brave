@@ -125,8 +125,8 @@ public class BraveGrpcInterceptorsTest {
         assertTrue("Could not find expected server span", maybeSpan.isPresent());
         Span span = maybeSpan.get();
         //Verify that the localTracer's trace id and span id were propagated to the server
-        assertThat(span.getTrace_id(), is(equalTo(spanId.getTraceId())));
-        assertThat(span.getParent_id(), is(equalTo(spanId.getSpanId())));
+        assertThat(span.getTrace_id(), is(equalTo(spanId.traceId)));
+        assertThat(span.getParent_id(), is(equalTo(spanId.spanId)));
     }
 
     /**

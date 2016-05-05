@@ -66,7 +66,8 @@ public class LocalTracerTest {
         PowerMockito.when(System.currentTimeMillis()).thenReturn(1L);
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        SpanId expectedSpanId = SpanId.create(PARENT_TRACE_ID, 555l, PARENT_SPAN_ID);
+        SpanId expectedSpanId =
+            SpanId.builder().traceId(PARENT_TRACE_ID).spanId(555L).parentId(PARENT_SPAN_ID).build();
 
         assertEquals(expectedSpanId, localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
 

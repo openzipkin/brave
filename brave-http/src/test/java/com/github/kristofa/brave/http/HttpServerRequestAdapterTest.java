@@ -94,9 +94,9 @@ public class HttpServerRequestAdapterTest {
         assertTrue(traceData.getSample());
         SpanId spanId = traceData.getSpanId();
         assertNotNull(spanId);
-        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.getTraceId());
-        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.getSpanId());
-        assertNull(spanId.getParentSpanId());
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertNull(spanId.nullableParentId());
     }
 
     /**
@@ -112,9 +112,9 @@ public class HttpServerRequestAdapterTest {
         assertTrue(traceData.getSample());
         SpanId spanId = traceData.getSpanId();
         assertNotNull(spanId);
-        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.getTraceId());
-        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.getSpanId());
-        assertNull(spanId.getParentSpanId());
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertNull(spanId.nullableParentId());
     }
 
     @Test
@@ -129,9 +129,9 @@ public class HttpServerRequestAdapterTest {
         assertTrue(traceData.getSample());
         SpanId spanId = traceData.getSpanId();
         assertNotNull(spanId);
-        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.getTraceId());
-        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.getSpanId());
-        assertEquals(Long.valueOf(IdConversion.convertToLong(PARENT_SPAN_ID)), spanId.getParentSpanId());
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertEquals(IdConversion.convertToLong(PARENT_SPAN_ID), spanId.parentId);
     }
 
     @Test

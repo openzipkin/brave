@@ -83,13 +83,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     }
 
     private SpanId getNewSpanId() {
-        Span currentServerSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        Span parentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
         long newSpanId = randomGenerator().nextLong();
-        if (currentServerSpan == null) {
-            return SpanId.create(newSpanId, newSpanId, null);
-        }
-
-        return SpanId.create(currentServerSpan.getTrace_id(), newSpanId, currentServerSpan.getId());
+        SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
+        if (parentSpan == null) return builder.build(); // new trace
+        return builder.traceId(parentSpan.getTrace_id()).parentId(parentSpan.getId()).build();
     }
 
     /**
@@ -112,18 +110,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         SpanId newSpanId = getNewSpanId();
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().isSampled(newSpanId.getTraceId())) {
+            if (!traceSampler().isSampled(newSpanId.traceId)) {
                 spanAndEndpoint().state().setCurrentLocalSpan(null);
                 return null;
             }
         }
 
-        Span newSpan = new Span();
-        newSpan.setId(newSpanId.getSpanId());
-        newSpan.setTrace_id(newSpanId.getTraceId());
-        if (newSpanId.getParentSpanId() != null) {
-            newSpan.setParent_id(newSpanId.getParentSpanId());
-        }
+        Span newSpan = newSpanId.toSpan();
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(
