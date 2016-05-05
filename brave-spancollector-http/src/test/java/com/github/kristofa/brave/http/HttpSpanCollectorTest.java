@@ -5,6 +5,8 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -51,7 +53,7 @@ public class HttpSpanCollectorTest {
 
     collector.flush(); // manually flush the spans
 
-    assertThat(zipkin.receivedSpanCount()).isEqualTo(1000);
+    assertThat(zipkin.collectorMetrics().spans()).isEqualTo(1000);
     assertThat(metrics.droppedSpans.get()).isEqualTo(1);
   }
 
@@ -77,14 +79,15 @@ public class HttpSpanCollectorTest {
     char[] annotation2K = new char[2048];
     Arrays.fill(annotation2K, 'a');
 
-    ZipkinRule zipkin = new ZipkinRule();
+    MockWebServer zipkin = new MockWebServer();
     try {
       zipkin.start(0);
+      zipkin.enqueue(new MockResponse());
 
       HttpSpanCollector.Config config = HttpSpanCollector.Config.builder()
           .flushInterval(0).compressionEnabled(true).build();
 
-      HttpSpanCollector collector = new HttpSpanCollector(zipkin.httpUrl(), config, metrics);
+      HttpSpanCollector collector = new HttpSpanCollector(zipkin.url("/").toString(), config, metrics);
 
       collector.collect(span(1L, "foo")
           .addToAnnotations(Annotation.create(1111L, new String(annotation2K), null)));
@@ -92,7 +95,8 @@ public class HttpSpanCollectorTest {
       collector.flush(); // manually flush the span
 
       // Ensure the span was compressed
-      assertThat(zipkin.receivedSpanBytes()).isLessThan(annotation2K.length);
+      assertThat(zipkin.takeRequest().getBodySize())
+          .isLessThan(annotation2K.length);
     } finally {
       zipkin.shutdown();
     }

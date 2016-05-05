@@ -37,7 +37,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring.version>4.1.6.RELEASE</spring.version>
-    <zipkin.version>0.6.1</zipkin.version>
+    <zipkin.version>0.16.1</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
     <maven-release-plugin.version>2.5.2</maven-release-plugin.version>
@@ -49,6 +49,7 @@
 
   <modules>
     <module>brave-core</module>
+    <module>brave-benchmarks</module>
     <module>brave-http</module>
     <module>brave-core-spring</module>
     <module>brave-resteasy-spring</module>
