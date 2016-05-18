@@ -67,6 +67,7 @@
     <module>brave-spring-resttemplate-interceptors</module>
     <module>brave-mysql</module>
     <module>brave-web-servlet-filter</module>
+    <module>brave-okhttp</module>
   </modules>
 
   <distributionManagement>
