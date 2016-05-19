@@ -126,6 +126,31 @@ public class HttpSpanCollectorTest {
     assertThat(metrics.droppedSpans.get()).isEqualTo(2);
   }
 
+  @Test
+  public void disableTracingSendsB3Header() throws Exception {
+    MockWebServer zipkin = new MockWebServer();
+    try {
+      zipkin.start(0);
+      zipkin.enqueue(new MockResponse());
+
+      HttpSpanCollector.Config config = HttpSpanCollector.Config.builder()
+          .flushInterval(0).tracingEnabled(false).build();
+
+      HttpSpanCollector collector =
+          new HttpSpanCollector(zipkin.url("/").toString(), config, metrics);
+
+      collector.collect(span(1L, "foo"));
+
+      collector.flush(); // manually flush the span
+
+      // Ensure the sampled header set to false
+      assertThat(zipkin.takeRequest().getHeader("X-B3-Sampled"))
+          .isEqualTo("0");
+    } finally {
+      zipkin.shutdown();
+    }
+  }
+
   class TestMetricsHander implements SpanCollectorMetricsHandler {
 
     final AtomicInteger acceptedSpans = new AtomicInteger();

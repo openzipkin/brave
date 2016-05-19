@@ -24,6 +24,7 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
           .connectTimeout(10 * 1000)
           .readTimeout(60 * 1000)
           .compressionEnabled(false)
+          .tracingEnabled(true)
           .flushInterval(1);
     }
 
@@ -34,6 +35,8 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
     abstract int flushInterval();
 
     abstract boolean compressionEnabled();
+
+    abstract boolean tracingEnabled();
 
     @AutoValue.Builder
     public interface Builder {
@@ -52,6 +55,15 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
        * <p>Note: This feature requires zipkin-scala 1.34+ or zipkin-java 0.6+
        */
       Builder compressionEnabled(boolean compressSpans);
+
+      /**
+       * Default true. Disable when used inside a Zipkin storage system, to prevent amplification.
+       *
+       * <p>This is a rare circumstance when Zipkin's storage is instrumented with Brave. If tracing
+       * is enabled, each flush of a trace will create a trace. This would cause a loop that could
+       * quickly take down the storage service.
+       */
+      Builder tracingEnabled(boolean enableTracing);
 
       Config build();
     }
@@ -97,6 +109,9 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
     connection.setReadTimeout(config.readTimeout());
     connection.setRequestMethod("POST");
     connection.addRequestProperty("Content-Type", "application/json");
+    if (!config.tracingEnabled()) {
+      connection.addRequestProperty("X-B3-Sampled", "0");
+    }
     if (config.compressionEnabled()) {
       connection.addRequestProperty("Content-Encoding", "gzip");
       ByteArrayOutputStream gzipped = new ByteArrayOutputStream();
