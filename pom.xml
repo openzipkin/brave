@@ -20,11 +20,11 @@
 		<distribution>repo</distribution>
 	</license>
    </licenses>
-   <scm>
-   		<connection>scm:git:git@github.com:openzipkin/brave.git</connection>
-    	<url>git@github.com:openzipkin/brave.git</url>
-    	<developerConnection>scm:git:git@github.com:openzipkin/brave.git</developerConnection>
-     <tag>HEAD</tag>
+  <scm>
+    <url>https://github.com/openzipkin/brave</url>
+    <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
+    <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
+    <tag>HEAD</tag>
   </scm>
    <developers>
    		<developer>
