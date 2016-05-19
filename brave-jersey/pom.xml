@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>io.zipkin.brave</groupId>
-        <version>3.7.1-SNAPSHOT</version>
+        <version>3.8.0</version>
     </parent>
    <artifactId>brave-jersey</artifactId>
    <packaging>jar</packaging>
@@ -28,12 +28,12 @@
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-http</artifactId>
-            <version>3.7.1-SNAPSHOT</version>
+            <version>3.8.0</version>
         </dependency>
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-web-servlet-filter</artifactId>
-            <version>3.7.1-SNAPSHOT</version>
+            <version>3.8.0</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
