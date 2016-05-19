@@ -1,17 +1,5 @@
 package com.github.kristofa.brave.mysql;
 
-import com.github.kristofa.brave.ClientTracer;
-import com.mysql.jdbc.Connection;
-import com.mysql.jdbc.PreparedStatement;
-import com.mysql.jdbc.ResultSetInternalMethods;
-import com.mysql.jdbc.Statement;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.InOrder;
-
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -21,6 +9,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
+
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.util.Properties;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InOrder;
+
+import com.github.kristofa.brave.ClientTracer;
+import com.mysql.jdbc.Connection;
+import com.mysql.jdbc.PreparedStatement;
+import com.mysql.jdbc.ResultSetInternalMethods;
+import com.mysql.jdbc.Statement;
 
 public class MySQLStatementInterceptorTest {
 
@@ -69,11 +71,14 @@ public class MySQLStatementInterceptorTest {
         final DatabaseMetaData metadata = mock(DatabaseMetaData.class);
         when(connection.getMetaData()).thenReturn(metadata);
         when(metadata.getURL()).thenReturn("jdbc:mysql://foo:9999/test");
-
+        
+        Properties props = new Properties();
+        when(connection.getProperties()).thenReturn(props);
+        when(connection.getCatalog()).thenReturn("test");
 
         subject.preProcess(sql, mock(Statement.class), connection);
 
-        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
+        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "mysql-test");
     }
 
     @Test
@@ -87,13 +92,38 @@ public class MySQLStatementInterceptorTest {
         final DatabaseMetaData metadata = mock(DatabaseMetaData.class);
         when(connection.getMetaData()).thenReturn(metadata);
         when(metadata.getURL()).thenReturn("jdbc:mysql://foo/test");
-
+        
+        Properties props = new Properties();
+        when(connection.getProperties()).thenReturn(props);
+        when(connection.getCatalog()).thenReturn("test");
 
         subject.preProcess(sql, mock(Statement.class), connection);
 
-        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, null);
+        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, "mysql-test");
     }
+    
+    @Test
+    public void preProcessShouldLogProvidedServiceName() throws Exception {
+    	final String sql = randomAlphanumeric(20);
+        final String schema = randomAlphanumeric(20);
 
+        final Connection connection = mock(Connection.class);
+        when(connection.getSchema()).thenReturn(schema);
+        when(connection.getHost()).thenReturn("1.2.3.4");
+        final DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getURL()).thenReturn("jdbc:mysql://foo/test");
+        
+        Properties props = new Properties();
+        props.setProperty("zipkinServiceName", "hello-brave");
+        when(connection.getProperties()).thenReturn(props);
+        when(connection.getCatalog()).thenReturn("test");
+
+        subject.preProcess(sql, mock(Statement.class), connection);
+
+        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, "hello-brave");
+    }
+    
     @Test
     public void preProcessShouldIgnoreExceptionsLoggingServerAddress() throws Exception {
         final String sql = randomAlphanumeric(20);
