@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <artifactId>brave</artifactId>
-        <groupId>com.github.kristofa</groupId>
+        <groupId>io.zipkin.brave</groupId>
         <version>3.7.1-SNAPSHOT</version>
     </parent>
     <artifactId>brave-jaxrs2</artifactId>
@@ -27,7 +27,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.github.kristofa</groupId>
+            <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-http</artifactId>
             <version>3.7.1-SNAPSHOT</version>
         </dependency>
@@ -57,7 +57,7 @@
 
         <!--Test Dependencies-->
         <dependency>
-            <groupId>com.github.kristofa</groupId>
+            <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-core-spring</artifactId>
             <version>3.7.1-SNAPSHOT</version>
             <scope>test</scope>

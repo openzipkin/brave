@@ -1,11 +1,52 @@
 sudo: false
+
 cache:
   directories:
   - $HOME/.m2
+
 language: java
-script: "./mvnw verify"
+
 jdk:
   - oraclejdk8
+
+before_install:
+  # Parameters used during release
+  - git config user.name "$GH_USER"
+  - git config user.email "$GH_USER_EMAIL"
+  # setup https authentication credentials, used by ./mvnw release:prepare
+  - git config credential.helper "store --file=.git/credentials"
+  - echo "https://$GH_TOKEN:@github.com" > .git/credentials
+
+install:
+  # Override default travis to use the maven wrapper
+  - ./mvnw install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+
+script:
+  - ./travis/publish.sh
+
+# Don't build release tags. This avoids publish conflicts because the version commit exists both on master and the release tag.
+# See https://github.com/travis-ci/travis-ci/issues/1532
+branches:
+  except:
+    - /^[0-9]/
+
+env:
+  global:
+  # Ex. travis encrypt BINTRAY_USER=your_github_account
+  - secure: "JkYf85iTVHAQb+gyuKwstLApmzUvSfwEdR9nBUypQv8wgLQIi8jry461eESt6nX96votG4EC4e0olZlfYCWVbd2dF/t9VzUT8xZr5aPgP/RRNpJVnJ96UKciAScRAm41NFgXJQojlIeUJEP98eugSMceijHEEAvRcWOOH1PTHUM="
+  # Ex. travis encrypt BINTRAY_KEY=xxx-https://bintray.com/profile/edit-xxx --add
+  - secure: "Rgi25T93QYhJCyQq1AATA0hpY5Tr7uJkEeFw5vHfVIv9ampPpGv9kYVkoVclThRT/V+QAyA03ii15onXySMxcYvSt2kZ2CrV4hPvQ/Pz0Be8/snM9HT4kbc6RQmJLkYgtIoe5OJSHl0lfzz1vha1fIEyLngDcajh3HZjJgUZMRc="
+  # Ex. travis encrypt GH_USER_EMAIL=for_github@domain.com --add
+  - secure: "dFn6U2yHVpRGE28dKxMNIbtMKs+5gLTfpPvc2zAs6E7XYBFYrsPLbRpVTuBnNTEzONnyEnp23BlUurMi17njIZ6x1dUIcgxBHIznPpP7e1pd8jCedl9byGy9rgkhM+mlfZL2pZqrLz/GYlJaZm53G/YGu2668eGGnysotpQz/wo="
+  # Ex. travis encrypt GH_USER=your_github_account --add
+  - secure: "kF9AxbQqxnmiO0BB79ck0A9tPSGAJoT8qVpQyTkNthWcPPlCmI0eurZ3SnjcJgCaVsseEY5vg+wH3Ao3+ZqEsaK45Jq8Sb2t6ikcTxOWbP2b0B2KRLcDkBpukeMID3qPXcvTX+0DQ2xQ3dVdVNJEclklWpsRy6KxbEv3d7JaiTU="
+  # Ex. travis encrypt GH_TOKEN=XXX-https://github.com/settings/tokens-XXX --add
+  - secure: "VErYjLinb0aEv0momgbhC+vykT1ITrAgzvlooXIyA8hBPF9gvMM5sbhG9KX1UKX83uTPL6PqZW4PCs+b6WjjQwyPO/qAG8dNDl/X4IZ7cL4/NIKwDlT4mBvYtmDn7F146rvGRK+isM7BgxpqQXTj/sCboAgGriSPTTlk303KM0c="
+  # Ex. travis encrypt SONATYPE_USER=your_sonatype_account
+  - secure: "a30efC2iKHFlrtdFG0HgrNQQhiosmTRPRR0FUviqvQtBoBg3/U4o6Rqee27PVKq8m/tJ1GwLufZFMcvSMCzPs/D/sggqUw6a0wUNTjG6lpbQWy2lLpnw3RwqK46bY+jZsV2SxLyElbZOOC/qHzsPJooocuwwXvDkvRmYxocgiMc="
+  # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
+  - secure: "XD8xiZw82rGZ0IK+xYJjfOTVsNdfliLdsT7izRrLt3LePj4ixQt0sD7z7RgVimYRQ8cqq0uuAU612DtWv/MrU0KQL33xYNWSKK3qw0K8ZYfch7/nJStU5LTqepC6Vldfn87X5KzgVIOoYCQpWkmUjI4Xpr4dnYrnmu+l2kpFCuY="
+
 notifications:
   webhooks:
     urls:
