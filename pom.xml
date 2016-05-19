@@ -381,7 +381,7 @@
         <artifactId>centralsync-maven-plugin</artifactId>
         <version>${centralsync-maven-plugin.version}</version>
         <configuration>
-          <packageName>zipkin-java</packageName>
+          <packageName>brave</packageName>
         </configuration>
       </plugin>
     </plugins>
