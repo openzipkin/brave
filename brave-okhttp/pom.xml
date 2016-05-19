@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>brave</artifactId>
-    <groupId>com.github.kristofa</groupId>
+    <groupId>io.zipkin.brave</groupId>
     <version>3.7.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -35,7 +35,7 @@
       <version>${okhttp.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.github.kristofa</groupId>
+      <groupId>io.zipkin.brave</groupId>
       <artifactId>brave-http</artifactId>
       <version>3.7.1-SNAPSHOT</version>
     </dependency>
