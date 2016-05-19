@@ -27,6 +27,8 @@ import java.util.Properties;
  * </p>
  */
 public class MySQLStatementInterceptor implements StatementInterceptorV2 {
+	
+	private final static String SERVICE_NAME_KEY = "zipkinServiceName";
 
     // TODO: is static scope best? ex. preferred to thread local etc?
     static volatile ClientTracer clientTracer;
@@ -85,9 +87,21 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
     private void setClientSent(ClientTracer tracer, Connection connection) throws Exception {
         InetAddress address = Inet4Address.getByName(connection.getHost());
         int ipv4 = ByteBuffer.wrap(address.getAddress()).getInt();
+        
         URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
         int port = url.getPort() == -1 ? 3306 : url.getPort();
-        tracer.setClientSent(ipv4, port, null);
+        
+        Properties props = connection.getProperties();
+        String serviceName = props.getProperty(SERVICE_NAME_KEY);
+        if (serviceName == null || "".equals(serviceName)) {
+        	serviceName = "mysql";
+        	String databaseName = connection.getCatalog();
+        	if (databaseName != null && !"".equals(databaseName)) {
+        		serviceName += "-" + databaseName;
+        	}
+        }
+        
+        tracer.setClientSent(ipv4, port, serviceName);
     }
 
     private void endTrace(final ClientTracer tracer, final int warningCount, final SQLException statementException) {
