@@ -19,12 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class HttpSpanCollectorTest {
 
   @Rule
-  public final ZipkinRule zipkin = new ZipkinRule();
+  public final ZipkinRule zipkinRule = new ZipkinRule();
 
   TestMetricsHander metrics = new TestMetricsHander();
   // set flush interval to 0 so that tests can drive flushing explicitly
   HttpSpanCollector.Config config = HttpSpanCollector.Config.builder().flushInterval(0).build();
-  HttpSpanCollector collector = new HttpSpanCollector(zipkin.httpUrl(), config, metrics);
+  HttpSpanCollector collector = new HttpSpanCollector(zipkinRule.httpUrl(), config, metrics);
 
   @After
   public void closeCollector(){
@@ -35,7 +35,7 @@ public class HttpSpanCollectorTest {
   public void collectDoesntDoIO() throws Exception {
     collector.collect(span(1L, "foo"));
 
-    assertThat(zipkin.httpRequestCount()).isZero();
+    assertThat(zipkinRule.httpRequestCount()).isZero();
   }
 
   @Test
@@ -53,7 +53,7 @@ public class HttpSpanCollectorTest {
 
     collector.flush(); // manually flush the spans
 
-    assertThat(zipkin.collectorMetrics().spans()).isEqualTo(1000);
+    assertThat(zipkinRule.collectorMetrics().spans()).isEqualTo(1000);
     assertThat(metrics.droppedSpans.get()).isEqualTo(1);
   }
 
@@ -65,10 +65,10 @@ public class HttpSpanCollectorTest {
     collector.flush(); // manually flush the spans
 
     // Ensure only one request was sent
-    assertThat(zipkin.httpRequestCount()).isEqualTo(1);
+    assertThat(zipkinRule.httpRequestCount()).isEqualTo(1);
 
     // Now, let's read back the spans we sent!
-    assertThat(zipkin.getTraces()).containsExactly(
+    assertThat(zipkinRule.getTraces()).containsExactly(
         asList(zipkinSpan(1L, "foo")),
         asList(zipkinSpan(2L, "bar"))
     );
@@ -104,7 +104,7 @@ public class HttpSpanCollectorTest {
 
   @Test
   public void incrementsDroppedSpansWhenServerErrors() throws Exception {
-    zipkin.enqueueFailure(HttpFailure.sendErrorResponse(500, "Server Error!"));
+    zipkinRule.enqueueFailure(HttpFailure.sendErrorResponse(500, "Server Error!"));
 
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
@@ -116,7 +116,7 @@ public class HttpSpanCollectorTest {
 
   @Test
   public void incrementsDroppedSpansWhenServerDisconnects() throws Exception {
-    zipkin.enqueueFailure(HttpFailure.disconnectDuringBody());
+    zipkinRule.enqueueFailure(HttpFailure.disconnectDuringBody());
 
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
@@ -147,6 +147,6 @@ public class HttpSpanCollectorTest {
   }
 
   static zipkin.Span zipkinSpan(long traceId, String spanName) {
-    return new zipkin.Span.Builder().traceId(traceId).id(traceId).name(spanName).build();
+    return zipkin.Span.builder().traceId(traceId).id(traceId).name(spanName).build();
   }
 }
