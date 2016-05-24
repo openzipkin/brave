@@ -154,7 +154,7 @@ public class KafkaSpanCollectorTest {
   }
 
   static zipkin.Span zipkinSpan(long traceId, String spanName) {
-    return new zipkin.Span.Builder().traceId(traceId).id(traceId).name(spanName).build();
+    return zipkin.Span.builder().traceId(traceId).id(traceId).name(spanName).build();
   }
 
   private List<byte[]> readMessages(String topic) throws TimeoutException {
