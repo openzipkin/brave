@@ -63,7 +63,7 @@ public final class DefaultSpanCodec implements SpanCodec {
   }
 
   private static zipkin.Span from(Span in) {
-    zipkin.Span.Builder result = new zipkin.Span.Builder();
+    zipkin.Span.Builder result = zipkin.Span.builder();
     result.traceId(in.getTrace_id());
     result.id(in.getId());
     result.parentId(in.getParent_id());
@@ -75,7 +75,7 @@ public final class DefaultSpanCodec implements SpanCodec {
       result.addAnnotation(zipkin.Annotation.create(a.timestamp, a.value, from(a.host)));
     }
     for (BinaryAnnotation a : in.getBinary_annotations()) {
-      result.addBinaryAnnotation(new zipkin.BinaryAnnotation.Builder()
+      result.addBinaryAnnotation(zipkin.BinaryAnnotation.builder()
           .key(a.key)
           .value(a.value)
           .type(Type.fromValue(a.type.getValue()))
