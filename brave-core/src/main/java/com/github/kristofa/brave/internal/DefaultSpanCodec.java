@@ -8,7 +8,6 @@ import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.SpanCodec;
 import java.util.ArrayList;
 import java.util.List;
-import zipkin.BinaryAnnotation.Type;
 import zipkin.Codec;
 
 public final class DefaultSpanCodec implements SpanCodec {
@@ -23,14 +22,14 @@ public final class DefaultSpanCodec implements SpanCodec {
 
   @Override
   public byte[] writeSpan(Span span) {
-    return codec.writeSpan(from(span));
+    return codec.writeSpan(span.toZipkin());
   }
 
   @Override
   public byte[] writeSpans(List<Span> spans) {
     List<zipkin.Span> out = new ArrayList<zipkin.Span>(spans.size());
     for (Span span : spans) {
-      out.add(from(span));
+      out.add(span.toZipkin());
     }
     return codec.writeSpans(out);
   }
@@ -60,35 +59,6 @@ public final class DefaultSpanCodec implements SpanCodec {
           to(a.endpoint)));
     }
     return result;
-  }
-
-  private static zipkin.Span from(Span in) {
-    zipkin.Span.Builder result = zipkin.Span.builder();
-    result.traceId(in.getTrace_id());
-    result.id(in.getId());
-    result.parentId(in.getParent_id());
-    result.name(in.getName());
-    result.timestamp(in.getTimestamp());
-    result.duration(in.getDuration());
-    result.debug(in.isDebug());
-    for (Annotation a : in.getAnnotations()) {
-      result.addAnnotation(zipkin.Annotation.create(a.timestamp, a.value, from(a.host)));
-    }
-    for (BinaryAnnotation a : in.getBinary_annotations()) {
-      result.addBinaryAnnotation(zipkin.BinaryAnnotation.builder()
-          .key(a.key)
-          .value(a.value)
-          .type(Type.fromValue(a.type.getValue()))
-          .endpoint(from(a.host))
-          .build());
-    }
-    return result.build();
-  }
-
-  private static zipkin.Endpoint from(Endpoint host) {
-    if (host == null) return null;
-    if (host.port == null) return zipkin.Endpoint.create(host.service_name, host.ipv4);
-    return zipkin.Endpoint.create(host.service_name, host.ipv4, host.port);
   }
 
   private static Endpoint to(zipkin.Endpoint host) {

@@ -254,5 +254,35 @@ public class Span implements Serializable {
   public String toString() {
     return new String(SpanCodec.JSON.writeSpan(this), Util.UTF_8);
   }
+
+  /** Changes this to a zipkin-native span object. */
+  public zipkin.Span toZipkin() {
+    zipkin.Span.Builder result = zipkin.Span.builder();
+    result.traceId(getTrace_id());
+    result.id(getId());
+    result.parentId(getParent_id());
+    result.name(getName());
+    result.timestamp(getTimestamp());
+    result.duration(getDuration());
+    result.debug(isDebug());
+    for (Annotation a : getAnnotations()) {
+      result.addAnnotation(zipkin.Annotation.create(a.timestamp, a.value, from(a.host)));
+    }
+    for (BinaryAnnotation a : getBinary_annotations()) {
+      result.addBinaryAnnotation(zipkin.BinaryAnnotation.builder()
+          .key(a.key)
+          .value(a.value)
+          .type(zipkin.BinaryAnnotation.Type.fromValue(a.type.getValue()))
+          .endpoint(from(a.host))
+          .build());
+    }
+    return result.build();
+  }
+
+  private static zipkin.Endpoint from(Endpoint host) {
+    if (host == null) return null;
+    if (host.port == null) return zipkin.Endpoint.create(host.service_name, host.ipv4);
+    return zipkin.Endpoint.create(host.service_name, host.ipv4, host.port);
+  }
 }
 

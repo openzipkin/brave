@@ -62,6 +62,7 @@
     <module>brave-spancollector-http</module>
     <module>brave-spancollector-scribe</module>
     <module>brave-spancollector-kafka</module>
+    <module>brave-spancollector-local</module>
     <module>brave-sampler-zookeeper</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
