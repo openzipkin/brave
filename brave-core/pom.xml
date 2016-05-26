@@ -24,7 +24,6 @@
   </properties>
 
   <dependencies>
-    <!-- for sampler... don't worry. this dependency is shaded out! -->
     <dependency>
         <groupId>io.zipkin.java</groupId>
         <artifactId>zipkin</artifactId>
@@ -94,29 +93,6 @@
                     <source>1.6</source>
                     <target>1.6</target>
                 </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-shade-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <shadeTestJar>false</shadeTestJar>
-                            <minimizeJar>true</minimizeJar>
-                            <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
-                            <!-- Use of zipkin-java is internal only; don't add dependency -->
-                            <relocations>
-                                <relocation>
-                                    <pattern>zipkin</pattern>
-                                    <shadedPattern>com.github.kristofa.brave.internal.zipkin</shadedPattern>
-                                </relocation>
-                            </relocations>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
