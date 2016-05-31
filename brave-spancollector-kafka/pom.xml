@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.zipkin.brave</groupId>
         <artifactId>brave</artifactId>
-        <version>3.8.1-SNAPSHOT</version>
+        <version>3.9.0</version>
     </parent>
 
     <artifactId>brave-spancollector-kafka</artifactId>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-core</artifactId>
-            <version>3.8.1-SNAPSHOT</version>
+            <version>3.9.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
