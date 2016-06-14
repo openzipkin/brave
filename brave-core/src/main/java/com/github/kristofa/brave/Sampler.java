@@ -43,7 +43,7 @@ public abstract class Sampler {
    * <p>The sampler returned is good for low volumes of traffic (<100K requests), as it is precise.
    * If you have high volumes of traffic, consider {@link BoundarySampler}.
    *
-   * @param rate minimum sample rate is 0.0001, or 0.01% of traces
+   * @param rate minimum sample rate is 0.01, or 1% of traces
    */
   public static Sampler create(float rate) {
     return CountingSampler.create(rate);
