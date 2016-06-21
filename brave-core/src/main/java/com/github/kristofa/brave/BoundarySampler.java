@@ -28,7 +28,7 @@ public final class BoundarySampler extends Sampler {
   public static Sampler create(float rate) {
     if (rate == 0) return Sampler.NEVER_SAMPLE;
     if (rate == 1.0) return ALWAYS_SAMPLE;
-    checkArgument(rate > 0.0001 && rate < 1, "rate should be between 0.0001 and 1: was %s", rate);
+    checkArgument(rate >= 0.0001f && rate < 1, "rate should be between 0.0001 and 1: was %s", rate);
     final long boundary = (long) (rate * 10000); // safe cast as less <= 1
     return new BoundarySampler(boundary);
   }
