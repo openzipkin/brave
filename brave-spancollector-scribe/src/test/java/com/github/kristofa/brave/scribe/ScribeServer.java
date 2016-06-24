@@ -32,7 +32,8 @@ class ScribeServer {
         final TNonblockingServerTransport transport = new TNonblockingServerSocket(port);
         final THsHaServer.Args args = new THsHaServer.Args(transport);
 
-        args.workerThreads(1);
+        args.minWorkerThreads(1);
+        args.maxWorkerThreads(1);
         args.processor(processor);
         args.protocolFactory(new TBinaryProtocol.Factory());
         args.transportFactory(new TFramedTransport.Factory());
