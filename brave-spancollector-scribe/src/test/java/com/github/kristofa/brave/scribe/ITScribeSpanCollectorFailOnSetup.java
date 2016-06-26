@@ -36,6 +36,10 @@ public class ITScribeSpanCollectorFailOnSetup {
 
         scribeSpanCollector.collect(span);
 
+        // Sleep a small amount to give the collector time to process
+        // the span.
+        Thread.sleep(100);
+
         final ScribeServer server = new ScribeServer(PORT);
         server.start();
         try {
