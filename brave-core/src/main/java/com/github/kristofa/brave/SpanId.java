@@ -44,6 +44,10 @@ public final class SpanId {
     return SpanId.builder().traceId(traceId).parentId(parentSpanId).spanId(spanId).build();
   }
 
+  /**
+   * @deprecated Please use {@link SpanId.Builder}
+   */
+  @Deprecated
   public SpanId(long traceId, long parentId, long spanId, long flags) {
     this.traceId = (parentId == traceId) ? parentId : traceId;
     this.parentId = (parentId == spanId) ? traceId : parentId;
