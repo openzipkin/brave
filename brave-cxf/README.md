@@ -12,7 +12,7 @@ the request header. Also sends sr annotations.
 *   `BraveServerOutInterceptor` - Intercepts outgoing server responses and sends ss annotations.
 *   `BraveClientOutInterceptor` - Intercepts CXF 3.x.x client requests and adds or forwards tracing information in the header.
 Also sends cs annotations.
-*   `BraveClientOutInterceptor` - Intercepts CXF 3.x.x client responses and sends cr annotations. Also submits the completed span.
+*   `BraveClientInInterceptor` - Intercepts CXF 3.x.x client responses and sends cr annotations. Also submits the completed span.
 
 ## Usage ##
 
