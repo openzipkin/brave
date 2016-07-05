@@ -207,7 +207,7 @@ public class ClientTracerTest {
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
         assertEquals(PARENT_TRACE_ID, newSpanId.traceId);
-        assertEquals(1l, newSpanId.spanId);
+        assertEquals(1L, newSpanId.spanId);
         assertEquals(PARENT_SPAN_ID, newSpanId.parentId);
 
         assertEquals(

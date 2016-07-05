@@ -37,7 +37,7 @@ public class LocalTracerTest {
     @Before
     public void setup() {
         mockRandom = mock(Random.class);
-        when(mockRandom.nextLong()).thenReturn(555l);
+        when(mockRandom.nextLong()).thenReturn(555L);
 
         mockCollector = mock(SpanCollector.class);
 

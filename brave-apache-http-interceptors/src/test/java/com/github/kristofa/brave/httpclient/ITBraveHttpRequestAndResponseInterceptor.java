@@ -40,9 +40,9 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     private final static String FULL_PATH_WITH_QUERY_PARAMS = "/" + CONTEXT + PATH + "?x=1&y=2";
     private final static String REQUEST = "http://localhost:" + PORT + "/" + CONTEXT + PATH;
     private final static String REQUEST_WITH_QUERY_PARAMS = REQUEST + "?x=1&y=2";
-    private static final Long SPAN_ID = 151864l;
+    private static final Long SPAN_ID = 151864L;
 
-    private static final Long TRACE_ID = 8494864l;
+    private static final Long TRACE_ID = 8494864L;
     private MockHttpServer mockServer;
     private DefaultHttpResponseProvider responseProvider;
     private ClientTracer clientTracer;

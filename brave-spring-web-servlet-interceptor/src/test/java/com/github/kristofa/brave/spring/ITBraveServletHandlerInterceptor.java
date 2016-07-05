@@ -69,9 +69,9 @@ public class ITBraveServletHandlerInterceptor {
         HttpURLConnection connection = (HttpURLConnection)url.openConnection();
         connection.setRequestMethod("GET");
         connection.addRequestProperty(BraveHttpHeaders.Sampled.getName(), "1");
-        connection.addRequestProperty(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(1l));
-        connection.addRequestProperty(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(2l));
-        connection.addRequestProperty(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(3l));
+        connection.addRequestProperty(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(1L));
+        connection.addRequestProperty(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(2L));
+        connection.addRequestProperty(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(3L));
         connection.connect();
 
         try {
@@ -80,9 +80,9 @@ public class ITBraveServletHandlerInterceptor {
             assertEquals(1, collectedSpans.size());
             final Span serverSpan = collectedSpans.get(0);
 
-            assertEquals("Expected trace id", serverSpan.getTrace_id(), 1l);
-            assertEquals("Expected span id", serverSpan.getId(), 2l);
-            assertEquals("Expected parent id", serverSpan.getParent_id().longValue(), 3l);
+            assertEquals("Expected trace id", serverSpan.getTrace_id(), 1L);
+            assertEquals("Expected span id", serverSpan.getId(), 2L);
+            assertEquals("Expected parent id", serverSpan.getParent_id().longValue(), 3L);
             assertEquals("Span name.", "get", serverSpan.getName());
             assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
             assertEquals("Expected service name.",

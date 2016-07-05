@@ -29,8 +29,8 @@ import static org.mockito.Mockito.*;
 
 public class BraveOkHttpRequestResponseInterceptorTest {
 
-  private static final Long SPAN_ID = 151864l;
-  private static final Long TRACE_ID = 8494864l;
+  private static final Long SPAN_ID = 151864L;
+  private static final Long TRACE_ID = 8494864L;
   private static final String HTTP_METHOD_GET = "GET";
 
   @Rule
