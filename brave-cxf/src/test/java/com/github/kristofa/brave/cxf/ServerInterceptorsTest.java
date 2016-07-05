@@ -20,7 +20,6 @@ import com.github.kristofa.brave.http.DefaultSpanNameProvider;
  * @author Michał Podsiedzik
  */
 public class ServerInterceptorsTest {
-
     private Brave brave;
     private SpanCollectorForTesting collector;
     private DefaultSpanNameProvider provider;
