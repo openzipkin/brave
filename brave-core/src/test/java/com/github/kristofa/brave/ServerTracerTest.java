@@ -27,9 +27,9 @@ import static org.mockito.Mockito.when;
 public class ServerTracerTest {
 
     private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
-    private final static long TRACE_ID = 1l;
-    private final static long SPAN_ID = 2l;
-    private final static Long PARENT_SPANID = 3l;
+    private final static long TRACE_ID = 1L;
+    private final static long SPAN_ID = 2L;
+    private final static Long PARENT_SPANID = 3L;
     private final static String SPAN_NAME = "span name";
 
     private ServerTracer serverTracer;

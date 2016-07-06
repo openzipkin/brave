@@ -10,7 +10,7 @@ public class TraceDataTest {
 
     private static final boolean SAMPLE = true;
     private static final SpanId SPAN_ID =
-        SpanId.builder().traceId(3454).spanId(3353).parentId(34343l).build();
+        SpanId.builder().traceId(3454).spanId(3353).parentId(34343L).build();
 
 
     @Test

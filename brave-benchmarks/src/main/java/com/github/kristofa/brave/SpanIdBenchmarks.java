@@ -41,7 +41,7 @@ public class SpanIdBenchmarks {
 
   @Benchmark
   public byte[] bytes_finagle() {
-    return sampledRootSpanFinagle.serialize(sampledRootSpanFinagle);
+    return TraceId.serialize(sampledRootSpanFinagle);
   }
 
   @Benchmark

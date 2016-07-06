@@ -163,7 +163,7 @@ public class SpanIdTest {
     assertThat(finagle.flags().flags())
         .isEqualTo(brave.flags);
 
-    assertThat(SpanId.fromBytes(finagle.serialize(finagle)))
+    assertThat(SpanId.fromBytes(TraceId.serialize(finagle)))
         .isEqualTo(brave);
   }
 }

@@ -8,7 +8,7 @@ public class IdConversionTest {
 	
 	@Test
 	public void testPositiveId() {
-		final long longId = 8828218016717761634l;
+		final long longId = 8828218016717761634L;
 		// This id was generated using the zipkin code.
 		final String expectedId = "7a842183262a6c62";
 		assertEquals(expectedId, IdConversion.convertToString(longId));
@@ -18,7 +18,7 @@ public class IdConversionTest {
 
 	@Test
 	public void testNegativeId() {
-		final long longId = -4667777584646200191l;
+		final long longId = -4667777584646200191L;
 		// This id was generated using the zipkin code.
 		final String expectedId = "bf38b90488a1e481";
 		assertEquals(expectedId, IdConversion.convertToString(longId));
