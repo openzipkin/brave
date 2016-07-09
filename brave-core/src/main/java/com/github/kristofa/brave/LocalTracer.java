@@ -137,7 +137,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         Long startTick = span.startTick;
         final long duration;
         if (startTick != null) {
-            duration = (endTick - startTick) / 1000;
+            duration = Math.max(1L, (endTick - startTick) / 1000L);
         } else {
             duration = currentTimeMicroseconds() - span.getTimestamp();
         }
