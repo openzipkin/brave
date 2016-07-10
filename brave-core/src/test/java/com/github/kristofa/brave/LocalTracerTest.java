@@ -137,6 +137,23 @@ public class LocalTracerTest {
         assertEquals(500L, finished.getDuration().longValue());
     }
 
+    /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
+    @Test
+    public void finishSpan_lessThanMicrosRoundUp() {
+        Span finished = new Span().setTimestamp(1000L); // set in start span
+        finished.startTick = 500L; // set in start span
+        state.setCurrentLocalSpan(finished);
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+
+        localTracer.finishSpan();
+
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
+
+        assertEquals(1L, finished.getDuration().longValue());
+    }
+
     /**
      * When a span is started with a timestamp, nanos aren't known, so duration calculation falls back to system time.
      * <p>
