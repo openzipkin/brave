@@ -16,7 +16,7 @@ public class ClientRequestInterceptorTest {
     private static final String SERVICE_NAME = "orderService";
     private static final int TARGET_IP = 192 << 24 | 168 << 16 | 1;
     private static final int TARGET_PORT = 80;
-    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(TraceKeys.HTTP_URL, "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(zipkin.TraceKeys.HTTP_URL, "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
     private ClientRequestInterceptor interceptor;
     private ClientTracer clientTracer;

@@ -4,7 +4,6 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.zipkinCoreConstants;
 import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +12,7 @@ import org.mockito.InOrder;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import zipkin.Constants;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.inOrder;
@@ -141,7 +141,7 @@ public class ServerTracerTest {
 
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
-            zipkinCoreConstants.SERVER_RECV,
+            Constants.SERVER_RECV,
             mockEndpoint
         );
 
@@ -165,7 +165,7 @@ public class ServerTracerTest {
 
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
-            zipkinCoreConstants.SERVER_RECV,
+            Constants.SERVER_RECV,
             mockEndpoint
         );
 
@@ -178,7 +178,7 @@ public class ServerTracerTest {
         assertEquals(expectedAnnotation, serverRecv.getAnnotations().get(0));
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
-            zipkinCoreConstants.CLIENT_ADDR,
+            Constants.CLIENT_ADDR,
             Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999)
         );
         assertEquals(serverAddress, serverRecv.getBinary_annotations().get(0));
@@ -215,7 +215,7 @@ public class ServerTracerTest {
 
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
-            zipkinCoreConstants.SERVER_SEND,
+            Constants.SERVER_SEND,
             mockEndpoint
         );
 

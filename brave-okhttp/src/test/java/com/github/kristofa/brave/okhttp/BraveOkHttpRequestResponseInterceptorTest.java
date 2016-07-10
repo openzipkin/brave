@@ -4,7 +4,6 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import okhttp3.OkHttpClient;
@@ -21,6 +20,7 @@ import org.mockito.Answers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import zipkin.TraceKeys;
 
 import java.io.IOException;
 

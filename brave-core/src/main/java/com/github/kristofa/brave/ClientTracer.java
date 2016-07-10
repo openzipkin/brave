@@ -6,7 +6,7 @@ import com.github.kristofa.brave.SpanAndEndpoint.ClientSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.zipkinCoreConstants;
+import zipkin.Constants;
 
 import java.util.Random;
 
@@ -63,7 +63,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * Sets 'client sent' event for current thread.
      */
     public void setClientSent() {
-        submitStartAnnotation(zipkinCoreConstants.CLIENT_SEND);
+        submitStartAnnotation(Constants.CLIENT_SEND);
     }
 
     /**
@@ -75,8 +75,8 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      *                    or null if unknown
      */
     public void setClientSent(int ipv4, int port, @Nullable String serviceName) {
-        submitAddress(zipkinCoreConstants.SERVER_ADDR, ipv4, port, serviceName);
-        submitStartAnnotation(zipkinCoreConstants.CLIENT_SEND);
+        submitAddress(Constants.SERVER_ADDR, ipv4, port, serviceName);
+        submitStartAnnotation(Constants.CLIENT_SEND);
     }
 
     /**
@@ -84,7 +84,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * event means this span is finished.
      */
     public void setClientReceived() {
-        if (submitEndAnnotation(zipkinCoreConstants.CLIENT_RECV, spanCollector())) {
+        if (submitEndAnnotation(Constants.CLIENT_RECV, spanCollector())) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
         }
     }

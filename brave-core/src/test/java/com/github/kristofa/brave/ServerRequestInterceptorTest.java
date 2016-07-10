@@ -16,7 +16,7 @@ public class ServerRequestInterceptorTest {
     private final static long TRACE_ID = 3425;
     private final static long SPAN_ID = 43435;
     private final static long PARENT_SPAN_ID = 44334435;
-    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(TraceKeys.HTTP_URL, "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(zipkin.TraceKeys.HTTP_URL, "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
 
     private ServerRequestInterceptor interceptor;
