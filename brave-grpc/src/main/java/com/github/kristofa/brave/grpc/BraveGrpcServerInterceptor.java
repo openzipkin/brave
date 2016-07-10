@@ -37,13 +37,12 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
     }
 
     @Override
-    public <ReqT, RespT> Listener<ReqT> interceptCall(final MethodDescriptor<ReqT, RespT> method,
-                                                      final ServerCall<RespT> call, final Metadata requestHeaders,
+    public <ReqT, RespT> Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call, final Metadata requestHeaders,
                                                       final ServerCallHandler<ReqT, RespT> next) {
-        return next.startCall(method, new SimpleForwardingServerCall<RespT>(call) {
+        return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
             @Override
             public void request(int numMessages) {
-                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(method, requestHeaders));
+                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call.getMethodDescriptor(), requestHeaders));
                 super.request(numMessages);
             }
 
