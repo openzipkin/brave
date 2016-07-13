@@ -2,9 +2,9 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.TraceKeys;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin.TraceKeys;
 
 import java.net.URI;
 import java.util.Collection;

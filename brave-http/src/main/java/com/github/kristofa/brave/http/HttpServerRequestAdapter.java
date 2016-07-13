@@ -4,9 +4,9 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-import com.github.kristofa.brave.TraceKeys;
 import java.util.Collection;
 import java.util.Collections;
+import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.IdConversion.convertToLong;
 

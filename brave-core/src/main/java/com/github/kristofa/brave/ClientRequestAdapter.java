@@ -42,7 +42,7 @@ public interface ClientRequestAdapter {
      * Provides the remote server address information for additional tracking.
      *
      * Can be useful when communicating with non-traced services by adding server address to span
-     * i.e. {@link com.twitter.zipkin.gen.zipkinCoreConstants#SERVER_ADDR}
+     * i.e. {@link zipkin.Constants#SERVER_ADDR}
      *
      * @return request's target server endpoint information
      */

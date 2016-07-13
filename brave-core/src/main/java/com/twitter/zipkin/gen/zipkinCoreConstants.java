@@ -1,5 +1,9 @@
 package com.twitter.zipkin.gen;
 
+/**
+ * @deprecated use {@link zipkin.Constants}; will be removed in Brave 2.0
+ */
+@Deprecated
 public class zipkinCoreConstants {
 
   /**

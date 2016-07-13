@@ -4,11 +4,11 @@ import com.github.kristofa.brave.SpanAndEndpoint.LocalSpanAndEndpoint;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
-import com.twitter.zipkin.gen.zipkinCoreConstants;
+import zipkin.Constants;
 
 import java.util.Random;
 
-import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
+import static zipkin.Constants.LOCAL_COMPONENT;
 
 /**
  * Local tracer is designed for in-process activity that explains latency.
@@ -30,7 +30,7 @@ import static com.twitter.zipkin.gen.zipkinCoreConstants.LOCAL_COMPONENT;
  * }
  * </pre>
  *
- * @see zipkinCoreConstants#LOCAL_COMPONENT
+ * @see Constants#LOCAL_COMPONENT
  */
 @AutoValue
 public abstract class LocalTracer extends AnnotationSubmitter {
@@ -70,10 +70,10 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     /**
      * Request a new local span, which starts now.
      *
-     * @param component {@link zipkinCoreConstants#LOCAL_COMPONENT component} responsible for the operation
+     * @param component {@link Constants#LOCAL_COMPONENT component} responsible for the operation
      * @param operation name of the operation that's begun
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
-     * @see zipkinCoreConstants#LOCAL_COMPONENT
+     * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
         SpanId spanId = startNewSpan(component, operation, currentTimeMicroseconds());
@@ -93,11 +93,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     /**
      * Request a new local span, which started at the given timestamp.
      *
-     * @param component {@link zipkinCoreConstants#LOCAL_COMPONENT component} responsible for the operation
+     * @param component {@link Constants#LOCAL_COMPONENT component} responsible for the operation
      * @param operation name of the operation that's begun
      * @param timestamp time the operation started, in epoch microseconds.
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
-     * @see zipkinCoreConstants#LOCAL_COMPONENT
+     * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
 

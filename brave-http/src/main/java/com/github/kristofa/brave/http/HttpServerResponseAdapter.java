@@ -2,7 +2,7 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
-import com.github.kristofa.brave.TraceKeys;
+import zipkin.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;

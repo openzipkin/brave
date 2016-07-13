@@ -4,7 +4,6 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.TraceKeys;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -14,6 +13,7 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
+import zipkin.TraceKeys;
 
 import java.io.IOException;
 import java.net.URI;

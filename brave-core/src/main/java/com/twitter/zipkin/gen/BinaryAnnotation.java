@@ -29,10 +29,10 @@ public class BinaryAnnotation implements Serializable {
   static final long serialVersionUID = 1L;
 
   /**
-   * Special-cased form supporting {@link zipkinCoreConstants#CLIENT_ADDR} and {@link
-   * zipkinCoreConstants#SERVER_ADDR}.
+   * Special-cased form supporting {@link zipkin.Constants#CLIENT_ADDR} and {@link
+   * zipkin.Constants#SERVER_ADDR}.
    *
-   * @param key {@link zipkinCoreConstants#CLIENT_ADDR} or {@link zipkinCoreConstants#SERVER_ADDR}
+   * @param key {@link zipkin.Constants#CLIENT_ADDR} or {@link zipkin.Constants#SERVER_ADDR}
    * @param endpoint associated endpoint.
    */
   public static BinaryAnnotation address(String key, Endpoint endpoint) {

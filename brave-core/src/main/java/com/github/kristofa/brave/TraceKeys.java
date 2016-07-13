@@ -1,9 +1,9 @@
 package com.github.kristofa.brave;
 
 /**
- * Used for Consistent keys without taking in zipkin-dependency.
- * Taken from: https://github.com/openzipkin/zipkin-java/blob/master/zipkin/src/main/java/zipkin/TraceKeys.java
+ * @deprecated use {@link zipkin.TraceKeys}; will be removed in Brave 2.0
  */
+@Deprecated
 public final class TraceKeys {
 
     public static final String HTTP_HOST = "http.host";

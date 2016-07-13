@@ -8,9 +8,9 @@ import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-import com.github.kristofa.brave.TraceKeys;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin.TraceKeys;
 
 import static junit.framework.Assert.assertNull;
 import static org.junit.Assert.*;

@@ -5,7 +5,7 @@ import com.google.auto.value.AutoValue;
 import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
-import com.twitter.zipkin.gen.zipkinCoreConstants;
+import zipkin.Constants;
 
 import java.util.Random;
 
@@ -118,7 +118,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     public void setServerReceived() {
-        submitStartAnnotation(zipkinCoreConstants.SERVER_RECV);
+        submitStartAnnotation(Constants.SERVER_RECV);
     }
 
     /**
@@ -131,15 +131,15 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      *                      null if unknown
      */
     public void setServerReceived(int ipv4, int port, @Nullable String clientService) {
-        submitAddress(zipkinCoreConstants.CLIENT_ADDR, ipv4, port, clientService);
-        submitStartAnnotation(zipkinCoreConstants.SERVER_RECV);
+        submitAddress(Constants.CLIENT_ADDR, ipv4, port, clientService);
+        submitStartAnnotation(Constants.SERVER_RECV);
     }
 
     /**
      * Sets the server sent event for current thread.
      */
     public void setServerSend() {
-        if (submitEndAnnotation(zipkinCoreConstants.SERVER_SEND, spanCollector())) {
+        if (submitEndAnnotation(Constants.SERVER_SEND, spanCollector())) {
             spanAndEndpoint().state().setCurrentServerSpan(null);
         }
     }
