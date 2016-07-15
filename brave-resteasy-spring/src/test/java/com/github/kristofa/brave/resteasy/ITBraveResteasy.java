@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.resteasy;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.util.List;
@@ -17,7 +18,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
+
+import zipkin.TraceKeys;
 
 public class ITBraveResteasy {
 
@@ -83,6 +87,24 @@ public class ITBraveResteasy {
                 clientSpan.getAnnotations().get(0).host.service_name,
                 serverSpan.getAnnotations().get(0).host.service_name
             );
+
+            // Make sure HTTP URL is present on both spans, and have the same value
+            String clientHttpUrl=null;
+            String serverHttpUrl=null;
+            
+            for (BinaryAnnotation ba : clientSpan.getBinary_annotations()) {
+            	if (ba.getKey().equals(TraceKeys.HTTP_URL)) {
+            		clientHttpUrl = new String(ba.getValue());
+            	}
+            }
+            for (BinaryAnnotation ba : serverSpan.getBinary_annotations()) {
+            	if (ba.getKey().equals(TraceKeys.HTTP_URL)) {
+            		serverHttpUrl = new String(ba.getValue());
+            	}
+            }
+            assertNotNull(clientHttpUrl);
+            assertNotNull(serverHttpUrl);
+            assertEquals("Expected http urls to be same", clientHttpUrl, serverHttpUrl);
 
         } finally {
             response.releaseConnection();
