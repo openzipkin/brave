@@ -25,7 +25,7 @@ class RestEasyHttpServerRequest implements HttpServerRequest {
 
     @Override
     public URI getUri() {
-        return req.getUri().getBaseUri();
+        return req.getUri().getAbsolutePath();
     }
 
     @Override

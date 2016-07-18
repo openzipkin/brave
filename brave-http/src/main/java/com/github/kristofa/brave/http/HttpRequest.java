@@ -6,9 +6,11 @@ import java.net.URI;
 public interface HttpRequest {
 
     /**
-     * Get request URI.
+     * Returns the entire URL, including the scheme, host and query parameters if available.
      *
      * @return Request URI.
+     *
+     * @see zipkin.TraceKeys#HTTP_URL
      */
     URI getUri();
 
