@@ -23,6 +23,7 @@ import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import io.grpc.Status.Code;
 
+import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -42,7 +43,7 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
         return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
             @Override
             public void request(int numMessages) {
-                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call.getMethodDescriptor(), requestHeaders));
+                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call, requestHeaders));
                 super.request(numMessages);
             }
 
@@ -56,11 +57,13 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     static final class GrpcServerRequestAdapter<ReqT, RespT> implements ServerRequestAdapter {
 
+        private final ServerCall<ReqT, RespT> call;
         private MethodDescriptor<ReqT, RespT> method;
         private Metadata requestHeaders;
 
-        public GrpcServerRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata requestHeaders) {
-            this.method = checkNotNull(method);
+        public GrpcServerRequestAdapter(ServerCall<ReqT, RespT> call, Metadata requestHeaders) {
+            this.call = checkNotNull(call);
+            this.method = checkNotNull(call.getMethodDescriptor());
             this.requestHeaders = checkNotNull(requestHeaders);
         }
 
@@ -90,7 +93,14 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
         @Override
         public Collection<KeyValueAnnotation> requestAnnotations() {
-            return Collections.emptyList();
+            SocketAddress socketAddress = call.attributes().get(ServerCall.REMOTE_ADDR_KEY);
+            if (socketAddress != null) {
+                KeyValueAnnotation remoteAddrAnnotation = KeyValueAnnotation.create(
+                    GrpcKeys.GRPC_REMOTE_ADDR, socketAddress.toString());
+                return Collections.singleton(remoteAddrAnnotation);
+            } else {
+                return Collections.emptyList();
+            }
         }
     }
 
