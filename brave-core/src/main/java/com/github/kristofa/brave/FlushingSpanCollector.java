@@ -12,6 +12,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -70,7 +71,12 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
   /** Calls flush on a fixed interval */
   static final class Flusher implements Runnable {
     final Flushable flushable;
-    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+      @Override
+      public Thread newThread(final Runnable r) {
+        return new Thread(r, "brave-core-flushing-span-collector-flusher");
+      }
+    });
 
     Flusher(Flushable flushable, int flushInterval) {
       this.flushable = flushable;
