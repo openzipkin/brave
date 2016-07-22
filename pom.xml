@@ -88,6 +88,7 @@
     <module>brave-mysql</module>
     <module>brave-web-servlet-filter</module>
     <module>brave-okhttp</module>
+    <module>brave-p6spy</module>
   </modules>
 
   <distributionManagement>

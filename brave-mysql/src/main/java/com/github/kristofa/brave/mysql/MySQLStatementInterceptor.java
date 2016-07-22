@@ -7,6 +7,9 @@ import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
 import com.mysql.jdbc.StatementInterceptorV2;
 
+import zipkin.Constants;
+import zipkin.TraceKeys;
+
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URI;
@@ -71,7 +74,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 
     private void beginTrace(final ClientTracer tracer, final String sql, final Connection connection) throws SQLException {
         tracer.startNewSpan("query");
-        tracer.submitBinaryAnnotation("executed.query", sql);
+        tracer.submitBinaryAnnotation(TraceKeys.SQL_QUERY, sql);
 
         try {
             setClientSent(tracer, connection);
@@ -110,7 +113,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
                 tracer.submitBinaryAnnotation("warning.count", warningCount);
             }
             if (statementException != null) {
-                tracer.submitBinaryAnnotation("error.code", statementException.getErrorCode());
+                tracer.submitBinaryAnnotation(Constants.ERROR, statementException.getErrorCode());
             }
         } finally {
             tracer.setClientReceived();

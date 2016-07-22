@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  #%L
+  P6Spy
+  %%
+  Copyright (C) 2013 P6Spy
+  %%
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+       http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  #L%
+  -->
+
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">
+
+  <changeSet id="customers-table" author="quintonm">
+    <!-- generic table to be used by all tests -->
+    <createTable tableName="customers">
+      <column name="id" type="int"/>
+      <column name="name" type="varchar(255)"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="seed-customers-table" author="butkovic"
+             runAlways="true">
+    <delete tableName="customers" />
+    <loadData tableName="customers" file="testdata/customers.csv">
+      <column name="id" type="numeric" />
+      <column name="name" type="string" />
+    </loadData>
+  </changeSet>
+
+</databaseChangeLog>
