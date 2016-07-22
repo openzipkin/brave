@@ -32,7 +32,7 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
    */
   protected FlushingSpanCollector(SpanCollectorMetricsHandler metrics, int flushInterval) {
     this.metrics = metrics;
-    this.flusher = flushInterval > 0 ? new Flusher(this, flushInterval) : null;
+    this.flusher = flushInterval > 0 ? new Flusher(this, flushInterval, getClass().getSimpleName()) : null;
   }
 
   /**
@@ -71,15 +71,16 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
   /** Calls flush on a fixed interval */
   static final class Flusher implements Runnable {
     final Flushable flushable;
-    final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
-      @Override
-      public Thread newThread(final Runnable r) {
-        return new Thread(r, "brave-core-flushing-span-collector-flusher");
-      }
-    });
+    final ScheduledExecutorService scheduler;
 
-    Flusher(Flushable flushable, int flushInterval) {
+    Flusher(Flushable flushable, int flushInterval, final String threadPoolName) {
       this.flushable = flushable;
+      this.scheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+        @Override
+        public Thread newThread(final Runnable r) {
+          return new Thread(r, threadPoolName);
+        }
+      });
       this.scheduler.scheduleWithFixedDelay(this, 0, flushInterval, SECONDS);
     }
 
