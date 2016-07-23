@@ -1,9 +1,8 @@
 package com.github.kristofa.brave.grpc;
 
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.atIndex;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -12,7 +11,6 @@ import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.SpanId;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
@@ -28,7 +26,7 @@ import io.grpc.examples.helloworld.GreeterGrpc.GreeterFutureStub;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 
-import java.util.concurrent.ExecutionException;
+import org.assertj.core.api.Condition;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 public class BraveGrpcInterceptorsTest {
 
@@ -79,7 +78,7 @@ public class BraveGrpcInterceptorsTest {
     public void testBlockingUnaryCall() throws Exception {
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
-        assertThat(reply.getMessage(), is("Hello brave"));
+        assertThat(reply.getMessage()).isEqualTo("Hello brave");
         validateSpans();
     }
 
@@ -88,7 +87,7 @@ public class BraveGrpcInterceptorsTest {
         GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(channel);
         ListenableFuture<HelloReply> helloReplyListenableFuture = futureStub.sayHello(HELLO_REQUEST);
         HelloReply reply = helloReplyListenableFuture.get();
-        assertThat(reply.getMessage(), is("Hello brave"));
+        assertThat(reply.getMessage()).isEqualTo("Hello brave");
         validateSpans();
     }
 
@@ -102,10 +101,10 @@ public class BraveGrpcInterceptorsTest {
             fail();
         } catch (ExecutionException expected) {
             List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
-            assertThat(spans.size(), is(equalTo(1)));
+            assertThat(spans.size()).isEqualTo(1);
             BinaryAnnotation binaryAnnotation = spans.get(0).getBinary_annotations().get(0);
-            assertThat(binaryAnnotation.getKey(), is(equalTo(GRPC_STATUS_CODE)));
-            assertThat(new String(binaryAnnotation.getValue(), StandardCharsets.UTF_8), is(equalTo(Status.UNAVAILABLE.getCode().name())));
+            assertThat(binaryAnnotation.getKey()).isEqualTo(GRPC_STATUS_CODE);
+            assertThat(new String(binaryAnnotation.getValue(), StandardCharsets.UTF_8)).isEqualTo(Status.UNAVAILABLE.getCode().name());
         }
     }
 
@@ -116,7 +115,7 @@ public class BraveGrpcInterceptorsTest {
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         //This call will be made using hte context of the localTracer as it's parent
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
-        assertThat(reply.getMessage(), is("Hello brave"));
+        assertThat(reply.getMessage()).isEqualTo("Hello brave");
         validateSpans();
         List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
         Optional<Span> maybeSpan = spans.stream()
@@ -125,8 +124,8 @@ public class BraveGrpcInterceptorsTest {
         assertTrue("Could not find expected server span", maybeSpan.isPresent());
         Span span = maybeSpan.get();
         //Verify that the localTracer's trace id and span id were propagated to the server
-        assertThat(span.getTrace_id(), is(equalTo(spanId.traceId)));
-        assertThat(span.getParent_id(), is(equalTo(spanId.spanId)));
+        assertThat(span.getTrace_id()).isEqualTo(spanId.traceId);
+        assertThat(span.getParent_id()).isEqualTo(spanId.spanId);
     }
 
     /**
@@ -138,9 +137,9 @@ public class BraveGrpcInterceptorsTest {
         enableSampling = false;
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
-        assertThat(reply.getMessage(), is("Hello brave"));
+        assertThat(reply.getMessage()).isEqualTo("Hello brave");
         List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
-        assertThat(spans.size(), is(equalTo(0)));
+        assertThat(spans.size()).isEqualTo(0);
     }
 
     /**
@@ -149,22 +148,26 @@ public class BraveGrpcInterceptorsTest {
      */
     void validateSpans() throws Exception {
         List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
-        assertThat(spans.size(), is(equalTo(2)));
-        assertThat(spans.get(0).getTrace_id(), is(equalTo(spans.get(1).getTrace_id())));
-        validateSpan(spans.get(0), Arrays.asList("ss", "sr"));
+        assertThat(spans.size()).isEqualTo(2);
+
+        Span serverSpan = spans.get(0);
+        assertThat(serverSpan.getTrace_id()).isEqualTo(spans.get(1).getTrace_id());
+        validateSpan(serverSpan, Arrays.asList("sr", "ss"));
+
+        //Server spans should have the GRPC_REMOTE_ADDR binary annotation
+        assertThat(serverSpan.getBinary_annotations())
+            .filteredOn(b -> b.key.equals(GrpcKeys.GRPC_REMOTE_ADDR))
+            .extracting(b -> new String(b.value))
+            .has(new Condition<>(b -> b.matches("^/127.0.0.1:[\\d]+$"), "a local IP address"), atIndex(0));
+
         validateSpan(spans.get(1), Arrays.asList("cs", "cr"));
     }
 
     void validateSpan(Span span, Iterable<String> expectedAnnotations) {
-        assertThat(span.getName(), is(equalTo("helloworld.greeter/sayhello")));
-        expectedAnnotations.forEach(a -> assertAnnotation(a, span.getAnnotations()));
-        List<BinaryAnnotation> binaryAnnotations = span.getBinary_annotations();
-        assertThat(binaryAnnotations.size(), is(equalTo(0)));
-    }
-
-    void assertAnnotation(String annotationName, List<Annotation> annotations) {
-        Optional<Annotation> annotation = annotations.stream().filter(a -> annotationName.equals(a.value)).findFirst();
-        assertTrue("Could not find annotation: " + annotationName, annotation.isPresent());
+        assertThat(span.getName()).isEqualTo("helloworld.greeter/sayhello");
+        assertThat(span.getAnnotations())
+            .extracting(a -> a.value)
+            .containsExactlyElementsOf(expectedAnnotations);
     }
 
     @After
