@@ -20,6 +20,7 @@ public class Brave {
     private final AnnotationSubmitter serverSpanAnnotationSubmitter;
     private final ServerSpanThreadBinder serverSpanThreadBinder;
     private final ClientSpanThreadBinder clientSpanThreadBinder;
+    private final LocalSpanThreadBinder localSpanThreadBinder;
 
     /**
      * Builds Brave api objects with following defaults if not overridden:
@@ -186,6 +187,17 @@ public class Brave {
     }
 
     /**
+     * Helper object that can be used to propagate local trace state. Typically over different
+     * threads.
+     *
+     * @return {@link LocalSpanThreadBinder}.
+     * @see LocalSpanThreadBinder
+     */
+    public LocalSpanThreadBinder localSpanThreadBinder() {
+        return localSpanThreadBinder;
+    }
+
+    /**
      * Can be used to submit application specific annotations to the current server span.
      *
      * @return Server span {@link AnnotationSubmitter}.
@@ -220,5 +232,6 @@ public class Brave {
         serverSpanAnnotationSubmitter = AnnotationSubmitter.create(SpanAndEndpoint.ServerSpanAndEndpoint.create(builder.state));
         serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
+        localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
     }
 }
