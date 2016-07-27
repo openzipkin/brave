@@ -220,6 +220,7 @@ public final class SpanId {
     result.setId(spanId);
     result.setTrace_id(traceId);
     result.setParent_id(nullableParentId());
+    result.setName(""); // avoid NPE on equals
     if (debug()) result.setDebug(debug());
     return result;
   }

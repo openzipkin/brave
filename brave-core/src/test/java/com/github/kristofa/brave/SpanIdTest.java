@@ -25,6 +25,11 @@ public class SpanIdTest {
     checkAgainstFinagle(id);
   }
 
+  @Test public void equals() {
+    assertThat(SpanId.builder().spanId(333L).build())
+        .isEqualTo(SpanId.builder().spanId(333L).build());
+  }
+
   // NOTE: finagle doesn't support this, but then again it doesn't provision non-span trace ids
   @Test public void rootSpan_whenTraceIdsArentSpanIds() {
     SpanId id = SpanId.builder().traceId(555L).parentId(null).spanId(333L).build();
