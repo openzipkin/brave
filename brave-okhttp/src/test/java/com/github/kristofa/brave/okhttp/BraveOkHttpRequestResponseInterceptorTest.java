@@ -1,17 +1,12 @@
 package com.github.kristofa.brave.okhttp;
 
-import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.ClientResponseInterceptor;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -20,12 +15,21 @@ import org.mockito.Answers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import zipkin.TraceKeys;
-
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
 
 public class BraveOkHttpRequestResponseInterceptorTest {
 
@@ -74,6 +78,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
     inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, HTTP_METHOD_GET);
     inOrder.verify(clientTracer).setClientSent();
     inOrder.verify(clientTracer).setClientReceived();
     verifyNoMoreInteractions(clientTracer);
@@ -106,6 +111,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
     inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, HTTP_METHOD_GET);
     inOrder.verify(clientTracer).setClientSent();
     inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, "400");
     inOrder.verify(clientTracer).setClientReceived();
@@ -165,6 +171,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
     inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, HTTP_METHOD_GET);
     inOrder.verify(clientTracer).setClientSent();
     inOrder.verify(clientTracer).setClientReceived();
     verifyNoMoreInteractions(clientTracer);

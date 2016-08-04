@@ -1,16 +1,17 @@
 package com.github.kristofa.brave.http;
 
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
-import zipkin.TraceKeys;
 
-import java.net.URI;
-import java.util.Arrays;
-import java.util.Collection;
+import zipkin.TraceKeys;
 
 public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
@@ -46,8 +47,9 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         URI uri = request.getUri();
-        KeyValueAnnotation annotation = KeyValueAnnotation.create(TraceKeys.HTTP_URL, uri.toString());
-        return Arrays.asList(annotation);
+        KeyValueAnnotation urlAnnotation = KeyValueAnnotation.create(TraceKeys.HTTP_URL, uri.toString());
+        KeyValueAnnotation methodAnnotation = KeyValueAnnotation.create(TraceKeys.HTTP_METHOD, request.getHttpMethod());
+        return Arrays.asList(urlAnnotation, methodAnnotation);
     }
 
     @Override

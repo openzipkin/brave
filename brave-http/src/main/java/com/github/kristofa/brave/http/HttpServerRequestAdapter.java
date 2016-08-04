@@ -1,14 +1,16 @@
 package com.github.kristofa.brave.http;
 
+import static com.github.kristofa.brave.IdConversion.convertToLong;
+
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-import java.util.Collection;
-import java.util.Collections;
-import zipkin.TraceKeys;
 
-import static com.github.kristofa.brave.IdConversion.convertToLong;
+import zipkin.TraceKeys;
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
@@ -49,7 +51,11 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
                 TraceKeys.HTTP_URL, serverRequest.getUri().toString());
-        return Collections.singleton(uriAnnotation);
+
+        KeyValueAnnotation methodAnnotation =
+                KeyValueAnnotation.create(TraceKeys.HTTP_METHOD, serverRequest.getHttpMethod().toString());
+
+        return Arrays.asList(uriAnnotation, methodAnnotation);
     }
 
     private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
