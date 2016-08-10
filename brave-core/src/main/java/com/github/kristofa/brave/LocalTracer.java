@@ -56,15 +56,15 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     @AutoValue.Builder
     public abstract static class Builder {
 
-        abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
+        public abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
 
-        abstract Builder randomGenerator(Random randomGenerator);
+        public abstract Builder randomGenerator(Random randomGenerator);
 
-        abstract Builder spanCollector(SpanCollector spanCollector);
+        public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        abstract Builder traceSampler(Sampler sampler);
+        public abstract Builder traceSampler(Sampler sampler);
 
-        abstract LocalTracer build();
+        public abstract LocalTracer build();
     }
 
     /**
