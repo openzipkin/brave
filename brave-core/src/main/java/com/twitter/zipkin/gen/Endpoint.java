@@ -183,5 +183,15 @@ public class Endpoint implements Serializable {
     h ^= (port == null) ? 0 : port.hashCode();
     return h;
   }
+
+  @Override
+  public String toString() {
+    return "Endpoint{" +
+            "service_name='" + service_name + '\'' +
+            ", ipv4=" + ipv4 +
+            (ipv6 == null ? "" : (", ipv6=" + Arrays.toString(ipv6))) +
+            ", port=" + port +
+            '}';
+  }
 }
 

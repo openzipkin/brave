@@ -6,6 +6,7 @@ import zipkin.TraceKeys;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
@@ -18,8 +19,7 @@ public class HttpServerResponseAdapter implements ServerResponseAdapter {
 
     @Override
     public Collection<KeyValueAnnotation> responseAnnotations() {
-        KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create(
-                TraceKeys.HTTP_STATUS_CODE, String.valueOf(response.getHttpStatusCode()));
-        return Arrays.asList(statusAnnotation);
+        return Collections.singleton(KeyValueAnnotation.create(
+                TraceKeys.HTTP_STATUS_CODE, String.valueOf(response.getHttpStatusCode())));
     }
 }
