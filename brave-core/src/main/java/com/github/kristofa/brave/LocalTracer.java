@@ -68,6 +68,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     }
 
     /**
+     * Clears current span.
+     */
+    public void clearCurrentSpan() {
+        spanAndEndpoint().state().setCurrentLocalSpan(null);
+    }
+
+    /**
      * Request a new local span, which starts now.
      *
      * @param component {@link Constants#LOCAL_COMPONENT component} responsible for the operation
@@ -83,7 +90,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     }
 
     private SpanId getNewSpanId() {
-        Span parentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
+        if (parentSpan == null) {
+            ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
+            if (serverSpan != null) {
+                parentSpan = serverSpan.getSpan();
+            }
+        }
         long newSpanId = randomGenerator().nextLong();
         SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
         if (parentSpan == null) return builder.build(); // new trace
