@@ -78,6 +78,7 @@
     <module>brave-mysql</module>
     <module>brave-web-servlet-filter</module>
     <module>brave-okhttp</module>
+    <module>brave-opentracing</module>
   </modules>
 
   <distributionManagement>

@@ -1,0 +1,14 @@
+*~
+#*
+*#
+.#*
+.factorypath
+.classpath
+.project
+.settings/
+target/
+_site/
+.idea
+*.iml
+*.swp
+/opentracing-brave/nbproject/
