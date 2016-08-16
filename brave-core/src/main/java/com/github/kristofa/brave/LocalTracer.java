@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.SpanAndEndpoint.LocalSpanAndEndpoint;
+import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
@@ -51,6 +52,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract SpanCollector spanCollector();
 
+    abstract boolean allowNestedLocalSpans();
+
     abstract Sampler traceSampler();
 
     @AutoValue.Builder
@@ -62,9 +65,12 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
         abstract Builder spanCollector(SpanCollector spanCollector);
 
+        abstract Builder allowNestedLocalSpans(boolean allowNestedLocalSpans);
+
         abstract Builder traceSampler(Sampler sampler);
 
         abstract LocalTracer build();
+
     }
 
     /**
@@ -83,11 +89,40 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     }
 
     private SpanId getNewSpanId() {
-        Span parentSpan = spanAndEndpoint().state().getCurrentServerSpan().getSpan();
+        Span parentSpan = getNewSpanParent();
         long newSpanId = randomGenerator().nextLong();
         SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
         if (parentSpan == null) return builder.build(); // new trace
         return builder.traceId(parentSpan.getTrace_id()).parentId(parentSpan.getId()).build();
+    }
+
+    /**
+     * Request the span that should be considered the new span's parent.
+     *
+     * If {@link #allowNestedLocalSpans()} is enabled, the new span's parent
+     * will be the current local span (if one exists).
+     *
+     * If nested local spans is not enabled or there is no current local span,
+     * the new span's parent will be the current server span (if one exists).
+     *
+     * @return span that should be the new span's parent, or null if one does not exist.
+     */
+    @Nullable
+    Span getNewSpanParent() {
+        ServerClientAndLocalSpanState state = spanAndEndpoint().state();
+        Span parentSpan = null;
+        if (allowNestedLocalSpans()) {
+            parentSpan = state.getCurrentLocalSpan();
+        }
+
+        if (parentSpan == null) {
+            ServerSpan currentServerSpan = state.getCurrentServerSpan();
+            if (currentServerSpan != null) {
+                parentSpan = currentServerSpan.getSpan();
+            }
+        }
+
+        return parentSpan;
     }
 
     /**
@@ -141,7 +176,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         } else {
             duration = currentTimeMicroseconds() - span.getTimestamp();
         }
-        finishSpan(duration);
+        internalFinishSpan(span, duration);
     }
 
     /**
@@ -151,6 +186,10 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         Span span = spanAndEndpoint().span();
         if (span == null) return;
 
+        internalFinishSpan(span, duration);
+    }
+
+    private void internalFinishSpan(Span span, long duration) {
         synchronized (span) {
             span.setDuration(duration);
             spanCollector().collect(span);

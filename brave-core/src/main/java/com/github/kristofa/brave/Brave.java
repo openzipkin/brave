@@ -38,6 +38,7 @@ public class Brave {
         private Random random = new Random();
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
+        private boolean allowNestedLocalSpans = false;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -86,6 +87,10 @@ public class Brave {
          */
         public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
+
+            // the legacy span state doesn't support nested spans per (#166). Only permit nesting on the span
+            // state that has instructions on how to use it properly
+            this.allowNestedLocalSpans = state instanceof InheritableServerClientAndLocalSpanState;
         }
 
         /**
@@ -222,6 +227,7 @@ public class Brave {
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
+                .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
                 .traceSampler(builder.sampler).build();
         
