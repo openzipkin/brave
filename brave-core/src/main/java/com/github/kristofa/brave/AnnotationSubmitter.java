@@ -91,9 +91,12 @@ public abstract class AnnotationSubmitter {
             annotationName,
             spanAndEndpoint().endpoint()
         );
-        span.addToAnnotations(annotation);
-        if (span.getTimestamp() != null) {
-            span.setDuration(annotation.timestamp - span.getTimestamp());
+        synchronized (span) {
+            span.addToAnnotations(annotation);
+            Long timestamp = span.getTimestamp();
+            if (timestamp != null) {
+                span.setDuration(annotation.timestamp - timestamp);
+            }
         }
         spanCollector.collect(span);
         return true;
