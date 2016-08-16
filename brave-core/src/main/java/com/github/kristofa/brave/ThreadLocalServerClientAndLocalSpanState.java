@@ -17,7 +17,7 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
 
         @Override
         protected ServerSpan initialValue() {
-            return ServerSpan.create(null);
+            return ServerSpan.EMPTY;
         }
     };
     private final static ThreadLocal<Span> currentClientSpan = new ThreadLocal<Span>();
