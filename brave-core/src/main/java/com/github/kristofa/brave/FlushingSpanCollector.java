@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Span;
 import java.io.Closeable;
 import java.io.Flushable;
@@ -22,8 +23,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public abstract class FlushingSpanCollector implements SpanCollector, Flushable, Closeable {
 
+  public static final int DEFAULT_QUEUE_CAPACITY = 1000;
+
   private final SpanCollectorMetricsHandler metrics;
-  private final BlockingQueue<Span> pending = new LinkedBlockingQueue<Span>(1000);
+  private final BlockingQueue<Span> pending;
   @Nullable // for testing
   private final Flusher flusher;
 
@@ -31,6 +34,11 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
    * @param flushInterval in seconds. 0 implies spans are {@link #flush() flushed externally.
    */
   protected FlushingSpanCollector(SpanCollectorMetricsHandler metrics, int flushInterval) {
+    this(new LinkedBlockingQueue<Span>(DEFAULT_QUEUE_CAPACITY), metrics, flushInterval);
+  }
+
+  protected FlushingSpanCollector(BlockingQueue<Span> pendingQueue, SpanCollectorMetricsHandler metrics, int flushInterval) {
+    this.pending = Util.checkNotNull(pendingQueue, "pendingQueue cannot be null");
     this.metrics = metrics;
     this.flusher = flushInterval > 0 ? new Flusher(this, flushInterval, getClass().getSimpleName()) : null;
   }
