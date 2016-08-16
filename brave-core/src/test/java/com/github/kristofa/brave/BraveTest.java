@@ -50,7 +50,7 @@ public class BraveTest {
 
         final ServerTracer secondServerTracer =
             brave.serverTracer();
-        assertSame("It is important that each client tracer we get shares same state.",
+        assertSame("It is important that each server tracer we get shares same state.",
                    serverTracer.spanAndEndpoint().state(), secondServerTracer.spanAndEndpoint().state());
     }
 
@@ -64,6 +64,21 @@ public class BraveTest {
         assertSame("Client and server tracers should share same state.", clientTracer.spanAndEndpoint().state(),
             serverTracer.spanAndEndpoint().state());
 
+    }
+
+    @Test
+    public void testGetLocalTracer() {
+        final LocalTracer localTracer = brave.localTracer();
+        assertNotNull(localTracer);
+        assertSame(mockSpanCollector, localTracer.spanCollector());
+        assertSame("LocalTracer should be configured with the traceSampler we submitted.",
+                mockSampler, localTracer
+                        .traceSampler());
+
+        final LocalTracer secondLocalTracer =
+                brave.localTracer();
+        assertSame("It is important that each local tracer we get shares same state.",
+                localTracer.spanAndEndpoint().state(), secondLocalTracer.spanAndEndpoint().state());
     }
 
     @Test
