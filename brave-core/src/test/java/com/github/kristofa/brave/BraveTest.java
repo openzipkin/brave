@@ -50,7 +50,7 @@ public class BraveTest {
 
         final ServerTracer secondServerTracer =
             brave.serverTracer();
-        assertSame("It is important that each client tracer we get shares same state.",
+        assertSame("It is important that each server tracer we get shares same state.",
                    serverTracer.spanAndEndpoint().state(), secondServerTracer.spanAndEndpoint().state());
     }
 
