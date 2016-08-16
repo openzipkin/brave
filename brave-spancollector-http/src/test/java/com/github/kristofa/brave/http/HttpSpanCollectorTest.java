@@ -21,7 +21,7 @@ public class HttpSpanCollectorTest {
   @Rule
   public final ZipkinRule zipkinRule = new ZipkinRule();
 
-  TestMetricsHander metrics = new TestMetricsHander();
+  TestMetricsHandler metrics = new TestMetricsHandler();
   // set flush interval to 0 so that tests can drive flushing explicitly
   HttpSpanCollector.Config config = HttpSpanCollector.Config.builder().flushInterval(0).build();
   HttpSpanCollector collector = new HttpSpanCollector(zipkinRule.httpUrl(), config, metrics);
@@ -126,7 +126,7 @@ public class HttpSpanCollectorTest {
     assertThat(metrics.droppedSpans.get()).isEqualTo(2);
   }
 
-  class TestMetricsHander implements SpanCollectorMetricsHandler {
+  static class TestMetricsHandler implements SpanCollectorMetricsHandler {
 
     final AtomicInteger acceptedSpans = new AtomicInteger();
     final AtomicInteger droppedSpans = new AtomicInteger();
