@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.scribe;
 
-import com.twitter.zipkin.gen.scribe;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +26,7 @@ class ScribeServer {
     public ScribeServer(final int port) throws TTransportException {
         receiver = new ScribeReceiver();
 
-        final Processor<Iface> processor = new scribe.Processor<>(receiver);
+        final Processor<Iface> processor = new Processor<Iface>(receiver);
 
         final TNonblockingServerTransport transport = new TNonblockingServerSocket(port);
         final THsHaServer.Args args = new THsHaServer.Args(transport);
