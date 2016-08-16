@@ -62,12 +62,7 @@ public class Brave {
          * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(String serviceName) {
-            try {
-                int ip = toInt(getLocalHostLANAddress());
-                state = new ThreadLocalServerClientAndLocalSpanState(ip, 0, serviceName);
-            } catch (UnknownHostException e) {
-                throw new IllegalStateException("Unable to get Inet address", e);
-            }
+            this(createDefaultServerClientAndLocalSpanState(getLocalHostIpV4Address(), 0, serviceName));
         }
 
         /**
@@ -78,7 +73,7 @@ public class Brave {
          * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(int ip, int port, String serviceName) {
-            state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
+            this(createDefaultServerClientAndLocalSpanState(ip, port, serviceName));
         }
 
         /**
@@ -86,6 +81,29 @@ public class Brave {
          */
         public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
+        }
+
+        /**
+         * @return localhost ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+         * @throws IllegalStateException if unable to get localhost IP address
+         */
+        private static int getLocalHostIpV4Address() {
+            try {
+                return toInt(getLocalHostLANAddress());
+            } catch (UnknownHostException e) {
+                throw new IllegalStateException("Unable to get Inet address", e);
+            }
+        }
+
+        /**
+         * Create the server, client, and local span state for default implementations.
+         *
+         * @param ip          ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+         * @param port        Port for service
+         * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
+         */
+        private static ServerClientAndLocalSpanState createDefaultServerClientAndLocalSpanState(int ip, int port, String serviceName) {
+            return new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
         }
 
         /**
