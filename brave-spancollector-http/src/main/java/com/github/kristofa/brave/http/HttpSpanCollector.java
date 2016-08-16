@@ -2,14 +2,18 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.AbstractSpanCollector;
 import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
+import com.github.kristofa.brave.FlushingSpanCollector;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.google.auto.value.AutoValue;
+import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.SpanCodec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -24,36 +28,49 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
           .connectTimeout(10 * 1000)
           .readTimeout(60 * 1000)
           .compressionEnabled(false)
-          .flushInterval(1);
+          .queueCapacity(DEFAULT_QUEUE_CAPACITY)
+          .flushInterval(1, TimeUnit.SECONDS);
     }
 
     abstract int connectTimeout();
 
     abstract int readTimeout();
 
+    abstract int queueCapacity();
+
     abstract int flushInterval();
+
+    abstract TimeUnit flushIntervalUnit();
 
     abstract boolean compressionEnabled();
 
     @AutoValue.Builder
-    public interface Builder {
+    abstract static class Builder {
       /** Default 10 * 1000 milliseconds. 0 implies no timeout. */
-      Builder connectTimeout(int connectTimeout);
+      abstract Builder connectTimeout(int connectTimeout);
 
       /** Default 60 * 1000 milliseconds. 0 implies no timeout. */
-      Builder readTimeout(int readTimeout);
+      abstract Builder readTimeout(int readTimeout);
 
       /** Default 1 second. 0 implies spans are {@link #flush() flushed} externally. */
-      Builder flushInterval(int flushInterval);
+      abstract Builder flushInterval(int flushInterval);
+
+      abstract Builder flushIntervalUnit(TimeUnit unit);
+
+      Builder flushInterval(int flushInterval, TimeUnit unit) {
+        return flushInterval(flushInterval).flushIntervalUnit(unit);
+      }
+
+      abstract Builder queueCapacity(int queueCapacity);
 
       /**
        * Default false. true implies that spans will be gzipped before transport.
-       *
+       * <p>
        * <p>Note: This feature requires zipkin-scala 1.34+ or zipkin-java 0.6+
        */
-      Builder compressionEnabled(boolean compressSpans);
+      abstract Builder compressionEnabled(boolean compressSpans);
 
-      Config build();
+      abstract Config build();
     }
   }
 
@@ -84,7 +101,8 @@ public final class HttpSpanCollector extends AbstractSpanCollector {
 
   // Visible for testing. Ex when tests need to explicitly control flushing, set interval to 0.
   HttpSpanCollector(String baseUrl, Config config, SpanCollectorMetricsHandler metrics) {
-    super(SpanCodec.JSON, metrics,  config.flushInterval());
+    super(SpanCodec.JSON, metrics, new LinkedBlockingQueue<Span>(config.queueCapacity()),
+            config.flushInterval(), config.flushIntervalUnit());
     this.url = baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "api/v1/spans";
     this.config = config;
   }

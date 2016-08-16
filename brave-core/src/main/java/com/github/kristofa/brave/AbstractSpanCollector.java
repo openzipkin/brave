@@ -4,6 +4,8 @@ import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.SpanCodec;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Implemented {@link #sendSpans} to transport a encoded list of spans to Zipkin.
@@ -15,9 +17,19 @@ public abstract class AbstractSpanCollector extends FlushingSpanCollector {
   /**
    * @param flushInterval in seconds. 0 implies spans are {@link #flush() flushed externally.
    */
-  public AbstractSpanCollector(SpanCodec codec, SpanCollectorMetricsHandler metrics,
-      int flushInterval) {
+  public AbstractSpanCollector(SpanCodec codec,
+                               SpanCollectorMetricsHandler metrics,
+                               int flushInterval) {
     super(metrics, flushInterval);
+    this.codec = codec;
+  }
+
+  public AbstractSpanCollector(SpanCodec codec,
+                               SpanCollectorMetricsHandler metrics,
+                               BlockingQueue<Span> pendingQueue,
+                               int flushInterval,
+                               TimeUnit unit) {
+    super(metrics, pendingQueue, flushInterval, unit);
     this.codec = codec;
   }
 

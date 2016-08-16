@@ -4,6 +4,7 @@ import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -124,6 +125,44 @@ public class HttpSpanCollectorTest {
     collector.flush(); // manually flush the spans
 
     assertThat(metrics.droppedSpans.get()).isEqualTo(2);
+  }
+
+  @Test
+  public void queueAndFlushConfiguration() throws Exception {
+    config = HttpSpanCollector.Config.builder()
+            .flushInterval(42, TimeUnit.MILLISECONDS)
+            .queueCapacity(1234)
+            .build();
+    collector = HttpSpanCollector.create(zipkinRule.httpUrl(), config, metrics);
+
+    assertThat(config.flushInterval()).isEqualTo(42);
+    assertThat(config.flushIntervalUnit()).isEqualTo(TimeUnit.MILLISECONDS);
+    assertThat(config.queueCapacity()).isEqualTo(1234);
+  }
+
+  @Test
+  public void frequentFlushing() throws Exception {
+    config = HttpSpanCollector.Config.builder()
+            .flushInterval(10, TimeUnit.MILLISECONDS)
+            .queueCapacity(2000)
+            .build();
+    collector.close();
+    collector = HttpSpanCollector.create(zipkinRule.httpUrl(), config, metrics);
+
+    collector.collect(span(1L, "foo"));
+    collector.collect(span(2L, "bar"));
+
+    // wait until flush runs at least once
+    Thread.sleep(50);
+
+    // Ensure only one request was sent
+    assertThat(zipkinRule.httpRequestCount()).isEqualTo(1);
+
+    // Now, let's read back the spans we sent!
+    assertThat(zipkinRule.getTraces()).containsExactly(
+            asList(zipkinSpan(1L, "foo")),
+            asList(zipkinSpan(2L, "bar"))
+    );
   }
 
   static class TestMetricsHandler implements SpanCollectorMetricsHandler {

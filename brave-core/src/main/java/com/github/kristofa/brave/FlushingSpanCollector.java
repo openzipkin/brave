@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Span;
 import java.io.Closeable;
 import java.io.Flushable;
@@ -13,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -22,17 +24,34 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public abstract class FlushingSpanCollector implements SpanCollector, Flushable, Closeable {
 
+  public static final int DEFAULT_QUEUE_CAPACITY = 1000;
+
   private final SpanCollectorMetricsHandler metrics;
-  private final BlockingQueue<Span> pending = new LinkedBlockingQueue<Span>(1000);
+  private final BlockingQueue<Span> pending;
   @Nullable // for testing
   private final Flusher flusher;
 
   /**
-   * @param flushInterval in seconds. 0 implies spans are {@link #flush() flushed externally.
+   * @param metrics handler for capturing span collection metrics.
+   * @param flushInterval in seconds. 0 implies spans are {@link #flush() flushed} externally.
    */
   protected FlushingSpanCollector(SpanCollectorMetricsHandler metrics, int flushInterval) {
+    this(metrics, new LinkedBlockingQueue<Span>(DEFAULT_QUEUE_CAPACITY), flushInterval, SECONDS);
+  }
+
+  /**
+   * @param metrics       handler for capturing span collection metrics.
+   * @param pendingQueue  queue for buffering collected spans.
+   * @param flushInterval flush interval. 0 implies spans are {@link #flush() flushed} externally.
+   * @param unit          the time unit of the flushInterval parameter.
+   */
+  protected FlushingSpanCollector(SpanCollectorMetricsHandler metrics,
+                                  BlockingQueue<Span> pendingQueue,
+                                  int flushInterval,
+                                  TimeUnit unit) {
+    this.pending = Util.checkNotNull(pendingQueue, "pendingQueue cannot be null");
     this.metrics = metrics;
-    this.flusher = flushInterval > 0 ? new Flusher(this, flushInterval, getClass().getSimpleName()) : null;
+    this.flusher = flushInterval > 0 ? new Flusher(this, flushInterval, unit, getClass().getSimpleName()) : null;
   }
 
   /**
@@ -73,7 +92,7 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
     final Flushable flushable;
     final ScheduledExecutorService scheduler;
 
-    Flusher(Flushable flushable, int flushInterval, final String threadPoolName) {
+    Flusher(Flushable flushable, int flushInterval, TimeUnit timeUnit, final String threadPoolName) {
       this.flushable = flushable;
       this.scheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
         @Override
@@ -81,7 +100,7 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
           return new Thread(r, threadPoolName);
         }
       });
-      this.scheduler.scheduleWithFixedDelay(this, 0, flushInterval, SECONDS);
+      this.scheduler.scheduleWithFixedDelay(this, 0, flushInterval, timeUnit);
     }
 
     @Override
