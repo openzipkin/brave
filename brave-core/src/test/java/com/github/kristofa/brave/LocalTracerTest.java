@@ -1,7 +1,10 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -18,6 +21,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
 @RunWith(PowerMockRunner.class)
@@ -29,7 +33,7 @@ public class LocalTracerTest {
     private static final String COMPONENT_NAME = "componentname";
     private static final String OPERATION_NAME = "operationname";
 
-    private ServerClientAndLocalSpanState state = new TestServerClientAndLocalSpanStateCompilation();
+    private ServerClientAndLocalSpanState state;
     private Random mockRandom;
     private SpanCollector mockCollector;
     private LocalTracer localTracer;
@@ -42,10 +46,12 @@ public class LocalTracerTest {
         mockCollector = mock(SpanCollector.class);
 
         PowerMockito.mockStatic(System.class);
+        state = new TestServerClientAndLocalSpanStateCompilation();
         localTracer = LocalTracer.builder()
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .randomGenerator(mockRandom)
                 .spanCollector(mockCollector)
+                .allowNestedLocalSpans(false)
                 .traceSampler(Sampler.create(1.0f))
                 .build();
     }
@@ -243,4 +249,60 @@ public class LocalTracerTest {
 
         verifyNoMoreInteractions(mockCollector);
     }
+
+    @Test
+    public void startSpan_with_inheritable_nested_local_spans() {
+        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1, 0));
+        localTracer = LocalTracer
+                .builder(localTracer)
+                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
+                .allowNestedLocalSpans(true)
+                .build();
+
+        assertNull(localTracer.getNewSpanParent());
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name"));
+
+        SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertEquals(SpanId.builder().traceId(PARENT_TRACE_ID).spanId(555L).parentId(PARENT_SPAN_ID).build(), span1);
+        assertEquals(span1.spanId, localTracer.getNewSpanParent().getId());
+
+        SpanId span2 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertEquals(SpanId.builder().traceId(PARENT_TRACE_ID).spanId(555L).parentId(span1.spanId).build(), span2);
+        assertEquals(span2.spanId, localTracer.getNewSpanParent().getId());
+
+        assertEquals(span2.spanId, state.getCurrentLocalSpan().getId());
+        localTracer.finishSpan();
+        assertEquals(span1.spanId, state.getCurrentLocalSpan().getId());
+        localTracer.finishSpan();
+        assertNull(state.getCurrentLocalSpan());
+    }
+
+    @Test
+    public void startSpan_nested_local_spans_disabled() {
+        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1, 0));
+        localTracer = LocalTracer
+                .builder(localTracer)
+                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
+                .allowNestedLocalSpans(false)
+                .build();
+
+        assertNull(localTracer.getNewSpanParent());
+        final ServerSpan serverSpan = ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
+        state.setCurrentServerSpan(serverSpan);
+
+        SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertEquals(SpanId.builder().traceId(PARENT_TRACE_ID).spanId(555L).parentId(PARENT_SPAN_ID).build(), span1);
+        assertEquals(serverSpan.getSpan(), localTracer.getNewSpanParent());
+
+        SpanId span2 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertEquals(SpanId.builder().traceId(PARENT_TRACE_ID).spanId(555L).parentId(PARENT_SPAN_ID).build(), span2);
+        assertEquals(serverSpan.getSpan(), localTracer.getNewSpanParent());
+
+        assertEquals(span2.spanId, state.getCurrentLocalSpan().getId());
+        localTracer.finishSpan();
+        assertEquals(span1.spanId, state.getCurrentLocalSpan().getId());
+        localTracer.finishSpan();
+        assertNull(state.getCurrentLocalSpan());
+    }
+
 }
