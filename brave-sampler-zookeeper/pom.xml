@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave</artifactId>
-    <version>3.10.0</version>
+    <version>3.10.1-SNAPSHOT</version>
   </parent>
   
   <artifactId>brave-sampler-zookeeper</artifactId>
@@ -28,7 +28,7 @@
     <dependency>
         <groupId>io.zipkin.brave</groupId>
         <artifactId>brave-core</artifactId>
-        <version>3.10.0</version>
+        <version>3.10.1-SNAPSHOT</version>
     </dependency>
     <dependency>
         <groupId>org.apache.curator</groupId>
