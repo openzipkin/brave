@@ -23,6 +23,8 @@
     </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <main.java.version>1.6</main.java.version>
+        <main.signature.artifact>java16</main.signature.artifact>
     </properties>
 
     <dependencies>
