@@ -36,8 +36,17 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- default bytecode version for src/main -->
+    <main.java.version>1.7</main.java.version>
+    <main.signature.artifact>java17</main.signature.artifact>
+
+    <!-- default bytecode version for src/test -->
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+
     <spring.version>4.1.6.RELEASE</spring.version>
-    <zipkin.version>1.5.1</zipkin.version>
+    <zipkin.version>1.7.0</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
 
@@ -54,6 +63,7 @@
     <!-- Catch common Java mistakes as compile-time errors -->
     <plexus-compiler-javac-errorprone.version>2.8</plexus-compiler-javac-errorprone.version>
     <errorprone.version>2.0.9</errorprone.version>
+    <animal-sniffer-maven-plugin.version>1.15</animal-sniffer-maven-plugin.version>
   </properties>
 
   <modules>
@@ -280,66 +290,62 @@
             </testResource>
         </testResources>
       <plugins>
-          <plugin>
-              <inherited>true</inherited>
-              <artifactId>maven-compiler-plugin</artifactId>
+        <plugin>
+          <inherited>true</inherited>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <executions>
+            <!-- Ensure main source tree compiles to Java ${main.java.version} bytecode. -->
+            <execution>
+              <id>default-compile</id>
+              <phase>compile</phase>
+              <goals>
+                <goal>compile</goal>
+              </goals>
               <configuration>
-                  <source>1.8</source>
-                  <target>1.8</target>
-                  <optimize>true</optimize>
-                  <debug>true</debug>
-                  <compilerId>javac-with-errorprone</compilerId>
-                  <forceJavacCompilerUse>true</forceJavacCompilerUse>
-                  <showWarnings>true</showWarnings>
-                  <compilerArgument>-XepDisableWarningsInGeneratedCode</compilerArgument>
+                <source>${main.java.version}</source>
+                <target>${main.java.version}</target>
               </configuration>
-              <dependencies>
-                  <dependency>
-                      <groupId>org.codehaus.plexus</groupId>
-                      <artifactId>plexus-compiler-javac-errorprone</artifactId>
-                      <version>${plexus-compiler-javac-errorprone.version}</version>
-                  </dependency>
-                  <dependency>
-                      <groupId>com.google.errorprone</groupId>
-                      <artifactId>error_prone_core</artifactId>
-                      <version>${errorprone.version}</version>
-                  </dependency>
-              </dependencies>
-              <executions>
-                  <!-- Ensure main source tree compiles to Java 7 bytecode. -->
-                  <execution>
-                      <id>default-compile</id>
-                      <phase>compile</phase>
-                      <goals>
-                          <goal>compile</goal>
-                      </goals>
-                      <configuration>
-                          <source>1.7</source>
-                          <target>1.7</target>
-                      </configuration>
-                  </execution>
-              </executions>
-          </plugin>
-          <!-- Make sure Java 8 classes and methods aren't accidentally used -->
-          <plugin>
-              <groupId>org.codehaus.mojo</groupId>
-              <artifactId>animal-sniffer-maven-plugin</artifactId>
-              <version>1.14</version>
-              <configuration>
-                  <signature>
-                      <groupId>org.codehaus.mojo.signature</groupId>
-                      <artifactId>java17</artifactId>
-                      <version>1.0</version>
-                  </signature>
-              </configuration>
-              <executions>
-                  <execution>
-                      <goals>
-                          <goal>check</goal>
-                      </goals>
-                  </execution>
-              </executions>
-          </plugin>
+            </execution>
+          </executions>
+          <configuration>
+            <compilerId>javac-with-errorprone</compilerId>
+            <forceJavacCompilerUse>true</forceJavacCompilerUse>
+            <showWarnings>true</showWarnings>
+          </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.plexus</groupId>
+              <artifactId>plexus-compiler-javac-errorprone</artifactId>
+              <version>${plexus-compiler-javac-errorprone.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>com.google.errorprone</groupId>
+              <artifactId>error_prone_core</artifactId>
+              <version>${errorprone.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>animal-sniffer-maven-plugin</artifactId>
+          <version>${animal-sniffer-maven-plugin.version}</version>
+          <configuration>
+            <signature>
+              <groupId>org.codehaus.mojo.signature</groupId>
+              <artifactId>${main.signature.artifact}</artifactId>
+              <version>1.0</version>
+            </signature>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
           <plugin>
               <artifactId>maven-surefire-plugin</artifactId>
               <version>2.18.1</version>
