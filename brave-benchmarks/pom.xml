@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave</artifactId>
-    <version>3.9.2-SNAPSHOT</version>
+    <version>3.10.0</version>
   </parent>
 
   <artifactId>brave-benchmarks</artifactId>
