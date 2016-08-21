@@ -10,19 +10,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-import java.util.Properties;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.InOrder;
-
 import com.github.kristofa.brave.ClientTracer;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InOrder;
+
+import zipkin.Constants;
+import zipkin.TraceKeys;
+
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.util.Properties;
 
 public class MySQLStatementInterceptorTest {
 
@@ -55,7 +58,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).submitBinaryAnnotation(eq("executed.query"), eq(sql));
+        order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
     }
@@ -152,7 +155,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).submitBinaryAnnotation(eq("executed.query"), eq(sql));
+        order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
     }
@@ -178,7 +181,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).submitBinaryAnnotation(eq("warning.count"), eq(warningCount));
-        order.verify(clientTracer).submitBinaryAnnotation(eq("error.code"), eq(errorCode));
+        order.verify(clientTracer).submitBinaryAnnotation(eq(Constants.ERROR), eq(errorCode));
         order.verify(clientTracer).setClientReceived();
         order.verifyNoMoreInteractions();
     }
