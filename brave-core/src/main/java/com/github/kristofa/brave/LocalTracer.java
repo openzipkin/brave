@@ -35,7 +35,7 @@ import static zipkin.Constants.LOCAL_COMPONENT;
 @AutoValue
 public abstract class LocalTracer extends AnnotationSubmitter {
 
-    static Builder builder() {
+    public static Builder builder() {
         return new AutoValue_LocalTracer.Builder();
     }
 
@@ -54,17 +54,17 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     abstract Sampler traceSampler();
 
     @AutoValue.Builder
-    abstract static class Builder {
+    public abstract static class Builder {
 
-        abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
+        public abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
 
-        abstract Builder randomGenerator(Random randomGenerator);
+        public abstract Builder randomGenerator(Random randomGenerator);
 
-        abstract Builder spanCollector(SpanCollector spanCollector);
+        public abstract Builder spanCollector(SpanCollector spanCollector);
 
-        abstract Builder traceSampler(Sampler sampler);
+        public abstract Builder traceSampler(Sampler sampler);
 
-        abstract LocalTracer build();
+        public abstract LocalTracer build();
     }
 
     /**
