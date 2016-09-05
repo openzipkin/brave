@@ -63,8 +63,7 @@ public class BraveGrpcInterceptorsTest {
 
         int serverPort = pickUnusedPort();
         server = ServerBuilder.forPort(serverPort)
-            .addService(ServerInterceptors.intercept(
-                GreeterGrpc.bindService(new GreeterImpl()), new BraveGrpcServerInterceptor(brave)))
+            .addService(ServerInterceptors.intercept(new GreeterImpl(), new BraveGrpcServerInterceptor(brave)))
             .build()
             .start();
 
