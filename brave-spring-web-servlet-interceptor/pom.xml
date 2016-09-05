@@ -13,10 +13,6 @@
       Spring HandlerInterceptorAdapter implementation.
   </description>
 
-    <properties>
-        <jetty.version>8.1.9.v20130131</jetty.version>
-    </properties>
-
     <dependencies>
      <dependency>
         <groupId>io.zipkin.brave</groupId>

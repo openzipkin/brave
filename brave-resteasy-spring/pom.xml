@@ -24,7 +24,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <resteasy.version>2.3.5.Final</resteasy.version>
-    <jetty.version>8.1.9.v20130131</jetty.version>
   </properties>
   
   <dependencies>
