@@ -21,7 +21,7 @@ import zipkin.TraceKeys;
 import java.sql.ResultSet;
 
 @RunWith(MockitoJUnitRunner.class)
-public class BraveP6SpyTests {
+public class BraveP6SpyTest {
 
     //Get rid of annoying derby.log
     static {
