@@ -46,7 +46,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <spring.version>4.1.6.RELEASE</spring.version>
-    <zipkin.version>1.8.3</zipkin.version>
+    <zipkin.version>1.8.4</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
 
