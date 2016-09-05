@@ -21,7 +21,7 @@ public class SpanTest {
         .setTimestamp(1444438900939000L)
         .setDuration(376000L);
 
-    assertEquals("{\"traceId\":\"f66529c8cc356aa0\",\"name\":\"get\",\"id\":\"f66529c8cc356aa0\",\"timestamp\":1444438900939000,\"duration\":376000,\"annotations\":[],\"binaryAnnotations\":[]}", span.toString());
+    assertEquals("{\"traceId\":\"f66529c8cc356aa0\",\"id\":\"f66529c8cc356aa0\",\"name\":\"get\",\"timestamp\":1444438900939000,\"duration\":376000}", span.toString());
   }
 
   @Test
