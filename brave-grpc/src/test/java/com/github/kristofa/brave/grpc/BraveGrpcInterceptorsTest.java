@@ -53,11 +53,11 @@ public class BraveGrpcInterceptorsTest {
     @Before
     public void before() throws Exception {
         enableSampling = true;
-        SpanCollectorForTesting.getInstance().getCollectedSpans().clear();
+        SpanCollectorForTesting.INSTANCE.clear();
 
         final Brave.Builder builder = new Brave.Builder();
         brave = builder
-            .spanCollector(SpanCollectorForTesting.getInstance())
+            .spanCollector(SpanCollectorForTesting.INSTANCE)
             .traceSampler(new ExplicitSampler())
             .build();
 
@@ -99,7 +99,7 @@ public class BraveGrpcInterceptorsTest {
             helloReplyListenableFuture.get();
             fail();
         } catch (ExecutionException expected) {
-            List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
+            List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
             assertThat(spans.size()).isEqualTo(1);
             BinaryAnnotation binaryAnnotation = spans.get(0).getBinary_annotations().get(0);
             assertThat(binaryAnnotation.getKey()).isEqualTo(GRPC_STATUS_CODE);
@@ -116,7 +116,7 @@ public class BraveGrpcInterceptorsTest {
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
         validateSpans();
-        List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
+        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
         Optional<Span> maybeSpan = spans.stream()
             .filter(s -> s.getAnnotations().stream().anyMatch(a -> "ss".equals(a.value)))
             .findFirst();
@@ -137,7 +137,7 @@ public class BraveGrpcInterceptorsTest {
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
-        List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
+        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
         assertThat(spans.size()).isEqualTo(0);
     }
 
@@ -146,7 +146,7 @@ public class BraveGrpcInterceptorsTest {
      * server and the client.
      */
     void validateSpans() throws Exception {
-        List<Span> spans = SpanCollectorForTesting.getInstance().getCollectedSpans();
+        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
         assertThat(spans.size()).isEqualTo(2);
 
         Span serverSpan = spans.get(0);

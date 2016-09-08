@@ -2,42 +2,33 @@ package com.github.kristofa.brave.grpc;
 
 import com.github.kristofa.brave.SpanCollector;
 import com.twitter.zipkin.gen.Span;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
-public class SpanCollectorForTesting implements SpanCollector {
+enum SpanCollectorForTesting implements SpanCollector {
+  INSTANCE;
 
-    private final static Logger LOGGER = Logger.getLogger(SpanCollectorForTesting.class.getName());
+  private final static Logger LOGGER = Logger.getLogger(SpanCollectorForTesting.class.getName());
 
-    private final List<Span> spans = new ArrayList<Span>();
+  private final ConcurrentLinkedQueue<Span> spans = new ConcurrentLinkedQueue<Span>();
 
-    private static SpanCollectorForTesting INSTANCE;
+  @Override public void collect(Span span) {
+    LOGGER.info(span.toString());
+    spans.add(span);
+  }
 
-    private SpanCollectorForTesting() {
-    }
+  List<Span> getCollectedSpans() {
+    return new ArrayList<>(spans);
+  }
 
-    public static synchronized SpanCollectorForTesting getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new SpanCollectorForTesting();
-        }
-        return INSTANCE;
-    }
+  void clear() {
+    spans.clear();
+  }
 
-    @Override
-    public void collect(final Span span) {
-        LOGGER.info(span.toString());
-        spans.add(span);
-    }
-
-    public List<Span> getCollectedSpans() {
-        return spans;
-    }
-
-    @Override
-    public void addDefaultAnnotation(final String key, final String value) {
-        throw new UnsupportedOperationException();
-    }
-
+  @Override
+  public void addDefaultAnnotation(final String key, final String value) {
+    throw new UnsupportedOperationException();
+  }
 }
