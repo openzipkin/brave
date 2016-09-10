@@ -47,6 +47,7 @@ public class LocalTracerTest {
                 .randomGenerator(mockRandom)
                 .spanCollector(mockCollector)
                 .traceSampler(Sampler.create(1.0f))
+                .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
                 .build();
     }
 

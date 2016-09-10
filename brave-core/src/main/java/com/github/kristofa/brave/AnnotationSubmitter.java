@@ -10,16 +10,26 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Used to submit application specific annotations.
- * 
+ *
  * @author kristof
  */
 public abstract class AnnotationSubmitter {
 
-    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
-        return new AnnotationSubmitterImpl(spanAndEndpoint);
+    public interface Clock {
+        long currentTimeMicroseconds();
+    }
+
+    static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, DefaultClock.INSTANCE);
+    }
+
+    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint, Clock clock) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, clock);
     }
 
     abstract SpanAndEndpoint spanAndEndpoint();
+
+    abstract Clock clock();
 
     /**
      * Associates an event that explains latency with the current system time.
@@ -144,7 +154,7 @@ public abstract class AnnotationSubmitter {
     }
 
     long currentTimeMicroseconds() {
-        return System.currentTimeMillis() * 1000;
+        return clock().currentTimeMicroseconds();
     }
 
     private void addAnnotation(Span span, Annotation annotation) {
@@ -165,14 +175,31 @@ public abstract class AnnotationSubmitter {
     private static final class AnnotationSubmitterImpl extends AnnotationSubmitter {
 
         private final SpanAndEndpoint spanAndEndpoint;
+        private final Clock clock;
 
-        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint) {
+        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint, Clock clock) {
             this.spanAndEndpoint = checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
+            this.clock = clock;
         }
 
         @Override
         SpanAndEndpoint spanAndEndpoint() {
             return spanAndEndpoint;
+        }
+
+        @Override
+        protected Clock clock() {
+            return clock;
+        }
+
+    }
+
+    static final class DefaultClock implements Clock {
+        static final Clock INSTANCE = new DefaultClock();
+        private DefaultClock() {}
+        @Override
+        public long currentTimeMicroseconds() {
+            return System.currentTimeMillis() * 1000;
         }
     }
 }

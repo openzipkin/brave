@@ -37,6 +37,8 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
     abstract Sampler traceSampler();
+    @Override
+    abstract AnnotationSubmitter.Clock clock();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -55,6 +57,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
         public abstract Builder traceSampler(Sampler sampler);
+        public abstract Builder clock(AnnotationSubmitter.Clock clock);
 
         public abstract ClientTracer build();
     }

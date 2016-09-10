@@ -53,6 +53,9 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract Sampler traceSampler();
 
+    @Override
+    abstract AnnotationSubmitter.Clock clock();
+
     @AutoValue.Builder
     abstract static class Builder {
 
@@ -63,6 +66,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         abstract Builder spanCollector(SpanCollector spanCollector);
 
         abstract Builder traceSampler(Sampler sampler);
+
+        abstract Builder clock(AnnotationSubmitter.Clock clock);
 
         abstract LocalTracer build();
     }
