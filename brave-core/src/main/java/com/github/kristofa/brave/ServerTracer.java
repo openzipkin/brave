@@ -23,7 +23,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
  * <li>Service request executes its logic...
  * <li>Just before sending response we execute {@link ServerTracer#setServerSend()}.
  * </ol>
- * 
+ *
  * @author kristof
  */
 @AutoValue
@@ -38,6 +38,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     abstract Random randomGenerator();
     abstract SpanCollector spanCollector();
     abstract Sampler traceSampler();
+    @Override
+    abstract AnnotationSubmitter.Clock clock();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -56,6 +58,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         public abstract Builder spanCollector(SpanCollector spanCollector);
 
         public abstract Builder traceSampler(Sampler sampler);
+
+        public abstract Builder clock(AnnotationSubmitter.Clock clock);
 
         public abstract ServerTracer build();
     }

@@ -10,16 +10,43 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Used to submit application specific annotations.
- * 
+ *
  * @author kristof
  */
 public abstract class AnnotationSubmitter {
 
-    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
-        return new AnnotationSubmitterImpl(spanAndEndpoint);
+    /**
+     * This interface is used to make the implementation to AnnotationSubmitter.currentTimeMicroseconds() contextual.
+     * The clock is defined by the subclass's implementation of the `clock()` method.
+     * A DefaultClock implementation is provided that simply returns `System.currentTimeMillis() * 1000`.
+     */
+    public interface Clock {
+        /**
+         * Epoch microseconds used for {@link zipkin.Span#timestamp} and {@link zipkin.Annotation#timestamp}.
+         *
+         * <p>This should use the most precise value possible. For example, {@code gettimeofday} or multiplying
+         * {@link System#currentTimeMillis} by 1000.
+         *
+         * <p>See <a href="http://zipkin.io/pages/instrumenting.html">Instrumenting a service</a> for more.
+         */
+        long currentTimeMicroseconds();
+    }
+
+    static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, DefaultClock.INSTANCE);
+    }
+
+    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint, Clock clock) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, clock);
     }
 
     abstract SpanAndEndpoint spanAndEndpoint();
+
+    /** The implementation of Clock to use.
+     * See {@link com.github.kristofa.brave.AnnotationSubmitter#currentTimeMicroseconds}
+     * and {@link com.github.kristofa.brave.AnnotationSubmitter#Clock}
+     **/
+    abstract Clock clock();
 
     /**
      * Associates an event that explains latency with the current system time.
@@ -147,7 +174,7 @@ public abstract class AnnotationSubmitter {
     }
 
     long currentTimeMicroseconds() {
-        return System.currentTimeMillis() * 1000;
+        return clock().currentTimeMicroseconds();
     }
 
     private void addAnnotation(Span span, Annotation annotation) {
@@ -168,14 +195,31 @@ public abstract class AnnotationSubmitter {
     private static final class AnnotationSubmitterImpl extends AnnotationSubmitter {
 
         private final SpanAndEndpoint spanAndEndpoint;
+        private final Clock clock;
 
-        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint) {
+        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint, Clock clock) {
             this.spanAndEndpoint = checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
+            this.clock = clock;
         }
 
         @Override
         SpanAndEndpoint spanAndEndpoint() {
             return spanAndEndpoint;
+        }
+
+        @Override
+        protected Clock clock() {
+            return clock;
+        }
+
+    }
+
+    static final class DefaultClock implements Clock {
+        static final Clock INSTANCE = new DefaultClock();
+        private DefaultClock() {}
+        @Override
+        public long currentTimeMicroseconds() {
+            return System.currentTimeMillis() * 1000;
         }
     }
 }
