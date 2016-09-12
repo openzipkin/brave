@@ -22,7 +22,7 @@
     </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <p6spy.version>3.0.0-alpha-1</p6spy.version>
+        <p6spy.version>3.0.0-rc2</p6spy.version>
         <derby.version>10.12.1.1</derby.version>
         <liquibase.version>3.0.8</liquibase.version>
         <jmh.version>1.12</jmh.version>
