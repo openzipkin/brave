@@ -15,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 
 public final class BraveP6SpyListener extends JdbcEventListener {
-
     // TODO: Figure out a better approach
     static volatile ClientTracer clientTracer;
 
@@ -66,7 +65,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, SQLException e) {
+    public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, int[] updateCounts, SQLException e) {
         endTrace(e);
     }
 
@@ -76,7 +75,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteUpdate(PreparedStatementInformation statementInformation, long timeElapsedNanos, SQLException e) {
+    public void onAfterExecuteUpdate(PreparedStatementInformation statementInformation, long timeElapsedNanos, int rowCount, SQLException e) {
         endTrace(e);
     }
 
@@ -86,7 +85,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteUpdate(StatementInformation statementInformation, long timeElapsedNanos, String sql, SQLException e) {
+    public void onAfterExecuteUpdate(StatementInformation statementInformation, long timeElapsedNanos, String sql, int rowCount, SQLException e) {
         endTrace(e);
     }
 
@@ -148,5 +147,4 @@ public final class BraveP6SpyListener extends JdbcEventListener {
             tracer.setClientReceived();
         }
     }
-
 }
