@@ -53,6 +53,7 @@ public class ClientTracerTest {
             .randomGenerator(mockRandom)
             .spanCollector(mockCollector)
             .traceSampler(mockSampler)
+            .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
             .build();
     }
 

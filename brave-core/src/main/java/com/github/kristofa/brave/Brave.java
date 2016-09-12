@@ -39,6 +39,7 @@ public class Brave {
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
         private boolean allowNestedLocalSpans = false;
+        private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -111,6 +112,11 @@ public class Brave {
          */
         public Builder spanCollector(SpanCollector spanCollector) {
             this.spanCollector = spanCollector;
+            return this;
+        }
+
+        public Builder clock(AnnotationSubmitter.Clock clock) {
+            this.clock = clock;
             return this;
         }
 
@@ -216,21 +222,27 @@ public class Brave {
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.sampler).build();
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
 
         clientTracer = ClientTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.sampler).build();
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
 
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
-                .traceSampler(builder.sampler).build();
-        
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
+
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);

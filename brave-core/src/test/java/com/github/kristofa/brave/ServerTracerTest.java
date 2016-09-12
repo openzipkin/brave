@@ -58,7 +58,9 @@ public class ServerTracerTest {
             .state(mockServerSpanState)
             .randomGenerator(mockRandom)
             .spanCollector(mockSpanCollector)
-            .traceSampler(mockSampler).build();
+            .traceSampler(mockSampler)
+            .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .build();
     }
 
     @Test

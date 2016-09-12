@@ -53,6 +53,7 @@ public class LocalTracerTest {
                 .spanCollector(mockCollector)
                 .allowNestedLocalSpans(false)
                 .traceSampler(Sampler.create(1.0f))
+                .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
                 .build();
     }
 
