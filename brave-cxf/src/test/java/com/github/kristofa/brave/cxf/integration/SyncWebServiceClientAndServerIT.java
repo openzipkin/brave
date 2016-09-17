@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Michał Podsiedzik
  */
-public class CxfClientAndServerIT {
+public class SyncWebServiceClientAndServerIT {
     private static final String URL = "http://localhost:9000/test";
 
     private Server server;
@@ -46,12 +46,12 @@ public class CxfClientAndServerIT {
         final SpanNameProvider provider = new DefaultSpanNameProvider();
 
         // setup server interceptors
-        final BraveServerInInterceptor serverInInterceptor = new BraveServerInInterceptor(brave.serverRequestInterceptor(), provider);
-        final BraveServerOutInterceptor serverOutInterceptor = new BraveServerOutInterceptor(brave.serverResponseInterceptor());
+        final BraveServerInInterceptor serverInInterceptor = new BraveServerInInterceptor(brave, provider);
+        final BraveServerOutInterceptor serverOutInterceptor = new BraveServerOutInterceptor(brave);
 
         // setup client interceptors
-        final BraveClientInInterceptor clientInInterceptor = new BraveClientInInterceptor(brave.clientResponseInterceptor());
-        final BraveClientOutInterceptor clientOutInterceptor = new BraveClientOutInterceptor(provider, brave.clientRequestInterceptor());
+        final BraveClientInInterceptor clientInInterceptor = new BraveClientInInterceptor(brave);
+        final BraveClientOutInterceptor clientOutInterceptor = new BraveClientOutInterceptor(brave, provider);
 
         // setup server
         final JaxWsServerFactoryBean serverFactory = new JaxWsServerFactoryBean();

@@ -1,32 +1,33 @@
 package com.github.kristofa.brave.cxf;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.TreeMap;
+
 import org.apache.cxf.message.Exchange;
+import org.apache.cxf.message.ExchangeImpl;
 import org.apache.cxf.message.Message;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.List;
-import java.util.TreeMap;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 
 /**
  * @author Michał Podsiedzik
  */
 public class ClientInterceptorsTest {
-    private SpanCollectorForTesting collector;
+
     private Brave brave;
+    private SpanCollectorForTesting collector;
     private DefaultSpanNameProvider provider;
 
     @Mock
     private Message message;
-    @Mock
-    private Exchange exchange;
 
     @Before
     public void setUp() throws Exception {
@@ -41,10 +42,12 @@ public class ClientInterceptorsTest {
     @Test
     public void test() {
 
-        BraveClientInInterceptor inInterceptor = new BraveClientInInterceptor(brave.clientResponseInterceptor());
-        BraveClientOutInterceptor outInterceptor = new BraveClientOutInterceptor(provider, brave.clientRequestInterceptor());
+        BraveClientInInterceptor inInterceptor = new BraveClientInInterceptor(brave);
+        BraveClientOutInterceptor outInterceptor = new BraveClientOutInterceptor(brave, provider);
 
-        when(exchange.get(Message.ENDPOINT_ADDRESS)).thenReturn("http://localhost:8000");
+        ExchangeImpl exchange = new ExchangeImpl();
+        exchange.put(Message.ENDPOINT_ADDRESS, "http://localhost:8000");
+
         when(message.getExchange()).thenReturn(exchange);
         when(message.get(Message.HTTP_REQUEST_METHOD)).thenReturn("post");
         when(message.get(Message.RESPONSE_CODE)).thenReturn(200);
