@@ -16,6 +16,7 @@ import com.github.kristofa.brave.http.SpanNameProvider;
  * @author Michał Podsiedzik
  */
 public class BraveServerInInterceptor extends AbstractPhaseInterceptor<Message> {
+
 	private final SpanNameProvider spanNameProvider;
 	private final Brave brave;
 
