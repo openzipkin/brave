@@ -1,7 +1,8 @@
 package com.github.kristofa.brave.cxf;
 
-import com.github.kristofa.brave.http.HttpResponse;
 import org.apache.cxf.message.Message;
+
+import com.github.kristofa.brave.http.HttpResponse;
 
 /**
  * @author Michał Podsiedzik

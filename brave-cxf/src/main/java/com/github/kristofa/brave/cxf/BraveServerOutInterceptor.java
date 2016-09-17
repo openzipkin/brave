@@ -16,7 +16,6 @@ import com.github.kristofa.brave.http.HttpServerResponseAdapter;
  * @author Michał Podsiedzik
  */
 public class BraveServerOutInterceptor extends AbstractPhaseInterceptor<Message> {
-
 	private final Brave brave;
 
 	public BraveServerOutInterceptor(final Brave brave) {

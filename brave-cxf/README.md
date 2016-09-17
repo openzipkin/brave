@@ -29,8 +29,8 @@ Brave brave = ...
 SpanNameProvider spanNameProvider = ...
 
 // setup server interceptors
-BraveServerInInterceptor serverInInterceptor = new BraveServerInInterceptor(brave.serverRequestInterceptor(), spanNameProvider);
-BraveServerOutInterceptor serverOutInterceptor = new BraveServerOutInterceptor(brave.serverResponseInterceptor());
+BraveServerInInterceptor serverInInterceptor = new BraveServerInInterceptor(brave, spanNameProvider);
+BraveServerOutInterceptor serverOutInterceptor = new BraveServerOutInterceptor(brave);
 
 // setup jax-ws server
 JaxWsServerFactoryBean serverFactory = new JaxWsServerFactoryBean();
@@ -52,8 +52,8 @@ Brave brave = ...
 // setup or autowire SpanNameProvider
 SpanNameProvider spanNameProvider = ...
 
-BraveClientInInterceptor clientInInterceptor = new BraveClientInInterceptor(brave.clientResponseInterceptor());
-BraveClientOutInterceptor clientOutInterceptor = new BraveClientOutInterceptor(spanNameProvider, brave.clientRequestInterceptor());
+BraveClientInInterceptor clientInInterceptor = new BraveClientInInterceptor(brave);
+BraveClientOutInterceptor clientOutInterceptor = new BraveClientOutInterceptor(brave, spanNameProvider);
 
 // setup jax-ws client
 JaxWsProxyFactoryBean clientFactory = new JaxWsProxyFactoryBean();

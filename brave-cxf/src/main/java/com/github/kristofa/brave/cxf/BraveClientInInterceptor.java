@@ -28,8 +28,7 @@ public class BraveClientInInterceptor extends AbstractPhaseInterceptor<Message> 
     @Override
     public void handleMessage(final Message message) throws Fault {
         final Span span = (Span) message.getExchange().get(BRAVE_CLIENT_SPAN);
-        if (span != null)
-        {
+        if (span != null) {
             brave.clientSpanThreadBinder().setCurrentSpan(span);
             brave.clientResponseInterceptor().handle(new HttpClientResponseAdapter(new ClientResponse(message)));
         }

@@ -1,10 +1,11 @@
 package com.github.kristofa.brave.cxf;
 
-import com.github.kristofa.brave.http.HttpClientRequest;
-import org.apache.cxf.message.Message;
-
 import java.net.URI;
 import java.net.URISyntaxException;
+
+import org.apache.cxf.message.Message;
+
+import com.github.kristofa.brave.http.HttpClientRequest;
 
 /**
  * @author Michał Podsiedzik

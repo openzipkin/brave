@@ -1,13 +1,13 @@
 package com.github.kristofa.brave.cxf;
 
-import org.apache.cxf.message.Message;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import org.apache.cxf.message.Message;
 
 /**
  * @author Michał Podsiedzik
