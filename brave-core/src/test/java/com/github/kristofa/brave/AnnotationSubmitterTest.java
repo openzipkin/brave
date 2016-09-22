@@ -32,7 +32,8 @@ public class AnnotationSubmitterTest {
     private static final int INT_VALUE = 23;
 
     private AnnotationSubmitter annotationSubmitter;
-    private Endpoint endpoint = Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999);
+    private Endpoint endpoint =
+        Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
     private Span mockSpan;
 
     @Before

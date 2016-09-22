@@ -31,7 +31,8 @@ public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
     private Span span;
-    private Endpoint endpoint = Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999);
+    private Endpoint endpoint =
+        Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
 
     @Before
     public void setup() {

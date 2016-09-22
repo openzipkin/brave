@@ -37,9 +37,7 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
      */
     @Deprecated
     public ThreadLocalServerClientAndLocalSpanState(InetAddress ip, int port, String serviceName) {
-        Util.checkNotNull(ip, "ip address must be specified.");
-        Util.checkNotBlank(serviceName, "Service name must be specified.");
-        endpoint = Endpoint.create(serviceName, InetAddressUtilities.toInt(ip), port);
+        this(InetAddressUtilities.toInt(Util.checkNotNull(ip, "ip address must be specified.")), port, serviceName);
     }
 
     /**
@@ -50,8 +48,16 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
      * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
      */
     public ThreadLocalServerClientAndLocalSpanState(int ip, int port, String serviceName) {
-        Util.checkNotBlank(serviceName, "Service name must be specified.");
-        endpoint = Endpoint.create(serviceName, ip, port);
+        this(Endpoint.builder().ipv4(ip).port(port).serviceName(serviceName).build());
+    }
+
+    /**
+     * @param endpoint Endpoint of the local service being traced.
+     */
+    public ThreadLocalServerClientAndLocalSpanState(Endpoint endpoint) {
+        Util.checkNotNull(endpoint, "endpoint must be specified.");
+        Util.checkNotBlank(endpoint.service_name, "Service name must be specified.");
+        this.endpoint = endpoint;
     }
 
     /**

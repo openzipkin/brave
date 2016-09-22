@@ -129,14 +129,29 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Like {@link #setServerReceived()}, except you can log the network context of the caller, for
      * example an IP address from the {@code X-Forwarded-For} header.
      *
+     * @param client represents the client (peer). Set {@link Endpoint#service_name} to
+     * "unknown" if unknown.
+     */
+    public void setServerReceived(Endpoint client) {
+        submitAddress(Constants.CLIENT_ADDR, client);
+        submitStartAnnotation(Constants.SERVER_RECV);
+    }
+
+    /**
+     * Like {@link #setServerReceived()}, except you can log the network context of the caller, for
+     * example an IP address from the {@code X-Forwarded-For} header.
+     *
      * @param ipv4          ipv4 of the client as an int. Ex for 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
      * @param port          port for client-side of the socket, or 0 if unknown
      * @param clientService lowercase {@link Endpoint#service_name name} of the callee service or
      *                      null if unknown
+     *
+     * @deprecated use {@link #setServerReceived(Endpoint)}
      */
+    @Deprecated
     public void setServerReceived(int ipv4, int port, @Nullable String clientService) {
-        submitAddress(Constants.CLIENT_ADDR, ipv4, port, clientService);
-        submitStartAnnotation(Constants.SERVER_RECV);
+        if (clientService == null) clientService = "unknown";
+        setServerReceived(Endpoint.builder().ipv4(ipv4).port(port).serviceName(clientService).build());
     }
 
     /**

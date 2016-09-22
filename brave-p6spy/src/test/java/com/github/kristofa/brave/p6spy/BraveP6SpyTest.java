@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 
 import com.github.kristofa.brave.ClientTracer;
 
+import com.twitter.zipkin.gen.Endpoint;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -127,7 +128,8 @@ public class BraveP6SpyTest {
 
         order.verify(clientTracer).startNewSpan("query");
         order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
-        order.verify(clientTracer).setClientSent(HOST, PORT, SERVICE_NAME);
+        order.verify(clientTracer).setClientSent(Endpoint.builder()
+            .ipv4(HOST).port(PORT).serviceName(SERVICE_NAME).build());
         order.verify(clientTracer).setClientReceived();
         order.verifyNoMoreInteractions();
     }

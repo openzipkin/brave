@@ -5,6 +5,7 @@ import com.p6spy.engine.common.PreparedStatementInformation;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.JdbcEventListener;
 
+import com.twitter.zipkin.gen.Endpoint;
 import zipkin.Constants;
 import zipkin.TraceKeys;
 
@@ -132,7 +133,8 @@ public final class BraveP6SpyListener extends JdbcEventListener {
         tracer.submitBinaryAnnotation(TraceKeys.SQL_QUERY, sql);
 
         if (ipv4 != 0 && port > 0) {
-            tracer.setClientSent(ipv4, port, serviceName);
+            tracer.setClientSent(Endpoint.builder()
+                .ipv4(ipv4).port(port).serviceName(serviceName).build());
         } else { // logging the server address is optional
             tracer.setClientSent();
         }

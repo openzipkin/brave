@@ -7,9 +7,6 @@ import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,9 +25,12 @@ public class InheritableServerClientAndLocalSpanStateTest {
     private Span mockSpan;
 
     @Before
-    public void setup() throws UnknownHostException {
-        final int ip = InetAddressUtilities.toInt(InetAddress.getByName("192.168.0.1"));
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create(SERVICE_NAME, ip, PORT));
+    public void setup() {
+        Endpoint endpoint = Endpoint.builder()
+            .serviceName(SERVICE_NAME)
+            .ipv4(192 << 24 | 168 << 16 | 1)
+            .port(PORT).build();
+        state = new InheritableServerClientAndLocalSpanState(endpoint);
         mockServerSpan = mock(ServerSpan.class);
         mockSpan = mock(Span.class);
     }

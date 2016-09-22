@@ -281,8 +281,11 @@ public class Span implements Serializable {
 
   private static zipkin.Endpoint from(Endpoint host) {
     if (host == null) return null;
-    if (host.port == null) return zipkin.Endpoint.create(host.service_name, host.ipv4);
-    return zipkin.Endpoint.create(host.service_name, host.ipv4, host.port);
+    return zipkin.Endpoint.builder()
+        .ipv4(host.ipv4)
+        .ipv6(host.ipv6)
+        .port(host.port)
+        .serviceName(host.service_name).build();
   }
 }
 

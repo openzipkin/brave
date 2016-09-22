@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Util;
+import com.twitter.zipkin.gen.Endpoint;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Random;
@@ -81,6 +82,13 @@ public class Brave {
          */
         public Builder(int ip, int port, String serviceName) {
             state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
+        }
+
+        /**
+         * @param endpoint Endpoint of the local service being traced.
+         */
+        public Builder(Endpoint endpoint) {
+            state = new ThreadLocalServerClientAndLocalSpanState(endpoint);
         }
 
         /**
