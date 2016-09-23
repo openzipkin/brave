@@ -7,6 +7,7 @@ import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
 import com.mysql.jdbc.StatementInterceptorV2;
 
+import com.twitter.zipkin.gen.Endpoint;
 import zipkin.Constants;
 import zipkin.TraceKeys;
 
@@ -104,7 +105,8 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
         	}
         }
         
-        tracer.setClientSent(ipv4, port, serviceName);
+        tracer.setClientSent(Endpoint.builder()
+            .ipv4(ipv4).port(port).serviceName(serviceName).build());
     }
 
     private void endTrace(final ClientTracer tracer, final int warningCount, final SQLException statementException) {

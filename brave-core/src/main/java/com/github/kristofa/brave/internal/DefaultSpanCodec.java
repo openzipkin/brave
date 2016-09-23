@@ -63,7 +63,10 @@ public final class DefaultSpanCodec implements SpanCodec {
 
   private static Endpoint to(zipkin.Endpoint host) {
     if (host == null) return null;
-    if (host.port == null) return Endpoint.create(host.serviceName, host.ipv4);
-    return Endpoint.create(host.serviceName, host.ipv4, host.port);
+    return Endpoint.builder()
+        .ipv4(host.ipv4)
+        .ipv6(host.ipv6)
+        .port(host.port)
+        .serviceName(host.serviceName).build();
   }
 }

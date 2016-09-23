@@ -85,7 +85,8 @@ public class ClientRequestInterceptorTest {
     public void testServerAddressAdded() {
         when(adapter.getSpanName()).thenReturn(SPAN_NAME);
         when(adapter.requestAnnotations()).thenReturn(Collections.EMPTY_LIST);
-        when(adapter.serverAddress()).thenReturn(Endpoint.create(SERVICE_NAME, TARGET_IP, TARGET_PORT));
+        when(adapter.serverAddress()).thenReturn(Endpoint.builder()
+            .serviceName(SERVICE_NAME).ipv4(TARGET_IP).port(TARGET_PORT).build());
         SpanId spanId = SpanId.builder().spanId(1L).build();
         when(clientTracer.startNewSpan(SPAN_NAME)).thenReturn(spanId);
         interceptor.handle(adapter);
@@ -96,7 +97,8 @@ public class ClientRequestInterceptorTest {
         inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(adapter).serverAddress();
-        inOrder.verify(clientTracer).setClientSent(TARGET_IP, TARGET_PORT, SERVICE_NAME.toLowerCase());
+        inOrder.verify(clientTracer).setClientSent(Endpoint.builder()
+            .ipv4(TARGET_IP).port(TARGET_PORT).serviceName(SERVICE_NAME).build());
         verifyNoMoreInteractions(clientTracer, adapter);
     }
 

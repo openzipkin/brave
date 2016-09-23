@@ -253,7 +253,7 @@ public class LocalTracerTest {
 
     @Test
     public void startSpan_with_inheritable_nested_local_spans() {
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1, 0));
+        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
         localTracer = LocalTracer
                 .builder(localTracer)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
@@ -280,7 +280,7 @@ public class LocalTracerTest {
 
     @Test
     public void startSpan_nested_local_spans_disabled() {
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1, 0));
+        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
         localTracer = LocalTracer
                 .builder(localTracer)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))

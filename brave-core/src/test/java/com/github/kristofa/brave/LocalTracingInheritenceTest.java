@@ -38,7 +38,7 @@ public class LocalTracingInheritenceTest {
 
         final int ip = InetAddressUtilities.toInt(InetAddressUtilities.getLocalHostLANAddress());
         final String serviceName = LocalTracingInheritenceTest.class.getSimpleName();
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create(serviceName, ip, 0));
+        state = new InheritableServerClientAndLocalSpanState(Endpoint.create(serviceName, ip));
         brave = new Brave.Builder(state)
                 .spanCollector(spanCollector)
                 .traceSampler(sampler)

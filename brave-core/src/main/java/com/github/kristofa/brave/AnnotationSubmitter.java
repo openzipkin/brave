@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -44,7 +43,7 @@ public abstract class AnnotationSubmitter {
 
     /** The implementation of Clock to use.
      * See {@link com.github.kristofa.brave.AnnotationSubmitter#currentTimeMicroseconds}
-     * and {@link com.github.kristofa.brave.AnnotationSubmitter#Clock}
+     * and {@link com.github.kristofa.brave.AnnotationSubmitter.Clock}
      **/
     abstract Clock clock();
 
@@ -132,16 +131,13 @@ public abstract class AnnotationSubmitter {
     /**
      * Internal api for submitting an address. Until a naming function is added, this coerces null
      * {@code serviceName} to "unknown", as that's zipkin's convention.
-     *
-     * @param ipv4        ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
-     * @param port        Port for service
-     * @param serviceName Name of service. Should be lowercase and not empty. {@code null} will coerce to "unknown", as that's zipkin's convention.
      */
-    void submitAddress(String key, int ipv4, int port, @Nullable String serviceName) {
+    void submitAddress(String key, Endpoint endpoint) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
-            serviceName = serviceName != null ? serviceName : "unknown";
-            Endpoint endpoint = Endpoint.create(serviceName, ipv4, port);
+            if (endpoint.service_name == null) {
+                endpoint = endpoint.toBuilder().serviceName("unknown").build();
+            }
             BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
             addBinaryAnnotation(span, ba);
         }

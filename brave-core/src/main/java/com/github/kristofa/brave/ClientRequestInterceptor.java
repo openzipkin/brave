@@ -50,7 +50,7 @@ public class ClientRequestInterceptor {
         if (serverAddress == null) {
             clientTracer.setClientSent();
         } else {
-            clientTracer.setClientSent(serverAddress.ipv4, serverAddress.port, serverAddress.service_name);
+            clientTracer.setClientSent(serverAddress);
         }
     }
 }

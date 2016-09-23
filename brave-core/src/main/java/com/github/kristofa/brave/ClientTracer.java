@@ -72,14 +72,28 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     /**
      * Like {@link #setClientSent()}, except you can log the network context of the destination.
      *
+     * @param server represents the server (peer). Set {@link Endpoint#service_name} to
+     * "unknown" if unknown.
+     */
+    public void setClientSent(Endpoint server) {
+        submitAddress(Constants.SERVER_ADDR, server);
+        submitStartAnnotation(Constants.CLIENT_SEND);
+    }
+
+    /**
+     * Like {@link #setClientSent()}, except you can log the network context of the destination.
+     *
      * @param ipv4        ipv4 of the server as an int. Ex for 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
      * @param port        listen port the client is connecting to, or 0 if unknown
      * @param serviceName lowercase {@link Endpoint#service_name name} of the service being called
      *                    or null if unknown
+     *
+     * @deprecated use {@link #setClientSent(Endpoint)}
      */
+    @Deprecated
     public void setClientSent(int ipv4, int port, @Nullable String serviceName) {
-        submitAddress(Constants.SERVER_ADDR, ipv4, port, serviceName);
-        submitStartAnnotation(Constants.CLIENT_SEND);
+        if (serviceName == null) serviceName = "unknown";
+        setClientSent(Endpoint.builder().ipv4(ipv4).port(port).serviceName(serviceName).build());
     }
 
     /**

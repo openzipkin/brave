@@ -86,7 +86,8 @@ public class ClientTracerTest {
         Span clientSent = new Span();
         state.setCurrentClientSpan(clientSent);
 
-        clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
+        clientTracer.setClientSent(Endpoint.builder()
+            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).serviceName("foobar").build());
 
         final Annotation expectedAnnotation = Annotation.create(
             CURRENT_TIME_MICROSECONDS,
@@ -100,7 +101,7 @@ public class ClientTracerTest {
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
             Constants.SERVER_ADDR,
-            Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999)
+            Endpoint.builder().serviceName("foobar").ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).build()
         );
         assertEquals(serverAddress, clientSent.getBinary_annotations().get(0));
     }

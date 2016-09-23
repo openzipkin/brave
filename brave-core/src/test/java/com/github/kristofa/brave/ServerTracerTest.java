@@ -162,7 +162,10 @@ public class ServerTracerTest {
         when(mockServerSpan.getSpan()).thenReturn(serverRecv);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
-        serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "foobar");
+        serverTracer.setServerReceived(Endpoint.builder()
+            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
+            .port(9999)
+            .serviceName("foobar").build());
 
 
         final Annotation expectedAnnotation = Annotation.create(
@@ -181,7 +184,7 @@ public class ServerTracerTest {
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
             Constants.CLIENT_ADDR,
-            Endpoint.create("foobar", 1 << 24 | 2 << 16 | 3 << 8 | 4, 9999)
+            Endpoint.builder().serviceName("foobar").ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).build()
         );
         assertEquals(serverAddress, serverRecv.getBinary_annotations().get(0));
     }
