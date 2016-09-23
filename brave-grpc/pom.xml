@@ -22,8 +22,8 @@
     </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <grpc.version>1.0.0</grpc.version>
-        <protobuf.version>3.0.0</protobuf.version>
+        <grpc.version>1.0.1</grpc.version>
+        <protobuf.version>3.0.2</protobuf.version>
     </properties>
 
     <dependencies>
