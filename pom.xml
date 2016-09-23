@@ -47,7 +47,7 @@
 
     <spring.version>4.3.2.RELEASE</spring.version>
     <jetty.version>8.1.20.v20160902</jetty.version>
-    <zipkin.version>1.11.1</zipkin.version>
+    <zipkin.version>1.12.0</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
 
