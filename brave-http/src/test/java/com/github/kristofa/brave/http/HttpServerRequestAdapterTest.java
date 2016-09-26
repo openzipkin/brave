@@ -1,21 +1,28 @@
 package com.github.kristofa.brave.http;
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import static junit.framework.Assert.assertNull;
+
 import java.net.URI;
 import java.util.Collection;
+import java.util.Iterator;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-import org.junit.Before;
-import org.junit.Test;
-import zipkin.TraceKeys;
 
-import static junit.framework.Assert.assertNull;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import zipkin.TraceKeys;
 
 public class HttpServerRequestAdapterTest {
 
@@ -154,11 +161,20 @@ public class HttpServerRequestAdapterTest {
     @Test
     public void fullUriAnnotation() throws Exception {
         when(serverRequest.getUri()).thenReturn(new URI("http://youruri.com/a/b?myquery=you"));
+        when(serverRequest.getHttpMethod()).thenReturn("GET");
+
         Collection<KeyValueAnnotation> annotations = adapter.requestAnnotations();
-        assertEquals(1, annotations.size());
-        KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals(TraceKeys.HTTP_URL, a.getKey());
-        assertEquals("http://youruri.com/a/b?myquery=you", a.getValue());
+        assertEquals(2, annotations.size());
+
+        Iterator<KeyValueAnnotation> iterator = annotations.iterator();
+
+        KeyValueAnnotation uriAnnotation = iterator.next();
+        assertEquals(TraceKeys.HTTP_URL, uriAnnotation.getKey());
+        assertEquals("http://youruri.com/a/b?myquery=you", uriAnnotation.getValue());
+
+        KeyValueAnnotation methodAnnotation = iterator.next();
+        assertEquals(TraceKeys.HTTP_METHOD, methodAnnotation.getKey());
+        assertEquals("GET", methodAnnotation.getValue());
     }
 
 

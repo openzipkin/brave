@@ -1,5 +1,23 @@
 package com.github.kristofa.brave.httpclient;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InOrder;
+
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
@@ -12,24 +30,8 @@ import com.github.kristofa.test.http.HttpResponseImpl;
 import com.github.kristofa.test.http.Method;
 import com.github.kristofa.test.http.MockHttpServer;
 import com.github.kristofa.test.http.UnsatisfiedExpectationException;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.InOrder;
+
 import zipkin.TraceKeys;
-
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 public class ITBraveHttpRequestAndResponseInterceptor {
 
@@ -91,6 +93,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, Method.GET.name());
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);
@@ -127,6 +130,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, Method.GET.name());
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, "400");
             inOrder.verify(clientTracer).setClientReceived();
@@ -195,6 +199,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
             final InOrder inOrder = inOrder(clientTracer);
             inOrder.verify(clientTracer).startNewSpan(Method.GET.name());
             inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, FULL_PATH_WITH_QUERY_PARAMS);
+            inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_METHOD, Method.GET.name());
             inOrder.verify(clientTracer).setClientSent();
             inOrder.verify(clientTracer).setClientReceived();
             verifyNoMoreInteractions(clientTracer);

@@ -1,19 +1,22 @@
 package com.github.kristofa.brave.http;
 
-import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.SpanId;
-import org.junit.Before;
-import org.junit.Test;
-import zipkin.TraceKeys;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.Collection;
+import java.util.Iterator;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.github.kristofa.brave.KeyValueAnnotation;
+import com.github.kristofa.brave.SpanId;
+
+import zipkin.TraceKeys;
 
 public class HttpClientRequestAdapterTest {
 
@@ -73,12 +76,21 @@ public class HttpClientRequestAdapterTest {
     @Test
     public void requestAnnotations() {
         when(request.getUri()).thenReturn(URI.create(TEST_URI));
+        when(request.getHttpMethod()).thenReturn("GET");
         Collection<KeyValueAnnotation> annotations = clientRequestAdapter.requestAnnotations();
-        assertEquals(1, annotations.size());
-        KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals(TraceKeys.HTTP_URL, a.getKey());
-        assertEquals(TEST_URI, a.getValue());
+
+        assertEquals(2, annotations.size());
+        Iterator<KeyValueAnnotation> iterator = annotations.iterator();
+
+        KeyValueAnnotation urlAnnotation = iterator.next();
+        KeyValueAnnotation methodAnnotation = iterator.next();
+        assertEquals(TraceKeys.HTTP_URL, urlAnnotation.getKey());
+        assertEquals(TEST_URI, urlAnnotation.getValue());
+        assertEquals(TraceKeys.HTTP_METHOD, methodAnnotation.getKey());
+        assertEquals("GET", methodAnnotation.getValue());
+
         verify(request).getUri();
+        verify(request).getHttpMethod();
         verifyNoMoreInteractions(request, spanNameProvider);
     }
 
