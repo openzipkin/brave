@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Util;
+import com.twitter.zipkin.gen.Endpoint;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Random;
@@ -38,6 +39,8 @@ public class Brave {
         private Random random = new Random();
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
+        private boolean allowNestedLocalSpans = false;
+        private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -82,10 +85,21 @@ public class Brave {
         }
 
         /**
+         * @param endpoint Endpoint of the local service being traced.
+         */
+        public Builder(Endpoint endpoint) {
+            state = new ThreadLocalServerClientAndLocalSpanState(endpoint);
+        }
+
+        /**
          * Use for control of how tracing state propagates across threads.
          */
         public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
+
+            // the legacy span state doesn't support nested spans per (#166). Only permit nesting on the span
+            // state that has instructions on how to use it properly
+            this.allowNestedLocalSpans = state instanceof InheritableServerClientAndLocalSpanState;
         }
 
         /**
@@ -106,6 +120,11 @@ public class Brave {
          */
         public Builder spanCollector(SpanCollector spanCollector) {
             this.spanCollector = spanCollector;
+            return this;
+        }
+
+        public Builder clock(AnnotationSubmitter.Clock clock) {
+            this.clock = clock;
             return this;
         }
 
@@ -211,20 +230,27 @@ public class Brave {
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.sampler).build();
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
 
         clientTracer = ClientTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
                 .state(builder.state)
-                .traceSampler(builder.sampler).build();
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
 
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
                 .spanCollector(builder.spanCollector)
+                .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
-                .traceSampler(builder.sampler).build();
-        
+                .traceSampler(builder.sampler)
+                .clock(builder.clock)
+                .build();
+
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);

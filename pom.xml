@@ -5,7 +5,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave</artifactId>
-  <version>3.10.1-SNAPSHOT</version>
+  <version>3.11.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>brave</name>
@@ -45,8 +45,9 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <spring.version>4.1.6.RELEASE</spring.version>
-    <zipkin.version>1.8.4</zipkin.version>
+    <spring.version>4.3.2.RELEASE</spring.version>
+    <jetty.version>8.1.20.v20160902</jetty.version>
+    <zipkin.version>1.12.0</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
 

@@ -5,6 +5,7 @@ import com.p6spy.engine.common.PreparedStatementInformation;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.JdbcEventListener;
 
+import com.twitter.zipkin.gen.Endpoint;
 import zipkin.Constants;
 import zipkin.TraceKeys;
 
@@ -15,7 +16,6 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 
 public final class BraveP6SpyListener extends JdbcEventListener {
-
     // TODO: Figure out a better approach
     static volatile ClientTracer clientTracer;
 
@@ -66,7 +66,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, SQLException e) {
+    public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, int[] updateCounts, SQLException e) {
         endTrace(e);
     }
 
@@ -76,7 +76,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteUpdate(PreparedStatementInformation statementInformation, long timeElapsedNanos, SQLException e) {
+    public void onAfterExecuteUpdate(PreparedStatementInformation statementInformation, long timeElapsedNanos, int rowCount, SQLException e) {
         endTrace(e);
     }
 
@@ -86,7 +86,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     }
 
     @Override
-    public void onAfterExecuteUpdate(StatementInformation statementInformation, long timeElapsedNanos, String sql, SQLException e) {
+    public void onAfterExecuteUpdate(StatementInformation statementInformation, long timeElapsedNanos, String sql, int rowCount, SQLException e) {
         endTrace(e);
     }
 
@@ -133,7 +133,8 @@ public final class BraveP6SpyListener extends JdbcEventListener {
         tracer.submitBinaryAnnotation(TraceKeys.SQL_QUERY, sql);
 
         if (ipv4 != 0 && port > 0) {
-            tracer.setClientSent(ipv4, port, serviceName);
+            tracer.setClientSent(Endpoint.builder()
+                .ipv4(ipv4).port(port).serviceName(serviceName).build());
         } else { // logging the server address is optional
             tracer.setClientSent();
         }
@@ -148,5 +149,4 @@ public final class BraveP6SpyListener extends JdbcEventListener {
             tracer.setClientReceived();
         }
     }
-
 }

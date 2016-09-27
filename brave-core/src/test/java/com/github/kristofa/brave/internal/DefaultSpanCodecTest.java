@@ -12,7 +12,12 @@ import static org.junit.Assert.assertEquals;
 public class DefaultSpanCodecTest {
 
   Endpoint browser = Endpoint.create("browser-client", 1 << 24 | 2 << 16 | 3);
-  Endpoint web = Endpoint.create("zipkin-web", 172 << 24 | 17 << 16 | 3, 8080);
+  Endpoint web = Endpoint.builder()
+      .serviceName("web")
+      .ipv4(124 << 24 | 13 << 16 | 90 << 8 | 3)
+      // Cheat so we don't have to catch an exception here
+      .ipv6(sun.net.util.IPAddressUtil.textToNumericFormatV6("2001:db8::c001"))
+      .port(80).build();
 
   Span span = new Span() // browser calls web
       .setTrace_id(-692101025335252320L)

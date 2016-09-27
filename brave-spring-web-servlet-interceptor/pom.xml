@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave</artifactId>
-    <version>3.10.1-SNAPSHOT</version>
+    <version>3.11.2-SNAPSHOT</version>
   </parent>
   
   <artifactId>brave-spring-web-servlet-interceptor</artifactId>
@@ -13,15 +13,11 @@
       Spring HandlerInterceptorAdapter implementation.
   </description>
 
-    <properties>
-        <jetty.version>8.1.9.v20130131</jetty.version>
-    </properties>
-
     <dependencies>
      <dependency>
         <groupId>io.zipkin.brave</groupId>
         <artifactId>brave-http</artifactId>
-        <version>3.10.1-SNAPSHOT</version>
+        <version>3.11.2-SNAPSHOT</version>
      </dependency>
      <dependency>
         <groupId>org.springframework</groupId>
@@ -31,7 +27,7 @@
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-core-spring</artifactId>
-            <version>3.10.1-SNAPSHOT</version>
+            <version>3.11.2-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>

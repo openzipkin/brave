@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -10,16 +9,43 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Used to submit application specific annotations.
- * 
+ *
  * @author kristof
  */
 public abstract class AnnotationSubmitter {
 
-    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
-        return new AnnotationSubmitterImpl(spanAndEndpoint);
+    /**
+     * This interface is used to make the implementation to AnnotationSubmitter.currentTimeMicroseconds() contextual.
+     * The clock is defined by the subclass's implementation of the `clock()` method.
+     * A DefaultClock implementation is provided that simply returns `System.currentTimeMillis() * 1000`.
+     */
+    public interface Clock {
+        /**
+         * Epoch microseconds used for {@link zipkin.Span#timestamp} and {@link zipkin.Annotation#timestamp}.
+         *
+         * <p>This should use the most precise value possible. For example, {@code gettimeofday} or multiplying
+         * {@link System#currentTimeMillis} by 1000.
+         *
+         * <p>See <a href="http://zipkin.io/pages/instrumenting.html">Instrumenting a service</a> for more.
+         */
+        long currentTimeMicroseconds();
+    }
+
+    static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, DefaultClock.INSTANCE);
+    }
+
+    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint, Clock clock) {
+        return new AnnotationSubmitterImpl(spanAndEndpoint, clock);
     }
 
     abstract SpanAndEndpoint spanAndEndpoint();
+
+    /** The implementation of Clock to use.
+     * See {@link com.github.kristofa.brave.AnnotationSubmitter#currentTimeMicroseconds}
+     * and {@link com.github.kristofa.brave.AnnotationSubmitter.Clock}
+     **/
+    abstract Clock clock();
 
     /**
      * Associates an event that explains latency with the current system time.
@@ -105,16 +131,13 @@ public abstract class AnnotationSubmitter {
     /**
      * Internal api for submitting an address. Until a naming function is added, this coerces null
      * {@code serviceName} to "unknown", as that's zipkin's convention.
-     *
-     * @param ipv4        ipv4 host address as int. Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
-     * @param port        Port for service
-     * @param serviceName Name of service. Should be lowercase and not empty. {@code null} will coerce to "unknown", as that's zipkin's convention.
      */
-    void submitAddress(String key, int ipv4, int port, @Nullable String serviceName) {
+    void submitAddress(String key, Endpoint endpoint) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
-            serviceName = serviceName != null ? serviceName : "unknown";
-            Endpoint endpoint = Endpoint.create(serviceName, ipv4, port);
+            if (endpoint.service_name == null) {
+                endpoint = endpoint.toBuilder().serviceName("unknown").build();
+            }
             BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
             addBinaryAnnotation(span, ba);
         }
@@ -147,7 +170,7 @@ public abstract class AnnotationSubmitter {
     }
 
     long currentTimeMicroseconds() {
-        return System.currentTimeMillis() * 1000;
+        return clock().currentTimeMicroseconds();
     }
 
     private void addAnnotation(Span span, Annotation annotation) {
@@ -168,14 +191,31 @@ public abstract class AnnotationSubmitter {
     private static final class AnnotationSubmitterImpl extends AnnotationSubmitter {
 
         private final SpanAndEndpoint spanAndEndpoint;
+        private final Clock clock;
 
-        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint) {
+        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint, Clock clock) {
             this.spanAndEndpoint = checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
+            this.clock = clock;
         }
 
         @Override
         SpanAndEndpoint spanAndEndpoint() {
             return spanAndEndpoint;
+        }
+
+        @Override
+        protected Clock clock() {
+            return clock;
+        }
+
+    }
+
+    static final class DefaultClock implements Clock {
+        static final Clock INSTANCE = new DefaultClock();
+        private DefaultClock() {}
+        @Override
+        public long currentTimeMicroseconds() {
+            return System.currentTimeMillis() * 1000;
         }
     }
 }

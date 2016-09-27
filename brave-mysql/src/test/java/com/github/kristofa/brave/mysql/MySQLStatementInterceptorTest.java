@@ -16,6 +16,7 @@ import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
 
+import com.twitter.zipkin.gen.Endpoint;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -81,7 +82,8 @@ public class MySQLStatementInterceptorTest {
 
         subject.preProcess(sql, mock(Statement.class), connection);
 
-        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, "mysql-test");
+        verify(clientTracer).setClientSent(Endpoint.builder()
+            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).serviceName("mysql-test").build());
     }
 
     @Test
@@ -102,7 +104,8 @@ public class MySQLStatementInterceptorTest {
 
         subject.preProcess(sql, mock(Statement.class), connection);
 
-        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, "mysql-test");
+        verify(clientTracer).setClientSent(Endpoint.builder()
+            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(3306).serviceName("mysql-test").build());
     }
     
     @Test
@@ -124,7 +127,8 @@ public class MySQLStatementInterceptorTest {
 
         subject.preProcess(sql, mock(Statement.class), connection);
 
-        verify(clientTracer).setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 3306, "hello-brave");
+        verify(clientTracer).setClientSent(Endpoint.builder()
+            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(3306).serviceName("hello-brave").build());
     }
     
     @Test
