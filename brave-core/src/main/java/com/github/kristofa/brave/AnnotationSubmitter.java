@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -56,7 +57,7 @@ public abstract class AnnotationSubmitter {
         Span span = spanAndEndpoint().span();
         if (span != null) {
             Annotation annotation = Annotation.create(
-                currentTimeMicroseconds(),
+                currentTimeMicroseconds(startTick(span)),
                 value,
                 spanAndEndpoint().endpoint()
             );
@@ -90,13 +91,14 @@ public abstract class AnnotationSubmitter {
         Span span = spanAndEndpoint().span();
         if (span != null) {
             Annotation annotation = Annotation.create(
-                currentTimeMicroseconds(),
+                currentTimeMicroseconds(null),
                 annotationName,
                 spanAndEndpoint().endpoint()
             );
             synchronized (span) {
                 span.setTimestamp(annotation.timestamp);
                 span.addToAnnotations(annotation);
+                span.startTick = System.nanoTime(); // embezzle start tick into an internal field.
             }
         }
     }
@@ -112,16 +114,35 @@ public abstract class AnnotationSubmitter {
         if (span == null) {
           return false;
         }
+
+        Long startTimestamp;
+        Long startTick;
+        synchronized (span) {
+            startTimestamp = span.getTimestamp();
+            startTick = span.startTick;
+        }
+        Long endTimestamp;
+        Long duration = null;
+        if (startTick != null) {
+            long endTick = System.nanoTime();
+            duration = Math.max(1L, (endTick - startTick) / 1000L);
+            endTimestamp = startTimestamp + duration;
+        } else {
+            endTimestamp = currentTimeMicroseconds(null);
+            if (startTimestamp != null) {
+                duration = Math.max(1L, endTimestamp - startTimestamp);
+            }
+        }
+
         Annotation annotation = Annotation.create(
-            currentTimeMicroseconds(),
+            endTimestamp,
             annotationName,
             spanAndEndpoint().endpoint()
         );
         synchronized (span) {
             span.addToAnnotations(annotation);
-            Long timestamp = span.getTimestamp();
-            if (timestamp != null) {
-                span.setDuration(annotation.timestamp - timestamp);
+            if (startTimestamp != null) {
+                span.setDuration(duration);
             }
         }
         spanCollector.collect(span);
@@ -169,8 +190,10 @@ public abstract class AnnotationSubmitter {
         submitBinaryAnnotation(key, String.valueOf(value));
     }
 
-    long currentTimeMicroseconds() {
-        return clock().currentTimeMicroseconds();
+    long currentTimeMicroseconds(@Nullable Long startTick) {
+        return startTick != null
+            ? (System.nanoTime() - startTick) / 1000
+            : clock().currentTimeMicroseconds();
     }
 
     private void addAnnotation(Span span, Annotation annotation) {
@@ -216,6 +239,12 @@ public abstract class AnnotationSubmitter {
         @Override
         public long currentTimeMicroseconds() {
             return System.currentTimeMillis() * 1000;
+        }
+    }
+
+    Long startTick(Span span) {
+        synchronized (span) {
+            return span.startTick;
         }
     }
 }

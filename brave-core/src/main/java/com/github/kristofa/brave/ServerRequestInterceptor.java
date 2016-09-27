@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.twitter.zipkin.gen.Span;
 import java.util.logging.Logger;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -37,7 +38,8 @@ public class ServerRequestInterceptor {
             serverTracer.setStateNoTracing();
             LOGGER.fine("Received indication that we should NOT trace.");
         } else {
-            if (traceData.getSpanId() != null) {
+            boolean clientOriginatedTrace = traceData.getSpanId() != null;
+            if (clientOriginatedTrace) {
                 LOGGER.fine("Received span information as part of request.");
                 SpanId spanId = traceData.getSpanId();
                 serverTracer.setStateCurrentTrace(spanId.traceId, spanId.spanId,
@@ -47,6 +49,17 @@ public class ServerRequestInterceptor {
                 serverTracer.setStateUnknown(adapter.getSpanName());
             }
             serverTracer.setServerReceived();
+            // In the RPC span model, the client owns the timestamp and duration of the span. If we
+            // were propagated an id, we can assume that we shouldn't report timestamp or duration,
+            // rather let the client do that. Worst case we were propagated an unreported ID and
+            // Zipkin backfills timestamp and duration.
+            if (clientOriginatedTrace) {
+                Span span = serverTracer.spanAndEndpoint().span();
+                synchronized (span) {
+                    span.setTimestamp(null);
+                    span.startTick = null;
+                }
+            }
             for(KeyValueAnnotation annotation : adapter.requestAnnotations())
             {
                 serverTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
