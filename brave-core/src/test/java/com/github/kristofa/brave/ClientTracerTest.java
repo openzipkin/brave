@@ -235,4 +235,37 @@ public class ClientTracerTest {
 
         verifyNoMoreInteractions(mockSampler, mockCollector);
     }
+
+    @Test
+    public void setClientReceived_usesPreciseDuration() {
+        Span finished = new Span().setTimestamp(1000L); // set in start span
+        finished.startTick = 500000L; // set in start span
+        state.setCurrentClientSpan(finished);
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000000L);
+
+        clientTracer.setClientReceived();
+
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
+
+        assertEquals(500L, finished.getDuration().longValue());
+    }
+
+    /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
+    @Test
+    public void setClientReceived_lessThanMicrosRoundUp() {
+        Span finished = new Span().setTimestamp(1000L); // set in start span
+        finished.startTick = 500L; // set in start span
+        state.setCurrentClientSpan(finished);
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+
+        clientTracer.setClientReceived();
+
+        verify(mockCollector).collect(finished);
+        verifyNoMoreInteractions(mockCollector);
+
+        assertEquals(1L, finished.getDuration().longValue());
+    }
 }

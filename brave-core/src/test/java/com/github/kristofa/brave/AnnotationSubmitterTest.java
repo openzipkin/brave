@@ -98,9 +98,18 @@ public class AnnotationSubmitterTest {
     }
 
     @Test
-    public void testCurrentTimeMicroSeconds() {
+    public void testCurrentTimeMicroSeconds_fromSystemCurrentMillis() {
         AnnotationSubmitter anotherAnnotationSubmitter = AnnotationSubmitter.create(
             StaticSpanAndEndpoint.create(null, endpoint));
-        assertEquals(CURRENT_TIME_MICROSECONDS, anotherAnnotationSubmitter.currentTimeMicroseconds());
+        assertEquals(CURRENT_TIME_MICROSECONDS, anotherAnnotationSubmitter.currentTimeMicroseconds(null));
+    }
+
+    @Test
+    public void testCurrentTimeMicroSeconds_fromRelativeNanoTick() {
+        AnnotationSubmitter anotherAnnotationSubmitter = AnnotationSubmitter.create(
+            StaticSpanAndEndpoint.create(null, endpoint));
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+        assertEquals(1, anotherAnnotationSubmitter.currentTimeMicroseconds(0L));
     }
 }

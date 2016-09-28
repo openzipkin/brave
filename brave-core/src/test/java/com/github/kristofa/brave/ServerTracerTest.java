@@ -14,6 +14,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Constants;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -235,4 +236,52 @@ public class ServerTracerTest {
         assertEquals(expectedAnnotation, serverSend.getAnnotations().get(0));
     }
 
+    @Test
+    public void setServerSend_skipsDurationWhenNoTimestamp() {
+        Span finished = new Span(); // unset due to client-originated trace
+        when(mockServerSpan.getSpan()).thenReturn(finished);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
+
+        serverTracer.setServerSend();
+
+        verify(mockSpanCollector).collect(finished);
+        verifyNoMoreInteractions(mockSpanCollector);
+
+        assertThat(finished.getDuration()).isNull();
+    }
+
+    @Test
+    public void setServerSend_usesPreciseDuration() {
+        Span finished = new Span().setTimestamp(1000L); // set in start span
+        finished.startTick = 500000L; // set in start span
+        when(mockServerSpan.getSpan()).thenReturn(finished);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000000L);
+
+        serverTracer.setServerSend();
+
+        verify(mockSpanCollector).collect(finished);
+        verifyNoMoreInteractions(mockSpanCollector);
+
+        assertEquals(500L, finished.getDuration().longValue());
+    }
+
+    /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
+    @Test
+    public void setServerSend_lessThanMicrosRoundUp() {
+        Span finished = new Span().setTimestamp(1000L); // set in start span
+        finished.startTick = 500L; // set in start span
+        when(mockServerSpan.getSpan()).thenReturn(finished);
+        when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
+
+        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+
+        serverTracer.setServerSend();
+
+        verify(mockSpanCollector).collect(finished);
+        verifyNoMoreInteractions(mockSpanCollector);
+
+        assertEquals(1L, finished.getDuration().longValue());
+    }
 }
