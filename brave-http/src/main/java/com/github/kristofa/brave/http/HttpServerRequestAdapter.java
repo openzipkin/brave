@@ -12,6 +12,9 @@ import static com.github.kristofa.brave.IdConversion.convertToLong;
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
+    private static final TraceData EMPTY_UNSAMPLED_TRACE = TraceData.builder().sample(false).build();
+    private static final TraceData EMPTY_MAYBE_TRACE = TraceData.builder().build();
+
     private final HttpServerRequest serverRequest;
     private final SpanNameProvider spanNameProvider;
 
@@ -22,14 +25,14 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
     @Override
     public TraceData getTraceData() {
-        final String sampled = serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
+        final String sampled = serverRequest().getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
         if (sampled != null) {
-            if (sampled.equals("0") || sampled.toLowerCase().equals("false")) {
-                return TraceData.builder().sample(false).build();
+            if (sampled.equals("0") || sampled.equalsIgnoreCase("false")) {
+                return EMPTY_UNSAMPLED_TRACE;
             } else {
-                final String parentSpanId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
-                final String traceId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
-                final String spanId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
+                final String parentSpanId = serverRequest().getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
+                final String traceId = serverRequest().getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
+                final String spanId = serverRequest().getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
 
                 if (traceId != null && spanId != null) {
                     SpanId span = getSpanId(traceId, spanId, parentSpanId);
@@ -37,19 +40,23 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
                 }
             }
         }
-        return TraceData.builder().build();
+        return EMPTY_MAYBE_TRACE;
     }
 
     @Override
     public String getSpanName() {
-        return spanNameProvider.spanName(serverRequest);
+        return spanNameProvider.spanName(serverRequest());
     }
 
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, serverRequest.getUri().toString());
+                TraceKeys.HTTP_URL, serverRequest().getUri().toString());
         return Collections.singleton(uriAnnotation);
+    }
+
+    protected final HttpServerRequest serverRequest() {
+        return serverRequest;
     }
 
     private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
