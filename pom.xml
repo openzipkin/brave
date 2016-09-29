@@ -50,6 +50,7 @@
     <zipkin.version>1.12.0</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
+    <powermock.version>1.6.5</powermock.version>
 
     <maven-plugin.version>0.3.3</maven-plugin.version>
     <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>

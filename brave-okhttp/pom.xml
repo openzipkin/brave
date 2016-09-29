@@ -9,7 +9,7 @@
 
   <artifactId>brave-okhttp</artifactId>
 
-  <description>OkHttp request and response interceptor implementation</description>
+  <description>OkHttp tracing interceptor implementation</description>
 
   <url>https://github.com/kristofa/brave</url>
 
@@ -23,24 +23,36 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <okhttp.version>3.2.0</okhttp.version>
+    <okhttp.version>3.4.1</okhttp.version>
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-http</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
       <version>${okhttp.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.zipkin.brave</groupId>
-      <artifactId>brave-http</artifactId>
-      <version>3.11.2-SNAPSHOT</version>
-    </dependency>
-    <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
       <version>${okhttp.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>${powermock.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
