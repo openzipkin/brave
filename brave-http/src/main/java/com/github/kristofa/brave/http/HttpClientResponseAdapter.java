@@ -8,9 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
-
 public class HttpClientResponseAdapter implements ClientResponseAdapter {
-
 
     private final HttpResponse response;
 
@@ -23,9 +21,10 @@ public class HttpClientResponseAdapter implements ClientResponseAdapter {
         int httpStatus = response.getHttpStatusCode();
 
         if ((httpStatus < 200) || (httpStatus > 299)) {
-            KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus));
-            return Arrays.asList(statusAnnotation);
+            return Collections.singleton(KeyValueAnnotation.create(
+                    TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus)));
         }
-        return Collections.EMPTY_LIST;
+        return Collections.emptyList();
     }
+
 }
