@@ -1,10 +1,7 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -23,6 +20,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import zipkin.reporter.Reporter;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AnnotationSubmitter.class, LocalTracer.class})
@@ -35,7 +33,7 @@ public class LocalTracerTest {
 
     private ServerClientAndLocalSpanState state;
     private Random mockRandom;
-    private SpanCollector mockCollector;
+    private Reporter<zipkin.Span> mockReporter;
     private LocalTracer localTracer;
 
     @Before
@@ -43,14 +41,14 @@ public class LocalTracerTest {
         mockRandom = mock(Random.class);
         when(mockRandom.nextLong()).thenReturn(555L);
 
-        mockCollector = mock(SpanCollector.class);
+        mockReporter = mock(Reporter.class);
 
         PowerMockito.mockStatic(System.class);
         state = new TestServerClientAndLocalSpanStateCompilation();
         localTracer = LocalTracer.builder()
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .randomGenerator(mockRandom)
-                .spanCollector(mockCollector)
+                .reporter(mockReporter)
                 .allowNestedLocalSpans(false)
                 .traceSampler(Sampler.create(1.0f))
                 .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
@@ -130,7 +128,7 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500000L; // set in start span
         state.setCurrentLocalSpan(finished);
 
@@ -138,8 +136,8 @@ public class LocalTracerTest {
 
         localTracer.finishSpan();
 
-        verify(mockCollector).collect(finished);
-        verifyNoMoreInteractions(mockCollector);
+        verify(mockReporter).report(finished.toZipkin());
+        verifyNoMoreInteractions(mockReporter);
 
         assertEquals(500L, finished.getDuration().longValue());
     }
@@ -147,7 +145,7 @@ public class LocalTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void finishSpan_lessThanMicrosRoundUp() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500L; // set in start span
         state.setCurrentLocalSpan(finished);
 
@@ -155,8 +153,8 @@ public class LocalTracerTest {
 
         localTracer.finishSpan();
 
-        verify(mockCollector).collect(finished);
-        verifyNoMoreInteractions(mockCollector);
+        verify(mockReporter).report(finished.toZipkin());
+        verifyNoMoreInteractions(mockReporter);
 
         assertEquals(1L, finished.getDuration().longValue());
     }
@@ -173,15 +171,15 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan_userSuppliedTimestamp() {
-        Span finished = new Span().setTimestamp(1000L); // Set by user
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // Set by user
         state.setCurrentLocalSpan(finished);
 
         PowerMockito.when(System.currentTimeMillis()).thenReturn(2L);
 
         localTracer.finishSpan();
 
-        verify(mockCollector).collect(finished);
-        verifyNoMoreInteractions(mockCollector);
+        verify(mockReporter).report(finished.toZipkin());
+        verifyNoMoreInteractions(mockReporter);
 
         assertEquals(1000L, finished.getDuration().longValue());
     }
@@ -198,14 +196,14 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan_userSuppliedDuration() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500L; // set in start span
         state.setCurrentLocalSpan(finished);
 
         localTracer.finishSpan(500L);
 
-        verify(mockCollector).collect(finished);
-        verifyNoMoreInteractions(mockCollector);
+        verify(mockReporter).report(finished.toZipkin());
+        verifyNoMoreInteractions(mockReporter);
 
         assertEquals(500L, finished.getDuration().longValue());
     }
@@ -222,13 +220,13 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan_userSuppliedTimestampAndDuration() {
-        Span finished = new Span().setTimestamp(1000L); // Set by user
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // Set by user
         state.setCurrentLocalSpan(finished);
 
         localTracer.finishSpan(500L);
 
-        verify(mockCollector).collect(finished);
-        verifyNoMoreInteractions(mockCollector);
+        verify(mockReporter).report(finished.toZipkin());
+        verifyNoMoreInteractions(mockReporter);
 
         assertEquals(500L, finished.getDuration().longValue());
     }
@@ -239,7 +237,7 @@ public class LocalTracerTest {
 
         localTracer.finishSpan();
 
-        verifyNoMoreInteractions(mockCollector);
+        verifyNoMoreInteractions(mockReporter);
     }
 
     @Test
@@ -248,7 +246,7 @@ public class LocalTracerTest {
 
         localTracer.finishSpan(5000L);
 
-        verifyNoMoreInteractions(mockCollector);
+        verifyNoMoreInteractions(mockReporter);
     }
 
     @Test

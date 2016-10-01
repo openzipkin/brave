@@ -127,7 +127,7 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientReceived() {
-        Span clientRecv = new Span().setTimestamp(100L);
+        Span clientRecv = new Span().setName("foo").setTimestamp(100L);
         state.setCurrentClientSpan(clientRecv);
 
         clientTracer.setClientReceived();
@@ -238,7 +238,7 @@ public class ClientTracerTest {
 
     @Test
     public void setClientReceived_usesPreciseDuration() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500000L; // set in start span
         state.setCurrentClientSpan(finished);
 
@@ -255,7 +255,7 @@ public class ClientTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setClientReceived_lessThanMicrosRoundUp() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500L; // set in start span
         state.setCurrentClientSpan(finished);
 

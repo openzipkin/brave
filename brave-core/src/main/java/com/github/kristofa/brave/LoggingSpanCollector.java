@@ -17,7 +17,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * Can be used for testing and debugging.
  * 
  * @author kristof
+ * @deprecated use {@link LoggingReporter}
  */
+@Deprecated
 public class LoggingSpanCollector implements SpanCollector {
 
     private final Logger logger;

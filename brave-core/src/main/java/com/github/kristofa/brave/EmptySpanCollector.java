@@ -6,7 +6,10 @@ import com.twitter.zipkin.gen.Span;
  * A {@link SpanCollector} implementation that does nothing with collected spans.
  * 
  * @author adriaens
+ *
+ * @deprecated replaced by {@link zipkin.reporter.Reporter#NOOP}.
  */
+@Deprecated
 public class EmptySpanCollector implements SpanCollector {
 
     /**

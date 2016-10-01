@@ -7,7 +7,10 @@ import java.util.List;
 
 /**
  * Implemented {@link #sendSpans} to transport a encoded list of spans to Zipkin.
+ *
+ * @deprecated replaced by {@link zipkin.reporter.AsyncReporter}
  */
+@Deprecated
 public abstract class AbstractSpanCollector extends FlushingSpanCollector {
 
   private final SpanCodec codec;

@@ -21,11 +21,11 @@ import org.junit.Test;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.twitter.zipkin.gen.Endpoint;
-import com.twitter.zipkin.gen.Span;
+import zipkin.reporter.Reporter;
 
 public class LocalTracingInheritenceTest {
 
-    private SpanCollector spanCollector;
+    private Reporter<zipkin.Span> reporter;
     private Sampler sampler;
     private Brave brave;
     private ServerClientAndLocalSpanState state;
@@ -33,14 +33,14 @@ public class LocalTracingInheritenceTest {
 
     @Before
     public void setup() throws UnknownHostException {
-        spanCollector = mock(SpanCollector.class);
+        reporter = mock(Reporter.class);
         sampler = Sampler.ALWAYS_SAMPLE;
 
         final int ip = InetAddressUtilities.toInt(InetAddressUtilities.getLocalHostLANAddress());
         final String serviceName = LocalTracingInheritenceTest.class.getSimpleName();
         state = new InheritableServerClientAndLocalSpanState(Endpoint.create(serviceName, ip));
         brave = new Brave.Builder(state)
-                .spanCollector(spanCollector)
+                .reporter(reporter)
                 .traceSampler(sampler)
                 .build();
 
@@ -68,8 +68,8 @@ public class LocalTracingInheritenceTest {
         final ClientTracer clientTracer = brave.clientTracer();
         assertNotNull(clientTracer);
         assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
-        assertSame("ClientTracer should be configured with the spancollector we submitted.", spanCollector,
-                clientTracer.spanCollector());
+        assertSame("ClientTracer should be configured with the spanreportor we submitted.", reporter,
+                clientTracer.reporter());
         assertSame("ClientTracer should be configured with the traceSampler we submitted.",
                 sampler, clientTracer.traceSampler());
 
@@ -82,7 +82,7 @@ public class LocalTracingInheritenceTest {
     public void testGetServerTracer() {
         final ServerTracer serverTracer = brave.serverTracer();
         assertNotNull(serverTracer);
-        assertSame(spanCollector, serverTracer.spanCollector());
+        assertSame(reporter, serverTracer.reporter());
         assertSame("ServerTracer should be configured with the traceSampler we submitted.",
                 sampler, serverTracer.traceSampler());
 
@@ -95,7 +95,7 @@ public class LocalTracingInheritenceTest {
     public void testGetLocalTracer() {
         final LocalTracer localTracer = brave.localTracer();
         assertNotNull(localTracer);
-        assertSame(spanCollector, localTracer.spanCollector());
+        assertSame(reporter, localTracer.reporter());
         assertSame("LocalTracer should be configured with the traceSampler we submitted.",
                 sampler, localTracer.traceSampler());
 
@@ -154,15 +154,15 @@ public class LocalTracingInheritenceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(spanCollector, times(4)).collect(any(Span.class));
+        verify(reporter, times(4)).report(any(zipkin.Span.class));
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(spanCollector);
+        verifyNoMoreInteractions(reporter);
     }
 
     @Test
     public void testManyNestedLocalTraces() throws Exception {
         brave = new Brave.Builder(state)
-                .spanCollector(spanCollector)
+                .reporter(reporter)
                 .traceSampler(Sampler.ALWAYS_SAMPLE)
                 .build();
 
@@ -176,9 +176,9 @@ public class LocalTracingInheritenceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(spanCollector, times(777)).collect(any(Span.class));
+        verify(reporter, times(777)).report(any(zipkin.Span.class));
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(spanCollector);
+        verifyNoMoreInteractions(reporter);
     }
 
     private void runLocalSpan(final int iteration, final int limit) {
@@ -217,9 +217,9 @@ public class LocalTracingInheritenceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(spanCollector, times(844)).collect(any(Span.class));
+        verify(reporter, times(844)).report(any(zipkin.Span.class));
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(spanCollector);
+        verifyNoMoreInteractions(reporter);
     }
 
     private void runThreads(int breadth, int depth) throws InterruptedException {

@@ -38,7 +38,7 @@ public class ServerTracerTest {
     private SpanCollector mockSpanCollector;
     private ServerSpan mockServerSpan;
     private Span mockSpan;
-    private Endpoint mockEndpoint;
+    private Endpoint mockEndpoint = Endpoint.create("service", 0);
     private Random mockRandom;
     private Sampler mockSampler;
 
@@ -49,7 +49,6 @@ public class ServerTracerTest {
         mockSpan = mock(Span.class);
         mockServerSpan = mock(ServerSpan.class);
 
-        mockEndpoint = mock(Endpoint.class);
         mockRandom = mock(Random.class);
         mockSampler = mock(Sampler.class);
 
@@ -213,7 +212,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerSend() {
-        Span serverSend = new Span().setTimestamp(100L);
+        Span serverSend = new Span().setName("foo").setTimestamp(100L);
         when(mockServerSpan.getSpan()).thenReturn(serverSend);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
         when(mockServerSpanState.endpoint()).thenReturn(mockEndpoint);
@@ -238,7 +237,7 @@ public class ServerTracerTest {
 
     @Test
     public void setServerSend_skipsDurationWhenNoTimestamp() {
-        Span finished = new Span(); // unset due to client-originated trace
+        Span finished = new Span().setName("foo"); // duration unset due to client-originated trace
         when(mockServerSpan.getSpan()).thenReturn(finished);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
 
@@ -252,7 +251,7 @@ public class ServerTracerTest {
 
     @Test
     public void setServerSend_usesPreciseDuration() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500000L; // set in start span
         when(mockServerSpan.getSpan()).thenReturn(finished);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
@@ -270,7 +269,7 @@ public class ServerTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setServerSend_lessThanMicrosRoundUp() {
-        Span finished = new Span().setTimestamp(1000L); // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
         finished.startTick = 500L; // set in start span
         when(mockServerSpan.getSpan()).thenReturn(finished);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);

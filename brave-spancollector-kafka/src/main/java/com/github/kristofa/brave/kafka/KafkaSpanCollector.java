@@ -15,7 +15,11 @@ import org.apache.kafka.clients.producer.ProducerRecord;
  * SpanCollector which sends a thrift-encoded list of spans to a Kafka topic (default: "zipkin")
  *
  * <p><b>Important</b> If using zipkin-collector-service (or zipkin-receiver-kafka), you must run v1.35+
+ *
+ * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code KafkaSender}
+ *             located in the "io.zipkin.reporter:zipkin-sender-kafka08" dependency.
  */
+@Deprecated
 public final class KafkaSpanCollector extends AbstractSpanCollector {
 
   @AutoValue

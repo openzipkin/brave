@@ -5,9 +5,13 @@ import com.twitter.zipkin.gen.Endpoint;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Random;
+import zipkin.reporter.AsyncReporter;
+import zipkin.reporter.Reporter;
+import zipkin.reporter.Sender;
 
 import static com.github.kristofa.brave.InetAddressUtilities.getLocalHostLANAddress;
 import static com.github.kristofa.brave.InetAddressUtilities.toInt;
+import static zipkin.internal.Util.checkNotNull;
 
 public class Brave {
 
@@ -35,7 +39,7 @@ public class Brave {
     public static class Builder {
 
         private final ServerClientAndLocalSpanState state;
-        private SpanCollector spanCollector = new LoggingSpanCollector();
+        private Reporter reporter = new LoggingReporter();
         private Random random = new Random();
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
@@ -116,10 +120,34 @@ public class Brave {
         }
 
         /**
-         * @param spanCollector
+         * Controls how spans are reported. Defaults to logging, but often an {@link AsyncReporter}
+         * which batches spans before sending to Zipkin.
+         *
+         * The {@link AsyncReporter} includes a {@link Sender}, which is a driver for transports
+         * like http, kafka and scribe.
+         *
+         * <p>For example, here's how to batch send spans via http:
+         *
+         * <pre>{@code
+         * reporter = AsyncReporter.builder(URLConnectionSender.create("http://localhost:9411/api/v1/spans"))
+         *                         .build();
+         *
+         * braveBuilder.reporter(reporter);
+         * }</pre>
+         *
+         * <p>See https://github.com/openzipkin/zipkin-reporter-java
          */
+        public Builder reporter(Reporter<zipkin.Span> reporter) {
+            this.reporter = checkNotNull(reporter, "reporter");
+            return this;
+        }
+
+        /**
+         * @deprecated use {@link #reporter(Reporter)}
+         */
+        @Deprecated
         public Builder spanCollector(SpanCollector spanCollector) {
-            this.spanCollector = spanCollector;
+            this.reporter = new SpanCollectorReporterAdapter(spanCollector);
             return this;
         }
 
@@ -228,7 +256,7 @@ public class Brave {
     private Brave(Builder builder) {
         serverTracer = ServerTracer.builder()
                 .randomGenerator(builder.random)
-                .spanCollector(builder.spanCollector)
+                .reporter(builder.reporter)
                 .state(builder.state)
                 .traceSampler(builder.sampler)
                 .clock(builder.clock)
@@ -236,7 +264,7 @@ public class Brave {
 
         clientTracer = ClientTracer.builder()
                 .randomGenerator(builder.random)
-                .spanCollector(builder.spanCollector)
+                .reporter(builder.reporter)
                 .state(builder.state)
                 .traceSampler(builder.sampler)
                 .clock(builder.clock)
@@ -244,7 +272,7 @@ public class Brave {
 
         localTracer = LocalTracer.builder()
                 .randomGenerator(builder.random)
-                .spanCollector(builder.spanCollector)
+                .reporter(builder.reporter)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
                 .traceSampler(builder.sampler)

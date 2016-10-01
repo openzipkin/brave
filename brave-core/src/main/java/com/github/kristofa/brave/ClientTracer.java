@@ -9,6 +9,7 @@ import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
 import java.util.Random;
+import zipkin.reporter.Reporter;
 
 /**
  * Low level api that deals with client side of a request:
@@ -35,7 +36,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
-    abstract SpanCollector spanCollector();
+    abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
@@ -54,7 +55,15 @@ public abstract class ClientTracer extends AnnotationSubmitter {
          */
         public abstract Builder randomGenerator(Random randomGenerator);
 
-        public abstract Builder spanCollector(SpanCollector spanCollector);
+        public abstract Builder reporter(Reporter<zipkin.Span> reporter);
+
+        /**
+         * @deprecated use {@link #reporter(Reporter)}
+         */
+        @Deprecated
+        public final Builder spanCollector(SpanCollector spanCollector) {
+            return reporter(new SpanCollectorReporterAdapter(spanCollector));
+        }
 
         public abstract Builder traceSampler(Sampler sampler);
         public abstract Builder clock(AnnotationSubmitter.Clock clock);
@@ -101,7 +110,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * event means this span is finished.
      */
     public void setClientReceived() {
-        if (submitEndAnnotation(Constants.CLIENT_RECV, spanCollector())) {
+        if (submitEndAnnotation(Constants.CLIENT_RECV, reporter())) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
         }
     }

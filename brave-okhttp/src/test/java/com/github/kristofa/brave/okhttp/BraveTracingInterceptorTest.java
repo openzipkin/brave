@@ -6,7 +6,6 @@ import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
-import com.github.kristofa.brave.SpanCollector;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -242,15 +241,7 @@ public class BraveTracingInterceptorTest {
         .serviceName(local.serviceName)
         .build();
     Brave brave = new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
-        .spanCollector(new SpanCollector() {
-          @Override public void collect(com.twitter.zipkin.gen.Span span) {
-            storage.spanConsumer().accept(asList(span.toZipkin()));
-          }
-
-          @Override public void addDefaultAnnotation(String key, String value) {
-            throw new UnsupportedOperationException();
-          }
-        })
+        .reporter(s -> storage.spanConsumer().accept(asList(s)))
         .traceSampler(sampler)
         .build();
     return BraveTracingInterceptor.builder(brave);

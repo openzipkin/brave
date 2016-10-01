@@ -14,7 +14,11 @@ import zipkin.storage.StorageComponent;
 
 /**
  * SpanCollector which submits spans directly to a Zipkin {@link StorageComponent}.
+ *
+ * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code LocalSender}
+ *             located in the "io.zipkin.reporter:zipkin-sender-local" dependency.
  */
+@Deprecated
 public final class LocalSpanCollector extends FlushingSpanCollector {
 
   @AutoValue

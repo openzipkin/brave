@@ -33,7 +33,11 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * </p>
  *
  * @author kristof
+ *
+ * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code LibthriftSender}
+ *             located in the "io.zipkin.reporter:zipkin-sender-libthrift" dependency.
  */
+@Deprecated
 public class ScribeSpanCollector implements SpanCollector, Closeable {
 
     private static final String UTF_8 = "UTF-8";
