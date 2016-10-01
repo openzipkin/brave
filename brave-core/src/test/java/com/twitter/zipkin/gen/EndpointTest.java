@@ -1,11 +1,11 @@
 package com.twitter.zipkin.gen;
 
+import java.net.Inet6Address;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
 public class EndpointTest {
   @Rule
@@ -17,6 +17,32 @@ public class EndpointTest {
     thrown.expectMessage("serviceName");
 
     Endpoint.builder().ipv4(127 << 24 | 1).build();
+  }
+
+  @Test
+  public void testToStringIsJson_minimal() {
+    assertThat(Endpoint.builder().serviceName("foo").build())
+        .hasToString("{\"serviceName\":\"foo\"}");
+  }
+
+  @Test
+  public void testToStringIsJson_ipv4() {
+    assertThat(Endpoint.builder().serviceName("foo").ipv4(127 << 24 | 1).build())
+        .hasToString("{\"serviceName\":\"foo\",\"ipv4\":\"127.0.0.1\"}");
+  }
+
+  @Test
+  public void testToStringIsJson_ipv4Port() {
+    assertThat(Endpoint.builder().serviceName("foo").ipv4(127 << 24 | 1).port(80).build())
+        .hasToString("{\"serviceName\":\"foo\",\"ipv4\":\"127.0.0.1\",\"port\":80}");
+  }
+
+  @Test
+  public void testToStringIsJson_ipv6() {
+    assertThat(Endpoint.builder().serviceName("foo")
+        // Cheat so we don't have to catch an exception here
+        .ipv6(sun.net.util.IPAddressUtil.textToNumericFormatV6("2001:db8::c001")).build())
+        .hasToString("{\"serviceName\":\"foo\",\"ipv6\":\"2001:db8::c001\"}");
   }
 
   @Test
