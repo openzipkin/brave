@@ -5,6 +5,7 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import zipkin.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -109,7 +110,7 @@ public abstract class AnnotationSubmitter {
      *
      * @return true if a span was sent for collection.
      */
-    boolean submitEndAnnotation(String annotationName, SpanCollector spanCollector) {
+    boolean submitEndAnnotation(String annotationName, Reporter<zipkin.Span> reporter) {
         Span span = spanAndEndpoint().span();
         if (span == null) {
           return false;
@@ -145,7 +146,7 @@ public abstract class AnnotationSubmitter {
                 span.setDuration(duration);
             }
         }
-        spanCollector.collect(span);
+        reporter.report(span.toZipkin());
         return true;
     }
 

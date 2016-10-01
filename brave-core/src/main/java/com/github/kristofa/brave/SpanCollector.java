@@ -7,7 +7,10 @@ import com.twitter.zipkin.gen.Span;
  * simply log the collected spans or implementations that persist the spans to a database, submit them to a service,...
  * 
  * @author kristof
+ *
+ * @deprecated replaced by {@link zipkin.reporter.Reporter}
  */
+@Deprecated
 public interface SpanCollector {
 
     /**

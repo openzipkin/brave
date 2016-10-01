@@ -8,6 +8,7 @@ import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
 import java.util.Random;
+import zipkin.reporter.Reporter;
 
 import static zipkin.Constants.LOCAL_COMPONENT;
 
@@ -50,7 +51,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract Random randomGenerator();
 
-    abstract SpanCollector spanCollector();
+    abstract Reporter<zipkin.Span> reporter();
 
     abstract boolean allowNestedLocalSpans();
 
@@ -66,7 +67,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
         abstract Builder randomGenerator(Random randomGenerator);
 
-        abstract Builder spanCollector(SpanCollector spanCollector);
+        abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
         abstract Builder allowNestedLocalSpans(boolean allowNestedLocalSpans);
 
@@ -203,9 +204,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     private void internalFinishSpan(Span span, long duration) {
         synchronized (span) {
             span.setDuration(duration);
-            spanCollector().collect(span);
         }
-
+        reporter().report(span.toZipkin());
         spanAndEndpoint().state().setCurrentLocalSpan(null);
     }
 

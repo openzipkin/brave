@@ -30,6 +30,11 @@
         <groupId>io.zipkin.java</groupId>
         <artifactId>zipkin</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.zipkin.reporter</groupId>
+      <artifactId>zipkin-reporter</artifactId>
+      <version>0.6.0</version>
+    </dependency>
     <!-- for value types... don't worry. this dependency is compile only! -->
     <dependency>
         <groupId>com.google.auto.value</groupId>

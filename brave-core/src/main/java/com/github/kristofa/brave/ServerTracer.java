@@ -5,9 +5,11 @@ import com.google.auto.value.AutoValue;
 import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
 import java.util.Random;
+import zipkin.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
@@ -36,7 +38,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Random randomGenerator();
-    abstract SpanCollector spanCollector();
+    abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
@@ -55,7 +57,15 @@ public abstract class ServerTracer extends AnnotationSubmitter {
          */
         public abstract Builder randomGenerator(Random randomGenerator);
 
-        public abstract Builder spanCollector(SpanCollector spanCollector);
+        public abstract Builder reporter(Reporter<zipkin.Span> reporter);
+
+        /**
+         * @deprecated use {@link #reporter(Reporter)}
+         */
+        @Deprecated
+        public final Builder spanCollector(SpanCollector spanCollector) {
+            return reporter(new SpanCollectorReporterAdapter(spanCollector));
+        }
 
         public abstract Builder traceSampler(Sampler sampler);
 
@@ -158,7 +168,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Sets the server sent event for current thread.
      */
     public void setServerSend() {
-        if (submitEndAnnotation(Constants.SERVER_SEND, spanCollector())) {
+        if (submitEndAnnotation(Constants.SERVER_SEND, reporter())) {
             spanAndEndpoint().state().setCurrentServerSpan(null);
         }
     }
