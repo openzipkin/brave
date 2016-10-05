@@ -5,8 +5,8 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
-import static zipkin.internal.Util.checkArgument;
 import static com.github.kristofa.brave.internal.Util.equal;
+import static zipkin.internal.Util.checkArgument;
 
 /**
  * Indicates the network context of a service recording an annotation with two
@@ -182,6 +182,16 @@ public class Endpoint implements Serializable {
     h *= 1000003;
     h ^= (port == null) ? 0 : port.hashCode();
     return h;
+  }
+
+  /** Returns a json representation of this endpoint */
+  @Override public String toString() {
+    // zipkin.Endpoint.toString is json
+    return zipkin.Endpoint.builder()
+        .serviceName(service_name)
+        .port(port)
+        .ipv4(ipv4)
+        .ipv6(ipv6).build().toString();
   }
 }
 
