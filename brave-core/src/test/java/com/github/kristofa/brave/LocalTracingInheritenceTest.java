@@ -352,7 +352,7 @@ public class LocalTracingInheritenceTest {
             assertThat(span0.nullableParentId()).isNull();
 
             try {
-                runThreads(16, 4);
+                runThreads(16, 4, span0);
             } finally {
                 localTracer.finishSpan();
             }
@@ -366,11 +366,11 @@ public class LocalTracingInheritenceTest {
         verifyNoMoreInteractions(reporter);
     }
 
-    private void runThreads(int breadth, int depth) throws InterruptedException {
+    private void runThreads(int breadth, int depth, SpanId parentSpan) throws InterruptedException {
         List<Thread> threads = new ArrayList<Thread>(Math.abs(breadth * depth));
         for (int i = 1; i < breadth; i++) {
             for (int j = 0; j < depth; j++) {
-                threads.add(threadFactory.newThread(createRunnable(i, j)));
+                threads.add(threadFactory.newThread(createRunnable(i, j, parentSpan)));
             }
         }
 
@@ -383,12 +383,15 @@ public class LocalTracingInheritenceTest {
         }
     }
 
-    private Runnable createRunnable(final int breadth, final int depth) {
+    private Runnable createRunnable(final int breadth, final int depth, SpanId parentSpan) {
         final SpanId baseSpan = brave.localTracer().startNewSpan("thread-" + breadth, "create-" + breadth + ":" + depth);
         assertThat(baseSpan).isNotNull();
-        assertThat(baseSpan.nullableParentId()).isNotNull();
         assertThat(baseSpan.root()).isFalse();
         assertThat(baseSpan.spanId).isNotEqualTo(baseSpan.traceId);
+        assertThat(baseSpan.spanId).isNotEqualTo(parentSpan.spanId);
+        assertThat(baseSpan.traceId).isEqualTo(parentSpan.traceId);
+        assertThat(baseSpan.nullableParentId()).isEqualTo(parentSpan.spanId);
+
         try {
             return new Runnable() {
                 @Override
@@ -399,13 +402,16 @@ public class LocalTracingInheritenceTest {
                     LocalTracer localTracer = brave.localTracer();
                     SpanId runnableSpan = localTracer.startNewSpan("thread-" + breadth + ":" + depth,
                             "run-" + breadth + ":" + depth);
+
                     assertThat(runnableSpan).isNotNull();
-                    assertThat(runnableSpan.nullableParentId()).isNotNull();
                     assertThat(runnableSpan.root()).isFalse();
                     assertThat(runnableSpan.spanId).isNotEqualTo(runnableSpan.traceId);
+                    assertThat(runnableSpan.spanId).isNotEqualTo(baseSpan.spanId);
+                    assertThat(runnableSpan.traceId).isEqualTo(baseSpan.traceId);
+                    assertThat(runnableSpan.nullableParentId()).isEqualTo(baseSpan.spanId);
 
                     try {
-                        runThreads(2, depth - 1);
+                        runThreads(2, depth - 1, runnableSpan);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     } finally {
