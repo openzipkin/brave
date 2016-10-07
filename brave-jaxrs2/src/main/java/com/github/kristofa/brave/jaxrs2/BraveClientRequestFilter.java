@@ -5,7 +5,6 @@ import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import javax.annotation.Priority;
-import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientRequestFilter;
 import javax.ws.rs.ext.Provider;
@@ -22,7 +21,6 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
     private final ClientRequestInterceptor requestInterceptor;
     private final SpanNameProvider spanNameProvider;
 
-    @Inject
     public BraveClientRequestFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;

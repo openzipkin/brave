@@ -4,7 +4,6 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import javax.annotation.Priority;
-import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
@@ -20,7 +19,6 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
 
     private final ServerResponseInterceptor responseInterceptor;
 
-    @Inject
     public BraveContainerResponseFilter(ServerResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
     }

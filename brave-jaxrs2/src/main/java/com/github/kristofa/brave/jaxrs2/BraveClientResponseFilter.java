@@ -4,7 +4,6 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpResponse;
 import javax.annotation.Priority;
-import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientResponseContext;
 import javax.ws.rs.client.ClientResponseFilter;
@@ -20,7 +19,6 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
 
     private final ClientResponseInterceptor responseInterceptor;
 
-    @Inject
     public BraveClientResponseFilter(ClientResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
     }
