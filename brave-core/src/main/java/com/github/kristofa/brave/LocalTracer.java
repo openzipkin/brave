@@ -88,7 +88,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
-        SpanId spanId = startNewSpan(component, operation, currentTimeMicroseconds(null));
+        SpanId spanId = startNewSpan(component, operation, clock().currentTimeMicroseconds());
         if (spanId == null) return null;
         Span span = spanAndEndpoint().span();
         synchronized (span) {
@@ -186,7 +186,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         if (startTick != null) {
             duration = Math.max(1L, (endTick - startTick) / 1000L);
         } else {
-            duration = Math.max(1L, currentTimeMicroseconds(null) - span.getTimestamp());
+            duration = Math.max(1L, clock().currentTimeMicroseconds() - span.getTimestamp());
         }
         internalFinishSpan(span, duration);
     }

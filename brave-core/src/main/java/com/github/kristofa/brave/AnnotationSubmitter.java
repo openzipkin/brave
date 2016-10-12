@@ -57,8 +57,14 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
+            Long startTimestamp;
+            Long startTick;
+            synchronized (span) {
+                startTimestamp = span.getTimestamp();
+                startTick = span.startTick;
+            }
             Annotation annotation = Annotation.create(
-                currentTimeMicroseconds(startTick(span)),
+                currentTimeMicroseconds(startTimestamp, startTick),
                 value,
                 spanAndEndpoint().endpoint()
             );
@@ -92,7 +98,7 @@ public abstract class AnnotationSubmitter {
         Span span = spanAndEndpoint().span();
         if (span != null) {
             Annotation annotation = Annotation.create(
-                currentTimeMicroseconds(null),
+                clock().currentTimeMicroseconds(),
                 annotationName,
                 spanAndEndpoint().endpoint()
             );
@@ -122,18 +128,7 @@ public abstract class AnnotationSubmitter {
             startTimestamp = span.getTimestamp();
             startTick = span.startTick;
         }
-        Long endTimestamp;
-        Long duration = null;
-        if (startTick != null) {
-            long endTick = System.nanoTime();
-            duration = Math.max(1L, (endTick - startTick) / 1000L);
-            endTimestamp = startTimestamp + duration;
-        } else {
-            endTimestamp = currentTimeMicroseconds(null);
-            if (startTimestamp != null) {
-                duration = Math.max(1L, endTimestamp - startTimestamp);
-            }
-        }
+        long endTimestamp = currentTimeMicroseconds(startTimestamp, startTick);
 
         Annotation annotation = Annotation.create(
             endTimestamp,
@@ -143,7 +138,7 @@ public abstract class AnnotationSubmitter {
         synchronized (span) {
             span.addToAnnotations(annotation);
             if (startTimestamp != null) {
-                span.setDuration(duration);
+                span.setDuration(Math.max(1L, endTimestamp - startTimestamp));
             }
         }
         reporter.report(span.toZipkin());
@@ -191,9 +186,9 @@ public abstract class AnnotationSubmitter {
         submitBinaryAnnotation(key, String.valueOf(value));
     }
 
-    long currentTimeMicroseconds(@Nullable Long startTick) {
-        return startTick != null
-            ? (System.nanoTime() - startTick) / 1000
+    long currentTimeMicroseconds(@Nullable Long startTimestamp, @Nullable Long startTick) {
+        return startTimestamp != null && startTick != null
+            ? startTimestamp + (System.nanoTime() - startTick) / 1000
             : clock().currentTimeMicroseconds();
     }
 
@@ -240,12 +235,6 @@ public abstract class AnnotationSubmitter {
         @Override
         public long currentTimeMicroseconds() {
             return System.currentTimeMillis() * 1000;
-        }
-    }
-
-    Long startTick(Span span) {
-        synchronized (span) {
-            return span.startTick;
         }
     }
 }
