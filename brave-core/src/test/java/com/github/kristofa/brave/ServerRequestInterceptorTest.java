@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 
-import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Random;
@@ -12,7 +11,6 @@ import org.mockito.InOrder;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static com.github.kristofa.brave.Sampler.ALWAYS_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -72,6 +70,7 @@ public class ServerRequestInterceptorTest {
             .spanCollector(mock(SpanCollector.class))
             .traceSampler(Sampler.ALWAYS_SAMPLE)
             .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .traceId128Bit(false)
             .build();
         interceptor = new ServerRequestInterceptor(serverTracer);
 
@@ -105,12 +104,13 @@ public class ServerRequestInterceptorTest {
     public void handleSampleRequestWithoutParentSpanId() {
         InheritableServerClientAndLocalSpanState state =
             new InheritableServerClientAndLocalSpanState(mock(Endpoint.class));
-        serverTracer = ServerTracer.builder()
+        serverTracer = new AutoValue_ServerTracer.Builder(serverTracer)
             .state(state)
             .randomGenerator(mock(Random.class))
             .spanCollector(mock(SpanCollector.class))
             .traceSampler(Sampler.ALWAYS_SAMPLE)
             .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .traceId128Bit(false)
             .build();
         interceptor = new ServerRequestInterceptor(serverTracer);
 

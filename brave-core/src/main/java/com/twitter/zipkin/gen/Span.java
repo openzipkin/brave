@@ -25,6 +25,7 @@ public class Span implements Serializable {
   public volatile Long startTick;
 
   private long trace_id; // required
+  private long trace_id_high; // optional (default to zero)
   private String name; // required
   private long id; // required
   private Long parent_id; // optional
@@ -40,6 +41,21 @@ public class Span implements Serializable {
 
   public Span setTrace_id(long trace_id) {
     this.trace_id = trace_id;
+    return this;
+  }
+
+  /**
+   * When non-zero, the trace containing this span uses 128-bit trace identifiers.
+   *
+   * @since 3.15
+   * @see zipkin.Span#traceIdHigh
+   */
+  public long getTrace_id_high() {
+    return this.trace_id_high;
+  }
+
+  public Span setTrace_id_high(long trace_id_high) {
+    this.trace_id_high = trace_id_high;
     return this;
   }
 
@@ -213,7 +229,8 @@ public class Span implements Serializable {
     }
     if (o instanceof Span) {
       Span that = (Span) o;
-      return (this.trace_id == that.trace_id)
+      return (this.trace_id_high == that.trace_id_high)
+          && (this.trace_id == that.trace_id)
           && (this.name.equals(that.name))
           && (this.id == that.id)
           && equal(this.parent_id, that.parent_id)
@@ -229,6 +246,8 @@ public class Span implements Serializable {
   @Override
   public int hashCode() {
     int h = 1;
+    h *= 1000003;
+    h ^= (trace_id_high >>> 32) ^ trace_id_high;
     h *= 1000003;
     h ^= (trace_id >>> 32) ^ trace_id;
     h *= 1000003;
@@ -259,6 +278,7 @@ public class Span implements Serializable {
   public zipkin.Span toZipkin() {
     zipkin.Span.Builder result = zipkin.Span.builder();
     result.traceId(getTrace_id());
+    result.traceIdHigh(getTrace_id_high());
     result.id(getId());
     result.parentId(getParent_id());
     result.name(getName());

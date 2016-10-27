@@ -39,6 +39,7 @@ import static com.github.kristofa.brave.http.BraveHttpHeaders.ParentSpanId;
 import static com.github.kristofa.brave.http.BraveHttpHeaders.Sampled;
 import static com.github.kristofa.brave.http.BraveHttpHeaders.SpanId;
 import static com.github.kristofa.brave.http.BraveHttpHeaders.TraceId;
+import static com.github.kristofa.brave.okhttp.BraveTracingInterceptor.addTraceHeaders;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -231,6 +232,17 @@ public class BraveTracingInterceptorTest {
             .build(),
         localSpan.toBuilder().duration(7000L).build()
     );
+  }
+
+  @Test
+  public void addTraceHeaders_128() {
+    com.github.kristofa.brave.SpanId id = com.github.kristofa.brave.SpanId.builder()
+        .traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    Request original = new Request.Builder().url("http://localhost").build();
+
+    assertThat(addTraceHeaders(original, id).build().header(TraceId.getName()))
+        .isEqualTo("00000000000000010000000000000002");
   }
 
   BraveTracingInterceptor.Builder interceptorBuilder(Sampler sampler) {

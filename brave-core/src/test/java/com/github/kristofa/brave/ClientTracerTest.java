@@ -26,11 +26,10 @@ import static org.mockito.Mockito.when;
 @PrepareForTest(AnnotationSubmitter.class)
 public class ClientTracerTest {
 
-    private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
-    private final static String REQUEST_NAME = "requestname";
-    private static final long PARENT_SPAN_ID = 103;
-    private static final long PARENT_TRACE_ID = 105;
-    private static final long TRACE_ID = 32534;
+    private static final long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+    private static final String REQUEST_NAME = "requestname";
+    private static final long TRACE_ID = 105;
+    private static final SpanId PARENT_SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
 
     private ServerClientAndLocalSpanState state = new TestServerClientAndLocalSpanStateCompilation();
     private Random mockRandom;
@@ -54,6 +53,7 @@ public class ClientTracerTest {
             .spanCollector(mockCollector)
             .traceSampler(mockSampler)
             .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .traceId128Bit(false)
             .build();
     }
 
@@ -159,7 +159,7 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleNullNotPartOfExistingSpan() {
-        state.setCurrentServerSpan(ServerSpan.create(null));
+        state.setCurrentServerSpan(ServerSpan.EMPTY);
 
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
@@ -171,7 +171,7 @@ public class ClientTracerTest {
         assertNull(newSpanId.nullableParentId());
 
         assertEquals(
-                new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
+                SpanId.builder().spanId(TRACE_ID).build().toSpan().setName(REQUEST_NAME),
                 state.getCurrentClientSpan()
         );
 
@@ -181,39 +181,19 @@ public class ClientTracerTest {
     }
 
     @Test
-    public void testStartNewSpanSampleTrueNotPartOfExistingSpan() {
-        state.setCurrentServerSpan(ServerSpan.create(true));
-
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-
-        final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertNotNull(newSpanId);
-        assertEquals(TRACE_ID, newSpanId.traceId);
-        assertEquals(TRACE_ID, newSpanId.spanId);
-        assertNull(newSpanId.nullableParentId());
-
-        assertEquals(
-                new Span().setTrace_id(TRACE_ID).setId(TRACE_ID).setName(REQUEST_NAME),
-                state.getCurrentClientSpan()
-        );
-
-        verifyNoMoreInteractions(mockCollector, mockSampler);
-    }
-
-    @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-        final ServerSpan parentSpan = ServerSpan.create(PARENT_TRACE_ID, PARENT_SPAN_ID, null, "name");
+        final ServerSpan parentSpan = ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name"));
         state.setCurrentServerSpan(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1L);
 
         final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(PARENT_TRACE_ID, newSpanId.traceId);
+        assertEquals(TRACE_ID, newSpanId.traceId);
         assertEquals(1L, newSpanId.spanId);
-        assertEquals(PARENT_SPAN_ID, newSpanId.parentId);
+        assertEquals(PARENT_SPAN_ID.spanId, newSpanId.parentId);
 
         assertEquals(
-                new Span().setTrace_id(PARENT_TRACE_ID).setId(1).setParent_id(PARENT_SPAN_ID).setName(REQUEST_NAME),
+                newSpanId.toSpan().setName(REQUEST_NAME),
                 state.getCurrentClientSpan()
         );
 
@@ -222,7 +202,7 @@ public class ClientTracerTest {
 
     @Test
     public void testSamplerFalse() {
-        state.setCurrentServerSpan(ServerSpan.create(null, null));
+        state.setCurrentServerSpan(ServerSpan.EMPTY);
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
 
@@ -267,5 +247,39 @@ public class ClientTracerTest {
         verifyNoMoreInteractions(mockCollector);
 
         assertEquals(1L, finished.getDuration().longValue());
+    }
+
+    @Test
+    public void startNewSpan_whenParentHas128bitTraceId() {
+        ServerSpan parentSpan = ServerSpan.create(
+            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build().toSpan().setName("name"));
+        state.setCurrentServerSpan(parentSpan);
+        when(mockRandom.nextLong()).thenReturn(1L);
+
+        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
+        assertEquals(3, newSpanId.traceIdHigh);
+        assertEquals(TRACE_ID, newSpanId.traceId);
+    }
+
+    @Test
+    public void startNewSpan_rootSpanWith64bitTraceId() {
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+
+        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
+        assertEquals(0, newSpanId.traceIdHigh);
+        assertEquals(TRACE_ID, newSpanId.traceId);
+    }
+
+    @Test
+    public void startNewSpan_rootSpanWith128bitTraceId() {
+        clientTracer = new AutoValue_ClientTracer.Builder(clientTracer)
+            .traceId128Bit(true).build();
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+
+        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
+        assertEquals(TRACE_ID + 1, newSpanId.traceIdHigh);
+        assertEquals(TRACE_ID, newSpanId.traceId);
     }
 }

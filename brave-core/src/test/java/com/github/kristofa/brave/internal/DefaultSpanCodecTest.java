@@ -36,7 +36,23 @@ public class DefaultSpanCodecTest {
   }
 
   @Test
+  public void roundTripSpan_thrift_128() {
+    span.setTrace_id_high(3L);
+
+    byte[] encoded = DefaultSpanCodec.THRIFT.writeSpan(span);
+    assertEquals(span, DefaultSpanCodec.THRIFT.readSpan(encoded));
+  }
+
+  @Test
   public void roundTripSpan_json() {
+    byte[] encoded = DefaultSpanCodec.JSON.writeSpan(span);
+    assertEquals(span, DefaultSpanCodec.JSON.readSpan(encoded));
+  }
+
+  @Test
+  public void roundTripSpan_json_128() {
+    span.setTrace_id_high(3L);
+
     byte[] encoded = DefaultSpanCodec.JSON.writeSpan(span);
     assertEquals(span, DefaultSpanCodec.JSON.readSpan(encoded));
   }

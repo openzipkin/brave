@@ -1,14 +1,12 @@
 package com.github.kristofa.brave;
 
-import com.google.auto.value.AutoValue;
-
 import com.github.kristofa.brave.SpanAndEndpoint.ClientSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
+import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import zipkin.Constants;
-
 import java.util.Random;
+import zipkin.Constants;
 import zipkin.reporter.Reporter;
 
 /**
@@ -40,6 +38,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
+    abstract boolean traceId128Bit();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -67,6 +66,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
         public abstract Builder traceSampler(Sampler sampler);
         public abstract Builder clock(AnnotationSubmitter.Clock clock);
+        abstract Builder traceId128Bit(boolean traceId128Bit);
 
         public abstract ClientTracer build();
     }
@@ -156,8 +156,13 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
         long newSpanId = randomGenerator().nextLong();
         SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
-        if (parentSpan == null) return builder.build(); // new trace
-        return builder.traceId(parentSpan.getTrace_id()).parentId(parentSpan.getId()).build();
+        if (parentSpan == null) { // new trace
+            if (traceId128Bit()) builder.traceIdHigh(randomGenerator().nextLong());
+            return builder.build();
+        }
+        return builder.traceIdHigh(parentSpan.getTrace_id_high())
+            .traceId(parentSpan.getTrace_id())
+            .parentId(parentSpan.getId()).build();
     }
 
     ClientTracer() {

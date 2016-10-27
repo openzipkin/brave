@@ -145,7 +145,7 @@ public final class BraveTracingInterceptor implements Interceptor {
 
   static Request.Builder addTraceHeaders(Request request, SpanId spanId) {
     Request.Builder tracedRequest = request.newBuilder();
-    tracedRequest.header(BraveHttpHeaders.TraceId.getName(), convertToString(spanId.traceId));
+    tracedRequest.header(BraveHttpHeaders.TraceId.getName(), spanId.traceIdString());
     tracedRequest.header(BraveHttpHeaders.SpanId.getName(), convertToString(spanId.spanId));
     if (spanId.nullableParentId() != null) {
       tracedRequest.header(BraveHttpHeaders.ParentSpanId.getName(),

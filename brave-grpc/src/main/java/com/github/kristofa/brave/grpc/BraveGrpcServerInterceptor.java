@@ -125,6 +125,7 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     static SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
         return SpanId.builder()
+            .traceIdHigh(traceId.length() == 32 ? convertToLong(traceId, 0) : 0)
             .traceId(convertToLong(traceId))
             .spanId(convertToLong(spanId))
             .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();

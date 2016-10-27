@@ -88,7 +88,7 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
                 headers.put(BravePropagationKeys.Sampled, "0");
             } else {
                 headers.put(BravePropagationKeys.Sampled, "1");
-                headers.put(BravePropagationKeys.TraceId, IdConversion.convertToString(spanId.traceId));
+                headers.put(BravePropagationKeys.TraceId, spanId.traceIdString());
                 headers.put(BravePropagationKeys.SpanId, IdConversion.convertToString(spanId.spanId));
                 if (spanId.nullableParentId() != null) {
                     headers.put(BravePropagationKeys.ParentSpanId, IdConversion.convertToString(spanId.parentId));

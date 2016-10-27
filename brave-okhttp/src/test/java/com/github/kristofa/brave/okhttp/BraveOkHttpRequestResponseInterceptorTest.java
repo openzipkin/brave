@@ -31,6 +31,8 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
   private static final Long SPAN_ID = 151864L;
   private static final Long TRACE_ID = 8494864L;
+  private static final String TRACE_ID_STRING =
+      SpanId.builder().spanId(TRACE_ID).build().traceIdString();
   private static final String HTTP_METHOD_GET = "GET";
 
   @Rule
@@ -81,7 +83,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
     assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(Long.toString(TRACE_ID, 16), serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
     assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
   }
 
@@ -114,7 +116,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
     assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(Long.toString(TRACE_ID, 16), serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
     assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
   }
 
@@ -172,7 +174,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
     assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(Long.toString(TRACE_ID, 16), serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
     assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
   }
 

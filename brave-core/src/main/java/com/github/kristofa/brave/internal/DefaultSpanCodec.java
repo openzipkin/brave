@@ -38,6 +38,7 @@ public final class DefaultSpanCodec implements SpanCodec {
   public Span readSpan(byte[] bytes) {
     zipkin.Span in = codec.readSpan(bytes);
     Span result = new Span();
+    result.setTrace_id_high(in.traceIdHigh);
     result.setTrace_id(in.traceId);
     result.setId(in.id);
     result.setParent_id(in.parentId);

@@ -1,9 +1,7 @@
 package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Assert;
@@ -13,30 +11,15 @@ import org.junit.Test;
 import com.twitter.zipkin.gen.Span;
 
 public class ServerSpanTest {
-
     private static final long TRACE_ID = 1;
-    private static final long SPAN_ID = 2;
-    private static final Long PARENT_SPAN_ID = Long.valueOf(3);
+    private static final SpanId SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(2).parentId(3L).build();
     private static final String NAME = "name";
+
     private ServerSpan serverSpan;
 
     @Before
     public void setup() {
-        serverSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
-    }
-
-    @Test
-    public void testServerSpanSampleNull() {
-        final ServerSpan serverSpan = ServerSpan.create(null);
-        assertNull(serverSpan.getSample());
-        assertNull(serverSpan.getSpan());
-    }
-
-    @Test
-    public void testServerSpanSampleFalse() {
-        final ServerSpan serverSpan = ServerSpan.create(false);
-        assertFalse(serverSpan.getSample());
-        assertNull(serverSpan.getSpan());
+        serverSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
     }
 
     @Test
@@ -44,11 +27,20 @@ public class ServerSpanTest {
         final Span span = serverSpan.getSpan();
         assertNotNull(span);
         assertEquals(TRACE_ID, span.getTrace_id());
-        assertEquals(SPAN_ID, span.getId());
-        assertEquals(PARENT_SPAN_ID.longValue(), span.getParent_id().longValue());
+        assertEquals(SPAN_ID.spanId, span.getId());
+        assertEquals(SPAN_ID.parentId, span.getParent_id().longValue());
         assertEquals(NAME, span.getName());
         assertTrue(span.getAnnotations().isEmpty());
         assertTrue(span.getBinary_annotations().isEmpty());
+    }
+
+    @Test
+    public void testGetSpan_128() {
+        serverSpan = ServerSpan.create(SPAN_ID.toSpan().setTrace_id_high(5).setName(NAME));
+
+        Span span = serverSpan.getSpan();
+        assertEquals(5, span.getTrace_id_high());
+        assertEquals(TRACE_ID, span.getTrace_id());
     }
 
     @Test
@@ -59,13 +51,13 @@ public class ServerSpanTest {
     @Test
     public void testEqualsObject() {
 
-        final ServerSpan equalServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
+        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
         assertTrue(serverSpan.equals(equalServerSpan));
     }
 
     @Test
     public void testHashCode() {
-        final ServerSpan equalServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, NAME);
+        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
         Assert.assertEquals(serverSpan.hashCode(), equalServerSpan.hashCode());
     }
 

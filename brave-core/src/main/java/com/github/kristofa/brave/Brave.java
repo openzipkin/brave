@@ -45,6 +45,7 @@ public class Brave {
         private Sampler sampler = Sampler.create(1.0f);
         private boolean allowNestedLocalSpans = false;
         private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
+        private boolean traceId128Bit = false;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -156,6 +157,12 @@ public class Brave {
             return this;
         }
 
+        /** When true, new root spans will have 128-bit trace IDs. Defaults to false (64-bit) */
+        public Builder traceId128Bit(boolean traceId128Bit) {
+            this.traceId128Bit = traceId128Bit;
+            return this;
+        }
+
         public Brave build() {
             return new Brave(this);
         }
@@ -260,6 +267,7 @@ public class Brave {
                 .state(builder.state)
                 .traceSampler(builder.sampler)
                 .clock(builder.clock)
+                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         clientTracer = ClientTracer.builder()
@@ -268,6 +276,7 @@ public class Brave {
                 .state(builder.state)
                 .traceSampler(builder.sampler)
                 .clock(builder.clock)
+                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         localTracer = LocalTracer.builder()
@@ -277,6 +286,7 @@ public class Brave {
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
                 .traceSampler(builder.sampler)
                 .clock(builder.clock)
+                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);

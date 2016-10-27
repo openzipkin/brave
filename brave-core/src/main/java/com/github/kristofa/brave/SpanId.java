@@ -49,8 +49,15 @@ public final class SpanId {
    */
   @Deprecated
   public SpanId(long traceId, long parentId, long spanId, long flags) {
-    this.traceId = (parentId == traceId) ? parentId : traceId;
-    this.parentId = (parentId == spanId) ? traceId : parentId;
+    this(0, parentId == traceId ? parentId : traceId,
+        (parentId == spanId) ? traceId : parentId,
+        spanId, flags);
+  }
+
+  SpanId(long traceIdHigh, long traceId, long parentId, long spanId, long flags) {
+    this.traceIdHigh = traceIdHigh;
+    this.traceId = traceId;
+    this.parentId = parentId;
     this.spanId = spanId;
     this.flags = flags;
   }
@@ -58,17 +65,26 @@ public final class SpanId {
   /** Deserializes this from a big-endian byte array */
   public static SpanId fromBytes(byte[] bytes) {
     checkNotNull(bytes, "bytes");
-    if (bytes.length != 32) {
-      throw new IllegalArgumentException("bytes.length " + bytes.length + " != 32");
+    if (bytes.length != 32 && bytes.length != 40) {
+      throw new IllegalArgumentException("bytes.length " + bytes.length + " != 32 or 40");
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     long spanId = buffer.getLong(0);
     long parentId = buffer.getLong(8);
-    long traceId = buffer.getLong(16);
-    long flags = buffer.getLong(24);
-
-    return new SpanId(traceId, parentId, spanId, flags);
+    long traceIdHigh;
+    long traceId;
+    long flags;
+    if (bytes.length == 32) {
+      traceIdHigh = 0;
+      traceId = buffer.getLong(16);
+      flags = buffer.getLong(24);
+    } else {
+      traceIdHigh = buffer.getLong(16);
+      traceId = buffer.getLong(24);
+      flags = buffer.getLong(32);
+    }
+    return new SpanId(traceIdHigh, traceId, parentId, spanId, flags);
   }
 
   public static Builder builder() {
@@ -108,6 +124,13 @@ public final class SpanId {
   public Long getParentSpanId() {
     return nullableParentId();
   }
+
+  /**
+   * When non-zero, the trace containing this span uses 128-bit trace identifiers.
+   *
+   * @since 3.15
+   */
+  public final long traceIdHigh;
 
   /**
    * Unique 8-byte identifier for a trace, set on all spans within it.
@@ -162,12 +185,19 @@ public final class SpanId {
 
   /** Serializes this into a big-endian byte array */
   public byte[] bytes() {
-    byte[] result = new byte[32];
+    boolean traceHi = traceIdHigh != 0;
+    byte[] result = new byte[traceHi ? 40 : 32];
     ByteBuffer buffer = ByteBuffer.wrap(result);
     buffer.putLong(0, spanId);
     buffer.putLong(8, parentId);
-    buffer.putLong(16, traceId);
-    buffer.putLong(24, flags);
+    if (traceHi) {
+      buffer.putLong(16, traceIdHigh);
+      buffer.putLong(24, traceId);
+      buffer.putLong(32, flags);
+    } else {
+      buffer.putLong(16, traceId);
+      buffer.putLong(24, flags);
+    }
     return result;
   }
 
@@ -178,13 +208,21 @@ public final class SpanId {
   /** Returns {@code $traceId.$spanId<:$parentId} */
   @Override
   public String toString() {
-    char[] result = new char[(3 * 16) + 3]; // 3 ids and the constant delimiters
-    writeHexLong(result, 0, traceId);
-    result[16] = '.';
-    writeHexLong(result, 17, spanId);
-    result[33] = '<';
-    result[34] = ':';
-    writeHexLong(result, 35, parentId);
+    boolean traceHi = traceIdHigh != 0;
+    char[] result = new char[((traceHi ? 4 : 3) * 16) + 3]; // 3 ids and the constant delimiters
+    int pos = 0;
+    if (traceHi) {
+      writeHexLong(result, pos, traceIdHigh);
+      pos += 16;
+    }
+    writeHexLong(result, pos, traceId);
+    pos += 16;
+    result[pos++] = '.';
+    writeHexLong(result, pos, spanId);
+    pos += 16;
+    result[pos++] = '<';
+    result[pos++] = ':';
+    writeHexLong(result, pos, parentId);
     return new String(result);
   }
 
@@ -195,7 +233,8 @@ public final class SpanId {
     }
     if (o instanceof SpanId) {
       SpanId that = (SpanId) o;
-      return (this.traceId == that.traceId)
+      return (this.traceIdHigh == that.traceIdHigh)
+          && (this.traceId == that.traceId)
           && (this.parentId == that.parentId)
           && (this.spanId == that.spanId);
     }
@@ -206,6 +245,8 @@ public final class SpanId {
   public int hashCode() {
     int h = 1;
     h *= 1000003;
+    h ^= (traceIdHigh >>> 32) ^ traceIdHigh;
+    h *= 1000003;
     h ^= (traceId >>> 32) ^ traceId;
     h *= 1000003;
     h ^= (parentId >>> 32) ^ parentId;
@@ -214,10 +255,28 @@ public final class SpanId {
     return h;
   }
 
+  /**
+   * Returns the hex representation of the span's trace ID
+   *
+   * @since 3.15
+   */
+  public String traceIdString() {
+    if (traceIdHigh != 0) {
+      char[] result = new char[32];
+      writeHexLong(result, 0, traceIdHigh);
+      writeHexLong(result, 16, traceId);
+      return new String(result);
+    }
+    char[] result = new char[16];
+    writeHexLong(result, 0, traceId);
+    return new String(result);
+  }
+
   /** Preferred way to create spans, as it properly deals with the parent id */
   public Span toSpan() {
     Span result = new Span();
     result.setId(spanId);
+    result.setTrace_id_high(traceIdHigh);
     result.setTrace_id(traceId);
     result.setParent_id(nullableParentId());
     result.setName(""); // avoid NPE on equals
@@ -226,8 +285,9 @@ public final class SpanId {
   }
 
   public static final class Builder {
+    long traceIdHigh = 0;
     Long traceId;
-    Long parentId;
+    Long nullableParentId;
     Long spanId;
     long flags;
 
@@ -235,10 +295,17 @@ public final class SpanId {
     }
 
     Builder(SpanId source) {
+      this.traceIdHigh = source.traceIdHigh;
       this.traceId = source.traceId;
-      this.parentId = source.nullableParentId();
+      this.nullableParentId = source.nullableParentId();
       this.spanId = source.spanId;
       this.flags = source.flags;
+    }
+
+    /** @see SpanId#traceIdHigh */
+    public Builder traceIdHigh(long traceIdHigh) {
+      this.traceIdHigh = traceIdHigh;
+      return this;
     }
 
     /** @see SpanId#traceId */
@@ -258,7 +325,7 @@ public final class SpanId {
       } else {
         this.flags &= ~FLAG_IS_ROOT;
       }
-      this.parentId = parentId;
+      this.nullableParentId = parentId;
       return this;
     }
 
@@ -300,9 +367,11 @@ public final class SpanId {
     }
 
     public SpanId build() {
-      long traceId = this.traceId != null ? this.traceId : checkNotNull(spanId, "spanId");
-      long parentId = this.parentId != null ? this.parentId : traceId;
-      return new SpanId(traceId, parentId, checkNotNull(spanId, "spanId"), flags);
+      checkNotNull(spanId, "spanId");
+      long traceId = this.traceId != null ? this.traceId : spanId;
+      long parentId = nullableParentId != null ? nullableParentId : traceId;
+      if (parentId == spanId) parentId = traceId;
+      return new SpanId(traceIdHigh, traceId, parentId, spanId, flags);
     }
   }
 

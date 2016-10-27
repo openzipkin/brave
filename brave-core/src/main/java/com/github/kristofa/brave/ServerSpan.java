@@ -5,6 +5,8 @@ import com.google.auto.value.AutoValue;
 
 import com.twitter.zipkin.gen.Span;
 
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+
 /**
  * The ServerSpan is initialized by {@link ServerTracer} and keeps track of Trace/Span state of our service request.
  *
@@ -13,8 +15,8 @@ import com.twitter.zipkin.gen.Span;
 @AutoValue
 public abstract class ServerSpan {
 
-    public final static ServerSpan EMPTY = ServerSpan.create(null);
-    static final ServerSpan NOT_SAMPLED = ServerSpan.create(false);
+    public static final ServerSpan EMPTY = new AutoValue_ServerSpan(null, null);
+    static final ServerSpan NOT_SAMPLED = new AutoValue_ServerSpan(null, false);
 
     /**
      * Gets the Trace/Span context.
@@ -34,36 +36,8 @@ public abstract class ServerSpan {
     @Nullable
     public abstract Boolean getSample();
 
-    static ServerSpan create(Span span, Boolean sample) {
-        return new AutoValue_ServerSpan(span, sample);
-    }
-
-    /**
-     * Creates a new initializes instance. Using this constructor also indicates we need to sample this request.
-     *
-     * @param traceId Trace id.
-     * @param spanId Span id.
-     * @param parentSpanId Parent span id, can be <code>null</code>.
-     * @param name Span name. Should be lowercase and not <code>null</code> or empty.
-     */
-     static ServerSpan create(long traceId, long spanId, @Nullable Long parentSpanId, String name) {
-        Span span = new Span();
-        span.setTrace_id(traceId);
-        span.setId(spanId);
-        if (parentSpanId != null) {
-            span.setParent_id(parentSpanId);
-        }
-        span.setName(name);
-        return create(span, true);
-    }
-
-    /**
-     * Creates a new empty instance with no Span but with sample indication.
-     *
-     * @param sample Indicates if we should sample this span.
-     */
-    static ServerSpan create(final Boolean sample) {
-        return create(null, sample);
+    static ServerSpan create(Span span) {
+        return new AutoValue_ServerSpan(checkNotNull(span, "span"), true);
     }
 
     ServerSpan(){
