@@ -54,7 +54,7 @@ public class HttpClientRequestAdapterTest {
         SpanId id = SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).parentId(PARENT_SPAN_ID).build();
         clientRequestAdapter.addSpanIdToRequest(id);
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
-        verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
+        verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), "0000000000000001");
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
         verify(request).addHeader(BraveHttpHeaders.ParentSpanId.getName(), String.valueOf(PARENT_SPAN_ID));
         verifyNoMoreInteractions(request, spanNameProvider);
@@ -65,7 +65,7 @@ public class HttpClientRequestAdapterTest {
         SpanId id = SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).parentId(null).build();
         clientRequestAdapter.addSpanIdToRequest(id);
         verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
-        verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), String.valueOf(TRACE_ID));
+        verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), "0000000000000001");
         verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
         verifyNoMoreInteractions(request, spanNameProvider);
     }
@@ -82,4 +82,13 @@ public class HttpClientRequestAdapterTest {
         verifyNoMoreInteractions(request, spanNameProvider);
     }
 
+    @Test
+    public void traceId_when128bit() throws Exception {
+        SpanId id = SpanId.builder().traceIdHigh(TRACE_ID).traceId(TRACE_ID).spanId(SPAN_ID).parentId(null).build();
+        clientRequestAdapter.addSpanIdToRequest(id);
+        verify(request).addHeader(BraveHttpHeaders.Sampled.getName(), "1");
+        verify(request).addHeader(BraveHttpHeaders.TraceId.getName(), "00000000000000010000000000000001");
+        verify(request).addHeader(BraveHttpHeaders.SpanId.getName(), String.valueOf(SPAN_ID));
+        verifyNoMoreInteractions(request, spanNameProvider);
+    }
 }

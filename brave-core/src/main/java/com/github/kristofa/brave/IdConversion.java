@@ -34,16 +34,24 @@ public class IdConversion {
    * Parses a 1 to 32 character lower-hex string with no prefix into an unsigned long, tossing any
    * bits higher than 64.
    */
-  public static long convertToLong(final String lowerHex) {
+  public static long convertToLong(String lowerHex) {
     int length = lowerHex.length();
     if (length < 1 || length > 32) throw isntLowerHexLong(lowerHex);
 
     // trim off any high bits
-    int i = length > 16 ? length - 16 : 0;
+    int beginIndex = length > 16 ? length - 16 : 0;
 
+    return convertToLong(lowerHex, beginIndex);
+  }
+
+  /**
+   * Parses a 16 character lower-hex string with no prefix into an unsigned long, starting at the
+   * specified index.
+   */
+  public static long convertToLong(String lowerHex, int index) {
     long result = 0;
-    for (; i < length; i++) {
-      char c = lowerHex.charAt(i);
+    for (int endIndex = Math.min(index + 16, lowerHex.length()); index < endIndex; index++) {
+      char c = lowerHex.charAt(index);
       result <<= 4;
       if (c >= '0' && c <= '9') {
         result |= c - '0';

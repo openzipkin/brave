@@ -118,9 +118,10 @@ public class HttpServerRequestAdapterTest {
     }
 
     @Test
-    public void tolerates128BitTraceIdByDroppingHighBits() {
-        String hex128Bits = "463ac35c9f6413ad48485a3953bb6124";
+    public void supports128BitTraceIdHeader() {
+        String upper64Bits = "48485a3953bb6124";
         String lower64Bits = "48485a3953bb6124";
+        String hex128Bits = upper64Bits + lower64Bits;
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("1");
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(hex128Bits);
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(lower64Bits);
@@ -129,6 +130,7 @@ public class HttpServerRequestAdapterTest {
         assertTrue(traceData.getSample());
         SpanId spanId = traceData.getSpanId();
         assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(upper64Bits), spanId.traceIdHigh);
         assertEquals(IdConversion.convertToLong(lower64Bits), spanId.traceId);
         assertEquals(IdConversion.convertToLong(lower64Bits), spanId.spanId);
         assertNull(spanId.nullableParentId());

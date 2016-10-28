@@ -41,9 +41,7 @@ public class ServerRequestInterceptor {
             boolean clientOriginatedTrace = traceData.getSpanId() != null;
             if (clientOriginatedTrace) {
                 LOGGER.fine("Received span information as part of request.");
-                SpanId spanId = traceData.getSpanId();
-                serverTracer.setStateCurrentTrace(spanId.traceId, spanId.spanId,
-                        spanId.nullableParentId(), adapter.getSpanName());
+                serverTracer.setStateCurrentTrace(traceData.getSpanId(), adapter.getSpanName());
             } else {
                 LOGGER.fine("Received no span state.");
                 serverTracer.setStateUnknown(adapter.getSpanName());

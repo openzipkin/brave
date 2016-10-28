@@ -27,11 +27,10 @@ import static org.mockito.Mockito.when;
 @PrepareForTest(AnnotationSubmitter.class)
 public class ServerTracerTest {
 
-    private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
-    private final static long TRACE_ID = 1L;
-    private final static long SPAN_ID = 2L;
-    private final static Long PARENT_SPANID = 3L;
-    private final static String SPAN_NAME = "span name";
+    private static final long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+    private static final long TRACE_ID = 1;
+    private static final SpanId SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(2).parentId(3L).build();
+    private static final String SPAN_NAME = "span name";
 
     private ServerTracer serverTracer;
     private ServerSpanState mockServerSpanState;
@@ -60,6 +59,7 @@ public class ServerTracerTest {
             .spanCollector(mockSpanCollector)
             .traceSampler(mockSampler)
             .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .traceId128Bit(false)
             .build();
     }
 
@@ -72,8 +72,8 @@ public class ServerTracerTest {
 
     @Test
     public void testSetStateCurrentTrace() {
-        serverTracer.setStateCurrentTrace(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
-        final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, SPAN_ID, PARENT_SPANID, SPAN_NAME);
+        serverTracer.setStateCurrentTrace(SPAN_ID, SPAN_NAME);
+        ServerSpan expectedServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(SPAN_NAME));
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
@@ -81,8 +81,7 @@ public class ServerTracerTest {
     @Test
     public void testSetStateNoTracing() {
         serverTracer.setStateNoTracing();
-        final ServerSpan expectedServerSpan = ServerSpan.create(false);
-        verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
+        verify(mockServerSpanState).setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
 
@@ -93,7 +92,8 @@ public class ServerTracerTest {
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
-        final ServerSpan expectedServerSpan = ServerSpan.create(TRACE_ID, TRACE_ID, null, SPAN_NAME);
+        ServerSpan expectedServerSpan = ServerSpan.create(
+            SpanId.builder().spanId(TRACE_ID).build().toSpan().setName(SPAN_NAME));
 
         final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
 
@@ -105,12 +105,33 @@ public class ServerTracerTest {
     }
 
     @Test
-    public void testSetStateUnknownSamplerFalse() {
+    public void testSetStateUnknownSamplerTrue_128Bit() {
+        serverTracer = new AutoValue_ServerTracer.Builder(serverTracer)
+            .traceId128Bit(true).build();
 
+        when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
+        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+
+        serverTracer.setStateUnknown(SPAN_NAME);
+        ServerSpan expectedServerSpan = ServerSpan.create(SpanId.builder()
+            .traceIdHigh(TRACE_ID + 1)
+            .traceId(TRACE_ID)
+            .spanId(TRACE_ID).build().toSpan().setName(SPAN_NAME));
+
+        final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
+
+        inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockSampler).isSampled(TRACE_ID);
+        inOrder.verify(mockRandom).nextLong();
+        inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
+
+        verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
+    }
+
+    @Test
+    public void testSetStateUnknownSamplerFalse() {
         when(mockRandom.nextLong()).thenReturn(TRACE_ID);
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
-
-        final ServerSpan expectedServerSpan = ServerSpan.create(false);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
@@ -118,7 +139,7 @@ public class ServerTracerTest {
 
         inOrder.verify(mockRandom).nextLong();
         inOrder.verify(mockSampler).isSampled(TRACE_ID);
-        inOrder.verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
+        inOrder.verify(mockServerSpanState).setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector, mockRandom);
     }

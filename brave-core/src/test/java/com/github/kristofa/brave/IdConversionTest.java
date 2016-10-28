@@ -73,8 +73,14 @@ public class IdConversionTest {
   }
 
   @Test
-  public void lowerHexToUnsignedLong_downgrades128bitIdsByDroppingHighBits() {
+  public void convertToLong_downgrades128bitIdsByDroppingHighBits() {
     assertThat(IdConversion.convertToLong("463ac35c9f6413ad48485a3953bb6124"))
         .isEqualTo(IdConversion.convertToLong("48485a3953bb6124"));
+  }
+
+  @Test
+  public void convertToLong_worksOnOffset() {
+    assertThat(IdConversion.convertToLong("463ac35c9f6413ad48485a3953bb6124", 0))
+        .isEqualTo(IdConversion.convertToLong("463ac35c9f6413ad"));
   }
 }

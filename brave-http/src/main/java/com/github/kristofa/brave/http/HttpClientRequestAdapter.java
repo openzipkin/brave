@@ -32,7 +32,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
             request.addHeader(BraveHttpHeaders.Sampled.getName(), "0");
         } else {
             request.addHeader(BraveHttpHeaders.Sampled.getName(), "1");
-            request.addHeader(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(spanId.traceId));
+            request.addHeader(BraveHttpHeaders.TraceId.getName(), spanId.traceIdString());
             request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId.spanId));
             if (spanId.nullableParentId() != null) {
                 request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(spanId.parentId));

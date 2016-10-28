@@ -1,14 +1,11 @@
 package com.github.kristofa.brave;
 
-import com.google.auto.value.AutoValue;
-
 import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
+import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
-import com.twitter.zipkin.gen.Span;
-import zipkin.Constants;
-
 import java.util.Random;
+import zipkin.Constants;
 import zipkin.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
@@ -42,6 +39,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
+    abstract boolean traceId128Bit();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -71,6 +69,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
         public abstract Builder clock(AnnotationSubmitter.Clock clock);
 
+        abstract Builder traceId128Bit(boolean traceId128Bit);
+
         public abstract ServerTracer build();
     }
 
@@ -82,26 +82,33 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     }
 
     /**
+     * @deprecated since 3.15 use {@link #setStateCurrentTrace(SpanId, String)}
+     */
+    @Deprecated
+    public void setStateCurrentTrace(long traceId, long spanId, @Nullable Long parentSpanId, String name) {
+        SpanId id = SpanId.builder().traceId(traceId).spanId(spanId).parentId(parentSpanId).build();
+        setStateCurrentTrace(id, name);
+    }
+
+    /**
      * Sets the current Trace/Span state. Using this method indicates we are part of an existing trace/span.
      *
-     * @param traceId Trace id.
-     * @param spanId Span id.
-     * @param parentSpanId Parent span id. Can be <code>null</code>.
-     * @param name Name should not be empty or <code>null</code>.
+     * @param spanId includes the trace identifiers extracted from the wire
+     * @param spanName should not be empty or <code>null</code>.
      * @see ServerTracer#setStateNoTracing()
      * @see ServerTracer#setStateUnknown(String)
      */
-    public void setStateCurrentTrace(long traceId, long spanId, @Nullable Long parentSpanId, @Nullable String name) {
-        checkNotBlank(name, "Null or blank span name");
-        spanAndEndpoint().state().setCurrentServerSpan(
-            ServerSpan.create(traceId, spanId, parentSpanId, name));
+    public void setStateCurrentTrace(SpanId spanId, String spanName) {
+        checkNotBlank(spanName, "Null or blank span name");
+        ServerSpan span = ServerSpan.create(spanId.toSpan().setName(spanName));
+        spanAndEndpoint().state().setCurrentServerSpan(span);
     }
 
     /**
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
      * trace the current request.
      *
-     * @see ServerTracer#setStateCurrentTrace(long, long, Long, String)
+     * @see ServerTracer#setStateCurrentTrace(SpanId, String)
      * @see ServerTracer#setStateUnknown(String)
      */
     public void setStateNoTracing() {
@@ -122,13 +129,17 @@ public abstract class ServerTracer extends AnnotationSubmitter {
             spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
             return;
         }
-        spanAndEndpoint().state().setCurrentServerSpan(
-            ServerSpan.create(newTraceId, newTraceId, null, spanName));
+        SpanId spanId = SpanId.builder()
+            .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
+            .traceId(newTraceId)
+            .spanId(newTraceId)
+            .build();
+        setStateCurrentTrace(spanId, spanName);
     }
 
     /**
      * Sets server received event for current request. This should be done after setting state using one of 3 methods
-     * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String)} , {@link ServerTracer#setStateNoTracing()} or
+     * {@link ServerTracer#setStateCurrentTrace(SpanId, String)} , {@link ServerTracer#setStateNoTracing()} or
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     public void setServerReceived() {

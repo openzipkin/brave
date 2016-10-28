@@ -37,6 +37,7 @@ final class SpanCollectorReporterAdapter implements SpanCollector, Reporter<zipk
   /** Changes this to a brave-native span object. */
   static Span toBrave(zipkin.Span input) {
     Span result = new Span();
+    result.setTrace_id_high(input.traceIdHigh);
     result.setTrace_id(input.traceId);
     result.setId(input.id);
     result.setParent_id(input.parentId);

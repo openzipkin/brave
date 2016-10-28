@@ -60,6 +60,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     @Override
     abstract AnnotationSubmitter.Clock clock();
 
+    abstract boolean traceId128Bit();
+
     @AutoValue.Builder
     abstract static class Builder {
 
@@ -74,6 +76,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         abstract Builder traceSampler(Sampler sampler);
 
         abstract Builder clock(AnnotationSubmitter.Clock clock);
+
+        abstract Builder traceId128Bit(boolean traceId128Bit);
 
         abstract LocalTracer build();
 
@@ -101,8 +105,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         Span parentSpan = getNewSpanParent();
         long newSpanId = randomGenerator().nextLong();
         SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
-        if (parentSpan == null) return builder.build(); // new trace
-        return builder.traceId(parentSpan.getTrace_id()).parentId(parentSpan.getId()).build();
+        if (parentSpan == null) { // new trace
+            if (traceId128Bit()) builder.traceIdHigh(randomGenerator().nextLong());
+            return builder.traceId(newSpanId).build();
+        }
+        return builder.traceIdHigh(parentSpan.getTrace_id_high())
+            .traceId(parentSpan.getTrace_id())
+            .parentId(parentSpan.getId()).build();
     }
 
     /**

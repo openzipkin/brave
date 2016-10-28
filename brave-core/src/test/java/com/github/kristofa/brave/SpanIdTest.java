@@ -2,6 +2,7 @@ package com.github.kristofa.brave;
 
 import com.twitter.finagle.tracing.TraceId;
 import com.twitter.finagle.tracing.TraceId$;
+import com.twitter.zipkin.gen.Span;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -11,7 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SpanIdTest {
   @Rule
   public ExpectedException thrown = ExpectedException.none();
-
 
   @Test public void rootSpan_whenTraceIdsAreSpanIds() {
     SpanId id = SpanId.builder().spanId(333L).build();
@@ -156,6 +156,24 @@ public class SpanIdTest {
         .isEqualTo(TraceId$.MODULE$.deserialize(id.bytes()).get().toString());
   }
 
+  @Test
+  public void testToString_hi() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    assertThat(id.toString())
+        .isEqualTo("00000000000000010000000000000002.0000000000000003<:0000000000000002");
+  }
+
+  @Test
+  public void testToStringNullParent_hi() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(1).build();
+
+    assertThat(id.toString())
+        .isEqualTo("00000000000000010000000000000002.0000000000000001<:0000000000000002");
+  }
+
+  // TODO: update finagle to 128-bit and check accordingly
+  // https://github.com/twitter/finagle/issues/564
   static void checkAgainstFinagle(SpanId brave) {
     TraceId finagle = TraceId$.MODULE$.deserialize(brave.bytes()).get();
 
@@ -170,5 +188,41 @@ public class SpanIdTest {
 
     assertThat(SpanId.fromBytes(TraceId.serialize(finagle)))
         .isEqualTo(brave);
+  }
+
+  @Test
+  public void traceIdString() {
+    SpanId id = SpanId.builder().traceId(1).spanId(1).build();
+
+    assertThat(id.traceIdString())
+        .isEqualTo("0000000000000001");
+  }
+
+  @Test
+  public void traceIdString_128() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    assertThat(id.traceIdString())
+        .isEqualTo("00000000000000010000000000000002");
+  }
+
+
+  @Test
+  public void serializeRoundTrip_128() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    assertThat(SpanId.fromBytes(id.bytes()))
+        .isEqualTo(id);
+  }
+
+  @Test
+  public void toSpan_128() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    Span span = id.toSpan();
+    assertThat(span.getTrace_id_high()).isEqualTo(id.traceIdHigh);
+    assertThat(span.getTrace_id()).isEqualTo(id.traceId);
+    assertThat(span.getId()).isEqualTo(id.spanId);
+    assertThat(span.getParent_id()).isEqualTo(id.parentId);
   }
 }
