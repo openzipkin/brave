@@ -1,10 +1,7 @@
 package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
-import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
-import com.github.kristofa.brave.jaxrs2.BraveContainerRequestFilter;
-import com.github.kristofa.brave.jaxrs2.BraveContainerResponseFilter;
+import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.GET;
@@ -35,8 +32,7 @@ public class ITBraveJersey2 extends JerseyTest {
   @Override
   protected Application configure() {
     return new ResourceConfig()
-        .register(BraveContainerRequestFilter.create(brave))
-        .register(BraveContainerResponseFilter.create(brave))
+        .register(BraveTracingFeature.create(brave))
         .register(TestResource.class);
   }
 
@@ -44,8 +40,7 @@ public class ITBraveJersey2 extends JerseyTest {
   public void test() throws Exception {
     // install the trace filter
     WebTarget target = target("test");
-    target.register(BraveClientRequestFilter.create(brave));
-    target.register(BraveClientResponseFilter.create(brave));
+    target.register(BraveTracingFeature.create(brave));
 
     // hit the server
     final Response response = target.request().get();

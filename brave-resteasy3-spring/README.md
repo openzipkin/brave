@@ -9,15 +9,14 @@ common part is in `brave-jaxrs2` module
 Tracing always needs beans of type `Brave` and `SpanNameProvider`
 configured. Make sure these are in place before proceeding.
 
-To setup Resteasy 3.x tracing, tell Spring to scan the package
-`com.github.kristofa.brave.resteasy3`.
+To setup Resteasy 3.x tracing, tell Spring to configure
+`com.github.kristofa.brave.resteasy3.BraveTracingFeatureConfiguration`.
 
 There's nothing further needed for server tracing. To setup client
 tracing, register the request and response filters like below:
 
 ```java
 ResteasyClient client = new ResteasyClientBuilder()
-    .register(appContext.getBean(BraveClientRequestFilter.class))
-    .register(appContext.getBean(BraveClientResponseFilter.class))
+    .register(appContext.getBean(BraveTracingFeature.class))
     .build();
 ```

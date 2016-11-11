@@ -46,4 +46,10 @@ public class InjectionTest {
     assertThat(injector.getInstance(BraveContainerResponseFilter.class))
         .isNotNull();
   }
+
+  @Test
+  public void braveTraceFeature() throws Exception {
+    assertThat(injector.getInstance(BraveTracingFeature.class))
+        .isNotNull();
+  }
 }

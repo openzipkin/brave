@@ -7,11 +7,12 @@ common part is in `brave-jaxrs2` module
 
 ## Configuration
 
+### Dependency Injection
 Tracing always needs instances of type `Brave` and `SpanNameProvider`
 configured. Make sure these are in place before proceeding.
 
-For server setup, you can scan `com.github.kristofa.brave.jaxrs2` package:
-the container filters will be picked up and registered automatically.
+Next, configure `com.github.kristofa.brave.jaxrs2.BraveTracingFeature`,
+this will setup container filters automatically.
 
 In your web.xml:
 
@@ -24,20 +25,20 @@ In your web.xml:
 </init-param>
 ```
 
-Alternatively, you can use ResourceConfig to setup the server filters:
+### Manual
+
+Alternatively, you can use ResourceConfig to setup the `BraveTracingFeature`:
 
 ```java
-resourceConfig.register(BraveContainerRequestFilter.create(brave))
-resourceConfig.register(BraveContainerResponseFilter.create(brave))
+resourceConfig.register(BraveTracingFeature.create(brave))
 ```
 
-For client side setup, you just have to register the client filters with
-your Jersey client before you make your request.
+For client side setup, you just have to register `BraveTracingFeature`
+with your Jersey client before you make your request.
 
 It should look something like:
 
 ```java
 WebTarget target = target("/mytarget");
-target.register(BraveClientRequestFilter.create(brave));
-target.register(BraveClientResponseFilter.create(brave));
+target.register(BraveTracingFeature.create(brave));
 ```

@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.resteasy3;
 
-import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
-import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
+import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
 import com.twitter.zipkin.gen.Span;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
@@ -68,8 +67,7 @@ public class ITBraveResteasy {
         // Create our client. The beans below are configured by scanning
         // com.github.kristofa.brave.resteasy3 in our test web.xml.
         ResteasyClient client = new ResteasyClientBuilder()
-            .register(appContext.getBean(BraveClientRequestFilter.class))
-            .register(appContext.getBean(BraveClientResponseFilter.class))
+            .register(appContext.getBean(BraveTracingFeature.class))
             .build();
 
         BraveRestEasyResource resouce =
