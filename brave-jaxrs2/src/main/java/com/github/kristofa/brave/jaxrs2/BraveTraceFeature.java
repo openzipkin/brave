@@ -22,12 +22,10 @@ public class BraveTraceFeature implements Feature {
     }
 
     public boolean configure(FeatureContext context) {
-        BraveClientRequestFilter clientRequestFilter = new BraveClientRequestFilter(spanNameProvider, brave
-            .clientRequestInterceptor());
-        BraveClientResponseFilter clientResponseFilter = new BraveClientResponseFilter(brave
-            .clientResponseInterceptor());
-        context.register(clientRequestFilter);
-        context.register(clientResponseFilter);
+        context.register(new BraveClientRequestFilter(spanNameProvider, brave.clientRequestInterceptor()));
+        context.register(new BraveClientResponseFilter(brave.clientResponseInterceptor()));
+        context.register(new BraveContainerRequestFilter(brave.serverRequestInterceptor(), spanNameProvider));
+        context.register(new BraveContainerResponseFilter(brave.serverResponseInterceptor()));
         return true;
     }
 
