@@ -32,11 +32,7 @@ public class JerseyClientTraceFilter extends ClientFilter {
     private final SpanNameProvider spanNameProvider;
 
     public JerseyClientTraceFilter(Brave brave) {
-        this(new DefaultSpanNameProvider(), brave);
-    }
-
-    public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, Brave brave) {
-        this(spanNameProvider, new ClientRequestInterceptor(brave.clientTracer()), new ClientResponseInterceptor(brave.clientTracer()));
+        this(new DefaultSpanNameProvider(), new ClientRequestInterceptor(brave.clientTracer()), new ClientResponseInterceptor(brave.clientTracer()));
     }
 
     @Inject

@@ -34,12 +34,7 @@ public class BraveServletFilter implements Filter {
 
     /** Construct an instance with a given Brave instance and the DefaultSpanNameProvider. */
     public BraveServletFilter(Brave brave) {
-        this(brave, new DefaultSpanNameProvider());
-    }
-
-    /** Construct an instance with a given Brave instance and given SpanNameProvider. */
-    public BraveServletFilter(Brave brave, SpanNameProvider spanNameProvider) {
-        this(brave.serverRequestInterceptor(), brave.serverResponseInterceptor(), spanNameProvider);
+        this(brave.serverRequestInterceptor(), brave.serverResponseInterceptor(), new DefaultSpanNameProvider());
     }
 
     public BraveServletFilter(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider) {
