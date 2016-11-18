@@ -47,7 +47,7 @@
 
     <spring.version>4.3.2.RELEASE</spring.version>
     <jetty.version>8.1.20.v20160902</jetty.version>
-    <zipkin.version>1.14.4</zipkin.version>
+    <zipkin.version>1.16.2</zipkin.version>
     <log4j.version>2.3</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
     <powermock.version>1.6.5</powermock.version>
