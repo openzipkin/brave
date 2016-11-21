@@ -6,9 +6,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.ext.Provider;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
@@ -47,16 +47,28 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpServerRequestAdapter.FactoryBuilder requestFactoryBuilder
+            = HttpServerRequestAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            requestFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            requestFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            requestFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -65,8 +77,8 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         }
     }
 
-    private final ServerRequestInterceptor requestInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ServerRequestInterceptor interceptor;
+    private final ServerRequestAdapter.Factory<RestEasyHttpServerRequest> adapterFactory;
 
     @Context
     HttpServletRequest servletRequest;
@@ -77,23 +89,21 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     }
 
     BravePreProcessInterceptor(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.serverRequestInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.interceptor = b.brave.serverRequestInterceptor();
+        this.adapterFactory = b.requestFactoryBuilder.build(RestEasyHttpServerRequest.class);
     }
 
     /**
-     * Creates a new instance.
-     *
-     * @param requestInterceptor Request interceptor.
-     * @param spanNameProvider Span name provider.
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BravePreProcessInterceptor(ServerRequestInterceptor requestInterceptor,
+    public BravePreProcessInterceptor(ServerRequestInterceptor interceptor,
                                       SpanNameProvider spanNameProvider
     ) {
-        this.requestInterceptor = requestInterceptor;
-        this.spanNameProvider = spanNameProvider;
+        this.interceptor = interceptor;
+        this.adapterFactory = HttpServerRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(RestEasyHttpServerRequest.class);
     }
 
     /**
@@ -103,9 +113,9 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     public ServerResponse preProcess(final HttpRequest request, final ResourceMethod method) throws Failure,
         WebApplicationException {
 
-        HttpServerRequest req = new RestEasyHttpServerRequest(request);
-        HttpServerRequestAdapter reqAdapter = new HttpServerRequestAdapter(req, spanNameProvider);
-        requestInterceptor.handle(reqAdapter);
+        ServerRequestAdapter adapter =
+            adapterFactory.create(new RestEasyHttpServerRequest(request));
+        interceptor.handle(adapter);
         return null;
     }
 

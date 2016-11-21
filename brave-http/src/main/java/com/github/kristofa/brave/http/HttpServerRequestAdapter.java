@@ -1,22 +1,55 @@
 package com.github.kristofa.brave.http;
 
-import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
-import java.util.Collection;
-import java.util.Collections;
-import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.IdConversion.convertToLong;
 
-public class HttpServerRequestAdapter implements ServerRequestAdapter {
-    private final HttpServerRequest request;
-    private final SpanNameProvider spanNameProvider;
+public class HttpServerRequestAdapter extends HttpRequestAdapter<HttpServerRequest>
+    implements ServerRequestAdapter {
 
+    public static FactoryBuilder factoryBuilder() {
+        return new FactoryBuilder();
+    }
+
+    public static final class FactoryBuilder
+        extends HttpRequestAdapter.FactoryBuilder<FactoryBuilder> {
+
+        public <R extends HttpServerRequest> ServerRequestAdapter.Factory<R> build(
+            Class<? extends R> requestType) {
+            return new Factory(this, requestType);
+        }
+
+        FactoryBuilder() { // intentionally hidden
+        }
+    }
+
+    static final class Factory<R extends HttpServerRequest>
+        extends HttpRequestAdapter.Factory<R, ServerRequestAdapter>
+        implements ServerRequestAdapter.Factory<R> {
+
+        Factory(FactoryBuilder builder, Class<R> requestType) {
+            super(builder, requestType);
+        }
+
+        @Override public ServerRequestAdapter create(R request) {
+            return new HttpServerRequestAdapter(this, request);
+        }
+    }
+
+    /**
+     * @deprecated please use {@link #factoryBuilder()}
+     */
+    @Deprecated
     public HttpServerRequestAdapter(HttpServerRequest request, SpanNameProvider spanNameProvider) {
-        this.request = request;
-        this.spanNameProvider = spanNameProvider;
+        this((Factory) factoryBuilder().spanNameProvider(spanNameProvider)
+                .build(HttpServerRequest.class),
+            request);
+    }
+
+    HttpServerRequestAdapter(Factory factory, HttpServerRequest request) { // intentionally hidden
+        super(factory, request);
     }
 
     @Override
@@ -41,18 +74,6 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
         } else {
             return TraceData.NOT_SAMPLED;
         }
-    }
-
-    @Override
-    public String getSpanName() {
-        return spanNameProvider.spanName(request);
-    }
-
-    @Override
-    public Collection<KeyValueAnnotation> requestAnnotations() {
-        KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, request.getUri().toString());
-        return Collections.singleton(uriAnnotation);
     }
 
     static SpanId getSpanId(String traceId, String spanId, String parentSpanId, Boolean sampled) {

@@ -1,11 +1,13 @@
 package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
@@ -36,16 +38,32 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpServerRequestAdapter.FactoryBuilder requestFactoryBuilder
+            = HttpServerRequestAdapter.factoryBuilder();
+        final HttpServerResponseAdapter.FactoryBuilder responseFactoryBuilder
+            = HttpServerResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            requestFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            requestFactoryBuilder.addKey(key);
+            responseFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            requestFactoryBuilder.addValueParserFactory(factory);
+            responseFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -56,8 +74,9 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
-    private final ServerSpanThreadBinder serverThreadBinder;
-    private final SpanNameProvider spanNameProvider;
+    private final ServerSpanThreadBinder threadBinder;
+    private final ServerRequestAdapter.Factory<HttpServerRequest> requestAdapterFactory;
+    private final ServerResponseAdapter.Factory<HttpResponse> responseAdapterFactory;
 
     @Autowired // internal
     ServletHandlerInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
@@ -67,51 +86,57 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     ServletHandlerInterceptor(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
-        this.serverThreadBinder = b.brave.serverSpanThreadBinder();
-        this.spanNameProvider = b.spanNameProvider;
+        this.threadBinder = b.brave.serverSpanThreadBinder();
+        this.requestAdapterFactory = b.requestFactoryBuilder.build(HttpServerRequest.class);
+        this.responseAdapterFactory = b.responseFactoryBuilder.build(HttpResponse.class);
     }
 
     /**
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public ServletHandlerInterceptor(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider, final ServerSpanThreadBinder serverThreadBinder) {
+    public ServletHandlerInterceptor(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider, final ServerSpanThreadBinder threadBinder) {
         this.requestInterceptor = requestInterceptor;
-        this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
-        this.serverThreadBinder = serverThreadBinder;
+        this.threadBinder = threadBinder;
+        this.requestAdapterFactory = HttpServerRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(HttpServerRequest.class);
+        this.responseAdapterFactory = HttpServerResponseAdapter.factoryBuilder()
+            .build(HttpResponse.class);
     }
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
-        requestInterceptor.handle(new HttpServerRequestAdapter(new HttpServerRequest() {
-            @Override
-            public String getHttpHeaderValue(String headerName) {
-                return request.getHeader(headerName);
-            }
-
-            @Override
-            public URI getUri() {
-                try {
-                    return new URI(request.getRequestURI());
-                } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
+        ServerRequestAdapter adapter = requestAdapterFactory.create(new HttpServerRequest() {
+                @Override
+                public String getHttpHeaderValue(String headerName) {
+                    return request.getHeader(headerName);
                 }
-            }
 
-            @Override
-            public String getHttpMethod() {
-                return request.getMethod();
-            }
-        }, spanNameProvider));
+                @Override
+                public URI getUri() {
+                    try {
+                        return new URI(request.getRequestURI());
+                    } catch (URISyntaxException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                @Override
+                public String getHttpMethod() {
+                    return request.getMethod();
+                }
+            });
+        requestInterceptor.handle(adapter);
 
         return true;
     }
 
     @Override
     public void afterConcurrentHandlingStarted(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
-        request.setAttribute(HTTP_SERVER_SPAN_ATTRIBUTE, serverThreadBinder.getCurrentServerSpan());
-        serverThreadBinder.setCurrentSpan(null);
+        request.setAttribute(HTTP_SERVER_SPAN_ATTRIBUTE, threadBinder.getCurrentServerSpan());
+        threadBinder.setCurrentSpan(null);
     }
 
     @Override
@@ -120,15 +145,16 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         final ServerSpan span = (ServerSpan) request.getAttribute(HTTP_SERVER_SPAN_ATTRIBUTE);
 
         if (span != null) {
-            serverThreadBinder.setCurrentSpan(span);
+            threadBinder.setCurrentSpan(span);
         }
 
-       responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
-           @Override
-           public int getHttpStatusCode() {
-               return response.getStatus();
-           }
-       }));
+        ServerResponseAdapter adapter = responseAdapterFactory.create(new HttpResponse() {
+              @Override
+              public int getHttpStatusCode() {
+                return response.getStatus();
+              }
+            });
+        responseInterceptor.handle(adapter);
     }
 
 }

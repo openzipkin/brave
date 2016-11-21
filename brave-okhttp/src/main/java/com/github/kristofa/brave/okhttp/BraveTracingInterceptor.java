@@ -6,12 +6,15 @@ import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.TagExtractor;
+import com.github.kristofa.brave.TagExtractor.ValueParserFactory;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.internal.TagExtractorBuilder;
 import com.twitter.zipkin.gen.Endpoint;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.Collection;
 import okhttp3.Connection;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
@@ -73,13 +76,27 @@ public final class BraveTracingInterceptor implements Interceptor {
     return new Builder(brave);
   }
 
-  public static final class Builder {
+  public static final class Builder implements TagExtractor.Config<Builder> {
     final Brave brave;
+    final TagExtractorBuilder tagExtractorBuilder;
+
     String serverName = "";
     OkHttpParser parser = new OkHttpParser();
 
     Builder(Brave brave) { // intentionally hidden
       this.brave = checkNotNull(brave, "brave");
+      this.tagExtractorBuilder = TagExtractorBuilder.create();
+      this.tagExtractorBuilder.addValueParserFactory(new OkHttpValueParserFactory());
+    }
+
+    @Override public Builder addKey(String key) {
+      tagExtractorBuilder.addKey(key);
+      return this;
+    }
+
+    @Override public Builder addValueParserFactory(ValueParserFactory factory) {
+      tagExtractorBuilder.addValueParserFactory(factory);
+      return this;
     }
 
     /**
@@ -110,11 +127,15 @@ public final class BraveTracingInterceptor implements Interceptor {
   final ClientTracer clientTracer;
   final OkHttpParser parser;
   final String serverName;
+  final TagExtractor<Request> requestTagExtractor;
+  final TagExtractor<Response> responseTagExtractor;
 
   BraveTracingInterceptor(Builder builder) {
     localTracer = builder.brave.localTracer();
     clientTracer = builder.brave.clientTracer();
     parser = builder.parser;
+    requestTagExtractor = builder.tagExtractorBuilder.build(Request.class);
+    responseTagExtractor = builder.tagExtractorBuilder.build(Response.class);
     serverName = builder.serverName;
   }
 
@@ -169,11 +190,13 @@ public final class BraveTracingInterceptor implements Interceptor {
   }
 
   Response traceNetworkRequest(Chain chain, Request request) throws IOException {
+    appendToSpan(requestTagExtractor.extractTags(request));
     appendToSpan(parser.networkRequestTags(request));
     try {
       clientTracer.setClientSent(serverAddress(chain.connection()));
       Response response = chain.proceed(request);
       appendToSpan(parser.networkResponseTags(response));
+      appendToSpan(responseTagExtractor.extractTags(response));
       return response;
     } catch (IOException | RuntimeException | Error e) {
       // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
@@ -184,9 +207,8 @@ public final class BraveTracingInterceptor implements Interceptor {
     }
   }
 
-  void appendToSpan(List<KeyValueAnnotation> annotations) {
-    for (int i = 0, length = annotations.size(); i < length; i++) {
-      KeyValueAnnotation tag = annotations.get(i);
+  void appendToSpan(Collection<KeyValueAnnotation> tags) {
+    for (KeyValueAnnotation tag : tags) {
       clientTracer.submitBinaryAnnotation(tag.getKey(), tag.getValue());
     }
   }

@@ -1,9 +1,10 @@
 package com.github.kristofa.brave.cxf3;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.apache.cxf.interceptor.Fault;
@@ -26,16 +27,28 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
     return new Builder(brave);
   }
 
-  public static final class Builder {
+  public static final class Builder implements TagExtractor.Config<Builder> {
     final Brave brave;
-    SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+    final HttpServerRequestAdapter.FactoryBuilder adapterFactoryBuilder
+        = HttpServerRequestAdapter.factoryBuilder();
 
     Builder(Brave brave) { // intentionally hidden
       this.brave = checkNotNull(brave, "brave");
     }
 
     public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-      this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+      adapterFactoryBuilder.spanNameProvider(spanNameProvider);
+      return this;
+    }
+
+    @Override public Builder addKey(String key) {
+      adapterFactoryBuilder.addKey(key);
+      return this;
+    }
+
+    @Override
+    public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+      adapterFactoryBuilder.addValueParserFactory(factory);
       return this;
     }
 
@@ -45,22 +58,22 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
   }
 
   final ServerSpanThreadBinder threadBinder;
-  final ServerRequestInterceptor requestInterceptor;
-  final SpanNameProvider spanNameProvider;
+  final ServerRequestInterceptor interceptor;
+  final ServerRequestAdapter.Factory<HttpMessage.ServerRequest> adapterFactory;
 
   BraveServerInInterceptor(Builder b) { // intentionally hidden
     super(Phase.RECEIVE);
     addBefore(StaxInInterceptor.class.getName());
     this.threadBinder = b.brave.serverSpanThreadBinder();
-    this.requestInterceptor = b.brave.serverRequestInterceptor();
-    this.spanNameProvider = b.spanNameProvider;
+    this.interceptor = b.brave.serverRequestInterceptor();
+    this.adapterFactory = b.adapterFactoryBuilder.build(HttpMessage.ServerRequest.class);
   }
 
   @Override
   public void handleMessage(final Message message) throws Fault {
     try {
-      requestInterceptor.handle(
-          new HttpServerRequestAdapter(new HttpMessage.ServerRequest(message), spanNameProvider));
+      ServerRequestAdapter adapter = adapterFactory.create(new HttpMessage.ServerRequest(message));
+      interceptor.handle(adapter);
       message.getExchange().put(BRAVE_SERVER_SPAN, threadBinder.getCurrentServerSpan());
     } finally {
       threadBinder.setCurrentSpan(null);

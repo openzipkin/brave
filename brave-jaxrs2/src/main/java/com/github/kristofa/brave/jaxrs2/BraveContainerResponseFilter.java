@@ -1,9 +1,11 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
+import com.github.kristofa.brave.http.HttpResponse;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -30,11 +32,24 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
+        final HttpServerResponseAdapter.FactoryBuilder adapterFactoryBuilder
+            = HttpServerResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
+        }
+
+        @Override public Builder addKey(String key) {
+            adapterFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            adapterFactoryBuilder.addValueParserFactory(factory);
+            return this;
         }
 
         public BraveContainerResponseFilter build() {
@@ -42,10 +57,12 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
         }
     }
 
-    private final ServerResponseInterceptor responseInterceptor;
+    private final ServerResponseInterceptor interceptor;
+    private final ServerResponseAdapter.Factory<HttpResponse> adapterFactory;
 
     BraveContainerResponseFilter(Builder b) { // intentionally hidden
-        this.responseInterceptor = b.brave.serverResponseInterceptor();
+        this.interceptor = b.brave.serverResponseInterceptor();
+        this.adapterFactory = b.adapterFactoryBuilder.build(HttpResponse.class);
     }
 
     @Inject // internal dependency-injection constructor
@@ -57,8 +74,10 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BraveContainerResponseFilter(ServerResponseInterceptor responseInterceptor) {
-        this.responseInterceptor = responseInterceptor;
+    public BraveContainerResponseFilter(ServerResponseInterceptor interceptor) {
+        this.interceptor = interceptor;
+        this.adapterFactory = HttpServerResponseAdapter.factoryBuilder()
+            .build(HttpResponse.class);
     }
 
     @Override
@@ -72,6 +91,7 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
             }
         };
 
-        responseInterceptor.handle(new HttpServerResponseAdapter(httpResponse));
+        ServerResponseAdapter adapter = adapterFactory.create(httpResponse);
+        interceptor.handle(adapter);
     }
 }

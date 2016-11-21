@@ -1,9 +1,11 @@
 package com.github.kristofa.brave.jersey;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -36,16 +38,32 @@ public class JerseyClientTraceFilter extends ClientFilter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpClientRequestAdapter.FactoryBuilder requestFactoryBuilder
+            = HttpClientRequestAdapter.factoryBuilder();
+        final HttpClientResponseAdapter.FactoryBuilder responseFactoryBuilder
+            = HttpClientResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            requestFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            requestFactoryBuilder.addKey(key);
+            responseFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            requestFactoryBuilder.addValueParserFactory(factory);
+            responseFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -54,14 +72,16 @@ public class JerseyClientTraceFilter extends ClientFilter {
         }
     }
 
-    private final ClientRequestInterceptor clientRequestInterceptor;
-    private final ClientResponseInterceptor clientResponseInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final ClientResponseInterceptor responseInterceptor;
+    private final ClientRequestAdapter.Factory<JerseyHttpRequest> requestAdapterFactory;
+    private final ClientResponseAdapter.Factory<JerseyHttpResponse> responseAdapterFactory;
 
     JerseyClientTraceFilter(Builder b) { // intentionally hidden
-        this.clientRequestInterceptor = b.brave.clientRequestInterceptor();
-        this.clientResponseInterceptor = b.brave.clientResponseInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
+        this.requestAdapterFactory = b.requestFactoryBuilder.build(JerseyHttpRequest.class);
+        this.responseAdapterFactory = b.responseFactoryBuilder.build(JerseyHttpResponse.class);
     }
 
     @Inject // internal dependency-injection constructor
@@ -74,17 +94,24 @@ public class JerseyClientTraceFilter extends ClientFilter {
      */
     @Deprecated
     public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
-        this.spanNameProvider = spanNameProvider;
-        this.clientRequestInterceptor = requestInterceptor;
-        this.clientResponseInterceptor = responseInterceptor;
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
+        this.requestAdapterFactory = HttpClientRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(JerseyHttpRequest.class);
+        this.responseAdapterFactory = HttpClientResponseAdapter.factoryBuilder()
+            .build(JerseyHttpResponse.class);
     }
 
     @Override
     public ClientResponse handle(final ClientRequest clientRequest) throws ClientHandlerException {
-
-        clientRequestInterceptor.handle(new HttpClientRequestAdapter(new JerseyHttpRequest(clientRequest), spanNameProvider));
+        ClientRequestAdapter requestAdapter =
+            requestAdapterFactory.create(new JerseyHttpRequest(clientRequest));
+        requestInterceptor.handle(requestAdapter);
         final ClientResponse clientResponse = getNext().handle(clientRequest);
-        clientResponseInterceptor.handle(new HttpClientResponseAdapter(new JerseyHttpResponse(clientResponse)));
+        ClientResponseAdapter responseAdapter =
+            responseAdapterFactory.create(new JerseyHttpResponse(clientResponse));
+        responseInterceptor.handle(responseAdapter);
         return clientResponse;
     }
 }

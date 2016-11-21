@@ -1,9 +1,11 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import java.net.URI;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -18,12 +20,6 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-
-import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.github.kristofa.brave.http.HttpRequest;
-import com.github.kristofa.brave.http.HttpServerRequest;
-import com.github.kristofa.brave.http.HttpServerRequestAdapter;
-import com.github.kristofa.brave.http.SpanNameProvider;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 5, time = 1)
@@ -75,14 +71,9 @@ public class HttpServerRequestAdapterBenchmark {
             }
         };
 
-        final SpanNameProvider nameProvider = new SpanNameProvider() {
-            @Override
-            public String spanName(HttpRequest request) {
-                return request.getHttpMethod() + " " + request.getUri().getPath();
-            }
-        };
-
-        final HttpServerRequestAdapter adapter = new HttpServerRequestAdapter(request, nameProvider);
+        final ServerRequestAdapter adapter = HttpServerRequestAdapter.factoryBuilder()
+            .spanNameProvider(r -> r.getHttpMethod() + " " + r.getUri().getPath())
+            .build(HttpServerRequest.class).create(request);
     }
 
     @Benchmark

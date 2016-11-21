@@ -9,6 +9,10 @@ import java.util.Collection;
  */
 public interface ServerRequestAdapter {
 
+    interface Factory<R> {
+        ServerRequestAdapter create(R request);
+    }
+
     /**
      * Get the trace data from request.
      *

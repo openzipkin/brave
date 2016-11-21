@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.http;
 
 
+import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,13 +15,14 @@ import static org.mockito.Mockito.*;
 
 public class HttpClientResponseAdapterTest {
 
-    private HttpClientResponseAdapter adapter;
+    private ClientResponseAdapter adapter;
     private HttpResponse response;
 
     @Before
     public void setup() {
         response = mock(HttpResponse.class);
-        adapter = new HttpClientResponseAdapter(response);
+        adapter = HttpClientResponseAdapter.factoryBuilder()
+            .build(HttpResponse.class).create(response);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.github.kristofa.brave.http;
 
 
 import com.github.kristofa.brave.KeyValueAnnotation;
+import com.github.kristofa.brave.ServerResponseAdapter;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.TraceKeys;
@@ -14,13 +15,14 @@ import static org.mockito.Mockito.when;
 
 public class HttpServerResponseAdapterTest {
 
-    private HttpServerResponseAdapter adapter;
+    private ServerResponseAdapter adapter;
     private HttpResponse response;
 
     @Before
     public void setup() {
         response = mock(HttpResponse.class);
-        adapter = new HttpServerResponseAdapter(response);
+        adapter = HttpServerResponseAdapter.factoryBuilder()
+            .build(HttpResponse.class).create(response);
     }
 
     @Test

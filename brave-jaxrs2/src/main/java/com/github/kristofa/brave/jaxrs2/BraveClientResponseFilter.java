@@ -1,9 +1,10 @@
 package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
-import com.github.kristofa.brave.http.HttpResponse;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.client.ClientRequestContext;
@@ -30,11 +31,24 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
+        final HttpClientResponseAdapter.FactoryBuilder adapterFactoryBuilder
+            = HttpClientResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
+        }
+
+        @Override public Builder addKey(String key) {
+            adapterFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            adapterFactoryBuilder.addValueParserFactory(factory);
+            return this;
         }
 
         public BraveClientResponseFilter build() {
@@ -42,10 +56,13 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
         }
     }
 
-    private final ClientResponseInterceptor responseInterceptor;
+    private final ClientResponseInterceptor interceptor;
+    private final ClientResponseAdapter.Factory<JaxRs2HttpResponse> adapterFactory;
 
     BraveClientResponseFilter(Builder b) { // intentionally hidden
-        this.responseInterceptor = b.brave.clientResponseInterceptor();
+        this.interceptor = b.brave.clientResponseInterceptor();
+        this.adapterFactory = b.adapterFactoryBuilder.build(JaxRs2HttpResponse.class);
+
     }
 
     @Inject // internal dependency-injection constructor
@@ -57,14 +74,16 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BraveClientResponseFilter(ClientResponseInterceptor responseInterceptor) {
-        this.responseInterceptor = responseInterceptor;
+    public BraveClientResponseFilter(ClientResponseInterceptor interceptor) {
+        this.interceptor = interceptor;
+        this.adapterFactory = HttpClientResponseAdapter.factoryBuilder()
+            .build(JaxRs2HttpResponse.class);
     }
 
     @Override
     public void filter(ClientRequestContext clientRequestContext, ClientResponseContext clientResponseContext) throws IOException {
-
-        final HttpResponse response = new JaxRs2HttpResponse(clientResponseContext);
-        responseInterceptor.handle(new HttpClientResponseAdapter(response));
+        ClientResponseAdapter adapter =
+            adapterFactory.create(new JaxRs2HttpResponse(clientResponseContext));
+        interceptor.handle(adapter);
     }
 }

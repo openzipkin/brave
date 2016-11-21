@@ -3,10 +3,9 @@ package com.github.kristofa.brave.okhttp;
 import com.github.kristofa.brave.AnnotationSubmitter;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
-import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
-import java.util.ArrayList;
+import com.github.kristofa.brave.TagExtractor.ValueParser;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -185,18 +184,15 @@ public class BraveTracingInterceptorTest {
   @Test
   public void addMoreTags() throws Exception {
     close();
-    interceptor = interceptorBuilder(Sampler.ALWAYS_SAMPLE).parser(new OkHttpParser() {
-      @Override
-      public List<KeyValueAnnotation> networkRequestTags(Request request) {
-        List<KeyValueAnnotation> result = new ArrayList<>();
-        result.addAll(super.networkRequestTags(request));
-        String userAgent = request.header("User-Agent");
-        if (userAgent != null) {
-          result.add(KeyValueAnnotation.create("http.user_agent", userAgent));
-        }
-        return result;
+    BraveTracingInterceptor.Builder builder = interceptorBuilder(Sampler.ALWAYS_SAMPLE);
+    builder.addValueParserFactory((type, key) -> {
+      if (type == Request.class && key.equals("http.user_agent")) {
+        return (ValueParser<Request>) value -> value.header("User-Agent");
       }
-    }).build();
+      return null;
+    });
+    builder.addKey(TraceKeys.HTTP_PATH).addKey("http.user_agent");
+    interceptor = builder.build();
     client = new OkHttpClient.Builder()
         .addInterceptor(interceptor).addNetworkInterceptor(interceptor).build();
 
@@ -210,7 +206,7 @@ public class BraveTracingInterceptorTest {
 
     assertThat(collectedSpans().get(0).binaryAnnotations)
         .extracting(b -> tuple(b.key, new String(b.value)))
-        .contains(tuple("http.user_agent", userAgent));
+        .contains(tuple("http.path", "/foo"), tuple("http.user_agent", userAgent));
   }
 
   @Test

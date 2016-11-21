@@ -2,8 +2,8 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.ServerRequestAdapter;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
@@ -36,16 +36,28 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpServerRequestAdapter.FactoryBuilder adapterFactoryBuilder
+            = HttpServerRequestAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            adapterFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            adapterFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            adapterFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -54,12 +66,12 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
         }
     }
 
-    private final ServerRequestInterceptor requestInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ServerRequestInterceptor interceptor;
+    private final ServerRequestAdapter.Factory<JaxRs2HttpServerRequest> adapterFactory;
 
     BraveContainerRequestFilter(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.serverRequestInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.interceptor = b.brave.serverRequestInterceptor();
+        this.adapterFactory = b.adapterFactoryBuilder.build(JaxRs2HttpServerRequest.class);
     }
 
     @Inject // internal dependency-injection constructor
@@ -72,14 +84,17 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
      */
     @Deprecated
     public BraveContainerRequestFilter(ServerRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
-        this.requestInterceptor = interceptor;
-        this.spanNameProvider = spanNameProvider;
+        this.interceptor = interceptor;
+        this.adapterFactory = HttpServerRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(JaxRs2HttpServerRequest.class);
     }
 
     @Override
     public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-        HttpServerRequest request = new JaxRs2HttpServerRequest(containerRequestContext);
-        requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
+        ServerRequestAdapter adapter =
+            adapterFactory.create(new JaxRs2HttpServerRequest(containerRequestContext));
+        interceptor.handle(adapter);
     }
 
 }

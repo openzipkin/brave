@@ -1,30 +1,48 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
-import com.github.kristofa.brave.KeyValueAnnotation;
-import zipkin.TraceKeys;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+public class HttpClientResponseAdapter extends HttpResponseAdapter<HttpResponse>
+    implements ClientResponseAdapter {
 
-public class HttpClientResponseAdapter implements ClientResponseAdapter {
-
-    private final HttpResponse response;
-
-    public HttpClientResponseAdapter(HttpResponse response) {
-        this.response = response;
+    public static FactoryBuilder factoryBuilder() {
+        return new FactoryBuilder();
     }
 
-    @Override
-    public Collection<KeyValueAnnotation> responseAnnotations() {
-        int httpStatus = response.getHttpStatusCode();
+    public static final class FactoryBuilder
+        extends HttpResponseAdapter.FactoryBuilder<HttpClientResponseAdapter.FactoryBuilder> {
 
-        if ((httpStatus < 200) || (httpStatus > 299)) {
-            return Collections.singleton(KeyValueAnnotation.create(
-                    TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus)));
+        public <R extends HttpResponse> ClientResponseAdapter.Factory<R> build(
+            Class<? extends R> requestType) {
+            return new HttpClientResponseAdapter.Factory(this, requestType);
         }
-        return Collections.emptyList();
+
+        FactoryBuilder() { // intentionally hidden
+        }
     }
 
+    static final class Factory<R extends HttpResponse>
+        extends HttpResponseAdapter.Factory<R, ClientResponseAdapter>
+        implements ClientResponseAdapter.Factory<R> {
+
+        Factory(HttpClientResponseAdapter.FactoryBuilder builder, Class<R> requestType) {
+            super(builder, requestType);
+        }
+
+        @Override public ClientResponseAdapter create(R request) {
+            return new HttpClientResponseAdapter(this, request);
+        }
+    }
+
+    /**
+     * @deprecated please use {@link #factoryBuilder()}
+     */
+    @Deprecated
+    public HttpClientResponseAdapter(HttpResponse response) {
+        this((Factory) factoryBuilder().build(HttpResponse.class), response);
+    }
+
+    HttpClientResponseAdapter(Factory factory, HttpResponse response) { // intentionally hidden
+        super(factory, response);
+    }
 }
