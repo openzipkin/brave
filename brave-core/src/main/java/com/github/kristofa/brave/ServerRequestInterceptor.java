@@ -34,14 +34,27 @@ public class ServerRequestInterceptor {
         final TraceData traceData = adapter.getTraceData();
 
         Boolean sample = traceData.getSample();
-        if (sample != null && Boolean.FALSE.equals(sample)) {
+        if (Boolean.FALSE.equals(sample)) {
             serverTracer.setStateNoTracing();
             LOGGER.fine("Received indication that we should NOT trace.");
         } else {
-            boolean clientOriginatedTrace = traceData.getSpanId() != null;
-            if (clientOriginatedTrace) {
-                LOGGER.fine("Received span information as part of request.");
-                serverTracer.setStateCurrentTrace(traceData.getSpanId(), adapter.getSpanName());
+            SpanId spanId = traceData.getSpanId();
+            // We know an instrumented caller initiated the trace if they sampled it
+            boolean clientOriginatedTrace = spanId != null && Boolean.TRUE.equals(sample);
+            if (spanId != null) {
+                // If the sampled flag was left unset, we need to make the decision here
+                if (spanId.sampled() == null) {
+                    spanId = spanId.toBuilder()
+                        .sampled(serverTracer.traceSampler().isSampled(spanId.traceId))
+                        .build();
+                }
+                if (!spanId.sampled()) {
+                    LOGGER.fine("Received span information as part of request, but didn't sample.");
+                    serverTracer.setStateNoTracing();
+                } else {
+                    LOGGER.fine("Received span information as part of request.");
+                    serverTracer.setStateCurrentTrace(traceData.getSpanId(), adapter.getSpanName());
+                }
             } else {
                 LOGGER.fine("Received no span state.");
                 serverTracer.setStateUnknown(adapter.getSpanName());

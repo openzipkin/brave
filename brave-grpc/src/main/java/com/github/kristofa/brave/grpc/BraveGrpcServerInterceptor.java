@@ -58,10 +58,10 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
     static final class GrpcServerRequestAdapter<ReqT, RespT> implements ServerRequestAdapter {
 
         private final ServerCall<ReqT, RespT> call;
-        private MethodDescriptor<ReqT, RespT> method;
-        private Metadata requestHeaders;
+        private final MethodDescriptor<ReqT, RespT> method;
+        private final Metadata requestHeaders;
 
-        public GrpcServerRequestAdapter(ServerCall<ReqT, RespT> call, Metadata requestHeaders) {
+        GrpcServerRequestAdapter(ServerCall<ReqT, RespT> call, Metadata requestHeaders) {
             this.call = checkNotNull(call);
             this.method = checkNotNull(call.getMethodDescriptor());
             this.requestHeaders = checkNotNull(requestHeaders);
@@ -69,21 +69,26 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
         @Override
         public TraceData getTraceData() {
-            final String sampled = requestHeaders.get(BravePropagationKeys.Sampled);
-            if (sampled != null) {
-                if (sampled.equals("0") || sampled.toLowerCase().equals("false")) {
-                    return TraceData.builder().sample(false).build();
-                } else {
-                    final String parentSpanId = requestHeaders.get(BravePropagationKeys.ParentSpanId);
-                    final String traceId = requestHeaders.get(BravePropagationKeys.TraceId);
-                    final String spanId = requestHeaders.get(BravePropagationKeys.SpanId);
-                    if (traceId != null && spanId != null) {
-                        SpanId span = getSpanId(traceId, spanId, parentSpanId);
-                        return TraceData.builder().sample(true).spanId(span).build();
-                    }
-                }
+            String sampled = requestHeaders.get(BravePropagationKeys.Sampled);
+            String parentSpanId = requestHeaders.get(BravePropagationKeys.ParentSpanId);
+            String traceId = requestHeaders.get(BravePropagationKeys.TraceId);
+            String spanId = requestHeaders.get(BravePropagationKeys.SpanId);
+
+            // Official sampled value is 1, though some old instrumentation send true
+            Boolean parsedSampled = sampled != null
+                ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
+                : null;
+
+            if (traceId != null && spanId != null) {
+                return TraceData.create(getSpanId(traceId, spanId, parentSpanId, parsedSampled));
+            } else if (parsedSampled == null) {
+                return TraceData.EMPTY;
+            } else if (parsedSampled.booleanValue()) {
+                // Invalid: The caller requests the trace to be sampled, but didn't pass IDs
+                return TraceData.EMPTY;
+            } else {
+                return TraceData.NOT_SAMPLED;
             }
-            return TraceData.builder().build();
         }
 
         @Override
@@ -123,11 +128,12 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     }
 
-    static SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
+    static SpanId getSpanId(String traceId, String spanId, String parentSpanId, Boolean sampled) {
         return SpanId.builder()
             .traceIdHigh(traceId.length() == 32 ? convertToLong(traceId, 0) : 0)
             .traceId(convertToLong(traceId))
             .spanId(convertToLong(spanId))
+            .sampled(sampled)
             .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();
     }
 }
