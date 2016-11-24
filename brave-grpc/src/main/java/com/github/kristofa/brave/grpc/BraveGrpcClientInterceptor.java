@@ -10,6 +10,7 @@ import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import io.grpc.CallOptions;
@@ -31,10 +32,41 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
+    /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveGrpcClientInterceptor create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = Util.checkNotNull(brave, "brave");
+        }
+
+        public BraveGrpcClientInterceptor build() {
+            return new BraveGrpcClientInterceptor(this);
+        }
+    }
+
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final ClientSpanThreadBinder clientSpanThreadBinder;
 
+    BraveGrpcClientInterceptor(Builder b) { // intentionally hidden
+        this.clientRequestInterceptor = b.brave.clientRequestInterceptor();
+        this.clientResponseInterceptor = b.brave.clientResponseInterceptor();
+        this.clientSpanThreadBinder = b.brave.clientSpanThreadBinder();
+    }
+
+    /**
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     */
+    @Deprecated
     public BraveGrpcClientInterceptor(Brave brave) {
         this.clientRequestInterceptor = checkNotNull(brave.clientRequestInterceptor());
         this.clientResponseInterceptor = checkNotNull(brave.clientResponseInterceptor());

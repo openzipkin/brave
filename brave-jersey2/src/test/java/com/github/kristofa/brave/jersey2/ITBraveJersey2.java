@@ -19,24 +19,22 @@ import static org.junit.Assert.assertEquals;
 
 public class ITBraveJersey2 extends JerseyTest {
 
+    private Brave brave;
     private SpanNameProvider spanNameProvider;
-    private ClientRequestInterceptor clientRequestInterceptor;
-    private ClientResponseInterceptor clientResponseInterceptor;
 
     @Override
     protected Application configure() {
         ApplicationContext context = new AnnotationConfigApplicationContext(JerseyTestSpringConfig.class);
+        brave = context.getBean(Brave.class);
         spanNameProvider = context.getBean(SpanNameProvider.class);
-        clientRequestInterceptor = context.getBean(ClientRequestInterceptor.class);
-        clientResponseInterceptor = context.getBean(ClientResponseInterceptor.class);
         return new JerseyTestConfig().property("contextConfig", context);
     }
 
     @Test
     public void testBraveJersey2() {
         WebTarget target = target("/brave-jersey2/test");
-        target.register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor));
-        target.register(new BraveClientResponseFilter(clientResponseInterceptor));
+        target.register(BraveClientRequestFilter.builder(brave).spanNameProvider(spanNameProvider).build());
+        target.register(BraveClientResponseFilter.create(brave));
 
         final Response response = target.request().get();
         assertEquals(200, response.getStatus());

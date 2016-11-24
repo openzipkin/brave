@@ -9,8 +9,10 @@ annotation.
 
 Example of configuring interceptors with http client:
 
-    final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(clientTracer))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(clientTracer)).build();
-
+```java
+CloseableHttpClient httpclient = HttpClients.custom()
+    .addInterceptorFirst(BraveHttpRequestInterceptor.create(brave))
+    .addInterceptorFirst(BraveHttpResponseInterceptor.create(brave))
+    .build();
+```
 It is tested with httpclient version 4.3.3.

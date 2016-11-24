@@ -2,8 +2,19 @@ package com.github.kristofa.brave.resteasy;
 
 import javax.ws.rs.ext.Provider;
 
-import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.*;
+import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseAdapter;
+import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.ClientTracer;
+import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.HttpClientRequest;
+import com.github.kristofa.brave.http.HttpClientRequestAdapter;
+import com.github.kristofa.brave.http.HttpClientResponseAdapter;
+import com.github.kristofa.brave.http.HttpResponse;
+import com.github.kristofa.brave.http.SpanNameProvider;
 
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
@@ -12,6 +23,8 @@ import org.jboss.resteasy.spi.interception.ClientExecutionContext;
 import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -40,9 +53,47 @@ import org.springframework.stereotype.Component;
 @ClientInterceptor
 public class BraveClientExecutionInterceptor implements ClientExecutionInterceptor {
 
+    /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveClientExecutionInterceptor create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = checkNotNull(brave, "brave");
+        }
+
+        public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
+            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            return this;
+        }
+
+        public BraveClientExecutionInterceptor build() {
+            return new BraveClientExecutionInterceptor(this);
+        }
+    }
+
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
+
+    @Autowired // internal
+    BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
+        this(builder(brave).spanNameProvider(spanNameProvider));
+    }
+
+    BraveClientExecutionInterceptor(Builder b) { // intentionally hidden
+        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
+        this.spanNameProvider = b.spanNameProvider;
+    }
 
     /**
      * Create a new instance.
@@ -50,8 +101,9 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      * @param spanNameProvider Provides span name.
      * @param requestInterceptor Client request interceptor.
      * @param responseInterceptor Client response interceptor.
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
-    @Autowired
+    @Deprecated
     public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;

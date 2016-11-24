@@ -37,6 +37,13 @@
           <artifactId>brave-jaxrs2</artifactId>
           <version>3.15.5-SNAPSHOT</version>
       </dependency>
+    <!-- provided dep in brave-jaxrs2 -->
+    <dependency>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>javax.ws.rs-api</artifactId>
+      <version>2.0</version>
+      <scope>provided</scope>
+    </dependency>
 	<dependency>
     	<groupId>org.springframework</groupId>
 	    <artifactId>spring-core</artifactId>

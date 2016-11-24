@@ -1,8 +1,10 @@
 package com.github.kristofa.brave.spring;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -12,6 +14,8 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 import java.io.IOException;
+
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Spring {@link org.springframework.web.client.RestTemplate RestTemplate} {@link ClientHttpRequestInterceptor} that adds brave/zipkin annotations to outgoing client request and
@@ -28,9 +32,42 @@ import java.io.IOException;
  */
 public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
+    /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveClientHttpRequestInterceptor create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = checkNotNull(brave, "brave");
+        }
+
+        public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
+            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            return this;
+        }
+
+        public BraveClientHttpRequestInterceptor build() {
+            return new BraveClientHttpRequestInterceptor(this);
+        }
+    }
+
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
+
+    BraveClientHttpRequestInterceptor(Builder b) { // intentionally hidden
+        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
+        this.spanNameProvider = b.spanNameProvider;
+    }
 
     /**
      * Creates a new instance.
@@ -38,7 +75,9 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
      * @param spanNameProvider Provides span name.
      * @param requestInterceptor Client request interceptor.
      * @param responseInterceptor Client response interceptor.
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
+    @Deprecated
     public BraveClientHttpRequestInterceptor(final ClientRequestInterceptor requestInterceptor, final ClientResponseInterceptor responseInterceptor,
                                              final SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;

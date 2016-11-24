@@ -23,7 +23,8 @@ For client side setup, you just have to register the client filters with your JA
 
 It should look something like:
 
-    Client client = ClientBuilder.newClient();
-    client.register(myBraveClientRequestFilter);
-    client.register(myBraveClientResponseFilter);
-
+```java
+Client client = ClientBuilder.newClient();
+client.register(BraveClientRequestFilter.create(brave));
+client.register(BraveClientResponseFilter.create(brave));
+```

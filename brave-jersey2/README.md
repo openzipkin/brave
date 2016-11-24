@@ -24,7 +24,8 @@ For client side setup, you just have to register the client filters with your Je
 
 It should look something like:
 
-    Client client = ClientBuilder.newClient();
-    client.register(myBraveClientRequestFilter);
-    client.register(myBraveClientResponseFilter);
-
+```java
+WebTarget target = target("/mytarget");
+target.register(BraveClientRequestFilter.create(brave));
+target.register(BraveClientResponseFilter.create(brave));
+```

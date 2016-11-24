@@ -63,12 +63,12 @@ public class BraveGrpcInterceptorsTest {
 
         int serverPort = pickUnusedPort();
         server = ServerBuilder.forPort(serverPort)
-            .addService(ServerInterceptors.intercept(new GreeterImpl(), new BraveGrpcServerInterceptor(brave)))
+            .addService(ServerInterceptors.intercept(new GreeterImpl(), BraveGrpcServerInterceptor.create(brave)))
             .build()
             .start();
 
         channel = ManagedChannelBuilder.forAddress("localhost", serverPort)
-            .intercept(new BraveGrpcClientInterceptor(brave))
+            .intercept(BraveGrpcClientInterceptor.create(brave))
             .usePlaintext(true)
             .build();
     }
