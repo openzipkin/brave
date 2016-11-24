@@ -11,55 +11,56 @@ import zipkin.TraceKeys;
 import static com.github.kristofa.brave.IdConversion.convertToLong;
 
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
-
-    private static final TraceData EMPTY_UNSAMPLED_TRACE = TraceData.builder().sample(false).build();
-    private static final TraceData EMPTY_MAYBE_TRACE = TraceData.builder().build();
-
-    private final HttpServerRequest serverRequest;
+    private final HttpServerRequest request;
     private final SpanNameProvider spanNameProvider;
 
-    public HttpServerRequestAdapter(HttpServerRequest serverRequest, SpanNameProvider spanNameProvider) {
-        this.serverRequest = serverRequest;
+    public HttpServerRequestAdapter(HttpServerRequest request, SpanNameProvider spanNameProvider) {
+        this.request = request;
         this.spanNameProvider = spanNameProvider;
     }
 
     @Override
     public TraceData getTraceData() {
-        final String sampled = serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
-        if (sampled != null) {
-            if (sampled.equals("0") || sampled.equalsIgnoreCase("false")) {
-                return EMPTY_UNSAMPLED_TRACE;
-            } else {
-                final String parentSpanId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
-                final String traceId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
-                final String spanId = serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
+        String sampled = request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
+        String parentSpanId = request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
+        String traceId = request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
+        String spanId = request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
 
-                if (traceId != null && spanId != null) {
-                    SpanId span = getSpanId(traceId, spanId, parentSpanId);
-                    return TraceData.builder().sample(true).spanId(span).build();
-                }
-            }
+        // Official sampled value is 1, though some old instrumentation send true
+        Boolean parsedSampled = sampled != null
+            ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
+            : null;
+
+        if (traceId != null && spanId != null) {
+            return TraceData.create(getSpanId(traceId, spanId, parentSpanId, parsedSampled));
+        } else if (parsedSampled == null) {
+            return TraceData.EMPTY;
+        } else if (parsedSampled.booleanValue()) {
+            // Invalid: The caller requests the trace to be sampled, but didn't pass IDs
+            return TraceData.EMPTY;
+        } else {
+            return TraceData.NOT_SAMPLED;
         }
-        return EMPTY_MAYBE_TRACE;
     }
 
     @Override
     public String getSpanName() {
-        return spanNameProvider.spanName(serverRequest);
+        return spanNameProvider.spanName(request);
     }
 
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, serverRequest.getUri().toString());
+                TraceKeys.HTTP_URL, request.getUri().toString());
         return Collections.singleton(uriAnnotation);
     }
 
-    private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
+    static SpanId getSpanId(String traceId, String spanId, String parentSpanId, Boolean sampled) {
         return SpanId.builder()
             .traceIdHigh(traceId.length() == 32 ? convertToLong(traceId, 0) : 0)
             .traceId(convertToLong(traceId))
             .spanId(convertToLong(spanId))
+            .sampled(sampled)
             .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();
    }
 }

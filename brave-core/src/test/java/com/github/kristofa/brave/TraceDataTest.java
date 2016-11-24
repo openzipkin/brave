@@ -8,22 +8,20 @@ import static org.junit.Assert.assertNull;
 
 public class TraceDataTest {
 
-    private static final boolean SAMPLE = true;
     private static final SpanId SPAN_ID =
-        SpanId.builder().traceId(3454).spanId(3353).parentId(34343L).build();
+        SpanId.builder().traceId(3454).spanId(3353).parentId(34343L).sampled(true).build();
 
 
     @Test
-    public void testDefaultTraceData() {
-        TraceData defaultTraceData = TraceData.builder().build();
-        assertNull(defaultTraceData.getSample());
-        assertNull(defaultTraceData.getSpanId());
+    public void testEmptyTraceData() {
+        assertNull(TraceData.EMPTY.getSample());
+        assertNull(TraceData.EMPTY.getSpanId());
     }
 
     @Test
     public void testTraceDataConstruction() {
-        TraceData traceData = TraceData.builder().sample(SAMPLE).spanId(SPAN_ID).build();
-        assertEquals(SAMPLE, traceData.getSample());
+        TraceData traceData = TraceData.create(SPAN_ID);
+        assertEquals(true, traceData.getSample());
         assertEquals(SPAN_ID, traceData.getSpanId());
     }
 

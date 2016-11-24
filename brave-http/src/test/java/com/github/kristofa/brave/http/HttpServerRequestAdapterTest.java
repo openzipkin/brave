@@ -163,5 +163,20 @@ public class HttpServerRequestAdapterTest {
         assertEquals("http://youruri.com/a/b?myquery=you", a.getValue());
     }
 
-
+    /**
+     * When the caller propagates IDs, but not a sampling decision, the local process should decide.
+     */
+    @Test
+    public void getTraceData_externallyProvidedIds() {
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(TRACE_ID);
+        when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(SPAN_ID);
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertNull(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertNull(spanId.nullableParentId());
+    }
 }
