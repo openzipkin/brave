@@ -7,7 +7,6 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
 import javax.annotation.Priority;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -26,7 +25,6 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
     private final ServerRequestInterceptor requestInterceptor;
     private final SpanNameProvider spanNameProvider;
 
-    @Inject
     public BraveContainerRequestFilter(ServerRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
