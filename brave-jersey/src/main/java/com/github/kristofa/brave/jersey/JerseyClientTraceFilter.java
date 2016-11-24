@@ -3,8 +3,10 @@ package com.github.kristofa.brave.jersey;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -28,6 +30,10 @@ public class JerseyClientTraceFilter extends ClientFilter {
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final SpanNameProvider spanNameProvider;
+
+    public JerseyClientTraceFilter(Brave brave) {
+        this(new DefaultSpanNameProvider(), new ClientRequestInterceptor(brave.clientTracer()), new ClientResponseInterceptor(brave.clientTracer()));
+    }
 
     @Inject
     public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {

@@ -55,7 +55,7 @@ public class ITBraveServletFilter {
         context.setServer(server);
         context.setContextPath("/BraveServletFilter");
 
-        context.addFilter(new FilterHolder(new BraveServletFilter(brave.serverRequestInterceptor(), brave.serverResponseInterceptor(), new DefaultSpanNameProvider())), "/*", EnumSet.allOf(DispatcherType.class));
+        context.addFilter(new FilterHolder(new BraveServletFilter(brave)), "/*", EnumSet.allOf(DispatcherType.class));
         context.addServlet(new ServletHolder(new ForwardServlet()), "/test");
         context.addServlet(new ServletHolder(new PingServlet()), "/forwardTo");
         context.setWar("src/test/webapp");

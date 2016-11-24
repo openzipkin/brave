@@ -1,7 +1,9 @@
 package com.github.kristofa.brave.servlet;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
@@ -29,6 +31,11 @@ public class BraveServletFilter implements Filter {
     private final SpanNameProvider spanNameProvider;
 
     private FilterConfig filterConfig;
+
+    /** Construct an instance with a given Brave instance and the DefaultSpanNameProvider. */
+    public BraveServletFilter(Brave brave) {
+        this(brave.serverRequestInterceptor(), brave.serverResponseInterceptor(), new DefaultSpanNameProvider());
+    }
 
     public BraveServletFilter(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
