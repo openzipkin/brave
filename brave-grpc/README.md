@@ -7,12 +7,12 @@ To enable tracing for a gRPC application, add the interceptors when when constru
 ```java
     Server server = ServerBuilder.forPort(serverPort)
         .addService(ServerInterceptors.intercept(
-            GreeterGrpc.bindService(new GreeterImpl()), new BraveGrpcServerInterceptor(brave)))
+            GreeterGrpc.bindService(new GreeterImpl()), BraveGrpcServerInterceptor.create(brave)))
         .build()
         .start();
         
     ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", serverPort)
-        .intercept(new BraveGrpcClientInterceptor("helloCallingService", brave))
+        .intercept(BraveGrpcClientInterceptor.create(brave))
         .usePlaintext(true)
         .build();
 ```

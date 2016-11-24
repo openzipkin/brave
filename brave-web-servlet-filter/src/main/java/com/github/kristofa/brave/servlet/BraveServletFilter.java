@@ -1,7 +1,9 @@
 package com.github.kristofa.brave.servlet;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
@@ -18,11 +20,40 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
 
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+
 /**
  * Servlet filter that will extract trace headers from the request and send
  * sr (server received) and ss (server sent) annotations.
  */
 public class BraveServletFilter implements Filter {
+
+    /** Creates a tracing filter with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveServletFilter create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = checkNotNull(brave, "brave");
+        }
+
+        public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
+            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            return this;
+        }
+
+        public BraveServletFilter build() {
+            return new BraveServletFilter(this);
+        }
+    }
 
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
@@ -30,6 +61,16 @@ public class BraveServletFilter implements Filter {
 
     private FilterConfig filterConfig;
 
+    protected BraveServletFilter(Builder b) { // intentionally hidden
+        this.requestInterceptor = b.brave.serverRequestInterceptor();
+        this.responseInterceptor = b.brave.serverResponseInterceptor();
+        this.spanNameProvider = b.spanNameProvider;
+    }
+
+    /**
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     */
+    @Deprecated
     public BraveServletFilter(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;

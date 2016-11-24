@@ -13,6 +13,7 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
 
+import com.github.kristofa.brave.internal.Util;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -29,9 +30,39 @@ import java.util.Collections;
 
 public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
+    /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveGrpcServerInterceptor create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = Util.checkNotNull(brave, "brave");
+        }
+
+        public BraveGrpcServerInterceptor build() {
+            return new BraveGrpcServerInterceptor(this);
+        }
+    }
+
     private final ServerRequestInterceptor serverRequestInterceptor;
     private final ServerResponseInterceptor serverResponseInterceptor;
 
+    BraveGrpcServerInterceptor(Builder b) { // intentionally hidden
+        this.serverRequestInterceptor = b.brave.serverRequestInterceptor();
+        this.serverResponseInterceptor = b.brave.serverResponseInterceptor();
+    }
+
+    /**
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     */
+    @Deprecated
     public BraveGrpcServerInterceptor(Brave brave) {
         this.serverRequestInterceptor = checkNotNull(brave.serverRequestInterceptor());
         this.serverResponseInterceptor = checkNotNull(brave.serverResponseInterceptor());

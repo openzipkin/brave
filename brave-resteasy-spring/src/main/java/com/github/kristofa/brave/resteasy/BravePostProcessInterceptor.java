@@ -1,9 +1,8 @@
 package com.github.kristofa.brave.resteasy;
 
-import java.util.logging.Logger;
-
 import javax.ws.rs.ext.Provider;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
@@ -27,18 +26,47 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 @ServerInterceptor
 public class BravePostProcessInterceptor implements PostProcessInterceptor {
 
-    private final static Logger LOGGER = Logger.getLogger(BravePostProcessInterceptor.class.getName());
+    /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BravePostProcessInterceptor create(Brave brave) {
+        return new Builder(brave).build();
+    }
 
-    private final ServerResponseInterceptor respInterceptor;
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = checkNotNull(brave, "brave");
+        }
+
+        public BravePostProcessInterceptor build() {
+            return new BravePostProcessInterceptor(this);
+        }
+    }
+
+    private final ServerResponseInterceptor responseInterceptor;
+
+    @Autowired // internal
+    BravePostProcessInterceptor(Brave brave) {
+        this(builder(brave));
+    }
+
+    BravePostProcessInterceptor(Builder b) { // intentionally hidden
+        this.responseInterceptor = b.brave.serverResponseInterceptor();
+    }
 
     /**
      * Creates a new instance.
      * 
-     * @param respInterceptor {@link ServerTracer}. Should not be null.
+     * @param responseInterceptor {@link ServerTracer}. Should not be null.
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
-    @Autowired
-    public BravePostProcessInterceptor(ServerResponseInterceptor respInterceptor) {
-        this.respInterceptor = respInterceptor;
+    @Deprecated
+    public BravePostProcessInterceptor(ServerResponseInterceptor responseInterceptor) {
+        this.responseInterceptor = responseInterceptor;
     }
 
     @Override
@@ -52,7 +80,7 @@ public class BravePostProcessInterceptor implements PostProcessInterceptor {
             }
         };
         HttpServerResponseAdapter adapter = new HttpServerResponseAdapter(httpResponse);
-        respInterceptor.handle(adapter);
+        responseInterceptor.handle(adapter);
     }
 
 }

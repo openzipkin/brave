@@ -1,10 +1,12 @@
 package com.github.kristofa.brave.spring;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.springframework.http.HttpMethod;
@@ -26,11 +28,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class BraveClientHttpRequestInterceptorTest {
-
+    private final Brave brave = mock(Brave.class);
     private final ClientTracer clientTracer = mock(ClientTracer.class);
     private final SpanNameProvider spanNameProvider = mock(SpanNameProvider.class);
-    private final BraveClientHttpRequestInterceptor subject = new BraveClientHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer),
-            new ClientResponseInterceptor(clientTracer), spanNameProvider);
+    private BraveClientHttpRequestInterceptor subject;
+
+    @Before
+    public void setup() throws IOException {
+        when(brave.clientRequestInterceptor())
+            .thenReturn(new ClientRequestInterceptor(clientTracer));
+        when(brave.clientResponseInterceptor())
+            .thenReturn(new ClientResponseInterceptor(clientTracer));
+        subject =
+            BraveClientHttpRequestInterceptor.builder(brave).spanNameProvider(spanNameProvider).build();
+    }
 
     @Test(expected = IOException.class)
     public void interceptShouldLetExceptionOccurringDuringExecuteBlowUp() throws Exception {

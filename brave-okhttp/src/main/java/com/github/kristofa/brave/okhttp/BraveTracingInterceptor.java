@@ -74,11 +74,11 @@ public final class BraveTracingInterceptor implements Interceptor {
   }
 
   public static final class Builder {
-    Brave brave;
+    final Brave brave;
     String serverName = "";
     OkHttpParser parser = new OkHttpParser();
 
-    Builder(Brave brave) {
+    Builder(Brave brave) { // intentionally hidden
       this.brave = checkNotNull(brave, "brave");
     }
 

@@ -1,11 +1,11 @@
 package com.github.kristofa.brave.okhttp;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -39,7 +39,8 @@ public class BraveOkHttpRequestResponseInterceptorTest {
   public final ExpectedException thrown = ExpectedException.none();
   @Rule
   public final MockWebServer server = new MockWebServer();
-
+  @Mock
+  private Brave brave;
   @Mock(answer = Answers.RETURNS_SMART_NULLS)
   private ClientTracer clientTracer;
 
@@ -50,8 +51,12 @@ public class BraveOkHttpRequestResponseInterceptorTest {
   public void setup() throws IOException {
     MockitoAnnotations.initMocks(this);
     this.spanId = SpanId.builder().spanId(SPAN_ID).traceId(TRACE_ID).parentId(null).build();
+    when(brave.clientRequestInterceptor())
+        .thenReturn(new ClientRequestInterceptor(clientTracer));
+    when(brave.clientResponseInterceptor())
+        .thenReturn(new ClientResponseInterceptor(clientTracer));
     this.client = new OkHttpClient.Builder()
-            .addInterceptor(new BraveOkHttpRequestResponseInterceptor(new ClientRequestInterceptor(clientTracer), new ClientResponseInterceptor(clientTracer), new DefaultSpanNameProvider()))
+            .addInterceptor(BraveOkHttpRequestResponseInterceptor.create(brave))
             .build();
   }
 

@@ -1,19 +1,17 @@
 package com.github.kristofa.brave.httpclient;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
 import com.github.kristofa.test.http.HttpRequestImpl;
 import com.github.kristofa.test.http.HttpResponseImpl;
 import com.github.kristofa.test.http.Method;
 import com.github.kristofa.test.http.MockHttpServer;
 import com.github.kristofa.test.http.UnsatisfiedExpectationException;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -48,12 +46,18 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         SpanId.builder().spanId(TRACE_ID).build().traceIdString();
     private MockHttpServer mockServer;
     private DefaultHttpResponseProvider responseProvider;
+    private Brave brave;
     private ClientTracer clientTracer;
     private SpanId spanId;
 
     @Before
     public void setup() throws IOException {
+        brave = mock(Brave.class);
         clientTracer = mock(ClientTracer.class);
+        when(brave.clientRequestInterceptor())
+            .thenReturn(new ClientRequestInterceptor(clientTracer));
+        when(brave.clientResponseInterceptor())
+            .thenReturn(new ClientResponseInterceptor(clientTracer));
         spanId = SpanId.builder().spanId(SPAN_ID).traceId(TRACE_ID).parentId(null).build();
 
         responseProvider = new DefaultHttpResponseProvider(true);
@@ -67,7 +71,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     }
 
     @Test
-    public void testTracingTrue() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
+    public void testTracingTrue() throws IOException, UnsatisfiedExpectationException {
         when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
 
         final HttpRequestImpl request = new HttpRequestImpl();
@@ -79,8 +83,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-            HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+            HttpClients.custom().addInterceptorFirst(BraveHttpRequestInterceptor.create(brave))
+                .addInterceptorFirst(BraveHttpResponseInterceptor.create(brave)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -103,7 +107,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     }
 
     @Test
-    public void testTracingTrueHttpNoOk() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
+    public void testTracingTrueHttpNoOk() throws IOException, UnsatisfiedExpectationException {
         when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
 
         final HttpRequestImpl request = new HttpRequestImpl();
@@ -115,8 +119,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
-                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+                HttpClients.custom().addInterceptorFirst(BraveHttpRequestInterceptor.create(brave))
+                        .addInterceptorFirst(BraveHttpResponseInterceptor.create(brave)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -140,7 +144,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     }
 
     @Test
-    public void testTracingFalse() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
+    public void testTracingFalse() throws IOException, UnsatisfiedExpectationException {
         when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(null);
 
         final HttpRequestImpl request = new HttpRequestImpl();
@@ -149,8 +153,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
-                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+                HttpClients.custom().addInterceptorFirst(BraveHttpRequestInterceptor.create(brave))
+                        .addInterceptorFirst(BraveHttpResponseInterceptor.create(brave)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);
@@ -171,7 +175,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     }
 
     @Test
-    public void testQueryParams() throws ClientProtocolException, IOException, UnsatisfiedExpectationException {
+    public void testQueryParams() throws IOException, UnsatisfiedExpectationException {
         when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(spanId);
 
         final HttpRequestImpl request = new HttpRequestImpl();
@@ -183,8 +187,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         responseProvider.set(request, response);
 
         final CloseableHttpClient httpclient =
-                HttpClients.custom().addInterceptorFirst(new BraveHttpRequestInterceptor(new ClientRequestInterceptor(clientTracer), new DefaultSpanNameProvider()))
-                        .addInterceptorFirst(new BraveHttpResponseInterceptor(new ClientResponseInterceptor(clientTracer))).build();
+                HttpClients.custom().addInterceptorFirst(BraveHttpRequestInterceptor.create(brave))
+                        .addInterceptorFirst(BraveHttpResponseInterceptor.create(brave)).build();
         try {
             final HttpGet httpGet = new HttpGet(REQUEST_WITH_QUERY_PARAMS);
             final CloseableHttpResponse httpClientResponse = httpclient.execute(httpGet);

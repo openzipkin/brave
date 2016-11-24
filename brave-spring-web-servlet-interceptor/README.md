@@ -5,9 +5,6 @@ trace information or create as required. This can be configured in either XML or
 ```xml
 <mvc:interceptors>
   <bean class="com.github.kristofa.brave.spring.ServletHandlerInterceptor">
-    <constructor-arg name="spanNameProvider">
-      <bean class="com.github.kristofa.brave.http.DefaultSpanNameProvider"/>
-    </constructor-arg>
   </bean>
 </mvc:interceptors>
 ```
@@ -16,17 +13,11 @@ trace information or create as required. This can be configured in either XML or
 public class WebConfig extends WebMvcConfigurerAdapter {
 
     @Autowired
-    private ServerRequestInterceptor requestInterceptor;
-
-    @Autowired
-    private ServerResponseInterceptor responseInterceptor;
-
-    @Autowired
-    private ServerSpanThreadBinder serverThreadBinder;
+    private Brave brave;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new ServletHandlerInterceptor(requestInterceptor, responseInterceptor, new DefaultSpanNameProvider(), serverThreadBinder));
+        registry.addInterceptor(ServletHandlerInterceptor.create(brave));
     }
 
 }

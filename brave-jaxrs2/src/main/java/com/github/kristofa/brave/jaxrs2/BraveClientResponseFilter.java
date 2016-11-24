@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.jaxrs2;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpResponse;
@@ -11,6 +12,8 @@ import javax.ws.rs.client.ClientResponseFilter;
 import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 
+import static com.github.kristofa.brave.internal.Util.checkNotNull;
+
 /**
  * Intercepts JAX-RS 2 client responses and sends cr annotations. Also submits the completed span.
  */
@@ -18,8 +21,37 @@ import java.io.IOException;
 @Priority(0)
 public class BraveClientResponseFilter implements ClientResponseFilter {
 
+    /** Creates a tracing filter with defaults. Use {@link #builder(Brave)} to customize. */
+    public static BraveClientResponseFilter create(Brave brave) {
+        return new Builder(brave).build();
+    }
+
+    public static Builder builder(Brave brave) {
+        return new Builder(brave);
+    }
+
+    public static final class Builder {
+        final Brave brave;
+
+        Builder(Brave brave) { // intentionally hidden
+            this.brave = checkNotNull(brave, "brave");
+        }
+
+        public BraveClientResponseFilter build() {
+            return new BraveClientResponseFilter(this);
+        }
+    }
+
     private final ClientResponseInterceptor responseInterceptor;
 
+    BraveClientResponseFilter(Builder b) { // intentionally hidden
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
+    }
+
+    /**
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     */
+    @Deprecated
     @Inject
     public BraveClientResponseFilter(ClientResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;

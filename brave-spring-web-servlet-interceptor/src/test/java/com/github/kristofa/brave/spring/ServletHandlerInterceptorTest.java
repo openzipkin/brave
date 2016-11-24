@@ -1,12 +1,11 @@
 package com.github.kristofa.brave.spring;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.SpanNameProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -26,16 +25,19 @@ public class ServletHandlerInterceptorTest {
     private ServletHandlerInterceptor subject;
     private ServerSpanThreadBinder serverThreadBinder;
     private ServerRequestInterceptor requestInterceptor;
-    private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private ServerResponseInterceptor responseInterceptor;
 
     @Before
     public void setUp() throws Exception {
         requestInterceptor = mock(ServerRequestInterceptor.class);
         responseInterceptor = mock(ServerResponseInterceptor.class);
-
         serverThreadBinder = mock(ServerSpanThreadBinder.class);
-        subject = new ServletHandlerInterceptor(requestInterceptor, responseInterceptor, spanNameProvider, serverThreadBinder);
+
+        Brave brave = mock(Brave.class);
+        when(brave.serverRequestInterceptor()).thenReturn(requestInterceptor);
+        when(brave.serverResponseInterceptor()).thenReturn(responseInterceptor);
+        when(brave.serverSpanThreadBinder()).thenReturn(serverThreadBinder);
+        subject = ServletHandlerInterceptor.create(brave);
     }
 
     @Test

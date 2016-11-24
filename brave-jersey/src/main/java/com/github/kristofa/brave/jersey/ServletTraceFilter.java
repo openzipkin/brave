@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.jersey;
 
+import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -15,7 +16,15 @@ import javax.inject.Singleton;
 @Singleton
 public class ServletTraceFilter extends BraveServletFilter {
 
-    @Inject
+    @Inject // internal dependency-injection constructor
+    ServletTraceFilter(SpanNameProvider spanNameProvider, Brave brave) {
+       super(builder(brave).spanNameProvider(spanNameProvider));
+    }
+
+    /**
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     */
+    @Deprecated
     public ServletTraceFilter(
             ServerRequestInterceptor requestInterceptor,
             ServerResponseInterceptor responseInterceptor,
