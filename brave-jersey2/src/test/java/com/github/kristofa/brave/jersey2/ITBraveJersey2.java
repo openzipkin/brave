@@ -4,7 +4,9 @@ import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
-import com.twitter.zipkin.gen.Span;
+
+import zipkin.Span;
+
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.Test;
 import org.springframework.context.ApplicationContext;
@@ -41,20 +43,20 @@ public class ITBraveJersey2 extends JerseyTest {
         final Response response = target.request().get();
         assertEquals(200, response.getStatus());
 
-        final List<Span> collectedSpans = SpanCollectorForTesting.getInstance().getCollectedSpans();
+        final List<Span> collectedSpans = ReporterForTesting.getInstance().getCollectedSpans();
         assertEquals(2, collectedSpans.size());
         final Span clientSpan = collectedSpans.get(0);
         final Span serverSpan = collectedSpans.get(1);
 
-        assertEquals("Expected trace id's to be equal", clientSpan.getTrace_id(), serverSpan.getTrace_id());
-        assertEquals("Expected span id's to be equal", clientSpan.getId(), serverSpan.getId());
-        assertEquals("Expected parent span id's to be equal", clientSpan.getParent_id(), serverSpan.getParent_id());
-        assertEquals("Span names of client and server should be equal.", clientSpan.getName(), serverSpan.getName());
-        assertEquals("Expect 2 annotations.", 2, clientSpan.getAnnotations().size());
-        assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
+        assertEquals("Expected trace id's to be equal", clientSpan.traceId, serverSpan.traceId);
+        assertEquals("Expected span id's to be equal", clientSpan.id, serverSpan.id);
+        assertEquals("Expected parent span id's to be equal", clientSpan.parentId, serverSpan.parentId);
+        assertEquals("Span names of client and server should be equal.", clientSpan.name, serverSpan.name);
+        assertEquals("Expect 2 annotations.", 2, clientSpan.annotations.size());
+        assertEquals("Expect 2 annotations.", 2, serverSpan.annotations.size());
         assertEquals("service name of end points for both client and server annotations should be equal.",
-            clientSpan.getAnnotations().get(0).host.service_name,
-            serverSpan.getAnnotations().get(0).host.service_name
+            clientSpan.annotations.get(0).endpoint.serviceName,
+            serverSpan.annotations.get(0).endpoint.serviceName
         );
     }
 }

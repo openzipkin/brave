@@ -16,7 +16,7 @@ public class JerseyTestSpringConfig {
     @Bean
     public Brave brave() {
         Brave.Builder builder = new Brave.Builder("brave-jersey2");
-        return builder.spanCollector(SpanCollectorForTesting.getInstance()).build();
+        return builder.reporter(ReporterForTesting.getInstance()).build();
     }
 
     @Bean
