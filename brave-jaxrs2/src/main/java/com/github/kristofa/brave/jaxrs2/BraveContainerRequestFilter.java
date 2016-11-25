@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.jaxrs2;
 
-import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
@@ -61,11 +62,15 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
         this.spanNameProvider = b.spanNameProvider;
     }
 
+    @Inject // internal dependency-injection constructor
+    BraveContainerRequestFilter(Brave brave, SpanNameProvider spanNameProvider) {
+        this(builder(brave).spanNameProvider(spanNameProvider));
+    }
+
     /**
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    @Inject
     public BraveContainerRequestFilter(ServerRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
@@ -73,7 +78,6 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
 
     @Override
     public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-
         HttpServerRequest request = new JaxRs2HttpServerRequest(containerRequestContext);
         requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
     }

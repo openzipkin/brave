@@ -42,17 +42,21 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
         }
     }
 
+    private final ServerResponseInterceptor responseInterceptor;
+
     BraveContainerResponseFilter(Builder b) { // intentionally hidden
         this.responseInterceptor = b.brave.serverResponseInterceptor();
     }
 
-    private final ServerResponseInterceptor responseInterceptor;
+    @Inject // internal dependency-injection constructor
+    BraveContainerResponseFilter(Brave brave) {
+        this(builder(brave));
+    }
 
     /**
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    @Inject
     public BraveContainerResponseFilter(ServerResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
     }

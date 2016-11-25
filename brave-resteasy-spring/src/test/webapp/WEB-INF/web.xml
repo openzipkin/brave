@@ -15,16 +15,7 @@
 	  </init-param>	  
 	  <init-param>
 		  <param-name>contextConfigLocation</param-name>
-		  <param-value>
-		  com.github.kristofa.brave.resteasy.BraveConfig
-		  com.github.kristofa.brave.BraveApiConfig
-		  com.github.kristofa.brave.resteasy.BraveClientExecutionInterceptor
-		  com.github.kristofa.brave.resteasy.BravePreProcessInterceptor
-		  com.github.kristofa.brave.resteasy.BravePostProcessInterceptor
-		  com.github.kristofa.brave.resteasy.ResteasySpringConfig
-			com.github.kristofa.brave.resteasy.BraveRestEasyResourceImpl
-		  com.github.kristofa.brave.resteasy.SpanNameProviderConfig
-		  </param-value>
+		  <param-value>com.github.kristofa.brave.resteasy</param-value>
 	  </init-param>
 	  <load-on-startup>1</load-on-startup>
 	</servlet>

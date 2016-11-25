@@ -1,7 +1,17 @@
 # brave-resteasy-spring #
 
 The brave-resteasy-spring module has RESTEasy client and server support which makes the
-usage of Brave transparent for your application. This module contains:
+usage of Brave transparent for your application.
+
+## Configuration
+Tracing always needs beans of type `Brave` and `SpanNameProvider`
+configured. Make sure these are in place before proceeding.
+
+To setup Resteasy 2.x tracing, tell Spring to scan the package
+`com.github.kristofa.brave.resteasy`. There's nothing further needed.
+
+## Details
+This module contains:
 
 *   `BraveClientExecutionInterceptor` can be configured to be used with the RestEasy
 Client Framework and intercepts every client request made. 
@@ -9,7 +19,7 @@ Client Framework and intercepts every client request made.
 server side.
   
 There is a separate example application that shows how to set up and configure the
-RESTEAsy integration using Spring -> [https://github.com/kristofa/brave-resteasy-example](https://github.com/kristofa/brave-resteasy-example)
+RESTEAsy integration using Spring -> https://github.com/openzipkin/brave-resteasy-example
 
 `brave-resteasy-spring` puts the Spring and RESTEasy dependencies to scope provided which means you are free to choose the
 versions yourself and add the dependencies to your own application. 

@@ -1,6 +1,8 @@
 package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.SpanNameProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
@@ -14,5 +16,10 @@ public class BraveConfig {
         Brave.Builder builder = new Brave.Builder("BraveRestEasyIntegration")
                 .spanCollector(SpanCollectorForTesting.getInstance());
         return builder.build();
+    }
+
+    @Bean
+    public SpanNameProvider spanNameProvider(){
+        return new DefaultSpanNameProvider();
     }
 }

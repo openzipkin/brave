@@ -8,12 +8,14 @@ import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 import java.io.IOException;
+import org.springframework.stereotype.Component;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -30,6 +32,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * <p/>
  * For the response, it inspects the state. If the response indicates an error it submits error code and failure annotation. Finally it submits the client received annotation.
  */
+@Component
 public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
     /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
@@ -67,6 +70,11 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
         this.requestInterceptor = b.brave.clientRequestInterceptor();
         this.responseInterceptor = b.brave.clientResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
+    }
+
+    @Autowired // internal
+    BraveClientHttpRequestInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
+        this(builder(brave).spanNameProvider(spanNameProvider));
     }
 
     /**

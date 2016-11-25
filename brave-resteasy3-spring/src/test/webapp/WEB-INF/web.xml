@@ -15,15 +15,7 @@
 	  </init-param>	  
 	  <init-param>
 		  <param-name>contextConfigLocation</param-name>
-		  <param-value>com.github.kristofa.brave.jaxrs2.BraveContainerResponseFilter
-              com.github.kristofa.brave.jaxrs2.BraveContainerRequestFilter
-              com.github.kristofa.brave.BraveApiConfig
-			  com.github.kristofa.brave.resteasy3.BraveConfig
-			  com.github.kristofa.brave.resteasy3.ResteasySpringConfig
-				com.github.kristofa.brave.resteasy3.BraveRestEasyResourceImpl
-				com.github.kristofa.brave.resteasy3.SpanNameProviderConfig
-			  com.github.kristofa.brave.resteasy3.BraveContextAware
-          </param-value>
+			<param-value>com.github.kristofa.brave.resteasy3</param-value>
 	  </init-param>
 	  <load-on-startup>1</load-on-startup>
 	</servlet>
