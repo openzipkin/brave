@@ -48,11 +48,15 @@ public class BraveClientResponseFilter implements ClientResponseFilter {
         this.responseInterceptor = b.brave.clientResponseInterceptor();
     }
 
+    @Inject // internal dependency-injection constructor
+    BraveClientResponseFilter(Brave brave) {
+        this(builder(brave));
+    }
+
     /**
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    @Inject
     public BraveClientResponseFilter(ClientResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
     }

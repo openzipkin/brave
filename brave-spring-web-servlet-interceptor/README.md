@@ -1,6 +1,14 @@
+# brave-spring-web-servlet-interceptor
 
-The `ServletHandlerInterceptor` can be used to handle the server side integration, which will set up the
-trace information or create as required. This can be configured in either XML or Java.
+Interceptor for servlet integration, which will create or resume a trace
+as required.
+
+## Configuration
+
+Tracing always needs beans of type `Brave` and `SpanNameProvider`
+configured. Make sure these are in place before proceeding.
+
+Then, configure `ServletHandlerInterceptor` in either XML or Java.
 
 ```xml
 <mvc:interceptors>
@@ -10,14 +18,16 @@ trace information or create as required. This can be configured in either XML or
 ```
 
 ```java
+@Configuration
+@Import(ServletHandlerInterceptor.class)
 public class WebConfig extends WebMvcConfigurerAdapter {
 
     @Autowired
-    private Brave brave;
+    private ServletHandlerInterceptor interceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(ServletHandlerInterceptor.create(brave));
+        registry.addInterceptor(interceptor);
     }
 
 }

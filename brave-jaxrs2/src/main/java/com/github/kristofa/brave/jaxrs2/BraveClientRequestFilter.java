@@ -58,11 +58,15 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
         this.spanNameProvider = b.spanNameProvider;
     }
 
+    @Inject // internal dependency-injection constructor
+    BraveClientRequestFilter(Brave brave, SpanNameProvider spanNameProvider) {
+        this(builder(brave).spanNameProvider(spanNameProvider));
+    }
+
     /**
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    @Inject
     public BraveClientRequestFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;

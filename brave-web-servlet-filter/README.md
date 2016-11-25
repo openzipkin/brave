@@ -1,4 +1,4 @@
-# brave-web-servlet-filter #
+# brave-web-servlet-filter
 
 The module contains a Servlet filter (javax.servlet.filter) to deal with server
 side integration: Getting existing span/trace state from request,

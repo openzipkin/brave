@@ -1,7 +1,5 @@
 package com.github.kristofa.brave.resteasy3;
 
-import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveClientRequestFilter;
 import com.github.kristofa.brave.jaxrs2.BraveClientResponseFilter;
 import com.twitter.zipkin.gen.Span;
@@ -9,6 +7,7 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.bio.SocketConnector;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.jboss.resteasy.plugins.providers.RegisterBuiltin;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
@@ -66,21 +65,19 @@ public class ITBraveResteasy {
         // this initialization only needs to be done once per VM
         RegisterBuiltin.register(ResteasyProviderFactory.getInstance());
 
-        // Create our client. The client will be configured using BraveClientExecutionInterceptor because
-        // Spring will scan com.github.kristofa.brave package. This is the package containing our client interceptor
-        // in module brave-resteasy-spring-module which is on our class path.
-        SpanNameProvider spanNameProvider = appContext.getBean(SpanNameProvider.class);
-        ClientRequestInterceptor clientRequestInterceptor = appContext.getBean(ClientRequestInterceptor.class);
-        ClientResponseInterceptor clientResponseInterceptor = appContext.getBean(ClientResponseInterceptor.class);
+        // Create our client. The beans below are configured by scanning
+        // com.github.kristofa.brave.resteasy3 in our test web.xml.
+        ResteasyClient client = new ResteasyClientBuilder()
+            .register(appContext.getBean(BraveClientRequestFilter.class))
+            .register(appContext.getBean(BraveClientResponseFilter.class))
+            .build();
 
-        final BraveRestEasyResource client =
-                new ResteasyClientBuilder().build().target("http://localhost:8080/BraveRestEasyIntegration")
-                        .register(new BraveClientRequestFilter(spanNameProvider, clientRequestInterceptor))
-                        .register(new BraveClientResponseFilter(clientResponseInterceptor))
-                        .proxy(BraveRestEasyResource.class);
+        BraveRestEasyResource resouce =
+            client.target("http://localhost:8080/BraveRestEasyIntegration")
+                .proxy(BraveRestEasyResource.class);
 
         @SuppressWarnings("unchecked")
-        final Response response = client.a();
+        final Response response = resouce.a();
         try {
             assertEquals(200, response.getStatus());
             final List<Span> collectedSpans = SpanCollectorForTesting.getInstance().getCollectedSpans();
