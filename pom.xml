@@ -48,7 +48,7 @@
     <spring.version>4.3.2.RELEASE</spring.version>
     <jetty.version>8.1.20.v20160902</jetty.version>
     <zipkin.version>1.16.2</zipkin.version>
-    <log4j.version>2.3</log4j.version>
+    <log4j.version>2.7</log4j.version>
     <httpcomponents.version>4.4.1</httpcomponents.version>
     <powermock.version>1.6.5</powermock.version>
 
@@ -199,6 +199,11 @@
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>${log4j.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-1.2-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
   	</dependencies>
   </dependencyManagement>
 
@@ -221,9 +226,22 @@
         <artifactId>log4j-core</artifactId>
         <scope>test</scope>
     </dependency>
+    <!-- route jul over log4j2 during tests -->
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-jul</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <!-- route log4j over log4j2 during tests -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-1.2-api</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <!-- route slf4j over log4j2 during tests -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
         <scope>test</scope>
     </dependency>
     <dependency>
