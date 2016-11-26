@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.zipkin.brave</groupId>
         <artifactId>brave</artifactId>
-        <version>3.15.5-SNAPSHOT</version>
+        <version>3.16.0</version>
     </parent>
 
     <artifactId>brave-http</artifactId>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-core</artifactId>
-            <version>3.15.5-SNAPSHOT</version>
+            <version>3.16.0</version>
         </dependency>
     </dependencies>
 </project>
