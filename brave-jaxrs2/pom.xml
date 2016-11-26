@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave</artifactId>
         <groupId>io.zipkin.brave</groupId>
-        <version>3.16.0</version>
+        <version>3.16.1-SNAPSHOT</version>
     </parent>
     <artifactId>brave-jaxrs2</artifactId>
     <packaging>jar</packaging>
@@ -29,7 +29,7 @@
         <dependency>
             <groupId>io.zipkin.brave</groupId>
             <artifactId>brave-http</artifactId>
-            <version>3.16.0</version>
+            <version>3.16.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
