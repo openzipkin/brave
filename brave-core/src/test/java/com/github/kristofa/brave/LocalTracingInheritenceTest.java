@@ -1,7 +1,9 @@
 package com.github.kristofa.brave;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -13,14 +15,20 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.twitter.zipkin.gen.Endpoint;
+
+import zipkin.Span;
 import zipkin.reporter.Reporter;
 
 public class LocalTracingInheritenceTest {
@@ -194,6 +202,142 @@ public class LocalTracingInheritenceTest {
         }
     }
 
+    /**
+     * Test to prove using InheritableThreadLocal without cloning won't work.
+     * 
+     * When using InheritableThreadLocal the child thread inherits local
+     * properties from the parent thread, when this happens it actually inherits
+     * a reference to the parent threads properties. This works if the value
+     * stored in the InheritableThreadLocal are immutable which is not the case
+     * for Spans
+     */
+    @Test
+    public void shouldTestLocalSpansUsingInheritableThreadLocal() throws Exception {
+        MockCollector reporter = new MockCollector();
+
+        brave = new Brave.Builder(state).reporter(reporter).traceSampler(sampler).build();
+
+        final LocalTracer localTracer = brave.localTracer();
+        final ClientTracer clientTracer = brave.clientTracer();
+
+        final CountDownLatch latch1 = new CountDownLatch(1);
+        final CountDownLatch latch2 = new CountDownLatch(1);
+
+        final CountDownLatch finishLatch = new CountDownLatch(2);
+
+        // Start a span on main thread
+        //
+        // parent
+        //
+        localTracer.startNewSpan("parent-component", "parent");
+        threadFactory.newThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Start a nested span in thread T1,
+                    //
+                    // Expected Hierarachy:
+                    // parent <- child1
+                    //
+                    // This span will be mutated in the parent thread which will be
+                    // reflected in this thread
+                    localTracer.startNewSpan("child1-component", "child1");
+                    latch1.countDown();
+                    latch2.await(5, TimeUnit.SECONDS);
+
+                    // Start another nested span in thread T1
+                    //
+                    // Expected Hierarachy:
+                    // parent <- child1 <- child2
+                    //
+                    localTracer.startNewSpan("child2-component", "child2");
+
+                    threadFactory.newThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            clientTracer.startNewSpan("client child3");
+                            clientTracer.setClientSent();
+                            clientTracer.setClientReceived();
+                            finishLatch.countDown();
+                        }
+                    }).start();
+
+                    // Finish child2 span
+                    //
+                    // Expected Hierarachy:
+                    // parent <- child1
+                    //
+                    localTracer.finishSpan();
+
+                    // Finish child1 span
+                    //
+                    // parent
+                    //
+                    localTracer.finishSpan();
+                    finishLatch.countDown();
+                } catch (InterruptedException e) {
+                    // NO-OP...
+                }
+            }
+        }).start();
+
+        latch1.await(5, TimeUnit.SECONDS);
+        // Start span on main thread
+        //
+        // Expected Hierarachy:
+        // parent
+        //    <- child1 <- child2
+        //    <- mutate-child
+        //
+        // This will leak into T1 causing the hierarachy to break
+        //
+        // Actual Hierarachy
+        //
+        // parent
+        //   <- child1 <- mutate-child <- child2
+        //
+        //
+        localTracer.startNewSpan("mutate-child-component", "mutate-child");
+        latch2.countDown();
+        finishLatch.await(5, TimeUnit.SECONDS);
+
+        localTracer.finishSpan();
+        localTracer.finishSpan();
+
+        Map<String, Span> actual = reporter.collected;
+        assertEquals(5, actual.size());
+        // Assert parent
+        assertNotNull(actual.get("parent").id);
+        assertNotNull(actual.get("parent").traceId);
+        assertNull(actual.get("parent").parentId);
+        // Assert Child1
+        assertNotNull(actual.get("child1").id);
+        assertEquals(actual.get("parent").traceId, actual.get("child1").traceId);
+        assertEquals((Long) actual.get("parent").id, actual.get("child1").parentId);
+        // Assert Child2
+        assertNotNull(actual.get("child2").id);
+        assertEquals(actual.get("child1").traceId, actual.get("child2").traceId);
+        assertEquals((Long) actual.get("child1").id, actual.get("child2").parentId);
+        // Assert Child3
+        assertNotNull(actual.get("client child3").id);
+        assertEquals(actual.get("child2").traceId, actual.get("client child3").traceId);
+        assertEquals((Long) actual.get("child2").id, actual.get("client child3").parentId);
+        // Assert mutate-child
+        assertNotNull(actual.get("mutate-child").id);
+        assertEquals(actual.get("parent").traceId, actual.get("mutate-child").traceId);
+        assertEquals((Long) actual.get("parent").id, actual.get("mutate-child").parentId);
+    }
+
+    private class MockCollector implements Reporter<zipkin.Span> {
+
+        private Map<String, zipkin.Span> collected = Maps.newHashMap();
+
+        @Override
+        public void report(zipkin.Span span) {
+            collected.put(span.name, span);
+        }
+    }
+
     @Test
     public void testNestedThreads() throws Exception {
         LocalTracer localTracer = brave.localTracer();
@@ -208,7 +352,7 @@ public class LocalTracingInheritenceTest {
             assertThat(span0.nullableParentId()).isNull();
 
             try {
-                runThreads(16, 4);
+                runThreads(16, 4, span0);
             } finally {
                 localTracer.finishSpan();
             }
@@ -222,11 +366,11 @@ public class LocalTracingInheritenceTest {
         verifyNoMoreInteractions(reporter);
     }
 
-    private void runThreads(int breadth, int depth) throws InterruptedException {
+    private void runThreads(int breadth, int depth, SpanId parentSpan) throws InterruptedException {
         List<Thread> threads = new ArrayList<Thread>(Math.abs(breadth * depth));
         for (int i = 1; i < breadth; i++) {
             for (int j = 0; j < depth; j++) {
-                threads.add(threadFactory.newThread(createRunnable(i, j)));
+                threads.add(threadFactory.newThread(createRunnable(i, j, parentSpan)));
             }
         }
 
@@ -239,12 +383,15 @@ public class LocalTracingInheritenceTest {
         }
     }
 
-    private Runnable createRunnable(final int breadth, final int depth) {
+    private Runnable createRunnable(final int breadth, final int depth, SpanId parentSpan) {
         final SpanId baseSpan = brave.localTracer().startNewSpan("thread-" + breadth, "create-" + breadth + ":" + depth);
         assertThat(baseSpan).isNotNull();
-        assertThat(baseSpan.nullableParentId()).isNotNull();
         assertThat(baseSpan.root()).isFalse();
         assertThat(baseSpan.spanId).isNotEqualTo(baseSpan.traceId);
+        assertThat(baseSpan.spanId).isNotEqualTo(parentSpan.spanId);
+        assertThat(baseSpan.traceId).isEqualTo(parentSpan.traceId);
+        assertThat(baseSpan.nullableParentId()).isEqualTo(parentSpan.spanId);
+
         try {
             return new Runnable() {
                 @Override
@@ -255,13 +402,16 @@ public class LocalTracingInheritenceTest {
                     LocalTracer localTracer = brave.localTracer();
                     SpanId runnableSpan = localTracer.startNewSpan("thread-" + breadth + ":" + depth,
                             "run-" + breadth + ":" + depth);
+
                     assertThat(runnableSpan).isNotNull();
-                    assertThat(runnableSpan.nullableParentId()).isNotNull();
                     assertThat(runnableSpan.root()).isFalse();
                     assertThat(runnableSpan.spanId).isNotEqualTo(runnableSpan.traceId);
+                    assertThat(runnableSpan.spanId).isNotEqualTo(baseSpan.spanId);
+                    assertThat(runnableSpan.traceId).isEqualTo(baseSpan.traceId);
+                    assertThat(runnableSpan.nullableParentId()).isEqualTo(baseSpan.spanId);
 
                     try {
-                        runThreads(2, depth - 1);
+                        runThreads(2, depth - 1, runnableSpan);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     } finally {

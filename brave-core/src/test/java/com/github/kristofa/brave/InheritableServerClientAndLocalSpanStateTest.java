@@ -4,13 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.twitter.zipkin.gen.Annotation;
+import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 
@@ -120,6 +129,86 @@ public class InheritableServerClientAndLocalSpanStateTest {
         assertThat(state.toString()).startsWith("InheritableServerClientAndLocalSpanState");
     }
 
+    @Test
+    public void parentSpanShouldNotLeakAcrossThreads() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean passed = new AtomicBoolean(false);
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("brave-%d").build();
+
+        final ServerSpan parent = ServerSpan.create(1L, 2L, 3L, "testing");
+
+        state.setCurrentServerSpan(parent);
+        threadFactory.newThread(() -> {
+            ServerSpan current = state.getCurrentServerSpan();
+            passed.set(current.equals(parent) && current != parent
+                    && current.getSpan() != parent.getSpan());
+            latch.countDown();
+
+        }).start();
+
+        latch.await(5, TimeUnit.SECONDS);
+        assertTrue(passed.get());
+
+    }
+
+    @Test
+    public void localSpanShouldNotLeakAcrossThreads() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean passed = new AtomicBoolean(false);
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("brave-%d").build();
+
+        com.twitter.zipkin.gen.Span parent = new com.twitter.zipkin.gen.Span();
+        parent.setId(1L);
+        parent.setName("testing");
+        parent.setTrace_id(2L);
+        parent.setParent_id(3L);
+        parent.setTimestamp(1000L);
+        parent.setDebug(true);
+        parent.setDuration(100000L);
+        parent.addToAnnotations(Annotation.create(100L, "", Endpoint.create("service", 12345)));
+        parent.addToBinary_annotations(BinaryAnnotation.create("key", "value", Endpoint.create("other", 12345)));
+        state.setCurrentLocalSpan(parent);
+        threadFactory.newThread(() -> {
+            Span current = state.getCurrentLocalSpan();
+            passed.set(current.equals(parent) && current != parent);
+            latch.countDown();
+
+        }).start();
+
+        latch.await(5, TimeUnit.SECONDS);
+        assertTrue(passed.get());
+
+    }
+    
+    @Test
+    public void clientSpanShouldNotLeakAcrossThreads() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean passed = new AtomicBoolean(false);
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("brave-%d").build();
+
+        com.twitter.zipkin.gen.Span parent = new com.twitter.zipkin.gen.Span();
+        parent.setId(1L);
+        parent.setName("testing");
+        parent.setTrace_id(2L);
+        parent.setParent_id(3L);
+        parent.setTimestamp(1000L);
+        parent.setDebug(true);
+        parent.setDuration(100000L);
+        parent.addToAnnotations(Annotation.create(100L, "", Endpoint.create("service", 12345)));
+        parent.addToBinary_annotations(BinaryAnnotation.create("key", "value", Endpoint.create("other", 12345)));
+        state.setCurrentClientSpan(parent);
+        threadFactory.newThread(() -> {
+            Span current = state.getCurrentClientSpan();
+            passed.set(current.equals(parent) && current != parent);
+            latch.countDown();
+
+        }).start();
+
+        latch.await(5, TimeUnit.SECONDS);
+        assertTrue(passed.get());
+
+    }
+        
     private static Span currentParentSpan(ServerClientAndLocalSpanState state) {
         Span parentSpan = state.getCurrentLocalSpan();
         return (parentSpan == null) ? state.getCurrentServerSpan().getSpan() : parentSpan;
