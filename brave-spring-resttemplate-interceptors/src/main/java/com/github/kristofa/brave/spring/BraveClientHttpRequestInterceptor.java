@@ -1,10 +1,12 @@
 package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -44,16 +46,32 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpClientRequestAdapter.FactoryBuilder requestFactoryBuilder
+            = HttpClientRequestAdapter.factoryBuilder();
+        final HttpClientResponseAdapter.FactoryBuilder responseFactoryBuilder
+            = HttpClientResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            requestFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            requestFactoryBuilder.addKey(key);
+            responseFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            requestFactoryBuilder.addValueParserFactory(factory);
+            responseFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -64,12 +82,14 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
 
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ClientRequestAdapter.Factory<SpringHttpClientRequest> requestAdapterFactory;
+    private final ClientResponseAdapter.Factory<SpringHttpResponse> responseAdapterFactory;
 
     BraveClientHttpRequestInterceptor(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.clientRequestInterceptor();
         this.responseInterceptor = b.brave.clientResponseInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.requestAdapterFactory = b.requestFactoryBuilder.build(SpringHttpClientRequest.class);
+        this.responseAdapterFactory = b.responseFactoryBuilder.build(SpringHttpResponse.class);
     }
 
     @Autowired // internal
@@ -90,13 +110,18 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
                                              final SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
-        this.spanNameProvider = spanNameProvider;
+        this.requestAdapterFactory = HttpClientRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(SpringHttpClientRequest.class);
+        this.responseAdapterFactory = HttpClientResponseAdapter.factoryBuilder()
+            .build(SpringHttpResponse.class);
     }
 
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
-
-        requestInterceptor.handle(new HttpClientRequestAdapter(new SpringHttpClientRequest(request), spanNameProvider));
+        ClientRequestAdapter requestAdapter =
+            requestAdapterFactory.create(new SpringHttpClientRequest(request));
+        requestInterceptor.handle(requestAdapter);
 
         final ClientHttpResponse response;
 
@@ -110,7 +135,9 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
         }
 
         try {
-            responseInterceptor.handle(new HttpClientResponseAdapter(new SpringHttpResponse(response.getRawStatusCode())));
+            ClientResponseAdapter responseAdapter =
+                responseAdapterFactory.create(new SpringHttpResponse(response.getRawStatusCode()));
+            responseInterceptor.handle(responseAdapter);
         } catch (RuntimeException | IOException up) {
             // Ignore the failure of not being able to get the status code from the response; let the calling code find out themselves
             responseInterceptor.handle(NoAnnotationsClientResponseAdapter.getInstance());

@@ -2,28 +2,54 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
-import zipkin.TraceKeys;
 
-import java.util.Collection;
-import java.util.Collections;
+public class HttpClientRequestAdapter extends HttpRequestAdapter<HttpClientRequest>
+    implements ClientRequestAdapter {
 
-public class HttpClientRequestAdapter implements ClientRequestAdapter {
-
-    private final HttpClientRequest request;
-    private final SpanNameProvider spanNameProvider;
-
-    public HttpClientRequestAdapter(HttpClientRequest request, SpanNameProvider spanNameProvider) {
-        this.request = request;
-        this.spanNameProvider = spanNameProvider;
+    public static FactoryBuilder factoryBuilder() {
+        return new FactoryBuilder();
     }
 
-    @Override
-    public String getSpanName() {
-        return spanNameProvider.spanName(request);
+    public static final class FactoryBuilder
+        extends HttpRequestAdapter.FactoryBuilder<HttpClientRequestAdapter.FactoryBuilder> {
+
+        public <R extends HttpClientRequest> ClientRequestAdapter.Factory<R> build(
+            Class<? extends R> requestType) {
+            return new HttpClientRequestAdapter.Factory(this, requestType);
+        }
+
+        FactoryBuilder() { // intentionally hidden
+        }
+    }
+
+    static final class Factory<R extends HttpClientRequest>
+        extends HttpRequestAdapter.Factory<R, ClientRequestAdapter>
+        implements ClientRequestAdapter.Factory<R> {
+
+        Factory(HttpClientRequestAdapter.FactoryBuilder builder, Class<R> requestType) {
+            super(builder, requestType);
+        }
+
+        @Override public ClientRequestAdapter create(R request) {
+            return new HttpClientRequestAdapter(this, request);
+        }
+    }
+
+    /**
+     * @deprecated please use {@link #factoryBuilder()}
+     */
+    @Deprecated
+    public HttpClientRequestAdapter(HttpClientRequest request, SpanNameProvider spanNameProvider) {
+        this((Factory)
+                factoryBuilder().spanNameProvider(spanNameProvider).build(HttpClientRequest.class),
+            request);
+    }
+
+    HttpClientRequestAdapter(Factory factory, HttpClientRequest request) { // intentionally hidden
+        super(factory, request);
     }
 
     @Override
@@ -41,14 +67,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     }
 
     @Override
-    public Collection<KeyValueAnnotation> requestAnnotations() {
-        return Collections.singleton(KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, request.getUri().toString()));
-    }
-
-    @Override
     public Endpoint serverAddress() {
         return null;
     }
-
 }

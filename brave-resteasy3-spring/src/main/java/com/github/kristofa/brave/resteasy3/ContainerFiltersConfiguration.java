@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Import;
  * Imports jaxrs2 filters used in resteasy3.
  * @deprecated use {@link BraveTracingFeatureConfiguration} now.
  */
+@Deprecated
 @Configuration
 @Import({BraveContainerRequestFilter.class, BraveContainerResponseFilter.class})
-@Deprecated
 public class ContainerFiltersConfiguration {
 }

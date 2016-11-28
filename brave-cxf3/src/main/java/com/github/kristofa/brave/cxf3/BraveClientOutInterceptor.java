@@ -1,9 +1,10 @@
 package com.github.kristofa.brave.cxf3;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientSpanThreadBinder;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.apache.cxf.interceptor.Fault;
@@ -26,16 +27,28 @@ public final class BraveClientOutInterceptor extends AbstractPhaseInterceptor<Me
     return new Builder(brave);
   }
 
-  public static final class Builder {
+  public static final class Builder implements TagExtractor.Config<Builder> {
     final Brave brave;
-    SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+    final HttpClientRequestAdapter.FactoryBuilder adapterFactoryBuilder
+        = HttpClientRequestAdapter.factoryBuilder();
 
     Builder(Brave brave) { // intentionally hidden
       this.brave = checkNotNull(brave, "brave");
     }
 
     public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-      this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+      adapterFactoryBuilder.spanNameProvider(spanNameProvider);
+      return this;
+    }
+
+    @Override public Builder addKey(String key) {
+      adapterFactoryBuilder.addKey(key);
+      return this;
+    }
+
+    @Override
+    public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+      adapterFactoryBuilder.addValueParserFactory(factory);
       return this;
     }
 
@@ -45,22 +58,22 @@ public final class BraveClientOutInterceptor extends AbstractPhaseInterceptor<Me
   }
 
   final ClientSpanThreadBinder threadBinder;
-  final ClientRequestInterceptor requestInterceptor;
-  final SpanNameProvider spanNameProvider;
+  final ClientRequestInterceptor interceptor;
+  final ClientRequestAdapter.Factory<HttpMessage.ClientRequest> adapterFactory;
 
   BraveClientOutInterceptor(Builder b) { // intentionally hidden
     super(Phase.PRE_STREAM);
     addBefore(LoggingOutInterceptor.class.getName());
     this.threadBinder = b.brave.clientSpanThreadBinder();
-    this.requestInterceptor = b.brave.clientRequestInterceptor();
-    this.spanNameProvider = b.spanNameProvider;
+    this.interceptor = b.brave.clientRequestInterceptor();
+    this.adapterFactory = b.adapterFactoryBuilder.build(HttpMessage.ClientRequest.class);
   }
 
   @Override
   public void handleMessage(Message message) throws Fault {
     try {
-      requestInterceptor.handle(
-          new HttpClientRequestAdapter(new HttpMessage.ClientRequest(message), spanNameProvider));
+      ClientRequestAdapter adapter = adapterFactory.create(new HttpMessage.ClientRequest(message));
+      interceptor.handle(adapter);
       message.getExchange().put(BRAVE_CLIENT_SPAN, threadBinder.getCurrentClientSpan());
     } finally {
       threadBinder.setCurrentSpan(null);

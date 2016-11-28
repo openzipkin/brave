@@ -1,19 +1,19 @@
 package com.github.kristofa.brave.http;
 
+import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
+import java.net.URI;
+import java.util.Collection;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.TraceKeys;
 
-import java.net.URI;
-import java.util.Collection;
-
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 public class HttpClientRequestAdapterTest {
 
@@ -23,7 +23,7 @@ public class HttpClientRequestAdapterTest {
     private static final Long PARENT_SPAN_ID = 3L;
     private static final String TEST_URI = "http://abc.com/request";
 
-    private HttpClientRequestAdapter clientRequestAdapter;
+    private ClientRequestAdapter clientRequestAdapter;
     private HttpClientRequest request;
     private SpanNameProvider spanNameProvider;
 
@@ -31,7 +31,10 @@ public class HttpClientRequestAdapterTest {
     public void setup() {
         request = mock(HttpClientRequest.class);
         spanNameProvider = mock(SpanNameProvider.class);
-        clientRequestAdapter = new HttpClientRequestAdapter(request, spanNameProvider);
+        clientRequestAdapter = HttpClientRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(HttpClientRequest.class)
+            .create(request);
     }
 
     @Test

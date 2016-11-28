@@ -13,6 +13,8 @@
   <properties>
     <main.basedir>${project.basedir}/..</main.basedir>
     <jmh.version>1.12</jmh.version>
+    <main.java.version>1.8</main.java.version>
+    <main.signature.artifact>java18</main.signature.artifact>
   </properties>
 
   <dependencies>

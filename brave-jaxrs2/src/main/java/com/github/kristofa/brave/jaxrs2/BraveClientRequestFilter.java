@@ -2,8 +2,8 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpClientRequest;
+import com.github.kristofa.brave.ClientRequestAdapter;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import javax.annotation.Priority;
@@ -32,16 +32,28 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpClientRequestAdapter.FactoryBuilder adapterFactoryBuilder
+            = HttpClientRequestAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            adapterFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            adapterFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            adapterFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -50,12 +62,12 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
         }
     }
 
-    private final ClientRequestInterceptor requestInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ClientRequestInterceptor interceptor;
+    private final ClientRequestAdapter.Factory<JaxRs2HttpClientRequest> adapterFactory;
 
     BraveClientRequestFilter(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.clientRequestInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.interceptor = b.brave.clientRequestInterceptor();
+        this.adapterFactory = b.adapterFactoryBuilder.build(JaxRs2HttpClientRequest.class);
     }
 
     @Inject // internal dependency-injection constructor
@@ -67,15 +79,18 @@ public class BraveClientRequestFilter implements ClientRequestFilter {
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BraveClientRequestFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor) {
-        this.requestInterceptor = requestInterceptor;
-        this.spanNameProvider = spanNameProvider;
+    public BraveClientRequestFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor interceptor) {
+        this.interceptor = interceptor;
+        this.adapterFactory = HttpClientRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider)
+            .build(JaxRs2HttpClientRequest.class);
     }
 
 
     @Override
     public void filter(ClientRequestContext clientRequestContext) throws IOException {
-        final HttpClientRequest req = new JaxRs2HttpClientRequest(clientRequestContext);
-        requestInterceptor.handle(new HttpClientRequestAdapter(req, spanNameProvider));
+        ClientRequestAdapter adapter =
+            adapterFactory.create(new JaxRs2HttpClientRequest(clientRequestContext));
+        interceptor.handle(adapter);
     }
 }

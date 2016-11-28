@@ -11,6 +11,10 @@ import com.twitter.zipkin.gen.Endpoint;
  */
 public interface ClientRequestAdapter {
 
+    interface Factory<R> {
+        ClientRequestAdapter create(R request);
+    }
+
     /**
      * Gets the span name for request.
      *

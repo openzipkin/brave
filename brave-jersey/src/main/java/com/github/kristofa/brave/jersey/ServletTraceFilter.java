@@ -12,7 +12,10 @@ import javax.inject.Singleton;
 /**
  * Servlet filter that will extract trace headers from the request and send
  * sr (server received) and ss (server sent) annotations.
+ *
+ * @deprecated wire up {@link BraveServletFilter} directly
  */
+@Deprecated
 @Singleton
 public class ServletTraceFilter extends BraveServletFilter {
 

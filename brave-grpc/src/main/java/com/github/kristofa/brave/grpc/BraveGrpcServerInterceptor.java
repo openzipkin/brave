@@ -51,12 +51,12 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
         }
     }
 
-    private final ServerRequestInterceptor serverRequestInterceptor;
-    private final ServerResponseInterceptor serverResponseInterceptor;
+    private final ServerRequestInterceptor requestInterceptor;
+    private final ServerResponseInterceptor responseInterceptor;
 
     BraveGrpcServerInterceptor(Builder b) { // intentionally hidden
-        this.serverRequestInterceptor = b.brave.serverRequestInterceptor();
-        this.serverResponseInterceptor = b.brave.serverResponseInterceptor();
+        this.requestInterceptor = b.brave.serverRequestInterceptor();
+        this.responseInterceptor = b.brave.serverResponseInterceptor();
     }
 
     /**
@@ -64,8 +64,8 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
      */
     @Deprecated
     public BraveGrpcServerInterceptor(Brave brave) {
-        this.serverRequestInterceptor = checkNotNull(brave.serverRequestInterceptor());
-        this.serverResponseInterceptor = checkNotNull(brave.serverResponseInterceptor());
+        this.requestInterceptor = checkNotNull(brave.serverRequestInterceptor());
+        this.responseInterceptor = checkNotNull(brave.serverResponseInterceptor());
     }
 
     @Override
@@ -74,13 +74,13 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
         return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
             @Override
             public void request(int numMessages) {
-                serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call, requestHeaders));
+                requestInterceptor.handle(new GrpcServerRequestAdapter<>(call, requestHeaders));
                 super.request(numMessages);
             }
 
             @Override
             public void close(Status status, Metadata trailers) {
-                serverResponseInterceptor.handle(new GrpcServerResponseAdapter(status));
+                responseInterceptor.handle(new GrpcServerResponseAdapter(status));
                 super.close(status, trailers);
             }
         }, requestHeaders);
@@ -90,20 +90,20 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
         private final ServerCall<ReqT, RespT> call;
         private final MethodDescriptor<ReqT, RespT> method;
-        private final Metadata requestHeaders;
+        private final Metadata metadata;
 
-        GrpcServerRequestAdapter(ServerCall<ReqT, RespT> call, Metadata requestHeaders) {
+        GrpcServerRequestAdapter(ServerCall<ReqT, RespT> call, Metadata metadata) {
             this.call = checkNotNull(call);
             this.method = checkNotNull(call.getMethodDescriptor());
-            this.requestHeaders = checkNotNull(requestHeaders);
+            this.metadata = checkNotNull(metadata);
         }
 
         @Override
         public TraceData getTraceData() {
-            String sampled = requestHeaders.get(BravePropagationKeys.Sampled);
-            String parentSpanId = requestHeaders.get(BravePropagationKeys.ParentSpanId);
-            String traceId = requestHeaders.get(BravePropagationKeys.TraceId);
-            String spanId = requestHeaders.get(BravePropagationKeys.SpanId);
+            String sampled = metadata.get(BravePropagationKeys.Sampled);
+            String parentSpanId = metadata.get(BravePropagationKeys.ParentSpanId);
+            String traceId = metadata.get(BravePropagationKeys.TraceId);
+            String spanId = metadata.get(BravePropagationKeys.SpanId);
 
             // Official sampled value is 1, though some old instrumentation send true
             Boolean parsedSampled = sampled != null

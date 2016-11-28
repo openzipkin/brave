@@ -32,14 +32,24 @@ public class OkHttpParser {
     return request.method();
   }
 
-  /** Returns the {@link zipkin.TraceKeys#HTTP_URL} */
+  /**
+   * Returns the {@link zipkin.TraceKeys#HTTP_URL}
+   *
+   * @deprecated use {@link BraveTracingInterceptor.Builder#tagInjectorBuilder()}
+   */
+  @Deprecated
   public List<KeyValueAnnotation> networkRequestTags(Request request) {
     return Collections.singletonList(
         KeyValueAnnotation.create(TraceKeys.HTTP_URL, request.url().toString())
     );
   }
 
-  /** Returns the {@link zipkin.TraceKeys#HTTP_STATUS_CODE} if unsuccessful */
+  /**
+   * Returns the {@link zipkin.TraceKeys#HTTP_STATUS_CODE} if unsuccessful
+   *
+   * @deprecated use {@link BraveTracingInterceptor.Builder#tagInjectorBuilder()}
+   */
+  @Deprecated
   public List<KeyValueAnnotation> networkResponseTags(Response response) {
     int code = response.code();
     if (response.isSuccessful()) return Collections.EMPTY_LIST;

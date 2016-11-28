@@ -53,14 +53,14 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
         }
     }
 
-    private final ClientRequestInterceptor clientRequestInterceptor;
-    private final ClientResponseInterceptor clientResponseInterceptor;
-    private final ClientSpanThreadBinder clientSpanThreadBinder;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final ClientResponseInterceptor responseInterceptor;
+    private final ClientSpanThreadBinder threadBinder;
 
     BraveGrpcClientInterceptor(Builder b) { // intentionally hidden
-        this.clientRequestInterceptor = b.brave.clientRequestInterceptor();
-        this.clientResponseInterceptor = b.brave.clientResponseInterceptor();
-        this.clientSpanThreadBinder = b.brave.clientSpanThreadBinder();
+        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
+        this.threadBinder = b.brave.clientSpanThreadBinder();
     }
 
     /**
@@ -68,9 +68,9 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
      */
     @Deprecated
     public BraveGrpcClientInterceptor(Brave brave) {
-        this.clientRequestInterceptor = checkNotNull(brave.clientRequestInterceptor());
-        this.clientResponseInterceptor = checkNotNull(brave.clientResponseInterceptor());
-        this.clientSpanThreadBinder = checkNotNull(brave.clientSpanThreadBinder());
+        this.requestInterceptor = checkNotNull(brave.clientRequestInterceptor());
+        this.responseInterceptor = checkNotNull(brave.clientResponseInterceptor());
+        this.threadBinder = checkNotNull(brave.clientSpanThreadBinder());
     }
 
     @Override
@@ -80,17 +80,17 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(method, headers));
-                final Span currentClientSpan = clientSpanThreadBinder.getCurrentClientSpan();
+                requestInterceptor.handle(new GrpcClientRequestAdapter<>(method, headers));
+                final Span currentClientSpan = threadBinder.getCurrentClientSpan();
                 super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     @Override
                     public void onClose(Status status, Metadata trailers) {
                         try {
-                            clientSpanThreadBinder.setCurrentSpan(currentClientSpan);
-                            clientResponseInterceptor.handle(new GrpcClientResponseAdapter(status));
+                            threadBinder.setCurrentSpan(currentClientSpan);
+                            responseInterceptor.handle(new GrpcClientResponseAdapter(status));
                             super.onClose(status, trailers);
                         } finally {
-                            clientSpanThreadBinder.setCurrentSpan(null);
+                            threadBinder.setCurrentSpan(null);
                         }
                    }
                 }, headers);

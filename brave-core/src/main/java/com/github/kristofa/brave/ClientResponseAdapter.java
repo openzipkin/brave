@@ -4,6 +4,10 @@ import java.util.Collection;
 
 public interface ClientResponseAdapter {
 
+    interface Factory<R> {
+        ClientResponseAdapter create(R response);
+    }
+
     /**
      * Returns a collection of annotations that should be added to span
      * based on response.

@@ -1,9 +1,11 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.TagExtractor;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
@@ -37,16 +39,33 @@ public class BraveServletFilter implements Filter {
         return new Builder(brave);
     }
 
-    public static final class Builder {
+    public static final class Builder implements TagExtractor.Config<Builder> {
         final Brave brave;
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+        final HttpServerRequestAdapter.FactoryBuilder requestFactoryBuilder
+            = HttpServerRequestAdapter.factoryBuilder();
+        final HttpServerResponseAdapter.FactoryBuilder responseFactoryBuilder
+            = HttpServerResponseAdapter.factoryBuilder();
 
         Builder(Brave brave) { // intentionally hidden
             this.brave = checkNotNull(brave, "brave");
         }
 
+
         public Builder spanNameProvider(SpanNameProvider spanNameProvider) {
-            this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
+            requestFactoryBuilder.spanNameProvider(spanNameProvider);
+            return this;
+        }
+
+        @Override public Builder addKey(String key) {
+            requestFactoryBuilder.addKey(key);
+            responseFactoryBuilder.addKey(key);
+            return this;
+        }
+
+        @Override
+        public Builder addValueParserFactory(TagExtractor.ValueParserFactory factory) {
+            requestFactoryBuilder.addValueParserFactory(factory);
+            responseFactoryBuilder.addValueParserFactory(factory);
             return this;
         }
 
@@ -57,14 +76,16 @@ public class BraveServletFilter implements Filter {
 
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
-    private final SpanNameProvider spanNameProvider;
+    private final ServerRequestAdapter.Factory<ServletHttpServerRequest> requestAdapterFactory;
+    private final ServerResponseAdapter.Factory<HttpResponse> responseAdapterFactory;
 
     private FilterConfig filterConfig;
 
     protected BraveServletFilter(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
-        this.spanNameProvider = b.spanNameProvider;
+        this.requestAdapterFactory = b.requestFactoryBuilder.build(ServletHttpServerRequest.class);
+        this.responseAdapterFactory = b.responseFactoryBuilder.build(HttpResponse.class);
     }
 
     /**
@@ -74,7 +95,10 @@ public class BraveServletFilter implements Filter {
     public BraveServletFilter(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
-        this.spanNameProvider = spanNameProvider;
+        this.requestAdapterFactory = HttpServerRequestAdapter.factoryBuilder()
+            .spanNameProvider(spanNameProvider).build(ServletHttpServerRequest.class);
+        this.responseAdapterFactory = HttpServerResponseAdapter.factoryBuilder()
+            .build(HttpResponse.class);
     }
 
     @Override
@@ -94,17 +118,20 @@ public class BraveServletFilter implements Filter {
         } else {
 
             final StatusExposingServletResponse statusExposingServletResponse = new StatusExposingServletResponse((HttpServletResponse) response);
-            requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest((HttpServletRequest) request), spanNameProvider));
-
             try {
+                ServerRequestAdapter adapter = requestAdapterFactory.create(new ServletHttpServerRequest(
+                    (HttpServletRequest) request));
+                requestInterceptor.handle(adapter);
+
                 filterChain.doFilter(request, statusExposingServletResponse);
             } finally {
-                responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
-                    @Override
-                    public int getHttpStatusCode() {
-                        return statusExposingServletResponse.getStatus();
-                    }
-                }));
+                ServerResponseAdapter adapter = responseAdapterFactory.create(new HttpResponse() {
+                        @Override
+                        public int getHttpStatusCode() {
+                            return statusExposingServletResponse.getStatus();
+                        }
+                    });
+                responseInterceptor.handle(adapter);
             }
         }
     }
