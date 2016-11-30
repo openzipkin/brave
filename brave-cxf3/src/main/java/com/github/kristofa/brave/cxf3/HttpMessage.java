@@ -4,7 +4,6 @@ import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -18,7 +17,7 @@ class HttpMessage {
 
     @Override
     public void addHeader(String header, String value) {
-      getHeaders(message).put(header, Arrays.asList(value));
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -34,11 +33,7 @@ class HttpMessage {
 
     @Override
     public String getHttpHeaderValue(String headerName) {
-      List<String> values = getHeaders(message).get(headerName);
-      if (values != null && !values.isEmpty()) {
-        return values.get(0);
-      }
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -56,12 +51,7 @@ class HttpMessage {
     @Override
     public int getHttpStatusCode() {
       Integer code = (Integer) message.get(Message.RESPONSE_CODE);
-      if (code != null) {
-        return code.intValue();
-      } else {
-        // Correct assumption?
-        return 200;
-      }
+      return code != null ? code.intValue() : 200; // Correct assumption?
     }
   }
 
@@ -71,9 +61,8 @@ class HttpMessage {
     this.message = message;
   }
 
-  Map<String, List<String>> getHeaders(Message message) {
-    Map<String, List<String>> headers =
-        (Map<String, List<String>>) message.get(Message.PROTOCOL_HEADERS);
+  static Map<String, List<String>> getHeaders(Message message) {
+    Map<String, List<String>> headers = (Map) message.get(Message.PROTOCOL_HEADERS);
     if (headers == null) {
       headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       message.put(Message.PROTOCOL_HEADERS, headers);

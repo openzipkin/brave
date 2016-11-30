@@ -5,7 +5,7 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.Propagation;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -51,6 +51,8 @@ public class BraveOkHttpRequestResponseInterceptorTest {
   public void setup() throws IOException {
     MockitoAnnotations.initMocks(this);
     this.spanId = SpanId.builder().spanId(SPAN_ID).traceId(TRACE_ID).parentId(null).build();
+    when(brave.propagation())
+        .thenReturn(Propagation.Factory.B3.create(Propagation.KeyFactory.STRING));
     when(brave.clientRequestInterceptor())
         .thenReturn(new ClientRequestInterceptor(clientTracer));
     when(brave.clientResponseInterceptor())
@@ -87,9 +89,9 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
-    assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
-    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
+    assertEquals("1", serverRequest.getHeader("X-B3-Sampled"));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader("X-B3-TraceId"));
+    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader("X-B3-SpanId"));
   }
 
   @Test
@@ -120,9 +122,9 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
-    assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
-    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
+    assertEquals("1", serverRequest.getHeader("X-B3-Sampled"));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader("X-B3-TraceId"));
+    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader("X-B3-SpanId"));
   }
 
   @Test
@@ -149,7 +151,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
-    assertEquals("0", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
+    assertEquals("0", serverRequest.getHeader("X-B3-Sampled"));
   }
 
   @Test
@@ -178,9 +180,9 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     RecordedRequest serverRequest = server.takeRequest();
     assertEquals(HTTP_METHOD_GET, serverRequest.getMethod());
-    assertEquals("1", serverRequest.getHeader(BraveHttpHeaders.Sampled.getName()));
-    assertEquals(TRACE_ID_STRING, serverRequest.getHeader(BraveHttpHeaders.TraceId.getName()));
-    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader(BraveHttpHeaders.SpanId.getName()));
+    assertEquals("1", serverRequest.getHeader("X-B3-Sampled"));
+    assertEquals(TRACE_ID_STRING, serverRequest.getHeader("X-B3-TraceId"));
+    assertEquals(Long.toString(SPAN_ID, 16), serverRequest.getHeader("X-B3-SpanId"));
   }
 
 }

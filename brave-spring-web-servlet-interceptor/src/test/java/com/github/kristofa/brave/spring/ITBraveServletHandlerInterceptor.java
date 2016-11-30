@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.IdConversion;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.twitter.zipkin.gen.Span;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
@@ -68,10 +67,10 @@ public class ITBraveServletHandlerInterceptor {
         URL url = new URL(testControllerUrl);
         HttpURLConnection connection = (HttpURLConnection)url.openConnection();
         connection.setRequestMethod("GET");
-        connection.addRequestProperty(BraveHttpHeaders.Sampled.getName(), "1");
-        connection.addRequestProperty(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(1L));
-        connection.addRequestProperty(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(2L));
-        connection.addRequestProperty(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(3L));
+        connection.addRequestProperty("X-B3-Sampled", "1");
+        connection.addRequestProperty("X-B3-TraceId", IdConversion.convertToString(1L));
+        connection.addRequestProperty("X-B3-SpanId", IdConversion.convertToString(2L));
+        connection.addRequestProperty("X-B3-ParentSpanId", IdConversion.convertToString(3L));
         connection.connect();
 
         try {

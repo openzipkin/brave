@@ -6,7 +6,7 @@ import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.Propagation;
 import com.twitter.zipkin.gen.Endpoint;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -20,8 +20,6 @@ import okhttp3.Response;
 import zipkin.Constants;
 import zipkin.TraceKeys;
 
-import static com.github.kristofa.brave.IdConversion.convertToString;
-import static com.github.kristofa.brave.http.BraveHttpHeaders.Sampled;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -106,12 +104,14 @@ public final class BraveTracingInterceptor implements Interceptor {
     }
   }
 
+  final Propagation.Injector<Request.Builder> injector;
   final LocalTracer localTracer;
   final ClientTracer clientTracer;
   final OkHttpParser parser;
   final String serverName;
 
   BraveTracingInterceptor(Builder builder) {
+    injector = builder.brave.propagation().injector(Request.Builder::header);
     localTracer = builder.brave.localTracer();
     clientTracer = builder.brave.clientTracer();
     parser = builder.parser;
@@ -131,28 +131,15 @@ public final class BraveTracingInterceptor implements Interceptor {
       spanId = clientTracer.startNewSpan(parser.networkSpanName(request));
     }
 
-    if (spanId == null) { // trace was unsampled
-      return applicationRequest
-          ? chain.proceed(request)
-          : chain.proceed(request.newBuilder().header(Sampled.getName(), "0").build());
-    } else if (applicationRequest) {
-      return traceApplicationRequest(chain, request);
+    if (applicationRequest) {
+      return spanId != null
+          ? traceApplicationRequest(chain, request)
+          : chain.proceed(request);
     } else {
-      Request tracedRequest = addTraceHeaders(request, spanId).build();
-      return traceNetworkRequest(chain, tracedRequest);
+      final Request.Builder tracedRequest = request.newBuilder();
+      injector.injectSpanId(spanId, tracedRequest);
+      return traceNetworkRequest(chain, tracedRequest.build());
     }
-  }
-
-  static Request.Builder addTraceHeaders(Request request, SpanId spanId) {
-    Request.Builder tracedRequest = request.newBuilder();
-    tracedRequest.header(BraveHttpHeaders.TraceId.getName(), spanId.traceIdString());
-    tracedRequest.header(BraveHttpHeaders.SpanId.getName(), convertToString(spanId.spanId));
-    if (spanId.nullableParentId() != null) {
-      tracedRequest.header(BraveHttpHeaders.ParentSpanId.getName(),
-          convertToString(spanId.parentId));
-    }
-    tracedRequest.header(BraveHttpHeaders.Sampled.getName(), "1");
-    return tracedRequest;
   }
 
   /** We do not add trace headers to the application request, as it never leaves the process */

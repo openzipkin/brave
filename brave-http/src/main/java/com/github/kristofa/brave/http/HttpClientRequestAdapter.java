@@ -1,18 +1,21 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.ClientRequestAdapter;
-import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import com.twitter.zipkin.gen.Endpoint;
-import zipkin.TraceKeys;
 
 import java.util.Collection;
 import java.util.Collections;
+import zipkin.TraceKeys;
+
+import static com.github.kristofa.brave.Propagation.KeyFactory.STRING;
 
 public class HttpClientRequestAdapter implements ClientRequestAdapter {
-
+    static final Propagation.Injector<HttpClientRequest> INJECTOR =
+        Propagation.Factory.B3.create(STRING).injector(HttpClientRequest::addHeader);
     private final HttpClientRequest request;
     private final SpanNameProvider spanNameProvider;
 
@@ -26,18 +29,14 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
         return spanNameProvider.spanName(request);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Deprecated
     @Override
     public void addSpanIdToRequest(@Nullable SpanId spanId) {
-        if (spanId == null) {
-            request.addHeader(BraveHttpHeaders.Sampled.getName(), "0");
-        } else {
-            request.addHeader(BraveHttpHeaders.Sampled.getName(), "1");
-            request.addHeader(BraveHttpHeaders.TraceId.getName(), spanId.traceIdString());
-            request.addHeader(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(spanId.spanId));
-            if (spanId.nullableParentId() != null) {
-                request.addHeader(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(spanId.parentId));
-            }
-        }
+        // adapting as opposed to throwing as this a public type some may have extended.
+        INJECTOR.injectSpanId(spanId, request);
     }
 
     @Override
@@ -50,5 +49,4 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     public Endpoint serverAddress() {
         return null;
     }
-
 }

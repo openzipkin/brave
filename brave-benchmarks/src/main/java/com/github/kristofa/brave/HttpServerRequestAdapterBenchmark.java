@@ -19,7 +19,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.HttpRequest;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
@@ -40,7 +39,7 @@ public class HttpServerRequestAdapterBenchmark {
         final HttpServerRequest request = new HttpServerRequest() {
             @Override
             public String getHttpHeaderValue(String headerName) {
-                if (BraveHttpHeaders.Sampled.getName().equals(headerName)) {
+                if ("X-B3-Sampled".equals(headerName)) {
                     switch (random.nextInt(6)) {
                         case 0:
                             return null;
@@ -56,9 +55,9 @@ public class HttpServerRequestAdapterBenchmark {
                             return "FALSE";
                     }
                 }
-                if (BraveHttpHeaders.TraceId.getName().equals(headerName)
-                        || BraveHttpHeaders.SpanId.getName().equals(headerName)
-                        || BraveHttpHeaders.ParentSpanId.getName().equals(headerName)) {
+                if ("X-B3-TraceId".equals(headerName)
+                        || "X-B3-SpanId".equals(headerName)
+                        || "X-B3-ParentSpanId".equals(headerName)) {
                     return "1234";
                 }
                 return null;

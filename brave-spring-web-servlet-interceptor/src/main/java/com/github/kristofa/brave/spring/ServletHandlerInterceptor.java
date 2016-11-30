@@ -5,12 +5,15 @@ import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +21,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
-import java.net.URISyntaxException;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -54,6 +56,8 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         }
     }
 
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Extractor<HttpServletRequest> extractor;
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
     private final ServerSpanThreadBinder serverThreadBinder;
@@ -65,6 +69,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     }
 
     ServletHandlerInterceptor(Builder b) { // intentionally hidden
+        this.extractor = b.brave.propagation().extractor(HttpServletRequest::getHeader);
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.serverThreadBinder = b.brave.serverSpanThreadBinder();
@@ -76,6 +81,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
      */
     @Deprecated
     public ServletHandlerInterceptor(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider, final ServerSpanThreadBinder serverThreadBinder) {
+        this.extractor = null;
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
@@ -84,7 +90,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
-        requestInterceptor.handle(new HttpServerRequestAdapter(new HttpServerRequest() {
+        HttpServerRequestAdapter adapter = new HttpServerRequestAdapter(new HttpServerRequest() {
             @Override
             public String getHttpHeaderValue(String headerName) {
                 return request.getHeader(headerName);
@@ -92,19 +98,18 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
             @Override
             public URI getUri() {
-                try {
-                    return new URI(request.getRequestURI());
-                } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
-                }
+                return URI.create(request.getRequestURI());
             }
 
             @Override
             public String getHttpMethod() {
                 return request.getMethod();
             }
-        }, spanNameProvider));
-
+        }, spanNameProvider);
+        TraceData traceData = extractor != null
+            ? extractor.extractTraceData((HttpServletRequest) request)
+            : adapter.getTraceData();
+        requestInterceptor.internalMaybeTrace(adapter, traceData);
         return true;
     }
 

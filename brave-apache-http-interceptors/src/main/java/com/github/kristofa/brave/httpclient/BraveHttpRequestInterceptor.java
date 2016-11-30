@@ -2,9 +2,13 @@ package com.github.kristofa.brave.httpclient;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
+import org.apache.http.HttpMessage;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.protocol.HttpContext;
@@ -43,33 +47,39 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
         }
     }
 
-    private final ClientRequestInterceptor requestInterceptor;
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Injector<HttpRequest> injector;
+    private final ClientRequestInterceptor interceptor;
     private final SpanNameProvider spanNameProvider;
 
     BraveHttpRequestInterceptor(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.injector = b.brave.propagation().injector(HttpMessage::setHeader);
+        this.interceptor = b.brave.clientRequestInterceptor();
         this.spanNameProvider = b.spanNameProvider;
     }
 
     /**
      * Creates a new instance.
      *
-     * @param requestInterceptor
+     * @param interceptor
      * @param spanNameProvider Provides span name for request.
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BraveHttpRequestInterceptor(ClientRequestInterceptor requestInterceptor, SpanNameProvider spanNameProvider) {
-        this.requestInterceptor = requestInterceptor;
+    public BraveHttpRequestInterceptor(ClientRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
+        this.injector = null;
+        this.interceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void process(final HttpRequest request, final HttpContext context) {
         HttpClientRequestAdapter adapter = new HttpClientRequestAdapter(new HttpClientRequestImpl(request), spanNameProvider);
-        requestInterceptor.handle(adapter);
+        SpanId spanId = interceptor.internalStartSpan(adapter);
+        if (injector != null) {
+            injector.injectSpanId(spanId, request);
+        } else {
+            adapter.addSpanIdToRequest(spanId);
+        }
     }
 }

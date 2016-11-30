@@ -25,14 +25,17 @@ public class ServerRequestInterceptor {
     }
 
     /**
-     * Handles incoming request.
-     *
-     * @param adapter The adapter translates implementation specific details.
+     * @deprecated will transition to {@link #internalMaybeTrace} or similar
      */
+    @Deprecated
     public void handle(ServerRequestAdapter adapter) {
-        serverTracer.clearCurrentSpan();
-        final TraceData traceData = adapter.getTraceData();
+        // using the deprecated method to ensure 3rd party adapters still work.
+        TraceData traceData = adapter.getTraceData();
+        internalMaybeTrace(adapter, traceData);
+    }
 
+    public void internalMaybeTrace(ServerRequestAdapter adapter, TraceData traceData) {
+        serverTracer.clearCurrentSpan();
         Boolean sample = traceData.getSample();
         if (Boolean.FALSE.equals(sample)) {
             serverTracer.setStateNoTracing();

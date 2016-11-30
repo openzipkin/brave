@@ -10,10 +10,9 @@ import java.util.Collection;
 public interface ServerRequestAdapter {
 
     /**
-     * Get the trace data from request.
-     *
-     * @return trace data.
+     * @deprecated replaced by {@link Propagation.Extractor}
      */
+    @Deprecated
     TraceData getTraceData();
 
     /**

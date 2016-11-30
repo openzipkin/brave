@@ -4,10 +4,13 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
+import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -62,11 +65,15 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
         }
     }
 
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Injector<HttpRequest> injector;
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
 
     BraveClientHttpRequestInterceptor(Builder b) { // intentionally hidden
+        this.injector = b.brave.propagation().injector(
+                (carrier, key, value) -> carrier.getHeaders().add(key, value));
         this.requestInterceptor = b.brave.clientRequestInterceptor();
         this.responseInterceptor = b.brave.clientResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
@@ -88,6 +95,7 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
     @Deprecated
     public BraveClientHttpRequestInterceptor(final ClientRequestInterceptor requestInterceptor, final ClientResponseInterceptor responseInterceptor,
                                              final SpanNameProvider spanNameProvider) {
+        this.injector = null;
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
         this.spanNameProvider = spanNameProvider;
@@ -96,7 +104,14 @@ public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInter
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
 
-        requestInterceptor.handle(new HttpClientRequestAdapter(new SpringHttpClientRequest(request), spanNameProvider));
+        HttpClientRequestAdapter adapter =
+            new HttpClientRequestAdapter(new SpringHttpClientRequest(request), spanNameProvider);
+        SpanId spanId = requestInterceptor.internalStartSpan(adapter);
+        if (injector != null) {
+            injector.injectSpanId(spanId, request);
+        } else {
+            adapter.addSpanIdToRequest(spanId);
+        }
 
         final ClientHttpResponse response;
 

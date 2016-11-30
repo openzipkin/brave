@@ -2,15 +2,17 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import java.io.IOException;
 
-import javax.inject.Inject;
 import javax.annotation.Priority;
+import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.PreMatching;
@@ -54,11 +56,14 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
         }
     }
 
-    private final ServerRequestInterceptor requestInterceptor;
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Extractor<ContainerRequestContext> extractor;
+    private final ServerRequestInterceptor interceptor;
     private final SpanNameProvider spanNameProvider;
 
     BraveContainerRequestFilter(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.serverRequestInterceptor();
+        this.extractor = b.brave.propagation().extractor(ContainerRequestContext::getHeaderString);
+        this.interceptor = b.brave.serverRequestInterceptor();
         this.spanNameProvider = b.spanNameProvider;
     }
 
@@ -72,14 +77,19 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
      */
     @Deprecated
     public BraveContainerRequestFilter(ServerRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
-        this.requestInterceptor = interceptor;
+        this.extractor = null;
+        this.interceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
     }
 
     @Override
-    public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-        HttpServerRequest request = new JaxRs2HttpServerRequest(containerRequestContext);
-        requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
+    public void filter(ContainerRequestContext context) throws IOException {
+        HttpServerRequestAdapter adapter =
+            new HttpServerRequestAdapter(new JaxRs2HttpServerRequest(context), spanNameProvider);
+        TraceData traceData = extractor != null
+            ? extractor.extractTraceData(context)
+            : adapter.getTraceData();
+        interceptor.internalMaybeTrace(adapter, traceData);
     }
 
 }

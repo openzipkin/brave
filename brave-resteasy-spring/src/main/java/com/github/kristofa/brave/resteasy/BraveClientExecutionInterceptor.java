@@ -3,18 +3,19 @@ package com.github.kristofa.brave.resteasy;
 import javax.ws.rs.ext.Provider;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.NoAnnotationsClientResponseAdapter;
+import com.github.kristofa.brave.Propagation;
+import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
 
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
@@ -80,6 +81,8 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
         }
     }
 
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Injector<ClientRequest> injector;
     private final ClientRequestInterceptor requestInterceptor;
     private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
@@ -90,6 +93,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
     }
 
     BraveClientExecutionInterceptor(Builder b) { // intentionally hidden
+        this.injector = b.brave.propagation().injector(ClientRequest::header);
         this.requestInterceptor = b.brave.clientRequestInterceptor();
         this.responseInterceptor = b.brave.clientResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
@@ -105,6 +109,7 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
      */
     @Deprecated
     public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+        this.injector = null;
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
@@ -118,9 +123,14 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final ClientRequest request = ctx.getRequest();
 
-        final HttpClientRequest httpClientRequest = new RestEasyHttpClientRequest(request);
-        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(httpClientRequest, spanNameProvider);
-        requestInterceptor.handle(adapter);
+        HttpClientRequestAdapter adapter =
+            new HttpClientRequestAdapter(new RestEasyHttpClientRequest(request), spanNameProvider);
+        SpanId spanId = requestInterceptor.internalStartSpan(adapter);
+        if (injector != null) {
+            injector.injectSpanId(spanId, request);
+        } else {
+            adapter.addSpanIdToRequest(spanId);
+        }
 
         ClientResponse<?> response = null;
         try {
