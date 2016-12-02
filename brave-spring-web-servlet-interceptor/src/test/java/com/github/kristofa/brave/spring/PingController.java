@@ -19,10 +19,6 @@ public class PingController {
 
     @RequestMapping(value = "/async")
     public Callable<ResponseEntity<Void>> async() throws IOException {
-        return new Callable<ResponseEntity<Void>>() {
-            public ResponseEntity<Void> call() throws Exception {
-                return ResponseEntity.noContent().build();
-            }
-        };
+        return () -> ResponseEntity.noContent().build();
     }
 }

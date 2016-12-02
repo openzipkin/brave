@@ -99,12 +99,8 @@ public class BraveServletFilter implements Filter {
             try {
                 filterChain.doFilter(request, statusExposingServletResponse);
             } finally {
-                responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
-                    @Override
-                    public int getHttpStatusCode() {
-                        return statusExposingServletResponse.getStatus();
-                    }
-                }));
+                responseInterceptor.handle(new HttpServerResponseAdapter(
+                    statusExposingServletResponse::getStatus));
             }
         }
     }

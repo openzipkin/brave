@@ -42,16 +42,7 @@ class ScribeServer {
     }
 
     public void start() {
-
-        final Runnable serveThread = new Runnable() {
-
-            @Override
-            public void run() {
-                server.serve();
-            }
-        };
-
-        new Thread(serveThread).start();
+        new Thread(server::serve).start();
     }
 
     public void clearReceivedSpans() {

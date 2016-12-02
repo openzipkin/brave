@@ -71,14 +71,7 @@ public class BravePostProcessInterceptor implements PostProcessInterceptor {
 
     @Override
     public void postProcess(final ServerResponse response) {
-
-        HttpResponse httpResponse = new HttpResponse() {
-
-            @Override
-            public int getHttpStatusCode() {
-                return response.getStatus();
-            }
-        };
+        HttpResponse httpResponse = response::getStatus;
         HttpServerResponseAdapter adapter = new HttpServerResponseAdapter(httpResponse);
         responseInterceptor.handle(adapter);
     }

@@ -89,9 +89,8 @@ public class LocalSpanCollectorTest {
 
   @Test
   public void incrementsDroppedSpans_exceptionOnCallbackThread() throws Exception {
-    LocalSpanCollector collector = newLocalSpanCollector((spans, callback) -> {
-      callback.onError(new RuntimeException("couldn't store"));
-    });
+    LocalSpanCollector collector = newLocalSpanCollector((spans, callback) ->
+        callback.onError(new RuntimeException("couldn't store")));
 
     collector.collect(span(1L, "foo"));
     collector.collect(span(2L, "bar"));
