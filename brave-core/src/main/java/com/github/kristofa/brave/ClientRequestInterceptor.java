@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -26,24 +27,26 @@ public class ClientRequestInterceptor {
         this.clientTracer = checkNotNull(clientTracer, "Null clientTracer");
     }
 
-    /**
-     * Handles outgoing request.
-     *
-     * @param adapter The adapter deals with implementation specific details.
-     */
-    public void handle(ClientRequestAdapter adapter) {
-
+    @Nullable
+    public SpanId internalStartSpan(ClientRequestAdapter adapter) {
         SpanId spanId = clientTracer.startNewSpan(adapter.getSpanName());
-        if (spanId == null) {
-            // We will not trace this request.
-            adapter.addSpanIdToRequest(null);
-        } else {
-            adapter.addSpanIdToRequest(spanId);
+        if (spanId != null) {
             for (KeyValueAnnotation annotation : adapter.requestAnnotations()) {
                 clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }
             recordClientSentAnnotations(adapter.serverAddress());
         }
+        return spanId;
+    }
+
+    /**
+     * @deprecated will transition to {@link #internalStartSpan} or similar.
+     */
+    @Deprecated
+    public void handle(ClientRequestAdapter adapter) {
+        SpanId spanId = internalStartSpan(adapter);
+        // using the deprecated method to ensure 3rd party adapters still work.
+        adapter.addSpanIdToRequest(spanId);
     }
 
     private void recordClientSentAnnotations(Endpoint serverAddress) {

@@ -6,6 +6,7 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.Propagation;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
@@ -138,6 +139,8 @@ public class BraveClientHttpRequestInterceptorTest {
 
         @Bean Brave brave(ClientTracer clientTracer) {
             Brave brave = mock(Brave.class);
+            when(brave.propagation())
+                .thenReturn(Propagation.Factory.B3.create(Propagation.KeyFactory.STRING));
             when(brave.clientRequestInterceptor())
                     .thenReturn(new ClientRequestInterceptor(clientTracer));
             when(brave.clientResponseInterceptor())

@@ -6,10 +6,10 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientSpanThreadBinder;
-import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
@@ -53,11 +53,14 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
         }
     }
 
+    private final Propagation.Injector<Metadata> injector;
     private final ClientRequestInterceptor clientRequestInterceptor;
     private final ClientResponseInterceptor clientResponseInterceptor;
     private final ClientSpanThreadBinder clientSpanThreadBinder;
 
     BraveGrpcClientInterceptor(Builder b) { // intentionally hidden
+        this.injector = b.brave.propagation(AsciiMetadataKeyFactory.INSTANCE)
+            .injector(Metadata::put);
         this.clientRequestInterceptor = b.brave.clientRequestInterceptor();
         this.clientResponseInterceptor = b.brave.clientResponseInterceptor();
         this.clientSpanThreadBinder = b.brave.clientSpanThreadBinder();
@@ -68,9 +71,7 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
      */
     @Deprecated
     public BraveGrpcClientInterceptor(Brave brave) {
-        this.clientRequestInterceptor = checkNotNull(brave.clientRequestInterceptor());
-        this.clientResponseInterceptor = checkNotNull(brave.clientResponseInterceptor());
-        this.clientSpanThreadBinder = checkNotNull(brave.clientSpanThreadBinder());
+        this(builder(brave));
     }
 
     @Override
@@ -80,7 +81,10 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                clientRequestInterceptor.handle(new GrpcClientRequestAdapter<>(method, headers));
+                GrpcClientRequestAdapter<ReqT, RespT> adapter =
+                    new GrpcClientRequestAdapter<>(method);
+                SpanId spanId = clientRequestInterceptor.internalStartSpan(adapter);
+                injector.injectSpanId(spanId, headers);
                 final Span currentClientSpan = clientSpanThreadBinder.getCurrentClientSpan();
                 super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     @Override
@@ -102,11 +106,9 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
     static final class GrpcClientRequestAdapter<ReqT, RespT> implements ClientRequestAdapter {
 
         private final MethodDescriptor<ReqT, RespT> method;
-        private final Metadata headers;
 
-        public GrpcClientRequestAdapter(MethodDescriptor<ReqT, RespT> method, Metadata headers) {
+        GrpcClientRequestAdapter(MethodDescriptor<ReqT, RespT> method) {
             this.method = checkNotNull(method);
-            this.headers = checkNotNull(headers);
         }
 
         @Override
@@ -116,16 +118,7 @@ public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
         @Override
         public void addSpanIdToRequest(@Nullable SpanId spanId) {
-            if (spanId == null) {
-                headers.put(BravePropagationKeys.Sampled, "0");
-            } else {
-                headers.put(BravePropagationKeys.Sampled, "1");
-                headers.put(BravePropagationKeys.TraceId, spanId.traceIdString());
-                headers.put(BravePropagationKeys.SpanId, IdConversion.convertToString(spanId.spanId));
-                if (spanId.nullableParentId() != null) {
-                    headers.put(BravePropagationKeys.ParentSpanId, IdConversion.convertToString(spanId.parentId));
-                }
-            }
+            throw new UnsupportedOperationException();
         }
 
         @Override

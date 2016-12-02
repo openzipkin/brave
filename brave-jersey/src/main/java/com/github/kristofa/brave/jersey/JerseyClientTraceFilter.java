@@ -3,10 +3,13 @@ package com.github.kristofa.brave.jersey;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.Propagation;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
@@ -54,13 +57,17 @@ public class JerseyClientTraceFilter extends ClientFilter {
         }
     }
 
-    private final ClientRequestInterceptor clientRequestInterceptor;
-    private final ClientResponseInterceptor clientResponseInterceptor;
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Injector<ClientRequest> injector;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final ClientResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
 
     JerseyClientTraceFilter(Builder b) { // intentionally hidden
-        this.clientRequestInterceptor = b.brave.clientRequestInterceptor();
-        this.clientResponseInterceptor = b.brave.clientResponseInterceptor();
+        this.injector = b.brave.propagation().injector(
+            (carrier, key, value) -> carrier.getHeaders().putSingle(key, value));
+        this.requestInterceptor = b.brave.clientRequestInterceptor();
+        this.responseInterceptor = b.brave.clientResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
     }
 
@@ -74,17 +81,25 @@ public class JerseyClientTraceFilter extends ClientFilter {
      */
     @Deprecated
     public JerseyClientTraceFilter(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+        this.injector = null;
         this.spanNameProvider = spanNameProvider;
-        this.clientRequestInterceptor = requestInterceptor;
-        this.clientResponseInterceptor = responseInterceptor;
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
     }
 
     @Override
-    public ClientResponse handle(final ClientRequest clientRequest) throws ClientHandlerException {
+    public ClientResponse handle(final ClientRequest request) throws ClientHandlerException {
+        HttpClientRequestAdapter requestAdapter =
+            new HttpClientRequestAdapter(new JerseyHttpRequest(request), spanNameProvider);
+        SpanId spanId = requestInterceptor.internalStartSpan(requestAdapter);
+        if (injector != null) {
+            injector.injectSpanId(spanId, request);
+        } else {
+            requestAdapter.addSpanIdToRequest(spanId);
+        }
 
-        clientRequestInterceptor.handle(new HttpClientRequestAdapter(new JerseyHttpRequest(clientRequest), spanNameProvider));
-        final ClientResponse clientResponse = getNext().handle(clientRequest);
-        clientResponseInterceptor.handle(new HttpClientResponseAdapter(new JerseyHttpResponse(clientResponse)));
-        return clientResponse;
+        final ClientResponse response = getNext().handle(request);
+        responseInterceptor.handle(new HttpClientResponseAdapter(new JerseyHttpResponse(response)));
+        return response;
     }
 }

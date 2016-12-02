@@ -18,6 +18,8 @@ public class Brave {
     private final ServerTracer serverTracer;
     private final ClientTracer clientTracer;
     private final LocalTracer localTracer;
+    // TODO: expose as builder once finalized
+    private final Propagation.Factory propagationFactory = Propagation.Factory.B3;
     private final ServerRequestInterceptor serverRequestInterceptor;
     private final ServerResponseInterceptor serverResponseInterceptor;
     private final ClientRequestInterceptor clientRequestInterceptor;
@@ -258,6 +260,25 @@ public class Brave {
      */
     public AnnotationSubmitter serverSpanAnnotationSubmitter() {
         return serverSpanAnnotationSubmitter;
+    }
+
+    /**
+     * Returns an object that can propagate trace identifiers using string keys.
+     *
+     * @since 3.17
+     */
+    public Propagation<String> propagation() {
+        return propagationFactory.create(Propagation.KeyFactory.STRING);
+    }
+
+    /**
+     * Returns an object that can propagate trace identifiers using custom keys.
+     *
+     * @param keyFactory used when a propagated context has custom key types.
+     * @since 3.17
+     */
+    public <K> Propagation<K> propagation(Propagation.KeyFactory<K> keyFactory) {
+        return propagationFactory.create(checkNotNull(keyFactory, "keyFactory"));
     }
 
     private Brave(Builder builder) {

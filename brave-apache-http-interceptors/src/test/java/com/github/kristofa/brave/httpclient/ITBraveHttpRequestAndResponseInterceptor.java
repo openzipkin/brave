@@ -5,7 +5,7 @@ import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.Propagation;
 import com.github.kristofa.test.http.DefaultHttpResponseProvider;
 import com.github.kristofa.test.http.HttpRequestImpl;
 import com.github.kristofa.test.http.HttpResponseImpl;
@@ -53,6 +53,8 @@ public class ITBraveHttpRequestAndResponseInterceptor {
     @Before
     public void setup() throws IOException {
         brave = mock(Brave.class);
+        when(brave.propagation())
+            .thenReturn(Propagation.Factory.B3.create(Propagation.KeyFactory.STRING));
         clientTracer = mock(ClientTracer.class);
         when(brave.clientRequestInterceptor())
             .thenReturn(new ClientRequestInterceptor(clientTracer));
@@ -76,9 +78,9 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH)
-            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), TRACE_ID_STRING)
-            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
+            .httpMessageHeader("X-B3-TraceId", TRACE_ID_STRING)
+            .httpMessageHeader("X-B3-SpanId", Long.toString(SPAN_ID, 16))
+            .httpMessageHeader("X-B3-Sampled", "1");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 
@@ -112,9 +114,9 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH)
-                .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), TRACE_ID_STRING)
-                .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-                .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
+                .httpMessageHeader("X-B3-TraceId", TRACE_ID_STRING)
+                .httpMessageHeader("X-B3-SpanId", Long.toString(SPAN_ID, 16))
+                .httpMessageHeader("X-B3-Sampled", "1");
         final HttpResponseImpl response = new HttpResponseImpl(400, null, null);
         responseProvider.set(request, response);
 
@@ -148,7 +150,7 @@ public class ITBraveHttpRequestAndResponseInterceptor {
         when(clientTracer.startNewSpan(Method.GET.name())).thenReturn(null);
 
         final HttpRequestImpl request = new HttpRequestImpl();
-        request.method(Method.GET).path(FULL_PATH).httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "0");
+        request.method(Method.GET).path(FULL_PATH).httpMessageHeader("X-B3-Sampled", "0");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 
@@ -180,9 +182,9 @@ public class ITBraveHttpRequestAndResponseInterceptor {
 
         final HttpRequestImpl request = new HttpRequestImpl();
         request.method(Method.GET).path(FULL_PATH).queryParameter("x", "1").queryParameter("y", "2")
-            .httpMessageHeader(BraveHttpHeaders.TraceId.getName(), TRACE_ID_STRING)
-            .httpMessageHeader(BraveHttpHeaders.SpanId.getName(), Long.toString(SPAN_ID, 16))
-            .httpMessageHeader(BraveHttpHeaders.Sampled.getName(), "1");
+            .httpMessageHeader("X-B3-TraceId", TRACE_ID_STRING)
+            .httpMessageHeader("X-B3-SpanId", Long.toString(SPAN_ID, 16))
+            .httpMessageHeader("X-B3-Sampled", "1");
         final HttpResponseImpl response = new HttpResponseImpl(200, null, null);
         responseProvider.set(request, response);
 

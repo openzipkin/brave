@@ -19,12 +19,9 @@ public interface ClientRequestAdapter {
     String getSpanName();
 
     /**
-     * Enrich the request with the Spanid so we pass the state to the
-     * service we are calling.
-     *
-     * @param spanId Nullable span id. If null we don't need to trace request and you
-     *               should pass an indication along with the request that indicates we won't trace this request.
+     * @deprecated replaced by {@link Propagation.Injector}
      */
+    @Deprecated
     void addSpanIdToRequest(@Nullable SpanId spanId);
 
     /**

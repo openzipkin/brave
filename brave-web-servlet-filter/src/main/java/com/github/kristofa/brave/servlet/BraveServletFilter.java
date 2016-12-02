@@ -1,13 +1,15 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.Propagation;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -55,6 +57,8 @@ public class BraveServletFilter implements Filter {
         }
     }
 
+    @Nullable // nullable while deprecated constructor is in use
+    private final Propagation.Extractor<HttpServletRequest> extractor;
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
@@ -62,6 +66,7 @@ public class BraveServletFilter implements Filter {
     private FilterConfig filterConfig;
 
     protected BraveServletFilter(Builder b) { // intentionally hidden
+        this.extractor = b.brave.propagation().extractor(HttpServletRequest::getHeader);
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
@@ -72,6 +77,7 @@ public class BraveServletFilter implements Filter {
      */
     @Deprecated
     public BraveServletFilter(ServerRequestInterceptor requestInterceptor, ServerResponseInterceptor responseInterceptor, SpanNameProvider spanNameProvider) {
+        this.extractor = null;
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
         this.spanNameProvider = spanNameProvider;
@@ -92,10 +98,14 @@ public class BraveServletFilter implements Filter {
             // Proceed without invoking this filter...
             filterChain.doFilter(request, response);
         } else {
+            HttpServerRequestAdapter adapter = new HttpServerRequestAdapter(
+                new ServletHttpServerRequest((HttpServletRequest) request), spanNameProvider);
+            TraceData traceData = extractor != null
+                ? extractor.extractTraceData((HttpServletRequest) request)
+                : adapter.getTraceData();
+            requestInterceptor.internalMaybeTrace(adapter, traceData);
 
             final StatusExposingServletResponse statusExposingServletResponse = new StatusExposingServletResponse((HttpServletResponse) response);
-            requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest((HttpServletRequest) request), spanNameProvider));
-
             try {
                 filterChain.doFilter(request, statusExposingServletResponse);
             } finally {

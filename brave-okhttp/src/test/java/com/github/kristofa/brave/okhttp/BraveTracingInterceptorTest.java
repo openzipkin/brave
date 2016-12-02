@@ -35,11 +35,6 @@ import zipkin.TraceKeys;
 import zipkin.internal.TraceUtil;
 import zipkin.storage.InMemoryStorage;
 
-import static com.github.kristofa.brave.http.BraveHttpHeaders.ParentSpanId;
-import static com.github.kristofa.brave.http.BraveHttpHeaders.Sampled;
-import static com.github.kristofa.brave.http.BraveHttpHeaders.SpanId;
-import static com.github.kristofa.brave.http.BraveHttpHeaders.TraceId;
-import static com.github.kristofa.brave.okhttp.BraveTracingInterceptor.addTraceHeaders;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -107,13 +102,12 @@ public class BraveTracingInterceptorTest {
 
     RecordedRequest request = server.takeRequest();
     Map<String, List<String>> headers = washIds(request.getHeaders().toMultimap());
-    assertThat(headers.get(TraceId.getName())).isEqualTo(asList("1"));
 
     assertThat(headers).contains(
-        entry(TraceId.getName(), asList("1")),
-        entry(ParentSpanId.getName(), asList("1")),
-        entry(SpanId.getName(), asList("2")),
-        entry(Sampled.getName(), asList("1"))
+        entry("X-B3-TraceId", asList("1")),
+        entry("X-B3-ParentSpanId", asList("1")),
+        entry("X-B3-SpanId", asList("2")),
+        entry("X-B3-Sampled", asList("1"))
     );
   }
 
@@ -128,8 +122,8 @@ public class BraveTracingInterceptorTest {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap()).contains(
-        entry(Sampled.getName(), asList("0"))
-    ).doesNotContainKeys(TraceId.getName(), SpanId.getName(), ParentSpanId.getName());
+        entry("X-B3-Sampled", asList("0"))
+    ).doesNotContainKeys("X-B3-TraceId", "X-B3-SpanId", "X-B3-ParentSpanId");
   }
 
   @Test
@@ -232,17 +226,6 @@ public class BraveTracingInterceptorTest {
             .build(),
         localSpan.toBuilder().duration(7000L).build()
     );
-  }
-
-  @Test
-  public void addTraceHeaders_128() {
-    com.github.kristofa.brave.SpanId id = com.github.kristofa.brave.SpanId.builder()
-        .traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
-
-    Request original = new Request.Builder().url("http://localhost").build();
-
-    assertThat(addTraceHeaders(original, id).build().header(TraceId.getName()))
-        .isEqualTo("00000000000000010000000000000002");
   }
 
   BraveTracingInterceptor.Builder interceptorBuilder(Sampler sampler) {

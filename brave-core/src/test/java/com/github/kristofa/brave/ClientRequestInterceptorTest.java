@@ -52,11 +52,10 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(adapter).serverAddress();
         inOrder.verify(clientTracer).setClientSent();
-
+        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         verifyNoMoreInteractions(clientTracer, adapter);
     }
 
@@ -71,13 +70,12 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(clientTracer).submitBinaryAnnotation(ANNOTATION1.getKey(), ANNOTATION1.getValue());
         inOrder.verify(clientTracer).submitBinaryAnnotation(ANNOTATION2.getKey(), ANNOTATION2.getValue());
         inOrder.verify(adapter).serverAddress();
         inOrder.verify(clientTracer).setClientSent();
-
+        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         verifyNoMoreInteractions(clientTracer, adapter);
     }
 
@@ -94,11 +92,11 @@ public class ClientRequestInterceptorTest {
         InOrder inOrder = inOrder(clientTracer, adapter);
         inOrder.verify(adapter).getSpanName();
         inOrder.verify(clientTracer).startNewSpan(SPAN_NAME);
-        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         inOrder.verify(adapter).requestAnnotations();
         inOrder.verify(adapter).serverAddress();
         inOrder.verify(clientTracer).setClientSent(Endpoint.builder()
             .ipv4(TARGET_IP).port(TARGET_PORT).serviceName(SERVICE_NAME).build());
+        inOrder.verify(adapter).addSpanIdToRequest(spanId);
         verifyNoMoreInteractions(clientTracer, adapter);
     }
 

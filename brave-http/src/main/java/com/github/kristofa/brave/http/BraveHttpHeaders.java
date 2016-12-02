@@ -1,5 +1,7 @@
 package com.github.kristofa.brave.http;
 
+import com.github.kristofa.brave.Propagation;
+
 /**
  * Contains the header keys that are used to represent trace id, span id, parent span id, sampled.
  * <p/>
@@ -9,7 +11,9 @@ package com.github.kristofa.brave.http;
  *
  * <p>See https://github.com/openzipkin/b3-propagation for details
  * @author kristof
+ * @deprecated B3 shouldn't need to be used explicitly anymore. Use {@link Propagation}
  */
+@Deprecated
 public enum BraveHttpHeaders {
 
     /**

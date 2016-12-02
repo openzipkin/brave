@@ -6,6 +6,7 @@ import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.Propagation;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -34,6 +35,8 @@ public class ServletHandlerInterceptorTest {
         serverThreadBinder = mock(ServerSpanThreadBinder.class);
 
         Brave brave = mock(Brave.class);
+        when(brave.propagation())
+            .thenReturn(Propagation.Factory.B3.create(Propagation.KeyFactory.STRING));
         when(brave.serverRequestInterceptor()).thenReturn(requestInterceptor);
         when(brave.serverResponseInterceptor()).thenReturn(responseInterceptor);
         when(brave.serverSpanThreadBinder()).thenReturn(serverThreadBinder);

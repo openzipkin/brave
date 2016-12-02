@@ -6,11 +6,14 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.ext.Provider;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.Propagation;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import java.util.List;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ResourceMethod;
 import org.jboss.resteasy.core.ServerResponse;
@@ -65,7 +68,8 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         }
     }
 
-    private final ServerRequestInterceptor requestInterceptor;
+    private final Propagation.Extractor<HttpRequest> extractor;
+    private final ServerRequestInterceptor interceptor;
     private final SpanNameProvider spanNameProvider;
 
     @Context
@@ -77,22 +81,27 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
     }
 
     BravePreProcessInterceptor(Builder b) { // intentionally hidden
-        this.requestInterceptor = b.brave.serverRequestInterceptor();
+        this.extractor = b.brave.propagation().extractor((carrier, key) -> {
+            List<String> headers = carrier.getHttpHeaders().getRequestHeader(key);
+            return headers == null || headers.isEmpty() ? null : headers.get(0);
+        });
+        this.interceptor = b.brave.serverRequestInterceptor();
         this.spanNameProvider = b.spanNameProvider;
     }
 
     /**
      * Creates a new instance.
      *
-     * @param requestInterceptor Request interceptor.
+     * @param interceptor Request interceptor.
      * @param spanNameProvider Span name provider.
      * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
      */
     @Deprecated
-    public BravePreProcessInterceptor(ServerRequestInterceptor requestInterceptor,
+    public BravePreProcessInterceptor(ServerRequestInterceptor interceptor,
                                       SpanNameProvider spanNameProvider
     ) {
-        this.requestInterceptor = requestInterceptor;
+        this.extractor = null;
+        this.interceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
     }
 
@@ -104,8 +113,11 @@ public class BravePreProcessInterceptor implements PreProcessInterceptor {
         WebApplicationException {
 
         HttpServerRequest req = new RestEasyHttpServerRequest(request);
-        HttpServerRequestAdapter reqAdapter = new HttpServerRequestAdapter(req, spanNameProvider);
-        requestInterceptor.handle(reqAdapter);
+        HttpServerRequestAdapter adapter = new HttpServerRequestAdapter(req, spanNameProvider);
+        TraceData traceData = extractor != null
+            ? extractor.extractTraceData(request)
+            : adapter.getTraceData();
+        interceptor.internalMaybeTrace(adapter, traceData);
         return null;
     }
 
