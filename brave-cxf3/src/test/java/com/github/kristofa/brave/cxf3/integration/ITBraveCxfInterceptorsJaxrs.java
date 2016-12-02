@@ -45,15 +45,12 @@ public class ITBraveCxfInterceptorsJaxrs {
     @Path("/foo")
     public void foo(@Suspended AsyncResponse response) {
 
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e) {
-          }
-          response.resume("foo");
+      Executors.newSingleThreadExecutor().execute(() -> {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
         }
+        response.resume("foo");
       });
     }
   }

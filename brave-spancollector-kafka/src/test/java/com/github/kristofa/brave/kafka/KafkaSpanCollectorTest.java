@@ -85,26 +85,18 @@ public class KafkaSpanCollectorTest {
 
   @Test
   public void submitMultipleSpansInParallel() throws Exception {
-    Callable<Void> spanProducer1 = new Callable<Void>() {
-
-      @Override
-      public Void call() throws Exception {
-        for (int i = 1; i <= 200; i++) {
-          collector.collect(span(i, "producer1_" + i));
-        }
-        return null;
+    Callable<Void> spanProducer1 = () -> {
+      for (int i = 1; i <= 200; i++) {
+        collector.collect(span(i, "producer1_" + i));
       }
+      return null;
     };
 
-    Callable<Void> spanProducer2 = new Callable<Void>() {
-
-      @Override
-      public Void call() throws Exception {
-        for (int i = 1; i <= 200; i++) {
-          collector.collect(span(i, "producer2_" + i));
-        }
-        return null;
+    Callable<Void> spanProducer2 = () -> {
+      for (int i = 1; i <= 200; i++) {
+        collector.collect(span(i, "producer2_" + i));
       }
+      return null;
     };
 
     ExecutorService executorService = Executors.newFixedThreadPool(2);

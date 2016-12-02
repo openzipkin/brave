@@ -75,12 +75,8 @@ public class HttpServerRequestAdapterBenchmark {
             }
         };
 
-        final SpanNameProvider nameProvider = new SpanNameProvider() {
-            @Override
-            public String spanName(HttpRequest request) {
-                return request.getHttpMethod() + " " + request.getUri().getPath();
-            }
-        };
+        final SpanNameProvider nameProvider =
+            request1 -> request1.getHttpMethod() + " " + request1.getUri().getPath();
 
         final HttpServerRequestAdapter adapter = new HttpServerRequestAdapter(request, nameProvider);
     }

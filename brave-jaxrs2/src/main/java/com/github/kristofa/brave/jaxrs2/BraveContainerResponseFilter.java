@@ -63,15 +63,7 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
 
     @Override
     public void filter(final ContainerRequestContext containerRequestContext, final ContainerResponseContext containerResponseContext) throws IOException {
-
-        HttpResponse httpResponse = new HttpResponse() {
-
-            @Override
-            public int getHttpStatusCode() {
-                return containerResponseContext.getStatus();
-            }
-        };
-
+        HttpResponse httpResponse = containerResponseContext::getStatus;
         responseInterceptor.handle(new HttpServerResponseAdapter(httpResponse));
     }
 }

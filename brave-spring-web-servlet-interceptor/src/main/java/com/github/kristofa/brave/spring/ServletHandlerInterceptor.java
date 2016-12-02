@@ -123,12 +123,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
             serverThreadBinder.setCurrentSpan(span);
         }
 
-       responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
-           @Override
-           public int getHttpStatusCode() {
-               return response.getStatus();
-           }
-       }));
+       responseInterceptor.handle(new HttpServerResponseAdapter(response::getStatus));
     }
 
 }

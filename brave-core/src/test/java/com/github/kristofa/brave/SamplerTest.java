@@ -36,11 +36,7 @@ public abstract class SamplerTest {
     final Sampler sampler = newSampler(sampleRate);
 
     // parallel to ensure there aren't any unsynchronized race conditions
-    long passed = new Random().longs(INPUT_SIZE).parallel().filter(new LongPredicate() {
-      @Override public boolean test(long traceId) {
-        return sampler.isSampled(traceId);
-      }
-    }).count();
+    long passed = new Random().longs(INPUT_SIZE).parallel().filter(sampler::isSampled).count();
 
     assertThat(passed)
         .isCloseTo((long) (INPUT_SIZE * sampleRate), expectedErrorRate());
@@ -50,22 +46,14 @@ public abstract class SamplerTest {
   public void zeroMeansDropAllTraces() {
     final Sampler sampler = newSampler(0.0f);
 
-    assertThat(new Random().longs(INPUT_SIZE).filter(new LongPredicate() {
-      @Override public boolean test(long traceId) {
-        return sampler.isSampled(traceId);
-      }
-    }).findAny()).isEmpty();
+    assertThat(new Random().longs(INPUT_SIZE).filter(sampler::isSampled).findAny()).isEmpty();
   }
 
   @Test
   public void oneMeansKeepAllTraces() {
     final Sampler sampler = newSampler(1.0f);
 
-    assertThat(new Random().longs(INPUT_SIZE).filter(new LongPredicate() {
-      @Override public boolean test(long traceId) {
-        return sampler.isSampled(traceId);
-      }
-    }).count()).isEqualTo(INPUT_SIZE);
+    assertThat(new Random().longs(INPUT_SIZE).filter(sampler::isSampled).count()).isEqualTo(INPUT_SIZE);
   }
 
   @Test

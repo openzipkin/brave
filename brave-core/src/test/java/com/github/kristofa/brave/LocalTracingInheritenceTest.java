@@ -246,28 +246,25 @@ public class LocalTracingInheritenceTest {
         assertThat(baseSpan.root()).isFalse();
         assertThat(baseSpan.spanId).isNotEqualTo(baseSpan.traceId);
         try {
-            return new Runnable() {
-                @Override
-                public void run() {
-                    String originalThreadName = Thread.currentThread().getName();
-                    Thread.currentThread().setName(originalThreadName + "]"
-                            + "[create-" + breadth + ":" + depth + "]");
-                    LocalTracer localTracer = brave.localTracer();
-                    SpanId runnableSpan = localTracer.startNewSpan("thread-" + breadth + ":" + depth,
-                            "run-" + breadth + ":" + depth);
-                    assertThat(runnableSpan).isNotNull();
-                    assertThat(runnableSpan.nullableParentId()).isNotNull();
-                    assertThat(runnableSpan.root()).isFalse();
-                    assertThat(runnableSpan.spanId).isNotEqualTo(runnableSpan.traceId);
+            return () -> {
+                String originalThreadName = Thread.currentThread().getName();
+                Thread.currentThread().setName(originalThreadName + "]"
+                        + "[create-" + breadth + ":" + depth + "]");
+                LocalTracer localTracer = brave.localTracer();
+                SpanId runnableSpan = localTracer.startNewSpan("thread-" + breadth + ":" + depth,
+                        "run-" + breadth + ":" + depth);
+                assertThat(runnableSpan).isNotNull();
+                assertThat(runnableSpan.nullableParentId()).isNotNull();
+                assertThat(runnableSpan.root()).isFalse();
+                assertThat(runnableSpan.spanId).isNotEqualTo(runnableSpan.traceId);
 
-                    try {
-                        runThreads(2, depth - 1);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    } finally {
-                        localTracer.finishSpan();
-                        Thread.currentThread().setName(originalThreadName);
-                    }
+                try {
+                    runThreads(2, depth - 1);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    localTracer.finishSpan();
+                    Thread.currentThread().setName(originalThreadName);
                 }
             };
         } finally {

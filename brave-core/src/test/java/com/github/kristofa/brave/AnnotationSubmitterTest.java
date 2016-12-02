@@ -133,9 +133,8 @@ public class AnnotationSubmitterTest {
         span.setTimestamp(CURRENT_TIME_MICROSECONDS - 1);
 
         annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss", span -> {
-            assertThat(span.duration).isEqualTo(1);
-        });
+        annotationSubmitter.submitEndAnnotation("ss", span ->
+            assertThat(span.duration).isEqualTo(1));
     }
 
     @Test
@@ -146,8 +145,7 @@ public class AnnotationSubmitterTest {
         PowerMockito.when(System.nanoTime()).thenReturn(787L);
 
         annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss", span -> {
-            assertThat(span.duration).isEqualTo(1L);
-        });
+        annotationSubmitter.submitEndAnnotation("ss", span ->
+            assertThat(span.duration).isEqualTo(1L));
     }
 }
