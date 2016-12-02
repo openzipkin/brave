@@ -9,7 +9,6 @@ import zipkin.Constants;
 
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.function.Function;
 
 import zipkin.reporter.Reporter;
 
@@ -213,10 +212,12 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         internalFinishSpan(span, duration);
     }
     
-    public <T> T trace(String component, String operation, Callable<T> callable) throws RuntimeException {
+    public <T> T trace(String component, String operation, Callable<T> callable) {
         try {
             startNewSpan(component, operation);
             return callable.call();
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         } finally {
@@ -224,12 +225,10 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         }
     }
     
-    public void trace(String component, String operation, Runnable runable) throws RuntimeException {
+    public void trace(String component, String operation, Runnable runable) {
         try {
             startNewSpan(component, operation);
             runable.run();
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
         } finally {
             finishSpan();
         }
