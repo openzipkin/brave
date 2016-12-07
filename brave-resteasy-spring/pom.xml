@@ -85,5 +85,10 @@
         <version>${jetty.version}</version>
         <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-http-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
