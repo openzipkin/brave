@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,18 +29,35 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  */
 public class BraveExecutorService implements ExecutorService, Closeable {
 
+    /**
+     * @since 3.17
+     */
+    public static BraveExecutorService wrap(ExecutorService wrappedExecutor, Brave brave) {
+        return new BraveExecutorService(wrappedExecutor, brave);
+    }
+
     private final ExecutorService wrappedExecutor;
-    private final ServerSpanThreadBinder threadBinder;
+    private final ServerSpanThreadBinder serverSpanThreadBinder;
+
+    @Nullable // when using deprecated constructor
+    private final LocalSpanThreadBinder localSpanThreadBinder;
+
+    BraveExecutorService(ExecutorService wrappedExecutor, Brave brave) { // intentionally hidden
+        this.wrappedExecutor = checkNotNull(wrappedExecutor, "wrappedExecutor");
+        checkNotNull(brave, "brave");
+        this.localSpanThreadBinder = brave.localSpanThreadBinder();
+        this.serverSpanThreadBinder = brave.serverSpanThreadBinder();
+    }
 
     /**
-     * Creates a new instance.
-     * 
-     * @param wrappedExecutor Wrapped ExecutorService to which execution will be delegated.
-     * @param threadBinder Thread binder.
+     * @deprecated use {@link #wrap(ExecutorService, Brave)} because this constructor loses thread
+     * state for local span parents.
      */
-    public BraveExecutorService(final ExecutorService wrappedExecutor, final ServerSpanThreadBinder threadBinder) {
+    @Deprecated
+    public BraveExecutorService(final ExecutorService wrappedExecutor, final ServerSpanThreadBinder serverSpanThreadBinder) {
         this.wrappedExecutor = checkNotNull(wrappedExecutor, "Null wrappedExecutor");
-        this.threadBinder = checkNotNull(threadBinder, "Null threadBinder");
+        this.localSpanThreadBinder = null;
+        this.serverSpanThreadBinder = checkNotNull(serverSpanThreadBinder, "Null serverSpanThreadBinder");
     }
 
     /**
@@ -47,8 +65,7 @@ public class BraveExecutorService implements ExecutorService, Closeable {
      */
     @Override
     public void execute(final Runnable arg0) {
-        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
-        wrappedExecutor.execute(braveRunnable);
+        wrappedExecutor.execute(wrap(arg0));
     }
 
     /**
@@ -64,8 +81,7 @@ public class BraveExecutorService implements ExecutorService, Closeable {
      */
     @Override
     public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> arg0) throws InterruptedException {
-
-        return wrappedExecutor.invokeAll(buildBraveCollection(arg0));
+        return wrappedExecutor.invokeAll(wrap(arg0));
     }
 
     /**
@@ -74,7 +90,7 @@ public class BraveExecutorService implements ExecutorService, Closeable {
     @Override
     public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> arg0, final long arg1, final TimeUnit arg2)
         throws InterruptedException {
-        return wrappedExecutor.invokeAll(buildBraveCollection(arg0), arg1, arg2);
+        return wrappedExecutor.invokeAll(wrap(arg0), arg1, arg2);
     }
 
     /**
@@ -82,7 +98,7 @@ public class BraveExecutorService implements ExecutorService, Closeable {
      */
     @Override
     public <T> T invokeAny(final Collection<? extends Callable<T>> arg0) throws InterruptedException, ExecutionException {
-        return wrappedExecutor.invokeAny(buildBraveCollection(arg0));
+        return wrappedExecutor.invokeAny(wrap(arg0));
     }
 
     /**
@@ -91,7 +107,7 @@ public class BraveExecutorService implements ExecutorService, Closeable {
     @Override
     public <T> T invokeAny(final Collection<? extends Callable<T>> arg0, final long arg1, final TimeUnit arg2)
         throws InterruptedException, ExecutionException, TimeoutException {
-        return wrappedExecutor.invokeAny(buildBraveCollection(arg0), arg1, arg2);
+        return wrappedExecutor.invokeAny(wrap(arg0), arg1, arg2);
     }
 
     /**
@@ -131,17 +147,15 @@ public class BraveExecutorService implements ExecutorService, Closeable {
      */
     @Override
     public <T> Future<T> submit(final Callable<T> arg0) {
-        final BraveCallable<T> braveCallable = BraveCallable.create(arg0, threadBinder);
-        return wrappedExecutor.submit(braveCallable);
+        return wrappedExecutor.submit(wrap(arg0));
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Future<?> submit(final Runnable arg0) {
-        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
-        return wrappedExecutor.submit(braveRunnable);
+    public Future<?> submit(Runnable arg0) {
+        return wrappedExecutor.submit(wrap(arg0));
     }
 
     /**
@@ -149,15 +163,14 @@ public class BraveExecutorService implements ExecutorService, Closeable {
      */
     @Override
     public <T> Future<T> submit(final Runnable arg0, final T arg1) {
-        final BraveRunnable braveRunnable = BraveRunnable.create(arg0, threadBinder);
-        return wrappedExecutor.submit(braveRunnable, arg1);
+        return wrappedExecutor.submit(wrap(arg0), arg1);
     }
 
-    private <T> Collection<? extends Callable<T>> buildBraveCollection(
+    private <T> Collection<? extends Callable<T>> wrap(
         final Collection<? extends Callable<T>> originalCollection) {
         final Collection<Callable<T>> collection = new ArrayList<Callable<T>>();
         for (final Callable<T> t : originalCollection) {
-            collection.add(BraveCallable.create(t, threadBinder));
+            collection.add(wrap(t));
         }
         return collection;
     }
@@ -168,5 +181,19 @@ public class BraveExecutorService implements ExecutorService, Closeable {
     @Override
     public void close() {
         shutdown();
+    }
+
+    // avoids deprecated BraveRunnable factory when we weren't called with a deprecated constructor
+    BraveRunnable wrap(Runnable arg0) {
+        return localSpanThreadBinder == null
+            ? BraveRunnable.create(arg0, serverSpanThreadBinder)
+            : BraveRunnable.wrap(arg0, localSpanThreadBinder, serverSpanThreadBinder);
+    }
+
+    // avoids deprecated BraveCallable factory when we weren't called with a deprecated constructor
+    <T> BraveCallable<T> wrap(Callable<T> arg0) {
+        return localSpanThreadBinder == null
+            ? BraveCallable.create(arg0, serverSpanThreadBinder)
+            : BraveCallable.wrap(arg0, localSpanThreadBinder, serverSpanThreadBinder);
     }
 }
