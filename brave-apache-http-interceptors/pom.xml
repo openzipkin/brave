@@ -38,16 +38,9 @@
         <scope>test</scope>
     </dependency>
     <dependency>
-        <groupId>com.github.kristofa</groupId>
-        <artifactId>mock-http-server</artifactId>
-        <version>4.0</version>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-http-tests</artifactId>
         <scope>test</scope>
-        <exclusions>
-            <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-            </exclusion>
-        </exclusions>
     </dependency>
   </dependencies>
 </project>
