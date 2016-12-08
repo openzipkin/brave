@@ -1,41 +1,77 @@
 package com.github.kristofa.brave;
 
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
-import org.junit.Before;
+import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
+import com.twitter.zipkin.gen.Span;
+import java.util.function.Supplier;
 import org.junit.Test;
-import org.mockito.InOrder;
+import zipkin.reporter.Reporter;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BraveRunnableTest {
 
-    private BraveRunnable braveRunnable;
-    private Runnable mockWrappedRunnable;
-    private ServerSpanThreadBinder mockThreadBinder;
-    private ServerSpan mockSpan;
+  Brave brave = new Brave.Builder(new TestServerClientAndLocalSpanStateCompilation())
+      .reporter(Reporter.NOOP)
+      .traceSampler(Sampler.ALWAYS_SAMPLE).build();
 
-    @Before
-    public void setup() {
-        mockWrappedRunnable = mock(Runnable.class);
-        mockThreadBinder = mock(ServerSpanThreadBinder.class);
-        mockSpan = mock(ServerSpan.class);
-        when(mockThreadBinder.getCurrentServerSpan()).thenReturn(mockSpan);
-        braveRunnable = BraveRunnable.create(mockWrappedRunnable, mockThreadBinder);
-    }
+  Supplier<Span> currentServerSpan =
+      () -> brave.serverSpanThreadBinder().getCurrentServerSpan().getSpan();
+  Supplier<Span> createServerSpan = () -> {
+    brave.serverTracer().setStateUnknown("test");
+    return currentServerSpan.get();
+  };
+  Supplier<Span> currentLocalSpan =
+      () -> brave.localSpanThreadBinder().getCurrentLocalSpan();
+  Supplier<Span> createLocalSpan = () -> {
+    brave.localTracer().startNewSpan(getClass().getSimpleName(), "test");
+    return currentLocalSpan.get();
+  };
 
-    @Test
-    public void testRun() throws Exception {
-        braveRunnable.run();
+  @Test
+  public void attachesSpanInRunnable_deprecatedFactory() throws Exception {
+    Span span = createServerSpan.get();
+    Runnable runnable =
+        BraveRunnable.create(() -> assertThat(currentServerSpan.get()).isEqualTo(span),
+            brave.serverSpanThreadBinder());
 
-        final InOrder inOrder = inOrder(mockWrappedRunnable, mockThreadBinder, mockSpan);
-        inOrder.verify(mockThreadBinder).getCurrentServerSpan();
-        inOrder.verify(mockThreadBinder).setCurrentSpan(mockSpan);
-        inOrder.verify(mockWrappedRunnable).run();
+    // create another span between the time the task was made and executed.
+    createServerSpan.get();
+    runnable.run(); // runs assertion
+  }
 
-        verifyNoMoreInteractions(mockWrappedRunnable, mockThreadBinder, mockSpan);
-    }
+  @Test
+  public void attachesSpanInRunnable_server() throws Exception {
+    attachesSpanInRunnable(createServerSpan, currentServerSpan);
+  }
 
+  @Test
+  public void attachesSpanInRunnable_local() throws Exception {
+    attachesSpanInRunnable(createLocalSpan, currentLocalSpan);
+  }
+
+  @Test
+  public void restoresSpanAfterRunnable_server() throws Exception {
+    Span span = attachesSpanInRunnable(createServerSpan, currentServerSpan);
+    assertThat(currentServerSpan.get()).isEqualTo(span);
+  }
+
+  @Test
+  public void restoresSpanAfterRunnable_local() throws Exception {
+    Span span = attachesSpanInRunnable(createLocalSpan, currentLocalSpan);
+    assertThat(currentLocalSpan.get()).isEqualTo(span);
+  }
+
+  Span attachesSpanInRunnable(Supplier<Span> createSpan, Supplier<Span> currentSpan)
+      throws Exception {
+    Span span = createSpan.get();
+    Runnable runnable =
+        BraveRunnable.wrap(() -> assertThat(currentSpan.get()).isEqualTo(span), brave);
+
+    // create another span between the time the task was made and executed.
+    Span nextSpan = createSpan.get();
+
+    runnable.run(); // runs assertion
+
+    return nextSpan;
+  }
 }

@@ -1,48 +1,78 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
+import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
+import com.twitter.zipkin.gen.Span;
 import java.util.concurrent.Callable;
-
-import org.junit.Before;
+import java.util.function.Supplier;
 import org.junit.Test;
-import org.mockito.InOrder;
+import zipkin.reporter.Reporter;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BraveCallableTest {
 
-    private static final String THREAD_RETURN_VALUE = "returnValue";
-    private BraveCallable<String> braveCallable;
-    private Callable<String> mockWrappedCallable;
-    private ServerSpanThreadBinder mockThreadBinder;
-    private ServerSpan mockServerSpan;
+  Brave brave = new Brave.Builder(new TestServerClientAndLocalSpanStateCompilation())
+      .reporter(Reporter.NOOP)
+      .traceSampler(Sampler.ALWAYS_SAMPLE).build();
 
-    @SuppressWarnings("unchecked")
-    @Before
-    public void setup() {
-        mockWrappedCallable = mock(Callable.class);
-        mockThreadBinder = mock(ServerSpanThreadBinder.class);
-        mockServerSpan = mock(ServerSpan.class);
-        when(mockThreadBinder.getCurrentServerSpan()).thenReturn(mockServerSpan);
-        braveCallable = BraveCallable.create(mockWrappedCallable, mockThreadBinder);
-    }
+  Supplier<Span> currentServerSpan =
+      () -> brave.serverSpanThreadBinder().getCurrentServerSpan().getSpan();
+  Supplier<Span> createServerSpan = () -> {
+    brave.serverTracer().setStateUnknown("test");
+    return currentServerSpan.get();
+  };
+  Supplier<Span> currentLocalSpan =
+      () -> brave.localSpanThreadBinder().getCurrentLocalSpan();
+  Supplier<Span> createLocalSpan = () -> {
+    brave.localTracer().startNewSpan(getClass().getSimpleName(), "test");
+    return currentLocalSpan.get();
+  };
 
-    @Test
-    public void testCall() throws Exception {
-        when(mockWrappedCallable.call()).thenReturn(THREAD_RETURN_VALUE);
-        assertEquals(THREAD_RETURN_VALUE, braveCallable.call());
+  @Test
+  public void attachesSpanInCallable_deprecatedFactory() throws Exception {
+    Span span = createServerSpan.get();
+    Callable<?> callable =
+        BraveCallable.create(() -> assertThat(currentServerSpan.get()).isEqualTo(span),
+            brave.serverSpanThreadBinder());
 
-        final InOrder inOrder = inOrder(mockWrappedCallable, mockThreadBinder, mockServerSpan);
+    // create another span between the time the task was made and executed.
+    createServerSpan.get();
+    callable.call(); // runs assertion
+  }
 
-        inOrder.verify(mockThreadBinder).getCurrentServerSpan();
-        inOrder.verify(mockThreadBinder).setCurrentSpan(mockServerSpan);
-        inOrder.verify(mockWrappedCallable).call();
+  @Test
+  public void attachesSpanInCallable_server() throws Exception {
+    attachesSpanInCallable(createServerSpan, currentServerSpan);
+  }
 
-        verifyNoMoreInteractions(mockWrappedCallable, mockThreadBinder, mockServerSpan);
-    }
+  @Test
+  public void attachesSpanInCallable_local() throws Exception {
+    attachesSpanInCallable(createLocalSpan, currentLocalSpan);
+  }
 
+  @Test
+  public void restoresSpanAfterCallable_server() throws Exception {
+    Span span = attachesSpanInCallable(createServerSpan, currentServerSpan);
+    assertThat(currentServerSpan.get()).isEqualTo(span);
+  }
+
+  @Test
+  public void restoresSpanAfterCallable_local() throws Exception {
+    Span span = attachesSpanInCallable(createLocalSpan, currentLocalSpan);
+    assertThat(currentLocalSpan.get()).isEqualTo(span);
+  }
+
+  Span attachesSpanInCallable(Supplier<Span> createSpan, Supplier<Span> currentSpan)
+      throws Exception {
+    Span span = createSpan.get();
+    Callable<?> callable =
+        BraveCallable.wrap(() -> assertThat(currentSpan.get()).isEqualTo(span), brave);
+
+    // create another span between the time the task was made and executed.
+    Span nextSpan = createSpan.get();
+
+    callable.call(); // runs assertion
+
+    return nextSpan;
+  }
 }

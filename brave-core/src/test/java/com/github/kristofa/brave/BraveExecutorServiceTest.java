@@ -1,201 +1,192 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
+import com.twitter.zipkin.gen.Span;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.junit.Before;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Supplier;
 import org.junit.Test;
+import zipkin.reporter.Reporter;
+
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BraveExecutorServiceTest {
+  // Ensures one at-a-time, but also on a different thread
+  ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
+  // Ensures things don't accidentally work due to inheritable thread locals!
+  Brave brave = new Brave.Builder(new TestServerClientAndLocalSpanStateCompilation())
+      .reporter(Reporter.NOOP)
+      .traceSampler(Sampler.ALWAYS_SAMPLE).build();
+  BlockingQueue<Span> spanQueue = new LinkedBlockingQueue();
+  Supplier<Span> currentServerSpan =
+      () -> brave.serverSpanThreadBinder().getCurrentServerSpan().getSpan();
+  Supplier<Span> createServerSpan = () -> {
+    brave.serverTracer().setStateUnknown("test");
+    return currentServerSpan.get();
+  };
+  Supplier<Span> currentLocalSpan =
+      () -> brave.localSpanThreadBinder().getCurrentLocalSpan();
+  Supplier<Span> createLocalSpan = () -> {
+    brave.localTracer().startNewSpan(getClass().getSimpleName(), "test");
+    return currentLocalSpan.get();
+  };
 
-    private static final long TIMEOUT = 13;
-    private static final TimeUnit TIME_UNIT = TimeUnit.SECONDS;
+  public void close() {
+    wrappedExecutor.shutdownNow();
+  }
 
-    private BraveExecutorService braveExecutorService;
-    private ExecutorService wrappedExecutor;
-    private ServerSpanThreadBinder mockThreadBinder;
+  @Test
+  public void execute_serverParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachExecuteHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
 
-    @Before
-    public void setup() {
-        wrappedExecutor = mock(ExecutorService.class);
-        mockThreadBinder = mock(ServerSpanThreadBinder.class);
-        braveExecutorService = new BraveExecutorService(wrappedExecutor, mockThreadBinder);
+  @Test
+  public void execute_serverParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachExecuteHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
+
+  @Test(expected = AssertionError.class)
+  public void execute_localParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachExecuteHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  @Test
+  public void execute_localParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachExecuteHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  void eachExecuteHasCorrectSpanAttached(ExecutorService executor, Supplier<Span> createSpan,
+      Supplier<Span> currentSpan) throws Exception {
+    eachTaskHasCorrectSpanAttached(createSpan, () -> {
+      executor.execute(() -> {
+        spanQueue.add(currentSpan.get());
+        sleepABit(); // delay here will block the queue
+      });
+      // this won't run immediately because the other is blocked
+      executor.execute(() -> spanQueue.add(currentSpan.get()));
+      return null;
+    });
+  }
+
+  @Test
+  public void submit_serverParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachSubmitHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
+
+  @Test
+  public void submit_serverParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachSubmitHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
+
+  // This is expected to fail because the old constructor does not have a means to set the current
+  // local span.
+  @Test(expected = AssertionError.class)
+  public void submit_localParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachSubmitHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  @Test
+  public void submit_localParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachSubmitHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  void eachSubmitHasCorrectSpanAttached(ExecutorService executor, Supplier<Span> createSpan,
+      Supplier<Span> currentSpan) throws Exception {
+    eachTaskHasCorrectSpanAttached(createSpan, () -> {
+      executor.submit(() -> {
+        spanQueue.add(currentSpan.get());
+        sleepABit(); // delay here will block the queue
+      });
+      // this won't run immediately because the other is blocked
+      return executor.submit(() -> spanQueue.add(currentSpan.get()));
+    });
+  }
+
+  @Test
+  public void invokeAll_serverParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachInvokeAllHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
+
+  @Test
+  public void invokeAll_serverParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachInvokeAllHasCorrectSpanAttached(executor, createServerSpan, currentServerSpan);
+  }
+
+  // TODO: not sure why this works while submit doesn't!
+  @Test
+  public void invokeAll_localParent_deprecatedConstructor() throws Exception {
+    ExecutorService executor =
+        new BraveExecutorService(wrappedExecutor, brave.serverSpanThreadBinder());
+    eachInvokeAllHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  @Test
+  public void invokeAll_localParent() throws Exception {
+    ExecutorService executor = BraveExecutorService.wrap(wrappedExecutor, brave);
+    eachInvokeAllHasCorrectSpanAttached(executor, createLocalSpan, currentLocalSpan);
+  }
+
+  void eachInvokeAllHasCorrectSpanAttached(ExecutorService executor, Supplier<Span> createSpan,
+      Supplier<Span> currentSpan) throws Exception {
+    eachTaskHasCorrectSpanAttached(createSpan, () -> executor.invokeAll(asList(
+        () -> {
+          spanQueue.add(currentSpan.get());
+          sleepABit(); // delay here will block the queue
+          return true;
+        },
+        // this won't run immediately because the other is blocked
+        () -> spanQueue.add(currentSpan.get())
+    )));
+  }
+
+  @Test
+  public void closeInvokesShutdown() {
+    BraveExecutorService.wrap(wrappedExecutor, brave).close();
+
+    assertThat(wrappedExecutor.isShutdown()).isTrue();
+  }
+
+  void eachTaskHasCorrectSpanAttached(Supplier<Span> createSpan, Callable<?> scheduleTwoTasks)
+      throws Exception {
+    Span parent = createSpan.get();
+
+    // First task should block the queue, forcing the latter to not be scheduled immediately
+    // Both should have the same parent, as the parent applies to the task creation time, not
+    // execution time.
+    scheduleTwoTasks.call();
+
+    // switch the current span to something else. If there's a bug, when the
+    // second runnable starts, it will have this span as opposed to the one it was
+    // invoked with
+    createSpan.get();
+
+    assertThat(spanQueue.take()).isEqualTo(parent);
+    assertThat(spanQueue.take()).isEqualTo(parent);
+  }
+
+  static void sleepABit() {
+    try {
+      Thread.sleep(500); // intentionally block the executor
+    } catch (InterruptedException e) {
     }
-
-    @Test
-    public void testExecute() {
-        final Runnable mockRunnable = mock(Runnable.class);
-        braveExecutorService.execute(mockRunnable);
-        final BraveRunnable expectedRunnable = BraveRunnable.create(mockRunnable, mockThreadBinder);
-        verify(mockThreadBinder, times(2)).getCurrentServerSpan();
-        verify(wrappedExecutor).execute(expectedRunnable);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testAwaitTermination() throws InterruptedException {
-
-        braveExecutorService.awaitTermination(TIMEOUT, TIME_UNIT);
-        verify(wrappedExecutor).awaitTermination(TIMEOUT, TIME_UNIT);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testInvokeAllCollectionOfQextendsCallableOfT() throws InterruptedException {
-
-        final Callable<String> mockCallable = mock(Callable.class);
-        final Callable<String> mockCallable2 = mock(Callable.class);
-
-        braveExecutorService.invokeAll(Arrays.asList(mockCallable, mockCallable2));
-
-        final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
-        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
-
-        verify(mockThreadBinder, times(4)).getCurrentServerSpan();
-        verify(wrappedExecutor).invokeAll(expectedCollection);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testInvokeAllCollectionOfQextendsCallableOfTLongTimeUnit() throws InterruptedException {
-        final Callable<String> mockCallable = mock(Callable.class);
-        final Callable<String> mockCallable2 = mock(Callable.class);
-
-        braveExecutorService.invokeAll(Arrays.asList(mockCallable, mockCallable2), TIMEOUT, TIME_UNIT);
-
-        final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
-        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
-
-        verify(mockThreadBinder, times(4)).getCurrentServerSpan();
-        verify(wrappedExecutor).invokeAll(expectedCollection, TIMEOUT, TIME_UNIT);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testInvokeAnyCollectionOfQextendsCallableOfT() throws InterruptedException, ExecutionException {
-        final Callable<String> mockCallable = mock(Callable.class);
-        final Callable<String> mockCallable2 = mock(Callable.class);
-
-        braveExecutorService.invokeAny(Arrays.asList(mockCallable, mockCallable2));
-
-        final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
-        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
-
-        verify(mockThreadBinder, times(4)).getCurrentServerSpan();
-        verify(wrappedExecutor).invokeAny(expectedCollection);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testInvokeAnyCollectionOfQextendsCallableOfTLongTimeUnit() throws InterruptedException, ExecutionException,
-        TimeoutException {
-        final Callable<String> mockCallable = mock(Callable.class);
-        final Callable<String> mockCallable2 = mock(Callable.class);
-
-        braveExecutorService.invokeAny(Arrays.asList(mockCallable, mockCallable2), TIMEOUT, TIME_UNIT);
-
-        final List<Callable<String>> expectedCollection = new ArrayList<Callable<String>>();
-        expectedCollection.add(BraveCallable.create(mockCallable, mockThreadBinder));
-        expectedCollection.add(BraveCallable.create(mockCallable2, mockThreadBinder));
-
-        verify(mockThreadBinder, times(4)).getCurrentServerSpan();
-        verify(wrappedExecutor).invokeAny(expectedCollection, TIMEOUT, TIME_UNIT);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testIsShutdown() {
-        when(wrappedExecutor.isShutdown()).thenReturn(false);
-        assertFalse(braveExecutorService.isShutdown());
-        verify(wrappedExecutor).isShutdown();
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testIsTerminated() {
-        when(wrappedExecutor.isTerminated()).thenReturn(false);
-        assertFalse(braveExecutorService.isTerminated());
-        verify(wrappedExecutor).isTerminated();
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testShutdown() {
-        braveExecutorService.shutdown();
-        verify(wrappedExecutor).shutdown();
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testShutdownNow() {
-        final List<Runnable> runnableList = new ArrayList<Runnable>();
-        when(wrappedExecutor.shutdownNow()).thenReturn(runnableList);
-        assertSame(runnableList, braveExecutorService.shutdownNow());
-        verify(wrappedExecutor).shutdownNow();
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testSubmitCallableOfT() {
-        final Callable<String> callable = mock(Callable.class);
-        final BraveCallable<String> expectedCallable = BraveCallable.create(callable, mockThreadBinder);
-        final Future<String> future = mock(Future.class);
-        when(wrappedExecutor.submit(expectedCallable)).thenReturn(future);
-        assertSame(future, braveExecutorService.submit(callable));
-        verify(mockThreadBinder, times(2)).getCurrentServerSpan();
-        verify(wrappedExecutor).submit(expectedCallable);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-    }
-
-    @Test
-    public void testSubmitRunnable() {
-        final Runnable runnable = mock(Runnable.class);
-        final BraveRunnable expectedRunnable = BraveRunnable.create(runnable, mockThreadBinder);
-        braveExecutorService.submit(runnable);
-        verify(mockThreadBinder, times(2)).getCurrentServerSpan();
-        verify(wrappedExecutor).submit(expectedRunnable);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testSubmitRunnableT() {
-        final Runnable runnable = mock(Runnable.class);
-        final BraveRunnable expectedRunnable = BraveRunnable.create(runnable, mockThreadBinder);
-        final String returnValue = "return value";
-        final Future<String> future = mock(Future.class);
-        when(wrappedExecutor.submit(expectedRunnable, returnValue)).thenReturn(future);
-        assertSame(future, braveExecutorService.submit(runnable, returnValue));
-        verify(mockThreadBinder, times(2)).getCurrentServerSpan();
-        verify(wrappedExecutor).submit(expectedRunnable, returnValue);
-        verifyNoMoreInteractions(wrappedExecutor, mockThreadBinder);
-
-    }
-
+  }
 }
