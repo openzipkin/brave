@@ -4,11 +4,13 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.MaybeAddClientAddress;
+import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -58,6 +60,8 @@ public class BraveServletFilter implements Filter {
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
+    @Nullable // while deprecated constructor is in use
+    private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     private FilterConfig filterConfig;
 
@@ -65,6 +69,7 @@ public class BraveServletFilter implements Filter {
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
+        this.maybeAddClientAddressFromRequest = MaybeAddClientAddressFromRequest.create(b.brave);
     }
 
     /**
@@ -75,6 +80,7 @@ public class BraveServletFilter implements Filter {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
         this.spanNameProvider = spanNameProvider;
+        this.maybeAddClientAddressFromRequest = null;
     }
 
     @Override
@@ -92,9 +98,13 @@ public class BraveServletFilter implements Filter {
             // Proceed without invoking this filter...
             filterChain.doFilter(request, response);
         } else {
-
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
             final StatusExposingServletResponse statusExposingServletResponse = new StatusExposingServletResponse((HttpServletResponse) response);
-            requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest((HttpServletRequest) request), spanNameProvider));
+            requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest(httpRequest), spanNameProvider));
+
+            if (maybeAddClientAddressFromRequest != null) {
+                maybeAddClientAddressFromRequest.accept(httpRequest);
+            }
 
             try {
                 filterChain.doFilter(request, statusExposingServletResponse);

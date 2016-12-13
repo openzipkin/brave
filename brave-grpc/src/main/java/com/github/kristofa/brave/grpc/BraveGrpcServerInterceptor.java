@@ -53,10 +53,12 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     private final ServerRequestInterceptor serverRequestInterceptor;
     private final ServerResponseInterceptor serverResponseInterceptor;
+    private final MaybeAddClientAddressFromAttributes maybeAddClientAddressFromAttributes;
 
     BraveGrpcServerInterceptor(Builder b) { // intentionally hidden
         this.serverRequestInterceptor = b.brave.serverRequestInterceptor();
         this.serverResponseInterceptor = b.brave.serverResponseInterceptor();
+        this.maybeAddClientAddressFromAttributes = new MaybeAddClientAddressFromAttributes(b.brave);
     }
 
     /**
@@ -64,8 +66,7 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
      */
     @Deprecated
     public BraveGrpcServerInterceptor(Brave brave) {
-        this.serverRequestInterceptor = checkNotNull(brave.serverRequestInterceptor());
-        this.serverResponseInterceptor = checkNotNull(brave.serverResponseInterceptor());
+        this(builder(brave));
     }
 
     @Override
@@ -75,6 +76,7 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
             @Override
             public void request(int numMessages) {
                 serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call, requestHeaders));
+                maybeAddClientAddressFromAttributes.accept(call.attributes());
                 super.request(numMessages);
             }
 
