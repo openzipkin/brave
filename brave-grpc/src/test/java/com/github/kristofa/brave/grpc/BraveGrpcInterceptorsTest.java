@@ -143,8 +143,9 @@ public class BraveGrpcInterceptorsTest {
 
     @Test
     public void propagatesAndReads128BitTraceId() throws Exception {
-        SpanId spanId = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
-        brave.localSpanThreadBinder().setCurrentSpan(spanId.toSpan().setName("myop"));
+        Span span =
+            new Span().setTrace_id_high(1).setTrace_id(2).setId(3).setParent_id(2L).setName("myop");
+        brave.localSpanThreadBinder().setCurrentSpan(span);
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         //This call will be made using hte context of the localTracer as it's parent
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
@@ -155,12 +156,12 @@ public class BraveGrpcInterceptorsTest {
             .filter(s -> s.getAnnotations().stream().anyMatch(a -> "ss".equals(a.value)))
             .findFirst();
         assertTrue("Could not find expected server span", maybeSpan.isPresent());
-        Span span = maybeSpan.get();
+        Span result = maybeSpan.get();
 
         //Verify that the 128-bit trace id and span id were propagated to the server
-        assertThat(span.getTrace_id_high()).isEqualTo(spanId.traceIdHigh);
-        assertThat(span.getTrace_id()).isEqualTo(spanId.traceId);
-        assertThat(span.getParent_id()).isEqualTo(spanId.spanId);
+        assertThat(result.getTrace_id_high()).isEqualTo(span.getTrace_id_high());
+        assertThat(result.getTrace_id()).isEqualTo(span.getTrace_id());
+        assertThat(result.getParent_id()).isEqualTo(span.getId());
     }
 
     /**

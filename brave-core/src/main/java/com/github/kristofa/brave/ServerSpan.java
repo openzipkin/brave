@@ -5,8 +5,6 @@ import com.google.auto.value.AutoValue;
 
 import com.twitter.zipkin.gen.Span;
 
-import static com.github.kristofa.brave.internal.Util.checkNotNull;
-
 /**
  * The ServerSpan is initialized by {@link ServerTracer} and keeps track of Trace/Span state of our service request.
  *
@@ -15,8 +13,11 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 @AutoValue
 public abstract class ServerSpan {
 
-    public static final ServerSpan EMPTY = new AutoValue_ServerSpan(null, null);
-    static final ServerSpan NOT_SAMPLED = new AutoValue_ServerSpan(null, false);
+    public static final ServerSpan EMPTY = new AutoValue_ServerSpan(null, null, null);
+    static final ServerSpan NOT_SAMPLED = new AutoValue_ServerSpan(null, null, false);
+
+    @Nullable
+    abstract SpanId spanId();
 
     /**
      * Gets the Trace/Span context.
@@ -36,8 +37,10 @@ public abstract class ServerSpan {
     @Nullable
     public abstract Boolean getSample();
 
-    static ServerSpan create(Span span) {
-        return new AutoValue_ServerSpan(checkNotNull(span, "span"), true);
+    static ServerSpan create(SpanId spanId, String name) {
+        if (spanId == null) throw new NullPointerException("spanId == null");
+        if (name == null) throw new NullPointerException("name == null");
+        return new AutoValue_ServerSpan(spanId, Span.fromSpanId(spanId).setName(name), true);
     }
 
     ServerSpan(){

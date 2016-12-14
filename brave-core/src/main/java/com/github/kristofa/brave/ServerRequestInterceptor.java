@@ -37,44 +37,55 @@ public class ServerRequestInterceptor {
         if (Boolean.FALSE.equals(sample)) {
             serverTracer.setStateNoTracing();
             LOGGER.fine("Received indication that we should NOT trace.");
-        } else {
-            SpanId spanId = traceData.getSpanId();
+            return;
+        }
+        SpanId spanId = traceData.getSpanId();
+        if (spanId == null) {
+            LOGGER.fine("Received no span state.");
+            serverTracer.setStateUnknown(adapter.getSpanName());
+            startServerSpan(adapter);
+            return;
+        }
+
+        // If the sampled flag was left unset, we need to make the decision here
+        if (spanId.sampled() == null) {
+            spanId = spanId.toBuilder()
+                .sampled(serverTracer.traceSampler().isSampled(spanId.traceId))
+                .shared(false)
+                .build();
+        } else if (spanId.sampled()) {
             // We know an instrumented caller initiated the trace if they sampled it
-            boolean clientOriginatedTrace = spanId != null && Boolean.TRUE.equals(sample);
-            if (spanId != null) {
-                // If the sampled flag was left unset, we need to make the decision here
-                if (spanId.sampled() == null) {
-                    spanId = spanId.toBuilder()
-                        .sampled(serverTracer.traceSampler().isSampled(spanId.traceId))
-                        .build();
-                }
-                if (!spanId.sampled()) {
-                    LOGGER.fine("Received span information as part of request, but didn't sample.");
-                    serverTracer.setStateNoTracing();
-                } else {
-                    LOGGER.fine("Received span information as part of request.");
-                    serverTracer.setStateCurrentTrace(traceData.getSpanId(), adapter.getSpanName());
-                }
-            } else {
-                LOGGER.fine("Received no span state.");
-                serverTracer.setStateUnknown(adapter.getSpanName());
+            spanId = spanId.toBuilder().shared(true).build();
+        }
+
+        // At this point, we have inherited a sampling decision or made one explicitly
+        if (!spanId.sampled()) {
+            LOGGER.fine("Received span information as part of request, but didn't sample.");
+            serverTracer.setStateNoTracing();
+        } else {
+            LOGGER.fine("Received span information as part of request.");
+            serverTracer.setStateCurrentTrace(traceData.getSpanId(), adapter.getSpanName());
+        }
+        startServerSpan(adapter);
+
+        // In the RPC span model, the client owns the timestamp and duration of the span. If we
+        // were propagated an id, we can assume that we shouldn't report timestamp or duration,
+        // rather let the client do that. Worst case we were propagated an unreported ID and
+        // Zipkin backfills timestamp and duration.
+        if (spanId.shared) {
+            Span span = serverTracer.spanAndEndpoint().span();
+            synchronized (span) {
+                span.setTimestamp(null);
+                span.startTick = null;
             }
-            serverTracer.setServerReceived();
-            // In the RPC span model, the client owns the timestamp and duration of the span. If we
-            // were propagated an id, we can assume that we shouldn't report timestamp or duration,
-            // rather let the client do that. Worst case we were propagated an unreported ID and
-            // Zipkin backfills timestamp and duration.
-            if (clientOriginatedTrace) {
-                Span span = serverTracer.spanAndEndpoint().span();
-                synchronized (span) {
-                    span.setTimestamp(null);
-                    span.startTick = null;
-                }
-            }
-            for(KeyValueAnnotation annotation : adapter.requestAnnotations())
-            {
-                serverTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
-            }
+        }
+    }
+
+    void startServerSpan(ServerRequestAdapter adapter) {
+        serverTracer.setServerReceived();
+        for(KeyValueAnnotation annotation : adapter.requestAnnotations())
+        {
+            serverTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
         }
     }
 }

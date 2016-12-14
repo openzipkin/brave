@@ -171,7 +171,7 @@ public class ClientTracerTest {
         assertNull(newSpanId.nullableParentId());
 
         assertEquals(
-                SpanId.builder().spanId(TRACE_ID).build().toSpan().setName(REQUEST_NAME),
+                Span.fromSpanId(SpanId.builder().spanId(TRACE_ID).build()).setName(REQUEST_NAME),
                 state.getCurrentClientSpan()
         );
 
@@ -182,7 +182,7 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-        final ServerSpan parentSpan = ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name"));
+        final ServerSpan parentSpan = ServerSpan.create(PARENT_SPAN_ID, "name");
         state.setCurrentServerSpan(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1L);
 
@@ -193,7 +193,7 @@ public class ClientTracerTest {
         assertEquals(PARENT_SPAN_ID.spanId, newSpanId.parentId);
 
         assertEquals(
-                newSpanId.toSpan().setName(REQUEST_NAME),
+                Span.fromSpanId(newSpanId).setName(REQUEST_NAME),
                 state.getCurrentClientSpan()
         );
 
@@ -252,7 +252,7 @@ public class ClientTracerTest {
     @Test
     public void startNewSpan_whenParentHas128bitTraceId() {
         ServerSpan parentSpan = ServerSpan.create(
-            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build().toSpan().setName("name"));
+            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build(), "name");
         state.setCurrentServerSpan(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1L);
 

@@ -169,7 +169,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             }
         }
 
-        Span newSpan = newSpanId.toSpan();
+        Span newSpan = Span.fromSpanId(newSpanId);
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(

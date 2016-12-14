@@ -1,5 +1,6 @@
 package com.twitter.zipkin.gen;
 
+import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Util;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -272,6 +273,17 @@ public class Span implements Serializable {
   @Override
   public String toString() {
     return new String(SpanCodec.JSON.writeSpan(this), Util.UTF_8);
+  }
+
+  public static Span fromSpanId(SpanId spanId) {
+    Span result = new Span();
+    result.setTrace_id_high(spanId.traceIdHigh);
+    result.setTrace_id(spanId.traceId);
+    result.setParent_id(spanId.nullableParentId());
+    result.setId(spanId.spanId);
+    result.setName(""); // avoid NPE on equals
+    if (spanId.debug()) result.setDebug(true);
+    return result;
   }
 
   /** Changes this to a zipkin-native span object. */

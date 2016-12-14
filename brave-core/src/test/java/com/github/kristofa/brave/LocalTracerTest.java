@@ -66,7 +66,7 @@ public class LocalTracerTest {
      */
     @Test
     public void startNewSpan() {
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name")));
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID, "name"));
 
         PowerMockito.when(System.currentTimeMillis()).thenReturn(1L);
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
@@ -97,7 +97,7 @@ public class LocalTracerTest {
      */
     @Test
     public void startSpan_userSuppliedTimestamp() {
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name")));
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID, "name"));
 
         localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
 
@@ -116,7 +116,7 @@ public class LocalTracerTest {
     }
 
     /**
-     * When finish is called without a duration, the startTick from start is used in duration calculation.
+     * When receive is called without a duration, the startTick from start is used in duration calculation.
      * <p>
      * <p/>Ex.
      * <pre>
@@ -258,7 +258,7 @@ public class LocalTracerTest {
                 .build();
 
         assertNull(localTracer.getNewSpanParent());
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name")));
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID, "name"));
 
         SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(PARENT_SPAN_ID.toBuilder().spanId(555L).parentId(PARENT_SPAN_ID.spanId).build(), span1);
@@ -285,7 +285,7 @@ public class LocalTracerTest {
                 .build();
 
         assertNull(localTracer.getNewSpanParent());
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID.toSpan().setName("name")));
+        state.setCurrentServerSpan(ServerSpan.create(PARENT_SPAN_ID, "name"));
 
         SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(PARENT_SPAN_ID.toBuilder().spanId(555L).parentId(PARENT_SPAN_ID.spanId).build(), span1);
@@ -305,7 +305,7 @@ public class LocalTracerTest {
     @Test
     public void startNewSpan_whenParentHas128bitTraceId() {
         ServerSpan parentSpan = ServerSpan.create(
-            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build().toSpan().setName("name"));
+            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build(), "name");
         state.setCurrentServerSpan(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1L);
 

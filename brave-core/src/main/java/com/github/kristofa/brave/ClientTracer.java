@@ -139,7 +139,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             }
         }
 
-        Span newSpan = newSpanId.toSpan();
+        Span newSpan = Span.fromSpanId(newSpanId);
         newSpan.setName(requestName);
         spanAndEndpoint().state().setCurrentClientSpan(newSpan);
         return newSpanId;

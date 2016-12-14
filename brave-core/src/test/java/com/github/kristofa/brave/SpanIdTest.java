@@ -206,9 +206,16 @@ public class SpanIdTest {
         .isEqualTo("00000000000000010000000000000002");
   }
 
-
   @Test
   public void serializeRoundTrip_128() {
+    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+
+    assertThat(SpanId.fromBytes(id.bytes()))
+        .isEqualTo(id);
+  }
+
+  @Test
+  public void creatingAChildInvalidatesShared() {
     SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
 
     assertThat(SpanId.fromBytes(id.bytes()))
@@ -219,7 +226,7 @@ public class SpanIdTest {
   public void toSpan_128() {
     SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
 
-    Span span = id.toSpan();
+    Span span = Span.fromSpanId(id);
     assertThat(span.getTrace_id_high()).isEqualTo(id.traceIdHigh);
     assertThat(span.getTrace_id()).isEqualTo(id.traceId);
     assertThat(span.getId()).isEqualTo(id.spanId);
