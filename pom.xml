@@ -4,11 +4,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.zipkin.brave</groupId>
-  <artifactId>brave</artifactId>
+  <artifactId>brave-parent</artifactId>
   <version>3.16.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>brave</name>
+  <name>Brave (parent)</name>
   <description>
   Java implementation of Dapper (http://research.google.com/pubs/pub36356.html) compatible with Zipkin (https://github.com/twitter/zipkin/).
   </description>
