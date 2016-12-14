@@ -215,14 +215,6 @@ public class SpanIdTest {
   }
 
   @Test
-  public void creatingAChildInvalidatesShared() {
-    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
-
-    assertThat(SpanId.fromBytes(id.bytes()))
-        .isEqualTo(id);
-  }
-
-  @Test
   public void toSpan_128() {
     SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
 
