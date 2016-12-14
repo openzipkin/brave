@@ -49,17 +49,20 @@ public final class SpanId {
    */
   @Deprecated
   public SpanId(long traceId, long parentId, long spanId, long flags) {
-    this(0, parentId == traceId ? parentId : traceId,
-        (parentId == spanId) ? traceId : parentId,
-        spanId, flags);
+    this(new Builder().traceId(parentId == traceId ? parentId : traceId)
+        .parentId(parentId == spanId ? null : parentId)
+        .spanId(spanId)
+        .flags(flags));
   }
 
-  SpanId(long traceIdHigh, long traceId, long parentId, long spanId, long flags) {
-    this.traceIdHigh = traceIdHigh;
-    this.traceId = traceId;
-    this.parentId = parentId;
-    this.spanId = spanId;
-    this.flags = flags;
+  SpanId(Builder builder) {
+    checkNotNull(builder.spanId, "spanId");
+    this.traceIdHigh = builder.traceIdHigh;
+    this.traceId = builder.traceId != null ? builder.traceId : builder.spanId;
+    this.parentId = builder.nullableParentId != null ? builder.nullableParentId : this.traceId;
+    this.spanId = builder.spanId;
+    this.flags = builder.flags;
+    this.shared = builder.shared;
   }
 
   /** Deserializes this from a big-endian byte array */
@@ -70,21 +73,18 @@ public final class SpanId {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    long spanId = buffer.getLong(0);
-    long parentId = buffer.getLong(8);
-    long traceIdHigh;
-    long traceId;
-    long flags;
+    Builder builder = new Builder();
+    builder.spanId(buffer.getLong(0));
+    builder.parentId(buffer.getLong(8));
     if (bytes.length == 32) {
-      traceIdHigh = 0;
-      traceId = buffer.getLong(16);
-      flags = buffer.getLong(24);
+      builder.traceId(buffer.getLong(16));
+      builder.flags(buffer.getLong(24));
     } else {
-      traceIdHigh = buffer.getLong(16);
-      traceId = buffer.getLong(24);
-      flags = buffer.getLong(32);
+      builder.traceIdHigh(buffer.getLong(16));
+      builder.traceId(buffer.getLong(24));
+      builder.flags(buffer.getLong(32));
     }
-    return new SpanId(traceIdHigh, traceId, parentId, spanId, flags);
+    return new SpanId(builder);
   }
 
   public static Builder builder() {
@@ -183,6 +183,16 @@ public final class SpanId {
   /** Raw flags encoded in {@link #bytes()} */
   public final long flags;
 
+  /**
+   * True if we are contributing to a span started by another tracer (ex on a different host).
+   * Defaults to false.
+   *
+   * <p>When an RPC trace is client-originated, it will be sampled and the same span ID is used for
+   * the server side. However, the server shouldn't set span.timestamp or duration since it didn't
+   * start the span.
+   */
+  public final boolean shared;
+
   /** Serializes this into a big-endian byte array */
   public byte[] bytes() {
     boolean traceHi = traceIdHigh != 0;
@@ -235,7 +245,6 @@ public final class SpanId {
       SpanId that = (SpanId) o;
       return (this.traceIdHigh == that.traceIdHigh)
           && (this.traceId == that.traceId)
-          && (this.parentId == that.parentId)
           && (this.spanId == that.spanId);
     }
     return false;
@@ -248,8 +257,6 @@ public final class SpanId {
     h ^= (traceIdHigh >>> 32) ^ traceIdHigh;
     h *= 1000003;
     h ^= (traceId >>> 32) ^ traceId;
-    h *= 1000003;
-    h ^= (parentId >>> 32) ^ parentId;
     h *= 1000003;
     h ^= (spanId >>> 32) ^ spanId;
     return h;
@@ -272,7 +279,11 @@ public final class SpanId {
     return new String(result);
   }
 
-  /** Preferred way to create spans, as it properly deals with the parent id */
+  /**
+   * @deprecated deprecated to avoid coupling with old classes. Use {@link
+   * Span#fromSpanId(SpanId)} instead.
+   */
+  @Deprecated
   public Span toSpan() {
     Span result = new Span();
     result.setId(spanId);
@@ -290,9 +301,7 @@ public final class SpanId {
     Long nullableParentId;
     Long spanId;
     long flags;
-
-    Builder() {
-    }
+    boolean shared;
 
     Builder(SpanId source) {
       this.traceIdHigh = source.traceIdHigh;
@@ -300,6 +309,7 @@ public final class SpanId {
       this.nullableParentId = source.nullableParentId();
       this.spanId = source.spanId;
       this.flags = source.flags;
+      this.shared = source.shared;
     }
 
     /** @see SpanId#traceIdHigh */
@@ -351,6 +361,12 @@ public final class SpanId {
       return this;
     }
 
+    /** @see SpanId#shared() */
+    public Builder shared(boolean shared) {
+      this.shared = shared;
+      return this;
+    }
+
     /** @see SpanId#sampled */
     public Builder sampled(@Nullable Boolean sampled) {
       if (sampled != null) {
@@ -367,11 +383,10 @@ public final class SpanId {
     }
 
     public SpanId build() {
-      checkNotNull(spanId, "spanId");
-      long traceId = this.traceId != null ? this.traceId : spanId;
-      long parentId = nullableParentId != null ? nullableParentId : traceId;
-      if (parentId == spanId) parentId = traceId;
-      return new SpanId(traceIdHigh, traceId, parentId, spanId, flags);
+      return new SpanId(this);
+    }
+
+    Builder() {
     }
   }
 

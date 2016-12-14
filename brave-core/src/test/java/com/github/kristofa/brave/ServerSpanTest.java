@@ -19,7 +19,7 @@ public class ServerSpanTest {
 
     @Before
     public void setup() {
-        serverSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
+        serverSpan = ServerSpan.create(SPAN_ID, NAME);
     }
 
     @Test
@@ -36,7 +36,7 @@ public class ServerSpanTest {
 
     @Test
     public void testGetSpan_128() {
-        serverSpan = ServerSpan.create(SPAN_ID.toSpan().setTrace_id_high(5).setName(NAME));
+        serverSpan = ServerSpan.create(SPAN_ID.toBuilder().traceIdHigh(5).build(), NAME);
 
         Span span = serverSpan.getSpan();
         assertEquals(5, span.getTrace_id_high());
@@ -51,13 +51,13 @@ public class ServerSpanTest {
     @Test
     public void testEqualsObject() {
 
-        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
+        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID, NAME);
         assertTrue(serverSpan.equals(equalServerSpan));
     }
 
     @Test
     public void testHashCode() {
-        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(NAME));
+        ServerSpan equalServerSpan = ServerSpan.create(SPAN_ID, NAME);
         Assert.assertEquals(serverSpan.hashCode(), equalServerSpan.hashCode());
     }
 

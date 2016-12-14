@@ -73,7 +73,7 @@ public class ServerTracerTest {
     @Test
     public void testSetStateCurrentTrace() {
         serverTracer.setStateCurrentTrace(SPAN_ID, SPAN_NAME);
-        ServerSpan expectedServerSpan = ServerSpan.create(SPAN_ID.toSpan().setName(SPAN_NAME));
+        ServerSpan expectedServerSpan = ServerSpan.create(SPAN_ID, SPAN_NAME);
         verify(mockServerSpanState).setCurrentServerSpan(expectedServerSpan);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
     }
@@ -93,7 +93,7 @@ public class ServerTracerTest {
 
         serverTracer.setStateUnknown(SPAN_NAME);
         ServerSpan expectedServerSpan = ServerSpan.create(
-            SpanId.builder().spanId(TRACE_ID).build().toSpan().setName(SPAN_NAME));
+            SpanId.builder().spanId(TRACE_ID).build(), SPAN_NAME);
 
         final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
 
@@ -116,7 +116,7 @@ public class ServerTracerTest {
         ServerSpan expectedServerSpan = ServerSpan.create(SpanId.builder()
             .traceIdHigh(TRACE_ID + 1)
             .traceId(TRACE_ID)
-            .spanId(TRACE_ID).build().toSpan().setName(SPAN_NAME));
+            .spanId(TRACE_ID).build(), SPAN_NAME);
 
         final InOrder inOrder = inOrder(mockSampler, mockRandom, mockServerSpanState);
 

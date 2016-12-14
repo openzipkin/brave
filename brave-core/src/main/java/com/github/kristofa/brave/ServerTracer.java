@@ -100,7 +100,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateCurrentTrace(SpanId spanId, String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        ServerSpan span = ServerSpan.create(spanId.toSpan().setName(spanName));
+        ServerSpan span = ServerSpan.create(spanId, spanName);
         spanAndEndpoint().state().setCurrentServerSpan(span);
     }
 
