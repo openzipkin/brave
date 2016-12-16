@@ -6,19 +6,18 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.HttpResponse;
-import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.servlet.ServletHttpServerRequest;
+import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.context.annotation.Configuration;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -58,6 +57,8 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     private final ServerResponseInterceptor responseInterceptor;
     private final ServerSpanThreadBinder serverThreadBinder;
     private final SpanNameProvider spanNameProvider;
+    @Nullable // while deprecated constructor is in use
+    private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     @Autowired // internal
     ServletHandlerInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
@@ -69,6 +70,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.serverThreadBinder = b.brave.serverSpanThreadBinder();
         this.spanNameProvider = b.spanNameProvider;
+        this.maybeAddClientAddressFromRequest = MaybeAddClientAddressFromRequest.create(b.brave);
     }
 
     /**
@@ -80,31 +82,15 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
         this.serverThreadBinder = serverThreadBinder;
+        this.maybeAddClientAddressFromRequest = null;
     }
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
-        requestInterceptor.handle(new HttpServerRequestAdapter(new HttpServerRequest() {
-            @Override
-            public String getHttpHeaderValue(String headerName) {
-                return request.getHeader(headerName);
-            }
-
-            @Override
-            public URI getUri() {
-                try {
-                    return new URI(request.getRequestURI());
-                } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            @Override
-            public String getHttpMethod() {
-                return request.getMethod();
-            }
-        }, spanNameProvider));
-
+        requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest(request), spanNameProvider));
+        if (maybeAddClientAddressFromRequest != null) {
+            maybeAddClientAddressFromRequest.accept(request);
+        }
         return true;
     }
 

@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import zipkin.Constants;
 
 public class BraveGrpcInterceptorsTest {
 
@@ -181,6 +182,12 @@ public class BraveGrpcInterceptorsTest {
             .filteredOn(b -> b.key.equals(GrpcKeys.GRPC_REMOTE_ADDR))
             .extracting(b -> new String(b.value))
             .has(new Condition<>(b -> b.matches("^/127.0.0.1:[\\d]+$"), "a local IP address"), atIndex(0));
+
+        //Server spans should have the client address binary annotation
+        assertThat(serverSpan.getBinary_annotations())
+            .filteredOn(b -> b.key.equals(Constants.CLIENT_ADDR))
+            .extracting(b -> b.host.port)
+            .doesNotContainNull(); // if we got a port, we also got an ipv4 or ipv6
 
         validateSpan(spans.get(1), Arrays.asList("cs", "cr"));
     }

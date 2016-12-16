@@ -21,11 +21,7 @@ public class ServletHttpServerRequest implements HttpServerRequest {
 
     @Override
     public URI getUri() {
-        try {
-            return new URI(request.getRequestURI());
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
-        }
+        return URI.create(request.getRequestURI());
     }
 
     @Override

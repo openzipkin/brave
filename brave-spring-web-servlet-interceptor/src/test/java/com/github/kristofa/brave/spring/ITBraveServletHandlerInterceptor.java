@@ -16,6 +16,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
 public class ITBraveServletHandlerInterceptor {
@@ -88,6 +89,9 @@ public class ITBraveServletHandlerInterceptor {
             assertEquals("Expected service name.",
                 serverSpan.getAnnotations().get(0).host.service_name, "braveservletinterceptorintegration");
 
+            // make sure client address is added!
+            assertThat(serverSpan.getBinary_annotations()).filteredOn(b -> b.getKey().equals("ca"))
+                .isNotEmpty();
         } finally {
             connection.disconnect();
         }
