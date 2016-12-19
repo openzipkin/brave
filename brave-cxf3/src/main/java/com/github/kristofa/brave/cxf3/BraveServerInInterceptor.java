@@ -63,7 +63,9 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
           new HttpServerRequestAdapter(new HttpMessage.ServerRequest(message), spanNameProvider));
       message.getExchange().put(BRAVE_SERVER_SPAN, threadBinder.getCurrentServerSpan());
     } finally {
-      threadBinder.setCurrentSpan(null);
+      if (!message.getExchange().isSynchronous()) {
+        threadBinder.setCurrentSpan(null);
+      }
     }
   }
 }

@@ -1,75 +1,116 @@
 package com.github.kristofa.brave.cxf3.integration;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.cxf3.BraveClientInInterceptor;
-import com.github.kristofa.brave.cxf3.BraveClientOutInterceptor;
-import com.github.kristofa.brave.cxf3.BraveServerInInterceptor;
-import com.github.kristofa.brave.cxf3.BraveServerOutInterceptor;
+import com.github.kristofa.brave.cxf3.BraveClientFeature;
+import com.github.kristofa.brave.cxf3.BraveServerFeature;
 import com.github.kristofa.brave.cxf3.ReporterForTesting;
-import javax.jws.WebMethod;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
 import org.apache.cxf.jaxws.JaxWsServerFactoryBean;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.jws.WebMethod;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 public class ITBraveCxfInterceptorsJws {
-  Server server;
-  FooService client;
-  ReporterForTesting reporter = new ReporterForTesting();
-  Brave brave = new Brave.Builder().reporter(reporter).build();
-  BraveServerInInterceptor serverInInterceptor = BraveServerInInterceptor.create(brave);
-  BraveServerOutInterceptor serverOutInterceptor = BraveServerOutInterceptor.create(brave);
-  BraveClientInInterceptor clientInInterceptor = BraveClientInInterceptor.create(brave);
-  BraveClientOutInterceptor clientOutInterceptor = BraveClientOutInterceptor.create(brave);
+  Server fooServer;
+  Server barServer;
+  FooService fooClient;
+  BarService barClient;
+
+  private ReporterForTesting reporter;
 
   public interface FooService {
     @WebMethod
     String foo();
   }
 
+  public interface BarService {
+    @WebMethod
+    String bar();
+  }
+
   public static class DefaultFooService implements FooService {
+    private final BarService barClient;
+
+    public DefaultFooService(BarService barClient) {
+      this.barClient = barClient;
+    }
+
     @Override
     public String foo() {
-      return "foo";
+      return "foo " + barClient.bar();
+    }
+  }
+
+  public static class DefaultBarService implements BarService {
+
+    @Override
+    public String bar() {
+      return "bar";
     }
   }
 
   @Before
   public void setUp() throws Exception {
-    // setup server
-    String url = "http://localhost:9000/test";
+    reporter = new ReporterForTesting();
 
-    JaxWsServerFactoryBean serverFactory = new JaxWsServerFactoryBean();
-    serverFactory.setAddress(url);
-    serverFactory.setServiceClass(FooService.class);
-    serverFactory.setServiceBean(new DefaultFooService());
-    serverFactory.getInInterceptors().add(serverInInterceptor);
-    serverFactory.getOutInterceptors().add(serverOutInterceptor);
-    this.server = serverFactory.create();
+    String fooUrl = "http://localhost:9000/test";
+    String barUrl = "http://localhost:9001/test";
 
-    // setup client
-    JaxWsProxyFactoryBean clientFactory = new JaxWsProxyFactoryBean();
-    clientFactory.setAddress(url);
-    clientFactory.setServiceClass(FooService.class);
-    clientFactory.getInInterceptors().add(clientInInterceptor);
-    clientFactory.getOutInterceptors().add(clientOutInterceptor);
-    this.client = (FooService) clientFactory.create();
+    Brave testFooClient = new Brave.Builder("test-fooClient").reporter(reporter).build();
+    Brave fooServerBrave = new Brave.Builder("foo-fooServer").reporter(reporter).build();
+    Brave barServerBrave = new Brave.Builder("bar-fooServer").reporter(reporter).build();
+
+    JaxWsProxyFactoryBean fooClientFactory = new JaxWsProxyFactoryBean();
+    fooClientFactory.setAddress(fooUrl);
+    fooClientFactory.setServiceClass(FooService.class);
+    fooClientFactory.getFeatures().add(BraveClientFeature.create(testFooClient));
+    this.fooClient = (FooService) fooClientFactory.create();
+
+    JaxWsProxyFactoryBean barClientFactory = new JaxWsProxyFactoryBean();
+    barClientFactory.setAddress(barUrl);
+    barClientFactory.setServiceClass(BarService.class);
+    barClientFactory.getFeatures().add(BraveClientFeature.create(fooServerBrave));
+    this.barClient = (BarService) barClientFactory.create();
+
+    JaxWsServerFactoryBean fooServerFactory = new JaxWsServerFactoryBean();
+    fooServerFactory.setAddress(fooUrl);
+    fooServerFactory.setServiceClass(FooService.class);
+    fooServerFactory.setServiceBean(new DefaultFooService(barClient));
+    fooServerFactory.getFeatures().add(BraveServerFeature.create(fooServerBrave));
+    this.fooServer = fooServerFactory.create();
+
+    JaxWsServerFactoryBean barServerFactory = new JaxWsServerFactoryBean();
+    barServerFactory.setAddress(barUrl);
+    barServerFactory.setServiceClass(BarService.class);
+    barServerFactory.setServiceBean(new DefaultBarService());
+    barServerFactory.getFeatures().add(BraveServerFeature.create(barServerBrave));
+    this.barServer = barServerFactory.create();
   }
 
   @After
   public void tearDown() throws Exception {
-    if (server != null) {
-      server.stop();
+    if (fooServer != null) {
+      fooServer.stop();
+    }
+    if (barServer != null) {
+      barServer.stop();
     }
   }
 
   @Test
   public void testInterceptors() throws Exception {
-    client.foo();
-    assertThat(reporter.getCollectedSpans()).hasSize(2);
+    String response = fooClient.foo();
+
+    Assert.assertEquals("Response should be 'foo bar'", "foo bar", response);
+
+    assertThat(reporter.getCollectedSpans()).hasSize(4);
+    assertEquals(reporter.getCollectedSpans().get(0).traceId, reporter.getCollectedSpans().get(2).traceId);
   }
 }
