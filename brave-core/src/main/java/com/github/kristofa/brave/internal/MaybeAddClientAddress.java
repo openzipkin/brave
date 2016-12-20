@@ -27,7 +27,6 @@ public abstract class MaybeAddClientAddress<T> {
     this.threadBinder = checkNotNull(brave, "brave").serverSpanThreadBinder();
   }
 
-  @Nullable
   public final void accept(T input) {
     // Kick out if we can't read the current span
     ServerSpan serverSpan = threadBinder.getCurrentServerSpan();

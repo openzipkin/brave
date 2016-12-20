@@ -159,6 +159,7 @@ public class BraveServletFilter implements Filter {
             super.setStatus(sc);
         }
 
+        @Override
         public int getStatus() {
             return httpStatus;
         }
