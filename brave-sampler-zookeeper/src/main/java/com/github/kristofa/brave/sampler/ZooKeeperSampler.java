@@ -17,6 +17,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 
+import static com.github.kristofa.brave.internal.Util.UTF_8;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static java.lang.String.format;
 
@@ -104,7 +105,7 @@ public final class ZooKeeperSampler extends Sampler implements Watcher, Closeabl
     if (data == null) {
       return DEFAULT_SAMPLE_RATE;
     }
-    return Float.valueOf(new String(data));
+    return Float.valueOf(new String(data, UTF_8));
   }
 
   private byte[] getData(final String znode) {

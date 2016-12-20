@@ -157,7 +157,7 @@ public final class SpanId {
 
   /** Returns true if this is the root span. */
   public final boolean root() {
-    return (flags & FLAG_IS_ROOT) == FLAG_IS_ROOT || parentId == traceId && parentId == spanId;
+    return (flags & FLAG_IS_ROOT) == FLAG_IS_ROOT || (parentId == traceId && parentId == spanId);
   }
 
   /**

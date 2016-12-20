@@ -90,8 +90,8 @@ class SpanProcessingThread implements Callable<Integer> {
                     logEntries.add(create(span));
                 }
 
-                if (subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty()
-                    || logEntries.size() >= maxBatchSize || !logEntries.isEmpty() && stop) {
+                if ((subsequentEmptyBatches >= MAX_SUBSEQUENT_EMPTY_BATCHES && !logEntries.isEmpty())
+                    || logEntries.size() >= maxBatchSize || (!logEntries.isEmpty() && stop)) {
                     log(logEntries);
                     logEntries.clear();
                     subsequentEmptyBatches = 0;

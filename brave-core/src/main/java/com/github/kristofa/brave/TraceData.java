@@ -29,7 +29,7 @@ public abstract class TraceData {
         SpanId spanId;
         Boolean sample;
 
-        public Builder spanId(SpanId spanId) {
+        @Override public Builder spanId(SpanId spanId) {
             this.spanId = spanId;
             return this;
         }

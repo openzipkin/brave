@@ -271,7 +271,7 @@ public abstract class ITHttpClient<C> {
     assertThat(collectedSpans())
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value))
+        .extracting(b -> new String(b.value, Util.UTF_8))
         .containsExactly(server.url(path).toString());
   }
 
