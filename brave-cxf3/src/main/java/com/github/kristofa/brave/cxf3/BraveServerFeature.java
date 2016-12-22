@@ -30,7 +30,7 @@ public class BraveServerFeature extends AbstractFeature {
 
     final ServerProviderFactory providerFactory = (ServerProviderFactory) server.getEndpoint().get(ServerProviderFactory.class.getName());
     if (providerFactory != null) {
-      providerFactory.setUserProviders(Arrays.asList(new BraveAsyncJaxRsThreadCleaner(brave), new TracerContextProvider(brave)));
+      providerFactory.setUserProviders(Arrays.asList(new TracerContextProvider(brave)));
     }
   }
 }
