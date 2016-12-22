@@ -3,9 +3,9 @@ package com.github.kristofa.brave.cxf3.integration;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.BraveExecutorService;
 import com.github.kristofa.brave.cxf3.BraveClientFeature;
-import com.github.kristofa.brave.cxf3.BraveCxfExecutorService;
-import com.github.kristofa.brave.cxf3.BraveJaxRsServerFeature;
+import com.github.kristofa.brave.cxf3.BraveServerFeature;
 import com.github.kristofa.brave.cxf3.ReporterForTesting;
+import com.github.kristofa.brave.cxf3.TracerContext;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.client.JAXRSClientFactoryBean;
@@ -18,6 +18,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.Context;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -58,10 +59,10 @@ public class ITBraveCxfInterceptorsJaxrs {
 
     @POST
     @Path("/foo")
-    public void foo(@Suspended AsyncResponse response) {
-      executor.execute(() -> {
+    public void foo(@Suspended AsyncResponse response, @Context TracerContext context) {
+      executor.execute(context.wrap(() -> {
         response.resume("foo " + client.bar());
-      });
+      }));
     }
   }
 
@@ -74,10 +75,10 @@ public class ITBraveCxfInterceptorsJaxrs {
 
     @POST
     @Path("/bar")
-    public void foo(@Suspended AsyncResponse response) {
-      executor.execute(() -> {
+    public void foo(@Suspended AsyncResponse response, @Context TracerContext context) {
+      executor.execute(context.wrap(() -> {
         response.resume("bar");
-      });
+      }));
     }
   }
 
@@ -88,8 +89,8 @@ public class ITBraveCxfInterceptorsJaxrs {
     Brave fooServerBrave = new Brave.Builder("foo-fooServer").reporter(reporter).build();
     Brave barServerBrave = new Brave.Builder("bar-fooServer").reporter(reporter).build();
 
-    Executor fooServerExecutor = BraveCxfExecutorService.wrap(BraveExecutorService.wrap(Executors.newCachedThreadPool(), fooServerBrave), fooServerBrave);
-    Executor barServerExecutor = BraveCxfExecutorService.wrap(BraveExecutorService.wrap(Executors.newCachedThreadPool(), barServerBrave), barServerBrave);
+    Executor fooServerExecutor = BraveExecutorService.wrap(Executors.newCachedThreadPool(), fooServerBrave);
+    Executor barServerExecutor = BraveExecutorService.wrap(Executors.newCachedThreadPool(), barServerBrave);
 
     JAXRSClientFactoryBean fooClientFactory = new JAXRSClientFactoryBean();
     fooClientFactory.setAddress(FOO_URL);
@@ -108,14 +109,14 @@ public class ITBraveCxfInterceptorsJaxrs {
     JAXRSServerFactoryBean fooServerFactory = new JAXRSServerFactoryBean();
     fooServerFactory.setAddress(FOO_URL);
     fooServerFactory.setServiceBean(new FooService(barClient, fooServerExecutor));
-    fooServerFactory.getFeatures().add(BraveJaxRsServerFeature.create(fooServerBrave));
+    fooServerFactory.getFeatures().add(BraveServerFeature.create(fooServerBrave));
 
     this.fooServer = fooServerFactory.create();
 
     JAXRSServerFactoryBean barServerFactory = new JAXRSServerFactoryBean();
     barServerFactory.setAddress(BAR_URL);
     barServerFactory.setServiceBean(new BarService(barServerExecutor));
-    barServerFactory.getFeatures().add(BraveJaxRsServerFeature.create(barServerBrave));
+    barServerFactory.getFeatures().add(BraveServerFeature.create(barServerBrave));
     this.barServer = barServerFactory.create();
   }
 

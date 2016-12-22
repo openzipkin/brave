@@ -44,7 +44,11 @@ public class ITBraveCxfInterceptorsJws {
 
     @Override
     public String foo() {
-      return "foo " + barClient.bar();
+      try {
+        return "foo " + barClient.bar();
+      } catch (Exception e) {
+        return "foo " + e.getMessage();
+      }
     }
   }
 
@@ -52,7 +56,7 @@ public class ITBraveCxfInterceptorsJws {
 
     @Override
     public String bar() {
-      return "bar";
+      throw new RuntimeException("bar");
     }
   }
 

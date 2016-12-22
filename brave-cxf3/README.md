@@ -51,7 +51,7 @@ CXF JAX-RS server setup:
 JAXRSServerFactoryBean serverFactory = new JAXRSServerFactoryBean();
 serverFactory.setServiceBeans(new RestFooService());
 serverFactory.setAddress("http://localhost:9001/");
-serverFactory.getFeatures().add(BraveJaxRsServerFeature.create(brave));
+serverFactory.getFeatures().add(BraveServerFeature.create(brave));
 serverFactory.create();
 ```
 
