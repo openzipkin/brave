@@ -23,10 +23,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(AnnotationSubmitter.class)
+@PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ClientTracerTest {
 
-    private static final long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+    private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private static final String REQUEST_NAME = "requestname";
     private static final long TRACE_ID = 105;
     private static final SpanId PARENT_SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
@@ -46,13 +46,15 @@ public class ClientTracerTest {
         mockSpan = mock(Span.class);
 
         PowerMockito.mockStatic(System.class);
-        PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.nanoTime()).thenReturn(0L);
+
         clientTracer = ClientTracer.builder()
             .state(state)
             .randomGenerator(mockRandom)
             .spanCollector(mockCollector)
             .traceSampler(mockSampler)
-            .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .clock(new AnnotationSubmitter.DefaultClock())
             .traceId128Bit(false)
             .build();
     }
@@ -71,13 +73,13 @@ public class ClientTracerTest {
         clientTracer.setClientSent();
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.CLIENT_SEND,
             state.endpoint()
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
+        assertEquals(START_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
         assertEquals(expectedAnnotation, clientSent.getAnnotations().get(0));
     }
 
@@ -90,13 +92,13 @@ public class ClientTracerTest {
             .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).serviceName("foobar").build());
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.CLIENT_SEND,
             state.endpoint()
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
+        assertEquals(START_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
         assertEquals(expectedAnnotation, clientSent.getAnnotations().get(0));
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
@@ -133,7 +135,7 @@ public class ClientTracerTest {
         clientTracer.setClientReceived();
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.CLIENT_RECV,
             state.endpoint()
         );
@@ -144,7 +146,7 @@ public class ClientTracerTest {
         verify(mockCollector).collect(clientRecv);
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS - clientRecv.getTimestamp().longValue(), clientRecv.getDuration().longValue());
+        assertEquals(START_TIME_MICROSECONDS - clientRecv.getTimestamp().longValue(), clientRecv.getDuration().longValue());
         assertEquals(expectedAnnotation, clientRecv.getAnnotations().get(0));
     }
 
@@ -218,11 +220,10 @@ public class ClientTracerTest {
 
     @Test
     public void setClientReceived_usesPreciseDuration() {
-        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
-        finished.startTick = 500000L; // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
         state.setCurrentClientSpan(finished);
 
-        PowerMockito.when(System.nanoTime()).thenReturn(1000000L);
+        PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
         clientTracer.setClientReceived();
 
@@ -235,11 +236,10 @@ public class ClientTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setClientReceived_lessThanMicrosRoundUp() {
-        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
-        finished.startTick = 500L; // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
         state.setCurrentClientSpan(finished);
 
-        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+        PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
         clientTracer.setClientReceived();
 

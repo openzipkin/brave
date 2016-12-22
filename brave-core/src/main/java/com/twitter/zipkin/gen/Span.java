@@ -20,11 +20,6 @@ public class Span implements Serializable {
 
   static final long serialVersionUID = 1L;
 
-  /**
-   * Internal field, used for deriving duration with {@link System#nanoTime()}.
-   */
-  public volatile Long startTick;
-
   private long trace_id; // required
   private long trace_id_high; // optional (default to zero)
   private String name; // required

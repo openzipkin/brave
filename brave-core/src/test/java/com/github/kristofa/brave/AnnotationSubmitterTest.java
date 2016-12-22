@@ -16,10 +16,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(AnnotationSubmitter.class)
+@PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class AnnotationSubmitterTest {
 
-    private final static long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+    private final static long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
 
     private final static String ANNOTATION_NAME = "AnnotationName";
     private static final String KEY = "key";
@@ -29,22 +29,27 @@ public class AnnotationSubmitterTest {
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
     private Span span = new Span().setName("foo");
-    private AnnotationSubmitter annotationSubmitter =
-        AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint));;
+    private AnnotationSubmitter annotationSubmitter;
 
     @Before
     public void setup() {
         PowerMockito.mockStatic(System.class);
-        PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.nanoTime()).thenReturn(0L);
+        AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
+        annotationSubmitter =
+            AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint), clock);
     }
 
     @Test
     public void testSubmitAnnotationSpanEndpointString() {
+        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+
         annotationSubmitter.submitAnnotation(ANNOTATION_NAME);
 
         assertThat(span.getAnnotations()).containsExactly(
             Annotation.create(
-                CURRENT_TIME_MICROSECONDS,
+                START_TIME_MICROSECONDS + 1,
                 ANNOTATION_NAME,
                 endpoint
             )
@@ -90,33 +95,16 @@ public class AnnotationSubmitterTest {
     @Test
     public void testCurrentTimeMicroSeconds_fromSystemCurrentMillis() {
         assertThat(annotationSubmitter.clock().currentTimeMicroseconds())
-            .isEqualTo(CURRENT_TIME_MICROSECONDS);
+            .isEqualTo(START_TIME_MICROSECONDS);
     }
 
     @Test
     public void testCurrentTimeMicroSeconds_fromRelativeNanoTick() {
+        AnnotationSubmitter.Clock clock = new AnnotationSubmitter.DefaultClock();
         PowerMockito.when(System.nanoTime()).thenReturn(1000L);
 
-        assertThat(annotationSubmitter.currentTimeMicroseconds(CURRENT_TIME_MICROSECONDS, 0L))
-            .isEqualTo(CURRENT_TIME_MICROSECONDS + 1L);
-    }
-
-    @Test
-    public void annotationTimestampRelativeToStart() {
-        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
-
-        span.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        span.startTick = 0L;
-
-        annotationSubmitter.submitAnnotation(ANNOTATION_NAME);
-
-        assertThat(span.getAnnotations()).containsExactly(
-            Annotation.create(
-                CURRENT_TIME_MICROSECONDS + 1,
-                ANNOTATION_NAME,
-                endpoint
-            )
-        );
+        assertThat(clock.currentTimeMicroseconds())
+            .isEqualTo(START_TIME_MICROSECONDS + 1L);
     }
 
     @Test
@@ -130,7 +118,7 @@ public class AnnotationSubmitterTest {
 
     @Test
     public void setsDurationWhenTimestampPresentButStartTickAbsent() {
-        span.setTimestamp(CURRENT_TIME_MICROSECONDS - 1);
+        span.setTimestamp(START_TIME_MICROSECONDS - 1);
 
         annotationSubmitter.submitAnnotation("sr");
         annotationSubmitter.submitEndAnnotation("ss", span ->
@@ -139,8 +127,7 @@ public class AnnotationSubmitterTest {
 
     @Test
     public void durationRoundedUpToOneMicro() {
-        span.setTimestamp(CURRENT_TIME_MICROSECONDS);
-        span.startTick = 0L;
+        span.setTimestamp(START_TIME_MICROSECONDS);
 
         PowerMockito.when(System.nanoTime()).thenReturn(787L);
 

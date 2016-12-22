@@ -96,7 +96,6 @@ public class ServerRequestInterceptorTest {
         // don't log timestamp when span is client-originated
         Span span = state.getCurrentServerSpan().getSpan();
         assertThat(span.getTimestamp()).isNull();
-        assertThat(span.startTick).isNull();
     }
 
     @Test
@@ -113,7 +112,6 @@ public class ServerRequestInterceptorTest {
         // We originated the trace, so we should set the timestamp
         Span span = state.getCurrentServerSpan().getSpan();
         assertThat(span.getTimestamp()).isNotNull();
-        assertThat(span.startTick).isNotNull();
     }
 
     @Test

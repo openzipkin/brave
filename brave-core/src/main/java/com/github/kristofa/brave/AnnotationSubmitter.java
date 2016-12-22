@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -43,10 +42,11 @@ public abstract class AnnotationSubmitter {
 
     abstract SpanAndEndpoint spanAndEndpoint();
 
-    /** The implementation of Clock to use.
-     * See {@link com.github.kristofa.brave.AnnotationSubmitter#currentTimeMicroseconds}
-     * and {@link com.github.kristofa.brave.AnnotationSubmitter.Clock}
-     **/
+    /**
+     * The implementation of Clock to use.
+     *
+     * See {@link com.github.kristofa.brave.AnnotationSubmitter.Clock}
+     */
     abstract Clock clock();
 
     /**
@@ -57,14 +57,8 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = spanAndEndpoint().span();
         if (span != null) {
-            Long startTimestamp;
-            Long startTick;
-            synchronized (span) {
-                startTimestamp = span.getTimestamp();
-                startTick = span.startTick;
-            }
             Annotation annotation = Annotation.create(
-                currentTimeMicroseconds(startTimestamp, startTick),
+                clock().currentTimeMicroseconds(),
                 value,
                 spanAndEndpoint().endpoint()
             );
@@ -105,7 +99,6 @@ public abstract class AnnotationSubmitter {
             synchronized (span) {
                 span.setTimestamp(annotation.timestamp);
                 span.addToAnnotations(annotation);
-                span.startTick = System.nanoTime(); // embezzle start tick into an internal field.
             }
         }
     }
@@ -122,13 +115,7 @@ public abstract class AnnotationSubmitter {
           return false;
         }
 
-        Long startTimestamp;
-        Long startTick;
-        synchronized (span) {
-            startTimestamp = span.getTimestamp();
-            startTick = span.startTick;
-        }
-        long endTimestamp = currentTimeMicroseconds(startTimestamp, startTick);
+        long endTimestamp = clock().currentTimeMicroseconds();
 
         Annotation annotation = Annotation.create(
             endTimestamp,
@@ -137,6 +124,7 @@ public abstract class AnnotationSubmitter {
         );
         synchronized (span) {
             span.addToAnnotations(annotation);
+            Long startTimestamp = span.getTimestamp();
             if (startTimestamp != null) {
                 span.setDuration(Math.max(1L, endTimestamp - startTimestamp));
             }
@@ -186,12 +174,6 @@ public abstract class AnnotationSubmitter {
         submitBinaryAnnotation(key, String.valueOf(value));
     }
 
-    long currentTimeMicroseconds(@Nullable Long startTimestamp, @Nullable Long startTick) {
-        return startTimestamp != null && startTick != null
-            ? startTimestamp + (System.nanoTime() - startTick) / 1000
-            : clock().currentTimeMicroseconds();
-    }
-
     private void addAnnotation(Span span, Annotation annotation) {
         synchronized (span) {
             span.addToAnnotations(annotation);
@@ -229,12 +211,22 @@ public abstract class AnnotationSubmitter {
 
     }
 
+    /** Offset-based clock: Uses a single point of reference and offsets to create timestamps. */
     static final class DefaultClock implements Clock {
         static final Clock INSTANCE = new DefaultClock();
-        private DefaultClock() {}
+        // epochMicros is derived by this
+        final long createTimestamp;
+        final long createTick;
+
+        DefaultClock() {
+            createTimestamp = System.currentTimeMillis() * 1000;
+            createTick = System.nanoTime();
+        }
+
+        /** gets a timestamp based on this the create tick. */
         @Override
         public long currentTimeMicroseconds() {
-            return System.currentTimeMillis() * 1000;
+            return ((System.nanoTime() - createTick) / 1000) + createTimestamp;
         }
     }
 }

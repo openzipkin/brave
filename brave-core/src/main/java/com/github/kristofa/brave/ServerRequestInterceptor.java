@@ -76,7 +76,6 @@ public class ServerRequestInterceptor {
             Span span = serverTracer.spanAndEndpoint().span();
             synchronized (span) {
                 span.setTimestamp(null);
-                span.startTick = null;
             }
         }
     }
