@@ -2,6 +2,7 @@ package com.github.kristofa.brave.httpclient;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientSpanThreadBinder;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpClientRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -15,6 +16,8 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * Apache http client request interceptor.
  */
 public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
+
+    static final String SPAN_ATTRIBUTE = BraveHttpResponseInterceptor.class.getName() + ".span";
 
     /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
     public static BraveHttpRequestInterceptor create(Brave brave) {
@@ -45,10 +48,12 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
 
     private final ClientRequestInterceptor requestInterceptor;
     private final SpanNameProvider spanNameProvider;
+    private final ClientSpanThreadBinder spanThreadBinder;
 
     BraveHttpRequestInterceptor(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.clientRequestInterceptor();
         this.spanNameProvider = b.spanNameProvider;
+        this.spanThreadBinder = b.brave.clientSpanThreadBinder();
     }
 
     /**
@@ -56,12 +61,14 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
      *
      * @param requestInterceptor
      * @param spanNameProvider Provides span name for request.
-     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}
+     * @deprecated please use {@link #create(Brave)} or {@link #builder(Brave)}; using this constructor means that
+     * a "client received" event will not be sent when using {@code HttpAsyncClient}
      */
     @Deprecated
     public BraveHttpRequestInterceptor(ClientRequestInterceptor requestInterceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = requestInterceptor;
         this.spanNameProvider = spanNameProvider;
+        this.spanThreadBinder = null;
     }
 
     /**
@@ -71,5 +78,11 @@ public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
     public void process(final HttpRequest request, final HttpContext context) {
         HttpClientRequestAdapter adapter = new HttpClientRequestAdapter(new HttpClientRequestImpl(request), spanNameProvider);
         requestInterceptor.handle(adapter);
+        if (spanThreadBinder != null) {
+            // When using HttpAsyncClient, the response interceptor is not run on the same thread, so for it the client
+            // span would just not be set. By putting it into the HttpContext, we can keep track of the client span and
+            // retrieve it later in the response interceptor.
+            context.setAttribute(SPAN_ATTRIBUTE, spanThreadBinder.getCurrentClientSpan());
+        }
     }
 }
