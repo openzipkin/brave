@@ -42,5 +42,10 @@
         <artifactId>brave-http-tests</artifactId>
         <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpasyncclient</artifactId>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 </project>
