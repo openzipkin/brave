@@ -33,12 +33,10 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
-    abstract Random randomGenerator();
     abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
-    abstract boolean traceId128Bit();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -130,22 +128,21 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        SpanId newSpanId = getNewSpanId();
+        SpanId nextContext = nextContext(maybeParent());
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().isSampled(newSpanId.traceId)) {
+            if (!traceSampler().isSampled(nextContext.traceId)) {
                 spanAndEndpoint().state().setCurrentClientSpan(null);
                 return null;
             }
         }
 
-        Span newSpan = Span.fromSpanId(newSpanId);
-        newSpan.setName(requestName);
+        Span newSpan = Span.create(nextContext).setName(requestName);
         spanAndEndpoint().state().setCurrentClientSpan(newSpan);
-        return newSpanId;
+        return nextContext;
     }
 
-    private SpanId getNewSpanId() {
+    private Span maybeParent() {
         Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
         if (parentSpan == null) {
             ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
@@ -153,16 +150,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
                 parentSpan = serverSpan.getSpan();
             }
         }
-
-        long newSpanId = randomGenerator().nextLong();
-        SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
-        if (parentSpan == null) { // new trace
-            if (traceId128Bit()) builder.traceIdHigh(randomGenerator().nextLong());
-            return builder.build();
-        }
-        return builder.traceIdHigh(parentSpan.getTrace_id_high())
-            .traceId(parentSpan.getTrace_id())
-            .parentId(parentSpan.getId()).build();
+        return parentSpan;
     }
 
     ClientTracer() {

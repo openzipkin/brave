@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
-import com.twitter.zipkin.gen.Span;
 import java.nio.ByteBuffer;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
@@ -279,22 +278,6 @@ public final class SpanId {
     return new String(result);
   }
 
-  /**
-   * @deprecated deprecated to avoid coupling with old classes. Use {@link
-   * Span#fromSpanId(SpanId)} instead.
-   */
-  @Deprecated
-  public Span toSpan() {
-    Span result = new Span();
-    result.setId(spanId);
-    result.setTrace_id_high(traceIdHigh);
-    result.setTrace_id(traceId);
-    result.setParent_id(nullableParentId());
-    result.setName(""); // avoid NPE on equals
-    if (debug()) result.setDebug(debug());
-    return result;
-  }
-
   public static final class Builder {
     long traceIdHigh = 0;
     Long traceId;
@@ -361,7 +344,7 @@ public final class SpanId {
       return this;
     }
 
-    /** @see SpanId#shared() */
+    /** @see SpanId#shared */
     public Builder shared(boolean shared) {
       this.shared = shared;
       return this;

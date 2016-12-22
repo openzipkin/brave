@@ -10,6 +10,7 @@ import zipkin.Constants;
 import java.util.Random;
 import zipkin.reporter.Reporter;
 
+import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 import static zipkin.Constants.LOCAL_COMPONENT;
 
 /**
@@ -49,8 +50,6 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     @Override
     abstract LocalSpanAndEndpoint spanAndEndpoint();
 
-    abstract Random randomGenerator();
-
     abstract Reporter<zipkin.Span> reporter();
 
     abstract boolean allowNestedLocalSpans();
@@ -59,8 +58,6 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     @Override
     abstract AnnotationSubmitter.Clock clock();
-
-    abstract boolean traceId128Bit();
 
     @AutoValue.Builder
     abstract static class Builder {
@@ -95,19 +92,6 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         return startNewSpan(component, operation, clock().currentTimeMicroseconds());
     }
 
-    private SpanId getNewSpanId() {
-        Span parentSpan = getNewSpanParent();
-        long newSpanId = randomGenerator().nextLong();
-        SpanId.Builder builder = SpanId.builder().spanId(newSpanId);
-        if (parentSpan == null) { // new trace
-            if (traceId128Bit()) builder.traceIdHigh(randomGenerator().nextLong());
-            return builder.traceId(newSpanId).build();
-        }
-        return builder.traceIdHigh(parentSpan.getTrace_id_high())
-            .traceId(parentSpan.getTrace_id())
-            .parentId(parentSpan.getId()).build();
-    }
-
     /**
      * Request the span that should be considered the new span's parent.
      *
@@ -119,8 +103,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      *
      * @return span that should be the new span's parent, or null if one does not exist.
      */
-    @Nullable
-    Span getNewSpanParent() {
+    @Nullable Span maybeParent() {
         ServerClientAndLocalSpanState state = spanAndEndpoint().state();
         Span parentSpan = null;
         if (allowNestedLocalSpans()) {
@@ -154,22 +137,22 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        SpanId newSpanId = getNewSpanId();
+        SpanId nextContext = nextContext(maybeParent());
         if (sample == null) {
             // No sample indication is present.
-            if (!traceSampler().isSampled(newSpanId.traceId)) {
+            if (!traceSampler().isSampled(nextContext.traceId)) {
                 spanAndEndpoint().state().setCurrentLocalSpan(null);
                 return null;
             }
         }
 
-        Span newSpan = Span.fromSpanId(newSpanId);
+        Span newSpan = Span.create(nextContext);
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(
             BinaryAnnotation.create(LOCAL_COMPONENT, component, spanAndEndpoint().endpoint()));
         spanAndEndpoint().state().setCurrentLocalSpan(newSpan);
-        return newSpanId;
+        return nextContext;
     }
 
     /**
@@ -197,7 +180,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         synchronized (span) {
             span.setDuration(duration);
         }
-        reporter().report(span.toZipkin());
+        reporter().report(toZipkin(span));
         spanAndEndpoint().state().setCurrentLocalSpan(null);
     }
 

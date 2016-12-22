@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.internal;
 
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.AnnotationType;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -22,30 +23,34 @@ public final class DefaultSpanCodec implements SpanCodec {
 
   @Override
   public byte[] writeSpan(Span span) {
-    return codec.writeSpan(span.toZipkin());
+    return codec.writeSpan(toZipkin(span));
   }
 
   @Override
   public byte[] writeSpans(List<Span> spans) {
     List<zipkin.Span> out = new ArrayList<zipkin.Span>(spans.size());
     for (Span span : spans) {
-      out.add(span.toZipkin());
+      out.add(toZipkin(span));
     }
     return codec.writeSpans(out);
   }
 
   @Override
   public Span readSpan(byte[] bytes) {
-    zipkin.Span in = codec.readSpan(bytes);
-    Span result = new Span();
-    result.setTrace_id_high(in.traceIdHigh);
-    result.setTrace_id(in.traceId);
-    result.setId(in.id);
-    result.setParent_id(in.parentId);
+    return fromZipkin(codec.readSpan(bytes));
+  }
+
+  public static Span fromZipkin(zipkin.Span in) {
+    Span result = Span.create(SpanId.builder()
+        .traceIdHigh(in.traceIdHigh)
+        .traceId(in.traceId)
+        .spanId(in.id)
+        .parentId(in.parentId)
+        .debug(in.debug != null ? in.debug : false).build()
+    );
     result.setName(in.name);
     result.setTimestamp(in.timestamp);
     result.setDuration(in.duration);
-    result.setDebug(in.debug);
     for (zipkin.Annotation a : in.annotations) {
       result.addToAnnotations(Annotation.create(
           a.timestamp,
@@ -69,5 +74,38 @@ public final class DefaultSpanCodec implements SpanCodec {
         .ipv6(host.ipv6)
         .port(host.port)
         .serviceName(host.serviceName).build();
+  }
+
+  public static zipkin.Span toZipkin(Span span) {
+    zipkin.Span.Builder result = zipkin.Span.builder();
+    result.traceId(span.getTrace_id());
+    result.traceIdHigh(span.getTrace_id_high());
+    result.id(span.getId());
+    result.parentId(span.getParent_id());
+    result.name(span.getName());
+    result.timestamp(span.getTimestamp());
+    result.duration(span.getDuration());
+    result.debug(span.isDebug());
+    for (Annotation a : span.getAnnotations()) {
+      result.addAnnotation(zipkin.Annotation.create(a.timestamp, a.value, from(a.host)));
+    }
+    for (BinaryAnnotation a : span.getBinary_annotations()) {
+      result.addBinaryAnnotation(zipkin.BinaryAnnotation.builder()
+          .key(a.key)
+          .value(a.value)
+          .type(zipkin.BinaryAnnotation.Type.fromValue(a.type.getValue()))
+          .endpoint(from(a.host))
+          .build());
+    }
+    return result.build();
+  }
+
+  private static zipkin.Endpoint from(Endpoint host) {
+    if (host == null) return null;
+    return zipkin.Endpoint.builder()
+        .ipv4(host.ipv4)
+        .ipv6(host.ipv6)
+        .port(host.port)
+        .serviceName(host.service_name).build();
   }
 }
