@@ -24,10 +24,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(AnnotationSubmitter.class)
+@PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ServerTracerTest {
 
-    private static final long CURRENT_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+    private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private static final long TRACE_ID = 1;
     private static final SpanId SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(2).parentId(3L).build();
     private static final String SPAN_NAME = "span name";
@@ -52,13 +52,15 @@ public class ServerTracerTest {
         mockSampler = mock(Sampler.class);
 
         PowerMockito.mockStatic(System.class);
-        PowerMockito.when(System.currentTimeMillis()).thenReturn(CURRENT_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
+        PowerMockito.when(System.nanoTime()).thenReturn(0L);
+
         serverTracer = ServerTracer.builder()
             .state(mockServerSpanState)
             .randomGenerator(mockRandom)
             .spanCollector(mockSpanCollector)
             .traceSampler(mockSampler)
-            .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
+            .clock(new AnnotationSubmitter.DefaultClock())
             .traceId128Bit(false)
             .build();
     }
@@ -163,7 +165,7 @@ public class ServerTracerTest {
         serverTracer.setServerReceived();
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.SERVER_RECV,
             mockEndpoint
         );
@@ -173,7 +175,7 @@ public class ServerTracerTest {
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
+        assertEquals(START_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
         assertEquals(expectedAnnotation, serverRecv.getAnnotations().get(0));
     }
 
@@ -190,7 +192,7 @@ public class ServerTracerTest {
 
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.SERVER_RECV,
             mockEndpoint
         );
@@ -200,7 +202,7 @@ public class ServerTracerTest {
 
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
+        assertEquals(START_TIME_MICROSECONDS, serverRecv.getTimestamp().longValue());
         assertEquals(expectedAnnotation, serverRecv.getAnnotations().get(0));
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
@@ -240,7 +242,7 @@ public class ServerTracerTest {
         serverTracer.setServerSend();
 
         final Annotation expectedAnnotation = Annotation.create(
-            CURRENT_TIME_MICROSECONDS,
+            START_TIME_MICROSECONDS,
             Constants.SERVER_SEND,
             mockEndpoint
         );
@@ -252,7 +254,7 @@ public class ServerTracerTest {
         verify(mockServerSpanState).setCurrentServerSpan(null);
         verifyNoMoreInteractions(mockServerSpanState, mockSpanCollector);
 
-        assertEquals(CURRENT_TIME_MICROSECONDS - serverSend.getTimestamp().longValue(), serverSend.getDuration().longValue());
+        assertEquals(START_TIME_MICROSECONDS - serverSend.getTimestamp().longValue(), serverSend.getDuration().longValue());
         assertEquals(expectedAnnotation, serverSend.getAnnotations().get(0));
     }
 
@@ -272,12 +274,11 @@ public class ServerTracerTest {
 
     @Test
     public void setServerSend_usesPreciseDuration() {
-        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
-        finished.startTick = 500000L; // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
         when(mockServerSpan.getSpan()).thenReturn(finished);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
 
-        PowerMockito.when(System.nanoTime()).thenReturn(1000000L);
+        PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
         serverTracer.setServerSend();
 
@@ -290,12 +291,11 @@ public class ServerTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setServerSend_lessThanMicrosRoundUp() {
-        Span finished = new Span().setName("foo").setTimestamp(1000L); // set in start span
-        finished.startTick = 500L; // set in start span
+        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
         when(mockServerSpan.getSpan()).thenReturn(finished);
         when(mockServerSpanState.getCurrentServerSpan()).thenReturn(mockServerSpan);
 
-        PowerMockito.when(System.nanoTime()).thenReturn(1000L);
+        PowerMockito.when(System.nanoTime()).thenReturn(50L);
 
         serverTracer.setServerSend();
 

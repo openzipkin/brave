@@ -1,10 +1,8 @@
 package com.github.kristofa.brave.okhttp;
 
-import com.github.kristofa.brave.AnnotationSubmitter;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
 import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +19,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
 import zipkin.Constants;
@@ -48,10 +41,6 @@ import static zipkin.Constants.LOCAL_COMPONENT;
 import static zipkin.TraceKeys.HTTP_STATUS_CODE;
 import static zipkin.TraceKeys.HTTP_URL;
 
-@RunWith(PowerMockRunner.class)
-// tell mock not to mess with our rules or loggers!
-@PowerMockIgnore({"okhttp3.*", "org.apache.logging.*", "com.sun.*"})
-@PrepareForTest({AnnotationSubmitter.class, LocalTracer.class})
 public class BraveTracingInterceptorTest {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
@@ -65,29 +54,21 @@ public class BraveTracingInterceptorTest {
 
   Span localSpan = Span.builder()
       .traceId(1L).id(1L).name("get")
-      .timestamp(1000L).duration(4000L)
+      .timestamp(1000L).duration(3000L)
       .addBinaryAnnotation(BinaryAnnotation.create(LOCAL_COMPONENT, "okhttp", local))
       .build();
 
   Span clientSpan = Span.builder()
       .traceId(1L).parentId(1L).id(2L).name("get")
-      .timestamp(3000L).duration(1000L)
-      .addAnnotation(Annotation.create(3000, Constants.CLIENT_SEND, local))
-      .addAnnotation(Annotation.create(4000, Constants.CLIENT_RECV, local))
+      .timestamp(2000L).duration(1000L)
+      .addAnnotation(Annotation.create(2000, Constants.CLIENT_SEND, local))
+      .addAnnotation(Annotation.create(3000, Constants.CLIENT_RECV, local))
       .addBinaryAnnotation(BinaryAnnotation.create(HTTP_URL, server.url("foo").toString(), local))
       .addBinaryAnnotation(BinaryAnnotation.address(Constants.SERVER_ADDR, sa))
       .build();
 
   @Before
   public void setup() throws Exception {
-    PowerMockito.mockStatic(System.class);
-    // Each call to nanoTime or currentTimeMillis increases the fake clock by 1 millisecond
-    final AtomicLong clock = new AtomicLong();
-    PowerMockito.when(System.currentTimeMillis())
-        .then(i -> clock.addAndGet(1000000L) / 1000000L);
-    PowerMockito.when(System.nanoTime())
-        .then(i -> clock.addAndGet(1000000L));
-
     interceptor = interceptorBuilder(Sampler.ALWAYS_SAMPLE).build();
     client = new OkHttpClient.Builder()
         .addInterceptor(interceptor)
@@ -226,11 +207,11 @@ public class BraveTracingInterceptorTest {
             .addBinaryAnnotation(BinaryAnnotation.create(HTTP_STATUS_CODE, "408", local))
             .build(),
         clientSpan.toBuilder()
-            .id(3L).timestamp(6000L).annotations(asList(
-            Annotation.create(6000, Constants.CLIENT_SEND, local),
-            Annotation.create(7000, Constants.CLIENT_RECV, local)))
+            .id(3L).timestamp(4000L).annotations(asList(
+            Annotation.create(4000, Constants.CLIENT_SEND, local),
+            Annotation.create(5000, Constants.CLIENT_RECV, local)))
             .build(),
-        localSpan.toBuilder().duration(7000L).build()
+        localSpan.toBuilder().duration(5000L).build()
     );
   }
 
@@ -252,8 +233,11 @@ public class BraveTracingInterceptorTest {
         .port(local.port)
         .serviceName(local.serviceName)
         .build();
+    // Each call increases the fake clock by 1 millisecond
+    final AtomicLong clock = new AtomicLong();
     Brave brave = new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
         .reporter(s -> storage.spanConsumer().accept(asList(s)))
+        .clock(() -> clock.addAndGet(1000L))
         .traceSampler(sampler)
         .build();
     return BraveTracingInterceptor.builder(brave);
