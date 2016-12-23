@@ -27,7 +27,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.zipkin.brave</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
             <version>${project.version}</version>
         </dependency>

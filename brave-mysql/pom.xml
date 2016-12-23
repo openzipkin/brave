@@ -26,14 +26,14 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.zipkin.brave</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
-            <version>3.16.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.33</version>
+            <version>5.1.40</version>
         </dependency>
         <!-- TODO: use something different for property-based testing -->
         <dependency>

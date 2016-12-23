@@ -26,20 +26,20 @@
   </properties>
   <dependencies>
     <dependency>
-        <groupId>io.zipkin.brave</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-core</artifactId>
-        <version>3.16.1-SNAPSHOT</version>
+        <version>${project.version}</version>
     </dependency>
     <dependency>
         <groupId>org.apache.curator</groupId>
         <artifactId>curator-framework</artifactId>
-        <version>2.8.0</version>
+        <version>2.11.1</version>
     </dependency>
     <dependency>
         <groupId>org.apache.curator</groupId>
         <artifactId>curator-test</artifactId>
-        <version>2.8.0</version>
-        <scope>test</scope>  
+        <version>2.11.1</version>
+        <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

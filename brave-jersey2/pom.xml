@@ -22,14 +22,14 @@
     </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jersey.version>2.13</jersey.version>
+        <jersey.version>2.25</jersey.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>io.zipkin.brave</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-jaxrs2</artifactId>
-            <version>3.16.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
