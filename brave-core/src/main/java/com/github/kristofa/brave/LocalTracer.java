@@ -8,6 +8,8 @@ import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
 import java.util.Random;
+import java.util.concurrent.Callable;
+
 import zipkin.reporter.Reporter;
 
 import static zipkin.Constants.LOCAL_COMPONENT;
@@ -191,6 +193,28 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         if (span == null) return;
 
         internalFinishSpan(span, duration);
+    }
+    
+    public <T> T trace(String component, String operation, Callable<T> callable) {
+        try {
+            startNewSpan(component, operation);
+            return callable.call();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        } finally {
+            finishSpan();
+        }
+    }
+    
+    public void trace(String component, String operation, Runnable runable) {
+        try {
+            startNewSpan(component, operation);
+            runable.run();
+        } finally {
+            finishSpan();
+        }
     }
 
     private void internalFinishSpan(Span span, long duration) {
