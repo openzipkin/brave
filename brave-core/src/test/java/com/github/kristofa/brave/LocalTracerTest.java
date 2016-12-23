@@ -112,9 +112,7 @@ public class LocalTracerTest {
 
     @Test
     public void startSpan_unsampled() {
-        localTracer = LocalTracer
-                .builder(localTracer)
-                .traceSampler(Sampler.create(0.0f)).build();
+        localTracer = localTracer.toBuilder().traceSampler(Sampler.create(0.0f)).build();
 
         assertNull(localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
     }
@@ -160,8 +158,7 @@ public class LocalTracerTest {
     @Test
     public void startSpan_with_inheritable_nested_local_spans() {
         state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
-        localTracer = LocalTracer
-                .builder(localTracer)
+        localTracer = localTracer.toBuilder()
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .allowNestedLocalSpans(true)
                 .build();
@@ -187,8 +184,7 @@ public class LocalTracerTest {
     @Test
     public void startSpan_nested_local_spans_disabled() {
         state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
-        localTracer = LocalTracer
-                .builder(localTracer)
+        localTracer = localTracer.toBuilder()
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
                 .allowNestedLocalSpans(false)
                 .build();
@@ -234,8 +230,7 @@ public class LocalTracerTest {
 
     @Test
     public void startNewSpan_rootSpanWith128bitTraceId() {
-        localTracer = new AutoValue_LocalTracer.Builder(localTracer)
-            .traceId128Bit(true).build();
+        localTracer = localTracer.toBuilder().traceId128Bit(true).build();
         when(mockRandom.nextLong()).thenReturn(1L, 3L);
 
         SpanId newContext = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);

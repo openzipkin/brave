@@ -31,6 +31,9 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         return new AutoValue_ClientTracer.Builder();
     }
 
+    // visible for testing
+    abstract Builder toBuilder();
+
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
     abstract Reporter<zipkin.Span> reporter();

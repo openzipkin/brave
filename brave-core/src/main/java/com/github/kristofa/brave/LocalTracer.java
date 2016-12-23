@@ -43,9 +43,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     }
 
     // visible for testing
-    static Builder builder(LocalTracer source) {
-        return new AutoValue_LocalTracer.Builder(source);
-    }
+    abstract Builder toBuilder();
 
     @Override
     abstract LocalSpanAndEndpoint spanAndEndpoint();
