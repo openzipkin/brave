@@ -93,8 +93,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetStateUnknownSamplerTrue_128Bit() {
-        serverTracer = new AutoValue_ServerTracer.Builder(serverTracer)
-            .traceId128Bit(true).build();
+        serverTracer = serverTracer.toBuilder().traceId128Bit(true).build();
 
         when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);

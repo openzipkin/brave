@@ -260,8 +260,7 @@ public class ClientTracerTest {
 
     @Test
     public void startNewSpan_rootSpanWith128bitTraceId() {
-        clientTracer = new AutoValue_ClientTracer.Builder(clientTracer)
-            .traceId128Bit(true).build();
+        clientTracer = clientTracer.toBuilder().traceId128Bit(true).build();
         when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
         when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
 

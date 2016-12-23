@@ -116,9 +116,7 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handle_externallyProvisionedIds_localSample_false() {
-        serverTracer = new AutoValue_ServerTracer.Builder(serverTracer)
-            .traceSampler(Sampler.NEVER_SAMPLE)
-            .build();
+        serverTracer = serverTracer.toBuilder().traceSampler(Sampler.NEVER_SAMPLE).build();
         interceptor = new ServerRequestInterceptor(serverTracer);
 
         // Those only controlling IDs leave sampled flag unset

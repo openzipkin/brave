@@ -32,6 +32,9 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         return new AutoValue_ServerTracer.Builder();
     }
 
+    // visible for testing
+    abstract Builder toBuilder();
+
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Reporter<zipkin.Span> reporter();
