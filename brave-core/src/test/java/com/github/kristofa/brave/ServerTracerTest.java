@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Constants;
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ServerTracerTest {
 
