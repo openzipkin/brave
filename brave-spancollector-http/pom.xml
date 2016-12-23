@@ -27,9 +27,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.zipkin.brave</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
-            <version>3.16.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>

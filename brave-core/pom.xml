@@ -64,8 +64,8 @@
     <!-- for testing SpanId -->
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-core_2.11</artifactId>
-      <version>6.38.0</version>
+      <artifactId>finagle-core_2.12</artifactId>
+      <version>6.41.0</version>
       <scope>test</scope>
     </dependency>
 

@@ -23,14 +23,15 @@
    </licenses>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <resteasy.version>2.3.5.Final</resteasy.version>
+    <!-- 2.3.10.Final has an unpublished dependency. This is the version prior to that -->
+    <resteasy.version>2.3.7.Final</resteasy.version>
   </properties>
   
   <dependencies>
     <dependency>
-        <groupId>io.zipkin.brave</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-http</artifactId>
-        <version>3.16.1-SNAPSHOT</version>
+        <version>${project.version}</version>
     </dependency>
     <dependency>
 		<groupId>org.jboss.resteasy</groupId>

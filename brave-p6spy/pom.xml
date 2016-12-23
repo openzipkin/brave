@@ -23,15 +23,15 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <p6spy.version>3.0.0</p6spy.version>
-        <derby.version>10.12.1.1</derby.version>
+        <derby.version>10.13.1.1</derby.version>
+        <!-- Tests fail on connect exception using latest liquibase -->
         <liquibase.version>3.0.8</liquibase.version>
-        <jmh.version>1.12</jmh.version>
     </properties>
 
     <dependencies>
 
         <dependency>
-            <groupId>io.zipkin.brave</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
             <version>${project.version}</version>
         </dependency>
