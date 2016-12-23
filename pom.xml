@@ -190,6 +190,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
+            <!-- The async client does not share a version with the other httpcomponents -->
             <version>4.1.2</version>
         </dependency>
         <dependency>
