@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import com.twitter.finagle.tracing.TraceId;
 import com.twitter.finagle.tracing.TraceId$;
-import com.twitter.zipkin.gen.Span;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -212,16 +211,5 @@ public class SpanIdTest {
 
     assertThat(SpanId.fromBytes(id.bytes()))
         .isEqualTo(id);
-  }
-
-  @Test
-  public void toSpan_128() {
-    SpanId id = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
-
-    Span span = Span.fromSpanId(id);
-    assertThat(span.getTrace_id_high()).isEqualTo(id.traceIdHigh);
-    assertThat(span.getTrace_id()).isEqualTo(id.traceId);
-    assertThat(span.getId()).isEqualTo(id.spanId);
-    assertThat(span.getParent_id()).isEqualTo(id.parentId);
   }
 }

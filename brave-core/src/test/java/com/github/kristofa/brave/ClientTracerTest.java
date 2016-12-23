@@ -35,15 +35,14 @@ public class ClientTracerTest {
     private Random mockRandom;
     private SpanCollector mockCollector;
     private ClientTracer clientTracer;
-    private Span mockSpan;
     private Sampler mockSampler;
+    private Span span = Span.create(SpanId.builder().spanId(TRACE_ID).build());
 
     @Before
     public void setup() {
         mockSampler = mock(Sampler.class);
         mockRandom = mock(Random.class);
         mockCollector = mock(SpanCollector.class);
-        mockSpan = mock(Span.class);
 
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
@@ -68,8 +67,7 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientSent() {
-        Span clientSent = new Span();
-        state.setCurrentClientSpan(clientSent);
+        state.setCurrentClientSpan(span);
         clientTracer.setClientSent();
 
         final Annotation expectedAnnotation = Annotation.create(
@@ -79,14 +77,13 @@ public class ClientTracerTest {
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(START_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
-        assertEquals(expectedAnnotation, clientSent.getAnnotations().get(0));
+        assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
+        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
     }
 
     @Test
     public void testSetClientSentServerAddress() {
-        Span clientSent = new Span();
-        state.setCurrentClientSpan(clientSent);
+        state.setCurrentClientSpan(span);
 
         clientTracer.setClientSent(Endpoint.builder()
             .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).serviceName("foobar").build());
@@ -98,24 +95,23 @@ public class ClientTracerTest {
         );
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(START_TIME_MICROSECONDS, clientSent.getTimestamp().longValue());
-        assertEquals(expectedAnnotation, clientSent.getAnnotations().get(0));
+        assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
+        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
 
         BinaryAnnotation serverAddress = BinaryAnnotation.address(
             Constants.SERVER_ADDR,
             Endpoint.builder().serviceName("foobar").ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).build()
         );
-        assertEquals(serverAddress, clientSent.getBinary_annotations().get(0));
+        assertEquals(serverAddress, span.getBinary_annotations().get(0));
     }
 
     @Test
     public void testSetClientSentServerAddress_noServiceName() {
-        Span clientSent = new Span();
-        state.setCurrentClientSpan(clientSent);
+        state.setCurrentClientSpan(span);
 
         clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
-        assertEquals("unknown", clientSent.getBinary_annotations().get(0).host.service_name);
+        assertEquals("unknown", span.getBinary_annotations().get(0).host.service_name);
     }
 
     @Test
@@ -124,13 +120,12 @@ public class ClientTracerTest {
 
         clientTracer.setClientReceived();
 
-        verifyNoMoreInteractions(mockSpan, mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
     public void testSetClientReceived() {
-        Span clientRecv = new Span().setName("foo").setTimestamp(100L);
-        state.setCurrentClientSpan(clientRecv);
+        state.setCurrentClientSpan(span.setName("foo").setTimestamp(100L));
 
         clientTracer.setClientReceived();
 
@@ -143,11 +138,11 @@ public class ClientTracerTest {
         assertNull(state.getCurrentClientSpan());
         assertEquals(state.endpoint(), state.endpoint());
 
-        verify(mockCollector).collect(clientRecv);
+        verify(mockCollector).collect(span);
         verifyNoMoreInteractions(mockCollector, mockSampler);
 
-        assertEquals(START_TIME_MICROSECONDS - clientRecv.getTimestamp().longValue(), clientRecv.getDuration().longValue());
-        assertEquals(expectedAnnotation, clientRecv.getAnnotations().get(0));
+        assertEquals(START_TIME_MICROSECONDS - span.getTimestamp().longValue(), span.getDuration().longValue());
+        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
     }
 
     @Test
@@ -156,7 +151,7 @@ public class ClientTracerTest {
 
         assertNull(clientTracer.startNewSpan(REQUEST_NAME));
 
-        verifyNoMoreInteractions(mockSpan, mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector, mockSampler);
     }
 
     @Test
@@ -172,10 +167,7 @@ public class ClientTracerTest {
         assertEquals(TRACE_ID, newSpanId.spanId);
         assertNull(newSpanId.nullableParentId());
 
-        assertEquals(
-                Span.fromSpanId(SpanId.builder().spanId(TRACE_ID).build()).setName(REQUEST_NAME),
-                state.getCurrentClientSpan()
-        );
+        assertEquals(span.setName(REQUEST_NAME), state.getCurrentClientSpan());
 
         verify(mockSampler).isSampled(TRACE_ID);
 
@@ -188,16 +180,13 @@ public class ClientTracerTest {
         state.setCurrentServerSpan(parentSpan);
         when(mockRandom.nextLong()).thenReturn(1L);
 
-        final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertNotNull(newSpanId);
-        assertEquals(TRACE_ID, newSpanId.traceId);
-        assertEquals(1L, newSpanId.spanId);
-        assertEquals(PARENT_SPAN_ID.spanId, newSpanId.parentId);
+        final SpanId newContext = clientTracer.startNewSpan(REQUEST_NAME);
+        assertNotNull(newContext);
+        assertEquals(TRACE_ID, newContext.traceId);
+        assertEquals(1L, newContext.spanId);
+        assertEquals(PARENT_SPAN_ID.spanId, newContext.parentId);
 
-        assertEquals(
-                Span.fromSpanId(newSpanId).setName(REQUEST_NAME),
-                state.getCurrentClientSpan()
-        );
+        assertEquals(Span.create(newContext).setName(REQUEST_NAME), state.getCurrentClientSpan());
 
         verifyNoMoreInteractions(mockCollector, mockSampler);
     }
@@ -220,33 +209,31 @@ public class ClientTracerTest {
 
     @Test
     public void setClientReceived_usesPreciseDuration() {
-        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
-        state.setCurrentClientSpan(finished);
+        state.setCurrentClientSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
         clientTracer.setClientReceived();
 
-        verify(mockCollector).collect(finished);
+        verify(mockCollector).collect(span);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(500L, finished.getDuration().longValue());
+        assertEquals(500L, span.getDuration().longValue());
     }
 
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setClientReceived_lessThanMicrosRoundUp() {
-        Span finished = new Span().setName("foo").setTimestamp(START_TIME_MICROSECONDS);
-        state.setCurrentClientSpan(finished);
+        state.setCurrentClientSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
         clientTracer.setClientReceived();
 
-        verify(mockCollector).collect(finished);
+        verify(mockCollector).collect(span);
         verifyNoMoreInteractions(mockCollector);
 
-        assertEquals(1L, finished.getDuration().longValue());
+        assertEquals(1L, span.getDuration().longValue());
     }
 
     @Test

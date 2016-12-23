@@ -33,12 +33,12 @@ public class ClientRequestInterceptor {
      */
     public void handle(ClientRequestAdapter adapter) {
 
-        SpanId spanId = clientTracer.startNewSpan(adapter.getSpanName());
-        if (spanId == null) {
+        SpanId context = clientTracer.startNewSpan(adapter.getSpanName());
+        if (context == null) {
             // We will not trace this request.
             adapter.addSpanIdToRequest(null);
         } else {
-            adapter.addSpanIdToRequest(spanId);
+            adapter.addSpanIdToRequest(context);
             for (KeyValueAnnotation annotation : adapter.requestAnnotations()) {
                 clientTracer.submitBinaryAnnotation(annotation.getKey(), annotation.getValue());
             }

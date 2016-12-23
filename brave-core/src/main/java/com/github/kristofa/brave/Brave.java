@@ -47,6 +47,12 @@ public class Brave {
         private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
         private boolean traceId128Bit = false;
 
+        // visible for testing
+        Builder random(Random random) {
+            this.random = random;
+            return this;
+        }
+
         /**
          * Builder which initializes with serviceName = "unknown".
          * <p>
@@ -293,7 +299,7 @@ public class Brave {
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
-        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(SpanAndEndpoint.ServerSpanAndEndpoint.create(builder.state));
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(SpanAndEndpoint.ServerSpanAndEndpoint.create(builder.state), builder.clock);
         serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);

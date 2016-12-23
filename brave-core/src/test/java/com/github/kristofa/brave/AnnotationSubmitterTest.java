@@ -28,7 +28,7 @@ public class AnnotationSubmitterTest {
 
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
-    private Span span = new Span().setName("foo");
+    private Span span = Span.create(SpanId.builder().spanId(1).build()).setName("foo");
     private AnnotationSubmitter annotationSubmitter;
 
     @Before

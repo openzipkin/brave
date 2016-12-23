@@ -16,6 +16,7 @@ package com.github.kristofa.brave.internal;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Span;
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
@@ -35,7 +36,7 @@ public final class MaybeAddClientAddressTest {
 
   @Mock
   ServerSpan serverSpan;
-  Span span = new Span();
+  Span span = Span.create(SpanId.builder().spanId(1L).build());
   @Mock
   Brave brave;
   @Mock

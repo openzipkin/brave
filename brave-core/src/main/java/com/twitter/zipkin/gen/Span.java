@@ -9,17 +9,17 @@ import java.util.List;
 
 import static com.github.kristofa.brave.internal.Util.equal;
 
-/**
- * A trace is a series of spans (often RPC calls) which form a latency tree.
- * 
- * The root span is where trace_id = id and parent_id = Nil. The root span is
- * usually the longest interval in the trace, starting with a SERVER_RECV
- * annotation and ending with a SERVER_SEND.
- */
+/** This is an internal type representing a span in the trace tree. */
 public class Span implements Serializable {
+
+  /** Internal. Do not create spans directly */
+  public static Span create(SpanId spanId) {
+    return new Span(spanId);
+  }
 
   static final long serialVersionUID = 1L;
 
+  private final SpanId context; // nullable for deprecated constructor
   private long trace_id; // required
   private long trace_id_high; // optional (default to zero)
   private String name; // required
@@ -31,10 +31,37 @@ public class Span implements Serializable {
   private Long timestamp; // optional
   private Long duration; // optional
 
+  /** @deprecated internally we call {@link Span#Span(SpanId)} because it sets the identity */
+  @Deprecated
+  public Span() {
+    context = null;
+  }
+
+  Span(SpanId context) {
+    this.context = context;
+    trace_id_high = context.traceIdHigh;
+    trace_id = context.traceId;
+    parent_id = context.nullableParentId();
+    id = context.spanId;
+    name = ""; // avoid NPE on equals
+    if (context.debug()) debug = true;
+  }
+
+  /**
+   * Internal api that returns the trace context this span was created with.
+   *
+   * @since 3.17
+   */
+  public SpanId context() {
+    return context;
+  }
+
   public long getTrace_id() {
     return this.trace_id;
   }
 
+  /** @deprecated do not modify the context of a span once created */
+  @Deprecated
   public Span setTrace_id(long trace_id) {
     this.trace_id = trace_id;
     return this;
@@ -50,6 +77,8 @@ public class Span implements Serializable {
     return this.trace_id_high;
   }
 
+  /** @deprecated do not modify the context of a span once created */
+  @Deprecated
   public Span setTrace_id_high(long trace_id_high) {
     this.trace_id_high = trace_id_high;
     return this;
@@ -81,6 +110,8 @@ public class Span implements Serializable {
     return this.id;
   }
 
+  /** @deprecated do not modify the context of a span once created */
+  @Deprecated
   public Span setId(long id) {
     this.id = id;
     return this;
@@ -90,6 +121,8 @@ public class Span implements Serializable {
     return this.parent_id;
   }
 
+  /** @deprecated do not modify the context of a span once created */
+  @Deprecated
   public Span setParent_id(Long parent_id) {
     this.parent_id = parent_id;
     return this;
@@ -104,11 +137,12 @@ public class Span implements Serializable {
   }
 
   public List<Annotation> getAnnotations() {
-    return this.annotations;
+    return Collections.unmodifiableList(this.annotations);
   }
 
   public Span setAnnotations(List<Annotation> annotations) {
-    this.annotations = annotations;
+    if (this.annotations != Collections.EMPTY_LIST) this.annotations.clear();
+    for (Annotation a : annotations) addToAnnotations(a);
     return this;
   }
 
@@ -121,11 +155,12 @@ public class Span implements Serializable {
   }
 
   public List<BinaryAnnotation> getBinary_annotations() {
-    return this.binary_annotations;
+    return Collections.unmodifiableList(this.binary_annotations);
   }
 
   public Span setBinaryAnnotations(List<BinaryAnnotation> binary_annotations) {
-    this.binary_annotations = binary_annotations;
+    if (this.binary_annotations != Collections.EMPTY_LIST) this.binary_annotations.clear();
+    for (BinaryAnnotation b : binary_annotations) addToBinary_annotations(b);
     return this;
   }
 
@@ -133,6 +168,8 @@ public class Span implements Serializable {
     return this.debug;
   }
 
+  /** @deprecated do not modify the context of a span once created */
+  @Deprecated
   public Span setDebug(Boolean debug) {
     this.debug = debug;
     return this;
@@ -220,23 +257,19 @@ public class Span implements Serializable {
 
   @Override
   public boolean equals(Object o) {
-    if (o == this) {
-      return true;
-    }
-    if (o instanceof Span) {
-      Span that = (Span) o;
-      return (this.trace_id_high == that.trace_id_high)
-          && (this.trace_id == that.trace_id)
-          && (this.name.equals(that.name))
-          && (this.id == that.id)
-          && equal(this.parent_id, that.parent_id)
-          && equal(this.timestamp, that.timestamp)
-          && equal(this.duration, that.duration)
-          && equal(this.annotations, that.annotations)
-          && equal(this.binary_annotations, that.binary_annotations)
-          && equal(this.debug, that.debug);
-    }
-    return false;
+    if (o == this) return true;
+    if (!(o instanceof Span)) return false;
+    Span that = (Span) o;
+    return (this.trace_id_high == that.trace_id_high)
+        && (this.trace_id == that.trace_id)
+        && (this.name.equals(that.name))
+        && (this.id == that.id)
+        && equal(this.parent_id, that.parent_id)
+        && equal(this.timestamp, that.timestamp)
+        && equal(this.duration, that.duration)
+        && equal(this.annotations, that.annotations)
+        && equal(this.binary_annotations, that.binary_annotations)
+        && equal(this.debug, that.debug);
   }
 
   @Override
@@ -268,51 +301,6 @@ public class Span implements Serializable {
   @Override
   public String toString() {
     return new String(SpanCodec.JSON.writeSpan(this), Util.UTF_8);
-  }
-
-  public static Span fromSpanId(SpanId spanId) {
-    Span result = new Span();
-    result.setTrace_id_high(spanId.traceIdHigh);
-    result.setTrace_id(spanId.traceId);
-    result.setParent_id(spanId.nullableParentId());
-    result.setId(spanId.spanId);
-    result.setName(""); // avoid NPE on equals
-    if (spanId.debug()) result.setDebug(true);
-    return result;
-  }
-
-  /** Changes this to a zipkin-native span object. */
-  public zipkin.Span toZipkin() {
-    zipkin.Span.Builder result = zipkin.Span.builder();
-    result.traceId(getTrace_id());
-    result.traceIdHigh(getTrace_id_high());
-    result.id(getId());
-    result.parentId(getParent_id());
-    result.name(getName());
-    result.timestamp(getTimestamp());
-    result.duration(getDuration());
-    result.debug(isDebug());
-    for (Annotation a : getAnnotations()) {
-      result.addAnnotation(zipkin.Annotation.create(a.timestamp, a.value, from(a.host)));
-    }
-    for (BinaryAnnotation a : getBinary_annotations()) {
-      result.addBinaryAnnotation(zipkin.BinaryAnnotation.builder()
-          .key(a.key)
-          .value(a.value)
-          .type(zipkin.BinaryAnnotation.Type.fromValue(a.type.getValue()))
-          .endpoint(from(a.host))
-          .build());
-    }
-    return result.build();
-  }
-
-  private static zipkin.Endpoint from(Endpoint host) {
-    if (host == null) return null;
-    return zipkin.Endpoint.builder()
-        .ipv4(host.ipv4)
-        .ipv6(host.ipv6)
-        .port(host.port)
-        .serviceName(host.service_name).build();
   }
 }
 

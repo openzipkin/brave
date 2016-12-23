@@ -30,14 +30,13 @@ import com.twitter.zipkin.gen.Span;
 public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
-    private Span span;
+    Span span = Span.create(SpanId.builder().spanId(1L).build());
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
 
     @Before
     public void setup() {
         executorService = Executors.newFixedThreadPool(4);
-        span = new Span();
     }
 
     @After
@@ -48,7 +47,7 @@ public class ITAnnotationSubmitterConcurrency {
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
 
-        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint));
+        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint), AnnotationSubmitter.DefaultClock.INSTANCE);
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

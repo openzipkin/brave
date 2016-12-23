@@ -34,12 +34,10 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
-    abstract Random randomGenerator();
     abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
     @Override
     abstract AnnotationSubmitter.Clock clock();
-    abstract boolean traceId128Bit();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -86,21 +84,21 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     @Deprecated
     public void setStateCurrentTrace(long traceId, long spanId, @Nullable Long parentSpanId, String name) {
-        SpanId id = SpanId.builder().traceId(traceId).spanId(spanId).parentId(parentSpanId).build();
-        setStateCurrentTrace(id, name);
+        SpanId context = SpanId.builder().traceId(traceId).spanId(spanId).parentId(parentSpanId).build();
+        setStateCurrentTrace(context, name);
     }
 
     /**
      * Sets the current Trace/Span state. Using this method indicates we are part of an existing trace/span.
      *
-     * @param spanId includes the trace identifiers extracted from the wire
+     * @param context includes the trace identifiers extracted from the wire
      * @param spanName should not be empty or <code>null</code>.
      * @see ServerTracer#setStateNoTracing()
      * @see ServerTracer#setStateUnknown(String)
      */
-    public void setStateCurrentTrace(SpanId spanId, String spanName) {
+    public void setStateCurrentTrace(SpanId context, String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        ServerSpan span = ServerSpan.create(spanId, spanName);
+        ServerSpan span = ServerSpan.create(context, spanName);
         spanAndEndpoint().state().setCurrentServerSpan(span);
     }
 
@@ -124,17 +122,12 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        long newTraceId = randomGenerator().nextLong();
-        if (!traceSampler().isSampled(newTraceId)) {
+        SpanId nextContext = nextContext(null);
+        if (!traceSampler().isSampled(nextContext.traceId)) {
             spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
             return;
         }
-        SpanId spanId = SpanId.builder()
-            .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
-            .traceId(newTraceId)
-            .spanId(newTraceId)
-            .build();
-        setStateCurrentTrace(spanId, spanName);
+        setStateCurrentTrace(nextContext, spanName);
     }
 
     /**

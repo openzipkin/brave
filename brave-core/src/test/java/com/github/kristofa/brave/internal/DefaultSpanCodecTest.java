@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.internal;
 
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -19,10 +20,8 @@ public class DefaultSpanCodecTest {
       .ipv6(sun.net.util.IPAddressUtil.textToNumericFormatV6("2001:db8::c001"))
       .port(80).build();
 
-  Span span = new Span() // browser calls web
-      .setTrace_id(-692101025335252320L)
+  Span span = Span.create(SpanId.builder().spanId(-692101025335252320L).build()) // browser calls web
       .setName("get")
-      .setId(-692101025335252320L)
       .setTimestamp(1444438900939000L)
       .setDuration(376000L)
       .addToAnnotations(Annotation.create(1444438900939000L, Constants.SERVER_RECV, web))
@@ -51,7 +50,7 @@ public class DefaultSpanCodecTest {
 
   @Test
   public void roundTripSpan_json_128() {
-    span.setTrace_id_high(3L);
+    span = Span.create(span.context().toBuilder().traceIdHigh(3L).build());
 
     byte[] encoded = DefaultSpanCodec.JSON.writeSpan(span);
     assertEquals(span, DefaultSpanCodec.JSON.readSpan(encoded));
