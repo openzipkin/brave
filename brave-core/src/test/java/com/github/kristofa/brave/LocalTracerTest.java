@@ -6,16 +6,13 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
-import java.util.Random;
-
-import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
 import com.github.kristofa.brave.internal.Util;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -23,7 +20,11 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import zipkin.reporter.Reporter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class LocalTracerTest {
     private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
@@ -32,34 +33,22 @@ public class LocalTracerTest {
     private static final SpanId PARENT_CONTEXT = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
     private static final String COMPONENT_NAME = "componentname";
     private static final String OPERATION_NAME = "operationname";
+    private static final Endpoint endpoint = Endpoint.create("serviceName", 80);
 
-    private ServerClientAndLocalSpanState state;
-    private Random mockRandom;
     private Reporter<zipkin.Span> mockReporter;
-    private LocalTracer localTracer;
+    private Brave brave;
     private Span span = Span.create(SpanId.builder().spanId(TRACE_ID).build());
 
     @Before
     public void setup() {
-        mockRandom = mock(Random.class);
-        when(mockRandom.nextLong()).thenReturn(555L);
-
+        ThreadLocalServerClientAndLocalSpanState.clear();
         mockReporter = mock(Reporter.class);
 
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
 
-        state = new TestServerClientAndLocalSpanStateCompilation();
-        localTracer = LocalTracer.builder()
-                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
-                .randomGenerator(mockRandom)
-                .reporter(mockReporter)
-                .allowNestedLocalSpans(false)
-                .traceSampler(Sampler.create(1.0f))
-                .clock(new AnnotationSubmitter.DefaultClock())
-                .traceId128Bit(false)
-                .build();
+        brave = braveBuilder().build();
     }
 
     /**
@@ -73,20 +62,24 @@ public class LocalTracerTest {
      */
     @Test
     public void startNewSpan() {
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
+        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        SpanId expectedContext = PARENT_CONTEXT.toBuilder().spanId(555L).parentId(PARENT_CONTEXT.spanId).build();
+        SpanId newContext = brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertThat(newContext).isEqualTo(
+            PARENT_CONTEXT.toBuilder()
+                .parentId(PARENT_CONTEXT.spanId)
+                .spanId(newContext.spanId)
+                .build()
+        );
 
-        assertEquals(expectedContext, localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
-
-        Span started = state.getCurrentLocalSpan();
+        Span started = brave.localSpanThreadBinder().getCurrentLocalSpan();
 
         assertEquals(START_TIME_MICROSECONDS, started.getTimestamp().longValue());
         assertEquals("lc", started.getBinary_annotations().get(0).getKey());
         assertEquals(COMPONENT_NAME, new String(started.getBinary_annotations().get(0).getValue(), Util.UTF_8));
-        assertEquals(state.endpoint(), started.getBinary_annotations().get(0).host);
+        assertThat(started.getBinary_annotations().get(0).host).isEqualTo(endpoint);
         assertEquals(OPERATION_NAME, started.getName());
     }
 
@@ -102,19 +95,19 @@ public class LocalTracerTest {
      */
     @Test
     public void startSpan_userSuppliedTimestamp() {
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
+        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
 
-        localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
+        brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
 
-        Span started = state.getCurrentLocalSpan();
+        Span started = brave.localSpanThreadBinder().getCurrentLocalSpan();
         assertEquals(1000L, started.getTimestamp().longValue());
     }
 
     @Test
     public void startSpan_unsampled() {
-        localTracer = localTracer.toBuilder().traceSampler(Sampler.create(0.0f)).build();
+        brave = braveBuilder().traceSampler(Sampler.NEVER_SAMPLE).build();
 
-        assertNull(localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME));
+        assertNull(brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME));
     }
 
     /**
@@ -128,11 +121,13 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan() {
-        state.setCurrentLocalSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
+        brave.localSpanThreadBinder().setCurrentSpan(
+            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
+        );
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
-        localTracer.finishSpan();
+        brave.localTracer().finishSpan();
 
         verify(mockReporter).report(toZipkin(span));
         verifyNoMoreInteractions(mockReporter);
@@ -143,11 +138,13 @@ public class LocalTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void finishSpan_lessThanMicrosRoundUp() {
-        state.setCurrentLocalSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
+        brave.localSpanThreadBinder().setCurrentSpan(
+            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
+        );
 
         PowerMockito.when(System.nanoTime()).thenReturn(50L);
 
-        localTracer.finishSpan();
+        brave.localTracer().finishSpan();
 
         verify(mockReporter).report(toZipkin(span));
         verifyNoMoreInteractions(mockReporter);
@@ -157,48 +154,21 @@ public class LocalTracerTest {
 
     @Test
     public void startSpan_with_inheritable_nested_local_spans() {
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
-        localTracer = localTracer.toBuilder()
-                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
-                .allowNestedLocalSpans(true)
-                .build();
+        InheritableServerClientAndLocalSpanState state =
+            new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
+        brave = new Brave.Builder(state).reporter(mockReporter).build();
+        LocalTracer localTracer = brave.localTracer();
 
         assertNull(localTracer.maybeParent());
         state.setCurrentServerSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
 
         SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(PARENT_CONTEXT.toBuilder().spanId(555L).parentId(PARENT_CONTEXT.spanId).build(), span1);
+        assertEquals(PARENT_CONTEXT.toBuilder().spanId(span1.spanId).parentId(PARENT_CONTEXT.spanId).build(), span1);
         assertEquals(span1.spanId, localTracer.maybeParent().getId());
 
         SpanId span2 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(PARENT_CONTEXT.toBuilder().spanId(555L).parentId(span1.spanId).build(), span2);
+        assertEquals(PARENT_CONTEXT.toBuilder().spanId(span2.spanId).parentId(span1.spanId).build(), span2);
         assertEquals(span2.spanId, localTracer.maybeParent().getId());
-
-        assertEquals(span2.spanId, state.getCurrentLocalSpan().getId());
-        localTracer.finishSpan();
-        assertEquals(span1.spanId, state.getCurrentLocalSpan().getId());
-        localTracer.finishSpan();
-        assertNull(state.getCurrentLocalSpan());
-    }
-
-    @Test
-    public void startSpan_nested_local_spans_disabled() {
-        state = new InheritableServerClientAndLocalSpanState(Endpoint.create("test-service", 127 << 24 | 1));
-        localTracer = localTracer.toBuilder()
-                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(state))
-                .allowNestedLocalSpans(false)
-                .build();
-
-        assertNull(localTracer.maybeParent());
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
-
-        SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(PARENT_CONTEXT.toBuilder().spanId(555L).parentId(PARENT_CONTEXT.spanId).build(), span1);
-        assertEquals(state.getCurrentServerSpan().getSpan(), localTracer.maybeParent());
-
-        SpanId span2 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(PARENT_CONTEXT.toBuilder().spanId(555L).parentId(PARENT_CONTEXT.spanId).build(), span2);
-        assertEquals(state.getCurrentServerSpan().getSpan(), localTracer.maybeParent());
 
         assertEquals(span2.spanId, state.getCurrentLocalSpan().getId());
         localTracer.finishSpan();
@@ -211,30 +181,30 @@ public class LocalTracerTest {
     public void startNewSpan_whenParentHas128bitTraceId() {
         ServerSpan parentSpan = ServerSpan.create(
             PARENT_CONTEXT.toBuilder().traceIdHigh(3).build(), "name");
-        state.setCurrentServerSpan(parentSpan);
-        when(mockRandom.nextLong()).thenReturn(1L);
+        brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
-        SpanId newContext = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        SpanId newContext = brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(3, newContext.traceIdHigh);
         assertEquals(TRACE_ID, newContext.traceId);
     }
 
     @Test
     public void startNewSpan_rootSpanWith64bitTraceId() {
-        when(mockRandom.nextLong()).thenReturn(1L);
-
-        SpanId newContext = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(0, newContext.traceIdHigh);
-        assertEquals(1, newContext.traceId);
+        SpanId newContext = brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertThat(newContext.traceIdHigh).isZero();
+        assertThat(newContext.traceId).isNotZero();
     }
 
     @Test
     public void startNewSpan_rootSpanWith128bitTraceId() {
-        localTracer = localTracer.toBuilder().traceId128Bit(true).build();
-        when(mockRandom.nextLong()).thenReturn(1L, 3L);
+        brave = braveBuilder().traceId128Bit(true).build();
 
-        SpanId newContext = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
-        assertEquals(3, newContext.traceIdHigh);
-        assertEquals(1, newContext.traceId);
+        SpanId newContext = brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME);
+        assertThat(newContext.traceIdHigh).isNotZero();
+        assertThat(newContext.traceId).isNotZero();
+    }
+
+    Brave.Builder braveBuilder() {
+        return new Brave.Builder(endpoint).reporter(mockReporter);
     }
 }

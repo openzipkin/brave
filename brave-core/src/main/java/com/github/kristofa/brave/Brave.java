@@ -260,7 +260,7 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
-        serverTracer = ServerTracer.builder()
+        serverTracer = new AutoValue_ServerTracer.Builder()
                 .randomGenerator(builder.random)
                 .reporter(builder.reporter)
                 .state(builder.state)
@@ -269,7 +269,7 @@ public class Brave {
                 .traceId128Bit(builder.traceId128Bit)
                 .build();
 
-        clientTracer = ClientTracer.builder()
+        clientTracer = new AutoValue_ClientTracer.Builder()
                 .randomGenerator(builder.random)
                 .reporter(builder.reporter)
                 .state(builder.state)
@@ -278,7 +278,7 @@ public class Brave {
                 .traceId128Bit(builder.traceId128Bit)
                 .build();
 
-        localTracer = LocalTracer.builder()
+        localTracer = new AutoValue_LocalTracer.Builder()
                 .randomGenerator(builder.random)
                 .reporter(builder.reporter)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)

@@ -47,12 +47,7 @@ public class ServerTracerTest {
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
 
-        serverTracer = new Brave.Builder(endpoint)
-            .spanCollector(mockSpanCollector)
-            .traceSampler(mockSampler)
-            .clock(new AnnotationSubmitter.DefaultClock())
-            .traceId128Bit(false)
-            .build().serverTracer();
+        serverTracer = braveBuilder().build().serverTracer();
     }
 
     @Test
@@ -89,7 +84,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetStateUnknownSamplerTrue_128Bit() {
-        serverTracer = serverTracer.toBuilder().traceId128Bit(true).build();
+        serverTracer = braveBuilder().traceId128Bit(true).build().serverTracer();
 
         when(mockSampler.isSampled(anyLong())).thenReturn(true);
 
@@ -249,5 +244,11 @@ public class ServerTracerTest {
         verifyNoMoreInteractions(mockSpanCollector);
 
         assertEquals(1L, span.getDuration().longValue());
+    }
+
+    Brave.Builder braveBuilder() {
+        return new Brave.Builder(endpoint)
+            .spanCollector(mockSpanCollector)
+            .traceSampler(mockSampler);
     }
 }

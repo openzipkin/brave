@@ -4,7 +4,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Random;
 import org.junit.Test;
 import zipkin.reporter.Reporter;
 
@@ -23,15 +22,8 @@ public class ServerRequestInterceptorTest {
 
     InheritableServerClientAndLocalSpanState state =
         new InheritableServerClientAndLocalSpanState(mock(Endpoint.class));
-    ServerTracer serverTracer = new AutoValue_ServerTracer.Builder()
-        .state(state)
-        .randomGenerator(mock(Random.class))
-        .reporter(Reporter.NOOP)
-        .traceSampler(Sampler.ALWAYS_SAMPLE)
-        .clock(AnnotationSubmitter.DefaultClock.INSTANCE)
-        .traceId128Bit(false)
-        .build();
-    ServerRequestInterceptor interceptor = new ServerRequestInterceptor(serverTracer);
+    Brave brave = braveBuilder().build();
+    ServerRequestInterceptor interceptor = new ServerRequestInterceptor(brave.serverTracer());
     ServerRequestAdapter adapter = mock(ServerRequestAdapter.class);
 
     @Test
@@ -39,7 +31,7 @@ public class ServerRequestInterceptorTest {
         when(adapter.getTraceData()).thenReturn(TraceData.NOT_SAMPLED);
         interceptor.handle(adapter);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(brave.serverSpanThreadBinder().getCurrentServerSpan())
             .isEqualTo(ServerSpan.NOT_SAMPLED);
     }
 
@@ -51,7 +43,7 @@ public class ServerRequestInterceptorTest {
 
         interceptor.handle(adapter);
 
-        ServerSpan span = serverTracer.spanAndEndpoint().state().getCurrentServerSpan();
+        ServerSpan span = brave.serverSpanThreadBinder().getCurrentServerSpan();
         assertThat(span.getSpan().getName())
             .isEqualTo(SPAN_NAME.toLowerCase());
         assertThat(span.getSample())
@@ -116,8 +108,8 @@ public class ServerRequestInterceptorTest {
 
     @Test
     public void handle_externallyProvisionedIds_localSample_false() {
-        serverTracer = serverTracer.toBuilder().traceSampler(Sampler.NEVER_SAMPLE).build();
-        interceptor = new ServerRequestInterceptor(serverTracer);
+        brave = braveBuilder().traceSampler(Sampler.NEVER_SAMPLE).build();
+        interceptor = new ServerRequestInterceptor(brave.serverTracer());
 
         // Those only controlling IDs leave sampled flag unset
         SpanId spanId = SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).parentId(null).build();
@@ -125,7 +117,11 @@ public class ServerRequestInterceptorTest {
         when(adapter.getTraceData()).thenReturn(TraceData.create(spanId));
         interceptor.handle(adapter);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(brave.serverSpanThreadBinder().getCurrentServerSpan())
             .isEqualTo(ServerSpan.NOT_SAMPLED);
+    }
+
+    Brave.Builder braveBuilder() {
+        return new Brave.Builder(state).reporter(Reporter.NOOP);
     }
 }
