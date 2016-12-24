@@ -40,18 +40,12 @@ public class Brave {
 
         private final ServerClientAndLocalSpanState state;
         private Reporter reporter = new LoggingReporter();
-        private Random random = new Random();
+        private final Random random = new Random();
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
         private boolean allowNestedLocalSpans = false;
         private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
         private boolean traceId128Bit = false;
-
-        // visible for testing
-        Builder random(Random random) {
-            this.random = random;
-            return this;
-        }
 
         /**
          * Builder which initializes with serviceName = "unknown".

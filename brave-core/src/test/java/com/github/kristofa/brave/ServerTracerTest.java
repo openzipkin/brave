@@ -4,7 +4,6 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,6 +15,7 @@ import zipkin.Constants;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,14 +35,12 @@ public class ServerTracerTest {
     private ServerTracer serverTracer;
     private SpanCollector mockSpanCollector;
     private Endpoint endpoint = Endpoint.create("service", 0);
-    private Random mockRandom;
     private Sampler mockSampler;
     private Span span = Span.create(CONTEXT);
 
     @Before
     public void setup() {
         mockSpanCollector = mock(SpanCollector.class);
-        mockRandom = mock(Random.class);
         mockSampler = mock(Sampler.class);
 
         PowerMockito.mockStatic(System.class);
@@ -50,7 +48,6 @@ public class ServerTracerTest {
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
 
         serverTracer = new Brave.Builder(endpoint)
-            .random(mockRandom)
             .spanCollector(mockSpanCollector)
             .traceSampler(mockSampler)
             .clock(new AnnotationSubmitter.DefaultClock())
@@ -82,35 +79,29 @@ public class ServerTracerTest {
 
     @Test
     public void testSetStateUnknownSamplerTrue() {
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+        when(mockSampler.isSampled(anyLong())).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.create(SpanId.builder().spanId(TRACE_ID).build(), SPAN_NAME));
+        assertThat(serverTracer.spanAndEndpoint().state().sample())
+            .isTrue();
     }
 
     @Test
     public void testSetStateUnknownSamplerTrue_128Bit() {
         serverTracer = serverTracer.toBuilder().traceId128Bit(true).build();
 
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+        when(mockSampler.isSampled(anyLong())).thenReturn(true);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.create(SpanId.builder()
-                .traceIdHigh(TRACE_ID + 1)
-                .traceId(TRACE_ID)
-                .spanId(TRACE_ID).build(), SPAN_NAME));
+        assertThat(serverTracer.spanAndEndpoint().state().sample())
+            .isTrue();
     }
 
     @Test
     public void testSetStateUnknownSamplerFalse() {
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
+        when(mockSampler.isSampled(anyLong())).thenReturn(false);
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
