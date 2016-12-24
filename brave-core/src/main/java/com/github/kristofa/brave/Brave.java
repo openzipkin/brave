@@ -86,14 +86,14 @@ public class Brave {
          * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(int ip, int port, String serviceName) {
-            state = new ThreadLocalServerClientAndLocalSpanState(ip, port, serviceName);
+            this(Endpoint.builder().serviceName(serviceName).ipv4(ip).port(port).build());
         }
 
         /**
          * @param endpoint Endpoint of the local service being traced.
          */
         public Builder(Endpoint endpoint) {
-            state = new ThreadLocalServerClientAndLocalSpanState(endpoint);
+            this(new ThreadLocalServerClientAndLocalSpanState(endpoint));
         }
 
         /**
@@ -148,8 +148,7 @@ public class Brave {
          */
         @Deprecated
         public Builder spanCollector(SpanCollector spanCollector) {
-            this.reporter = new SpanCollectorReporterAdapter(spanCollector);
-            return this;
+            return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
         public Builder clock(AnnotationSubmitter.Clock clock) {
