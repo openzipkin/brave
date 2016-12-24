@@ -28,18 +28,19 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 @AutoValue
 public abstract class ServerTracer extends AnnotationSubmitter {
 
+    /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
+    @Deprecated
     public static Builder builder() {
         return new AutoValue_ServerTracer.Builder();
     }
-
-    // visible for testing
-    abstract Builder toBuilder();
 
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
 
+    /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
+    @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
 

@@ -1,81 +1,71 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompilation;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Constants;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ClientTracerTest {
 
     private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private static final String REQUEST_NAME = "requestname";
     private static final long TRACE_ID = 105;
-    private static final SpanId PARENT_SPAN_ID = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
+    private static final SpanId PARENT_CONTEXT = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
+    private static final Endpoint endpoint = Endpoint.create("serviceName", 80);
 
-    private ServerClientAndLocalSpanState state = new TestServerClientAndLocalSpanStateCompilation();
-    private Random mockRandom;
     private SpanCollector mockCollector;
-    private ClientTracer clientTracer;
-    private Sampler mockSampler;
     private Span span = Span.create(SpanId.builder().spanId(TRACE_ID).build());
+    private Brave brave;
 
     @Before
     public void setup() {
-        mockSampler = mock(Sampler.class);
-        mockRandom = mock(Random.class);
+        ThreadLocalServerClientAndLocalSpanState.clear();
         mockCollector = mock(SpanCollector.class);
 
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
 
-        clientTracer = ClientTracer.builder()
-            .state(state)
-            .randomGenerator(mockRandom)
-            .spanCollector(mockCollector)
-            .traceSampler(mockSampler)
-            .clock(new AnnotationSubmitter.DefaultClock())
-            .traceId128Bit(false)
-            .build();
+        brave = braveBuilder().build();
     }
 
     @Test
     public void testSetClientSentNoClientSpan() {
-        state.setCurrentClientSpan(null);
-        clientTracer.setClientSent();
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        brave.clientTracer().setClientSent();
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void testSetClientSent() {
-        state.setCurrentClientSpan(span);
-        clientTracer.setClientSent();
+        brave.clientSpanThreadBinder().setCurrentSpan(span);
+        brave.clientTracer().setClientSent();
 
         final Annotation expectedAnnotation = Annotation.create(
             START_TIME_MICROSECONDS,
             Constants.CLIENT_SEND,
-            state.endpoint()
+            endpoint
         );
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
         assertEquals(expectedAnnotation, span.getAnnotations().get(0));
@@ -83,17 +73,17 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientSentServerAddress() {
-        state.setCurrentClientSpan(span);
+        brave.clientSpanThreadBinder().setCurrentSpan(span);
 
-        clientTracer.setClientSent(Endpoint.builder()
+        brave.clientTracer().setClientSent(Endpoint.builder()
             .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).serviceName("foobar").build());
 
         final Annotation expectedAnnotation = Annotation.create(
             START_TIME_MICROSECONDS,
             Constants.CLIENT_SEND,
-            state.endpoint()
+            endpoint
         );
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
         assertEquals(expectedAnnotation, span.getAnnotations().get(0));
@@ -107,39 +97,37 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientSentServerAddress_noServiceName() {
-        state.setCurrentClientSpan(span);
+        brave.clientSpanThreadBinder().setCurrentSpan(span);
 
-        clientTracer.setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
+        brave.clientTracer()
+            .setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
         assertEquals("unknown", span.getBinary_annotations().get(0).host.service_name);
     }
 
     @Test
     public void testSetClientReceivedNoClientSpan() {
-        state.setCurrentClientSpan(null);
+        brave.clientTracer().setClientReceived();
 
-        clientTracer.setClientReceived();
-
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void testSetClientReceived() {
-        state.setCurrentClientSpan(span.setName("foo").setTimestamp(100L));
+        brave.clientSpanThreadBinder().setCurrentSpan(span.setName("foo").setTimestamp(100L));
 
-        clientTracer.setClientReceived();
+        brave.clientTracer().setClientReceived();
 
         final Annotation expectedAnnotation = Annotation.create(
             START_TIME_MICROSECONDS,
             Constants.CLIENT_RECV,
-            state.endpoint()
+            endpoint
         );
 
-        assertNull(state.getCurrentClientSpan());
-        assertEquals(state.endpoint(), state.endpoint());
+        assertNull(brave.clientSpanThreadBinder().getCurrentClientSpan());
 
         verify(mockCollector).collect(span);
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
 
         assertEquals(START_TIME_MICROSECONDS - span.getTimestamp().longValue(), span.getDuration().longValue());
         assertEquals(expectedAnnotation, span.getAnnotations().get(0));
@@ -147,73 +135,64 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleFalse() {
-        state.setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.NOT_SAMPLED);
 
-        assertNull(clientTracer.startNewSpan(REQUEST_NAME));
+        assertNull(brave.clientTracer().startNewSpan(REQUEST_NAME));
 
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void testStartNewSpanSampleNullNotPartOfExistingSpan() {
-        state.setCurrentServerSpan(ServerSpan.EMPTY);
+        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.EMPTY);
 
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
-
-        final SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
+        SpanId newSpanId = brave.clientTracer().startNewSpan(REQUEST_NAME);
         assertNotNull(newSpanId);
-        assertEquals(TRACE_ID, newSpanId.traceId);
-        assertEquals(TRACE_ID, newSpanId.spanId);
         assertNull(newSpanId.nullableParentId());
 
-        assertEquals(span.setName(REQUEST_NAME), state.getCurrentClientSpan());
+        assertThat(brave.clientSpanThreadBinder().getCurrentClientSpan().getName())
+            .isEqualTo(REQUEST_NAME);
 
-        verify(mockSampler).isSampled(TRACE_ID);
-
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-        final ServerSpan parentSpan = ServerSpan.create(PARENT_SPAN_ID, "name");
-        state.setCurrentServerSpan(parentSpan);
-        when(mockRandom.nextLong()).thenReturn(1L);
+        final ServerSpan parentSpan = ServerSpan.create(PARENT_CONTEXT, "name");
+        brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
-        final SpanId newContext = clientTracer.startNewSpan(REQUEST_NAME);
+        SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);
         assertNotNull(newContext);
         assertEquals(TRACE_ID, newContext.traceId);
-        assertEquals(1L, newContext.spanId);
-        assertEquals(PARENT_SPAN_ID.spanId, newContext.parentId);
+        assertEquals(PARENT_CONTEXT.spanId, newContext.parentId);
 
-        assertEquals(Span.create(newContext).setName(REQUEST_NAME), state.getCurrentClientSpan());
+        assertThat(brave.clientSpanThreadBinder().getCurrentClientSpan().getName())
+            .isEqualTo(REQUEST_NAME);
 
-        verifyNoMoreInteractions(mockCollector, mockSampler);
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void testSamplerFalse() {
-        state.setCurrentServerSpan(ServerSpan.EMPTY);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(false);
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
+        brave = braveBuilder().traceSampler(Sampler.NEVER_SAMPLE).build();
+        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.EMPTY);
 
-        assertNull(clientTracer.startNewSpan(REQUEST_NAME));
+        assertNull(brave.clientTracer().startNewSpan(REQUEST_NAME));
 
-        verify(mockSampler).isSampled(TRACE_ID);
+        assertThat(brave.clientSpanThreadBinder().getCurrentClientSpan()).isNull();
 
-        assertNull(state.getCurrentClientSpan());
-        assertEquals(state.endpoint(), state.endpoint());
-
-        verifyNoMoreInteractions(mockSampler, mockCollector);
+        verifyNoMoreInteractions(mockCollector);
     }
 
     @Test
     public void setClientReceived_usesPreciseDuration() {
-        state.setCurrentClientSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
+        brave.clientSpanThreadBinder().setCurrentSpan(
+            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
+        );
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
-        clientTracer.setClientReceived();
+        brave.clientTracer().setClientReceived();
 
         verify(mockCollector).collect(span);
         verifyNoMoreInteractions(mockCollector);
@@ -224,11 +203,13 @@ public class ClientTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setClientReceived_lessThanMicrosRoundUp() {
-        state.setCurrentClientSpan(span.setName("foo").setTimestamp(START_TIME_MICROSECONDS));
+        brave.clientSpanThreadBinder().setCurrentSpan(
+            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
+        );
 
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        clientTracer.setClientReceived();
+        brave.clientTracer().setClientReceived();
 
         verify(mockCollector).collect(span);
         verifyNoMoreInteractions(mockCollector);
@@ -239,33 +220,31 @@ public class ClientTracerTest {
     @Test
     public void startNewSpan_whenParentHas128bitTraceId() {
         ServerSpan parentSpan = ServerSpan.create(
-            PARENT_SPAN_ID.toBuilder().traceIdHigh(3).build(), "name");
-        state.setCurrentServerSpan(parentSpan);
-        when(mockRandom.nextLong()).thenReturn(1L);
+            PARENT_CONTEXT.toBuilder().traceIdHigh(3).build(), "name");
+        brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
-        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertEquals(3, newSpanId.traceIdHigh);
-        assertEquals(TRACE_ID, newSpanId.traceId);
+        SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);
+        assertEquals(3, newContext.traceIdHigh);
+        assertEquals(TRACE_ID, newContext.traceId);
     }
 
     @Test
     public void startNewSpan_rootSpanWith64bitTraceId() {
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
-
-        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertEquals(0, newSpanId.traceIdHigh);
-        assertEquals(TRACE_ID, newSpanId.traceId);
+        SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);
+        assertThat(newContext.traceIdHigh).isZero();
+        assertThat(newContext.traceId).isNotZero();
     }
 
     @Test
     public void startNewSpan_rootSpanWith128bitTraceId() {
-        clientTracer = clientTracer.toBuilder().traceId128Bit(true).build();
-        when(mockRandom.nextLong()).thenReturn(TRACE_ID, TRACE_ID + 1);
-        when(mockSampler.isSampled(TRACE_ID)).thenReturn(true);
+        brave = braveBuilder().traceId128Bit(true).build();
 
-        SpanId newSpanId = clientTracer.startNewSpan(REQUEST_NAME);
-        assertEquals(TRACE_ID + 1, newSpanId.traceIdHigh);
-        assertEquals(TRACE_ID, newSpanId.traceId);
+        SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);
+        assertThat(newContext.traceIdHigh).isNotZero();
+        assertThat(newContext.traceId).isNotZero();
+    }
+
+    Brave.Builder braveBuilder() {
+        return new Brave.Builder(endpoint).spanCollector(mockCollector);
     }
 }

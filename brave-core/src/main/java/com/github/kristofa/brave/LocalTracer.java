@@ -38,13 +38,6 @@ import static zipkin.Constants.LOCAL_COMPONENT;
 @AutoValue
 public abstract class LocalTracer extends AnnotationSubmitter {
 
-    static Builder builder() {
-        return new AutoValue_LocalTracer.Builder();
-    }
-
-    // visible for testing
-    abstract Builder toBuilder();
-
     @Override
     abstract LocalSpanAndEndpoint spanAndEndpoint();
 

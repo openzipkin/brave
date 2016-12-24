@@ -27,18 +27,19 @@ import zipkin.reporter.Reporter;
 @AutoValue
 public abstract class ClientTracer extends AnnotationSubmitter {
 
+    /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
+    @Deprecated
     public static Builder builder() {
         return new AutoValue_ClientTracer.Builder();
     }
-
-    // visible for testing
-    abstract Builder toBuilder();
 
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
     abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
 
+    /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
+    @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
 
