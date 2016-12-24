@@ -39,8 +39,6 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     abstract ServerSpanAndEndpoint spanAndEndpoint();
     abstract Reporter<zipkin.Span> reporter();
     abstract Sampler traceSampler();
-    @Override
-    abstract AnnotationSubmitter.Clock clock();
 
     @AutoValue.Builder
     public abstract static class Builder {
@@ -68,7 +66,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
         public abstract Builder traceSampler(Sampler sampler);
 
-        public abstract Builder clock(AnnotationSubmitter.Clock clock);
+        public abstract Builder clock(Clock clock);
 
         abstract Builder traceId128Bit(boolean traceId128Bit);
 
