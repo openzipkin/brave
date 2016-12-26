@@ -23,16 +23,6 @@ public interface SpanAndEndpoint {
      */
     Endpoint endpoint();
 
-    /**
-     * Span and endpoint never change reference.
-     */
-    @AutoValue
-    abstract class StaticSpanAndEndpoint implements SpanAndEndpoint {
-      static StaticSpanAndEndpoint create(@Nullable Span span, Endpoint endpoint) {
-        return new AutoValue_SpanAndEndpoint_StaticSpanAndEndpoint(span, endpoint);
-      }
-    }
-
     @AutoValue
     abstract class ServerSpanAndEndpoint implements SpanAndEndpoint {
         abstract ServerSpanState state();

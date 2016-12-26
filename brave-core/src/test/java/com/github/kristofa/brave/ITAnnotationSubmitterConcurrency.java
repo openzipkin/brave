@@ -17,7 +17,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.github.kristofa.brave.SpanAndEndpoint.StaticSpanAndEndpoint;
 import com.twitter.zipkin.gen.Span;
 
 /**
@@ -47,7 +46,15 @@ public class ITAnnotationSubmitterConcurrency {
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
 
-        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint), AnnotationSubmitter.DefaultClock.INSTANCE);
+        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(new SpanAndEndpoint() {
+            @Override public Span span() {
+                return span;
+            }
+
+            @Override public Endpoint endpoint() {
+                return endpoint;
+            }
+        }, AnnotationSubmitter.DefaultClock.INSTANCE);
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

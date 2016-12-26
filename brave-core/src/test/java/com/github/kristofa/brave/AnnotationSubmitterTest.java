@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.SpanAndEndpoint.StaticSpanAndEndpoint;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
@@ -36,9 +35,15 @@ public class AnnotationSubmitterTest {
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
-        AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
-        annotationSubmitter =
-            AnnotationSubmitter.create(StaticSpanAndEndpoint.create(span, endpoint), clock);
+        annotationSubmitter = AnnotationSubmitter.create(new SpanAndEndpoint() {
+            @Override public Span span() {
+                return span;
+            }
+
+            @Override public Endpoint endpoint() {
+                return endpoint;
+            }
+        }, new AnnotationSubmitter.DefaultClock());
     }
 
     @Test
