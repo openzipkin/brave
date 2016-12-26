@@ -54,7 +54,7 @@ public class ITAnnotationSubmitterConcurrency {
             @Override public Endpoint endpoint() {
                 return endpoint;
             }
-        }, AnnotationSubmitter.DefaultClock.INSTANCE);
+        }, new AnnotationSubmitter.DefaultClock());
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

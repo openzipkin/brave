@@ -44,7 +44,7 @@ public class Brave {
         // default added so callers don't need to check null.
         private Sampler sampler = Sampler.create(1.0f);
         private boolean allowNestedLocalSpans = false;
-        private AnnotationSubmitter.Clock clock = AnnotationSubmitter.DefaultClock.INSTANCE;
+        private AnnotationSubmitter.Clock clock;
         private boolean traceId128Bit = false;
 
         /**
@@ -152,7 +152,7 @@ public class Brave {
         }
 
         public Builder clock(AnnotationSubmitter.Clock clock) {
-            this.clock = clock;
+            this.clock = checkNotNull(clock, "clock");
             return this;
         }
 
@@ -260,12 +260,16 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
+        AnnotationSubmitter.Clock clock = builder.clock != null
+            ? builder.clock
+            : new AnnotationSubmitter.DefaultClock();
+
         serverTracer = new AutoValue_ServerTracer.Builder()
                 .randomGenerator(builder.random)
                 .reporter(builder.reporter)
                 .state(builder.state)
                 .traceSampler(builder.sampler)
-                .clock(builder.clock)
+                .clock(clock)
                 .traceId128Bit(builder.traceId128Bit)
                 .build();
 
@@ -274,7 +278,7 @@ public class Brave {
                 .reporter(builder.reporter)
                 .state(builder.state)
                 .traceSampler(builder.sampler)
-                .clock(builder.clock)
+                .clock(clock)
                 .traceId128Bit(builder.traceId128Bit)
                 .build();
 
@@ -284,7 +288,7 @@ public class Brave {
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
                 .traceSampler(builder.sampler)
-                .clock(builder.clock)
+                .clock(clock)
                 .traceId128Bit(builder.traceId128Bit)
                 .build();
 
@@ -292,7 +296,7 @@ public class Brave {
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
-        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(SpanAndEndpoint.ServerSpanAndEndpoint.create(builder.state), builder.clock);
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverTracer.spanAndEndpoint(), clock);
         serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);

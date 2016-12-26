@@ -35,8 +35,27 @@ public abstract class AnnotationSubmitter {
         long currentTimeMicroseconds();
     }
 
-    public static AnnotationSubmitter create(SpanAndEndpoint spanAndEndpoint, Clock clock) {
-        return new AnnotationSubmitterImpl(spanAndEndpoint, clock);
+    public static AnnotationSubmitter create(final SpanAndEndpoint spanAndEndpoint,
+        final Clock clock) {
+        checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
+        checkNotNull(clock, "Null clock");
+        return new AnnotationSubmitter() {
+            @Override SpanAndEndpoint spanAndEndpoint() {
+                return spanAndEndpoint;
+            }
+
+            @Override Random randomGenerator() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override boolean traceId128Bit() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override Clock clock() {
+                return clock;
+            }
+        };
     }
 
     abstract SpanAndEndpoint spanAndEndpoint();
@@ -75,12 +94,10 @@ public abstract class AnnotationSubmitter {
         Span span = spanAndEndpoint().span();
         if (span == null) return;
 
-        Annotation annotation = Annotation.create(
-            timestamp,
-            value,
-            spanAndEndpoint().endpoint()
-        );
-        addAnnotation(span, annotation);
+        Annotation annotation = Annotation.create(timestamp, value, spanAndEndpoint().endpoint());
+        synchronized (span) {
+            span.addToAnnotations(annotation);
+        }
     }
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
@@ -129,7 +146,9 @@ public abstract class AnnotationSubmitter {
             endpoint = endpoint.toBuilder().serviceName("unknown").build();
         }
         BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
-        addBinaryAnnotation(span, ba);
+        synchronized (span) {
+            span.addToBinary_annotations(ba);
+        }
     }
 
     /**
@@ -144,7 +163,9 @@ public abstract class AnnotationSubmitter {
         if (span == null) return;
 
         BinaryAnnotation ba = BinaryAnnotation.create(key, value, spanAndEndpoint().endpoint());
-        addBinaryAnnotation(span, ba);
+        synchronized (span) {
+            span.addToBinary_annotations(ba);
+        }
     }
 
     /**
@@ -156,18 +177,6 @@ public abstract class AnnotationSubmitter {
     public void submitBinaryAnnotation(String key, int value) {
         // Zipkin v1 UI and query only support String annotations.
         submitBinaryAnnotation(key, String.valueOf(value));
-    }
-
-    private void addAnnotation(Span span, Annotation annotation) {
-        synchronized (span) {
-            span.addToAnnotations(annotation);
-        }
-    }
-
-    private void addBinaryAnnotation(Span span, BinaryAnnotation ba) {
-        synchronized (span) {
-            span.addToBinary_annotations(ba);
-        }
     }
 
     SpanId nextContext(@Nullable Span maybeParent) {
@@ -192,39 +201,8 @@ public abstract class AnnotationSubmitter {
     AnnotationSubmitter() {
     }
 
-    private static final class AnnotationSubmitterImpl extends AnnotationSubmitter {
-
-        private final SpanAndEndpoint spanAndEndpoint;
-        private final Clock clock;
-
-        private AnnotationSubmitterImpl(SpanAndEndpoint spanAndEndpoint, Clock clock) {
-            this.spanAndEndpoint = checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
-            this.clock = clock;
-        }
-
-        @Override
-        SpanAndEndpoint spanAndEndpoint() {
-            return spanAndEndpoint;
-        }
-
-        @Override Random randomGenerator() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override boolean traceId128Bit() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected Clock clock() {
-            return clock;
-        }
-
-    }
-
     /** Offset-based clock: Uses a single point of reference and offsets to create timestamps. */
     static final class DefaultClock implements Clock {
-        static final Clock INSTANCE = new DefaultClock();
         // epochMicros is derived by this
         final long createTimestamp;
         final long createTick;
