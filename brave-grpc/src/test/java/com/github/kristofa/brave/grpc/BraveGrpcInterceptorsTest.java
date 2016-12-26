@@ -173,6 +173,7 @@ public class BraveGrpcInterceptorsTest {
      * server and the client.
      */
     void validateSpans() throws Exception {
+        tearDown(); // make sure any in-flight requests complete, so that the below doesn't flake
         List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
         assertThat(spans.size()).isEqualTo(2);
 
@@ -204,10 +205,14 @@ public class BraveGrpcInterceptorsTest {
 
     @After
     public void tearDown() throws InterruptedException {
-        channel.shutdownNow();
-        channel.awaitTermination(1, TimeUnit.SECONDS);
-        server.shutdownNow();
-        server.awaitTermination(1, TimeUnit.SECONDS);
+        if (!channel.isShutdown()) {
+            channel.shutdownNow();
+            channel.awaitTermination(1, TimeUnit.SECONDS);
+        }
+        if (!server.isShutdown()) {
+            server.shutdownNow();
+            server.awaitTermination(1, TimeUnit.SECONDS);
+        }
     }
 
     public static int pickUnusedPort() {
