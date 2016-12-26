@@ -57,14 +57,9 @@ public abstract class AnnotationSubmitter {
      */
     public void submitAnnotation(String value) {
         Span span = spanAndEndpoint().span();
-        if (span != null) {
-            Annotation annotation = Annotation.create(
-                clock().currentTimeMicroseconds(),
-                value,
-                spanAndEndpoint().endpoint()
-            );
-            addAnnotation(span, annotation);
-        }
+        if (span == null) return;
+
+        submitAnnotation(value, clock().currentTimeMicroseconds());
     }
 
     /**
@@ -78,29 +73,25 @@ public abstract class AnnotationSubmitter {
      */
     public void submitAnnotation(String value, long timestamp) {
         Span span = spanAndEndpoint().span();
-        if (span != null) {
-            Annotation annotation = Annotation.create(
-                timestamp,
-                value,
-                spanAndEndpoint().endpoint()
-            );
-            addAnnotation(span, annotation);
-        }
+        if (span == null) return;
+
+        Annotation annotation = Annotation.create(
+            timestamp,
+            value,
+            spanAndEndpoint().endpoint()
+        );
+        addAnnotation(span, annotation);
     }
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
     void submitStartAnnotation(String annotationName) {
         Span span = spanAndEndpoint().span();
-        if (span != null) {
-            Annotation annotation = Annotation.create(
-                clock().currentTimeMicroseconds(),
-                annotationName,
-                spanAndEndpoint().endpoint()
-            );
-            synchronized (span) {
-                span.setTimestamp(annotation.timestamp);
-                span.addToAnnotations(annotation);
-            }
+        if (span == null) return;
+
+        long timestamp = clock().currentTimeMicroseconds();
+        submitAnnotation(annotationName, timestamp);
+        synchronized (span) {
+            span.setTimestamp(timestamp);
         }
     }
 
@@ -112,19 +103,11 @@ public abstract class AnnotationSubmitter {
      */
     boolean submitEndAnnotation(String annotationName, Reporter<zipkin.Span> reporter) {
         Span span = spanAndEndpoint().span();
-        if (span == null) {
-          return false;
-        }
+        if (span == null) return false;
 
         long endTimestamp = clock().currentTimeMicroseconds();
-
-        Annotation annotation = Annotation.create(
-            endTimestamp,
-            annotationName,
-            spanAndEndpoint().endpoint()
-        );
+        submitAnnotation(annotationName, endTimestamp);
         synchronized (span) {
-            span.addToAnnotations(annotation);
             Long startTimestamp = span.getTimestamp();
             if (startTimestamp != null) {
                 span.setDuration(Math.max(1L, endTimestamp - startTimestamp));
@@ -140,13 +123,13 @@ public abstract class AnnotationSubmitter {
      */
     void submitAddress(String key, Endpoint endpoint) {
         Span span = spanAndEndpoint().span();
-        if (span != null) {
-            if (endpoint.service_name == null) {
-                endpoint = endpoint.toBuilder().serviceName("unknown").build();
-            }
-            BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
-            addBinaryAnnotation(span, ba);
+        if (span == null) return;
+
+        if (endpoint.service_name == null) {
+            endpoint = endpoint.toBuilder().serviceName("unknown").build();
         }
+        BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
+        addBinaryAnnotation(span, ba);
     }
 
     /**
@@ -158,10 +141,10 @@ public abstract class AnnotationSubmitter {
      */
     public void submitBinaryAnnotation(String key, String value) {
         Span span = spanAndEndpoint().span();
-        if (span != null) {
-            BinaryAnnotation ba = BinaryAnnotation.create(key, value, spanAndEndpoint().endpoint());
-            addBinaryAnnotation(span, ba);
-        }
+        if (span == null) return;
+
+        BinaryAnnotation ba = BinaryAnnotation.create(key, value, spanAndEndpoint().endpoint());
+        addBinaryAnnotation(span, ba);
     }
 
     /**
