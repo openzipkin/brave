@@ -10,6 +10,7 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
@@ -26,6 +27,7 @@ import io.grpc.examples.helloworld.GreeterGrpc.GreeterFutureStub;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 
+import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Condition;
 import org.junit.After;
 import org.junit.Before;
@@ -54,6 +56,7 @@ public class BraveGrpcInterceptorsTest {
     @Before
     public void before() throws Exception {
         enableSampling = true;
+        ThreadLocalServerClientAndLocalSpanState.clear();
         SpanCollectorForTesting.INSTANCE.clear();
 
         final Brave.Builder builder = new Brave.Builder();
@@ -200,9 +203,11 @@ public class BraveGrpcInterceptorsTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws InterruptedException {
         channel.shutdownNow();
+        channel.awaitTermination(1, TimeUnit.SECONDS);
         server.shutdownNow();
+        server.awaitTermination(1, TimeUnit.SECONDS);
     }
 
     public static int pickUnusedPort() {

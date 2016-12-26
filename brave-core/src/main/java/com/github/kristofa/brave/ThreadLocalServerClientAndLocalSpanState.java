@@ -27,7 +27,7 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
     private final Endpoint endpoint;
 
     // visible for testing
-    static void clear() {
+    public static void clear() {
         currentServerSpan.remove();
         currentClientSpan.remove();
         currentLocalSpan.remove();
