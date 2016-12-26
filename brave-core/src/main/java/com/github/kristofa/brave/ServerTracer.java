@@ -36,24 +36,33 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
     @Override
     abstract ServerSpanAndEndpoint spanAndEndpoint();
+    abstract SpanIdFactory spanIdFactory();
     abstract Reporter<zipkin.Span> reporter();
-    abstract Sampler traceSampler();
 
     /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
     @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
+        abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
+
+        abstract SpanIdFactory.Builder spanIdFactoryBuilder();
+
+        /** Used to generate new trace/span ids. */
+        public final Builder randomGenerator(Random randomGenerator) {
+            spanIdFactoryBuilder().randomGenerator(randomGenerator);
+            return this;
+        }
+
+        public final Builder traceSampler(Sampler sampler) {
+            spanIdFactoryBuilder().sampler(sampler);
+            return this;
+        }
 
         public Builder state(ServerSpanState state) {
             return spanAndEndpoint(ServerSpanAndEndpoint.create(state));
         }
 
         abstract Builder spanAndEndpoint(ServerSpanAndEndpoint spanAndEndpoint);
-
-        /**
-         * Used to generate new trace/span ids.
-         */
-        public abstract Builder randomGenerator(Random randomGenerator);
 
         public abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
@@ -65,11 +74,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
             return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
-        public abstract Builder traceSampler(Sampler sampler);
-
         public abstract Builder clock(Clock clock);
-
-        abstract Builder traceId128Bit(boolean traceId128Bit);
 
         public abstract ServerTracer build();
     }
@@ -124,11 +129,12 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setStateUnknown(String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        SpanId nextContext = nextContext(null);
-        if (!traceSampler().isSampled(nextContext.traceId)) {
+        SpanId nextContext = spanIdFactory().next(null);
+        if (Boolean.FALSE.equals(nextContext.sampled())) {
             spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
             return;
         }
+
         setStateCurrentTrace(nextContext, spanName);
     }
 
@@ -174,7 +180,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Sets the server sent event for current thread.
      */
     public void setServerSend() {
-        if (submitEndAnnotation(Constants.SERVER_SEND, reporter())) {
+        if (submitEndAnnotation(Constants.SERVER_SEND)) {
             spanAndEndpoint().state().setCurrentServerSpan(null);
         }
     }

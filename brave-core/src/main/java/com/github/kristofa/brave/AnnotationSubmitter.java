@@ -1,11 +1,9 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import java.util.Random;
 import zipkin.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
@@ -44,30 +42,21 @@ public abstract class AnnotationSubmitter {
                 return spanAndEndpoint;
             }
 
-            @Override Random randomGenerator() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override boolean traceId128Bit() {
-                throw new UnsupportedOperationException();
-            }
-
             @Override Clock clock() {
                 return clock;
+            }
+
+            @Override Reporter<zipkin.Span> reporter() {
+                throw new UnsupportedOperationException();
             }
         };
     }
 
     abstract SpanAndEndpoint spanAndEndpoint();
-    abstract Random randomGenerator();
-    abstract boolean traceId128Bit();
 
-    /**
-     * The implementation of Clock to use.
-     *
-     * See {@link com.github.kristofa.brave.AnnotationSubmitter.Clock}
-     */
     abstract Clock clock();
+
+    abstract Reporter<zipkin.Span> reporter();
 
     /**
      * Associates an event that explains latency with the current system time.
@@ -118,7 +107,7 @@ public abstract class AnnotationSubmitter {
      *
      * @return true if a span was sent for collection.
      */
-    boolean submitEndAnnotation(String annotationName, Reporter<zipkin.Span> reporter) {
+    boolean submitEndAnnotation(String annotationName) {
         Span span = spanAndEndpoint().span();
         if (span == null) return false;
 
@@ -130,7 +119,7 @@ public abstract class AnnotationSubmitter {
                 span.setDuration(Math.max(1L, endTimestamp - startTimestamp));
             }
         }
-        reporter.report(toZipkin(span));
+        reporter().report(toZipkin(span));
         return true;
     }
 
@@ -177,25 +166,6 @@ public abstract class AnnotationSubmitter {
     public void submitBinaryAnnotation(String key, int value) {
         // Zipkin v1 UI and query only support String annotations.
         submitBinaryAnnotation(key, String.valueOf(value));
-    }
-
-    SpanId nextContext(@Nullable Span maybeParent) {
-        long newSpanId = randomGenerator().nextLong();
-        if (maybeParent == null) { // new trace
-            return SpanId.builder()
-                .spanId(newSpanId)
-                .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L).build();
-        } else if (maybeParent.context() != null) {
-            return maybeParent.context().toBuilder()
-                .parentId(maybeParent.getId())
-                .spanId(newSpanId).build();
-        }
-        // If we got here, some implementation of state passed a deprecated span
-        return SpanId.builder()
-            .traceIdHigh(maybeParent.getTrace_id_high())
-            .traceId(maybeParent.getTrace_id())
-            .parentId(maybeParent.getId())
-            .spanId(newSpanId).build();
     }
 
     AnnotationSubmitter() {

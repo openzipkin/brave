@@ -4,7 +4,6 @@ import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Random;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
@@ -40,12 +39,9 @@ public class Brave {
 
         private final ServerClientAndLocalSpanState state;
         private Reporter reporter = new LoggingReporter();
-        private final Random random = new Random();
-        // default added so callers don't need to check null.
-        private Sampler sampler = Sampler.create(1.0f);
+        private final SpanIdFactory.Builder spanIdFactoryBuilder = SpanIdFactory.builder();
         private boolean allowNestedLocalSpans = false;
         private AnnotationSubmitter.Clock clock;
-        private boolean traceId128Bit = false;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -116,7 +112,7 @@ public class Brave {
         }
 
         public Builder traceSampler(Sampler sampler) {
-            this.sampler = sampler;
+            this.spanIdFactoryBuilder.sampler(sampler);
             return this;
         }
 
@@ -158,7 +154,7 @@ public class Brave {
 
         /** When true, new root spans will have 128-bit trace IDs. Defaults to false (64-bit) */
         public Builder traceId128Bit(boolean traceId128Bit) {
-            this.traceId128Bit = traceId128Bit;
+            this.spanIdFactoryBuilder.traceId128Bit(traceId128Bit);
             return this;
         }
 
@@ -260,36 +256,31 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
+        SpanIdFactory spanIdFactory = builder.spanIdFactoryBuilder.build();
         AnnotationSubmitter.Clock clock = builder.clock != null
             ? builder.clock
             : new AnnotationSubmitter.DefaultClock();
 
         serverTracer = new AutoValue_ServerTracer.Builder()
-                .randomGenerator(builder.random)
+                .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
                 .state(builder.state)
-                .traceSampler(builder.sampler)
                 .clock(clock)
-                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         clientTracer = new AutoValue_ClientTracer.Builder()
-                .randomGenerator(builder.random)
+                .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
                 .state(builder.state)
-                .traceSampler(builder.sampler)
                 .clock(clock)
-                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         localTracer = new AutoValue_LocalTracer.Builder()
-                .randomGenerator(builder.random)
+                .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
-                .traceSampler(builder.sampler)
                 .clock(clock)
-                .traceId128Bit(builder.traceId128Bit)
                 .build();
 
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);

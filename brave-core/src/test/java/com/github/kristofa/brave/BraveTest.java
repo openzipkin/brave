@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import org.junit.Before;
@@ -29,11 +28,10 @@ public class BraveTest {
     public void testGetClientTracer() {
         final ClientTracer clientTracer = brave.clientTracer();
         assertNotNull(clientTracer);
-        assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
         assertSame("ClientTracer should be configured with the reporter we submitted.", fakeReporter,
             clientTracer.reporter());
         assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-            mockSampler, clientTracer.traceSampler());
+            mockSampler, clientTracer.spanIdFactory().sampler());
 
         final ClientTracer secondClientTracer =
             brave.clientTracer();
@@ -47,8 +45,7 @@ public class BraveTest {
         assertNotNull(serverTracer);
         assertSame(fakeReporter, serverTracer.reporter());
         assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-            mockSampler, serverTracer
-            .traceSampler());
+            mockSampler, serverTracer.spanIdFactory().sampler());
 
         final ServerTracer secondServerTracer =
             brave.serverTracer();
@@ -74,8 +71,7 @@ public class BraveTest {
         assertNotNull(localTracer);
         assertSame(fakeReporter, localTracer.reporter());
         assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                mockSampler, localTracer
-                        .traceSampler());
+                mockSampler, localTracer.spanIdFactory().sampler());
 
         final LocalTracer secondLocalTracer =
                 brave.localTracer();

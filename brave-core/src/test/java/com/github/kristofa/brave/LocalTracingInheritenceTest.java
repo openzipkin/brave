@@ -67,11 +67,10 @@ public class LocalTracingInheritenceTest {
     public void testGetClientTracer() {
         final ClientTracer clientTracer = brave.clientTracer();
         assertNotNull(clientTracer);
-        assertTrue("We expect instance of ClientTracer", clientTracer instanceof ClientTracer);
         assertSame("ClientTracer should be configured with the spanreportor we submitted.", reporter,
                 clientTracer.reporter());
         assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-                sampler, clientTracer.traceSampler());
+                sampler, clientTracer.spanIdFactory().sampler());
 
         final ClientTracer secondClientTracer = brave.clientTracer();
         assertSame("It is important that each client tracer we get shares same state.",
@@ -84,7 +83,7 @@ public class LocalTracingInheritenceTest {
         assertNotNull(serverTracer);
         assertSame(reporter, serverTracer.reporter());
         assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-                sampler, serverTracer.traceSampler());
+                sampler, serverTracer.spanIdFactory().sampler());
 
         final ServerTracer secondServerTracer = brave.serverTracer();
         assertSame("It is important that each client tracer we get shares same state.",
@@ -97,7 +96,7 @@ public class LocalTracingInheritenceTest {
         assertNotNull(localTracer);
         assertSame(reporter, localTracer.reporter());
         assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                sampler, localTracer.traceSampler());
+                sampler, localTracer.spanIdFactory().sampler());
 
         final LocalTracer secondLocalTracer = brave.localTracer();
         assertSame("It is important that each local tracer we get shares same state.",
