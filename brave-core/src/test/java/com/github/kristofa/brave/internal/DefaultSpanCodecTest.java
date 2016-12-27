@@ -36,7 +36,7 @@ public class DefaultSpanCodecTest {
 
   @Test
   public void roundTripSpan_thrift_128() {
-    span.setTrace_id_high(3L);
+    span = Span.create(span.context().toBuilder().traceIdHigh(3L).build());
 
     byte[] encoded = DefaultSpanCodec.THRIFT.writeSpan(span);
     assertEquals(span, DefaultSpanCodec.THRIFT.readSpan(encoded));

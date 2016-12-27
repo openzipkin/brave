@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.scribe;
 
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Span;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.*;
@@ -18,7 +19,6 @@ public class ITScribeSpanCollectorOfferTimeout {
     private static final int PORT = FreePortProvider.getNewFreePort();
     private static final long SPAN_ID = 1;
     private static final long TRACE_ID = 2;
-    private static final String SPAN_NAME = "spanname";
 
     private static ScribeServer scribeServer;
 
@@ -62,11 +62,7 @@ public class ITScribeSpanCollectorOfferTimeout {
 
         final ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT, params);
         try {
-
-            final Span span = new Span();
-            span.setId(SPAN_ID);
-            span.setTrace_id(TRACE_ID);
-            span.setName(SPAN_NAME);
+            Span span = Span.create(SpanId.builder().traceId(TRACE_ID).spanId(SPAN_ID).build());
 
             for (int i = 1; i <= hundredTen; i++) {
                 LOGGER.info("Submitting Span nr " + i + "/" + hundredTen);

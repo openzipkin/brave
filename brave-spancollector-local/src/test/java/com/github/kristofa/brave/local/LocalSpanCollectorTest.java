@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.local;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Span;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
@@ -25,7 +26,7 @@ public class LocalSpanCollectorTest {
       throw new AssertionError("spans should only report on flush!");
     });
 
-    collector.collect(span(1L, "foo"));
+    collector.collect(span(1L));
 
     assertThat(storage.spanStore().traceIds()).isEmpty();
   }
@@ -35,7 +36,7 @@ public class LocalSpanCollectorTest {
     LocalSpanCollector collector = newLocalSpanCollector((spans, callback) -> {
     });
 
-    collector.collect(span(1L, "foo"));
+    collector.collect(span(1L));
 
     assertThat(metrics.acceptedSpans.get()).isEqualTo(1);
     assertThat(metrics.droppedSpans.get()).isZero();
@@ -47,7 +48,7 @@ public class LocalSpanCollectorTest {
     });
 
     for (int i = 0; i < 1001; i++)
-      collector.collect(span(1L, "foo"));
+      collector.collect(span(1L));
 
     collector.flush(); // manually flush the spans
 
@@ -64,8 +65,8 @@ public class LocalSpanCollectorTest {
       messageCount.incrementAndGet();
     });
 
-    collector.collect(span(1L, "foo"));
-    collector.collect(span(2L, "bar"));
+    collector.collect(span(1L));
+    collector.collect(span(2L));
 
     collector.flush(); // manually flush the spans
 
@@ -79,8 +80,8 @@ public class LocalSpanCollectorTest {
       throw new RuntimeException("couldn't store");
     });
 
-    collector.collect(span(1L, "foo"));
-    collector.collect(span(2L, "bar"));
+    collector.collect(span(1L));
+    collector.collect(span(2L));
 
     collector.flush(); // manually flush the spans
 
@@ -92,8 +93,8 @@ public class LocalSpanCollectorTest {
     LocalSpanCollector collector = newLocalSpanCollector((spans, callback) ->
         callback.onError(new RuntimeException("couldn't store")));
 
-    collector.collect(span(1L, "foo"));
-    collector.collect(span(2L, "bar"));
+    collector.collect(span(1L));
+    collector.collect(span(2L));
 
     collector.flush(); // manually flush the spans
 
@@ -116,12 +117,12 @@ public class LocalSpanCollectorTest {
     }
   }
 
-  static Span span(long traceId, String spanName) {
-    return new Span().setTrace_id(traceId).setId(traceId).setName(spanName);
+  static Span span(long traceId) {
+    return Span.create(SpanId.builder().spanId(traceId).build());
   }
 
-  static zipkin.Span zipkinSpan(long traceId, String spanName) {
-    return zipkin.Span.builder().traceId(traceId).id(traceId).name(spanName).build();
+  static zipkin.Span zipkinSpan(long traceId) {
+    return zipkin.Span.builder().traceId(traceId).id(traceId).name("").build();
   }
 
   LocalSpanCollector newLocalSpanCollector(AsyncSpanConsumer consumer) {

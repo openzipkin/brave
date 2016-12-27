@@ -114,7 +114,7 @@ public class ClientTracerTest {
 
     @Test
     public void testSetClientReceived() {
-        brave.clientSpanThreadBinder().setCurrentSpan(span.setName("foo").setTimestamp(100L));
+        brave.clientSpanThreadBinder().setCurrentSpan(span.setTimestamp(100L));
 
         brave.clientTracer().setClientReceived();
 
@@ -186,9 +186,7 @@ public class ClientTracerTest {
 
     @Test
     public void setClientReceived_usesPreciseDuration() {
-        brave.clientSpanThreadBinder().setCurrentSpan(
-            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
-        );
+        brave.clientSpanThreadBinder().setCurrentSpan(span.setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
@@ -203,9 +201,7 @@ public class ClientTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void setClientReceived_lessThanMicrosRoundUp() {
-        brave.clientSpanThreadBinder().setCurrentSpan(
-            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
-        );
+        brave.clientSpanThreadBinder().setCurrentSpan(span.setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 

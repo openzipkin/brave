@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.scribe;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Span;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.AfterClass;
@@ -17,7 +18,7 @@ public class ScribeSpanCollectorMetricsTest {
 
     private static final String HOST = "localhost";
     private static final int PORT = FreePortProvider.getNewFreePort();
-    private static final Span SPAN = new Span().setTrace_id(1).setId(2).setName("span name");
+    private static final Span SPAN = Span.create(SpanId.builder().traceId(1).spanId(2).build());
 
     private static ScribeServer scribeServer;
     private EventsHandler eventsHandler;

@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import static com.github.kristofa.brave.internal.Util.equal;
 
@@ -34,6 +35,7 @@ public class Span implements Serializable {
   /** @deprecated internally we call {@link Span#Span(SpanId)} because it sets the identity */
   @Deprecated
   public Span() {
+    assert false : "do not construct spans except via their context";
     context = null;
   }
 
@@ -63,6 +65,7 @@ public class Span implements Serializable {
   /** @deprecated do not modify the context of a span once created */
   @Deprecated
   public Span setTrace_id(long trace_id) {
+    assert false : "do not modify the context of a span once created";
     this.trace_id = trace_id;
     return this;
   }
@@ -80,6 +83,7 @@ public class Span implements Serializable {
   /** @deprecated do not modify the context of a span once created */
   @Deprecated
   public Span setTrace_id_high(long trace_id_high) {
+    assert false : "do not modify the context of a span once created";
     this.trace_id_high = trace_id_high;
     return this;
   }
@@ -99,10 +103,11 @@ public class Span implements Serializable {
    * Conventionally, when the span name isn't known, name = "unknown".
    */
   public Span setName(String name) {
-    if (name != null) {
-      name = name.toLowerCase();
+    if (name == null || name.isEmpty()) {
+      this.name = "";
+    } else {
+      this.name = name.toLowerCase(Locale.ROOT);
     }
-    this.name = name;
     return this;
   }
 
@@ -113,6 +118,7 @@ public class Span implements Serializable {
   /** @deprecated do not modify the context of a span once created */
   @Deprecated
   public Span setId(long id) {
+    assert false : "do not modify the context of a span once created";
     this.id = id;
     return this;
   }
@@ -124,6 +130,7 @@ public class Span implements Serializable {
   /** @deprecated do not modify the context of a span once created */
   @Deprecated
   public Span setParent_id(Long parent_id) {
+    assert false : "do not modify the context of a span once created";
     this.parent_id = parent_id;
     return this;
   }
@@ -171,6 +178,7 @@ public class Span implements Serializable {
   /** @deprecated do not modify the context of a span once created */
   @Deprecated
   public Span setDebug(Boolean debug) {
+    assert false : "do not modify the context of a span once created";
     this.debug = debug;
     return this;
   }
