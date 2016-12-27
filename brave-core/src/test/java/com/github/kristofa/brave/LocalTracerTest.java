@@ -121,9 +121,7 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan() {
-        brave.localSpanThreadBinder().setCurrentSpan(
-            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
-        );
+        brave.localSpanThreadBinder().setCurrentSpan(span.setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
@@ -138,9 +136,7 @@ public class LocalTracerTest {
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
     @Test
     public void finishSpan_lessThanMicrosRoundUp() {
-        brave.localSpanThreadBinder().setCurrentSpan(
-            span.setName("foo").setTimestamp(START_TIME_MICROSECONDS)
-        );
+        brave.localSpanThreadBinder().setCurrentSpan(span.setTimestamp(START_TIME_MICROSECONDS));
 
         PowerMockito.when(System.nanoTime()).thenReturn(50L);
 

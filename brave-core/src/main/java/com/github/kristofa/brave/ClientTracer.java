@@ -134,10 +134,10 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * Start a new span for a new client request that will be bound to current thread. The ClientTracer can decide to return
      * <code>null</code> in case this request should not be traced (eg sampling).
      *
-     * @param requestName Request name. Should be lowercase and not <code>null</code> or empty.
+     * @param requestName Request name. Should be lowercase. Null or empty will defer to the server's name of the operation.
      * @return Span id for new request or <code>null</code> in case we should not trace this new client request.
      */
-    public SpanId startNewSpan(String requestName) {
+    public SpanId startNewSpan(@Nullable String requestName) {
         // When a trace context is extracted from an incoming request, it may have only the
         // sampled header (no ids). If the header says unsampled, we must honor that. Since
         // we currently don't synthesize a fake span when a trace is unsampled, we have to

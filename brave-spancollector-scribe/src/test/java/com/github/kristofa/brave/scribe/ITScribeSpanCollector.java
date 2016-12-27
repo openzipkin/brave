@@ -3,6 +3,7 @@ package com.github.kristofa.brave.scribe;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.github.kristofa.brave.SpanId;
 import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
@@ -20,7 +21,6 @@ public class ITScribeSpanCollector {
     private static final Logger LOGGER = Logger.getLogger(ITScribeSpanCollector.class.getName());
 
     private static final int PORT = FreePortProvider.getNewFreePort();
-    private static final String SPAN_NAME = "spanname";
 
     private static ScribeServer scribeServer;
 
@@ -89,12 +89,8 @@ public class ITScribeSpanCollector {
         }
     }
 
-    private Span span(long traceId) {
-        final Span span = new Span();
-        span.setId(traceId);
-        span.setTrace_id(traceId);
-        span.setName(SPAN_NAME);
-        return span;
+    static Span span(long traceId) {
+        return Span.create(SpanId.builder().spanId(traceId).build());
     }
 
 }
