@@ -123,17 +123,11 @@ public abstract class AnnotationSubmitter {
         return true;
     }
 
-    /**
-     * Internal api for submitting an address. Until a naming function is added, this coerces null
-     * {@code serviceName} to "unknown", as that's zipkin's convention.
-     */
+    /** Internal api for submitting an address. */
     void submitAddress(String key, Endpoint endpoint) {
         Span span = spanAndEndpoint().span();
         if (span == null) return;
 
-        if (endpoint.service_name == null) {
-            endpoint = endpoint.toBuilder().serviceName("unknown").build();
-        }
         BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
         synchronized (span) {
             span.addToBinary_annotations(ba);
@@ -157,13 +151,9 @@ public abstract class AnnotationSubmitter {
         }
     }
 
-    /**
-     * Submits a binary (key/value) annotation with int value.
-     *
-     * @param key Key, should not be blank.
-     * @param value Integer value.
-     */
-    public void submitBinaryAnnotation(String key, int value) {
+    /** @deprecated use {@link #submitBinaryAnnotation(String, String)} */
+    @Deprecated
+    public final void submitBinaryAnnotation(String key, int value) {
         // Zipkin v1 UI and query only support String annotations.
         submitBinaryAnnotation(key, String.valueOf(value));
     }
