@@ -112,10 +112,10 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
     private void endTrace(final ClientTracer tracer, final int warningCount, final SQLException statementException) {
         try {
             if (warningCount > 0) {
-                tracer.submitBinaryAnnotation("warning.count", warningCount);
+                tracer.submitBinaryAnnotation("warning.count", Integer.toString(warningCount));
             }
             if (statementException != null) {
-                tracer.submitBinaryAnnotation(Constants.ERROR, statementException.getErrorCode());
+                tracer.submitBinaryAnnotation(Constants.ERROR, Integer.toString(statementException.getErrorCode()));
             }
         } finally {
             tracer.setClientReceived();

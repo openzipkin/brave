@@ -184,8 +184,8 @@ public class MySQLStatementInterceptorTest {
 
         final InOrder order = inOrder(clientTracer);
 
-        order.verify(clientTracer).submitBinaryAnnotation(eq("warning.count"), eq(warningCount));
-        order.verify(clientTracer).submitBinaryAnnotation(eq(Constants.ERROR), eq(errorCode));
+        order.verify(clientTracer).submitBinaryAnnotation(eq("warning.count"), eq(warningCount + ""));
+        order.verify(clientTracer).submitBinaryAnnotation(eq(Constants.ERROR), eq(errorCode + ""));
         order.verify(clientTracer).setClientReceived();
         order.verifyNoMoreInteractions();
     }

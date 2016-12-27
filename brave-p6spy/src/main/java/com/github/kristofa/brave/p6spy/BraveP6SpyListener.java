@@ -143,7 +143,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     private void endTrace(final ClientTracer tracer, final SQLException statementException) {
         try {
             if (statementException != null) {
-                tracer.submitBinaryAnnotation(Constants.ERROR, statementException.getErrorCode());
+                tracer.submitBinaryAnnotation(Constants.ERROR, Integer.toString(statementException.getErrorCode()));
             }
         } finally {
             tracer.setClientReceived();
