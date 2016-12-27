@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.SpanAndEndpoint.ServerSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
@@ -34,10 +33,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         return new AutoValue_ServerTracer.Builder();
     }
 
-    @Override
-    abstract ServerSpanAndEndpoint spanAndEndpoint();
+    @Override abstract ServerSpanThreadBinder currentSpan();
     abstract SpanIdFactory spanIdFactory();
-    abstract Reporter<zipkin.Span> reporter();
 
     /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
     @Deprecated
@@ -58,11 +55,13 @@ public abstract class ServerTracer extends AnnotationSubmitter {
             return this;
         }
 
-        public Builder state(ServerSpanState state) {
-            return spanAndEndpoint(ServerSpanAndEndpoint.create(state));
+        public final Builder state(ServerSpanState state) {
+            return endpoint(state.endpoint()).currentSpan(new ServerSpanThreadBinder(state));
         }
 
-        abstract Builder spanAndEndpoint(ServerSpanAndEndpoint spanAndEndpoint);
+        abstract Builder endpoint(Endpoint endpoint);
+
+        abstract Builder currentSpan(ServerSpanThreadBinder currentSpan);
 
         public abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
@@ -83,7 +82,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Clears current span.
      */
     public void clearCurrentSpan() {
-        spanAndEndpoint().state().setCurrentServerSpan(null);
+        currentSpan().setCurrentSpan(null);
     }
 
     /**
@@ -106,7 +105,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     public void setStateCurrentTrace(SpanId context, String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
         ServerSpan span = ServerSpan.create(context, spanName);
-        spanAndEndpoint().state().setCurrentServerSpan(span);
+        currentSpan().setCurrentSpan(span);
     }
 
     /**
@@ -117,7 +116,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * @see ServerTracer#setStateUnknown(String)
      */
     public void setStateNoTracing() {
-        spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+        currentSpan().setCurrentSpan(ServerSpan.NOT_SAMPLED);
     }
 
     /**
@@ -131,7 +130,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
         checkNotBlank(spanName, "Null or blank span name");
         SpanId nextContext = spanIdFactory().next(null);
         if (Boolean.FALSE.equals(nextContext.sampled())) {
-            spanAndEndpoint().state().setCurrentServerSpan(ServerSpan.NOT_SAMPLED);
+            currentSpan().setCurrentSpan(ServerSpan.NOT_SAMPLED);
             return;
         }
 
@@ -181,7 +180,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setServerSend() {
         if (submitEndAnnotation(Constants.SERVER_SEND)) {
-            spanAndEndpoint().state().setCurrentServerSpan(null);
+            currentSpan().setCurrentSpan(null);
         }
     }
 

@@ -53,14 +53,14 @@ public class ServerTracerTest {
     @Test
     public void testClearCurrentSpan() {
         serverTracer.clearCurrentSpan();
-        assertThat(serverTracer.spanAndEndpoint().span()).isNull();
+        assertThat(serverTracer.currentSpan().get()).isNull();
     }
 
     @Test
     public void testSetStateCurrentTrace() {
         serverTracer.setStateCurrentTrace(CONTEXT, SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
             .isEqualTo(ServerSpan.create(CONTEXT, SPAN_NAME));
     }
 
@@ -68,7 +68,7 @@ public class ServerTracerTest {
     public void testSetStateNoTracing() {
         serverTracer.setStateNoTracing();
 
-        assertThat(serverTracer.spanAndEndpoint().state().sample())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
             .isFalse();
     }
 
@@ -78,7 +78,7 @@ public class ServerTracerTest {
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().sample())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
             .isTrue();
     }
 
@@ -90,7 +90,7 @@ public class ServerTracerTest {
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().sample())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
             .isTrue();
     }
 
@@ -100,24 +100,24 @@ public class ServerTracerTest {
 
         serverTracer.setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
             .isEqualTo(ServerSpan.NOT_SAMPLED);
     }
 
     @Test
     public void testSetServerReceivedNoServerSpan() {
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(null);
+        serverTracer.currentSpan().setCurrentSpan(null);
 
         serverTracer.setServerReceived();
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
             .isEqualTo(ServerSpan.EMPTY);
     }
 
     @Test
     public void testSetServerReceived() {
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived();
 
@@ -134,7 +134,7 @@ public class ServerTracerTest {
     @Test
     public void testSetServerReceivedSentClientAddress() {
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived(Endpoint.builder()
             .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
@@ -160,7 +160,7 @@ public class ServerTracerTest {
     @Test
     public void testSetServerReceivedSentClientAddress_noServiceName() {
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
@@ -169,7 +169,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerSendShouldNoServerSpan() {
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(null);
+        serverTracer.currentSpan().setCurrentSpan(null);
 
         serverTracer.setServerSend();
 
@@ -180,7 +180,7 @@ public class ServerTracerTest {
     public void testSetServerSend() {
         span.setTimestamp(100L);
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerSend();
 
@@ -192,7 +192,7 @@ public class ServerTracerTest {
 
         verify(mockSpanCollector).collect(span);
 
-        assertThat(serverTracer.spanAndEndpoint().state().getCurrentServerSpan())
+        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
             .isEqualTo(ServerSpan.EMPTY);
 
         assertEquals(START_TIME_MICROSECONDS - span.getTimestamp().longValue(), span.getDuration().longValue());
@@ -203,7 +203,7 @@ public class ServerTracerTest {
     public void setServerSend_skipsDurationWhenNoTimestamp() {
         // duration unset due to client-originated trace
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerSend();
 
@@ -217,7 +217,7 @@ public class ServerTracerTest {
     public void setServerSend_usesPreciseDuration() {
         span.setTimestamp(START_TIME_MICROSECONDS);
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
@@ -234,7 +234,7 @@ public class ServerTracerTest {
     public void setServerSend_lessThanMicrosRoundUp() {
         span.setTimestamp(START_TIME_MICROSECONDS);
         ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
-        serverTracer.spanAndEndpoint().state().setCurrentServerSpan(serverSpan);
+        serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         PowerMockito.when(System.nanoTime()).thenReturn(50L);
 

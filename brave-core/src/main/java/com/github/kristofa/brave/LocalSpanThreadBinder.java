@@ -14,7 +14,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * variable) In the callback method, call {@link #setCurrentSpan} before calling {@link
  * LocalTracer#finishSpan()}
  */
-public final class LocalSpanThreadBinder {
+public final class LocalSpanThreadBinder extends CurrentSpan {
 
   private final LocalSpanState state;
 
@@ -46,5 +46,9 @@ public final class LocalSpanThreadBinder {
    */
   public void setCurrentSpan(Span span) {
     state.setCurrentLocalSpan(span);
+  }
+
+  @Override Span get() {
+    return getCurrentLocalSpan();
   }
 }

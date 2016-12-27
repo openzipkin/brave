@@ -1,9 +1,8 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
+import com.github.kristofa.brave.AnnotationSubmitter.DefaultClock;
 import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,12 +11,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.twitter.zipkin.gen.Span;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * This isSampled proves that we have proper synchronisation when submitted annotations for the same span. Without proper
@@ -45,16 +44,13 @@ public class ITAnnotationSubmitterConcurrency {
 
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
-
-        final AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(new SpanAndEndpoint() {
-            @Override public Span span() {
+        CurrentSpan currentSpan = new CurrentSpan() {
+            @Override Span get() {
                 return span;
             }
-
-            @Override public Endpoint endpoint() {
-                return endpoint;
-            }
-        }, new AnnotationSubmitter.DefaultClock());
+        };
+        final AnnotationSubmitter annotationSubmitter =
+            AnnotationSubmitter.create(currentSpan, endpoint, new DefaultClock());
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

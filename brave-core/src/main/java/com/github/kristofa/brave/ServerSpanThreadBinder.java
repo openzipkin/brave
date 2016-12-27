@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Span;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -14,7 +15,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * 
  * @author kristof
  */
-public class ServerSpanThreadBinder {
+public class ServerSpanThreadBinder extends CurrentSpan {
 
     private final ServerSpanState state;
 
@@ -49,5 +50,15 @@ public class ServerSpanThreadBinder {
      */
     public void setCurrentSpan(final ServerSpan span) {
         state.setCurrentServerSpan(span);
+    }
+
+    @Override Span get() {
+        ServerSpan result = getCurrentServerSpan();
+        return result != null ? result.getSpan(): null;
+    }
+
+    Boolean sampled() {
+        ServerSpan result = getCurrentServerSpan();
+        return result != null ? result.getSample(): null;
     }
 }

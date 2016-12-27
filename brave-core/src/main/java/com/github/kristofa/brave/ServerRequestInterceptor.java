@@ -65,7 +65,7 @@ public class ServerRequestInterceptor {
         // rather let the client do that. Worst case we were propagated an unreported ID and
         // Zipkin backfills timestamp and duration.
         if (context.shared) {
-            Span span = serverTracer.spanAndEndpoint().span();
+            Span span = serverTracer.currentSpan().get();
             synchronized (span) {
                 span.setTimestamp(null);
             }
