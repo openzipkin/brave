@@ -47,16 +47,8 @@ public class ServerRequestInterceptor {
             return;
         }
 
-        // If the sampled flag was left unset, we need to make the decision here
-        if (context.sampled() == null) {
-            context = context.toBuilder()
-                .sampled(serverTracer.traceSampler().isSampled(context.traceId))
-                .shared(false)
-                .build();
-        } else if (context.sampled()) {
-            // We know an instrumented caller initiated the trace if they sampled it
-            context = context.toBuilder().shared(true).build();
-        }
+        // We are now joining the span propagated to us, by re-using the trace and span ids here.
+        context = serverTracer.spanIdFactory().join(context);
 
         // At this point, we have inherited a sampling decision or made one explicitly
         if (!context.sampled()) {

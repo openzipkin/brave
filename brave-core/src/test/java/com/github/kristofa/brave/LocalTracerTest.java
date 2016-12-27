@@ -164,11 +164,11 @@ public class LocalTracerTest {
 
         SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(PARENT_CONTEXT.toBuilder().spanId(span1.spanId).parentId(PARENT_CONTEXT.spanId).build(), span1);
-        assertEquals(span1.spanId, localTracer.maybeParent().getId());
+        assertEquals(span1.spanId, localTracer.maybeParent().spanId);
 
         SpanId span2 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(PARENT_CONTEXT.toBuilder().spanId(span2.spanId).parentId(span1.spanId).build(), span2);
-        assertEquals(span2.spanId, localTracer.maybeParent().getId());
+        assertEquals(span2.spanId, localTracer.maybeParent().spanId);
 
         assertEquals(span2.spanId, state.getCurrentLocalSpan().getId());
         localTracer.finishSpan();

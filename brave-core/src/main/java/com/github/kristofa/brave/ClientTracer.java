@@ -35,24 +35,33 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
     @Override
     abstract ClientSpanAndEndpoint spanAndEndpoint();
+    abstract SpanIdFactory spanIdFactory();
     abstract Reporter<zipkin.Span> reporter();
-    abstract Sampler traceSampler();
 
     /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
     @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
+        abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
+
+        abstract SpanIdFactory.Builder spanIdFactoryBuilder();
+
+        /** Used to generate new trace/span ids. */
+        public final Builder randomGenerator(Random randomGenerator) {
+            spanIdFactoryBuilder().randomGenerator(randomGenerator);
+            return this;
+        }
+
+        public final Builder traceSampler(Sampler sampler) {
+            spanIdFactoryBuilder().sampler(sampler);
+            return this;
+        }
 
         public Builder state(ServerClientAndLocalSpanState state) {
             return spanAndEndpoint(ClientSpanAndEndpoint.create(state));
         }
 
         abstract Builder spanAndEndpoint(ClientSpanAndEndpoint spanAndEndpoint);
-
-        /**
-         * Used to generate new trace/span ids.
-         */
-        public abstract Builder randomGenerator(Random randomGenerator);
 
         public abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
@@ -64,9 +73,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
-        public abstract Builder traceSampler(Sampler sampler);
         public abstract Builder clock(Clock clock);
-        abstract Builder traceId128Bit(boolean traceId128Bit);
 
         public abstract ClientTracer build();
     }
@@ -110,7 +117,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * event means this span is finished.
      */
     public void setClientReceived() {
-        if (submitEndAnnotation(Constants.CLIENT_RECV, reporter())) {
+        if (submitEndAnnotation(Constants.CLIENT_RECV)) {
             spanAndEndpoint().state().setCurrentClientSpan(null);
         }
     }
@@ -130,13 +137,10 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        SpanId nextContext = nextContext(maybeParent());
-        if (sample == null) {
-            // No sample indication is present.
-            if (!traceSampler().isSampled(nextContext.traceId)) {
-                spanAndEndpoint().state().setCurrentClientSpan(null);
-                return null;
-            }
+        SpanId nextContext = spanIdFactory().next(maybeParent());
+        if (Boolean.FALSE.equals(nextContext.sampled())) {
+            spanAndEndpoint().state().setCurrentClientSpan(null);
+            return null;
         }
 
         Span newSpan = Span.create(nextContext).setName(requestName);
@@ -144,7 +148,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         return nextContext;
     }
 
-    private Span maybeParent() {
+    private SpanId maybeParent() {
         Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
         if (parentSpan == null) {
             ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
@@ -152,7 +156,14 @@ public abstract class ClientTracer extends AnnotationSubmitter {
                 parentSpan = serverSpan.getSpan();
             }
         }
-        return parentSpan;
+        if (parentSpan == null) return null;
+        if (parentSpan.context() != null) return parentSpan.context();
+        // If we got here, some implementation of state passed a deprecated span
+        return SpanId.builder()
+            .traceIdHigh(parentSpan.getTrace_id_high())
+            .traceId(parentSpan.getTrace_id())
+            .parentId(parentSpan.getParent_id())
+            .spanId(parentSpan.getId()).build();
     }
 
     ClientTracer() {

@@ -5,12 +5,15 @@ import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import zipkin.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,21 +32,14 @@ public class AnnotationSubmitterTest {
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
     private Span span = Span.create(SpanId.builder().spanId(1).build()).setName("foo");
     private AnnotationSubmitter annotationSubmitter;
+    private List<zipkin.Span> spans = new ArrayList<>();
 
     @Before
     public void setup() {
         PowerMockito.mockStatic(System.class);
         PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
         PowerMockito.when(System.nanoTime()).thenReturn(0L);
-        annotationSubmitter = AnnotationSubmitter.create(new SpanAndEndpoint() {
-            @Override public Span span() {
-                return span;
-            }
-
-            @Override public Endpoint endpoint() {
-                return endpoint;
-            }
-        }, new AnnotationSubmitter.DefaultClock());
+        annotationSubmitter = newAnnotationSubmitter();
     }
 
     @Test
@@ -115,10 +111,13 @@ public class AnnotationSubmitterTest {
     @Test
     public void doesntSetDurationWhenTimestampUnset() {
         annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss", span -> {
-            assertThat(span.timestamp).isNull();
-            assertThat(span.duration).isNull();
-        });
+        annotationSubmitter.submitEndAnnotation("ss");
+        assertThat(spans).allSatisfy(
+            span -> {
+                assertThat(span.timestamp).isNull();
+                assertThat(span.duration).isNull();
+            }
+        );
     }
 
     @Test
@@ -126,8 +125,9 @@ public class AnnotationSubmitterTest {
         span.setTimestamp(START_TIME_MICROSECONDS - 1);
 
         annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss", span ->
-            assertThat(span.duration).isEqualTo(1));
+        annotationSubmitter.submitEndAnnotation("ss");
+        assertThat(spans).extracting(s -> s.duration)
+            .containsExactly(1L);
     }
 
     @Test
@@ -137,7 +137,34 @@ public class AnnotationSubmitterTest {
         PowerMockito.when(System.nanoTime()).thenReturn(787L);
 
         annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss", span ->
-            assertThat(span.duration).isEqualTo(1L));
+        annotationSubmitter.submitEndAnnotation("ss");
+        assertThat(spans).extracting(s -> s.duration)
+            .containsExactly(1L);
+    }
+
+    AnnotationSubmitter newAnnotationSubmitter() {
+        SpanAndEndpoint spanAndEndpoint = new SpanAndEndpoint() {
+            @Override public Span span() {
+                return span;
+            }
+
+            @Override public Endpoint endpoint() {
+                return endpoint;
+            }
+        };
+        AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
+        return new AnnotationSubmitter(){
+            @Override SpanAndEndpoint spanAndEndpoint() {
+                return spanAndEndpoint;
+            }
+
+            @Override Clock clock() {
+                return clock;
+            }
+
+            @Override Reporter<zipkin.Span> reporter() {
+                return spans::add;
+            }
+        };
     }
 }
