@@ -19,7 +19,7 @@ public class ServerInterceptorsTest {
   @Test
   public void test() {
 
-    BraveServerInInterceptor inInterceptor = BraveServerInInterceptor.create(brave);
+    BraveJaxWsServerInInterceptor inInterceptor = BraveJaxWsServerInInterceptor.create(brave);
     BraveServerOutInterceptor outInterceptor = BraveServerOutInterceptor.create(brave);
 
     ExchangeImpl exchange = new ExchangeImpl();

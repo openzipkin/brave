@@ -3,6 +3,7 @@ package com.github.kristofa.brave.cxf3;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
+import org.apache.cxf.message.Message;
 
 import java.util.concurrent.Callable;
 
@@ -12,11 +13,11 @@ import java.util.concurrent.Callable;
 public class TracerContext {
 
   private final ServerSpanThreadBinder serverSpanThreadBinder;
-  private final ServerSpan serverSpan;
+  private final Message message;
 
-  TracerContext(Brave brave, ServerSpan serverSpan) {
+  TracerContext(Brave brave, Message message) {
     this.serverSpanThreadBinder = brave.serverSpanThreadBinder();
-    this.serverSpan = serverSpan;
+    this.message = message;
   }
 
   /**
@@ -31,14 +32,22 @@ public class TracerContext {
       return null;
     }
 
-    // we should clean this thread, ServerSpan will finish on another one
-    serverSpanThreadBinder.setCurrentSpan(null);
+    // get server span bind to current thread
+    final ServerSpan current = getCurrentServerSpan();
+    final ServerSpan serverSpan = getFromExchange();
 
     return () -> {
-      if (serverSpan != null) {
-        serverSpanThreadBinder.setCurrentSpan(serverSpan);
+      try {
+        // When current span is not null, it means it was bind manually by developer
+        // or this wrapper is used in sync scenario.
+        // Bind server span from Exchange only when current span is null.
+        if (current == null) {
+          serverSpanThreadBinder.setCurrentSpan(serverSpan);
+        }
+        command.run();
+      } finally {
+        serverSpanThreadBinder.setCurrentSpan(current);
       }
-      command.run();
     };
   }
 
@@ -54,14 +63,38 @@ public class TracerContext {
       return null;
     }
 
-    // we should clean this thread, ServerSpan will finish on another one
-    serverSpanThreadBinder.setCurrentSpan(null);
+    // get server span bind to current thread
+    final ServerSpan current = getCurrentServerSpan();
+    final ServerSpan serverSpan = getFromExchange();
 
     return () -> {
-      if (serverSpan != null) {
-        serverSpanThreadBinder.setCurrentSpan(serverSpan);
+      try {
+        // When current span is not null, it means it was bind manually by developer
+        // or this wrapper is used in sync scenario.
+        // Bind server span from Exchange only when current span is null.
+        if (current == null) {
+          serverSpanThreadBinder.setCurrentSpan(serverSpan);
+        }
+        return command.call();
+      } finally {
+        serverSpanThreadBinder.setCurrentSpan(current);
       }
-      return command.call();
     };
+  }
+
+  private ServerSpan getCurrentServerSpan() {
+    // gets existing server span or reinitializes to ServerSpan#EMPTY using ThreadLocal#initialValue
+    final ServerSpan current = serverSpanThreadBinder.getCurrentServerSpan();
+
+    // when value was just initialized
+    if (ServerSpan.EMPTY == current) {
+      serverSpanThreadBinder.setCurrentSpan(null);
+      return null;
+    }
+    return current;
+  }
+
+  private <T> T getFromExchange() {
+      return (T) message.getExchange().get(BraveCxfConstants.BRAVE_SERVER_SPAN);
   }
 }

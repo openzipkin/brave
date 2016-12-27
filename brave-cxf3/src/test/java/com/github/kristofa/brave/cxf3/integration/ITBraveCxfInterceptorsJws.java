@@ -2,7 +2,7 @@ package com.github.kristofa.brave.cxf3.integration;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.cxf3.BraveClientFeature;
-import com.github.kristofa.brave.cxf3.BraveServerFeature;
+import com.github.kristofa.brave.cxf3.BraveJaxWsServerFeature;
 import com.github.kristofa.brave.cxf3.ReporterForTesting;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
@@ -87,14 +87,14 @@ public class ITBraveCxfInterceptorsJws {
     fooServerFactory.setAddress(fooUrl);
     fooServerFactory.setServiceClass(FooService.class);
     fooServerFactory.setServiceBean(new DefaultFooService(barClient));
-    fooServerFactory.getFeatures().add(BraveServerFeature.create(fooServerBrave));
+    fooServerFactory.getFeatures().add(BraveJaxWsServerFeature.create(fooServerBrave));
     this.fooServer = fooServerFactory.create();
 
     JaxWsServerFactoryBean barServerFactory = new JaxWsServerFactoryBean();
     barServerFactory.setAddress(barUrl);
     barServerFactory.setServiceClass(BarService.class);
     barServerFactory.setServiceBean(new DefaultBarService());
-    barServerFactory.getFeatures().add(BraveServerFeature.create(barServerBrave));
+    barServerFactory.getFeatures().add(BraveJaxWsServerFeature.create(barServerBrave));
     this.barServer = barServerFactory.create();
   }
 

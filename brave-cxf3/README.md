@@ -7,7 +7,7 @@ Supports both JAX-WS and JAX-RS.
 
 The module contains 4 filters:
 
-*   `BraveServerInInterceptor`  - Intercepts incoming server requests and extracts any trace information from
+*   `BraveJaxWsServerInInterceptor` and `BraveJaxRsServerInInterceptor` - Intercepts incoming server requests and extracts any trace information from
 the request header. Also sends sr annotations.
 *   `BraveServerOutInterceptor` - Intercepts outgoing server responses and sends ss annotations.
 *   `BraveClientOutInterceptor` - Intercepts CXF 3.x client requests and adds or forwards tracing information in the header.
@@ -25,7 +25,7 @@ JaxWsServerFactoryBean serverFactory = new JaxWsServerFactoryBean();
 serverFactory.setAddress("http://localhost:9000/test");
 serverFactory.setServiceClass(FooService.class);
 serverFactory.setServiceBean(fooServiceImplementation);
-serverFactory.getFeatures().add(BraveServerFeature.create(brave));
+serverFactory.getFeatures().add(BraveJaxWsServerFeature.create(brave));
 serverFactory.create();
 ```
 
@@ -51,7 +51,7 @@ CXF JAX-RS server setup:
 JAXRSServerFactoryBean serverFactory = new JAXRSServerFactoryBean();
 serverFactory.setServiceBeans(new RestFooService());
 serverFactory.setAddress("http://localhost:9001/");
-serverFactory.getFeatures().add(BraveServerFeature.create(brave));
+serverFactory.getFeatures().add(BraveJaxRsServerFeature.create(brave));
 serverFactory.create();
 ```
 

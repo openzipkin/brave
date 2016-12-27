@@ -21,6 +21,6 @@ public class TracerContextProvider implements ContextProvider<TracerContext> {
 
   @Override
   public TracerContext createContext(Message message) {
-    return new TracerContext(brave, (ServerSpan) message.getExchange().get(BraveCxfConstants.BRAVE_SERVER_SPAN));
+    return new TracerContext(brave, message);
   }
 }

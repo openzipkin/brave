@@ -9,22 +9,22 @@ import org.apache.cxf.jaxrs.provider.ServerProviderFactory;
 import java.util.Arrays;
 
 /**
- * Configures cxf server with brave interceptors.
+ * Configures cxf jax-rs server with brave interceptors.
  */
-public class BraveServerFeature extends AbstractFeature {
+public class BraveJaxRsServerFeature extends AbstractFeature {
   protected final Brave brave;
 
-  public static BraveServerFeature create(Brave brave) {
-    return new BraveServerFeature(brave);
+  public static BraveJaxRsServerFeature create(Brave brave) {
+    return new BraveJaxRsServerFeature(brave);
   }
 
-  BraveServerFeature(final Brave brave) {
+  BraveJaxRsServerFeature(final Brave brave) {
     this.brave = brave;
   }
 
   @Override
   public void initialize(Server server, Bus bus) {
-    server.getEndpoint().getInInterceptors().add(BraveServerInInterceptor.create(brave));
+    server.getEndpoint().getInInterceptors().add(BraveJaxRsServerInInterceptor.create(brave));
     server.getEndpoint().getOutInterceptors().add(BraveServerOutInterceptor.create(brave));
     server.getEndpoint().getOutFaultInterceptors().add(BraveServerOutInterceptor.create(brave));
 
