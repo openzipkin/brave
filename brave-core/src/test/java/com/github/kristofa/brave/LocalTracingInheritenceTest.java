@@ -3,7 +3,6 @@ package com.github.kristofa.brave;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -56,11 +55,9 @@ public class LocalTracingInheritenceTest {
 
     private void checkState() {
         LocalTracer localTracer = brave.localTracer();
-        ServerClientAndLocalSpanState state = localTracer.spanAndEndpoint().state();
-        assertThat(state.getCurrentServerSpan()).isSameAs(ServerSpan.EMPTY);
-        assertThat(state.getCurrentClientSpan()).isNull();
-        assertThat(state.getCurrentLocalSpan()).isNull();
-        assertThat(localTracer.spanAndEndpoint().span()).isNull();
+        assertThat(localTracer.currentServerSpan().getCurrentServerSpan())
+            .isSameAs(ServerSpan.EMPTY);
+        assertThat(localTracer.currentSpan().get()).isNull();
     }
 
     @Test
@@ -74,7 +71,7 @@ public class LocalTracingInheritenceTest {
 
         final ClientTracer secondClientTracer = brave.clientTracer();
         assertSame("It is important that each client tracer we get shares same state.",
-                clientTracer.spanAndEndpoint().state(), secondClientTracer.spanAndEndpoint().state());
+                clientTracer.currentSpan(), secondClientTracer.currentSpan());
     }
 
     @Test
@@ -87,7 +84,7 @@ public class LocalTracingInheritenceTest {
 
         final ServerTracer secondServerTracer = brave.serverTracer();
         assertSame("It is important that each client tracer we get shares same state.",
-                serverTracer.spanAndEndpoint().state(), secondServerTracer.spanAndEndpoint().state());
+                serverTracer.currentSpan(), secondServerTracer.currentSpan());
     }
 
     @Test
@@ -100,7 +97,7 @@ public class LocalTracingInheritenceTest {
 
         final LocalTracer secondLocalTracer = brave.localTracer();
         assertSame("It is important that each local tracer we get shares same state.",
-                localTracer.spanAndEndpoint().state(), secondLocalTracer.spanAndEndpoint().state());
+                localTracer.currentSpan(), secondLocalTracer.currentSpan());
     }
 
     @Test
@@ -109,14 +106,14 @@ public class LocalTracingInheritenceTest {
         final ServerTracer serverTracer = brave.serverTracer();
         final LocalTracer localTracer = brave.localTracer();
 
-        assertSame("Client and server tracers should share same state.", clientTracer.spanAndEndpoint().state(),
-                serverTracer.spanAndEndpoint().state());
+        assertSame("Client and server tracers should share same state.", clientTracer.currentServerSpan(),
+                serverTracer.currentSpan());
 
-        assertSame("Client and local tracers should share same state.", clientTracer.spanAndEndpoint().state(),
-                localTracer.spanAndEndpoint().state());
+        assertSame("Client and local tracers should share same state.", clientTracer.currentLocalSpan(),
+                localTracer.currentSpan());
 
-        assertSame("Server and local tracers should share same state.", serverTracer.spanAndEndpoint().state(),
-                localTracer.spanAndEndpoint().state());
+        assertSame("Server and local tracers should share same state.", serverTracer.currentSpan(),
+                localTracer.currentServerSpan());
     }
 
     @Test

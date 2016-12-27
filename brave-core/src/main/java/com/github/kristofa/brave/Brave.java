@@ -246,11 +246,8 @@ public class Brave {
         return localSpanThreadBinder;
     }
 
-    /**
-     * Can be used to submit application specific annotations to the current server span.
-     *
-     * @return Server span {@link AnnotationSubmitter}.
-     */
+    /** @deprecated Please use {@link #serverTracer()} instead. */
+    @Deprecated
     public AnnotationSubmitter serverSpanAnnotationSubmitter() {
         return serverSpanAnnotationSubmitter;
     }
@@ -261,17 +258,26 @@ public class Brave {
             ? builder.clock
             : new AnnotationSubmitter.DefaultClock();
 
+        serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
+        clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
+        localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
+
+        Endpoint localEndpoint = builder.state.endpoint();
         serverTracer = new AutoValue_ServerTracer.Builder()
                 .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
-                .state(builder.state)
+                .currentSpan(serverSpanThreadBinder)
+                .endpoint(localEndpoint)
                 .clock(clock)
                 .build();
 
         clientTracer = new AutoValue_ClientTracer.Builder()
                 .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
-                .state(builder.state)
+                .currentLocalSpan(localSpanThreadBinder)
+                .currentServerSpan(serverSpanThreadBinder)
+                .currentSpan(clientSpanThreadBinder)
+                .endpoint(localEndpoint)
                 .clock(clock)
                 .build();
 
@@ -279,7 +285,9 @@ public class Brave {
                 .spanIdFactory(spanIdFactory)
                 .reporter(builder.reporter)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
-                .spanAndEndpoint(SpanAndEndpoint.LocalSpanAndEndpoint.create(builder.state))
+                .currentServerSpan(serverSpanThreadBinder)
+                .currentSpan(localSpanThreadBinder)
+                .endpoint(localEndpoint)
                 .clock(clock)
                 .build();
 
@@ -287,9 +295,6 @@ public class Brave {
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
-        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverTracer.spanAndEndpoint(), clock);
-        serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
-        clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
-        localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverSpanThreadBinder, localEndpoint, clock);
     }
 }

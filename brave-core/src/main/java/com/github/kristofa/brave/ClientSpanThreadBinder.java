@@ -13,7 +13,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * In the callback method, call {@link #setCurrentSpan} before calling {@link com.github.kristofa.brave.ClientTracer#setClientReceived()}
  * @author hzhao on 8/11/14.
  */
-public final class ClientSpanThreadBinder {
+public final class ClientSpanThreadBinder extends CurrentSpan {
 
     private final ClientSpanState state;
 
@@ -47,5 +47,9 @@ public final class ClientSpanThreadBinder {
     public void setCurrentSpan(Span span)
     {
         state.setCurrentClientSpan(span);
+    }
+
+    @Override Span get() {
+        return getCurrentClientSpan();
     }
 }

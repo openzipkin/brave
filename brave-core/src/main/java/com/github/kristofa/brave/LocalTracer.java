@@ -1,9 +1,9 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.SpanAndEndpoint.LocalSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.BinaryAnnotation;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
@@ -37,10 +37,9 @@ import static zipkin.Constants.LOCAL_COMPONENT;
 @AutoValue
 public abstract class LocalTracer extends AnnotationSubmitter {
 
-    @Override
-    abstract LocalSpanAndEndpoint spanAndEndpoint();
+    abstract ServerSpanThreadBinder currentServerSpan();
 
-    abstract Reporter<zipkin.Span> reporter();
+    @Override abstract LocalSpanThreadBinder currentSpan();
 
     abstract boolean allowNestedLocalSpans();
 
@@ -50,7 +49,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     abstract static class Builder {
         abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
 
-        abstract Builder spanAndEndpoint(LocalSpanAndEndpoint spanAndEndpoint);
+        abstract Builder endpoint(Endpoint endpoint);
+
+        abstract Builder currentServerSpan(ServerSpanThreadBinder currentServerSpan);
+
+        abstract Builder currentSpan(LocalSpanThreadBinder currentSpan);
 
         abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
@@ -85,16 +88,15 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @return span that should be the new span's parent, or null if one does not exist.
      */
     @Nullable SpanId maybeParent() {
-        ServerClientAndLocalSpanState state = spanAndEndpoint().state();
         Span parentSpan = null;
         if (allowNestedLocalSpans()) {
-            parentSpan = state.getCurrentLocalSpan();
+            parentSpan = currentSpan().get();
         }
 
         if (parentSpan == null) {
-            ServerSpan currentServerSpan = state.getCurrentServerSpan();
+            Span currentServerSpan = currentServerSpan().get();
             if (currentServerSpan != null) {
-                parentSpan = currentServerSpan.getSpan();
+                parentSpan = currentServerSpan;
             }
         }
         if (parentSpan == null) return null;
@@ -118,24 +120,27 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
 
-        Boolean sample = spanAndEndpoint().state().sample();
+        // When a trace context is extracted from an incoming request, it may have only the
+        // sampled header (no ids). If the header says unsampled, we must honor that. Since
+        // we currently don't synthesize a fake span when a trace is unsampled, we have to
+        // check sampled state explicitly.
+        Boolean sample = currentServerSpan().sampled();
         if (Boolean.FALSE.equals(sample)) {
-            spanAndEndpoint().state().setCurrentLocalSpan(null);
+            currentSpan().setCurrentSpan(null);
             return null;
         }
 
         SpanId nextContext = spanIdFactory().next(maybeParent());
         if (Boolean.FALSE.equals(nextContext.sampled())) {
-            spanAndEndpoint().state().setCurrentLocalSpan(null);
+            currentSpan().setCurrentSpan(null);
             return null;
         }
 
         Span newSpan = Span.create(nextContext);
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
-        newSpan.addToBinary_annotations(
-            BinaryAnnotation.create(LOCAL_COMPONENT, component, spanAndEndpoint().endpoint()));
-        spanAndEndpoint().state().setCurrentLocalSpan(newSpan);
+        newSpan.addToBinary_annotations(BinaryAnnotation.create(LOCAL_COMPONENT, component, endpoint()));
+        currentSpan().setCurrentSpan(newSpan);
         return nextContext;
     }
 
@@ -143,7 +148,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * Completes the span, assigning the most precise duration possible.
      */
     public void finishSpan() {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
         long duration = Math.max(1L, clock().currentTimeMicroseconds() - span.getTimestamp());
@@ -154,7 +159,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * Completes the span, which took {@code duration} microseconds.
      */
     public void finishSpan(long duration) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
         internalFinishSpan(span, duration);
@@ -165,7 +170,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             span.setDuration(duration);
         }
         reporter().report(toZipkin(span));
-        spanAndEndpoint().state().setCurrentLocalSpan(null);
+        currentSpan().setCurrentSpan(null);
     }
 
     LocalTracer() {

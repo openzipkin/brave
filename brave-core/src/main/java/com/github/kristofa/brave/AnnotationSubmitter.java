@@ -33,26 +33,9 @@ public abstract class AnnotationSubmitter {
         long currentTimeMicroseconds();
     }
 
-    public static AnnotationSubmitter create(final SpanAndEndpoint spanAndEndpoint,
-        final Clock clock) {
-        checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
-        checkNotNull(clock, "Null clock");
-        return new AnnotationSubmitter() {
-            @Override SpanAndEndpoint spanAndEndpoint() {
-                return spanAndEndpoint;
-            }
+    abstract CurrentSpan currentSpan();
 
-            @Override Clock clock() {
-                return clock;
-            }
-
-            @Override Reporter<zipkin.Span> reporter() {
-                throw new UnsupportedOperationException();
-            }
-        };
-    }
-
-    abstract SpanAndEndpoint spanAndEndpoint();
+    abstract Endpoint endpoint();
 
     abstract Clock clock();
 
@@ -64,7 +47,7 @@ public abstract class AnnotationSubmitter {
      * @param value A short tag indicating the event, like "finagle.retry"
      */
     public void submitAnnotation(String value) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
         submitAnnotation(value, clock().currentTimeMicroseconds());
@@ -80,10 +63,10 @@ public abstract class AnnotationSubmitter {
      * @param timestamp microseconds from epoch
      */
     public void submitAnnotation(String value, long timestamp) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
-        Annotation annotation = Annotation.create(timestamp, value, spanAndEndpoint().endpoint());
+        Annotation annotation = Annotation.create(timestamp, value, endpoint());
         synchronized (span) {
             span.addToAnnotations(annotation);
         }
@@ -91,7 +74,7 @@ public abstract class AnnotationSubmitter {
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
     void submitStartAnnotation(String annotationName) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
         long timestamp = clock().currentTimeMicroseconds();
@@ -108,7 +91,7 @@ public abstract class AnnotationSubmitter {
      * @return true if a span was sent for collection.
      */
     boolean submitEndAnnotation(String annotationName) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return false;
 
         long endTimestamp = clock().currentTimeMicroseconds();
@@ -125,7 +108,7 @@ public abstract class AnnotationSubmitter {
 
     /** Internal api for submitting an address. */
     void submitAddress(String key, Endpoint endpoint) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
         BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
@@ -142,10 +125,10 @@ public abstract class AnnotationSubmitter {
      * @param value String value, should not be <code>null</code>.
      */
     public void submitBinaryAnnotation(String key, String value) {
-        Span span = spanAndEndpoint().span();
+        Span span = currentSpan().get();
         if (span == null) return;
 
-        BinaryAnnotation ba = BinaryAnnotation.create(key, value, spanAndEndpoint().endpoint());
+        BinaryAnnotation ba = BinaryAnnotation.create(key, value, endpoint());
         synchronized (span) {
             span.addToBinary_annotations(ba);
         }
@@ -177,5 +160,41 @@ public abstract class AnnotationSubmitter {
         public long currentTimeMicroseconds() {
             return ((System.nanoTime() - createTick) / 1000) + createTimestamp;
         }
+    }
+
+    /** @deprecated Please use {@link Brave#serverTracer()} instead. */
+    @Deprecated
+    public static AnnotationSubmitter create(final SpanAndEndpoint spanAndEndpoint,
+        final Clock clock) {
+        checkNotNull(spanAndEndpoint, "Null spanAndEndpoint");
+        checkNotNull(clock, "Null clock");
+        CurrentSpan currentSpan = new CurrentSpan(){
+            @Override Span get() {
+                return spanAndEndpoint.span();
+            }
+        };
+        Endpoint localEndpoint = spanAndEndpoint.endpoint();
+        return create(currentSpan, localEndpoint, clock);
+    }
+
+    static AnnotationSubmitter create(final CurrentSpan currentSpan, final Endpoint localEndpoint,
+        final Clock clock) {
+        return new AnnotationSubmitter() {
+            @Override CurrentSpan currentSpan() {
+                return currentSpan;
+            }
+
+            @Override Endpoint endpoint() {
+                return localEndpoint;
+            }
+
+            @Override Clock clock() {
+                return clock;
+            }
+
+            @Override Reporter<zipkin.Span> reporter() {
+                return Reporter.NOOP;
+            }
+        };
     }
 }

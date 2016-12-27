@@ -143,19 +143,19 @@ public class AnnotationSubmitterTest {
     }
 
     AnnotationSubmitter newAnnotationSubmitter() {
-        SpanAndEndpoint spanAndEndpoint = new SpanAndEndpoint() {
-            @Override public Span span() {
+        CurrentSpan currentSpan = new CurrentSpan() {
+            @Override Span get() {
                 return span;
-            }
-
-            @Override public Endpoint endpoint() {
-                return endpoint;
             }
         };
         AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
         return new AnnotationSubmitter(){
-            @Override SpanAndEndpoint spanAndEndpoint() {
-                return spanAndEndpoint;
+            @Override CurrentSpan currentSpan() {
+                return currentSpan;
+            }
+
+            @Override Endpoint endpoint() {
+                return endpoint;
             }
 
             @Override Clock clock() {

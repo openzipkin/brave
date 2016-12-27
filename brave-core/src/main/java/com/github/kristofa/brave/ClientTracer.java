@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.SpanAndEndpoint.ClientSpanAndEndpoint;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
@@ -33,10 +32,10 @@ public abstract class ClientTracer extends AnnotationSubmitter {
         return new AutoValue_ClientTracer.Builder();
     }
 
-    @Override
-    abstract ClientSpanAndEndpoint spanAndEndpoint();
+    abstract CurrentSpan currentLocalSpan();
+    abstract ServerSpanThreadBinder currentServerSpan();
+    @Override abstract ClientSpanThreadBinder currentSpan();
     abstract SpanIdFactory spanIdFactory();
-    abstract Reporter<zipkin.Span> reporter();
 
     /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
     @Deprecated
@@ -57,11 +56,20 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return this;
         }
 
-        public Builder state(ServerClientAndLocalSpanState state) {
-            return spanAndEndpoint(ClientSpanAndEndpoint.create(state));
+        public final Builder state(ServerClientAndLocalSpanState state) {
+            return endpoint(state.endpoint())
+                .currentLocalSpan(new LocalSpanThreadBinder(state))
+                .currentServerSpan(new ServerSpanThreadBinder(state))
+                .currentSpan(new ClientSpanThreadBinder(state));
         }
 
-        abstract Builder spanAndEndpoint(ClientSpanAndEndpoint spanAndEndpoint);
+        abstract Builder endpoint(Endpoint endpoint);
+
+        abstract Builder currentLocalSpan(CurrentSpan currentLocalSpan);
+
+        abstract Builder currentServerSpan(ServerSpanThreadBinder currentServerSpan);
+
+        abstract Builder currentSpan(ClientSpanThreadBinder currentSpan);
 
         public abstract Builder reporter(Reporter<zipkin.Span> reporter);
 
@@ -118,7 +126,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      */
     public void setClientReceived() {
         if (submitEndAnnotation(Constants.CLIENT_RECV)) {
-            spanAndEndpoint().state().setCurrentClientSpan(null);
+            currentSpan().setCurrentSpan(null);
         }
     }
 
@@ -130,30 +138,33 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * @return Span id for new request or <code>null</code> in case we should not trace this new client request.
      */
     public SpanId startNewSpan(String requestName) {
-
-        Boolean sample = spanAndEndpoint().state().sample();
+        // When a trace context is extracted from an incoming request, it may have only the
+        // sampled header (no ids). If the header says unsampled, we must honor that. Since
+        // we currently don't synthesize a fake span when a trace is unsampled, we have to
+        // check sampled state explicitly.
+        Boolean sample = currentServerSpan().sampled();
         if (Boolean.FALSE.equals(sample)) {
-            spanAndEndpoint().state().setCurrentClientSpan(null);
+            currentSpan().setCurrentSpan(null);
             return null;
         }
 
         SpanId nextContext = spanIdFactory().next(maybeParent());
         if (Boolean.FALSE.equals(nextContext.sampled())) {
-            spanAndEndpoint().state().setCurrentClientSpan(null);
+            currentSpan().setCurrentSpan(null);
             return null;
         }
 
         Span newSpan = Span.create(nextContext).setName(requestName);
-        spanAndEndpoint().state().setCurrentClientSpan(newSpan);
+        currentSpan().setCurrentSpan(newSpan);
         return nextContext;
     }
 
     private SpanId maybeParent() {
-        Span parentSpan = spanAndEndpoint().state().getCurrentLocalSpan();
+        Span parentSpan = currentLocalSpan().get();
         if (parentSpan == null) {
-            ServerSpan serverSpan = spanAndEndpoint().state().getCurrentServerSpan();
+            Span serverSpan = currentServerSpan().get();
             if (serverSpan != null) {
-                parentSpan = serverSpan.getSpan();
+                parentSpan = serverSpan;
             }
         }
         if (parentSpan == null) return null;
