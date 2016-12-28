@@ -1,6 +1,7 @@
 package com.twitter.zipkin.gen;
 
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Util;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -12,15 +13,39 @@ import static com.github.kristofa.brave.internal.Util.equal;
 
 /** This is an internal type representing a span in the trace tree. */
 public class Span implements Serializable {
+  static {
+    InternalSpan.instance = new InternalSpan(){
 
-  /** Internal. Do not create spans directly */
-  public static Span create(SpanId spanId) {
-    return new Span(spanId);
+      @Override public Span newSpan(SpanId context) {
+        return new Span(context);
+      }
+
+      @Override public SpanId context(Span span) {
+        if (span.context != null) return span.context;
+        // If we got here, some implementation of state passed a deprecated span
+
+        // If no ids were set, it is junk, so return null
+        if (span.trace_id == 0 && span.parent_id == null && span.id == 0) return null;
+
+        // Attempt to backfill the span context
+        synchronized (span) {
+          if (span.context != null) return span.context;
+          span.context = SpanId.builder()
+              .traceIdHigh(span.getTrace_id_high())
+              .traceId(span.getTrace_id())
+              .parentId(span.getParent_id())
+              .spanId(span.getId())
+              .debug(span.debug != null ? span.debug : false)
+              .build();
+        }
+        return span.context;
+      }
+    };
   }
 
   static final long serialVersionUID = 1L;
 
-  private final SpanId context; // nullable for deprecated constructor
+  private SpanId context; // nullable for deprecated constructor
   private long trace_id; // required
   private long trace_id_high; // optional (default to zero)
   private String name; // required
@@ -32,10 +57,13 @@ public class Span implements Serializable {
   private Long timestamp; // optional
   private Long duration; // optional
 
-  /** @deprecated internally we call {@link Span#Span(SpanId)} because it sets the identity */
+  /**
+   * Span is an internal type, don't create new instances manually.
+   *
+   * @deprecated internally we call {@link Span#Span(SpanId)} because it sets the identity
+   */
   @Deprecated
   public Span() {
-    assert false : "do not construct spans except via their context";
     context = null;
   }
 
@@ -47,15 +75,6 @@ public class Span implements Serializable {
     id = context.spanId;
     name = ""; // avoid NPE on equals
     if (context.debug()) debug = true;
-  }
-
-  /**
-   * Internal api that returns the trace context this span was created with.
-   *
-   * @since 3.17
-   */
-  public SpanId context() {
-    return context;
   }
 
   public long getTrace_id() {
@@ -90,7 +109,7 @@ public class Span implements Serializable {
 
   /**
    * Span name in lowercase, rpc method for example
-   * 
+   *
    * Conventionally, when the span name isn't known, name = "unknown".
    */
   public String getName() {
@@ -99,7 +118,7 @@ public class Span implements Serializable {
 
   /**
    * Span name in lowercase, rpc method for example
-   * 
+   *
    * Conventionally, when the span name isn't known, name = "unknown".
    */
   public Span setName(String name) {
@@ -185,15 +204,15 @@ public class Span implements Serializable {
 
   /**
    * Microseconds from epoch of the creation of this span.
-   * 
+   *
    * This value should be set directly by instrumentation, using the most
    * precise value possible. For example, gettimeofday or syncing nanoTime
    * against a tick of currentTimeMillis.
-   * 
+   *
    * For compatibilty with instrumentation that precede this field, collectors
    * or span stores can derive this via Annotation.timestamp.
    * For example, SERVER_RECV.timestamp or CLIENT_SEND.timestamp.
-   * 
+   *
    * This field is optional for compatibility with old data: first-party span
    * stores are expected to support this at time of introduction.
    */
@@ -203,15 +222,15 @@ public class Span implements Serializable {
 
   /**
    * Microseconds from epoch of the creation of this span.
-   * 
+   *
    * This value should be set directly by instrumentation, using the most
    * precise value possible. For example, gettimeofday or syncing nanoTime
    * against a tick of currentTimeMillis.
-   * 
+   *
    * For compatibilty with instrumentation that precede this field, collectors
    * or span stores can derive this via Annotation.timestamp.
    * For example, SERVER_RECV.timestamp or CLIENT_SEND.timestamp.
-   * 
+   *
    * This field is optional for compatibility with old data: first-party span
    * stores are expected to support this at time of introduction.
    */
@@ -222,19 +241,19 @@ public class Span implements Serializable {
 
   /**
    * Measurement of duration in microseconds, used to support queries.
-   * 
+   *
    * This value should be set directly, where possible. Doing so encourages
    * precise measurement decoupled from problems of clocks, such as skew or NTP
    * updates causing time to move backwards.
-   * 
+   *
    * For compatibilty with instrumentation that precede this field, collectors
    * or span stores can derive this by subtracting Annotation.timestamp.
    * For example, SERVER_SEND.timestamp - SERVER_RECV.timestamp.
-   * 
+   *
    * If this field is persisted as unset, zipkin will continue to work, except
    * duration query support will be implementation-specific. Similarly, setting
    * this field non-atomically is implementation-specific.
-   * 
+   *
    * This field is i64 vs i32 to support spans longer than 35 minutes.
    */
   public Long getDuration() {
@@ -243,19 +262,19 @@ public class Span implements Serializable {
 
   /**
    * Measurement of duration in microseconds, used to support queries.
-   * 
+   *
    * This value should be set directly, where possible. Doing so encourages
    * precise measurement decoupled from problems of clocks, such as skew or NTP
    * updates causing time to move backwards.
-   * 
+   *
    * For compatibilty with instrumentation that precede this field, collectors
    * or span stores can derive this by subtracting Annotation.timestamp.
    * For example, SERVER_SEND.timestamp - SERVER_RECV.timestamp.
-   * 
+   *
    * If this field is persisted as unset, zipkin will continue to work, except
    * duration query support will be implementation-specific. Similarly, setting
    * this field non-atomically is implementation-specific.
-   * 
+   *
    * This field is i64 vs i32 to support spans longer than 35 minutes.
    */
   public Span setDuration(Long duration) {

@@ -2,6 +2,7 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.Span;
 import java.util.Arrays;
@@ -18,6 +19,9 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class HttpSpanCollectorTest {
+  static {
+    InternalSpan.initializeInstanceForTests();
+  }
 
   @Rule
   public final ZipkinRule zipkinRule = new ZipkinRule();
@@ -144,7 +148,7 @@ public class HttpSpanCollectorTest {
   }
 
   static Span span(long traceId) {
-    return Span.create(SpanId.builder().spanId(traceId).build());
+    return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
   }
 
   static zipkin.Span zipkinSpan(long traceId) {

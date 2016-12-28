@@ -17,6 +17,7 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.twitter.zipkin.gen.Span;
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
@@ -33,6 +34,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 public final class MaybeAddClientAddressFromRequestTest {
+  static {
+    InternalSpan.initializeInstanceForTests();
+  }
+
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule();
 
@@ -40,7 +45,7 @@ public final class MaybeAddClientAddressFromRequestTest {
   HttpServletRequest request;
   @Mock
   ServerSpan serverSpan;
-  Span span = Span.create(SpanId.builder().spanId(1L).build());
+  Span span = InternalSpan.instance.newSpan(SpanId.builder().spanId(1L).build());
   @Mock
   Brave brave;
   @Mock

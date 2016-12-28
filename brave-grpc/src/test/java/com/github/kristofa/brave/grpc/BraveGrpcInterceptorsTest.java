@@ -11,6 +11,7 @@ import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
@@ -43,6 +44,9 @@ import java.util.concurrent.ExecutionException;
 import zipkin.Constants;
 
 public class BraveGrpcInterceptorsTest {
+    static {
+        InternalSpan.initializeInstanceForTests();
+    }
 
     static final HelloRequest HELLO_REQUEST = HelloRequest.newBuilder()
         .setName("brave")
@@ -148,9 +152,8 @@ public class BraveGrpcInterceptorsTest {
     @Test
     public void propagatesAndReads128BitTraceId() throws Exception {
         SpanId spanId = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
+        brave.localSpanThreadBinder().setCurrentSpan(InternalSpan.instance.newSpan(spanId));
 
-        Span span = Span.create(spanId);
-        brave.localSpanThreadBinder().setCurrentSpan(span);
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         //This call will be made using hte context of the localTracer as it's parent
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
@@ -164,9 +167,9 @@ public class BraveGrpcInterceptorsTest {
         Span result = maybeSpan.get();
 
         //Verify that the 128-bit trace id and span id were propagated to the server
-        assertThat(result.getTrace_id_high()).isEqualTo(span.getTrace_id_high());
-        assertThat(result.getTrace_id()).isEqualTo(span.getTrace_id());
-        assertThat(result.getParent_id()).isEqualTo(span.getId());
+        assertThat(result.getTrace_id_high()).isEqualTo(spanId.traceIdHigh);
+        assertThat(result.getTrace_id()).isEqualTo(spanId.traceId);
+        assertThat(result.getParent_id()).isEqualTo(spanId.spanId);
     }
 
     /**

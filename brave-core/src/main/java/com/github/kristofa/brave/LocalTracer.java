@@ -100,13 +100,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             }
         }
         if (parentSpan == null) return null;
-        if (parentSpan.context() != null) return parentSpan.context();
-        // If we got here, some implementation of state passed a deprecated span
-        return SpanId.builder()
-            .traceIdHigh(parentSpan.getTrace_id_high())
-            .traceId(parentSpan.getTrace_id())
-            .parentId(parentSpan.getParent_id())
-            .spanId(parentSpan.getId()).build();
+        return Brave.context(parentSpan);
     }
 
     /**
@@ -136,7 +130,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        Span newSpan = Span.create(nextContext);
+        Span newSpan = Brave.newSpan(nextContext);
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(BinaryAnnotation.create(LOCAL_COMPONENT, component, endpoint()));

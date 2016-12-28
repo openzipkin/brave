@@ -3,6 +3,7 @@ package com.github.kristofa.brave.kafka;
 import com.github.charithe.kafka.KafkaJunitRule;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.kafka.KafkaSpanCollector.Config;
 import com.twitter.zipkin.gen.Span;
 import java.util.List;
@@ -23,6 +24,9 @@ import zipkin.Codec;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class KafkaSpanCollectorTest {
+  static {
+    InternalSpan.initializeInstanceForTests();
+  }
 
   @Rule
   public KafkaJunitRule kafka = new KafkaJunitRule();
@@ -143,7 +147,7 @@ public class KafkaSpanCollectorTest {
   }
 
   static Span span(long traceId) {
-    return Span.create(SpanId.builder().spanId(traceId).build());
+    return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
   }
 
   static zipkin.Span zipkinSpan(long traceId) {

@@ -30,7 +30,7 @@ public class AnnotationSubmitterTest {
 
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
-    private Span span = Span.create(SpanId.builder().spanId(1).build());
+    private Span span = Brave.newSpan(SpanId.builder().spanId(1).build());
     private AnnotationSubmitter annotationSubmitter;
     private List<zipkin.Span> spans = new ArrayList<>();
 

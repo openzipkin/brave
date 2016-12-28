@@ -154,12 +154,12 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        Span newSpan = Span.create(nextContext).setName(requestName);
+        Span newSpan = Brave.newSpan(nextContext).setName(requestName);
         currentSpan().setCurrentSpan(newSpan);
         return nextContext;
     }
 
-    private SpanId maybeParent() {
+    @Nullable SpanId maybeParent() {
         Span parentSpan = currentLocalSpan().get();
         if (parentSpan == null) {
             Span serverSpan = currentServerSpan().get();
@@ -168,13 +168,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             }
         }
         if (parentSpan == null) return null;
-        if (parentSpan.context() != null) return parentSpan.context();
-        // If we got here, some implementation of state passed a deprecated span
-        return SpanId.builder()
-            .traceIdHigh(parentSpan.getTrace_id_high())
-            .traceId(parentSpan.getTrace_id())
-            .parentId(parentSpan.getParent_id())
-            .spanId(parentSpan.getId()).build();
+        return Brave.context(parentSpan);
     }
 
     ClientTracer() {

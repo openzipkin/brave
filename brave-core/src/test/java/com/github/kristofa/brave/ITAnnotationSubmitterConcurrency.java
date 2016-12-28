@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
-    Span span = Span.create(SpanId.builder().spanId(1L).build());
+    Span span = Brave.newSpan(SpanId.builder().spanId(1L).build());
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
 
