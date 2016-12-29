@@ -6,51 +6,9 @@ import com.twitter.zipkin.gen.Span;
 import java.util.Random;
 
 /** Internal code that affects the {@linkplain Span} type. */
-@AutoValue
 abstract class SpanFactory {
-
-  static Builder builder() {
-    return new AutoValue_SpanFactory.Builder()
-        .traceId128Bit(false)
-        .randomGenerator(new Random())
-        .sampler(Sampler.ALWAYS_SAMPLE);
-  }
-
-  abstract Builder toBuilder();
-
-  @AutoValue.Builder interface Builder {
-    Builder randomGenerator(Random randomGenerator);
-
-    Builder traceId128Bit(boolean traceId128Bit);
-
-    Builder sampler(Sampler sampler);
-
-    SpanFactory build();
-  }
-
-  abstract Random randomGenerator();
-
-  abstract boolean traceId128Bit();
-
-  abstract Sampler sampler();
-
   /** Returns the next span ID derived from the input, or a new trace if null. */
-  Span newSpan(@Nullable SpanId maybeParent) {
-    long newSpanId = randomGenerator().nextLong();
-    if (maybeParent == null) { // new trace
-      return Brave.newSpan(SpanId.builder()
-          .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
-          .traceId(newSpanId)
-          .spanId(newSpanId)
-          .sampled(sampler().isSampled(newSpanId))
-          .build());
-    }
-    return Brave.newSpan(maybeParent.toBuilder()
-        .parentId(maybeParent.spanId)
-        .spanId(newSpanId)
-        .shared(false)
-        .build());
-  }
+  abstract Span newSpan(@Nullable SpanId maybeParent);
 
   /**
    * Joining is re-using the same trace and span ids extracted from an incoming request. Here, we
@@ -58,18 +16,67 @@ abstract class SpanFactory {
    * shared span, one where the caller and the current tracer report to the same span IDs. If no
    * sampling decision occurred yet, we have exclusive access to this span ID.
    */
-  Span joinSpan(SpanId context) {
-    // If the sampled flag was left unset, we need to make the decision here
-    if (context.sampled() == null) {
-      return Brave.newSpan(context.toBuilder()
-          .sampled(sampler().isSampled(context.traceId))
+  abstract Span joinSpan(SpanId context);
+
+  @AutoValue
+  static abstract class Default extends SpanFactory {
+
+    static Builder builder() {
+      return new AutoValue_SpanFactory_Default.Builder()
+          .traceId128Bit(false)
+          .randomGenerator(new Random())
+          .sampler(Sampler.ALWAYS_SAMPLE);
+    }
+
+    abstract Builder toBuilder();
+
+    @AutoValue.Builder interface Builder {
+      Builder randomGenerator(Random randomGenerator);
+
+      Builder traceId128Bit(boolean traceId128Bit);
+
+      Builder sampler(Sampler sampler);
+
+      Default build();
+    }
+
+    abstract Random randomGenerator();
+
+    abstract boolean traceId128Bit();
+
+    abstract Sampler sampler();
+
+    @Override Span newSpan(@Nullable SpanId maybeParent) {
+      long newSpanId = randomGenerator().nextLong();
+      if (maybeParent == null) { // new trace
+        return Brave.newSpan(SpanId.builder()
+            .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
+            .traceId(newSpanId)
+            .spanId(newSpanId)
+            .sampled(sampler().isSampled(newSpanId))
+            .build());
+      }
+      return Brave.newSpan(maybeParent.toBuilder()
+          .parentId(maybeParent.spanId)
+          .spanId(newSpanId)
           .shared(false)
           .build());
-    } else if (context.sampled()) {
-      // We know an instrumented caller initiated the trace if they sampled it
-      return Brave.newSpan(context.toBuilder().shared(true).build());
-    } else {
-      return Brave.newSpan(context);
+    }
+
+    @Override Span joinSpan(SpanId context) {
+      // If the sampled flag was left unset, we need to make the decision here
+      if (context.sampled() == null) {
+        return Brave.newSpan(context.toBuilder()
+            .sampled(sampler().isSampled(context.traceId))
+            .shared(false)
+            .build());
+      } else if (context.sampled()) {
+        // We know an instrumented caller initiated the trace if they sampled it
+        return Brave.newSpan(context.toBuilder().shared(true).build());
+      } else {
+        return Brave.newSpan(context);
+      }
     }
   }
 }
+

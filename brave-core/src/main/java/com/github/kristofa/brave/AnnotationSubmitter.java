@@ -1,12 +1,9 @@
 package com.github.kristofa.brave;
 
-import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import zipkin.reporter.Reporter;
 
-import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
@@ -35,11 +32,9 @@ public abstract class AnnotationSubmitter {
 
     abstract CurrentSpan currentSpan();
 
-    abstract Endpoint endpoint();
-
     abstract Clock clock();
 
-    abstract Reporter<zipkin.Span> reporter();
+    abstract Recorder recorder();
 
     /**
      * Associates an event that explains latency with the current system time.
@@ -49,8 +44,7 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        submitAnnotation(value, clock().currentTimeMicroseconds());
+        recorder().annotate(span, clock().currentTimeMicroseconds(), value);
     }
 
     /**
@@ -65,11 +59,7 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value, long timestamp) {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        Annotation annotation = Annotation.create(timestamp, value, endpoint());
-        synchronized (span) {
-            span.addToAnnotations(annotation);
-        }
+        recorder().annotate(span, timestamp, value);
     }
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
@@ -84,9 +74,7 @@ public abstract class AnnotationSubmitter {
         // rather let the client do that. Worst case we were propagated an unreported ID and
         // Zipkin backfills timestamp and duration.
         if (!Brave.context(span).shared) {
-            synchronized (span) {
-                span.setTimestamp(timestamp);
-            }
+            recorder().start(span, timestamp);
         }
     }
 
@@ -101,14 +89,8 @@ public abstract class AnnotationSubmitter {
         if (span == null) return false;
 
         long endTimestamp = clock().currentTimeMicroseconds();
-        submitAnnotation(annotationName, endTimestamp);
-        synchronized (span) {
-            Long startTimestamp = span.getTimestamp();
-            if (startTimestamp != null) {
-                span.setDuration(Math.max(1L, endTimestamp - startTimestamp));
-            }
-        }
-        reporter().report(toZipkin(span));
+        recorder().annotate(span, endTimestamp, annotationName);
+        recorder().finishWithTimestamp(span, endTimestamp);
         return true;
     }
 
@@ -116,11 +98,7 @@ public abstract class AnnotationSubmitter {
     void submitAddress(String key, Endpoint endpoint) {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        BinaryAnnotation ba = BinaryAnnotation.address(key, endpoint);
-        synchronized (span) {
-            span.addToBinary_annotations(ba);
-        }
+        recorder().address(span, key, endpoint);
     }
 
     /**
@@ -133,11 +111,7 @@ public abstract class AnnotationSubmitter {
     public void submitBinaryAnnotation(String key, String value) {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        BinaryAnnotation ba = BinaryAnnotation.create(key, value, endpoint());
-        synchronized (span) {
-            span.addToBinary_annotations(ba);
-        }
+        recorder().tag(span, key, value);
     }
 
     /** @deprecated use {@link #submitBinaryAnnotation(String, String)} */
@@ -180,26 +154,23 @@ public abstract class AnnotationSubmitter {
             }
         };
         Endpoint localEndpoint = spanAndEndpoint.endpoint();
-        return create(currentSpan, localEndpoint, clock);
+        Recorder recorder = new AutoValue_Recorder_Default(localEndpoint, Reporter.NOOP);
+        return create(currentSpan, clock, recorder);
     }
 
-    static AnnotationSubmitter create(final CurrentSpan currentSpan, final Endpoint localEndpoint,
-        final Clock clock) {
+    static AnnotationSubmitter create(final CurrentSpan currentSpan, final Clock clock,
+        final Recorder recorder) {
         return new AnnotationSubmitter() {
             @Override CurrentSpan currentSpan() {
                 return currentSpan;
-            }
-
-            @Override Endpoint endpoint() {
-                return localEndpoint;
             }
 
             @Override Clock clock() {
                 return clock;
             }
 
-            @Override Reporter<zipkin.Span> reporter() {
-                return Reporter.NOOP;
+            @Override Recorder recorder() {
+                return recorder;
             }
         };
     }

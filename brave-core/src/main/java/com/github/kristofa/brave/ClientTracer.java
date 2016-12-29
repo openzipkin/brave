@@ -29,7 +29,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
     @Deprecated
     public static Builder builder() {
-        return new AutoValue_ClientTracer.Builder();
+        return new Builder();
     }
 
     abstract CurrentSpan currentLocalSpan();
@@ -39,52 +39,63 @@ public abstract class ClientTracer extends AnnotationSubmitter {
 
     /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
     @Deprecated
-    @AutoValue.Builder
-    public abstract static class Builder {
-        abstract Builder spanFactory(SpanFactory spanFactory);
-
-        // Initializes itself when not set explicitly
-        abstract SpanFactory.Builder spanFactoryBuilder();
+    public final static class Builder {
+        final SpanFactory.Default.Builder spanFactoryBuilder = SpanFactory.Default.builder();
+        Endpoint localEndpoint;
+        CurrentSpan currentLocalSpan;
+        ServerSpanThreadBinder currentServerSpan;
+        ClientSpanThreadBinder currentSpan;
+        Reporter reporter;
+        Clock clock;
 
         /** Used to generate new trace/span ids. */
         public final Builder randomGenerator(Random randomGenerator) {
-            spanFactoryBuilder().randomGenerator(randomGenerator);
+            spanFactoryBuilder.randomGenerator(randomGenerator);
             return this;
         }
 
         public final Builder traceSampler(Sampler sampler) {
-            spanFactoryBuilder().sampler(sampler);
+            spanFactoryBuilder.sampler(sampler);
             return this;
         }
 
         public final Builder state(ServerClientAndLocalSpanState state) {
-            return endpoint(state.endpoint())
-                .currentLocalSpan(new LocalSpanThreadBinder(state))
-                .currentServerSpan(new ServerSpanThreadBinder(state))
-                .currentSpan(new ClientSpanThreadBinder(state));
+            this.currentLocalSpan = new LocalSpanThreadBinder(state);
+            this.currentServerSpan = new ServerSpanThreadBinder(state);
+            this.currentSpan = new ClientSpanThreadBinder(state);
+            this.localEndpoint = state.endpoint();
+            return this;
         }
 
-        abstract Builder endpoint(Endpoint endpoint);
+        public final Builder reporter(Reporter<zipkin.Span> reporter) {
+            this.reporter = reporter;
+            return this;
+        }
 
-        abstract Builder currentLocalSpan(CurrentSpan currentLocalSpan);
-
-        abstract Builder currentServerSpan(ServerSpanThreadBinder currentServerSpan);
-
-        abstract Builder currentSpan(ClientSpanThreadBinder currentSpan);
-
-        public abstract Builder reporter(Reporter<zipkin.Span> reporter);
-
-        /**
-         * @deprecated use {@link #reporter(Reporter)}
-         */
+        /** @deprecated use {@link #reporter(Reporter)} */
         @Deprecated
         public final Builder spanCollector(SpanCollector spanCollector) {
             return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
-        public abstract Builder clock(Clock clock);
+        public final Builder clock(Clock clock) {
+            this.clock = clock;
+            return this;
+        }
 
-        public abstract ClientTracer build();
+        public final ClientTracer build() {
+            return new AutoValue_ClientTracer(
+                clock,
+                new AutoValue_Recorder_Default(localEndpoint, reporter),
+                currentLocalSpan,
+                currentServerSpan,
+                currentSpan,
+                spanFactoryBuilder.build()
+            );
+        }
+
+        Builder() { // intentionally package private
+        }
     }
 
     /**
@@ -156,7 +167,8 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        currentSpan().setCurrentSpan(newSpan.setName(requestName));
+        recorder().name(newSpan, requestName);
+        currentSpan().setCurrentSpan(newSpan);
         return nextContext;
     }
 

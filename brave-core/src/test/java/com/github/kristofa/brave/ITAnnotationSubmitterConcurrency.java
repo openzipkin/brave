@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin.reporter.Reporter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -31,6 +32,14 @@ public class ITAnnotationSubmitterConcurrency {
     Span span = Brave.newSpan(SpanId.builder().spanId(1L).build());
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
+    DefaultClock clock = new DefaultClock();
+    CurrentSpan currentSpan = new CurrentSpan() {
+        @Override Span get() {
+            return span;
+        }
+    };
+    Recorder recorder = new AutoValue_Recorder_Default(endpoint, Reporter.NOOP);
+    AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(currentSpan, clock, recorder);
 
     @Before
     public void setup() {
@@ -44,13 +53,6 @@ public class ITAnnotationSubmitterConcurrency {
 
     @Test
     public void testSubmitAnnotations() throws InterruptedException, ExecutionException {
-        CurrentSpan currentSpan = new CurrentSpan() {
-            @Override Span get() {
-                return span;
-            }
-        };
-        final AnnotationSubmitter annotationSubmitter =
-            AnnotationSubmitter.create(currentSpan, endpoint, new DefaultClock());
 
         final List<AnnotationSubmitThread> threadList =
             Arrays.asList(new AnnotationSubmitThread(1, 100, annotationSubmitter), new AnnotationSubmitThread(101, 200,

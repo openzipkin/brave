@@ -1,91 +1,108 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.mockito.Mockito.mock;
-
+import com.twitter.zipkin.gen.Span;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Span;
-import zipkin.reporter.Reporter;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 
 public class BraveTest {
+  Brave brave = new Brave.Builder().build();
 
-    private Reporter<Span> fakeReporter = span -> {
-    };
-    private Sampler mockSampler;
-    private Brave brave;
+  @Before
+  public void setup() {
+    ThreadLocalServerClientAndLocalSpanState.clear();
+  }
 
-    @Before
-    public void setup() {
-        mockSampler = mock(Sampler.class);
-        // -1062731775 = 192.168.0.1
-        final Brave.Builder builder = new Brave.Builder(-1062731775, 8080, "unknown");
-        brave = builder.reporter(fakeReporter).traceSampler(mockSampler).build();
-    }
+  @Test
+  public void testGetClientTracer() {
+    final ClientTracer clientTracer = brave.clientTracer();
+    assertNotNull(clientTracer);
 
-    @Test
-    public void testGetClientTracer() {
-        final ClientTracer clientTracer = brave.clientTracer();
-        assertNotNull(clientTracer);
-        assertSame("ClientTracer should be configured with the reporter we submitted.", fakeReporter,
-            clientTracer.reporter());
-        assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-            mockSampler, clientTracer.spanFactory().sampler());
+    final ClientTracer secondClientTracer =
+        brave.clientTracer();
+    assertSame("It is important that each client tracer we get shares same state.",
+        clientTracer.currentSpan(), secondClientTracer.currentSpan());
+  }
 
-        final ClientTracer secondClientTracer =
-            brave.clientTracer();
-        assertSame("It is important that each client tracer we get shares same state.",
-                   clientTracer.currentSpan(), secondClientTracer.currentSpan());
-    }
+  @Test
+  public void testGetServerTracer() {
+    final ServerTracer serverTracer = brave.serverTracer();
+    assertNotNull(serverTracer);
 
-    @Test
-    public void testGetServerTracer() {
-        final ServerTracer serverTracer = brave.serverTracer();
-        assertNotNull(serverTracer);
-        assertSame(fakeReporter, serverTracer.reporter());
-        assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-            mockSampler, serverTracer.spanFactory().sampler());
+    final ServerTracer secondServerTracer = brave.serverTracer();
+    assertSame("It is important that each server tracer we get shares same state.",
+        serverTracer.currentSpan(), secondServerTracer.currentSpan());
+  }
 
-        final ServerTracer secondServerTracer = brave.serverTracer();
-        assertSame("It is important that each server tracer we get shares same state.",
-                   serverTracer.currentSpan(), secondServerTracer.currentSpan());
-    }
+  @Test
+  public void testStateBetweenServerAndClient() {
+    final ClientTracer clientTracer =
+        brave.clientTracer();
+    final ServerTracer serverTracer =
+        brave.serverTracer();
 
-    @Test
-    public void testStateBetweenServerAndClient() {
-        final ClientTracer clientTracer =
-            brave.clientTracer();
-        final ServerTracer serverTracer =
-            brave.serverTracer();
+    assertSame("Client and server tracers should share same state.",
+        clientTracer.currentServerSpan(),
+        serverTracer.currentSpan());
+  }
 
-        assertSame("Client and server tracers should share same state.", clientTracer.currentServerSpan(),
-            serverTracer.currentSpan());
+  @Test
+  public void testGetLocalTracer() {
+    final LocalTracer localTracer = brave.localTracer();
+    assertNotNull(localTracer);
 
-    }
+    final LocalTracer secondLocalTracer =
+        brave.localTracer();
+    assertSame("It is important that each local tracer we get shares same state.",
+        localTracer.currentSpan(), secondLocalTracer.currentSpan());
+  }
 
-    @Test
-    public void testGetLocalTracer() {
-        final LocalTracer localTracer = brave.localTracer();
-        assertNotNull(localTracer);
-        assertSame(fakeReporter, localTracer.reporter());
-        assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                mockSampler, localTracer.spanFactory().sampler());
+  @Test
+  public void testGetServerSpanAnnotationSubmitter() {
+    assertNotNull(brave.serverSpanAnnotationSubmitter());
+  }
 
-        final LocalTracer secondLocalTracer =
-                brave.localTracer();
-        assertSame("It is important that each local tracer we get shares same state.",
-                localTracer.currentSpan(), secondLocalTracer.currentSpan());
-    }
+  @Test
+  public void newSpan_with64bitTraceId() {
+    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    assertThat(span.getTrace_id_high()).isZero();
+    assertThat(span.getTrace_id()).isNotZero();
+  }
 
-    @Test
-    public void testGetServerSpanAnnotationSubmitter() {
-        assertNotNull(brave.serverSpanAnnotationSubmitter());
-    }
+  @Test
+  public void newSpan_whenUnsampled() {
+    brave = new Brave.Builder().traceSampler(Sampler.NEVER_SAMPLE).build();
 
-    @Test
-    public void testGetServerSpanThreadBinder() {
-        assertNotNull(brave.serverSpanThreadBinder());
-    }
+    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    assertThat(Brave.context(span).sampled()).isFalse();
+  }
 
+  @Test
+  public void newSpan_whenParentHas128bitTraceId() {
+    SpanId parentSpan = SpanId.builder().traceIdHigh(3).traceId(2).spanId(1).build();
+
+    Span span = brave.serverTracer().spanFactory().newSpan(parentSpan);
+    assertThat(span.getTrace_id_high())
+        .isEqualTo(parentSpan.traceIdHigh);
+    assertThat(span.getTrace_id())
+        .isEqualTo(parentSpan.traceId);
+    assertThat(span.getParent_id())
+        .isEqualTo(parentSpan.spanId);
+  }
+
+  @Test
+  public void newSpan_rootSpanWith128bitTraceId() {
+    brave = new Brave.Builder().traceId128Bit(true).build();
+
+    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    assertThat(span.getTrace_id_high()).isNotZero();
+  }
+
+  @Test
+  public void testGetServerSpanThreadBinder() {
+    assertNotNull(brave.serverSpanThreadBinder());
+  }
 }

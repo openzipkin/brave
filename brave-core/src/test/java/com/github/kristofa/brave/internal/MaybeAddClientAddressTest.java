@@ -14,37 +14,24 @@
 package com.github.kristofa.brave.internal;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ServerSpan;
-import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.github.kristofa.brave.SpanId;
-import com.twitter.zipkin.gen.Span;
+import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import zipkin.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 public final class MaybeAddClientAddressTest {
-  @Rule
-  public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-  @Mock
-  ServerSpan serverSpan;
-  Span span = InternalSpan.instance.newSpan(SpanId.builder().spanId(1L).build());
-  @Mock
-  Brave brave;
-  @Mock
-  ServerSpanThreadBinder threadBinder;
+  List<Span> spans = new ArrayList<>();
+  Brave brave = new Brave.Builder().reporter(spans::add).build();
 
   @Before
-  public void setup(){
-    when(brave.serverSpanThreadBinder()).thenReturn(threadBinder);
+  public void clearState() {
+    ThreadLocalServerClientAndLocalSpanState.clear();
   }
 
   @Test
@@ -65,8 +52,6 @@ public final class MaybeAddClientAddressTest {
 
   @Test
   public void kickOutIfNoServerSpan_Span() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
         throw new AssertionError();
@@ -83,8 +68,7 @@ public final class MaybeAddClientAddressTest {
 
   @Test
   public void kickOutIfExceptionParsingAddress() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -97,15 +81,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(span.getBinary_annotations()).isEmpty();
+    assertThat(spans.get(0).binaryAnnotations).isEmpty();
   }
 
   @Test
   public void kickOutIfNullAddress() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -118,15 +102,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(span.getBinary_annotations()).isEmpty();
+    assertThat(spans.get(0).binaryAnnotations).isEmpty();
   }
 
   @Test
   public void kickOutIfInvalidAddress() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -139,15 +123,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(span.getBinary_annotations()).isEmpty();
+    assertThat(spans.get(0).binaryAnnotations).isEmpty();
   }
 
   @Test
   public void ignoreExceptionParsingPort() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -160,16 +144,16 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv4)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
         .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
   }
 
   // don't clutter the UI with bad client service names. we can revisit this topic later.
   @Test
   public void usesBlankServiceName() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -182,15 +166,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.service_name)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.serviceName)
         .containsExactly("");
   }
 
   @Test
   public void addsPort() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -203,15 +187,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.port)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.port)
         .containsExactly((short) 8080);
   }
 
   @Test
   public void ignoresNegativePort() {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -224,15 +208,15 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.port)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.port)
         .containsNull();
   }
 
   @Test
   public void acceptsIpv6() throws UnknownHostException {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     final byte[] ipv6 = Inet6Address.getByName("2001:db8::c001").getAddress();
 
@@ -247,17 +231,17 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv4)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
         .containsExactly(0);
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv6)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
         .containsExactly(ipv6);
   }
 
   @Test
   public void acceptsIpv4MappedIpV6Address() throws UnknownHostException {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -270,17 +254,17 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv4)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
         .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv6)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
         .containsNull();
   }
 
   @Test
   public void acceptsIpv4CompatIpV6Address() throws UnknownHostException {
-    when(threadBinder.getCurrentServerSpan()).thenReturn(serverSpan);
-    when(serverSpan.getSpan()).thenReturn(span);
+    brave.serverTracer().setStateUnknown("foo");
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -293,10 +277,11 @@ public final class MaybeAddClientAddressTest {
     };
 
     function.accept(new Object());
+    brave.serverTracer().setServerSend();
 
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv4)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
         .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
-    assertThat(span.getBinary_annotations()).extracting(b -> b.host.ipv6)
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
         .containsNull();
   }
 }

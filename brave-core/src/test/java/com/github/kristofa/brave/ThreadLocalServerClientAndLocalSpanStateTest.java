@@ -21,6 +21,7 @@ public class ThreadLocalServerClientAndLocalSpanStateTest {
 
     @Before
     public void setup() {
+        ThreadLocalServerClientAndLocalSpanState.clear();
         // -1062731775 = 192.168.0.1
         serverAndClientSpanState = new ThreadLocalServerClientAndLocalSpanState(-1062731775, PORT, SERVICE_NAME);
         mockServerSpan = mock(ServerSpan.class);

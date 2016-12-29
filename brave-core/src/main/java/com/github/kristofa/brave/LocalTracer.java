@@ -2,14 +2,9 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import com.twitter.zipkin.gen.BinaryAnnotation;
-import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
 
-import zipkin.reporter.Reporter;
-
-import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 import static zipkin.Constants.LOCAL_COMPONENT;
 
 /**
@@ -49,13 +44,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     abstract static class Builder {
         abstract Builder spanFactory(SpanFactory spanFactory);
 
-        abstract Builder endpoint(Endpoint endpoint);
-
         abstract Builder currentServerSpan(ServerSpanThreadBinder currentServerSpan);
 
         abstract Builder currentSpan(LocalSpanThreadBinder currentSpan);
 
-        abstract Builder reporter(Reporter<zipkin.Span> reporter);
+        abstract Builder recorder(Recorder recorder);
 
         abstract Builder allowNestedLocalSpans(boolean allowNestedLocalSpans);
 
@@ -124,18 +117,19 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        Span newSpan = spanFactory().newSpan(maybeParent());
-        SpanId nextContext = Brave.context(newSpan);
-        if (Boolean.FALSE.equals(nextContext.sampled())) {
+        Span span = spanFactory().newSpan(maybeParent());
+        SpanId context = Brave.context(span);
+        if (Boolean.FALSE.equals(context.sampled())) {
             currentSpan().setCurrentSpan(null);
             return null;
         }
 
-        newSpan.setName(operation);
-        newSpan.setTimestamp(timestamp);
-        newSpan.addToBinary_annotations(BinaryAnnotation.create(LOCAL_COMPONENT, component, endpoint()));
-        currentSpan().setCurrentSpan(newSpan);
-        return nextContext;
+        recorder().start(span, timestamp);
+        recorder().name(span, operation);
+        recorder().tag(span, LOCAL_COMPONENT, component);
+
+        currentSpan().setCurrentSpan(span);
+        return context;
     }
 
     /**
@@ -144,9 +138,8 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan() {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        long duration = Math.max(1L, clock().currentTimeMicroseconds() - span.getTimestamp());
-        internalFinishSpan(span, duration);
+        recorder().finishWithTimestamp(span, clock().currentTimeMicroseconds());
+        currentSpan().setCurrentSpan(null);
     }
 
     /**
@@ -155,15 +148,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan(long duration) {
         Span span = currentSpan().get();
         if (span == null) return;
-
-        internalFinishSpan(span, duration);
-    }
-
-    private void internalFinishSpan(Span span, long duration) {
-        synchronized (span) {
-            span.setDuration(duration);
-        }
-        reporter().report(toZipkin(span));
+        recorder().finishWithDuration(span, duration);
         currentSpan().setCurrentSpan(null);
     }
 

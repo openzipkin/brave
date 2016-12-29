@@ -38,12 +38,11 @@ public abstract class ServerSpan {
     public abstract Boolean getSample();
 
     /** Converts the input into a new server span or {@linkplain ServerSpan#NOT_SAMPLED}. */
-    static ServerSpan create(Span span, String spanName) {
+    static ServerSpan create(Span span) {
         SpanId context = Brave.context(span);
         if (Boolean.FALSE.equals(context.sampled())) {
             return ServerSpan.NOT_SAMPLED;
         }
-        span.setName(spanName);
         return new AutoValue_ServerSpan(context, span, context.sampled());
     }
 
