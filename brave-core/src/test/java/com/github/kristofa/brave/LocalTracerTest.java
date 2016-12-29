@@ -1,17 +1,15 @@
 package com.github.kristofa.brave;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-
+import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.twitter.zipkin.gen.Endpoint;
-import com.twitter.zipkin.gen.Span;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class LocalTracerTest {
     private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
@@ -20,8 +18,8 @@ public class LocalTracerTest {
     private static final SpanId PARENT_CONTEXT = SpanId.builder().traceId(TRACE_ID).spanId(103).build();
     private static final String COMPONENT_NAME = "componentname";
     private static final String OPERATION_NAME = "operationname";
-    private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
-    private static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("serviceName", 80);
+    private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
+    static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
 
     long timestamp = START_TIME_MICROSECONDS;
     AnnotationSubmitter.Clock clock = () -> timestamp;

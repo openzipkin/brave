@@ -10,11 +10,23 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 
 public class BraveTest {
-  Brave brave = new Brave.Builder().build();
+  Brave brave = newBrave();
 
   @Before
   public void setup() {
     ThreadLocalServerClientAndLocalSpanState.clear();
+  }
+
+  protected Brave newBrave() {
+    return new Brave.Builder().build();
+  }
+
+  protected Brave newBrave(Sampler sampler) {
+    return new Brave.Builder().traceSampler(sampler).build();
+  }
+
+  protected Brave newBraveWith128BitTraceIds() {
+    return new Brave.Builder().traceId128Bit(true).build();
   }
 
   @Test
@@ -82,7 +94,8 @@ public class BraveTest {
 
   @Test
   public void newSpan_whenUnsampled() {
-    brave = new Brave.Builder().traceSampler(Sampler.NEVER_SAMPLE).build();
+    Sampler sampler = Sampler.NEVER_SAMPLE;
+    brave = newBrave(sampler);
 
     Span span = brave.serverTracer().spanFactory().nextSpan(null);
     assertThat(Brave.context(span).sampled()).isFalse();
@@ -103,7 +116,7 @@ public class BraveTest {
 
   @Test
   public void newSpan_rootSpanWith128bitTraceId() {
-    brave = new Brave.Builder().traceId128Bit(true).build();
+    brave = newBraveWith128BitTraceIds();
 
     Span span = brave.serverTracer().spanFactory().nextSpan(null);
     assertThat(span.getTrace_id_high()).isNotZero();

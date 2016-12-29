@@ -151,6 +151,18 @@ public class Brave {
             return this;
         }
 
+        /** Internal hook */
+        Builder spanFactory(SpanFactory spanFactory) {
+            this.spanFactory = spanFactory;
+            return this;
+        }
+
+        /** Internal hook */
+        Builder recorder(Recorder recorder) {
+            this.recorder = recorder;
+            return this;
+        }
+
         /**
          * @deprecated use {@link #reporter(Reporter)}
          */

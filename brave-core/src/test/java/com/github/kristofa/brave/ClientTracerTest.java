@@ -21,8 +21,8 @@ public class ClientTracerTest {
   private static final long TRACE_ID = 105;
   private static final SpanId PARENT_CONTEXT =
       SpanId.builder().traceId(TRACE_ID).spanId(103).build();
-  private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
-  private static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("serviceName", 80);
+  private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
+  static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
   private static final zipkin.Span BASE_SPAN =
       DefaultSpanCodec.toZipkin(Brave.toSpan(SpanId.builder().spanId(TRACE_ID).build()));
 
