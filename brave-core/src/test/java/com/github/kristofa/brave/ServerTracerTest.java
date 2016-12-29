@@ -29,7 +29,8 @@ public class ServerTracerTest {
 
     private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
     private static final long TRACE_ID = 1;
-    private static final SpanId CONTEXT = SpanId.builder().traceId(TRACE_ID).spanId(2).parentId(3L).build();
+    private static final SpanId CONTEXT =
+        SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
     private static final String SPAN_NAME = "span name";
 
     private ServerTracer serverTracer;
@@ -61,7 +62,7 @@ public class ServerTracerTest {
         serverTracer.setStateCurrentTrace(CONTEXT, SPAN_NAME);
 
         assertThat(serverTracer.currentSpan().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.create(CONTEXT, SPAN_NAME));
+            .isEqualTo(ServerSpan.create(Brave.newSpan(CONTEXT), SPAN_NAME));
     }
 
     @Test
@@ -106,7 +107,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerReceivedNoServerSpan() {
-        serverTracer.currentSpan().setCurrentSpan(null);
+        serverTracer.currentSpan().setCurrentSpan(ServerSpan.EMPTY);
 
         serverTracer.setServerReceived();
 
@@ -169,7 +170,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerSendShouldNoServerSpan() {
-        serverTracer.currentSpan().setCurrentSpan(null);
+        serverTracer.currentSpan().setCurrentSpan(ServerSpan.EMPTY);
 
         serverTracer.setServerSend();
 

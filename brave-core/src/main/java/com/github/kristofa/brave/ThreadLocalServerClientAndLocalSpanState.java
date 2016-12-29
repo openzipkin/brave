@@ -67,9 +67,7 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
         this.endpoint = endpoint;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Never returns null: {@code setCurrentServerSpan(null)} coerces to {@link ServerSpan#EMPTY} */
     @Override
     public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();

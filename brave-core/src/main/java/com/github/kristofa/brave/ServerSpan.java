@@ -37,10 +37,14 @@ public abstract class ServerSpan {
     @Nullable
     public abstract Boolean getSample();
 
-    static ServerSpan create(SpanId spanId, String name) {
-        if (spanId == null) throw new NullPointerException("spanId == null");
-        if (name == null) throw new NullPointerException("name == null");
-        return new AutoValue_ServerSpan(spanId, Brave.newSpan(spanId).setName(name), true);
+    /** Converts the input into a new server span or {@linkplain ServerSpan#NOT_SAMPLED}. */
+    static ServerSpan create(Span span, String spanName) {
+        SpanId context = Brave.context(span);
+        if (Boolean.FALSE.equals(context.sampled())) {
+            return ServerSpan.NOT_SAMPLED;
+        }
+        span.setName(spanName);
+        return new AutoValue_ServerSpan(context, span, context.sampled());
     }
 
     ServerSpan(){

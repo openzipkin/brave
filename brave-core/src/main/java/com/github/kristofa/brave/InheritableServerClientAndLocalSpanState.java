@@ -45,6 +45,7 @@ public final class InheritableServerClientAndLocalSpanState implements ServerCli
         this.endpoint = Util.checkNotNull(endpoint, "Endpoint must be specified.");
     }
 
+    /** Never returns null: {@code setCurrentServerSpan(null)} coerces to {@link ServerSpan#EMPTY} */
     @Override
     public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();

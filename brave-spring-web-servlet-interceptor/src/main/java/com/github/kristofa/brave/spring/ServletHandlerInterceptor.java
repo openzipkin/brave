@@ -97,7 +97,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     @Override
     public void afterConcurrentHandlingStarted(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
         request.setAttribute(HTTP_SERVER_SPAN_ATTRIBUTE, serverThreadBinder.getCurrentServerSpan());
-        serverThreadBinder.setCurrentSpan(null);
+        serverThreadBinder.setCurrentSpan(ServerSpan.EMPTY);
     }
 
     @Override

@@ -45,9 +45,9 @@ public class ServerSpanThreadBinderTest {
     }
 
     @Test
-    public void testSetCurrentSpanNull() {
-        binder.setCurrentSpan(null);
-        verify(mockServerSpanState).setCurrentServerSpan(null);
+    public void testSetCurrentSpanEmpty() {
+        binder.setCurrentSpan(ServerSpan.EMPTY);
+        verify(mockServerSpanState).setCurrentServerSpan(ServerSpan.EMPTY);
         verifyNoMoreInteractions(mockServerSpanState);
     }
 

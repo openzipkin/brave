@@ -35,24 +35,25 @@ public abstract class ClientTracer extends AnnotationSubmitter {
     abstract CurrentSpan currentLocalSpan();
     abstract ServerSpanThreadBinder currentServerSpan();
     @Override abstract ClientSpanThreadBinder currentSpan();
-    abstract SpanIdFactory spanIdFactory();
+    abstract SpanFactory spanFactory();
 
     /** @deprecated Don't build your own ClientTracer. Use {@link Brave#clientTracer()} */
     @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
-        abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
+        abstract Builder spanFactory(SpanFactory spanFactory);
 
-        abstract SpanIdFactory.Builder spanIdFactoryBuilder();
+        // Initializes itself when not set explicitly
+        abstract SpanFactory.Builder spanFactoryBuilder();
 
         /** Used to generate new trace/span ids. */
         public final Builder randomGenerator(Random randomGenerator) {
-            spanIdFactoryBuilder().randomGenerator(randomGenerator);
+            spanFactoryBuilder().randomGenerator(randomGenerator);
             return this;
         }
 
         public final Builder traceSampler(Sampler sampler) {
-            spanIdFactoryBuilder().sampler(sampler);
+            spanFactoryBuilder().sampler(sampler);
             return this;
         }
 
@@ -148,14 +149,14 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        SpanId nextContext = spanIdFactory().next(maybeParent());
+        Span newSpan = spanFactory().newSpan(maybeParent());
+        SpanId nextContext = Brave.context(newSpan);
         if (Boolean.FALSE.equals(nextContext.sampled())) {
             currentSpan().setCurrentSpan(null);
             return null;
         }
 
-        Span newSpan = Brave.newSpan(nextContext).setName(requestName);
-        currentSpan().setCurrentSpan(newSpan);
+        currentSpan().setCurrentSpan(newSpan.setName(requestName));
         return nextContext;
     }
 

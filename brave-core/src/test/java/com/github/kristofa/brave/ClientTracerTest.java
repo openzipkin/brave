@@ -158,7 +158,7 @@ public class ClientTracerTest {
 
     @Test
     public void testStartNewSpanSampleTruePartOfExistingSpan() {
-        final ServerSpan parentSpan = ServerSpan.create(PARENT_CONTEXT, "name");
+        final ServerSpan parentSpan = ServerSpan.create(Brave.newSpan(PARENT_CONTEXT), "name");
         brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
         SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);
@@ -216,7 +216,7 @@ public class ClientTracerTest {
     @Test
     public void startNewSpan_whenParentHas128bitTraceId() {
         ServerSpan parentSpan = ServerSpan.create(
-            PARENT_CONTEXT.toBuilder().traceIdHigh(3).build(), "name");
+            Brave.newSpan(PARENT_CONTEXT.toBuilder().traceIdHigh(3).build()), "name");
         brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
         SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);

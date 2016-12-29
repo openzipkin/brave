@@ -43,11 +43,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
     abstract boolean allowNestedLocalSpans();
 
-    abstract SpanIdFactory spanIdFactory();
+    abstract SpanFactory spanFactory();
 
     @AutoValue.Builder
     abstract static class Builder {
-        abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
+        abstract Builder spanFactory(SpanFactory spanFactory);
 
         abstract Builder endpoint(Endpoint endpoint);
 
@@ -124,13 +124,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        SpanId nextContext = spanIdFactory().next(maybeParent());
+        Span newSpan = spanFactory().newSpan(maybeParent());
+        SpanId nextContext = Brave.context(newSpan);
         if (Boolean.FALSE.equals(nextContext.sampled())) {
             currentSpan().setCurrentSpan(null);
             return null;
         }
 
-        Span newSpan = Brave.newSpan(nextContext);
         newSpan.setName(operation);
         newSpan.setTimestamp(timestamp);
         newSpan.addToBinary_annotations(BinaryAnnotation.create(LOCAL_COMPONENT, component, endpoint()));

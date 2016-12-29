@@ -2,14 +2,15 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import com.twitter.zipkin.gen.Span;
 import java.util.Random;
 
-/** Internal code that affects the {@linkplain SpanId} type. */
+/** Internal code that affects the {@linkplain Span} type. */
 @AutoValue
-abstract class SpanIdFactory {
+abstract class SpanFactory {
 
   static Builder builder() {
-    return new AutoValue_SpanIdFactory.Builder()
+    return new AutoValue_SpanFactory.Builder()
         .traceId128Bit(false)
         .randomGenerator(new Random())
         .sampler(Sampler.ALWAYS_SAMPLE);
@@ -24,7 +25,7 @@ abstract class SpanIdFactory {
 
     Builder sampler(Sampler sampler);
 
-    SpanIdFactory build();
+    SpanFactory build();
   }
 
   abstract Random randomGenerator();
@@ -34,21 +35,21 @@ abstract class SpanIdFactory {
   abstract Sampler sampler();
 
   /** Returns the next span ID derived from the input, or a new trace if null. */
-  SpanId next(@Nullable SpanId maybeParent) {
+  Span newSpan(@Nullable SpanId maybeParent) {
     long newSpanId = randomGenerator().nextLong();
     if (maybeParent == null) { // new trace
-      return SpanId.builder()
+      return Brave.newSpan(SpanId.builder()
           .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
           .traceId(newSpanId)
           .spanId(newSpanId)
           .sampled(sampler().isSampled(newSpanId))
-          .build();
+          .build());
     }
-    return maybeParent.toBuilder()
+    return Brave.newSpan(maybeParent.toBuilder()
         .parentId(maybeParent.spanId)
         .spanId(newSpanId)
         .shared(false)
-        .build();
+        .build());
   }
 
   /**
@@ -57,18 +58,18 @@ abstract class SpanIdFactory {
    * shared span, one where the caller and the current tracer report to the same span IDs. If no
    * sampling decision occurred yet, we have exclusive access to this span ID.
    */
-  SpanId join(SpanId context) {
+  Span joinSpan(SpanId context) {
     // If the sampled flag was left unset, we need to make the decision here
     if (context.sampled() == null) {
-      return context.toBuilder()
+      return Brave.newSpan(context.toBuilder()
           .sampled(sampler().isSampled(context.traceId))
           .shared(false)
-          .build();
+          .build());
     } else if (context.sampled()) {
       // We know an instrumented caller initiated the trace if they sampled it
-      return context.toBuilder().shared(true).build();
+      return Brave.newSpan(context.toBuilder().shared(true).build());
     } else {
-      return context;
+      return Brave.newSpan(context);
     }
   }
 }

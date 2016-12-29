@@ -67,7 +67,7 @@ public class LocalTracingInheritenceTest {
         assertSame("ClientTracer should be configured with the spanreportor we submitted.", reporter,
                 clientTracer.reporter());
         assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-                sampler, clientTracer.spanIdFactory().sampler());
+                sampler, clientTracer.spanFactory().sampler());
 
         final ClientTracer secondClientTracer = brave.clientTracer();
         assertSame("It is important that each client tracer we get shares same state.",
@@ -80,7 +80,7 @@ public class LocalTracingInheritenceTest {
         assertNotNull(serverTracer);
         assertSame(reporter, serverTracer.reporter());
         assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-                sampler, serverTracer.spanIdFactory().sampler());
+                sampler, serverTracer.spanFactory().sampler());
 
         final ServerTracer secondServerTracer = brave.serverTracer();
         assertSame("It is important that each client tracer we get shares same state.",
@@ -93,7 +93,7 @@ public class LocalTracingInheritenceTest {
         assertNotNull(localTracer);
         assertSame(reporter, localTracer.reporter());
         assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                sampler, localTracer.spanIdFactory().sampler());
+                sampler, localTracer.spanFactory().sampler());
 
         final LocalTracer secondLocalTracer = brave.localTracer();
         assertSame("It is important that each local tracer we get shares same state.",

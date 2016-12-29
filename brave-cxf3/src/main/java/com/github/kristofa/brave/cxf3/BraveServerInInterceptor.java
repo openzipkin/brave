@@ -2,6 +2,7 @@ package com.github.kristofa.brave.cxf3;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
@@ -63,7 +64,7 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
           new HttpServerRequestAdapter(new HttpMessage.ServerRequest(message), spanNameProvider));
       message.getExchange().put(BRAVE_SERVER_SPAN, threadBinder.getCurrentServerSpan());
     } finally {
-      threadBinder.setCurrentSpan(null);
+      threadBinder.setCurrentSpan(ServerSpan.EMPTY);
     }
   }
 }

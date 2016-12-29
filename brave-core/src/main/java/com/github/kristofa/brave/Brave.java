@@ -42,7 +42,7 @@ public class Brave {
 
         private final ServerClientAndLocalSpanState state;
         private Reporter reporter = new LoggingReporter();
-        private final SpanIdFactory.Builder spanIdFactoryBuilder = SpanIdFactory.builder();
+        private final SpanFactory.Builder spanFactoryBuilder = SpanFactory.builder();
         private boolean allowNestedLocalSpans = false;
         private AnnotationSubmitter.Clock clock;
 
@@ -115,7 +115,7 @@ public class Brave {
         }
 
         public Builder traceSampler(Sampler sampler) {
-            this.spanIdFactoryBuilder.sampler(sampler);
+            this.spanFactoryBuilder.sampler(sampler);
             return this;
         }
 
@@ -157,7 +157,7 @@ public class Brave {
 
         /** When true, new root spans will have 128-bit trace IDs. Defaults to false (64-bit) */
         public Builder traceId128Bit(boolean traceId128Bit) {
-            this.spanIdFactoryBuilder.traceId128Bit(traceId128Bit);
+            this.spanFactoryBuilder.traceId128Bit(traceId128Bit);
             return this;
         }
 
@@ -256,7 +256,7 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
-        SpanIdFactory spanIdFactory = builder.spanIdFactoryBuilder.build();
+        SpanFactory spanFactory = builder.spanFactoryBuilder.build();
         AnnotationSubmitter.Clock clock = builder.clock != null
             ? builder.clock
             : new AnnotationSubmitter.DefaultClock();
@@ -267,7 +267,7 @@ public class Brave {
 
         Endpoint localEndpoint = builder.state.endpoint();
         serverTracer = new AutoValue_ServerTracer.Builder()
-                .spanIdFactory(spanIdFactory)
+                .spanFactory(spanFactory)
                 .reporter(builder.reporter)
                 .currentSpan(serverSpanThreadBinder)
                 .endpoint(localEndpoint)
@@ -275,7 +275,7 @@ public class Brave {
                 .build();
 
         clientTracer = new AutoValue_ClientTracer.Builder()
-                .spanIdFactory(spanIdFactory)
+                .spanFactory(spanFactory)
                 .reporter(builder.reporter)
                 .currentLocalSpan(localSpanThreadBinder)
                 .currentServerSpan(serverSpanThreadBinder)
@@ -285,7 +285,7 @@ public class Brave {
                 .build();
 
         localTracer = new AutoValue_LocalTracer.Builder()
-                .spanIdFactory(spanIdFactory)
+                .spanFactory(spanFactory)
                 .reporter(builder.reporter)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .currentServerSpan(serverSpanThreadBinder)
@@ -310,7 +310,7 @@ public class Brave {
         return InternalSpan.instance.newSpan(context);
     }
 
-    /** Internal hook to create a new Span */
+    /** Internal hook to retrieve the context associated with a Span */
     @Nullable static SpanId context(Span span) {
         return InternalSpan.instance.context(span);
     }
