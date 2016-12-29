@@ -2,8 +2,6 @@ package com.github.kristofa.brave.internal;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerSpan;
-import com.github.kristofa.brave.ServerSpanThreadBinder;
-import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.InetAddress;
@@ -11,7 +9,6 @@ import java.nio.ByteBuffer;
 import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
-import static zipkin.Constants.CLIENT_ADDR;
 
 /**
  * Parses the {@link Constants#CLIENT_ADDR client address}, possibly by looking at
@@ -21,15 +18,15 @@ import static zipkin.Constants.CLIENT_ADDR;
  * would break api if we changed it. Moreover, this can work on non-http input types.
  */
 public abstract class MaybeAddClientAddress<T> {
-  final ServerSpanThreadBinder threadBinder;
+  final Brave brave;
 
   protected MaybeAddClientAddress(Brave brave) { // accepts brave so we can re-factor thread state
-    this.threadBinder = checkNotNull(brave, "brave").serverSpanThreadBinder();
+    this.brave = checkNotNull(brave, "brave");
   }
 
   public final void accept(T input) {
     // Kick out if we can't read the current span
-    ServerSpan serverSpan = threadBinder.getCurrentServerSpan();
+    ServerSpan serverSpan = brave.serverSpanThreadBinder().getCurrentServerSpan();
     Span span = serverSpan != null ? serverSpan.getSpan() : null;
     if (span == null) return;
 
@@ -77,10 +74,7 @@ public abstract class MaybeAddClientAddress<T> {
     }
     Endpoint ca = builder.build();
 
-    // Internally, ServerTracer locks on span when adding an address. let's do that, too
-    synchronized (span) {
-      span.addToBinary_annotations(BinaryAnnotation.address(CLIENT_ADDR, ca));
-    }
+    Internal.instance.setClientAddress(brave, ca);
   }
 
   /**

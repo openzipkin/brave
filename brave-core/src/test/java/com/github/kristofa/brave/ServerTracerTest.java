@@ -1,9 +1,10 @@
 package com.github.kristofa.brave;
 
-import com.twitter.zipkin.gen.Annotation;
-import com.twitter.zipkin.gen.BinaryAnnotation;
+import com.github.kristofa.brave.internal.DefaultSpanCodec;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,12 +15,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Constants;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertNull;
 
 @RunWith(PowerMockRunner.class)
 // Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
@@ -27,229 +23,199 @@ import static org.mockito.Mockito.when;
 @PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ServerTracerTest {
 
-    private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
-    private static final long TRACE_ID = 1;
-    private static final SpanId CONTEXT =
-        SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
-    private static final String SPAN_NAME = "span name";
+  private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
+  private static final long TRACE_ID = 1;
+  private static final SpanId CONTEXT =
+      SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
+  private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
+  private static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("serviceName", 80);
+  private static final zipkin.Span BASE_SPAN = DefaultSpanCodec.toZipkin(Brave.newSpan(CONTEXT));
+  private static final String SPAN_NAME = "span name";
 
-    private ServerTracer serverTracer;
-    private SpanCollector mockSpanCollector;
-    private Endpoint endpoint = Endpoint.create("service", 0);
-    private Sampler mockSampler;
-    private Span span = Brave.newSpan(CONTEXT);
+  private Span span = Brave.newSpan(CONTEXT);
+  ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
 
-    @Before
-    public void setup() {
-        mockSpanCollector = mock(SpanCollector.class);
-        mockSampler = mock(Sampler.class);
+  List<zipkin.Span> spans = new ArrayList<>();
+  Brave brave;
+  Recorder recorder;
 
-        PowerMockito.mockStatic(System.class);
-        PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
-        PowerMockito.when(System.nanoTime()).thenReturn(0L);
+  @Before
+  public void setup() {
+    ThreadLocalServerClientAndLocalSpanState.clear();
 
-        serverTracer = braveBuilder().build().serverTracer();
-    }
+    PowerMockito.mockStatic(System.class);
+    PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
+    PowerMockito.when(System.nanoTime()).thenReturn(0L);
 
-    @Test
-    public void testClearCurrentSpan() {
-        serverTracer.clearCurrentSpan();
-        assertThat(serverTracer.currentSpan().get()).isNull();
-    }
+    // deferred so that mockito can work on the clock!
+    brave = new Brave.Builder(ENDPOINT)
+        .clock(new AnnotationSubmitter.DefaultClock())
+        .reporter(spans::add).build();
+    recorder = brave.serverTracer().recorder();
+  }
 
-    @Test
-    public void testSetStateCurrentTrace() {
-        serverTracer.setStateCurrentTrace(CONTEXT, SPAN_NAME);
+  @Test
+  public void clearCurrentSpan() {
+    brave.serverTracer().clearCurrentSpan();
+    assertThat(brave.serverTracer().currentSpan().get()).isNull();
+  }
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.create(Brave.newSpan(CONTEXT), SPAN_NAME));
-    }
+  @Test
+  public void setStateCurrentTrace() {
+    brave.serverTracer().setStateCurrentTrace(CONTEXT, SPAN_NAME);
 
-    @Test
-    public void testSetStateNoTracing() {
-        serverTracer.setStateNoTracing();
+    recorder.flush(brave.serverSpanThreadBinder().get());
+    assertThat(spans.get(0).name).isEqualTo(SPAN_NAME);
+  }
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
-            .isFalse();
-    }
+  @Test
+  public void setStateNoTracing() {
+    brave.serverTracer().setStateNoTracing();
 
-    @Test
-    public void testSetStateUnknownSamplerTrue() {
-        when(mockSampler.isSampled(anyLong())).thenReturn(true);
+    assertThat(brave.serverSpanThreadBinder().sampled())
+        .isFalse();
+  }
 
-        serverTracer.setStateUnknown(SPAN_NAME);
+  @Test
+  public void setStateUnknown_sampled() {
+    brave.serverTracer().setStateUnknown(SPAN_NAME);
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
-            .isTrue();
-    }
+    assertThat(brave.serverSpanThreadBinder().sampled())
+        .isTrue();
+  }
 
-    @Test
-    public void testSetStateUnknownSamplerTrue_128Bit() {
-        serverTracer = braveBuilder().traceId128Bit(true).build().serverTracer();
+  @Test
+  public void setStateUnknown_setsName() {
+    brave.serverTracer().setStateUnknown(SPAN_NAME);
 
-        when(mockSampler.isSampled(anyLong())).thenReturn(true);
+    recorder.flush(brave.serverSpanThreadBinder().get());
+    assertThat(spans.get(0).name).isEqualTo(SPAN_NAME);
+  }
 
-        serverTracer.setStateUnknown(SPAN_NAME);
+  @Test
+  public void startNewSpan_unsampledBrave() {
+    Brave brave = new Brave.Builder(ENDPOINT).traceSampler(Sampler.NEVER_SAMPLE).build();
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan().getSample())
-            .isTrue();
-    }
+    brave.serverTracer().setStateUnknown(SPAN_NAME);
+    assertNull(brave.serverSpanThreadBinder().get());
+  }
 
-    @Test
-    public void testSetStateUnknownSamplerFalse() {
-        when(mockSampler.isSampled(anyLong())).thenReturn(false);
+  @Test
+  public void setServerReceived_noopWhenNoCurrentSpan() {
+    brave.serverTracer().setServerReceived();
 
-        serverTracer.setStateUnknown(SPAN_NAME);
+    assertThat(spans).isEmpty();
+    recorder.flush(span);
+    assertThat(spans).matches(s -> s.isEmpty() || s.contains(BASE_SPAN));
+  }
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.NOT_SAMPLED);
-    }
+  public void setServerReceived_doesntFlush() {
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
+    brave.serverTracer().setServerReceived();
 
-    @Test
-    public void testSetServerReceivedNoServerSpan() {
-        serverTracer.currentSpan().setCurrentSpan(ServerSpan.EMPTY);
+    assertThat(spans).containsExactly(BASE_SPAN);
+  }
 
-        serverTracer.setServerReceived();
+  @Test
+  public void setServerReceived() {
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
+    brave.serverTracer().setServerReceived();
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.EMPTY);
-    }
-
-    @Test
-    public void testSetServerReceived() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
-
-        serverTracer.setServerReceived();
-
-        Annotation expectedAnnotation = Annotation.create(
-            START_TIME_MICROSECONDS,
+    recorder.flush(span);
+    assertThat(spans.get(0).timestamp).isEqualTo(START_TIME_MICROSECONDS);
+    assertThat(spans.get(0).annotations).containsExactly(
+        zipkin.Annotation.create(START_TIME_MICROSECONDS,
             Constants.SERVER_RECV,
-            endpoint
-        );
+            ZIPKIN_ENDPOINT
+        )
+    );
+  }
 
-        assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
-        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
-    }
+  @Test
+  public void setServerReceived_clientAddress() {
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
+    brave.serverTracer().setServerReceived(Endpoint.builder()
+        .ipv4(127 << 24 | 1).port(9).serviceName("foobar").build());
 
-    @Test
-    public void testSetServerReceivedSentClientAddress() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
-
-        serverTracer.setServerReceived(Endpoint.builder()
-            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
-            .port(9999)
-            .serviceName("foobar").build());
-
-        Annotation expectedAnnotation = Annotation.create(
-            START_TIME_MICROSECONDS,
-            Constants.SERVER_RECV,
-            endpoint
-        );
-
-        assertEquals(START_TIME_MICROSECONDS, span.getTimestamp().longValue());
-        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
-
-        BinaryAnnotation serverAddress = BinaryAnnotation.address(
+    recorder.flush(span);
+    assertThat(spans.get(0).binaryAnnotations).containsExactly(
+        zipkin.BinaryAnnotation.address(
             Constants.CLIENT_ADDR,
-            Endpoint.builder().serviceName("foobar").ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4).port(9999).build()
-        );
-        assertEquals(serverAddress, span.getBinary_annotations().get(0));
-    }
+            zipkin.Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9).build()
+        )
+    );
+  }
 
-    @Test
-    public void testSetServerReceivedSentClientAddress_noServiceName() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
+  @Test
+  public void setServerReceived_clientAddress_nullName() {
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
 
-        serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
+    brave.serverTracer()
+        .setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
-        assertEquals("unknown", span.getBinary_annotations().get(0).host.service_name);
-    }
+    recorder.flush(span);
+    assertThat(spans.get(0).binaryAnnotations.get(0).endpoint.serviceName)
+        .isEqualTo("unknown");
+  }
 
-    @Test
-    public void testSetServerSendShouldNoServerSpan() {
-        serverTracer.currentSpan().setCurrentSpan(ServerSpan.EMPTY);
+  @Test
+  public void setServerSend_noopWhenNoCurrentSpan() {
+    brave.serverTracer().setServerSend();
 
-        serverTracer.setServerSend();
+    assertThat(spans).isEmpty();
+    assertThat(brave.serverSpanThreadBinder().get()).isNull();
+  }
 
-        verifyNoMoreInteractions(mockSpanCollector);
-    }
+  @Test
+  public void setServerSend() {
+    recorder.start(span, 100L);
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
 
-    @Test
-    public void testSetServerSend() {
-        span.setTimestamp(100L);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
+    brave.serverTracer().setServerSend();
 
-        serverTracer.setServerSend();
-
-        Annotation expectedAnnotation = Annotation.create(
-            START_TIME_MICROSECONDS,
+    assertThat(spans.get(0).duration).isEqualTo(START_TIME_MICROSECONDS - 100L);
+    assertThat(spans.get(0).annotations).contains(
+        zipkin.Annotation.create(START_TIME_MICROSECONDS,
             Constants.SERVER_SEND,
-            endpoint
-        );
+            ZIPKIN_ENDPOINT
+        )
+    );
+  }
 
-        verify(mockSpanCollector).collect(span);
+  @Test
+  public void setServerSend_preciseDuration() {
+    recorder.start(span, START_TIME_MICROSECONDS);
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
 
-        assertThat(serverTracer.currentSpan().getCurrentServerSpan())
-            .isEqualTo(ServerSpan.EMPTY);
+    PowerMockito.when(System.nanoTime()).thenReturn(500000L);
 
-        assertEquals(START_TIME_MICROSECONDS - span.getTimestamp().longValue(), span.getDuration().longValue());
-        assertEquals(expectedAnnotation, span.getAnnotations().get(0));
-    }
+    brave.serverTracer().setServerSend();
 
-    @Test
-    public void setServerSend_skipsDurationWhenNoTimestamp() {
-        // duration unset due to client-originated trace
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
+    assertThat(spans.get(0).duration).isEqualTo(500L);
+  }
 
-        serverTracer.setServerSend();
+  /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
+  @Test
+  public void setServerSend_lessThanMicrosRoundUp() {
+    recorder.start(span, START_TIME_MICROSECONDS);
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
 
-        verify(mockSpanCollector).collect(span);
-        verifyNoMoreInteractions(mockSpanCollector);
+    PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        assertThat(span.getDuration()).isNull();
-    }
+    brave.serverTracer().setServerSend();
 
-    @Test
-    public void setServerSend_usesPreciseDuration() {
-        span.setTimestamp(START_TIME_MICROSECONDS);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
+    assertThat(spans.get(0).duration).isEqualTo(1L);
+  }
 
-        PowerMockito.when(System.nanoTime()).thenReturn(500000L);
+  @Test
+  public void setServerSend_skipsDurationWhenNoTimestamp() {
+    // duration unset due to client-originated trace
+    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
 
-        serverTracer.setServerSend();
+    PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
-        verify(mockSpanCollector).collect(span);
-        verifyNoMoreInteractions(mockSpanCollector);
+    brave.serverTracer().setServerSend();
 
-        assertEquals(500L, span.getDuration().longValue());
-    }
-
-    /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
-    @Test
-    public void setServerSend_lessThanMicrosRoundUp() {
-        span.setTimestamp(START_TIME_MICROSECONDS);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
-        serverTracer.currentSpan().setCurrentSpan(serverSpan);
-
-        PowerMockito.when(System.nanoTime()).thenReturn(50L);
-
-        serverTracer.setServerSend();
-
-        verify(mockSpanCollector).collect(span);
-        verifyNoMoreInteractions(mockSpanCollector);
-
-        assertEquals(1L, span.getDuration().longValue());
-    }
-
-    Brave.Builder braveBuilder() {
-        return new Brave.Builder(endpoint)
-            .spanCollector(mockSpanCollector)
-            .traceSampler(mockSampler);
-    }
+    assertThat(spans.get(0).duration).isNull();
+  }
 }

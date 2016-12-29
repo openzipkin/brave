@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Internal;
 import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
@@ -7,6 +8,7 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
 import java.util.List;
+import zipkin.Constants;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
@@ -39,10 +41,9 @@ public class Brave {
      * </ul>
      */
     public static class Builder {
-
+        final SpanFactory.Default.Builder spanFactoryBuilder = SpanFactory.Default.builder();
         private final ServerClientAndLocalSpanState state;
         private Reporter reporter = new LoggingReporter();
-        private final SpanFactory.Builder spanFactoryBuilder = SpanFactory.builder();
         private boolean allowNestedLocalSpans = false;
         private AnnotationSubmitter.Clock clock;
 
@@ -265,32 +266,30 @@ public class Brave {
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
 
-        Endpoint localEndpoint = builder.state.endpoint();
-        serverTracer = new AutoValue_ServerTracer.Builder()
-                .spanFactory(spanFactory)
-                .reporter(builder.reporter)
-                .currentSpan(serverSpanThreadBinder)
-                .endpoint(localEndpoint)
-                .clock(clock)
-                .build();
+        Recorder recorder =
+            new AutoValue_Recorder_Default(builder.state.endpoint(), builder.reporter);
+        serverTracer = new AutoValue_ServerTracer(
+            clock,
+            recorder,
+            serverSpanThreadBinder,
+            spanFactory
+        );
 
-        clientTracer = new AutoValue_ClientTracer.Builder()
-                .spanFactory(spanFactory)
-                .reporter(builder.reporter)
-                .currentLocalSpan(localSpanThreadBinder)
-                .currentServerSpan(serverSpanThreadBinder)
-                .currentSpan(clientSpanThreadBinder)
-                .endpoint(localEndpoint)
-                .clock(clock)
-                .build();
+        clientTracer = new AutoValue_ClientTracer(
+            clock,
+            recorder,
+            localSpanThreadBinder,
+            serverSpanThreadBinder,
+            clientSpanThreadBinder,
+            spanFactory
+        );
 
         localTracer = new AutoValue_LocalTracer.Builder()
                 .spanFactory(spanFactory)
-                .reporter(builder.reporter)
+                .recorder(recorder)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .currentServerSpan(serverSpanThreadBinder)
                 .currentSpan(localSpanThreadBinder)
-                .endpoint(localEndpoint)
                 .clock(clock)
                 .build();
 
@@ -298,10 +297,17 @@ public class Brave {
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
-        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverSpanThreadBinder, localEndpoint, clock);
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverSpanThreadBinder, clock, recorder);
     }
 
     static {
+        Internal.instance = new Internal() {
+            @Override public void setClientAddress(Brave brave, Endpoint ca) {
+                Span span = brave.serverSpanThreadBinder().get();
+                if (span == null) return;
+                brave.serverTracer.recorder().address(span, Constants.CLIENT_ADDR, ca);
+            }
+        };
         new Span(); // ensure InternalSpan.instance points to a reference
     }
 

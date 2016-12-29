@@ -31,7 +31,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
     @Deprecated
     public static Builder builder() {
-        return new AutoValue_ServerTracer.Builder();
+        return new Builder();
     }
 
     @Override abstract ServerSpanThreadBinder currentSpan();
@@ -39,45 +39,57 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
     /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
     @Deprecated
-    @AutoValue.Builder
-    public abstract static class Builder {
-        abstract Builder spanFactory(SpanFactory spanFactory);
-
-        // Initializes itself when not set explicitly
-        abstract SpanFactory.Builder spanFactoryBuilder();
+    public final static class Builder {
+        final SpanFactory.Default.Builder spanFactoryBuilder = SpanFactory.Default.builder();
+        Endpoint localEndpoint;
+        ServerSpanThreadBinder currentSpan;
+        Reporter reporter;
+        Clock clock;
 
         /** Used to generate new trace/span ids. */
         public final Builder randomGenerator(Random randomGenerator) {
-            spanFactoryBuilder().randomGenerator(randomGenerator);
+            spanFactoryBuilder.randomGenerator(randomGenerator);
             return this;
         }
 
         public final Builder traceSampler(Sampler sampler) {
-            spanFactoryBuilder().sampler(sampler);
+            spanFactoryBuilder.sampler(sampler);
             return this;
         }
 
         public final Builder state(ServerSpanState state) {
-            return endpoint(state.endpoint()).currentSpan(new ServerSpanThreadBinder(state));
+            this.currentSpan = new ServerSpanThreadBinder(state);
+            this.localEndpoint = state.endpoint();
+            return this;
         }
 
-        abstract Builder endpoint(Endpoint endpoint);
+        public final Builder reporter(Reporter<zipkin.Span> reporter) {
+            this.reporter = reporter;
+            return this;
+        }
 
-        abstract Builder currentSpan(ServerSpanThreadBinder currentSpan);
-
-        public abstract Builder reporter(Reporter<zipkin.Span> reporter);
-
-        /**
-         * @deprecated use {@link #reporter(Reporter)}
-         */
+        /** @deprecated use {@link #reporter(Reporter)} */
         @Deprecated
         public final Builder spanCollector(SpanCollector spanCollector) {
             return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
-        public abstract Builder clock(Clock clock);
+        public final Builder clock(Clock clock) {
+            this.clock = clock;
+            return this;
+        }
 
-        public abstract ServerTracer build();
+        public final ServerTracer build() {
+            return new AutoValue_ServerTracer(
+                clock,
+                new AutoValue_Recorder_Default(localEndpoint, reporter),
+                currentSpan,
+                spanFactoryBuilder.build()
+            );
+        }
+
+        Builder() {
+        }
     }
 
     /**
@@ -111,7 +123,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
 
     void setStateCurrentTrace(Span span, String spanName) {
         checkNotBlank(spanName, "Null or blank span name");
-        currentSpan().setCurrentSpan(ServerSpan.create(span, spanName));
+        recorder().name(span, spanName);
+        currentSpan().setCurrentSpan(ServerSpan.create(span));
     }
     /**
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not

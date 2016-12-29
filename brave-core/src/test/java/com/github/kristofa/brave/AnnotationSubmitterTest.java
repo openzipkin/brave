@@ -13,7 +13,6 @@ import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import zipkin.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -149,21 +148,18 @@ public class AnnotationSubmitterTest {
             }
         };
         AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
+        Recorder recorder = new AutoValue_Recorder_Default(endpoint, spans::add);
         return new AnnotationSubmitter(){
             @Override CurrentSpan currentSpan() {
                 return currentSpan;
-            }
-
-            @Override Endpoint endpoint() {
-                return endpoint;
             }
 
             @Override Clock clock() {
                 return clock;
             }
 
-            @Override Reporter<zipkin.Span> reporter() {
-                return spans::add;
+            @Override Recorder recorder() {
+                return recorder;
             }
         };
     }

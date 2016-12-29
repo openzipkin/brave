@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
@@ -22,7 +21,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.twitter.zipkin.gen.Endpoint;
 import zipkin.reporter.Reporter;
 
-public class LocalTracingInheritenceTest {
+public class LocalTracingInheritanceTest {
 
     private Reporter<zipkin.Span> reporter;
     private Sampler sampler;
@@ -36,7 +35,7 @@ public class LocalTracingInheritenceTest {
         sampler = Sampler.ALWAYS_SAMPLE;
 
         final int ip = InetAddressUtilities.toInt(InetAddressUtilities.getLocalHostLANAddress());
-        final String serviceName = LocalTracingInheritenceTest.class.getSimpleName();
+        final String serviceName = LocalTracingInheritanceTest.class.getSimpleName();
         state = new InheritableServerClientAndLocalSpanState(Endpoint.create(serviceName, ip));
         brave = new Brave.Builder(state)
                 .reporter(reporter)
@@ -58,46 +57,6 @@ public class LocalTracingInheritenceTest {
         assertThat(localTracer.currentServerSpan().getCurrentServerSpan())
             .isSameAs(ServerSpan.EMPTY);
         assertThat(localTracer.currentSpan().get()).isNull();
-    }
-
-    @Test
-    public void testGetClientTracer() {
-        final ClientTracer clientTracer = brave.clientTracer();
-        assertNotNull(clientTracer);
-        assertSame("ClientTracer should be configured with the spanreportor we submitted.", reporter,
-                clientTracer.reporter());
-        assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-                sampler, clientTracer.spanFactory().sampler());
-
-        final ClientTracer secondClientTracer = brave.clientTracer();
-        assertSame("It is important that each client tracer we get shares same state.",
-                clientTracer.currentSpan(), secondClientTracer.currentSpan());
-    }
-
-    @Test
-    public void testGetServerTracer() {
-        final ServerTracer serverTracer = brave.serverTracer();
-        assertNotNull(serverTracer);
-        assertSame(reporter, serverTracer.reporter());
-        assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-                sampler, serverTracer.spanFactory().sampler());
-
-        final ServerTracer secondServerTracer = brave.serverTracer();
-        assertSame("It is important that each client tracer we get shares same state.",
-                serverTracer.currentSpan(), secondServerTracer.currentSpan());
-    }
-
-    @Test
-    public void testGetLocalTracer() {
-        final LocalTracer localTracer = brave.localTracer();
-        assertNotNull(localTracer);
-        assertSame(reporter, localTracer.reporter());
-        assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                sampler, localTracer.spanFactory().sampler());
-
-        final LocalTracer secondLocalTracer = brave.localTracer();
-        assertSame("It is important that each local tracer we get shares same state.",
-                localTracer.currentSpan(), secondLocalTracer.currentSpan());
     }
 
     @Test
