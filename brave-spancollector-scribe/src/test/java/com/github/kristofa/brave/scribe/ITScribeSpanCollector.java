@@ -1,9 +1,9 @@
 package com.github.kristofa.brave.scribe;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import java.util.logging.Logger;
 
 import org.apache.thrift.transport.TTransportException;
@@ -17,6 +17,9 @@ import com.twitter.zipkin.gen.Span;
  * @author kristof
  */
 public class ITScribeSpanCollector {
+    static {
+        InternalSpan.initializeInstanceForTests();
+    }
 
     private static final Logger LOGGER = Logger.getLogger(ITScribeSpanCollector.class.getName());
 
@@ -66,7 +69,6 @@ public class ITScribeSpanCollector {
         params.setQueueSize(100);
         params.setBatchSize(50);
 
-        long traceId = 1;
         try (ScribeSpanCollector scribeSpanCollector = new ScribeSpanCollector("localhost", PORT, params)) {
 
             submitSpans(scribeSpanCollector, firstBurstOfSpans);
@@ -90,7 +92,6 @@ public class ITScribeSpanCollector {
     }
 
     static Span span(long traceId) {
-        return Span.create(SpanId.builder().spanId(traceId).build());
+        return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
     }
-
 }

@@ -40,7 +40,7 @@ public abstract class ServerSpan {
     static ServerSpan create(SpanId spanId, String name) {
         if (spanId == null) throw new NullPointerException("spanId == null");
         if (name == null) throw new NullPointerException("name == null");
-        return new AutoValue_ServerSpan(spanId, Span.create(spanId).setName(name), true);
+        return new AutoValue_ServerSpan(spanId, Brave.newSpan(spanId).setName(name), true);
     }
 
     ServerSpan(){

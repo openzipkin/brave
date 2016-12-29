@@ -37,7 +37,7 @@ public class LocalTracerTest {
 
     private Reporter<zipkin.Span> mockReporter;
     private Brave brave;
-    private Span span = Span.create(SpanId.builder().spanId(TRACE_ID).build());
+    private Span span = Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build());
 
     @Before
     public void setup() {

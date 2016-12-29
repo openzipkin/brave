@@ -41,7 +41,7 @@ public final class DefaultSpanCodec implements SpanCodec {
   }
 
   public static Span fromZipkin(zipkin.Span in) {
-    Span result = Span.create(SpanId.builder()
+    Span result = newSpan(SpanId.builder()
         .traceIdHigh(in.traceIdHigh)
         .traceId(in.traceId)
         .spanId(in.id)
@@ -107,5 +107,9 @@ public final class DefaultSpanCodec implements SpanCodec {
         .ipv6(host.ipv6)
         .port(host.port)
         .serviceName(host.service_name).build();
+  }
+
+  static Span newSpan(SpanId context) {
+    return InternalSpan.instance.newSpan(context);
   }
 }

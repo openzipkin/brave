@@ -2,6 +2,7 @@ package com.github.kristofa.brave.local;
 
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.twitter.zipkin.gen.Span;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
@@ -14,6 +15,10 @@ import zipkin.storage.StorageComponent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LocalSpanCollectorTest {
+  static {
+    InternalSpan.initializeInstanceForTests();
+  }
+
   public final InMemoryStorage storage = new InMemoryStorage();
 
   TestMetricsHander metrics = new TestMetricsHander();
@@ -118,7 +123,7 @@ public class LocalSpanCollectorTest {
   }
 
   static Span span(long traceId) {
-    return Span.create(SpanId.builder().spanId(traceId).build());
+    return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
   }
 
   static zipkin.Span zipkinSpan(long traceId) {

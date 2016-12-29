@@ -36,7 +36,7 @@ public final class MaybeAddClientAddressTest {
 
   @Mock
   ServerSpan serverSpan;
-  Span span = Span.create(SpanId.builder().spanId(1L).build());
+  Span span = InternalSpan.instance.newSpan(SpanId.builder().spanId(1L).build());
   @Mock
   Brave brave;
   @Mock

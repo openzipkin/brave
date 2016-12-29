@@ -1,7 +1,10 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.InternalSpan;
+import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
 import java.util.List;
 import zipkin.reporter.AsyncReporter;
@@ -296,5 +299,19 @@ public class Brave {
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
         serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverSpanThreadBinder, localEndpoint, clock);
+    }
+
+    static {
+        new Span(); // ensure InternalSpan.instance points to a reference
+    }
+
+    /** Internal hook to create a new Span */
+    static Span newSpan(SpanId context) {
+        return InternalSpan.instance.newSpan(context);
+    }
+
+    /** Internal hook to create a new Span */
+    @Nullable static SpanId context(Span span) {
+        return InternalSpan.instance.context(span);
     }
 }

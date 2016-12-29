@@ -34,7 +34,7 @@ public class ClientTracerTest {
     private static final Endpoint endpoint = Endpoint.create("serviceName", 80);
 
     private SpanCollector mockCollector;
-    private Span span = Span.create(SpanId.builder().spanId(TRACE_ID).build());
+    private Span span = Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build());
     private Brave brave;
 
     @Before

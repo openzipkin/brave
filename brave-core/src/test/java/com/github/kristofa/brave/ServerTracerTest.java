@@ -36,7 +36,7 @@ public class ServerTracerTest {
     private SpanCollector mockSpanCollector;
     private Endpoint endpoint = Endpoint.create("service", 0);
     private Sampler mockSampler;
-    private Span span = Span.create(CONTEXT);
+    private Span span = Brave.newSpan(CONTEXT);
 
     @Before
     public void setup() {
@@ -116,7 +116,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerReceived() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived();
@@ -133,7 +133,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerReceivedSentClientAddress() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived(Endpoint.builder()
@@ -159,7 +159,7 @@ public class ServerTracerTest {
 
     @Test
     public void testSetServerReceivedSentClientAddress_noServiceName() {
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
@@ -179,7 +179,7 @@ public class ServerTracerTest {
     @Test
     public void testSetServerSend() {
         span.setTimestamp(100L);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerSend();
@@ -202,7 +202,7 @@ public class ServerTracerTest {
     @Test
     public void setServerSend_skipsDurationWhenNoTimestamp() {
         // duration unset due to client-originated trace
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         serverTracer.setServerSend();
@@ -216,7 +216,7 @@ public class ServerTracerTest {
     @Test
     public void setServerSend_usesPreciseDuration() {
         span.setTimestamp(START_TIME_MICROSECONDS);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         PowerMockito.when(System.nanoTime()).thenReturn(500000L);
@@ -233,7 +233,7 @@ public class ServerTracerTest {
     @Test
     public void setServerSend_lessThanMicrosRoundUp() {
         span.setTimestamp(START_TIME_MICROSECONDS);
-        ServerSpan serverSpan = new AutoValue_ServerSpan(span.context(), span, true);
+        ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
         serverTracer.currentSpan().setCurrentSpan(serverSpan);
 
         PowerMockito.when(System.nanoTime()).thenReturn(50L);
