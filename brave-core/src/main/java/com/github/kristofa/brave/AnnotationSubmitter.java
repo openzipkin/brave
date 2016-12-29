@@ -79,8 +79,14 @@ public abstract class AnnotationSubmitter {
 
         long timestamp = clock().currentTimeMicroseconds();
         submitAnnotation(annotationName, timestamp);
-        synchronized (span) {
-            span.setTimestamp(timestamp);
+        // In the RPC span model, the client owns the timestamp and duration of the span. If we
+        // were propagated an id, we can assume that we shouldn't report timestamp or duration,
+        // rather let the client do that. Worst case we were propagated an unreported ID and
+        // Zipkin backfills timestamp and duration.
+        if (!Brave.context(span).shared) {
+            synchronized (span) {
+                span.setTimestamp(timestamp);
+            }
         }
     }
 

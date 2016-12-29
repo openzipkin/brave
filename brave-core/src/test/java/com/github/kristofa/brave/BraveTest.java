@@ -31,7 +31,7 @@ public class BraveTest {
         assertSame("ClientTracer should be configured with the reporter we submitted.", fakeReporter,
             clientTracer.reporter());
         assertSame("ClientTracer should be configured with the traceSampler we submitted.",
-            mockSampler, clientTracer.spanIdFactory().sampler());
+            mockSampler, clientTracer.spanFactory().sampler());
 
         final ClientTracer secondClientTracer =
             brave.clientTracer();
@@ -45,7 +45,7 @@ public class BraveTest {
         assertNotNull(serverTracer);
         assertSame(fakeReporter, serverTracer.reporter());
         assertSame("ServerTracer should be configured with the traceSampler we submitted.",
-            mockSampler, serverTracer.spanIdFactory().sampler());
+            mockSampler, serverTracer.spanFactory().sampler());
 
         final ServerTracer secondServerTracer = brave.serverTracer();
         assertSame("It is important that each server tracer we get shares same state.",
@@ -70,7 +70,7 @@ public class BraveTest {
         assertNotNull(localTracer);
         assertSame(fakeReporter, localTracer.reporter());
         assertSame("LocalTracer should be configured with the traceSampler we submitted.",
-                mockSampler, localTracer.spanIdFactory().sampler());
+                mockSampler, localTracer.spanFactory().sampler());
 
         final LocalTracer secondLocalTracer =
                 brave.localTracer();

@@ -30,7 +30,13 @@ public class ThreadLocalServerClientAndLocalSpanStateTest {
     @After
     public void tearDown() {
         serverAndClientSpanState.setCurrentClientSpan(null);
+        serverAndClientSpanState.setCurrentServerSpan(ServerSpan.EMPTY);
+    }
+
+    @Test
+    public void setCurrentServerSpanNullRevertsToEmpty() {
         serverAndClientSpanState.setCurrentServerSpan(null);
+        assertEquals(ServerSpan.EMPTY, serverAndClientSpanState.getCurrentServerSpan());
     }
 
     @Test

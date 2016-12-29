@@ -39,40 +39,27 @@ public class ServerRequestInterceptor {
             LOGGER.fine("Received indication that we should NOT trace.");
             return;
         }
-        SpanId context = traceData.getSpanId();
-        if (context == null) {
+
+        Span span;
+        if (traceData.getSpanId() != null) {
+            LOGGER.fine("Received span information as part of request.");
+            // We are now joining the span propagated to us, by re-using the trace and span ids here.
+            span = serverTracer.spanFactory().joinSpan(traceData.getSpanId());
+        } else {
             LOGGER.fine("Received no span state.");
-            serverTracer.setStateUnknown(adapter.getSpanName());
-            startServerSpan(adapter);
+            span = serverTracer.spanFactory().newSpan(null);
+        }
+        SpanId context = Brave.context(span);
+
+        // At this point, we have inherited a sampling decision or made one explicitly via join
+        if (!context.sampled()) {
+            LOGGER.fine("Trace is unsampled.");
+            serverTracer.setStateNoTracing();
             return;
         }
+        // Associate the span with the thread context as all serverTracer methods look that up
+        serverTracer.setStateCurrentTrace(span,  adapter.getSpanName());
 
-        // We are now joining the span propagated to us, by re-using the trace and span ids here.
-        context = serverTracer.spanIdFactory().join(context);
-
-        // At this point, we have inherited a sampling decision or made one explicitly
-        if (!context.sampled()) {
-            LOGGER.fine("Received span information as part of request, but didn't sample.");
-            serverTracer.setStateNoTracing();
-        } else {
-            LOGGER.fine("Received span information as part of request.");
-            serverTracer.setStateCurrentTrace(context, adapter.getSpanName());
-        }
-        startServerSpan(adapter);
-
-        // In the RPC span model, the client owns the timestamp and duration of the span. If we
-        // were propagated an id, we can assume that we shouldn't report timestamp or duration,
-        // rather let the client do that. Worst case we were propagated an unreported ID and
-        // Zipkin backfills timestamp and duration.
-        if (context.shared) {
-            Span span = serverTracer.currentSpan().get();
-            synchronized (span) {
-                span.setTimestamp(null);
-            }
-        }
-    }
-
-    void startServerSpan(ServerRequestAdapter adapter) {
         serverTracer.setServerReceived();
         for(KeyValueAnnotation annotation : adapter.requestAnnotations())
         {

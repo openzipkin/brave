@@ -3,6 +3,7 @@ package com.github.kristofa.brave;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
+import com.twitter.zipkin.gen.Span;
 import java.util.Random;
 import zipkin.Constants;
 import zipkin.reporter.Reporter;
@@ -15,7 +16,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
  * <li>Detect if we are part of existing trace/span. For example with services doing http requests this can be done by
  * detecting and getting values of http header that reresent trace/span ids.</li>
  * <li>Once detected we submit state using one of 3 following methods depending on the state we are in:
- * {@link ServerTracer#setStateCurrentTrace(long, long, Long, String), {@link ServerTracer#setStateNoTracing()} or
+ * {@link ServerTracer#setStateCurrentTrace(SpanId, String)}, {@link ServerTracer#setStateNoTracing()} or
  * {@link ServerTracer#setStateUnknown(String)}.</li>
  * <li>Next we execute {@link ServerTracer#setServerReceived()} to mark the point in time at which we received the request.</li>
  * <li>Service request executes its logic...
@@ -34,24 +35,25 @@ public abstract class ServerTracer extends AnnotationSubmitter {
     }
 
     @Override abstract ServerSpanThreadBinder currentSpan();
-    abstract SpanIdFactory spanIdFactory();
+    abstract SpanFactory spanFactory();
 
     /** @deprecated Don't build your own ServerTracer. Use {@link Brave#serverTracer()} */
     @Deprecated
     @AutoValue.Builder
     public abstract static class Builder {
-        abstract Builder spanIdFactory(SpanIdFactory spanIdFactory);
+        abstract Builder spanFactory(SpanFactory spanFactory);
 
-        abstract SpanIdFactory.Builder spanIdFactoryBuilder();
+        // Initializes itself when not set explicitly
+        abstract SpanFactory.Builder spanFactoryBuilder();
 
         /** Used to generate new trace/span ids. */
         public final Builder randomGenerator(Random randomGenerator) {
-            spanIdFactoryBuilder().randomGenerator(randomGenerator);
+            spanFactoryBuilder().randomGenerator(randomGenerator);
             return this;
         }
 
         public final Builder traceSampler(Sampler sampler) {
-            spanIdFactoryBuilder().sampler(sampler);
+            spanFactoryBuilder().sampler(sampler);
             return this;
         }
 
@@ -82,7 +84,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Clears current span.
      */
     public void clearCurrentSpan() {
-        currentSpan().setCurrentSpan(null);
+        currentSpan().setCurrentSpan(ServerSpan.EMPTY);
     }
 
     /**
@@ -103,11 +105,14 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * @see ServerTracer#setStateUnknown(String)
      */
     public void setStateCurrentTrace(SpanId context, String spanName) {
-        checkNotBlank(spanName, "Null or blank span name");
-        ServerSpan span = ServerSpan.create(context, spanName);
-        currentSpan().setCurrentSpan(span);
+        Span span = spanFactory().joinSpan(context);
+        setStateCurrentTrace(span, spanName);
     }
 
+    void setStateCurrentTrace(Span span, String spanName) {
+        checkNotBlank(spanName, "Null or blank span name");
+        currentSpan().setCurrentSpan(ServerSpan.create(span, spanName));
+    }
     /**
      * Sets the current Trace/Span state. Using this method indicates that a parent request has decided that we should not
      * trace the current request.
@@ -127,14 +132,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * @param spanName The name of our current request/span.
      */
     public void setStateUnknown(String spanName) {
-        checkNotBlank(spanName, "Null or blank span name");
-        SpanId nextContext = spanIdFactory().next(null);
-        if (Boolean.FALSE.equals(nextContext.sampled())) {
-            currentSpan().setCurrentSpan(ServerSpan.NOT_SAMPLED);
-            return;
-        }
-
-        setStateCurrentTrace(nextContext, spanName);
+        Span span = spanFactory().newSpan(null);
+        setStateCurrentTrace(span, spanName);
     }
 
     /**
@@ -180,7 +179,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      */
     public void setServerSend() {
         if (submitEndAnnotation(Constants.SERVER_SEND)) {
-            currentSpan().setCurrentSpan(null);
+            currentSpan().setCurrentSpan(ServerSpan.EMPTY);
         }
     }
 

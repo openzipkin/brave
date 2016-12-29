@@ -74,6 +74,6 @@ public class ServletHandlerInterceptorTest {
 
         assertSame(serverSpan, request.getAttribute(ServletHandlerInterceptor.HTTP_SERVER_SPAN_ATTRIBUTE));
 
-        verify(serverThreadBinder).setCurrentSpan(null);
+        verify(serverThreadBinder).setCurrentSpan(ServerSpan.EMPTY);
     }
 }

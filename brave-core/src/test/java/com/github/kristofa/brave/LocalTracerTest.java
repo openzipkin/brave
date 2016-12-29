@@ -62,7 +62,7 @@ public class LocalTracerTest {
      */
     @Test
     public void startNewSpan() {
-        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
+        brave.serverTracer().setStateCurrentTrace(PARENT_CONTEXT, "name");
 
         PowerMockito.when(System.nanoTime()).thenReturn(500L);
 
@@ -95,7 +95,7 @@ public class LocalTracerTest {
      */
     @Test
     public void startSpan_userSuppliedTimestamp() {
-        brave.serverSpanThreadBinder().setCurrentSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
+        brave.serverTracer().setStateCurrentTrace(PARENT_CONTEXT, "name");
 
         brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
 
@@ -156,7 +156,7 @@ public class LocalTracerTest {
         LocalTracer localTracer = brave.localTracer();
 
         assertNull(localTracer.maybeParent());
-        state.setCurrentServerSpan(ServerSpan.create(PARENT_CONTEXT, "name"));
+        brave.serverTracer().setStateCurrentTrace(PARENT_CONTEXT, "name");
 
         SpanId span1 = localTracer.startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(PARENT_CONTEXT.toBuilder().spanId(span1.spanId).parentId(PARENT_CONTEXT.spanId).build(), span1);
@@ -175,9 +175,8 @@ public class LocalTracerTest {
 
     @Test
     public void startNewSpan_whenParentHas128bitTraceId() {
-        ServerSpan parentSpan = ServerSpan.create(
-            PARENT_CONTEXT.toBuilder().traceIdHigh(3).build(), "name");
-        brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
+        brave.serverTracer()
+            .setStateCurrentTrace(PARENT_CONTEXT.toBuilder().traceIdHigh(3).build(), "name");
 
         SpanId newContext = brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME);
         assertEquals(3, newContext.traceIdHigh);
