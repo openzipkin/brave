@@ -1,5 +1,6 @@
 package com.github.kristofa.brave.jersey;
 
+import com.github.kristofa.brave.internal.Util;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;
@@ -14,10 +15,10 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
-import zipkin.Span;
+import zipkin.TraceKeys;
+import zipkin.storage.QueryRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
 /**
  * This tests injected {@link ServletTraceFilter} and {@link JerseyClientTraceFilter}.
@@ -66,32 +67,21 @@ public class ITBraveJersey extends JerseyTest {
     // hit the server
     webResource.path("test").get(String.class);
 
-    List<Span> spansReported = TraceFilters.INSTANCE.spansReported;
-    assertEquals(2, spansReported.size());
+    List<List<zipkin.Span>> traces = TraceFilters.INSTANCE.storage.spanStore()
+        .getTraces(QueryRequest.builder().build());
+    assertThat(traces).hasSize(1);
+    assertThat(traces.get(0))
+        .withFailMessage("Expected client and server to share ids: " + traces.get(0))
+        .hasSize(1);
 
-    // server side finished before client side
-    Span serverSpan = spansReported.get(0);
-    Span clientSpan = spansReported.get(1);
+    zipkin.Span clientServerSpan = traces.get(0).get(0);
+    assertThat(clientServerSpan.annotations).extracting(a -> a.value)
+        .containsExactly("cs", "sr", "ss", "cr");
 
-    // An RPC span shares exactly the same IDs across service boundaries
-    assertThat(clientSpan.idString())
-        .isEqualTo(serverSpan.idString());
-
-    // Both sides currently log the span name, and since both are HTTP, they have the same default
-    assertThat(clientSpan.name)
-        .isEqualTo(serverSpan.name)
-        .isEqualTo("get");
-
-    assertThat(clientSpan.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("cs", "cr");
-
-    assertThat(serverSpan.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr", "ss");
-
-    // both came from the same brave instance, so the local endpoints should be the same.
-    assertThat(clientSpan.annotations.get(0).endpoint)
-        .isEqualTo(serverSpan.annotations.get(0).endpoint);
+    // Currently one side logs the full url where the other logs only the path
+    assertThat(clientServerSpan.binaryAnnotations)
+        .filteredOn(ba -> ba.key.equals(TraceKeys.HTTP_URL))
+        .extracting(ba -> new String(ba.value, Util.UTF_8))
+        .allSatisfy(url -> assertThat(url.endsWith("/test")));
   }
 }

@@ -98,6 +98,8 @@ public class BraveServletFilter implements Filter {
             // Proceed without invoking this filter...
             filterChain.doFilter(request, response);
         } else {
+            request.setAttribute(alreadyFilteredAttributeName, Boolean.TRUE);
+
             HttpServletRequest httpRequest = (HttpServletRequest) request;
             final StatusExposingServletResponse statusExposingServletResponse = new StatusExposingServletResponse((HttpServletResponse) response);
             requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest(httpRequest), spanNameProvider));

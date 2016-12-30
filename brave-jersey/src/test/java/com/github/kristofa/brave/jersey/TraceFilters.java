@@ -7,21 +7,23 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import zipkin.Span;
+import zipkin.storage.InMemoryStorage;
 
 public enum TraceFilters {
   INSTANCE;
 
-  final List<Span> spansReported = new ArrayList<>();
+  final InMemoryStorage storage = new InMemoryStorage();
   final ServletTraceFilter server;
   final JerseyClientTraceFilter client;
 
   TraceFilters() {
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override protected void configure() {
-        bind(Brave.class)
-            .toInstance(new Brave.Builder("brave-jersey").reporter(spansReported::add).build());
+        bind(Brave.class).toInstance(new Brave.Builder("brave-jersey")
+                .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build());
         bind(SpanNameProvider.class).to(DefaultSpanNameProvider.class);
       }
     });

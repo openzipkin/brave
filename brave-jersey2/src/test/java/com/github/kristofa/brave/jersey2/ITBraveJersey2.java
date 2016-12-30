@@ -1,8 +1,9 @@
 package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.internal.Util;
 import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -12,13 +13,16 @@ import javax.ws.rs.core.Response;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.Test;
+import zipkin.TraceKeys;
+import zipkin.storage.InMemoryStorage;
+import zipkin.storage.QueryRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
 public class ITBraveJersey2 extends JerseyTest {
-  static List<zipkin.Span> spansReported = new ArrayList<>();
-  static Brave brave = new Brave.Builder("brave-jersey2").reporter(spansReported::add).build();
+  static InMemoryStorage storage = new InMemoryStorage();
+  static Brave brave = new Brave.Builder("brave-jersey")
+      .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build();
 
   @Path("test")
   public static class TestResource {
@@ -44,33 +48,24 @@ public class ITBraveJersey2 extends JerseyTest {
 
     // hit the server
     final Response response = target.request().get();
-    assertEquals(200, response.getStatus());
+    assertThat(response.getStatus()).isEqualTo(200);
 
-    assertEquals(2, spansReported.size());
+    List<List<zipkin.Span>> traces = storage.spanStore()
+        .getTraces(QueryRequest.builder().build());
+    assertThat(traces).hasSize(1);
+    assertThat(traces.get(0))
+        .withFailMessage("Expected client and server to share ids: " + traces.get(0))
+        .hasSize(1);
 
-    // server side finished before client side
-    zipkin.Span serverSpan = spansReported.get(0);
-    zipkin.Span clientSpan = spansReported.get(1);
+    zipkin.Span clientServerSpan = traces.get(0).get(0);
+    assertThat(clientServerSpan.annotations).extracting(a -> a.value)
+        .containsExactly("cs", "sr", "ss", "cr");
 
-    // An RPC span shares exactly the same IDs across service boundaries
-    assertThat(clientSpan.idString())
-        .isEqualTo(serverSpan.idString());
-
-    // Both sides currently log the span name, and since both are HTTP, they have the same default
-    assertThat(clientSpan.name)
-        .isEqualTo(serverSpan.name)
-        .isEqualTo("get");
-
-    assertThat(clientSpan.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("cs", "cr");
-
-    assertThat(serverSpan.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr", "ss");
-
-    // both came from the same brave instance, so the local endpoints should be the same.
-    assertThat(clientSpan.annotations.get(0).endpoint)
-        .isEqualTo(serverSpan.annotations.get(0).endpoint);
+    // Currently one side logs the full url where the other logs only the path
+    assertThat(clientServerSpan.binaryAnnotations)
+        .filteredOn(ba -> ba.key.equals(TraceKeys.HTTP_URL))
+        .extracting(ba -> new String(ba.value, Util.UTF_8))
+        .withFailMessage("Expected http urls to be same")
+        .hasSize(1);
   }
 }

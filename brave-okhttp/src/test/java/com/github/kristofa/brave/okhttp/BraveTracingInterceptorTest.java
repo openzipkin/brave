@@ -19,9 +19,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
-import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.TraceKeys;
@@ -37,8 +35,6 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
-import static zipkin.Constants.LOCAL_COMPONENT;
-import static zipkin.TraceKeys.HTTP_STATUS_CODE;
 import static zipkin.TraceKeys.HTTP_URL;
 
 public class BraveTracingInterceptorTest {
@@ -51,21 +47,6 @@ public class BraveTracingInterceptorTest {
 
   OkHttpClient client;
   BraveTracingInterceptor interceptor;
-
-  Span localSpan = Span.builder()
-      .traceId(1L).id(1L).name("get")
-      .timestamp(1000L).duration(3000L)
-      .addBinaryAnnotation(BinaryAnnotation.create(LOCAL_COMPONENT, "okhttp", local))
-      .build();
-
-  Span clientSpan = Span.builder()
-      .traceId(1L).parentId(1L).id(2L).name("get")
-      .timestamp(2000L).duration(1000L)
-      .addAnnotation(Annotation.create(2000, Constants.CLIENT_SEND, local))
-      .addAnnotation(Annotation.create(3000, Constants.CLIENT_RECV, local))
-      .addBinaryAnnotation(BinaryAnnotation.create(HTTP_URL, server.url("foo").toString(), local))
-      .addBinaryAnnotation(BinaryAnnotation.address(Constants.SERVER_ADDR, sa))
-      .build();
 
   @Before
   public void setup() throws Exception {
@@ -120,7 +101,12 @@ public class BraveTracingInterceptorTest {
     HttpUrl url = server.url("foo");
     client.newCall(new Request.Builder().url(url).build()).execute();
 
-    assertThat(collectedSpans()).containsExactly(clientSpan, localSpan);
+    assertThat(collectedSpans())
+        .extracting(s -> s.traceId, s -> s.parentId, s -> s.id, s -> s.name)
+        .containsExactly(
+            tuple(1L, 1L, 2L, "get"),
+            tuple(1L, null, 1L, "get")
+        );
   }
 
   @Test
@@ -130,11 +116,8 @@ public class BraveTracingInterceptorTest {
     HttpUrl url = server.url("foo");
     client.newCall(new Request.Builder().url(url).build()).execute();
 
-    assertThat(collectedSpans()).containsExactly(
-        clientSpan.toBuilder()
-            .addBinaryAnnotation(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "404", local))
-            .build(), localSpan
-    );
+    assertThat(collectedSpans()).flatExtracting(s -> s.binaryAnnotations)
+        .contains(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "404", local));
   }
 
   @Test
@@ -144,12 +127,8 @@ public class BraveTracingInterceptorTest {
     HttpUrl url = server.url("foo?z=2&yAA");
     client.newCall(new Request.Builder().url(url).build()).execute();
 
-    assertThat(collectedSpans()).containsExactly(
-        clientSpan.toBuilder().binaryAnnotations(asList(
-            BinaryAnnotation.create(HTTP_URL, url.toString(), local),
-            BinaryAnnotation.address(Constants.SERVER_ADDR, sa))
-        ).build(), localSpan
-    );
+    assertThat(collectedSpans()).flatExtracting(s -> s.binaryAnnotations)
+        .contains(BinaryAnnotation.create(HTTP_URL, url.toString(), local));
   }
 
   @Test
@@ -159,8 +138,8 @@ public class BraveTracingInterceptorTest {
     HttpUrl url = server.url("foo");
     client.newCall(new Request.Builder().url(url).tag("foo").build()).execute();
 
-    assertThat(collectedSpans())
-        .containsExactly(clientSpan, localSpan.toBuilder().name("foo").build());
+    assertThat(collectedSpans()).extracting(s -> s.name)
+        .containsExactly("get", "foo");
   }
 
   @Test
@@ -202,17 +181,13 @@ public class BraveTracingInterceptorTest {
     HttpUrl url = server.url("foo");
     client.newCall(new Request.Builder().url(url).build()).execute();
 
-    assertThat(collectedSpans()).containsOnly(
-        clientSpan.toBuilder()
-            .addBinaryAnnotation(BinaryAnnotation.create(HTTP_STATUS_CODE, "408", local))
-            .build(),
-        clientSpan.toBuilder()
-            .id(3L).timestamp(4000L).annotations(asList(
-            Annotation.create(4000, Constants.CLIENT_SEND, local),
-            Annotation.create(5000, Constants.CLIENT_RECV, local)))
-            .build(),
-        localSpan.toBuilder().duration(5000L).build()
-    );
+    assertThat(collectedSpans())
+        .extracting(s -> s.traceId, s -> s.parentId, s -> s.id, s -> s.name)
+        .containsExactly(
+            tuple(1L, 1L, 2L, "get"),
+            tuple(1L, 1L, 3L, "get"),
+            tuple(1L, null, 1L, "get")
+        );
   }
 
   @Test
