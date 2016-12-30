@@ -2,15 +2,11 @@ package com.github.kristofa.brave;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertSame;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 
 import org.junit.After;
@@ -24,24 +20,20 @@ import zipkin.reporter.Reporter;
 public class LocalTracingInheritanceTest {
 
     private Reporter<zipkin.Span> reporter;
-    private Sampler sampler;
+    private List<String> spansReported = new CopyOnWriteArrayList<>();
+    private List<String> spansCreated = new CopyOnWriteArrayList<>();
     private Brave brave;
     private ServerClientAndLocalSpanState state;
     private ThreadFactory threadFactory;
 
     @Before
     public void setup() throws UnknownHostException {
-        reporter = mock(Reporter.class);
-        sampler = Sampler.ALWAYS_SAMPLE;
+        reporter = s -> spansReported.add(s.name);
 
         final int ip = InetAddressUtilities.toInt(InetAddressUtilities.getLocalHostLANAddress());
         final String serviceName = LocalTracingInheritanceTest.class.getSimpleName();
         state = new InheritableServerClientAndLocalSpanState(Endpoint.create(serviceName, ip));
-        brave = new Brave.Builder(state)
-                .reporter(reporter)
-                .traceSampler(sampler)
-                .build();
-
+        brave = new Brave.Builder(state).reporter(reporter).build();
         threadFactory = new ThreadFactoryBuilder().setNameFormat("brave-%d").build();
 
         checkState();
@@ -109,9 +101,9 @@ public class LocalTracingInheritanceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(reporter, times(4)).report(any(zipkin.Span.class));
+        assertThat(spansReported).hasSize(4);
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(reporter);
+        assertThat(spansReported).hasSize(4);
     }
 
     @Test
@@ -131,9 +123,9 @@ public class LocalTracingInheritanceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(reporter, times(777)).report(any(zipkin.Span.class));
+        assertThat(spansReported).hasSize(777);
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(reporter);
+        assertThat(spansReported).hasSize(777);
     }
 
     private void runLocalSpan(final int iteration, final int limit) {
@@ -154,12 +146,13 @@ public class LocalTracingInheritanceTest {
         LocalTracer localTracer = brave.localTracer();
 
         for (int i = 0; i < 4; i++) {
-            int threadId = 0;
-            SpanId span0 = localTracer.startNewSpan("thread-" + threadId, "run");
+            String span0Name = "run-" + i;
+            SpanId span0 = localTracer.startNewSpan("thread-" + i, span0Name);
+            spansCreated.add(span0Name);
             assertThat(span0).isNotNull();
             assertThat(span0.root()).isTrue();
-            assertThat(span0.spanId).isEqualTo(span0.traceId);
-            assertThat(span0.spanId).isEqualTo(span0.parentId);
+            assertThat(span0.traceId).isNotZero();
+            assertThat(span0.spanId).isNotZero();
             assertThat(span0.nullableParentId()).isNull();
 
             try {
@@ -172,9 +165,9 @@ public class LocalTracingInheritanceTest {
         }
 
         assertThat(state.getCurrentLocalSpan()).isNull();
-        verify(reporter, times(844)).report(any(zipkin.Span.class));
+        assertThat(spansReported).containsOnlyElementsOf(spansCreated);
         localTracer.finishSpan(); // unmatched finish should no-op
-        verifyNoMoreInteractions(reporter);
+        assertThat(spansReported).containsOnlyElementsOf(spansCreated);
     }
 
     private void runThreads(int breadth, int depth) throws InterruptedException {
@@ -195,7 +188,10 @@ public class LocalTracingInheritanceTest {
     }
 
     private Runnable createRunnable(final int breadth, final int depth) {
-        final SpanId baseSpan = brave.localTracer().startNewSpan("thread-" + breadth, "create-" + breadth + ":" + depth);
+        String baseName = "create-" + breadth + ":" + depth;
+        final SpanId baseSpan = brave.localTracer().startNewSpan("thread-" + breadth, baseName);
+        spansCreated.add(baseName);
+
         assertThat(baseSpan).isNotNull();
         assertThat(baseSpan.nullableParentId()).isNotNull();
         assertThat(baseSpan.root()).isFalse();
@@ -206,8 +202,10 @@ public class LocalTracingInheritanceTest {
                 Thread.currentThread().setName(originalThreadName + "]"
                         + "[create-" + breadth + ":" + depth + "]");
                 LocalTracer localTracer = brave.localTracer();
+                String runnableName = "run-" + breadth + ":" + depth;
                 SpanId runnableSpan = localTracer.startNewSpan("thread-" + breadth + ":" + depth,
-                        "run-" + breadth + ":" + depth);
+                    runnableName);
+                spansCreated.add(runnableName);
                 assertThat(runnableSpan).isNotNull();
                 assertThat(runnableSpan.nullableParentId()).isNotNull();
                 assertThat(runnableSpan.root()).isFalse();
