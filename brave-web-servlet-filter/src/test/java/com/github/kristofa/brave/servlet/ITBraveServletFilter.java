@@ -3,7 +3,17 @@ package com.github.kristofa.brave.servlet;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.twitter.zipkin.gen.Span;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import javax.servlet.DispatcherType;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.bio.SocketConnector;
@@ -13,20 +23,11 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import javax.servlet.DispatcherType;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.EnumSet;
-import java.util.List;
+import zipkin.storage.InMemoryStorage;
+import zipkin.storage.QueryRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  *
@@ -35,13 +36,13 @@ import static org.junit.Assert.assertEquals;
  *
  */
 public class ITBraveServletFilter {
-
+    final InMemoryStorage storage = new InMemoryStorage();
     private Server server;
 
     @Before
     public void setup() {
-
-        Brave brave = new Brave.Builder("BraveServletFilterService").spanCollector(SpanCollectorForTesting.getInstance()).build();
+        Brave brave = new Brave.Builder("BraveServletFilterService")
+            .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build();
 
         server = new Server();
 
@@ -72,7 +73,7 @@ public class ITBraveServletFilter {
     public void tearDown() throws Exception {
         server.stop();
         server.join();
-        SpanCollectorForTesting.getInstance().clear();
+        storage.clear();
     }
 
     private static class ForwardServlet extends HttpServlet {
@@ -98,27 +99,32 @@ public class ITBraveServletFilter {
         connection.setRequestMethod("GET");
         connection.addRequestProperty(BraveHttpHeaders.Sampled.getName(), "1");
         connection.addRequestProperty(BraveHttpHeaders.TraceId.getName(), IdConversion.convertToString(1L));
-        connection.addRequestProperty(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(2L));
-        connection.addRequestProperty(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(3L));
+        connection.addRequestProperty(BraveHttpHeaders.ParentSpanId.getName(), IdConversion.convertToString(2L));
+        connection.addRequestProperty(BraveHttpHeaders.SpanId.getName(), IdConversion.convertToString(3L));
         connection.connect();
 
         try {
-            assertEquals(200, connection.getResponseCode());
-            final List<Span> collectedSpans = SpanCollectorForTesting.getInstance().getCollectedSpans();
-            assertEquals(1, collectedSpans.size());
-            final Span serverSpan = collectedSpans.get(0);
+            assertThat(connection.getResponseCode())
+                .isEqualTo(200);
 
-            assertEquals("Expected trace id", serverSpan.getTrace_id(), 1L);
-            assertEquals("Expected span id", serverSpan.getId(), 2L);
-            assertEquals("Expected parent id", serverSpan.getParent_id().longValue(), 3L);
-            assertEquals("Span name.", "get", serverSpan.getName());
-            assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
-            assertEquals("Expected service name.",
-                serverSpan.getAnnotations().get(0).host.service_name, "braveservletfilterservice");
+            List<List<zipkin.Span>> traces = storage.spanStore()
+                .getTraces(QueryRequest.builder().build());
+            assertThat(traces).hasSize(1);
+            assertThat(traces.get(0)).extracting(s -> s.traceId, s -> s.parentId, s-> s.id)
+                .withFailMessage("Expected the server to re-use incoming ids: " + traces.get(0))
+                .containsExactly(tuple(1L, 2L, 3L))
+                .hasSize(1);
 
-            // make sure client address is added!
-            assertThat(serverSpan.getBinary_annotations()).filteredOn(b -> b.getKey().equals("ca"))
-                .isNotEmpty();
+            zipkin.Span serverSpan = traces.get(0).get(0);
+            assertThat(serverSpan.annotations).extracting(a -> a.value)
+                .containsExactly("sr", "ss");
+
+            assertThat(serverSpan.annotations).extracting(a -> a.endpoint.serviceName)
+                .allSatisfy(name -> assertThat(name).isEqualTo("braveservletfilterservice"));
+
+            assertThat(serverSpan.binaryAnnotations).filteredOn(ba -> ba.key.equals("ca"))
+                .withFailMessage("Expected client address: " + serverSpan)
+                .hasSize(1);
         } finally {
             connection.disconnect();
         }

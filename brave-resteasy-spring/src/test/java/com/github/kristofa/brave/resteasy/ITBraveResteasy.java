@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.resteasy;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.List;
@@ -18,13 +17,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.twitter.zipkin.gen.BinaryAnnotation;
-import com.twitter.zipkin.gen.Span;
-
 import zipkin.TraceKeys;
+import zipkin.storage.QueryRequest;
 
 public class ITBraveResteasy {
-
     private Server server;
 
     @Before
@@ -55,6 +51,7 @@ public class ITBraveResteasy {
     public void tearDown() throws Exception {
         server.stop();
         server.join();
+        BraveConfig.storage.clear();
     }
 
     @Test
@@ -71,40 +68,25 @@ public class ITBraveResteasy {
         @SuppressWarnings("unchecked")
         final ClientResponse<Void> response = (ClientResponse<Void>)client.a();
         try {
-            assertEquals(200, response.getStatus());
-            final List<Span> collectedSpans = SpanCollectorForTesting.getInstance().getCollectedSpans();
-            assertEquals(2, collectedSpans.size());
-            final Span clientSpan = collectedSpans.get(0);
-            final Span serverSpan = collectedSpans.get(1);
+            assertThat(response.getStatus())
+                .isEqualTo(200);
 
-            assertEquals("Expected trace id's to be equal", clientSpan.getTrace_id(), serverSpan.getTrace_id());
-            assertEquals("Expected span id's to be equal", clientSpan.getId(), serverSpan.getId());
-            assertEquals("Expected parent span id's to be equal", clientSpan.getParent_id(), serverSpan.getParent_id());
-            assertEquals("Span names of client and server should be equal.", clientSpan.getName(), serverSpan.getName());
-            assertEquals("Expect 2 annotations.", 2, clientSpan.getAnnotations().size());
-            assertEquals("Expect 2 annotations.", 2, serverSpan.getAnnotations().size());
-            assertEquals("service name of end points for both client and server annotations should be equal.",
-                clientSpan.getAnnotations().get(0).host.service_name,
-                serverSpan.getAnnotations().get(0).host.service_name
-            );
+            List<List<zipkin.Span>> traces = BraveConfig.storage.spanStore()
+                .getTraces(QueryRequest.builder().build());
+            assertThat(traces).hasSize(1);
+            assertThat(traces.get(0))
+                .withFailMessage("Expected client and server to share ids: " + traces.get(0))
+                .hasSize(1);
 
-            // Make sure HTTP URL is present on both spans, and have the same value
-            String clientHttpUrl=null;
-            String serverHttpUrl=null;
-            
-            for (BinaryAnnotation ba : clientSpan.getBinary_annotations()) {
-            	if (ba.getKey().equals(TraceKeys.HTTP_URL)) {
-            		clientHttpUrl = new String(ba.getValue());
-            	}
-            }
-            for (BinaryAnnotation ba : serverSpan.getBinary_annotations()) {
-            	if (ba.getKey().equals(TraceKeys.HTTP_URL)) {
-            		serverHttpUrl = new String(ba.getValue());
-            	}
-            }
-            assertNotNull(clientHttpUrl);
-            assertNotNull(serverHttpUrl);
-            assertEquals("Expected http urls to be same", clientHttpUrl, serverHttpUrl);
+            zipkin.Span clientServerSpan = traces.get(0).get(0);
+            assertThat(clientServerSpan.annotations).extracting(a -> a.value)
+                .containsExactly("cs", "sr", "ss", "cr");
+
+            assertThat(clientServerSpan.binaryAnnotations)
+                .filteredOn(ba -> ba.key.equals(TraceKeys.HTTP_URL))
+                .extracting(ba -> ba.value)
+                .withFailMessage("Expected http urls to be same")
+                .hasSize(1);
 
         } finally {
             response.releaseConnection();

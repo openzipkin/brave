@@ -87,6 +87,8 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler) {
+        if (request.getAttribute(HTTP_SERVER_SPAN_ATTRIBUTE) != null) return true; // already handled
+
         requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest(request), spanNameProvider));
         if (maybeAddClientAddressFromRequest != null) {
             maybeAddClientAddressFromRequest.accept(request);

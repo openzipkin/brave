@@ -3,8 +3,7 @@ package com.github.kristofa.brave.grpc;
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.atIndex;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.LocalTracer;
@@ -12,8 +11,8 @@ import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
 import com.github.kristofa.brave.internal.InternalSpan;
+import com.github.kristofa.brave.internal.Util;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Span;
 
 import io.grpc.ManagedChannel;
@@ -28,6 +27,7 @@ import io.grpc.examples.helloworld.GreeterGrpc.GreeterFutureStub;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Condition;
 import org.junit.After;
@@ -36,12 +36,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import zipkin.Constants;
+import zipkin.storage.InMemoryStorage;
+import zipkin.storage.QueryRequest;
 
 public class BraveGrpcInterceptorsTest {
     static {
@@ -54,20 +53,16 @@ public class BraveGrpcInterceptorsTest {
 
     Server server;
     ManagedChannel channel;
-    Brave brave;
+    InMemoryStorage storage = new InMemoryStorage();
+    Brave brave = new Brave.Builder()
+        .traceSampler(new ExplicitSampler())
+        .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build();
     boolean enableSampling;
 
     @Before
     public void before() throws Exception {
         enableSampling = true;
         ThreadLocalServerClientAndLocalSpanState.clear();
-        SpanCollectorForTesting.INSTANCE.clear();
-
-        final Brave.Builder builder = new Brave.Builder();
-        brave = builder
-            .spanCollector(SpanCollectorForTesting.INSTANCE)
-            .traceSampler(new ExplicitSampler())
-            .build();
 
         int serverPort = pickUnusedPort();
         server = ServerBuilder.forPort(serverPort)
@@ -105,13 +100,18 @@ public class BraveGrpcInterceptorsTest {
         ListenableFuture<HelloReply> helloReplyListenableFuture = futureStub.sayHello(HELLO_REQUEST);
         try {
             helloReplyListenableFuture.get();
-            fail();
+            failBecauseExceptionWasNotThrown(ExecutionException.class);
         } catch (ExecutionException expected) {
-            List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
+            List<List<zipkin.Span>> traces = storage.spanStore()
+                .getTraces(QueryRequest.builder().build());
+            assertThat(traces).hasSize(1);
+            List<zipkin.Span> spans = traces.get(0);
             assertThat(spans.size()).isEqualTo(1);
-            BinaryAnnotation binaryAnnotation = spans.get(0).getBinary_annotations().get(0);
-            assertThat(binaryAnnotation.getKey()).isEqualTo(GRPC_STATUS_CODE);
-            assertThat(new String(binaryAnnotation.getValue(), StandardCharsets.UTF_8)).isEqualTo(Status.UNAVAILABLE.getCode().name());
+
+            assertThat(spans.get(0).binaryAnnotations)
+                .filteredOn(ba -> ba.key.equals(GRPC_STATUS_CODE))
+                .extracting(ba -> new String(ba.value, Util.UTF_8))
+                .containsExactly(Status.UNAVAILABLE.getCode().name());
         }
     }
 
@@ -123,16 +123,8 @@ public class BraveGrpcInterceptorsTest {
         //This call will be made using hte context of the localTracer as it's parent
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
-        validateSpans();
-        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
-        Optional<Span> maybeSpan = spans.stream()
-            .filter(s -> s.getAnnotations().stream().anyMatch(a -> "ss".equals(a.value)))
-            .findFirst();
-        assertTrue("Could not find expected server span", maybeSpan.isPresent());
-        Span span = maybeSpan.get();
-        //Verify that the localTracer's trace id and span id were propagated to the server
-        assertThat(span.getTrace_id()).isEqualTo(spanId.traceId);
-        assertThat(span.getParent_id()).isEqualTo(spanId.spanId);
+
+        assertOnlyOneSpan();
     }
 
     /**
@@ -145,8 +137,8 @@ public class BraveGrpcInterceptorsTest {
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
-        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
-        assertThat(spans.size()).isEqualTo(0);
+
+        assertThat(storage.spanStore().getRawTraces()).isEmpty();
     }
 
     @Test
@@ -158,18 +150,12 @@ public class BraveGrpcInterceptorsTest {
         //This call will be made using hte context of the localTracer as it's parent
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
-        validateSpans();
-        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
-        Optional<Span> maybeSpan = spans.stream()
-            .filter(s -> s.getAnnotations().stream().anyMatch(a -> "ss".equals(a.value)))
-            .findFirst();
-        assertTrue("Could not find expected server span", maybeSpan.isPresent());
-        Span result = maybeSpan.get();
 
         //Verify that the 128-bit trace id and span id were propagated to the server
-        assertThat(result.getTrace_id_high()).isEqualTo(spanId.traceIdHigh);
-        assertThat(result.getTrace_id()).isEqualTo(spanId.traceId);
-        assertThat(result.getParent_id()).isEqualTo(spanId.spanId);
+        zipkin.Span clientServerSpan = assertOnlyOneSpan();
+        assertThat(clientServerSpan.traceIdHigh).isEqualTo(spanId.traceIdHigh);
+        assertThat(clientServerSpan.traceId).isEqualTo(spanId.traceId);
+        assertThat(clientServerSpan.parentId).isEqualTo(spanId.spanId);
     }
 
     /**
@@ -178,26 +164,32 @@ public class BraveGrpcInterceptorsTest {
      */
     void validateSpans() throws Exception {
         tearDown(); // make sure any in-flight requests complete, so that the below doesn't flake
-        List<Span> spans = SpanCollectorForTesting.INSTANCE.getCollectedSpans();
-        assertThat(spans.size()).isEqualTo(2);
-
-        Span serverSpan = spans.get(0);
-        assertThat(serverSpan.getTrace_id()).isEqualTo(spans.get(1).getTrace_id());
-        validateSpan(serverSpan, Arrays.asList("sr", "ss"));
+        zipkin.Span clientServerSpan = assertOnlyOneSpan();
+        assertThat(clientServerSpan.annotations).extracting(a -> a.value)
+            .containsExactly("cs", "sr", "ss", "cr");
 
         //Server spans should have the GRPC_REMOTE_ADDR binary annotation
-        assertThat(serverSpan.getBinary_annotations())
-            .filteredOn(b -> b.key.equals(GrpcKeys.GRPC_REMOTE_ADDR))
-            .extracting(b -> new String(b.value))
+        assertThat(clientServerSpan.binaryAnnotations)
+            .filteredOn(ba -> ba.key.equals(GrpcKeys.GRPC_REMOTE_ADDR))
+            .extracting(ba -> new String(ba.value, Util.UTF_8))
             .has(new Condition<>(b -> b.matches("^/127.0.0.1:[\\d]+$"), "a local IP address"), atIndex(0));
 
         //Server spans should have the client address binary annotation
-        assertThat(serverSpan.getBinary_annotations())
-            .filteredOn(b -> b.key.equals(Constants.CLIENT_ADDR))
-            .extracting(b -> b.host.port)
+        assertThat(clientServerSpan.binaryAnnotations)
+            .filteredOn(ba -> ba.key.equals(Constants.CLIENT_ADDR))
+            .extracting(b -> b.endpoint.port)
             .doesNotContainNull(); // if we got a port, we also got an ipv4 or ipv6
+    }
 
-        validateSpan(spans.get(1), Arrays.asList("cs", "cr"));
+    private zipkin.Span assertOnlyOneSpan() {
+        List<List<zipkin.Span>> traces = storage.spanStore()
+            .getTraces(QueryRequest.builder().build());
+        assertThat(traces).hasSize(1);
+        assertThat(traces.get(0))
+            .withFailMessage("Expected client and server to share ids: " + traces.get(0))
+            .hasSize(1);
+
+        return traces.get(0).get(0);
     }
 
     void validateSpan(Span span, Iterable<String> expectedAnnotations) {
