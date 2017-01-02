@@ -49,6 +49,7 @@ public class Brave {
         private boolean allowNestedLocalSpans = false;
         private Clock clock;
         private Recorder recorder;
+        private SpanFactory spanFactory;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -169,6 +170,14 @@ public class Brave {
         }
 
         public Brave build() {
+            if (spanFactory == null) {
+                spanFactory = spanFactoryBuilder.build();
+            }
+
+            if (clock == null) {
+                clock = new DefaultClock();
+            }
+
             if (recorder == null) {
                 recorder = new AutoValue_Recorder_Default(localEndpoint, new LoggingReporter());
             }
@@ -270,37 +279,34 @@ public class Brave {
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
 
-        SpanFactory spanFactory = builder.spanFactoryBuilder.build();
-        Clock clock = builder.clock != null ? builder.clock : new DefaultClock();
-
         serverTracer = new AutoValue_ServerTracer(
-            clock,
+            builder.clock,
             builder.recorder,
             serverSpanThreadBinder,
-            spanFactory
+            builder.spanFactory
         );
 
         clientTracer = new AutoValue_ClientTracer(
-            clock,
+            builder.clock,
             builder.recorder,
             localSpanThreadBinder,
             serverSpanThreadBinder,
             clientSpanThreadBinder,
-            spanFactory
+            builder.spanFactory
         );
 
         localTracer = new AutoValue_LocalTracer.Builder()
-                .spanFactory(spanFactory)
+                .spanFactory(builder.spanFactory)
                 .recorder(builder.recorder)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .currentServerSpan(serverSpanThreadBinder)
                 .currentSpan(localSpanThreadBinder)
-                .clock(clock)
+                .clock(builder.clock)
                 .build();
 
         serverSpanAnnotationSubmitter = AnnotationSubmitter.create(
             serverSpanThreadBinder,
-            clock,
+            builder.clock,
             builder.recorder
         );
 
