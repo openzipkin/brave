@@ -1,5 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.AnnotationSubmitter.Clock;
+import com.github.kristofa.brave.AnnotationSubmitter.DefaultClock;
 import com.github.kristofa.brave.internal.Internal;
 import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Nullable;
@@ -43,9 +45,10 @@ public class Brave {
     public static class Builder {
         final SpanFactory.Default.Builder spanFactoryBuilder = SpanFactory.Default.builder();
         private final ServerClientAndLocalSpanState state;
-        private Reporter reporter = new LoggingReporter();
+        private final Endpoint localEndpoint;
         private boolean allowNestedLocalSpans = false;
-        private AnnotationSubmitter.Clock clock;
+        private Clock clock;
+        private Recorder recorder;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -73,6 +76,7 @@ public class Brave {
             try {
                 int ip = toInt(getLocalHostLANAddress());
                 state = new ThreadLocalServerClientAndLocalSpanState(ip, 0, serviceName);
+                localEndpoint = state.endpoint();
             } catch (UnknownHostException e) {
                 throw new IllegalStateException("Unable to get Inet address", e);
             }
@@ -101,6 +105,7 @@ public class Brave {
          */
         public Builder(ServerClientAndLocalSpanState state) {
             this.state = Util.checkNotNull(state, "state must be specified.");
+            this.localEndpoint = state.endpoint();
 
             // the legacy span state doesn't support nested spans per (#166). Only permit nesting on the span
             // state that has instructions on how to use it properly
@@ -139,7 +144,8 @@ public class Brave {
          * <p>See https://github.com/openzipkin/zipkin-reporter-java
          */
         public Builder reporter(Reporter<zipkin.Span> reporter) {
-            this.reporter = checkNotNull(reporter, "reporter");
+            checkNotNull(reporter, "reporter");
+            this.recorder = new AutoValue_Recorder_Default(localEndpoint, reporter);
             return this;
         }
 
@@ -151,7 +157,7 @@ public class Brave {
             return reporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
-        public Builder clock(AnnotationSubmitter.Clock clock) {
+        public Builder clock(Clock clock) {
             this.clock = checkNotNull(clock, "clock");
             return this;
         }
@@ -163,6 +169,9 @@ public class Brave {
         }
 
         public Brave build() {
+            if (recorder == null) {
+                recorder = new AutoValue_Recorder_Default(localEndpoint, new LoggingReporter());
+            }
             return new Brave(this);
         }
 
@@ -257,27 +266,23 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
-        SpanFactory spanFactory = builder.spanFactoryBuilder.build();
-        AnnotationSubmitter.Clock clock = builder.clock != null
-            ? builder.clock
-            : new AnnotationSubmitter.DefaultClock();
-
         serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
 
-        Recorder recorder =
-            new AutoValue_Recorder_Default(builder.state.endpoint(), builder.reporter);
+        SpanFactory spanFactory = builder.spanFactoryBuilder.build();
+        Clock clock = builder.clock != null ? builder.clock : new DefaultClock();
+
         serverTracer = new AutoValue_ServerTracer(
             clock,
-            recorder,
+            builder.recorder,
             serverSpanThreadBinder,
             spanFactory
         );
 
         clientTracer = new AutoValue_ClientTracer(
             clock,
-            recorder,
+            builder.recorder,
             localSpanThreadBinder,
             serverSpanThreadBinder,
             clientSpanThreadBinder,
@@ -286,18 +291,23 @@ public class Brave {
 
         localTracer = new AutoValue_LocalTracer.Builder()
                 .spanFactory(spanFactory)
-                .recorder(recorder)
+                .recorder(builder.recorder)
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .currentServerSpan(serverSpanThreadBinder)
                 .currentSpan(localSpanThreadBinder)
                 .clock(clock)
                 .build();
 
+        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(
+            serverSpanThreadBinder,
+            clock,
+            builder.recorder
+        );
+
         serverRequestInterceptor = new ServerRequestInterceptor(serverTracer);
         serverResponseInterceptor = new ServerResponseInterceptor(serverTracer);
         clientRequestInterceptor = new ClientRequestInterceptor(clientTracer);
         clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
-        serverSpanAnnotationSubmitter = AnnotationSubmitter.create(serverSpanThreadBinder, clock, recorder);
     }
 
     static {
