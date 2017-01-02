@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>3.16.1-SNAPSHOT</version>
+    <version>3.17.0</version>
   </parent>
   <artifactId>brave-apache-http-interceptors</artifactId>
   <name>brave-apache-http-interceptors</name>
