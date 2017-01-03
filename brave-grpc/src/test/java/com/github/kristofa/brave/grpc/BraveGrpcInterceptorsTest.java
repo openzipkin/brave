@@ -131,7 +131,7 @@ public class BraveGrpcInterceptorsTest {
         Span clientServerSpan = validateOnlyOneSpan();
         assertThat(clientServerSpan.traceIdHigh).isEqualTo(spanId.traceIdHigh);
         assertThat(clientServerSpan.traceId).isEqualTo(spanId.traceId);
-        assertThat(clientServerSpan.parentId).isEqualTo(spanId.parentId);
+        assertThat(clientServerSpan.parentId).isEqualTo(spanId.spanId);
     }
 
     /**
