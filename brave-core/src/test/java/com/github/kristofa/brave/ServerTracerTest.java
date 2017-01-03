@@ -18,15 +18,15 @@ public class ServerTracerTest {
   private static final long TRACE_ID = 1;
   private static final SpanId CONTEXT =
       SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
-  private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
-  private static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("serviceName", 80);
-  private static final zipkin.Span BASE_SPAN = DefaultSpanCodec.toZipkin(Brave.newSpan(CONTEXT));
+  private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
+  static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
+  private static final zipkin.Span BASE_SPAN = DefaultSpanCodec.toZipkin(Brave.toSpan(CONTEXT));
   private static final String SPAN_NAME = "span name";
 
   long timestamp = START_TIME_MICROSECONDS;
   AnnotationSubmitter.Clock clock = () -> timestamp;
 
-  private Span span = Brave.newSpan(CONTEXT);
+  private Span span = Brave.toSpan(CONTEXT);
   ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
 
   List<zipkin.Span> spans = new ArrayList<>();
@@ -97,11 +97,12 @@ public class ServerTracerTest {
     assertThat(spans).matches(s -> s.isEmpty() || s.contains(BASE_SPAN));
   }
 
+  @Test
   public void setServerReceived_doesntFlush() {
     brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
     brave.serverTracer().setServerReceived();
 
-    assertThat(spans).containsExactly(BASE_SPAN);
+    assertThat(spans).matches(s -> s.isEmpty() || s.contains(BASE_SPAN));
   }
 
   @Test

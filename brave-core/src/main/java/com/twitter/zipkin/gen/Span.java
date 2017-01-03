@@ -16,7 +16,7 @@ public class Span implements Serializable {
   static {
     InternalSpan.instance = new InternalSpan(){
 
-      @Override public Span newSpan(SpanId context) {
+      @Override public Span toSpan(SpanId context) {
         return new Span(context);
       }
 

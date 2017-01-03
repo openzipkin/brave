@@ -23,7 +23,7 @@ public class ScribeSpanCollectorTest {
     private static final int PORT = 9500;
     private static final String KEY1 = "key1";
     private static final String VALUE1 = "value1";
-    Span span = InternalSpan.instance.newSpan(SpanId.builder().traceId(1).spanId(2).build());
+    Span span = InternalSpan.instance.toSpan(SpanId.builder().traceId(1).spanId(2).build());
 
     private static ScribeServer scribeServer;
 

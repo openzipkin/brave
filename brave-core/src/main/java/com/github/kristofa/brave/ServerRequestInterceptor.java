@@ -47,7 +47,7 @@ public class ServerRequestInterceptor {
             span = serverTracer.spanFactory().joinSpan(traceData.getSpanId());
         } else {
             LOGGER.fine("Received no span state.");
-            span = serverTracer.spanFactory().newSpan(null);
+            span = serverTracer.spanFactory().nextSpan(null);
         }
         SpanId context = Brave.context(span);
 

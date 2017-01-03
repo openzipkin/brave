@@ -158,7 +158,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
             return null;
         }
 
-        Span newSpan = spanFactory().newSpan(maybeParent());
+        Span newSpan = spanFactory().nextSpan(maybeParent());
         SpanId nextContext = Brave.context(newSpan);
         if (Boolean.FALSE.equals(nextContext.sampled())) {
             currentSpan().setCurrentSpan(null);

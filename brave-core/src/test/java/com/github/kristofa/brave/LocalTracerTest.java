@@ -26,7 +26,7 @@ public class LocalTracerTest {
     long timestamp = START_TIME_MICROSECONDS;
     AnnotationSubmitter.Clock clock = () -> timestamp;
 
-    private Span span = Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build());
+    private Span span = Brave.toSpan(SpanId.builder().spanId(TRACE_ID).sampled(true).build());
 
     List<zipkin.Span> spans = new ArrayList<>();
     Brave brave = newBrave();

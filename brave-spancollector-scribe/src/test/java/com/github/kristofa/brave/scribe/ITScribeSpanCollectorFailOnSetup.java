@@ -14,7 +14,7 @@ public class ITScribeSpanCollectorFailOnSetup {
     }
 
     private static final int PORT = FreePortProvider.getNewFreePort();
-    Span span = InternalSpan.instance.newSpan(SpanId.builder().traceId(1).spanId(2).build());
+    Span span = InternalSpan.instance.toSpan(SpanId.builder().traceId(1).spanId(2).build());
 
     /**
      * Integration isSampled that checks failOnSetup = false. The isSampled basically shows that no exception is thrown when the server

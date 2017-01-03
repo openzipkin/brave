@@ -8,7 +8,7 @@ import java.util.Random;
 /** Internal code that affects the {@linkplain Span} type. */
 abstract class SpanFactory {
   /** Returns the next span ID derived from the input, or a new trace if null. */
-  abstract Span newSpan(@Nullable SpanId maybeParent);
+  abstract Span nextSpan(@Nullable SpanId maybeParent);
 
   /**
    * Joining is re-using the same trace and span ids extracted from an incoming request. Here, we
@@ -46,17 +46,17 @@ abstract class SpanFactory {
 
     abstract Sampler sampler();
 
-    @Override Span newSpan(@Nullable SpanId maybeParent) {
+    @Override Span nextSpan(@Nullable SpanId maybeParent) {
       long newSpanId = randomGenerator().nextLong();
       if (maybeParent == null) { // new trace
-        return Brave.newSpan(SpanId.builder()
+        return Brave.toSpan(SpanId.builder()
             .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
             .traceId(newSpanId)
             .spanId(newSpanId)
             .sampled(sampler().isSampled(newSpanId))
             .build());
       }
-      return Brave.newSpan(maybeParent.toBuilder()
+      return Brave.toSpan(maybeParent.toBuilder()
           .parentId(maybeParent.spanId)
           .spanId(newSpanId)
           .shared(false)
@@ -66,15 +66,15 @@ abstract class SpanFactory {
     @Override Span joinSpan(SpanId context) {
       // If the sampled flag was left unset, we need to make the decision here
       if (context.sampled() == null) {
-        return Brave.newSpan(context.toBuilder()
+        return Brave.toSpan(context.toBuilder()
             .sampled(sampler().isSampled(context.traceId))
             .shared(false)
             .build());
       } else if (context.sampled()) {
         // We know an instrumented caller initiated the trace if they sampled it
-        return Brave.newSpan(context.toBuilder().shared(true).build());
+        return Brave.toSpan(context.toBuilder().shared(true).build());
       } else {
-        return Brave.newSpan(context);
+        return Brave.toSpan(context);
       }
     }
   }

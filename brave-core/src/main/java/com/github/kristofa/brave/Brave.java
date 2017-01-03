@@ -326,8 +326,8 @@ public class Brave {
     }
 
     /** Internal hook to create a new Span */
-    static Span newSpan(SpanId context) {
-        return InternalSpan.instance.newSpan(context);
+    static Span toSpan(SpanId context) {
+        return InternalSpan.instance.toSpan(context);
     }
 
     /** Internal hook to retrieve the context associated with a Span */

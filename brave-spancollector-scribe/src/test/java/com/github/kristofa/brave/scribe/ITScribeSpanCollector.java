@@ -92,6 +92,6 @@ public class ITScribeSpanCollector {
     }
 
     static Span span(long traceId) {
-        return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
+        return InternalSpan.instance.toSpan(SpanId.builder().spanId(traceId).build());
     }
 }

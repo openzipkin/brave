@@ -18,7 +18,7 @@ public class InternalTest {
   }
 
   SpanId context = SpanId.builder().spanId(1L).build();
-  Span span = InternalSpan.instance.newSpan(context);
+  Span span = InternalSpan.instance.toSpan(context);
 
   List<zipkin.Span> spans = new ArrayList<>();
   Brave brave = new Brave.Builder().reporter(spans::add).build();

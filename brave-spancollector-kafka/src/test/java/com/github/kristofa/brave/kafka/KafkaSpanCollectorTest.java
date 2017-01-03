@@ -147,7 +147,7 @@ public class KafkaSpanCollectorTest {
   }
 
   static Span span(long traceId) {
-    return InternalSpan.instance.newSpan(SpanId.builder().spanId(traceId).build());
+    return InternalSpan.instance.toSpan(SpanId.builder().spanId(traceId).build());
   }
 
   static zipkin.Span zipkinSpan(long traceId) {

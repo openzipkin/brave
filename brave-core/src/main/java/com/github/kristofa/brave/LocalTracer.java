@@ -119,7 +119,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        Span span = spanFactory().newSpan(maybeParent());
+        Span span = spanFactory().nextSpan(maybeParent());
         SpanId context = Brave.context(span);
         if (Boolean.FALSE.equals(context.sampled())) {
             currentSpan().setCurrentSpan(null);

@@ -144,7 +144,7 @@ public class BraveGrpcInterceptorsTest {
     @Test
     public void propagatesAndReads128BitTraceId() throws Exception {
         SpanId spanId = SpanId.builder().traceIdHigh(1).traceId(2).spanId(3).parentId(2L).build();
-        brave.localSpanThreadBinder().setCurrentSpan(InternalSpan.instance.newSpan(spanId));
+        brave.localSpanThreadBinder().setCurrentSpan(InternalSpan.instance.toSpan(spanId));
 
         GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
         //This call will be made using hte context of the localTracer as it's parent

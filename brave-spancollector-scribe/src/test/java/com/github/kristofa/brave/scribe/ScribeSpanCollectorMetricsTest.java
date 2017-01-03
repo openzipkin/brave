@@ -22,7 +22,7 @@ public class ScribeSpanCollectorMetricsTest {
 
     private static final String HOST = "localhost";
     private static final int PORT = FreePortProvider.getNewFreePort();
-    Span span = InternalSpan.instance.newSpan(SpanId.builder().traceId(1).spanId(2).build());
+    Span span = InternalSpan.instance.toSpan(SpanId.builder().traceId(1).spanId(2).build());
 
     private static ScribeServer scribeServer;
     private EventsHandler eventsHandler;

@@ -24,7 +24,7 @@ public class InternalSpanTest {
 
   @Test
   public void context_returnsSameObjectWhenSet() {
-    Span span = InternalSpan.instance.newSpan(spanId);
+    Span span = InternalSpan.instance.toSpan(spanId);
 
     assertThat(InternalSpan.instance.context(span))
         .isSameAs(spanId);
@@ -32,7 +32,7 @@ public class InternalSpanTest {
 
   @Test
   public void context_backFillsSpan() {
-    Span span = InternalSpan.instance.newSpan(spanId);
+    Span span = InternalSpan.instance.toSpan(spanId);
     // If someone created a span externally, the context field would be unset
     // This is deprecated practice, so we shouldn't break.
     Whitebox.setInternalState(span, "context", (Object) null);

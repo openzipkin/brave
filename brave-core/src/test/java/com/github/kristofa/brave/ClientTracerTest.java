@@ -24,12 +24,12 @@ public class ClientTracerTest {
   private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
   private static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("serviceName", 80);
   private static final zipkin.Span BASE_SPAN =
-      DefaultSpanCodec.toZipkin(Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build()));
+      DefaultSpanCodec.toZipkin(Brave.toSpan(SpanId.builder().spanId(TRACE_ID).build()));
 
   long timestamp = START_TIME_MICROSECONDS;
   AnnotationSubmitter.Clock clock = () -> timestamp;
 
-  private Span span = Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build());
+  private Span span = Brave.toSpan(SpanId.builder().spanId(TRACE_ID).sampled(true).build());
 
   List<zipkin.Span> spans = new ArrayList<>();
   Brave brave = newBrave();
@@ -131,7 +131,7 @@ public class ClientTracerTest {
 
   @Test
   public void startNewSpan_createsChild() {
-    final ServerSpan parentSpan = ServerSpan.create(Brave.newSpan(PARENT_CONTEXT));
+    final ServerSpan parentSpan = ServerSpan.create(Brave.toSpan(PARENT_CONTEXT));
     brave.serverSpanThreadBinder().setCurrentSpan(parentSpan);
 
     SpanId newContext = brave.clientTracer().startNewSpan(REQUEST_NAME);

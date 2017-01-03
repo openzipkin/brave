@@ -29,7 +29,7 @@ import static org.junit.Assert.assertTrue;
 public class ITAnnotationSubmitterConcurrency {
 
     private ExecutorService executorService;
-    Span span = Brave.newSpan(SpanId.builder().spanId(1L).build());
+    Span span = Brave.toSpan(SpanId.builder().spanId(1L).build());
     private Endpoint endpoint =
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
     DefaultClock clock = new DefaultClock();

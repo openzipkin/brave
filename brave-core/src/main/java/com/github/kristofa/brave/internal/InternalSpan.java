@@ -17,7 +17,7 @@ public abstract class InternalSpan {
     new Span();
   }
 
-  public abstract Span newSpan(SpanId context);
+  public abstract Span toSpan(SpanId context);
 
   /**
    * In normal course, this returns the context of a span created by one of the tracers. This can

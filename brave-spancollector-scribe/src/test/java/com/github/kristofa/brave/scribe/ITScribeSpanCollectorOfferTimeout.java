@@ -21,7 +21,7 @@ public class ITScribeSpanCollectorOfferTimeout {
     private static final int QUEUE_SIZE = 5;
 
     private static final int PORT = FreePortProvider.getNewFreePort();
-    Span span = InternalSpan.instance.newSpan(SpanId.builder().traceId(1).spanId(2).build());
+    Span span = InternalSpan.instance.toSpan(SpanId.builder().traceId(1).spanId(2).build());
 
     private static ScribeServer scribeServer;
 

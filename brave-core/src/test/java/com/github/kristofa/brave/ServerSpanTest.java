@@ -14,7 +14,7 @@ public class ServerSpanTest {
     private static final SpanId SPAN_ID =
         SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
 
-    private ServerSpan serverSpan = ServerSpan.create(Brave.newSpan(SPAN_ID));
+    private ServerSpan serverSpan = ServerSpan.create(Brave.toSpan(SPAN_ID));
 
     @Test
     public void testGetSpan() {
@@ -29,7 +29,7 @@ public class ServerSpanTest {
 
     @Test
     public void testGetSpan_128() {
-        serverSpan = ServerSpan.create(Brave.newSpan(SPAN_ID.toBuilder().traceIdHigh(5).build()));
+        serverSpan = ServerSpan.create(Brave.toSpan(SPAN_ID.toBuilder().traceIdHigh(5).build()));
 
         Span span = serverSpan.getSpan();
         assertEquals(5, span.getTrace_id_high());
@@ -44,19 +44,19 @@ public class ServerSpanTest {
     @Test
     public void testEqualsObject() {
 
-        ServerSpan equalServerSpan = ServerSpan.create(Brave.newSpan(SPAN_ID));
+        ServerSpan equalServerSpan = ServerSpan.create(Brave.toSpan(SPAN_ID));
         assertTrue(serverSpan.equals(equalServerSpan));
     }
 
     @Test
     public void testHashCode() {
-        ServerSpan equalServerSpan = ServerSpan.create(Brave.newSpan(SPAN_ID));
+        ServerSpan equalServerSpan = ServerSpan.create(Brave.toSpan(SPAN_ID));
         Assert.assertEquals(serverSpan.hashCode(), equalServerSpan.hashCode());
     }
 
     @Test
     public void createUnsampled() {
-        serverSpan = ServerSpan.create(Brave.newSpan(SPAN_ID.toBuilder().sampled(false).build()));
+        serverSpan = ServerSpan.create(Brave.toSpan(SPAN_ID.toBuilder().sampled(false).build()));
         assertEquals(serverSpan, ServerSpan.NOT_SAMPLED);
     }
 }

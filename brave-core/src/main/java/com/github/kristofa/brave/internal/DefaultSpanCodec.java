@@ -110,6 +110,6 @@ public final class DefaultSpanCodec implements SpanCodec {
   }
 
   static Span newSpan(SpanId context) {
-    return InternalSpan.instance.newSpan(context);
+    return InternalSpan.instance.toSpan(context);
   }
 }

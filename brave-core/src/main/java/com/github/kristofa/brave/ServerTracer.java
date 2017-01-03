@@ -143,7 +143,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * @param spanName The name of our current request/span.
      */
     public void setStateUnknown(String spanName) {
-        Span span = spanFactory().newSpan(null);
+        Span span = spanFactory().nextSpan(null);
         setStateCurrentTrace(span, spanName);
     }
 

@@ -67,7 +67,7 @@ public class BraveTest {
 
   @Test
   public void newSpan_with64bitTraceId() {
-    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    Span span = brave.serverTracer().spanFactory().nextSpan(null);
     assertThat(span.getTrace_id_high()).isZero();
     assertThat(span.getTrace_id()).isNotZero();
   }
@@ -76,7 +76,7 @@ public class BraveTest {
   public void newSpan_whenUnsampled() {
     brave = new Brave.Builder().traceSampler(Sampler.NEVER_SAMPLE).build();
 
-    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    Span span = brave.serverTracer().spanFactory().nextSpan(null);
     assertThat(Brave.context(span).sampled()).isFalse();
   }
 
@@ -84,7 +84,7 @@ public class BraveTest {
   public void newSpan_whenParentHas128bitTraceId() {
     SpanId parentSpan = SpanId.builder().traceIdHigh(3).traceId(2).spanId(1).build();
 
-    Span span = brave.serverTracer().spanFactory().newSpan(parentSpan);
+    Span span = brave.serverTracer().spanFactory().nextSpan(parentSpan);
     assertThat(span.getTrace_id_high())
         .isEqualTo(parentSpan.traceIdHigh);
     assertThat(span.getTrace_id())
@@ -97,7 +97,7 @@ public class BraveTest {
   public void newSpan_rootSpanWith128bitTraceId() {
     brave = new Brave.Builder().traceId128Bit(true).build();
 
-    Span span = brave.serverTracer().spanFactory().newSpan(null);
+    Span span = brave.serverTracer().spanFactory().nextSpan(null);
     assertThat(span.getTrace_id_high()).isNotZero();
   }
 
