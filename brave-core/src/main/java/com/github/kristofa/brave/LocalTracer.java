@@ -52,8 +52,6 @@ public abstract class LocalTracer extends AnnotationSubmitter {
 
         abstract Builder allowNestedLocalSpans(boolean allowNestedLocalSpans);
 
-        abstract Builder clock(Clock clock);
-
         abstract LocalTracer build();
     }
 
@@ -66,7 +64,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
-        return startNewSpan(component, operation, clock().currentTimeMicroseconds());
+        return startNewSpan(component, operation, null);
     }
 
     /**
@@ -106,6 +104,10 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
+        return startNewSpan(component, operation, (Long) timestamp);
+    }
+
+    SpanId startNewSpan(String component, String operation, @Nullable Long timestamp) {
 
         // When a trace context is extracted from an incoming request, it may have only the
         // sampled header (no ids). If the header says unsampled, we must honor that. Since
@@ -124,7 +126,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        recorder().start(span, timestamp);
+        if (timestamp != null) {
+            recorder().start(span, timestamp);
+        } else {
+            recorder().start(span);
+        }
         recorder().name(span, operation);
         recorder().tag(span, LOCAL_COMPONENT, component);
 
@@ -138,7 +144,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan() {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().finishWithTimestamp(span, clock().currentTimeMicroseconds());
+        recorder().finish(span);
         currentSpan().setCurrentSpan(null);
     }
 
@@ -148,7 +154,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan(long duration) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().finishWithDuration(span, duration);
+        recorder().finish(span, duration);
         currentSpan().setCurrentSpan(null);
     }
 

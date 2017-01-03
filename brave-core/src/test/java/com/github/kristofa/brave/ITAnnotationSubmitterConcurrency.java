@@ -38,8 +38,8 @@ public class ITAnnotationSubmitterConcurrency {
             return span;
         }
     };
-    Recorder recorder = new AutoValue_Recorder_Default(endpoint, Reporter.NOOP);
-    AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(currentSpan, clock, recorder);
+    Recorder recorder = new AutoValue_Recorder_Default(endpoint, clock, Reporter.NOOP);
+    AnnotationSubmitter annotationSubmitter = AnnotationSubmitter.create(currentSpan, recorder);
 
     @Before
     public void setup() {

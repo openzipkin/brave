@@ -10,7 +10,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
 import java.util.List;
-import zipkin.Constants;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
@@ -50,6 +49,7 @@ public class Brave {
         private Clock clock;
         private Recorder recorder;
         private SpanFactory spanFactory;
+        private Reporter<zipkin.Span> reporter;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -145,8 +145,7 @@ public class Brave {
          * <p>See https://github.com/openzipkin/zipkin-reporter-java
          */
         public Builder reporter(Reporter<zipkin.Span> reporter) {
-            checkNotNull(reporter, "reporter");
-            this.recorder = new AutoValue_Recorder_Default(localEndpoint, reporter);
+            this.reporter = checkNotNull(reporter, "reporter");
             return this;
         }
 
@@ -178,8 +177,11 @@ public class Brave {
                 clock = new DefaultClock();
             }
 
-            if (recorder == null) {
-                recorder = new AutoValue_Recorder_Default(localEndpoint, new LoggingReporter());
+            if (reporter != null) {
+                recorder = new AutoValue_Recorder_Default(localEndpoint, clock, reporter);
+            } else if (recorder == null) {
+                recorder =
+                    new AutoValue_Recorder_Default(localEndpoint, clock, new LoggingReporter());
             }
             return new Brave(this);
         }
@@ -280,14 +282,12 @@ public class Brave {
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
 
         serverTracer = new AutoValue_ServerTracer(
-            builder.clock,
             builder.recorder,
             serverSpanThreadBinder,
             builder.spanFactory
         );
 
         clientTracer = new AutoValue_ClientTracer(
-            builder.clock,
             builder.recorder,
             localSpanThreadBinder,
             serverSpanThreadBinder,
@@ -301,12 +301,10 @@ public class Brave {
                 .allowNestedLocalSpans(builder.allowNestedLocalSpans)
                 .currentServerSpan(serverSpanThreadBinder)
                 .currentSpan(localSpanThreadBinder)
-                .clock(builder.clock)
                 .build();
 
         serverSpanAnnotationSubmitter = AnnotationSubmitter.create(
             serverSpanThreadBinder,
-            builder.clock,
             builder.recorder
         );
 
@@ -321,7 +319,7 @@ public class Brave {
             @Override public void setClientAddress(Brave brave, Endpoint ca) {
                 Span span = brave.serverSpanThreadBinder().get();
                 if (span == null) return;
-                brave.serverTracer.recorder().address(span, Constants.CLIENT_ADDR, ca);
+                brave.serverTracer.recorder().remoteAddress(span, Recorder.SpanKind.SERVER, ca);
             }
         };
         new Span(); // ensure InternalSpan.instance points to a reference

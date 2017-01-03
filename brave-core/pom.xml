@@ -33,7 +33,7 @@
     <dependency>
       <groupId>io.zipkin.reporter</groupId>
       <artifactId>zipkin-reporter</artifactId>
-      <version>0.6.11</version>
+      <version>${zipkin-reporter.version}</version>
     </dependency>
     <!-- for value types... don't worry. this dependency is compile only! -->
     <dependency>
