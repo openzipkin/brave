@@ -94,7 +94,8 @@ public class AnnotationSubmitterTest {
 
     @Test
     public void testCurrentTimeMicroSeconds_fromSystemCurrentMillis() {
-        assertThat(annotationSubmitter.clock().currentTimeMicroseconds())
+        Recorder.Default recorder = (Recorder.Default) annotationSubmitter.recorder();
+        assertThat(recorder.clock().currentTimeMicroseconds())
             .isEqualTo(START_TIME_MICROSECONDS);
     }
 
@@ -109,8 +110,7 @@ public class AnnotationSubmitterTest {
 
     @Test
     public void doesntSetDurationWhenTimestampUnset() {
-        annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss");
+        annotationSubmitter.submitEndAnnotation(Recorder.SpanKind.SERVER);
         assertThat(spans).allSatisfy(
             span -> {
                 assertThat(span.timestamp).isNull();
@@ -123,8 +123,8 @@ public class AnnotationSubmitterTest {
     public void setsDurationWhenTimestampPresentButStartTickAbsent() {
         span.setTimestamp(START_TIME_MICROSECONDS - 1);
 
-        annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss");
+        annotationSubmitter.submitStartAnnotation(Recorder.SpanKind.SERVER);
+        annotationSubmitter.submitEndAnnotation(Recorder.SpanKind.SERVER);
         assertThat(spans).extracting(s -> s.duration)
             .containsExactly(1L);
     }
@@ -135,8 +135,8 @@ public class AnnotationSubmitterTest {
 
         PowerMockito.when(System.nanoTime()).thenReturn(787L);
 
-        annotationSubmitter.submitAnnotation("sr");
-        annotationSubmitter.submitEndAnnotation("ss");
+        annotationSubmitter.submitStartAnnotation(Recorder.SpanKind.SERVER);
+        annotationSubmitter.submitEndAnnotation(Recorder.SpanKind.SERVER);
         assertThat(spans).extracting(s -> s.duration)
             .containsExactly(1L);
     }
@@ -148,14 +148,10 @@ public class AnnotationSubmitterTest {
             }
         };
         AnnotationSubmitter.DefaultClock clock = new AnnotationSubmitter.DefaultClock();
-        Recorder recorder = new AutoValue_Recorder_Default(endpoint, spans::add);
+        Recorder recorder = new AutoValue_Recorder_Default(endpoint, clock, spans::add);
         return new AnnotationSubmitter(){
             @Override CurrentSpan currentSpan() {
                 return currentSpan;
-            }
-
-            @Override Clock clock() {
-                return clock;
             }
 
             @Override Recorder recorder() {

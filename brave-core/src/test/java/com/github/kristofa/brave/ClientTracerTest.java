@@ -7,11 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin.Constants;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,10 +14,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-@RunWith(PowerMockRunner.class)
-// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
-@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
-@PrepareForTest(AnnotationSubmitter.DefaultClock.class)
 public class ClientTracerTest {
 
   private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
@@ -35,25 +26,22 @@ public class ClientTracerTest {
   private static final zipkin.Span BASE_SPAN =
       DefaultSpanCodec.toZipkin(Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build()));
 
+  long timestamp = START_TIME_MICROSECONDS;
+  AnnotationSubmitter.Clock clock = () -> timestamp;
+
   private Span span = Brave.newSpan(SpanId.builder().spanId(TRACE_ID).build());
 
   List<zipkin.Span> spans = new ArrayList<>();
-  Brave brave;
-  Recorder recorder;
+  Brave brave = newBrave();
+  Recorder recorder = brave.clientTracer().recorder();
 
   @Before
   public void setup() {
     ThreadLocalServerClientAndLocalSpanState.clear();
+  }
 
-    PowerMockito.mockStatic(System.class);
-    PowerMockito.when(System.currentTimeMillis()).thenReturn(START_TIME_MICROSECONDS / 1000);
-    PowerMockito.when(System.nanoTime()).thenReturn(0L);
-
-    // deferred so that mockito can work on the clock!
-    brave = new Brave.Builder(ENDPOINT)
-        .clock(new AnnotationSubmitter.DefaultClock())
-        .reporter(spans::add).build();
-    recorder = brave.clientTracer().recorder();
+  Brave newBrave() {
+    return new Brave.Builder(ENDPOINT).clock(clock).reporter(spans::add).build();
   }
 
   @Test
@@ -172,14 +160,16 @@ public class ClientTracerTest {
 
   @Test
   public void setClientReceived() {
-    recorder.start(span, 100L);
+    recorder.start(span, START_TIME_MICROSECONDS);
     brave.clientSpanThreadBinder().setCurrentSpan(span);
+
+    timestamp = START_TIME_MICROSECONDS + 100;
 
     brave.clientTracer().setClientReceived();
 
-    assertThat(spans.get(0).duration).isEqualTo(START_TIME_MICROSECONDS - 100L);
+    assertThat(spans.get(0).duration).isEqualTo(100L);
     assertThat(spans.get(0).annotations).contains(
-        zipkin.Annotation.create(START_TIME_MICROSECONDS,
+        zipkin.Annotation.create(START_TIME_MICROSECONDS + 100,
             Constants.CLIENT_RECV,
             ZIPKIN_ENDPOINT
         )
@@ -191,7 +181,7 @@ public class ClientTracerTest {
     recorder.start(span, START_TIME_MICROSECONDS);
     brave.clientSpanThreadBinder().setCurrentSpan(span);
 
-    PowerMockito.when(System.nanoTime()).thenReturn(500000L);
+    timestamp = START_TIME_MICROSECONDS + 500;
 
     brave.clientTracer().setClientReceived();
 
@@ -204,7 +194,7 @@ public class ClientTracerTest {
     recorder.start(span, START_TIME_MICROSECONDS);
     brave.clientSpanThreadBinder().setCurrentSpan(span);
 
-    PowerMockito.when(System.nanoTime()).thenReturn(500L);
+    timestamp = START_TIME_MICROSECONDS; // no time passed!
 
     brave.clientTracer().setClientReceived();
 

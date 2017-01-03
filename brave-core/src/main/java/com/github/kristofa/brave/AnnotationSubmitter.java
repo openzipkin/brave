@@ -32,8 +32,6 @@ public abstract class AnnotationSubmitter {
 
     abstract CurrentSpan currentSpan();
 
-    abstract Clock clock();
-
     abstract Recorder recorder();
 
     /**
@@ -44,7 +42,7 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().annotate(span, clock().currentTimeMicroseconds(), value);
+        recorder().annotate(span, value);
     }
 
     /**
@@ -63,19 +61,11 @@ public abstract class AnnotationSubmitter {
     }
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
-    void submitStartAnnotation(String annotationName) {
+    void submitStartAnnotation(Recorder.SpanKind spanKind) {
         Span span = currentSpan().get();
         if (span == null) return;
 
-        long timestamp = clock().currentTimeMicroseconds();
-        submitAnnotation(annotationName, timestamp);
-        // In the RPC span model, the client owns the timestamp and duration of the span. If we
-        // were propagated an id, we can assume that we shouldn't report timestamp or duration,
-        // rather let the client do that. Worst case we were propagated an unreported ID and
-        // Zipkin backfills timestamp and duration.
-        if (!Brave.context(span).shared) {
-            recorder().start(span, timestamp);
-        }
+        recorder().start(span, spanKind);
     }
 
     /**
@@ -84,21 +74,20 @@ public abstract class AnnotationSubmitter {
      *
      * @return true if a span was sent for collection.
      */
-    boolean submitEndAnnotation(String annotationName) {
+    boolean submitEndAnnotation(Recorder.SpanKind spanKind) {
         Span span = currentSpan().get();
         if (span == null) return false;
 
-        long endTimestamp = clock().currentTimeMicroseconds();
-        recorder().annotate(span, endTimestamp, annotationName);
-        recorder().finishWithTimestamp(span, endTimestamp);
+        recorder().finish(span, spanKind);
         return true;
     }
 
     /** Internal api for submitting an address. */
-    void submitAddress(String key, Endpoint endpoint) {
+    void submitAddress(Recorder.SpanKind spanKind, Endpoint endpoint) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().address(span, key, endpoint);
+
+        recorder().remoteAddress(span, spanKind, endpoint);
     }
 
     /**
@@ -154,19 +143,14 @@ public abstract class AnnotationSubmitter {
             }
         };
         Endpoint localEndpoint = spanAndEndpoint.endpoint();
-        Recorder recorder = new AutoValue_Recorder_Default(localEndpoint, Reporter.NOOP);
-        return create(currentSpan, clock, recorder);
+        Recorder recorder = new AutoValue_Recorder_Default(localEndpoint, clock, Reporter.NOOP);
+        return create(currentSpan, recorder);
     }
 
-    static AnnotationSubmitter create(final CurrentSpan currentSpan, final Clock clock,
-        final Recorder recorder) {
+    static AnnotationSubmitter create(final CurrentSpan currentSpan, final Recorder recorder) {
         return new AnnotationSubmitter() {
             @Override CurrentSpan currentSpan() {
                 return currentSpan;
-            }
-
-            @Override Clock clock() {
-                return clock;
             }
 
             @Override Recorder recorder() {
