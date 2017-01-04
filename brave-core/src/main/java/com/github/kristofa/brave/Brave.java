@@ -10,6 +10,7 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
 import java.util.List;
+import zipkin.Constants;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
@@ -319,7 +320,7 @@ public class Brave {
             @Override public void setClientAddress(Brave brave, Endpoint ca) {
                 Span span = brave.serverSpanThreadBinder().get();
                 if (span == null) return;
-                brave.serverTracer.recorder().remoteAddress(span, Recorder.SpanKind.SERVER, ca);
+                brave.serverTracer.recorder().address(span, Constants.CLIENT_ADDR, ca);
             }
         };
         new Span(); // ensure InternalSpan.instance points to a reference

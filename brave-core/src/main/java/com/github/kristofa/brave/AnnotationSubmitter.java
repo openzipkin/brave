@@ -42,7 +42,7 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().annotate(span, value);
+        recorder().annotate(span, recorder().currentTimeMicroseconds(), value);
     }
 
     /**
@@ -61,11 +61,13 @@ public abstract class AnnotationSubmitter {
     }
 
     /** This adds an annotation that corresponds with {@link Span#getTimestamp()} */
-    void submitStartAnnotation(Recorder.SpanKind spanKind) {
+    void submitStartAnnotation(String startAnnotation) {
         Span span = currentSpan().get();
         if (span == null) return;
 
-        recorder().start(span, spanKind);
+        long timestamp = recorder().currentTimeMicroseconds();
+        recorder().annotate(span, timestamp, startAnnotation);
+        recorder().start(span, timestamp);
     }
 
     /**
@@ -74,20 +76,22 @@ public abstract class AnnotationSubmitter {
      *
      * @return true if a span was sent for collection.
      */
-    boolean submitEndAnnotation(Recorder.SpanKind spanKind) {
+    boolean submitEndAnnotation(String finishAnnotation) {
         Span span = currentSpan().get();
         if (span == null) return false;
 
-        recorder().finish(span, spanKind);
+        long timestamp = recorder().currentTimeMicroseconds();
+        recorder().annotate(span, timestamp, finishAnnotation);
+        recorder().finish(span, timestamp);
         return true;
     }
 
     /** Internal api for submitting an address. */
-    void submitAddress(Recorder.SpanKind spanKind, Endpoint endpoint) {
+    void submitAddress(String key, Endpoint endpoint) {
         Span span = currentSpan().get();
         if (span == null) return;
 
-        recorder().remoteAddress(span, spanKind, endpoint);
+        recorder().address(span, key, endpoint);
     }
 
     /**

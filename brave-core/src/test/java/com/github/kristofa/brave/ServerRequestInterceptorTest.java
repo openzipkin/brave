@@ -19,11 +19,12 @@ public class ServerRequestInterceptorTest {
     private final static long SPAN_ID = 43435;
     private final static long PARENT_SPAN_ID = 44334435;
     private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
+    static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
     private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(zipkin.TraceKeys.HTTP_URL, "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
 
     List<zipkin.Span> spans = new ArrayList<>();
-    Brave brave = new Brave.Builder(ENDPOINT).reporter(spans::add).build();
+    Brave brave = newBrave();
     Recorder recorder = brave.serverTracer().recorder();
     ServerRequestInterceptor interceptor = new ServerRequestInterceptor(brave.serverTracer());
 
@@ -32,6 +33,10 @@ public class ServerRequestInterceptorTest {
     @Before
     public void setup() {
         ThreadLocalServerClientAndLocalSpanState.clear();
+    }
+
+    Brave newBrave() {
+        return new Brave.Builder(ENDPOINT).reporter(spans::add).build();
     }
 
     @Test
