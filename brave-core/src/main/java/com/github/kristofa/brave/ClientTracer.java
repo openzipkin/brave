@@ -5,6 +5,7 @@ import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Random;
+import zipkin.Constants;
 import zipkin.reporter.Reporter;
 
 /**
@@ -100,7 +101,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * Sets 'client sent' event for current thread.
      */
     public void setClientSent() {
-        submitStartAnnotation(Recorder.SpanKind.CLIENT);
+        submitStartAnnotation(Constants.CLIENT_SEND);
     }
 
     /**
@@ -110,8 +111,8 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * "unknown" if unknown.
      */
     public void setClientSent(Endpoint server) {
-        submitAddress(Recorder.SpanKind.CLIENT, server);
-        submitStartAnnotation(Recorder.SpanKind.CLIENT);
+        submitAddress(Constants.SERVER_ADDR, server);
+        submitStartAnnotation(Constants.CLIENT_SEND);
     }
 
     /**
@@ -135,7 +136,7 @@ public abstract class ClientTracer extends AnnotationSubmitter {
      * event means this span is finished.
      */
     public void setClientReceived() {
-        if (submitEndAnnotation(Recorder.SpanKind.CLIENT)) {
+        if (submitEndAnnotation(Constants.CLIENT_RECV)) {
             currentSpan().setCurrentSpan(null);
         }
     }

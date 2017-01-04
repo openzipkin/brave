@@ -64,7 +64,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
-        return startNewSpan(component, operation, null);
+        return startNewSpan(component, operation, recorder().currentTimeMicroseconds());
     }
 
     /**
@@ -104,11 +104,6 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
-        return startNewSpan(component, operation, (Long) timestamp);
-    }
-
-    SpanId startNewSpan(String component, String operation, @Nullable Long timestamp) {
-
         // When a trace context is extracted from an incoming request, it may have only the
         // sampled header (no ids). If the header says unsampled, we must honor that. Since
         // we currently don't synthesize a fake span when a trace is unsampled, we have to
@@ -126,11 +121,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             return null;
         }
 
-        if (timestamp != null) {
-            recorder().start(span, timestamp);
-        } else {
-            recorder().start(span);
-        }
+        recorder().start(span, timestamp);
         recorder().name(span, operation);
         recorder().tag(span, LOCAL_COMPONENT, component);
 
@@ -144,7 +135,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan() {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().finish(span);
+        recorder().finish(span, recorder().currentTimeMicroseconds());
         currentSpan().setCurrentSpan(null);
     }
 
@@ -154,7 +145,13 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan(long duration) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().finish(span, duration);
+
+        Long timestamp = recorder().timestamp(span);
+        if (timestamp == null) {
+            recorder().flush(span);
+        } else {
+            recorder().finish(span, timestamp + duration);
+        }
         currentSpan().setCurrentSpan(null);
     }
 

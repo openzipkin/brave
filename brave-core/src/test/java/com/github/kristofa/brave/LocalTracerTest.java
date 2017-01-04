@@ -115,7 +115,7 @@ public class LocalTracerTest {
      */
     @Test
     public void finishSpan() {
-        recorder.start(span);
+        recorder.start(span, START_TIME_MICROSECONDS);
         brave.localSpanThreadBinder().setCurrentSpan(span);
 
         timestamp = START_TIME_MICROSECONDS + 500;
