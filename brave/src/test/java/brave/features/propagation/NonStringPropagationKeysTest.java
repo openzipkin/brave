@@ -26,7 +26,6 @@ public class NonStringPropagationKeysTest {
     assertThat(metadata.keys())
         .containsExactly("x-b3-traceid", "x-b3-spanid", "x-b3-sampled");
 
-          //.shared(sampled != null)
     assertThat(extractor.extract(metadata).context())
         .isEqualTo(context);
   }
