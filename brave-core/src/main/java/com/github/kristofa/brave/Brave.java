@@ -21,6 +21,7 @@ import static zipkin.internal.Util.checkNotNull;
 
 public class Brave {
 
+    private final Clock clock;
     private final ServerTracer serverTracer;
     private final ClientTracer clientTracer;
     private final LocalTracer localTracer;
@@ -190,6 +191,18 @@ public class Brave {
     }
 
     /**
+     * Returns the clock that supplies epoch microsecond timestamps used for annotations.
+     *
+     * <p>This is exposed for collecting timestamps out-of-band for {@link LocalTracer}. Directly
+     * modifying timestamps in {@link Span} is not supported and will break in Brave 4.
+     *
+     * @since 3.18
+     */
+    public Clock clock() {
+        return clock;
+    }
+
+    /**
      * Client Tracer.
      * <p>
      * It is advised that you use ClientRequestInterceptor and ClientResponseInterceptor instead.
@@ -278,6 +291,7 @@ public class Brave {
     }
 
     private Brave(Builder builder) {
+        clock = builder.clock;
         serverSpanThreadBinder = new ServerSpanThreadBinder(builder.state);
         clientSpanThreadBinder = new ClientSpanThreadBinder(builder.state);
         localSpanThreadBinder = new LocalSpanThreadBinder(builder.state);
