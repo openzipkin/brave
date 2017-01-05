@@ -1,5 +1,8 @@
-# brave-core #
+# Deprecation Notice
+Brave was redesigned starting with version 4. Please see the
+[README](../brave/README.md) for details on how to use Brave's Tracer.
 
+# Brave Api (version 3)
 brave-core contains the core brave implementations used to set up and keep track of
 tracing state. 
 

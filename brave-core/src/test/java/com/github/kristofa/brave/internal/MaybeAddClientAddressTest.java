@@ -25,9 +25,9 @@ import zipkin.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public final class MaybeAddClientAddressTest {
-  List<Span> spans = new ArrayList<>();
-  Brave brave = new Brave.Builder().reporter(spans::add).build();
+public class MaybeAddClientAddressTest {
+  protected List<Span> spans = new ArrayList<>();
+  protected Brave brave = new Brave.Builder().reporter(spans::add).build();
 
   @Before
   public void clearState() {
