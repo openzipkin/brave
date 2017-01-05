@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.AnnotationSubmitter.Clock;
 import com.twitter.zipkin.gen.Span;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +15,13 @@ public class BraveTest {
   @Before
   public void setup() {
     ThreadLocalServerClientAndLocalSpanState.clear();
+  }
+
+  @Test
+  public void testGetClock() {
+    Clock clock = brave.clock();
+    assertNotNull(clock);
+    assertSame(clock, brave.clock());
   }
 
   @Test
