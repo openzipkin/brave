@@ -50,6 +50,7 @@
     <zipkin-reporter.version>0.6.11</zipkin-reporter.version>
     <log4j.version>2.7</log4j.version>
     <okhttp.version>3.5.0</okhttp.version>
+    <grpc.version>1.0.3</grpc.version>
     <powermock.version>1.6.6</powermock.version>
     <jmh.version>1.17.3</jmh.version>
 
