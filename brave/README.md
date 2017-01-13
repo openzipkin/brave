@@ -187,7 +187,8 @@ Brave brave3 = TracerAdapter.newBrave(brave4);
 
 ### Converting between types
 Those coding directly to both apis can use `TracerAdapter.toSpan` to
-navigate between span types.
+navigate between span types. This is useful when working with client and
+local spans.
 
 If you have a reference to a Brave 3 Span, you can convert like this:
 ```java
@@ -199,6 +200,33 @@ You can also attach Brave 4 Span to a Brave 3 thread binder like this:
 ```java
 brave3Span = TracerAdapter.toSpan(brave4Span.context());
 brave3.localSpanThreadBinder().setCurrentSpan(brave3Span);
+```
+
+#### Server spans
+Brave 3's ServerTracer works slightly differently than Brave 3's client
+or local tracers. Internally, it uses a `ServerSpan` which keeps track
+of the original sample status. To interop with ServerTracer, use the
+following hooks:
+
+Use `TracerAdapter.getServerSpan` to get one of..
+* a real span: when a sampled server request preceded this call
+* a noop span: when a server request preceded this call, but was not sampled
+* null: if no server request preceded this call
+
+```java
+brave4Span = TracerAdapter.getServerSpan(brave4, brave3.serverSpanThreadBinder());
+// Since the current server span might be empty, you must check null
+if (brave4Span != null) {
+  // use or finish the span
+}
+```
+
+If you have a reference to a Brave 4 span, and know it represents a server
+request, use `TracerAdapter.setServerSpan` to attach it to Brave 3's thread
+binder.
+```java
+TracerAdapter.setServerSpan(brave4Span.context(), brave3.serverSpanThreadBinder());
+brave3.serverTracer().setServerSend(); // for example
 ```
 
 ### Dependencies
