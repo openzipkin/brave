@@ -2,8 +2,10 @@ package com.github.kristofa.brave;
 
 import brave.Tracer;
 import brave.internal.Internal;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import com.github.kristofa.brave.internal.InternalSpan;
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import zipkin.Constants;
@@ -46,6 +48,28 @@ public final class TracerAdapter {
   public static brave.Span toSpan(Tracer tracer, SpanId spanId) {
     if (tracer == null) throw new NullPointerException("tracer == null");
     return tracer.toSpan(toTraceContext(spanId));
+  }
+
+  /**
+   * Returns a span representing the sampled status of the current server span or null if there's no
+   * span attached to the current thread.
+   */
+  @Nullable
+  public static brave.Span getServerSpan(Tracer tracer, ServerSpanThreadBinder threadBinder) {
+    if (tracer == null) throw new NullPointerException("tracer == null");
+    if (threadBinder == null) throw new NullPointerException("threadBinder == null");
+    ServerSpan result = threadBinder.getCurrentServerSpan();
+    if (result == null || result.equals(ServerSpan.EMPTY)) return null;
+    if (result.getSpan() != null) return toSpan(tracer, result.getSpan());
+    assert result.getSample() != null && !result.getSample() : "unexpected sample state: " + result;
+    return tracer.newTrace(SamplingFlags.NOT_SAMPLED);
+  }
+
+  /** Sets a span associated with the context as the current server span. */
+  public static void setServerSpan(TraceContext context, ServerSpanThreadBinder threadBinder) {
+    if (threadBinder == null) throw new NullPointerException("threadBinder == null");
+    ServerSpan serverSpan = ServerSpan.create(toSpan(context));
+    threadBinder.setCurrentSpan(serverSpan);
   }
 
   static TraceContext toTraceContext(SpanId spanId) {
