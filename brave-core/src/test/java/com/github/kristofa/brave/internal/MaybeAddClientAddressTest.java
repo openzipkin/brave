@@ -284,4 +284,30 @@ public class MaybeAddClientAddressTest {
     assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
         .containsNull();
   }
+
+  /** This ensures we don't mistake IPv6 localhost for a mapped IPv4 0.0.0.1 */
+  @Test
+  public void acceptsIpV6Localhost() throws UnknownHostException {
+    brave.serverTracer().setStateUnknown("foo");
+
+    MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
+      @Override protected byte[] parseAddressBytes(Object input) {
+        return InetAddresses.ipStringToBytes("::1");
+      }
+
+      @Override protected int parsePort(Object input) {
+        return -1;
+      }
+    };
+
+    function.accept(new Object());
+    brave.serverTracer().setServerSend();
+
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
+        .containsExactly(0);
+    byte[] ipv6_localhost = new byte[16];
+    ipv6_localhost[15]= 1;
+    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
+        .containsExactly(ipv6_localhost);
+  }
 }

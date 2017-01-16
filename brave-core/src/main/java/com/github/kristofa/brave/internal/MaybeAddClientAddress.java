@@ -46,13 +46,20 @@ public abstract class MaybeAddClientAddress<T> {
     } else if (addressBytes.length == 16) {
       // https://tools.ietf.org/html/rfc4291#section-2.5.5.2
       boolean maybeIpv4Compat = true; // if it starts with 80 unset bits
-      for (int i = 0; i < 10; i++) {
-        if (addressBytes[i] != 0) {
+      boolean maybeLocalhost = true; // if it is ::1 (all zeros ending in 1)
+      for (int i = 0; i < 15; i++) {
+        if (i < 10 && addressBytes[i] != 0) {
           maybeIpv4Compat = false;
+          maybeLocalhost = false;
+          break;
+        } else if (addressBytes[i] != 0) {
+          maybeLocalhost = false;
           break;
         }
       }
-      if (maybeIpv4Compat) {
+      if (maybeLocalhost && addressBytes[15] == 1) { // we found ::1
+        builder.ipv6(addressBytes);
+      } else if (maybeIpv4Compat) {
         ByteBuffer buffer = ByteBuffer.wrap(addressBytes, 10, 6);
         short flag = buffer.getShort();
         if (flag == 0 || flag == -1) { // IPv4-Compatible or IPv4-Mapped
