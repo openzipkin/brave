@@ -10,6 +10,8 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin.Constants;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
@@ -20,7 +22,6 @@ import static com.github.kristofa.brave.InetAddressUtilities.toInt;
 import static zipkin.internal.Util.checkNotNull;
 
 public class Brave {
-
     private final Clock clock;
     private final ServerTracer serverTracer;
     private final ClientTracer clientTracer;
@@ -44,9 +45,10 @@ public class Brave {
      * </ul>
      */
     public static class Builder {
+        final Logger logger = Logger.getLogger(Brave.class.getName());
         final SpanFactory.Default.Builder spanFactoryBuilder = SpanFactory.Default.builder();
         private final ServerClientAndLocalSpanState state;
-        private final Endpoint localEndpoint;
+        final Endpoint localEndpoint;
         private boolean allowNestedLocalSpans = false;
         private Clock clock;
         private Recorder recorder;
@@ -76,13 +78,14 @@ public class Brave {
          * @param serviceName Name of the local service being traced. Should be lowercase and not <code>null</code> or empty.
          */
         public Builder(String serviceName) {
+            int ipv4 = 127 << 24 | 1;
             try {
-                int ip = toInt(getLocalHostLANAddress());
-                state = new ThreadLocalServerClientAndLocalSpanState(ip, 0, serviceName);
-                localEndpoint = state.endpoint();
+                ipv4 = toInt(getLocalHostLANAddress());
             } catch (UnknownHostException e) {
-                throw new IllegalStateException("Unable to get Inet address", e);
+                logger.log(Level.WARNING, "Unable to get Inet address", e);
             }
+            state = new ThreadLocalServerClientAndLocalSpanState(ipv4, 0, serviceName);
+            localEndpoint = state.endpoint();
         }
 
         /**

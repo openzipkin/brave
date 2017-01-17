@@ -1,14 +1,27 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.AnnotationSubmitter.Clock;
+import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.when;
 
+@RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
+@PrepareForTest({InetAddressUtilities.class, NetworkInterface.class})
 public class BraveTest {
   Brave brave = newBrave();
 
@@ -125,5 +138,13 @@ public class BraveTest {
   @Test
   public void testGetServerSpanThreadBinder() {
     assertNotNull(brave.serverSpanThreadBinder());
+  }
+
+  @Test public void implicitLocalEndpoint_exceptionReadingNics() throws Exception {
+    mockStatic(NetworkInterface.class);
+    when(NetworkInterface.getNetworkInterfaces()).thenThrow(SocketException.class);
+
+    assertThat(new Brave.Builder().localEndpoint)
+        .isEqualTo(Endpoint.create("unknown", 127 << 24 | 1));
   }
 }
