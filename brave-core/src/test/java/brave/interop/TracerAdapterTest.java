@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.example; // intentionally in a different package
+package brave.interop; // intentionally in a different package
 
 import brave.Tracer;
 import com.github.kristofa.brave.Brave;

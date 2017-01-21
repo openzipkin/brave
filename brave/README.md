@@ -221,6 +221,9 @@ expensive and more precise `System.nanoTime()` function.
 Brave 4 was designed to live alongside Brave 3. Using `TracerAdapter`,
 you can navigate between apis, buying you time to update as appropriate.
 
+Concepts are explained below, and there's an elaborate example of interop
+[here](../brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
+
 ### Creating a Brave 3 instance
 If your code uses Brave 3 apis, all you need to do is use `TracerAdapter`
 to create a (Brave 3) .. Brave. You don't have to change anything else.
