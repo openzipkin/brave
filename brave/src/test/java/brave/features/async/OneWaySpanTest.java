@@ -57,7 +57,8 @@ public class OneWaySpanTest {
         // in real life, we'd guard result.context was set and start a new trace if not
         serverTracer.joinSpan(result.context())
             .name(recordedRequest.getMethod())
-            .annotate(SERVER_RECV).flush(); // record the timestamp of the server receive and flush
+            .kind(Span.Kind.SERVER)
+            .start().flush(); // start the server side and flush instead of processing a response
 
         flushedIncomingRequest.countDown();
         // eventhough the client doesn't read the response, we return one
@@ -77,7 +78,8 @@ public class OneWaySpanTest {
 
     // fire off the request asynchronously, totally dropping any response
     new OkHttpClient().newCall(request.build()).enqueue(mock(Callback.class));
-    span.annotate(CLIENT_SEND).flush(); // record the timestamp of the client send and flush
+    // start the client side and flush instead of processing a response
+    span.kind(Span.Kind.CLIENT).start().flush();
 
     // block on the server handling the request, so we can run assertions
     flushedIncomingRequest.await();

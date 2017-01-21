@@ -79,6 +79,51 @@ span.annotate(Constants.WIRE_RECV);
 span.finish();
 ```
 
+#### One-Way tracing
+
+Sometimes you need to model an asynchronous operation, where there is a
+request, but no response. In normal RPC tracing, you use `span.finish()`
+which indicates the response was received. In one-way tracing, you use
+`span.flush()` instead, as you don't expect a response.
+
+Here's how a client might model a one-way operation
+```java
+// start a new span representing a client request
+oneWaySend = tracer.newSpan(parent).kind(Span.Kind.CLIENT);
+
+// Add the trace context to the request, so it can be propagated in-band
+Propagation.B3_STRING.injector(Request::addHeader)
+                     .inject(oneWaySend.context(), request);
+
+// fire off the request asynchronously, totally dropping any response
+request.execute();
+
+// start the client side and flush instead of finish
+oneWaySend.start().flush();
+```
+
+And here's how a server might handle this..
+```java
+// pull the context out of the incoming request
+contextOrFlags =
+    Propagation.B3_STRING.extractor(Request::getHeader).extract(request);
+
+// convert that context to a span which you can name and add tags to
+oneWayReceive = tracer.joinSpan(contextOrFlags.context())
+    .name("process-request")
+    .kind(SERVER)
+    ... add tags etc.
+
+// start the server side and flush instead of finish
+oneWayReceive.start().flush();
+
+// you should not modify this span anymore as it is complete. However,
+// you can create children to represent follow-up work.
+next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
+```
+
+There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
+
 ## Sampling
 Sampling may be employed to reduce the data collected and reported out
 of process. When a span isn't sampled, it adds no overhead (noop).

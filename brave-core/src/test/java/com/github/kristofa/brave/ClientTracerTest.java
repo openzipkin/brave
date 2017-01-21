@@ -53,6 +53,7 @@ public class ClientTracerTest {
     assertThat(spans).matches(s -> s.isEmpty() || s.contains(BASE_SPAN));
   }
 
+  @Test
   public void setClientSent_doesntFlush() {
     brave.clientSpanThreadBinder().setCurrentSpan(span);
     brave.clientTracer().setClientSent();
@@ -66,7 +67,6 @@ public class ClientTracerTest {
     brave.clientTracer().setClientSent();
 
     recorder.flush(brave.clientSpanThreadBinder().get());
-    assertThat(spans.get(0).timestamp).isEqualTo(START_TIME_MICROSECONDS);
     assertThat(spans.get(0).annotations).containsExactly(
         zipkin.Annotation.create(START_TIME_MICROSECONDS,
             Constants.CLIENT_SEND,

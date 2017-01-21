@@ -111,7 +111,6 @@ public class ServerTracerTest {
     brave.serverTracer().setServerReceived();
 
     recorder.flush(span);
-    assertThat(spans.get(0).timestamp).isEqualTo(START_TIME_MICROSECONDS);
     assertThat(spans.get(0).annotations).containsExactly(
         zipkin.Annotation.create(START_TIME_MICROSECONDS,
             Constants.SERVER_RECV,
@@ -162,6 +161,7 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
+    assertThat(spans.get(0).timestamp).isEqualTo(100L);
     assertThat(spans.get(0).duration).isEqualTo(START_TIME_MICROSECONDS - 100L);
     assertThat(spans.get(0).annotations).contains(
         zipkin.Annotation.create(START_TIME_MICROSECONDS,

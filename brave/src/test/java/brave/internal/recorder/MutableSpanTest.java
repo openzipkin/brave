@@ -185,6 +185,23 @@ public class MutableSpanTest {
         .isEqualTo(newSpan().finish(null).toSpan());
   }
 
+  @Test public void oneWaySpan() {
+    MutableSpan client = newSpan().kind(Span.Kind.CLIENT).start(1L).finish(null);
+
+    assertThat(client.toSpan()).satisfies(s -> {
+      assertThat(s.timestamp).isNull();
+      assertThat(s.annotations).extracting(a -> a.value)
+          .containsExactly("cs");
+    });
+
+    MutableSpan server = newSpan().kind(Span.Kind.SERVER).start(1L).finish(null);
+    assertThat(server.toSpan()).satisfies(s -> {
+      assertThat(s.timestamp).isNull();
+      assertThat(s.annotations).extracting(a -> a.value)
+          .containsExactly("sr");
+    });
+  }
+
   MutableSpan newSpan() {
     return new MutableSpan(context, localEndpoint);
   }

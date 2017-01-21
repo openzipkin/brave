@@ -115,7 +115,9 @@ public class ServerRequestInterceptorTest {
         when(adapter.requestAnnotations()).thenReturn(Arrays.asList(ANNOTATION1, ANNOTATION2));
 
         interceptor.handle(adapter);
-        recorder.flush(brave.serverTracer().currentSpan().get());
+        // simulate completion of the span (which happens in the response adapter)
+        recorder.finish(brave.serverTracer().currentSpan().get(),
+            brave.clock().currentTimeMicroseconds());
 
         // We originated the trace, so we should set the timestamp
         assertThat(spans.get(0).timestamp).isNotNull();

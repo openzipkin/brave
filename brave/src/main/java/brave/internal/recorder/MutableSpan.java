@@ -128,6 +128,7 @@ final class MutableSpan {
       }
       if (startAnnotation != null && startTimestamp != 0) {
         if (startAnnotation.equals(Constants.SERVER_RECV)) flags |= FLAG_SR;
+        if (startAnnotation.equals(Constants.CLIENT_SEND)) flags |= FLAG_CS;
         span.addAnnotation(Annotation.create(startTimestamp, startAnnotation, localEndpoint));
       }
       if (finishAnnotation != null && finishTimestamp != null) {
@@ -135,9 +136,14 @@ final class MutableSpan {
       }
       flags |= FLAG_LOCAL_ENDPOINT;
     }
-    // don't report server-side timestamp on shared-spans
-    if (shared && (flags & FLAG_SR) == FLAG_SR) {
+    // don't report server-side timestamp on shared or incomplete spans
+    if (shared && (flags & FLAG_SR) != 0) {
       span.timestamp(null).duration(null);
+    }
+    // don't report client span.timestamp if unfinished.
+    // This allows one-way to be modeled as span.kind(serverOrClient).start().flush()
+    if ((flags & (FLAG_CS | FLAG_SR)) != 0 && finishTimestamp == null) {
+      span.timestamp(null);
     }
     if ((flags & FLAG_LOCAL_ENDPOINT) == 0) { // create a small dummy annotation
       span.addBinaryAnnotation(BinaryAnnotation.create(LOCAL_COMPONENT, "", localEndpoint));
