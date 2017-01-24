@@ -6,6 +6,7 @@ import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
+import zipkin.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +24,27 @@ public class TracerTest {
 
     assertThat(tracer.sampler)
         .isSameAs(sampler);
+  }
+
+  @Test public void localServiceName() {
+    tracer = Tracer.newBuilder().localServiceName("my-foo").build();
+
+    assertThat(tracer.localEndpoint.serviceName)
+        .isEqualTo("my-foo");
+  }
+
+  @Test public void localServiceName_defaultIsUnknown() {
+    assertThat(tracer.localEndpoint.serviceName)
+        .isEqualTo("unknown");
+  }
+
+  @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
+    Endpoint localEndpoint = Endpoint.create("my-bar", 127 << 24 | 1);
+    tracer = Tracer.newBuilder().localServiceName("my-foo")
+        .localEndpoint(localEndpoint).build();
+
+    assertThat(tracer.localEndpoint)
+        .isSameAs(localEndpoint);
   }
 
   @Test public void clock() {

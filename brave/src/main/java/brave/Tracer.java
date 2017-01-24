@@ -39,11 +39,24 @@ public final class Tracer {
   }
 
   public static final class Builder {
+    String localServiceName;
     Endpoint localEndpoint;
     Reporter<zipkin.Span> reporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     boolean traceId128Bit = false;
+
+    /**
+     * Controls the name of the service being traced, while still using a default site-local IP.
+     * This is an alternative to {@link #localEndpoint(Endpoint)}.
+     *
+     * @param localServiceName name of the service being traced. Defaults to "unknown".
+     */
+    public Builder localServiceName(String localServiceName) {
+      if (localServiceName == null) throw new NullPointerException("localServiceName == null");
+      this.localServiceName = localServiceName;
+      return this;
+    }
 
     /**
      * @param localEndpoint Endpoint of the local service being traced. Defaults to site local.
@@ -102,7 +115,12 @@ public final class Tracer {
 
     public Tracer build() {
       if (clock == null) clock = Platform.get();
-      if (localEndpoint == null) localEndpoint = Platform.get().localEndpoint();
+      if (localEndpoint == null) {
+        localEndpoint = Platform.get().localEndpoint();
+        if (localServiceName != null) {
+          localEndpoint = localEndpoint.toBuilder().serviceName(localServiceName).build();
+        }
+      }
       if (reporter == null) reporter = Platform.get();
       return new Tracer(this);
     }
