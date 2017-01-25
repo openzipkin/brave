@@ -25,7 +25,7 @@
   <dependencies>
     <dependency>
         <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpcore</artifactId>
+        <artifactId>httpclient</artifactId>
     </dependency>
     <dependency>
         <groupId>${project.groupId}</groupId>
@@ -33,9 +33,10 @@
         <version>${project.version}</version>
     </dependency>
     <dependency>
-        <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpclient</artifactId>
-        <scope>test</scope>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
         <groupId>${project.groupId}</groupId>
