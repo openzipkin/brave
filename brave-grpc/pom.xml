@@ -26,18 +26,28 @@
     </properties>
 
     <dependencies>
-
-        <!-- brave-http contains propagation header keys (BraveHttpHeaders) -->
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>brave</artifactId>
+            <version>${project.version}</version>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
             <version>${grpc.version}</version>
+        </dependency>
+
+        <!-- for value types... don't worry. this dependency is compile only! -->
+        <dependency>
+            <groupId>com.google.auto.value</groupId>
+            <artifactId>auto-value</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

@@ -19,7 +19,12 @@
         <artifactId>brave-http</artifactId>
         <version>${project.version}</version>
      </dependency>
-
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
      <dependency>
         <groupId>org.springframework</groupId>
         <artifactId>spring-webmvc</artifactId>
