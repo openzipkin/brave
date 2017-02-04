@@ -19,7 +19,7 @@ http (as opposed to Kafka).
 
 ```java
 // Configure a reporter, which controls how often spans are sent
-//   (the dependency is io.zipkin.reporter:zipkin-zipkin-sender-okhttp3)
+//   (the dependency is io.zipkin.reporter:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender).build();
 
