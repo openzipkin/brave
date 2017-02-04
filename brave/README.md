@@ -10,7 +10,29 @@ latency of potentially distributed work. It also includes libraries to
 propagate the trace context over network boundaries, for example, via
 http headers.
 
-## Basics
+## Setup
+
+Most importantly, you need a Tracer, configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
+
+Here's an example setup that sends trace data (spans) to Zipkin over
+http (as opposed to Kafka).
+
+```java
+// Configure a reporter, which controls how often spans are sent
+//   (the dependency is io.zipkin.reporter:zipkin-zipkin-sender-okhttp3)
+sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
+reporter = AsyncReporter.builder(sender).build();
+
+// Now, create a Brave tracer with the service name (for UI lookups).
+//   (the dependency is io.zipkin.brave:brave)
+braveTracer = Tracer.newBuilder()
+                    .localServiceName("my-service")
+                    .reporter(reporter)
+                    .build();
+```
+
+## Tracing
+
 The tracer creates and joins spans that model the latency of potentially
 distributed work. It can employ sampling to reduce overhead in process
 or to reduce the amount of data sent to Zipkin.
