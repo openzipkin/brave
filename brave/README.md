@@ -23,12 +23,11 @@ http (as opposed to Kafka).
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender).build();
 
-// Now, create a Brave tracer with the service name (for UI lookups).
-//   (the dependency is io.zipkin.brave:brave)
-braveTracer = Tracer.newBuilder()
-                    .localServiceName("my-service")
-                    .reporter(reporter)
-                    .build();
+// Now, create a tracer with the service name you want to see in Zipkin.
+tracer = Tracer.newBuilder()
+              .localServiceName("my-service")
+              .reporter(reporter)
+              .build();
 ```
 
 ## Tracing
