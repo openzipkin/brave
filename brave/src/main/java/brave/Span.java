@@ -1,8 +1,6 @@
 package brave;
 
 import brave.propagation.TraceContext;
-import java.io.Closeable;
-import java.io.Flushable;
 import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin.TraceKeys;
@@ -12,18 +10,19 @@ import zipkin.TraceKeys;
  *
  * <p>For example, to trace a local function call.
  * <pre>{@code
- * try (Span span = tracer.newTrace().name("encode").start()) {
+ * Span span = tracer.newTrace().name("encode").start();
+ * try {
  *   doSomethingExpensive();
+ * } finally {
+ *   span.finish();
  * }
  * }</pre>
- * This captures duration of {@link #start()} until {@link #finish()} is called (implicitly via
- * try-with-resources).
+ * This captures duration of {@link #start()} until {@link #finish()} is called.
  */
-// Implements closeable not auto-closable for JRE 6
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
 // can simply call start when they are ready.
-public abstract class Span implements Closeable, Flushable {
+public abstract class Span {
   public enum Kind {
     CLIENT,
     SERVER
@@ -111,14 +110,22 @@ public abstract class Span implements Closeable, Flushable {
   //   * This can reduce accidents where people use duration when they mean a timestamp
   // * Parity with OpenTracing
   //   * OpenTracing close spans like this, and this makes a Brave bridge stateless wrt timestamps
+  // Design note: This does not implement Closeable (or AutoCloseable)
+  // * the try-with-resources pattern is be reserved for attaching a span to a context.
   public abstract void finish(long timestamp);
 
-  /** Convenience for use in try-with-resources, which calls {@link #finish()} */
-  @Override
-  public final void close() {
-    finish();
-  }
-
-  /** Reports the span, even if unfinished. */
-  @Override public abstract void flush();
+  /**
+   * Reports the span, even if unfinished. Most users will not call this method.
+   *
+   * <p>This primarily supports two use cases: one-way spans and orphaned spans.
+   * For example, a one-way span can be modeled as a span where one tracer calls start and another
+   * calls finish. In order to report that span from its origin, flush must be called.
+   *
+   * <p>Another example is where a user didn't call finish within a deadline or before a shutdown
+   * occurs. By flushing, you can report what was in progress.
+   */
+  // Design note: This does not implement Flushable
+  // * a span should not be routinely flushed, only when it has finished, or we don't believe this
+  //   tracer will finish it.
+  public abstract void flush();
 }

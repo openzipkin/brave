@@ -47,8 +47,11 @@ the correct spot in the tree representing the distributed operation.
 
 When tracing local code, just run it inside a span.
 ```java
-try (Span span = tracer.newTrace().name("encode").start()) {
+Span span = tracer.newTrace().name("encode").start();
+try {
   doSomethingExpensive();
+} finally {
+  span.finish();
 }
 ```
 
@@ -57,13 +60,11 @@ you will be a part of an existing trace. When this is the case, call
 `newChild` instead of `newTrace`
 
 ```java
-try (Span root = tracer.newTrace().name("2pc").start()) {
-  try (Span child = tracer.newChild(root.context()).name("prepare").start()) {
-    prepare();
-  }
-  try (Span child = tracer.newChild(root.context()).name("commit").start()) {
-    commit();
-  }
+Span span = tracer.newChild(root.context()).name("encode").start();
+try {
+  doSomethingExpensive();
+} finally {
+  span.finish();
 }
 ```
 

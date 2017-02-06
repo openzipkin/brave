@@ -8,7 +8,6 @@ import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
 import zipkin.Endpoint;
 
-import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -87,18 +86,11 @@ public class RealSpanTest {
         .containsExactly(BinaryAnnotation.create("foo", "bar", localEndpoint));
   }
 
-  @Test public void autoCloseOnTryFinally() {
-    try (Span span = tracer.newTrace().name("foo").start()) {
-      span.tag("holy", "toledo");
-    }
+  @Test public void doubleFinishDoesntDoubleReport() {
+    Span span = tracer.newTrace().name("foo").start();
 
-    assertThat(spans).hasSize(1);
-  }
-
-  @Test public void autoCloseOnTryFinally_doesntDoubleClose() {
-    try (Span span = tracer.newTrace().kind(SERVER).name("getOrCreate").start()) {
-      span.finish(); // user closes and also auto-close closes
-    }
+    span.finish();
+    span.finish();
 
     assertThat(spans).hasSize(1);
   }

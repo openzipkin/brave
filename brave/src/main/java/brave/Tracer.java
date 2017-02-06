@@ -20,13 +20,22 @@ import zipkin.reporter.Sender;
  *
  * Here's a contrived example:
  * <pre>{@code
- * try (Span root = tracer.newTrace().name("2pc").start()) {
- *   try (Span child = tracer.newChild(root.context()).name("prepare").start()) {
+ * Span twoPhase = tracer.newTrace().name("twoPhase").start();
+ * try {
+ *   Span prepare = tracer.newChild(twoPhase.context()).name("prepare").start();
+ *   try {
  *     prepare();
+ *   } finally {
+ *     prepare.finish();
  *   }
- *   try (Span child = tracer.newChild(root.context()).name("commit").start()) {
+ *   Span commit = tracer.newChild(twoPhase.context()).name("commit").start();
+ *   try {
  *     commit();
+ *   } finally {
+ *     commit.finish();
  *   }
+ * } finally {
+ *   twoPhase.finish();
  * }
  * }</pre>
  *
