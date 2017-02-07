@@ -82,10 +82,9 @@ public class SpanCreationBenchmarks {
 
   @Benchmark
   public Span simpleRootSpan_brave4() {
-    try (Span span = tracer.newTrace().name("encode").start()) {
-      // pretend we are doing codec work
-      return span; // to satisfy the signature
-    }
+    Span span = tracer.newTrace().name("encode").start();
+    span.finish();
+    return span; // to satisfy the signature
   }
 
   @Benchmark
