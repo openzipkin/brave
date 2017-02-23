@@ -3,6 +3,8 @@ package brave.propagation;
 import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 
+import java.util.List;
+
 import static brave.internal.HexCodec.writeHexLong;
 
 /**
@@ -79,6 +81,29 @@ public abstract class TraceContext extends SamplingFlags {
    */
   public abstract boolean shared();
 
+  public TraceContext attach() {
+    TraceContextHolder.pushAndMaybeGetParent(this);
+    if(attachedHandlers() != null) {
+      for(TraceAttachedHandler handler : attachedHandlers()) {
+        handler.traceAttached(this);
+      }
+    }
+    return this;
+  }
+
+  public void detach() {
+    TraceContextHolder.popAndMaybeGetParent();
+    if(detachedHandlers() != null) {
+      for(TraceDetachedHandler handler : detachedHandlers()) {
+        handler.traceDetached(this);
+      }
+    }
+  }
+
+  abstract List<TraceAttachedHandler> attachedHandlers();
+
+  abstract List<TraceDetachedHandler> detachedHandlers();
+
   public abstract Builder toBuilder();
 
   /** Returns the hex representation of the span's trace ID */
@@ -133,6 +158,10 @@ public abstract class TraceContext extends SamplingFlags {
 
     /** @see TraceContext#shared() */
     public abstract Builder shared(boolean shared);
+
+    public abstract Builder attachedHandlers(List<TraceAttachedHandler> attachedHandlers);
+
+    public abstract Builder detachedHandlers(List<TraceDetachedHandler> detachedHandlers);
 
     public abstract TraceContext build();
 

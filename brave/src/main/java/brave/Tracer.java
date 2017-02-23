@@ -6,13 +6,20 @@ import brave.internal.Platform;
 import brave.internal.recorder.Recorder;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
+import brave.propagation.TraceAttachedHandler;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextHolder;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.TraceDetachedHandler;
 import brave.sampler.Sampler;
 import zipkin.Endpoint;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Using a tracer, you can create a root span capturing the critical path of a request. Child
@@ -44,6 +51,8 @@ public final class Tracer {
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     boolean traceId128Bit = false;
+    private final List<TraceAttachedHandler> traceAttachedHandlers = new ArrayList<>();
+    private final List<TraceDetachedHandler> traceDetachedHandlers = new ArrayList<>();
 
     /**
      * @param localEndpoint Endpoint of the local service being traced. Defaults to site local.
@@ -100,6 +109,16 @@ public final class Tracer {
       return this;
     }
 
+    public Builder addTraceAttachedHandler(TraceAttachedHandler handler) {
+      this.traceAttachedHandlers.add(handler);
+      return this;
+    }
+
+    public Builder addTraceDetachedHandler(TraceDetachedHandler handler) {
+      this.traceDetachedHandlers.add(handler);
+      return this;
+    }
+
     public Tracer build() {
       if (clock == null) clock = Platform.get();
       if (localEndpoint == null) localEndpoint = Platform.get().localEndpoint();
@@ -121,6 +140,8 @@ public final class Tracer {
   final Recorder recorder;
   final Sampler sampler;
   final boolean traceId128Bit;
+  final List<TraceAttachedHandler> traceAttachedHandlers = new ArrayList<>();
+  final List<TraceDetachedHandler> traceDetachedHandlers = new ArrayList<>();
 
   Tracer(Builder builder) {
     this.clock = builder.clock;
@@ -128,6 +149,8 @@ public final class Tracer {
     this.recorder = new Recorder(localEndpoint, clock, builder.reporter);
     this.sampler = builder.sampler;
     this.traceId128Bit = builder.traceId128Bit;
+    this.traceAttachedHandlers.addAll(builder.traceAttachedHandlers);
+    this.traceDetachedHandlers.addAll(builder.traceDetachedHandlers);
   }
 
   /** Used internally by operations such as {@link Span#finish()}, exposed for convenience. */
@@ -211,6 +234,19 @@ public final class Tracer {
     return ensureSampled(nextContext(parent, parent));
   }
 
+  public TraceContext currentContext() {
+    return TraceContextHolder.get();
+  }
+
+  public Span withContext() {
+    return newTrace().start();
+  }
+
+  public Span withContext(TraceContext context) {
+    return newChild(context).start();
+  }
+
+
   Span ensureSampled(TraceContext context) {
     // If the sampled flag was left unset, we need to make the decision here
     if (context.sampled() == null) {
@@ -225,13 +261,52 @@ public final class Tracer {
   TraceContext nextContext(@Nullable TraceContext parent, SamplingFlags samplingFlags) {
     long nextId = Platform.get().randomLong();
     if (parent != null) {
-      return parent.toBuilder().spanId(nextId).parentId(parent.spanId()).build();
+      return parent.toBuilder()
+              .spanId(nextId)
+              .parentId(parent.spanId())
+              .attachedHandlers(traceAttachedHandlers)
+              .detachedHandlers(traceDetachedHandlers).build();
     }
     return TraceContext.newBuilder()
         .sampled(samplingFlags.sampled())
         .debug(samplingFlags.debug())
         .traceIdHigh(traceId128Bit ? Platform.get().randomLong() : 0L)
         .traceId(nextId)
-        .spanId(nextId).build();
+        .spanId(nextId)
+        .attachedHandlers(traceAttachedHandlers)
+        .detachedHandlers(traceDetachedHandlers).build();
+  }
+
+  public static void main(String[] args) {
+    Tracer tracer = Tracer.newBuilder()
+            .sampler(Sampler.NEVER_SAMPLE)
+            .addTraceAttachedHandler(new AttachHandler())
+            .addTraceDetachedHandler(new DetachHandler())
+            .build();
+    try (Span outerSpan = tracer.newTrace()) {
+      tracer.withContext(outerSpan.context()).start();
+    }
+  }
+
+  static class AttachHandler implements TraceAttachedHandler {
+
+    @Override
+    public void traceAttached(TraceContext context) {
+      System.out.println(String.format("Attaching: traceId=%s, spanId=%s, parentId=%s",
+              context.traceId(),
+              context.spanId(),
+              context.parentId()));
+    }
+  }
+
+  static class DetachHandler implements TraceDetachedHandler {
+
+    @Override
+    public void traceDetached(TraceContext context) {
+      System.out.println(String.format("Detaching: traceId=%s, spanId=%s, parentId=%s",
+              context.traceId(),
+              context.spanId(),
+              context.parentId()));
+    }
   }
 }

@@ -19,10 +19,12 @@ final class NoopSpan extends Span {
   }
 
   @Override public Span start() {
+    context.attach();
     return this;
   }
 
   @Override public Span start(long timestamp) {
+    context.attach();
     return this;
   }
 
@@ -51,9 +53,11 @@ final class NoopSpan extends Span {
   }
 
   @Override public void finish() {
+    context.detach();
   }
 
   @Override public void finish(long timestamp) {
+    context.detach();
   }
 
   @Override public void flush() {
