@@ -18,8 +18,9 @@ import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 
 /**
  * Using a tracer, you can create a root span capturing the critical path of a request. Child
@@ -140,8 +141,8 @@ public final class Tracer {
   final Recorder recorder;
   final Sampler sampler;
   final boolean traceId128Bit;
-  final List<TraceAttachedHandler> traceAttachedHandlers = new ArrayList<>();
-  final List<TraceDetachedHandler> traceDetachedHandlers = new ArrayList<>();
+  final List<TraceAttachedHandler> traceAttachedHandlers;
+  final List<TraceDetachedHandler> traceDetachedHandlers;
 
   Tracer(Builder builder) {
     this.clock = builder.clock;
@@ -149,8 +150,10 @@ public final class Tracer {
     this.recorder = new Recorder(localEndpoint, clock, builder.reporter);
     this.sampler = builder.sampler;
     this.traceId128Bit = builder.traceId128Bit;
-    this.traceAttachedHandlers.addAll(builder.traceAttachedHandlers);
-    this.traceDetachedHandlers.addAll(builder.traceDetachedHandlers);
+    this.traceAttachedHandlers = builder.traceAttachedHandlers.isEmpty() ?
+            null : new ArrayList<>(builder.traceAttachedHandlers);
+    this.traceDetachedHandlers = builder.traceDetachedHandlers.isEmpty() ?
+            null : new ArrayList<>(builder.traceDetachedHandlers);
   }
 
   /** Used internally by operations such as {@link Span#finish()}, exposed for convenience. */
@@ -229,7 +232,7 @@ public final class Tracer {
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
     if (Boolean.FALSE.equals(parent.sampled())) {
-      return new NoopSpan(parent);
+      return toSpan(nextContext(parent, parent));
     }
     return ensureSampled(nextContext(parent, parent));
   }
@@ -238,14 +241,9 @@ public final class Tracer {
     return TraceContextHolder.get();
   }
 
-  public Span withContext() {
-    return newTrace().start();
-  }
-
   public Span withContext(TraceContext context) {
     return newChild(context).start();
   }
-
 
   Span ensureSampled(TraceContext context) {
     // If the sampled flag was left unset, we need to make the decision here
@@ -277,14 +275,25 @@ public final class Tracer {
         .detachedHandlers(traceDetachedHandlers).build();
   }
 
+  //Temporary for simple tests. Will be removed soon
   public static void main(String[] args) {
     Tracer tracer = Tracer.newBuilder()
-            .sampler(Sampler.NEVER_SAMPLE)
+            .sampler(Sampler.ALWAYS_SAMPLE)
             .addTraceAttachedHandler(new AttachHandler())
             .addTraceDetachedHandler(new DetachHandler())
             .build();
-    try (Span outerSpan = tracer.newTrace()) {
-      tracer.withContext(outerSpan.context()).start();
+    try (Span outerSpan = tracer.newTrace().start()) {
+      try(Span innerSpan = tracer.withContext(outerSpan.context())) {
+        Callable<Object> c = new TraceCallable<>(tracer, () -> {
+          System.out.println("Starting...");
+          Thread.sleep(1000);
+          System.out.println("Finished");
+          return new Object();
+        });
+        Executors.newSingleThreadExecutor().submit(c);
+
+        tracer.newChild(innerSpan.context()).start().finish();
+      }
     }
   }
 

@@ -31,7 +31,7 @@ final class RealSpan extends Span {
   }
 
   @Override public Span start(long timestamp) {
-    context.attach();
+    TraceContextHolder.push(context);
     recorder.start(context, timestamp);
     return this;
   }
@@ -71,7 +71,7 @@ final class RealSpan extends Span {
 
   @Override public void finish(long timestamp) {
     recorder.finish(context, timestamp);
-    context.detach();
+    TraceContextHolder.pop();
   }
 
   @Override public void flush() {

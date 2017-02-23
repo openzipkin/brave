@@ -1,34 +1,33 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
-
 public class TraceContextHolder {
     private static final ThreadLocal<TraceContextItem> CURRENT_TRACE_CONTEXT = new ThreadLocal<>();
 
     public static TraceContext get() {
         TraceContextItem current = CURRENT_TRACE_CONTEXT.get();
-        return current != null ? current.getContext() : null;
+        return current != null ? current.context : null;
     }
 
-    static void pushAndMaybeGetParent(TraceContext context) {
+    public static void push(TraceContext context) {
         TraceContextItem parent = CURRENT_TRACE_CONTEXT.get();
         TraceContextItem child;
         if(parent != null) {
-            parent.getContext().detach();
+            parent.context.detachEvent();
             child = new TraceContextItem(context, parent);
         } else {
             child = new TraceContextItem(context);
         }
+        child.context.attachEvent();
         CURRENT_TRACE_CONTEXT.set(child);
     }
 
-    static void popAndMaybeGetParent() {
+    public static void pop() {
         TraceContextItem child = CURRENT_TRACE_CONTEXT.get();
         if(child != null) {
-            CURRENT_TRACE_CONTEXT.remove();
-            if(child.getParent() != null) {
-                TraceContextItem parent = child.getParent();
-                parent.getContext().attach();
+            child.context.detachEvent();
+            if(child.parent != null) {
+                TraceContextItem parent = child.parent;
+                parent.context.attachEvent();
                 CURRENT_TRACE_CONTEXT.set(parent);
             }
         }
@@ -45,15 +44,6 @@ public class TraceContextHolder {
         private TraceContextItem(TraceContext context, TraceContextItem parent) {
             this.parent = parent;
             this.context = context;
-        }
-
-        @Nullable
-        private TraceContextItem getParent() {
-            return parent;
-        }
-
-        private TraceContext getContext() {
-            return context;
         }
     }
 }

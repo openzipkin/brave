@@ -81,18 +81,15 @@ public abstract class TraceContext extends SamplingFlags {
    */
   public abstract boolean shared();
 
-  public TraceContext attach() {
-    TraceContextHolder.pushAndMaybeGetParent(this);
+  void attachEvent() {
     if(attachedHandlers() != null) {
       for(TraceAttachedHandler handler : attachedHandlers()) {
         handler.traceAttached(this);
       }
     }
-    return this;
   }
 
-  public void detach() {
-    TraceContextHolder.popAndMaybeGetParent();
+  void detachEvent() {
     if(detachedHandlers() != null) {
       for(TraceDetachedHandler handler : detachedHandlers()) {
         handler.traceDetached(this);
@@ -100,9 +97,9 @@ public abstract class TraceContext extends SamplingFlags {
     }
   }
 
-  abstract List<TraceAttachedHandler> attachedHandlers();
+  @Nullable abstract List<TraceAttachedHandler> attachedHandlers();
 
-  abstract List<TraceDetachedHandler> detachedHandlers();
+  @Nullable abstract List<TraceDetachedHandler> detachedHandlers();
 
   public abstract Builder toBuilder();
 
