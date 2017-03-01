@@ -59,3 +59,29 @@ client = ClientBuilder.newBuilder()
     .register(BraveTracingFeature.create(brave))
     .build();
 ```
+
+## Exception handling
+`ContainerResponseFilter` has no means to handle uncaught exceptions.
+Unless you provide a catch-all exception mapper, requests that result in
+unhandled exceptions will leak until they are eventually flushed.
+
+Besides using framework-specific code, the only approach is to make a
+custom `ExceptionMapper`, similar to below, which ensures a request is
+sent back even when something unexpected happens.
+
+```java
+@Provider
+public static class CatchAllExceptions implements ExceptionMapper<Exception> {
+
+  @Override public Response toResponse(Exception e) {
+    if (e instanceof WebApplicationException) {
+      return ((WebApplicationException) e).getResponse();
+    }
+
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+        .entity("Internal error")
+        .type("text/plain")
+        .build();
+  }
+}
+```
