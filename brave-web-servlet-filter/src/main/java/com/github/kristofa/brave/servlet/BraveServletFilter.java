@@ -3,13 +3,13 @@ package com.github.kristofa.brave.servlet;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
 import com.github.kristofa.brave.internal.Nullable;
-import com.github.kristofa.brave.internal.MaybeAddClientAddress;
 import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
+import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -61,6 +62,7 @@ public class BraveServletFilter implements Filter {
     private final ServerResponseInterceptor responseInterceptor;
     private final SpanNameProvider spanNameProvider;
     @Nullable // while deprecated constructor is in use
+    private final ServerTracer serverTracer;
     private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     private FilterConfig filterConfig;
@@ -69,6 +71,7 @@ public class BraveServletFilter implements Filter {
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.spanNameProvider = b.spanNameProvider;
+        this.serverTracer = b.brave.serverTracer();
         this.maybeAddClientAddressFromRequest = MaybeAddClientAddressFromRequest.create(b.brave);
     }
 
@@ -80,6 +83,7 @@ public class BraveServletFilter implements Filter {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
         this.spanNameProvider = spanNameProvider;
+        this.serverTracer = null;
         this.maybeAddClientAddressFromRequest = null;
     }
 
@@ -110,6 +114,12 @@ public class BraveServletFilter implements Filter {
 
             try {
                 filterChain.doFilter(request, statusExposingServletResponse);
+            } catch (IOException | ServletException| RuntimeException | Error e) {
+                // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
+                if (serverTracer != null) {
+                    serverTracer.submitBinaryAnnotation(Constants.ERROR, e.getMessage());
+                }
+                throw e;
             } finally {
                 responseInterceptor.handle(new HttpServerResponseAdapter(
                     statusExposingServletResponse::getStatus));
@@ -137,10 +147,15 @@ public class BraveServletFilter implements Filter {
 
     private static class StatusExposingServletResponse extends HttpServletResponseWrapper {
         // The Servlet spec says: calling setStatus is optional, if no status is set, the default is OK.
-        private int httpStatus = HttpServletResponse.SC_OK;
+        int httpStatus = HttpServletResponse.SC_OK;
 
-        public StatusExposingServletResponse(HttpServletResponse response) {
+        StatusExposingServletResponse(HttpServletResponse response) {
             super(response);
+        }
+
+        @Override public void setStatus(int sc, String sm) {
+            httpStatus = sc;
+            super.setStatus(sc, sm);
         }
 
         @Override
@@ -162,7 +177,7 @@ public class BraveServletFilter implements Filter {
         }
 
         @Override
-        public int getStatus() {
+        public int getStatus() { // note! this wasn't added until Servlet 3.0
             return httpStatus;
         }
     }

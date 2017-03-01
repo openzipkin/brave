@@ -4,7 +4,6 @@ import com.github.kristofa.brave.http.HttpServerRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
-import java.net.URISyntaxException;
 
 public class ServletHttpServerRequest implements HttpServerRequest {
 
@@ -21,7 +20,11 @@ public class ServletHttpServerRequest implements HttpServerRequest {
 
     @Override
     public URI getUri() {
-        return URI.create(request.getRequestURI());
+        StringBuffer url = request.getRequestURL();
+        if (request.getQueryString() != null && !request.getQueryString().isEmpty()) {
+            url.append('?').append(request.getQueryString());
+        }
+        return URI.create(url.toString());
     }
 
     @Override
