@@ -1,6 +1,7 @@
 package brave;
 
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextHolder;
 import zipkin.Endpoint;
 
 final class NoopSpan extends Span {
@@ -19,10 +20,12 @@ final class NoopSpan extends Span {
   }
 
   @Override public Span start() {
+    TraceContextHolder.push(context);
     return this;
   }
 
   @Override public Span start(long timestamp) {
+    TraceContextHolder.push(context);
     return this;
   }
 
@@ -51,9 +54,11 @@ final class NoopSpan extends Span {
   }
 
   @Override public void finish() {
+    TraceContextHolder.pop();
   }
 
   @Override public void finish(long timestamp) {
+    TraceContextHolder.pop();
   }
 
   @Override public void flush() {

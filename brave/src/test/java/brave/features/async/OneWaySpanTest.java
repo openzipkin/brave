@@ -61,7 +61,7 @@ public class OneWaySpanTest {
             .start().flush(); // start the server side and flush instead of processing a response
 
         flushedIncomingRequest.countDown();
-        // eventhough the client doesn't read the response, we return one
+        // even though the client doesn't read the response, we return one
         return new MockResponse();
       }
     });

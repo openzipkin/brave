@@ -2,6 +2,7 @@ package brave;
 
 import brave.internal.recorder.Recorder;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextHolder;
 import zipkin.Endpoint;
 
 /** This wraps the public api and guards access to a mutable span. */
@@ -30,6 +31,7 @@ final class RealSpan extends Span {
   }
 
   @Override public Span start(long timestamp) {
+    TraceContextHolder.push(context);
     recorder.start(context, timestamp);
     return this;
   }
@@ -69,6 +71,7 @@ final class RealSpan extends Span {
 
   @Override public void finish(long timestamp) {
     recorder.finish(context, timestamp);
+    TraceContextHolder.pop();
   }
 
   @Override public void flush() {
