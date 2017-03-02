@@ -1,19 +1,21 @@
-package com.github.kristofa.brave.jersey2;
+package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
 import java.io.IOException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.servlet.ServletContainer;
+import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
+import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
+import org.jboss.resteasy.plugins.spring.SpringContextLoaderListener;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 public class ITBraveTracingFeature_Server extends ITServletContainer {
 
@@ -47,12 +49,24 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
   @Override
   public void init(ServletContextHandler handler, Brave brave, SpanNameProvider spanNameProvider) {
 
-    ResourceConfig config = new ResourceConfig()
-        .register(TestResource.class)
-        .register(BraveTracingFeature.builder(brave)
-            .spanNameProvider(spanNameProvider)
-            .build()
-        );
-    handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
+    AnnotationConfigWebApplicationContext appContext =
+        new AnnotationConfigWebApplicationContext() {
+          // overriding this allows us to register dependencies of BraveTracingFeatureConfiguration
+          // without passing static state to a configuration class.
+          @Override protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) {
+            beanFactory.registerSingleton("brave", brave);
+            beanFactory.registerSingleton("spanNameProvider", spanNameProvider);
+            super.loadBeanDefinitions(beanFactory);
+          }
+        };
+
+    appContext.register(TestResource.class); // the test resource
+    // TODO: deprecated
+    appContext.register(ContainerFiltersConfiguration.class); // generic tracing setup
+
+    // resteasy + spring configuration, programmatically as opposed to using web.xml
+    handler.addServlet(new ServletHolder(new HttpServletDispatcher()), "/*");
+    handler.addEventListener(new ResteasyBootstrap());
+    handler.addEventListener(new SpringContextLoaderListener(appContext));
   }
 }

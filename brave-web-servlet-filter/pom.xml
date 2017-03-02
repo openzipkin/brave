@@ -27,9 +27,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-webapp</artifactId>
-            <version>${jetty.version}</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>brave-http-tests</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

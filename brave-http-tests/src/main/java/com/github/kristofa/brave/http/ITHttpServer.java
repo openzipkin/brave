@@ -38,13 +38,14 @@ public abstract class ITHttpServer {
     init(brave = braveBuilder(Sampler.ALWAYS_SAMPLE).build());
   }
 
-  /** recreate the server if needed */
-  protected abstract void init(Brave brave) throws Exception;
+  void init(Brave brave) throws Exception {
+    init(brave, new DefaultSpanNameProvider());
+  }
 
   /** recreate the server if needed */
   protected abstract void init(Brave brave, SpanNameProvider spanNameProvider) throws Exception;
 
-  protected abstract String baseUrl(String path);
+  protected abstract String url(String path);
 
   @Test
   public void usesExistingTraceId() throws Exception {
@@ -54,7 +55,7 @@ public abstract class ITHttpServer {
     final String parentId = traceId;
     final String spanId = "48485a3953bb6124";
 
-    Request request = new Request.Builder().url(baseUrl(path))
+    Request request = new Request.Builder().url(url(path))
         .header("X-B3-TraceId", traceId)
         .header("X-B3-ParentSpanId", parentId)
         .header("X-B3-SpanId", spanId)
@@ -78,7 +79,7 @@ public abstract class ITHttpServer {
 
     String path = "/foo";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
@@ -88,10 +89,25 @@ public abstract class ITHttpServer {
   }
 
   @Test
+  public void reportsClientAddress() throws Exception {
+    String path = "/foo";
+
+    Request request = new Request.Builder().url(url(path)).build();
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+    }
+
+    assertThat(collectedSpans())
+        .flatExtracting(s -> s.binaryAnnotations)
+        .extracting(b -> b.key)
+        .contains(Constants.CLIENT_ADDR);
+  }
+
+  @Test
   public void reportsServerAnnotationsToZipkin() throws Exception {
     String path = "/foo";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
@@ -106,7 +122,7 @@ public abstract class ITHttpServer {
   public void defaultSpanNameIsMethodName() throws Exception {
     String path = "/foo";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
@@ -121,7 +137,7 @@ public abstract class ITHttpServer {
     init(brave, r -> r.getUri().getPath());
     String path = "/foo";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
@@ -135,7 +151,7 @@ public abstract class ITHttpServer {
   public void addsStatusCodeWhenNotOk() throws Exception {
     String path = "/notfound";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
     } catch (RuntimeException e) {
       // some servers think 404 is an error
@@ -150,7 +166,7 @@ public abstract class ITHttpServer {
   public void reportsSpanOnTransportException() throws Exception {
     String path = "/disconnect";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
     } catch (Exception e) {
       // ok, but the span should include an error!
@@ -173,7 +189,7 @@ public abstract class ITHttpServer {
   public void httpUrlTagIncludesQueryParams() throws Exception {
     String path = "/foo?z=2&yAA=1";
 
-    Request request = new Request.Builder().url(baseUrl(path)).build();
+    Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
@@ -182,7 +198,7 @@ public abstract class ITHttpServer {
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
         .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly(baseUrl(path).toString());
+        .containsExactly(url(path).toString());
   }
 
   Brave.Builder braveBuilder(Sampler sampler) {
