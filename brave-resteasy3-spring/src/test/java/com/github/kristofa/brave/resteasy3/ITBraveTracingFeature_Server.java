@@ -98,8 +98,7 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
 
     appContext.register(TestResource.class); // the test resource
     appContext.register(CatchAllExceptions.class);
-    // TODO: deprecated
-    appContext.register(ContainerFiltersConfiguration.class); // generic tracing setup
+    appContext.register(BraveTracingFeatureConfiguration.class); // generic tracing setup
 
     // resteasy + spring configuration, programmatically as opposed to using web.xml
     handler.addServlet(new ServletHolder(new HttpServletDispatcher()), "/*");

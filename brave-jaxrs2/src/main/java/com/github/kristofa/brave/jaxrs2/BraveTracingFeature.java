@@ -6,9 +6,11 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 import javax.inject.Inject;
 import javax.ws.rs.core.Feature;
 import javax.ws.rs.core.FeatureContext;
+import javax.ws.rs.ext.Provider;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+@Provider
 public final class BraveTracingFeature implements Feature {
 
   /** Creates a tracing feature with defaults. Use {@link #builder(Brave)} to customize. */
