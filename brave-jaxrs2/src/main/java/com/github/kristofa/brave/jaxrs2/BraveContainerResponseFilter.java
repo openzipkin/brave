@@ -2,15 +2,18 @@ package com.github.kristofa.brave.jaxrs2;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
+import java.io.IOException;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import java.io.IOException;
+import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -43,8 +46,11 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
     }
 
     private final ServerResponseInterceptor responseInterceptor;
+    // null on deprecated constructor
+    private final ServerTracer serverTracer;
 
     BraveContainerResponseFilter(Builder b) { // intentionally hidden
+        this.serverTracer = b.brave.serverTracer();
         this.responseInterceptor = b.brave.serverResponseInterceptor();
     }
 
@@ -59,11 +65,16 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
     @Deprecated
     public BraveContainerResponseFilter(ServerResponseInterceptor responseInterceptor) {
         this.responseInterceptor = responseInterceptor;
+        this.serverTracer = null;
     }
 
     @Override
     public void filter(final ContainerRequestContext containerRequestContext, final ContainerResponseContext containerResponseContext) throws IOException {
         HttpResponse httpResponse = containerResponseContext::getStatus;
+        Response.StatusType statusInfo = containerResponseContext.getStatusInfo();
+        if (serverTracer != null && statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
+            serverTracer.submitBinaryAnnotation(Constants.ERROR, statusInfo.getReasonPhrase());
+        }
         responseInterceptor.handle(new HttpServerResponseAdapter(httpResponse));
     }
 }
