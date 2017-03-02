@@ -22,8 +22,10 @@ public class ITBraveServerInOutInterceptors extends ITHttpServer {
     throw new AssumptionViolatedException("TODO: add query params to http.url");
   }
 
+  // AbstractHTTPDestination.HTTP_REQUEST can get access to the servlet request, but requires
+  // a dep on cxf-rt-transports-http
   @Override @Test public void reportsClientAddress() {
-    throw new AssumptionViolatedException("TODO: fix client address");
+    throw new AssumptionViolatedException("cannot read client address w/o cxf-rt-transports-http");
   }
 
   @Override @Test public void addsStatusCodeWhenNotOk() {
