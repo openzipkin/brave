@@ -1,14 +1,17 @@
 package com.github.kristofa.brave.jersey2;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
 import java.io.IOException;
+import javax.servlet.ServletContext;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
@@ -27,10 +30,23 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
 
   @Path("")
   public static class TestResource {
+    final LocalTracer localTracer;
+
+    public TestResource(@Context ServletContext context) {
+      this.localTracer = ((Brave) context.getAttribute("brave")).localTracer();
+    }
 
     @GET
     @Path("foo")
     public Response get() {
+      return Response.status(200).build();
+    }
+
+    @GET
+    @Path("child")
+    public Response child() {
+      localTracer.startNewSpan("child", "child");
+      localTracer.finishSpan();
       return Response.status(200).build();
     }
 
@@ -74,5 +90,6 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
         );
 
     handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
+    handler.setAttribute("brave", brave); // for TestResource
   }
 }

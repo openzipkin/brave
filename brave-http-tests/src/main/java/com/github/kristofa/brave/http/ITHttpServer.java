@@ -88,6 +88,33 @@ public abstract class ITHttpServer {
         .isEmpty();
   }
 
+  /**
+   * This ensures thread-state is propagated from trace interceptors to user code. The endpoint
+   * "/child" is expected to create a local span. When this works, it should be a child of the
+   * "current span", in this case the span representing an incoming server request. When thread
+   * state isn't managed properly, the child span will appear as a new trace.
+   */
+  @Test
+  public void createsChildSpan() throws Exception {
+    String path = "/child";
+
+    Request request = new Request.Builder().url(url(path)).build();
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+    }
+
+    List<Span> trace = collectedSpans();
+    assertThat(trace).hasSize(2);
+
+    Span child = trace.get(0);
+    Span parent = trace.get(1);
+
+    assertThat(parent.traceId).isEqualTo(child.traceId);
+    assertThat(parent.id).isEqualTo(child.parentId);
+    assertThat(parent.timestamp).isLessThan(child.timestamp);
+    assertThat(parent.duration).isGreaterThan(child.duration);
+  }
+
   @Test
   public void reportsClientAddress() throws Exception {
     String path = "/foo";

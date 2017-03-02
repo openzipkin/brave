@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.cxf3;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITHttpServer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import java.io.IOException;
@@ -22,6 +23,8 @@ public class ITBraveServerInOutInterceptors extends ITHttpServer {
     throw new AssumptionViolatedException("TODO: add query params to http.url");
   }
 
+  // AbstractHTTPDestination.HTTP_REQUEST can get access to the servlet request, but requires
+  // a dep on cxf-rt-transports-http
   @Override @Test public void reportsClientAddress() {
     throw new AssumptionViolatedException("TODO: fix client address");
   }
@@ -30,12 +33,30 @@ public class ITBraveServerInOutInterceptors extends ITHttpServer {
     throw new AssumptionViolatedException("TODO: fix error code");
   }
 
+  @Override @Test public void createsChildSpan() throws Exception {
+    // currently, the parent and child are not joining as a part of the same span
+    throw new AssumptionViolatedException("https://github.com/openzipkin/brave/pull/304");
+  }
+
   @Path("")
   public static class TestResource {
+    final LocalTracer localTracer;
+
+    TestResource(Brave brave) {
+      this.localTracer = brave.localTracer();
+    }
 
     @GET
     @Path("foo")
     public Response get() {
+      return Response.status(200).build();
+    }
+
+    @GET
+    @Path("child")
+    public Response child() {
+      localTracer.startNewSpan("child", "child");
+      localTracer.finishSpan();
       return Response.status(200).build();
     }
 
@@ -56,8 +77,7 @@ public class ITBraveServerInOutInterceptors extends ITHttpServer {
     // setup server
     JAXRSServerFactoryBean serverFactory = new JAXRSServerFactoryBean();
     serverFactory.setAddress(url);
-    serverFactory.setServiceClass(TestResource.class);
-    serverFactory.setServiceBean(new TestResource());
+    serverFactory.setServiceBean(new TestResource(brave));
     serverFactory.getInInterceptors().add(
         BraveServerInInterceptor.builder(brave).spanNameProvider(spanNameProvider).build()
     );

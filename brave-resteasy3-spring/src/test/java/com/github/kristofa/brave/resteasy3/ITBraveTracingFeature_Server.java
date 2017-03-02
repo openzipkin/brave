@@ -1,13 +1,16 @@
 package com.github.kristofa.brave.resteasy3;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import java.io.IOException;
+import javax.servlet.ServletContext;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
@@ -18,6 +21,7 @@ import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
 import org.jboss.resteasy.plugins.spring.SpringContextLoaderListener;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
@@ -50,10 +54,24 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
 
   @Path("")
   public static class TestResource {
+    final LocalTracer localTracer;
+
+    @Autowired
+    public TestResource(Brave brave) {
+      this.localTracer = brave.localTracer();
+    }
 
     @GET
     @Path("foo")
     public Response get() {
+      return Response.status(200).build();
+    }
+
+    @GET
+    @Path("child")
+    public Response child() {
+      localTracer.startNewSpan("child", "child");
+      localTracer.finishSpan();
       return Response.status(200).build();
     }
 
