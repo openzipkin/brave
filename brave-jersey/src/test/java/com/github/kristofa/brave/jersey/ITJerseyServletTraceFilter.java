@@ -1,31 +1,22 @@
 package com.github.kristofa.brave.jersey;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.ITHttpServer;
+import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.servlet.GuiceFilter;
-import com.google.inject.servlet.GuiceServletContextListener;
-import com.google.inject.servlet.ServletModule;
-import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
-import com.sun.jersey.test.framework.WebAppDescriptor;
-import com.sun.jersey.test.framework.spi.container.TestContainer;
-import com.sun.jersey.test.framework.spi.container.grizzly2.web.GrizzlyWebTestContainerFactory;
+import com.github.kristofa.brave.servlet.BraveServletFilter;
+import com.sun.jersey.api.core.DefaultResourceConfig;
+import com.sun.jersey.spi.container.servlet.ServletContainer;
 import java.io.IOException;
-import java.net.URI;
+import java.util.EnumSet;
+import javax.servlet.DispatcherType;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
-import okhttp3.HttpUrl;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 
-public class ITJerseyServletTraceFilter extends ITHttpServer {
-
-  static TestContainer server;
+public class ITJerseyServletTraceFilter extends ITServletContainer {
 
   @Path("")
   public static class TestResource {
@@ -43,52 +34,17 @@ public class ITJerseyServletTraceFilter extends ITHttpServer {
     }
   }
 
-  public static class GuiceServletConfig extends GuiceServletContextListener {
-    @Override protected Injector getInjector() {
-      return Guice.createInjector(new ServletModule() {
-        @Override
-        protected void configureServlets() {
-          bind(TestResource.class);
-          serve("/*").with(GuiceContainer.class);
-          filter("/*").through(new DelegatingServletTraceFilter());
-        }
-      });
-    }
-  }
+  @Override
+  public void init(ServletContextHandler handler, Brave brave, SpanNameProvider spanNameProvider) {
 
-  @BeforeClass public static void startServer() {
-    server = new GrizzlyWebTestContainerFactory().create(
-        URI.create("http://localhost:9998"),
-        new WebAppDescriptor.Builder()
-            .contextListenerClass(GuiceServletConfig.class)
-            .filterClass(GuiceFilter.class)
-            .build()
-    );
-    server.start();
-  }
+    // add a servlet for the test resource
+    DefaultResourceConfig config = new DefaultResourceConfig(TestResource.class);
+    handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
 
-  @AfterClass public static void stopServer() {
-    if (server != null) server.stop();
-  }
-
-  @Override protected void init(Brave brave) throws Exception {
-    DelegatingServletTraceFilter.setFilter(newTraceFilter(brave, new DefaultSpanNameProvider()));
-  }
-
-  @Override protected void init(Brave brave, SpanNameProvider spanNameProvider) throws Exception {
-    DelegatingServletTraceFilter.setFilter(newTraceFilter(brave, spanNameProvider));
-  }
-
-  ServletTraceFilter newTraceFilter(final Brave brave, final SpanNameProvider spanNameProvider) {
-    return Guice.createInjector(new AbstractModule() {
-      @Override protected void configure() {
-        bind(Brave.class).toInstance(brave);
-        bind(SpanNameProvider.class).toInstance(spanNameProvider);
-      }
-    }).getInstance(ServletTraceFilter.class);
-  }
-
-  @Override protected String baseUrl(String path) {
-    return HttpUrl.parse(server.getBaseUri().toString()).resolve(path).toString();
+    // add the trace filter
+    BraveServletFilter filter = ServletTraceFilter.builder(brave)
+        .spanNameProvider(spanNameProvider)
+        .build();
+    handler.addFilter(new FilterHolder(filter), "/*", EnumSet.of(DispatcherType.REQUEST));
   }
 }
