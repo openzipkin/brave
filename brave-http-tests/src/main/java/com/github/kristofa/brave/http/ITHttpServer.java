@@ -23,8 +23,10 @@ import zipkin.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 public abstract class ITHttpServer {
+
   @Rule public ExpectedException thrown = ExpectedException.none();
   public OkHttpClient client = new OkHttpClient();
 
@@ -128,6 +130,23 @@ public abstract class ITHttpServer {
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key)
         .contains(Constants.CLIENT_ADDR);
+  }
+
+  @Test
+  public void reportsClientAddress_XForwardedFor() throws Exception {
+    String path = "/foo";
+
+    Request request = new Request.Builder().url(url(path))
+        .header("X-Forwarded-For", "1.2.3.4")
+        .build();
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+    }
+
+    assertThat(collectedSpans())
+        .flatExtracting(s -> s.binaryAnnotations)
+        .extracting(b -> b.key, b -> b.endpoint.ipv4)
+        .contains(tuple(Constants.CLIENT_ADDR, 1 << 24 | 2 << 16 | 3 << 8 | 4));
   }
 
   @Test

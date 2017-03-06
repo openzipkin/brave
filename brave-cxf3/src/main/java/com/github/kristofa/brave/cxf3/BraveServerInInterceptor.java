@@ -48,6 +48,7 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
   final ServerSpanThreadBinder threadBinder;
   final ServerRequestInterceptor requestInterceptor;
   final SpanNameProvider spanNameProvider;
+  final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
   BraveServerInInterceptor(Builder b) { // intentionally hidden
     super(Phase.RECEIVE);
@@ -55,13 +56,15 @@ public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Mes
     this.threadBinder = b.brave.serverSpanThreadBinder();
     this.requestInterceptor = b.brave.serverRequestInterceptor();
     this.spanNameProvider = b.spanNameProvider;
+    this.maybeAddClientAddressFromRequest = new MaybeAddClientAddressFromRequest(b.brave);
   }
 
   @Override
   public void handleMessage(final Message message) throws Fault {
     try {
-      requestInterceptor.handle(
-          new HttpServerRequestAdapter(new HttpMessage.ServerRequest(message), spanNameProvider));
+      HttpMessage.ServerRequest request = new HttpMessage.ServerRequest(message);
+      requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
+      maybeAddClientAddressFromRequest.accept(request);
       message.getExchange().put(BRAVE_SERVER_SPAN, threadBinder.getCurrentServerSpan());
     } finally {
       threadBinder.setCurrentSpan(ServerSpan.EMPTY);

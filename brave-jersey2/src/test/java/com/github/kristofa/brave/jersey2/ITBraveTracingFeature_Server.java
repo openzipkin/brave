@@ -25,7 +25,7 @@ import org.junit.Test;
 public class ITBraveTracingFeature_Server extends ITServletContainer {
 
   @Override @Test public void reportsClientAddress() {
-    throw new AssumptionViolatedException("TODO: fix client address");
+    throw new AssumptionViolatedException("ContainerRequestContext doesn't include remote address");
   }
 
   @Path("")

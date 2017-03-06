@@ -7,6 +7,7 @@ import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.IOException;
 
 import javax.inject.Inject;
@@ -56,10 +57,13 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
 
     private final ServerRequestInterceptor requestInterceptor;
     private final SpanNameProvider spanNameProvider;
+    @Nullable // while deprecated constructor is in use
+    private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     BraveContainerRequestFilter(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.spanNameProvider = b.spanNameProvider;
+        this.maybeAddClientAddressFromRequest = new MaybeAddClientAddressFromRequest(b.brave);
     }
 
     @Inject // internal dependency-injection constructor
@@ -74,12 +78,15 @@ public class BraveContainerRequestFilter implements ContainerRequestFilter {
     public BraveContainerRequestFilter(ServerRequestInterceptor interceptor, SpanNameProvider spanNameProvider) {
         this.requestInterceptor = interceptor;
         this.spanNameProvider = spanNameProvider;
+        this.maybeAddClientAddressFromRequest = null;
     }
 
     @Override
     public void filter(ContainerRequestContext containerRequestContext) throws IOException {
         HttpServerRequest request = new JaxRs2HttpServerRequest(containerRequestContext);
         requestInterceptor.handle(new HttpServerRequestAdapter(request, spanNameProvider));
+        if (maybeAddClientAddressFromRequest != null) {
+            maybeAddClientAddressFromRequest.accept(containerRequestContext);
+        }
     }
-
 }
