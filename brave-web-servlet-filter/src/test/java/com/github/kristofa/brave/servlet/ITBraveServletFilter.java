@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import java.io.IOException;
@@ -31,6 +32,20 @@ public class ITBraveServletFilter extends ITServletContainer {
     }
   }
 
+  static class ChildServlet extends HttpServlet {
+    final LocalTracer tracer;
+
+    ChildServlet(LocalTracer tracer) {
+      this.tracer = tracer;
+    }
+
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+      tracer.startNewSpan("child", "child");
+      tracer.finishSpan();
+      resp.setStatus(200);
+    }
+  }
+
   static class DisconnectServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -42,6 +57,7 @@ public class ITBraveServletFilter extends ITServletContainer {
   public void init(ServletContextHandler handler, Brave brave, SpanNameProvider spanNameProvider) {
     // add servlets for the test resource
     handler.addServlet(new ServletHolder(new FooServlet()), "/foo");
+    handler.addServlet(new ServletHolder(new ChildServlet(brave.localTracer())), "/child");
     handler.addServlet(new ServletHolder(new DisconnectServlet()), "/disconnect");
 
     // add the trace filter

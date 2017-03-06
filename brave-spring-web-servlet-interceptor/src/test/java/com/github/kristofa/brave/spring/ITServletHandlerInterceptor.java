@@ -1,6 +1,7 @@
 package com.github.kristofa.brave.spring;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import java.io.IOException;
@@ -33,9 +34,22 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
 
   @Controller
   static class TestController {
+    final LocalTracer localTracer;
+
+    @Autowired
+    TestController(Brave brave) {
+      this.localTracer = brave.localTracer();
+    }
 
     @RequestMapping(value = "/foo")
     public ResponseEntity<Void> foo() throws IOException {
+      return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(value = "/child")
+    public ResponseEntity<Void> child() {
+      localTracer.startNewSpan("child", "child");
+      localTracer.finishSpan();
       return ResponseEntity.ok().build();
     }
 
