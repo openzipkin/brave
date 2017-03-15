@@ -5,6 +5,7 @@ import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.http.ITServletContainer;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import java.io.IOException;
+import java.util.concurrent.Callable;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AssumptionViolatedException;
@@ -49,9 +50,25 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
       return ResponseEntity.ok().build();
     }
 
+    @RequestMapping(value = "/childAsync")
+    public Callable<ResponseEntity<Void>> childAsync() throws IOException {
+      return () -> {
+        localTracer.startNewSpan("child", "child");
+        localTracer.finishSpan();
+        return ResponseEntity.ok().build();
+      };
+    }
+
     @RequestMapping(value = "/disconnect")
     public ResponseEntity<Void> disconnect() throws IOException {
       throw new IOException();
+    }
+
+    @RequestMapping(value = "/disconnectAsync")
+    public  Callable<ResponseEntity<Void>> disconnectAsync() throws IOException {
+      return () -> {
+        throw new IOException();
+      };
     }
   }
 

@@ -22,7 +22,8 @@
     </licenses>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jersey.version>2.25</jersey.version>
+        <!-- indirectly depends on servlet 3.0.1 -->
+        <jersey.version>2.25.1</jersey.version>
     </properties>
 
     <dependencies>
@@ -47,6 +48,13 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http-tests</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- to enable servlet 3.x support -->
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-servlet</artifactId>
+            <version>${jersey.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

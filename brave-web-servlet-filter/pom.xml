@@ -20,6 +20,7 @@
             <artifactId>brave-http</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- compile dep on 3.0.1 runtime on 2.5 -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>

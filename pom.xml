@@ -48,6 +48,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <spring.version>4.3.4.RELEASE</spring.version>
+    <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
     <zipkin.version>1.19.2</zipkin.version>
     <zipkin-reporter.version>0.6.12</zipkin-reporter.version>
