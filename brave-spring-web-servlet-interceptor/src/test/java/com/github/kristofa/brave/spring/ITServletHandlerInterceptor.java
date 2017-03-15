@@ -24,10 +24,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 
 public class ITServletHandlerInterceptor extends ITServletContainer {
 
-  @Override @Test public void reportsSpanOnTransportException() throws Exception {
-    throw new AssumptionViolatedException("TODO: fix error reporting");
-  }
-
   @Override @Test public void addsStatusCodeWhenNotOk() throws Exception {
     throw new AssumptionViolatedException("TODO: fix error reporting");
   }

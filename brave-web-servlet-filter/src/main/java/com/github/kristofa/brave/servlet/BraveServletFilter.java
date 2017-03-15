@@ -115,9 +115,11 @@ public class BraveServletFilter implements Filter {
             try {
                 filterChain.doFilter(request, statusExposingServletResponse);
             } catch (IOException | ServletException| RuntimeException | Error e) {
-                // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
                 if (serverTracer != null) {
-                    serverTracer.submitBinaryAnnotation(Constants.ERROR, e.getMessage());
+                    // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
+                    String message = e.getMessage();
+                    if (message == null) message = e.getClass().getSimpleName();
+                    serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
                 }
                 throw e;
             } finally {
