@@ -21,6 +21,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 
 public class ITJerseyServletTraceFilter extends ITServletContainer {
 
+  /** Jersey 1.x pins to JAX-RS 1.1, which doesn't support AsyncResponse */
   @Path("")
   public static class TestResource {
     final LocalTracer localTracer;

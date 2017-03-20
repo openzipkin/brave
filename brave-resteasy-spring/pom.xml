@@ -24,6 +24,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- 2.3.10.Final has an unpublished dependency. This is the version prior to that -->
+    <!-- indirectly depends on servlet 2.5 -->
     <resteasy.version>2.3.7.Final</resteasy.version>
   </properties>
   
@@ -34,12 +35,18 @@
         <version>${project.version}</version>
     </dependency>
     <dependency>
-		<groupId>org.jboss.resteasy</groupId>
-		<artifactId>resteasy-jaxrs</artifactId>
-		<version>${resteasy.version}</version>
-		<scope>provided</scope>
-	</dependency>
-	<dependency>
+      <groupId>org.jboss.resteasy</groupId>
+      <artifactId>resteasy-jaxrs</artifactId>
+      <version>${resteasy.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>servlet-api</artifactId>
+      <version>2.5</version>
+      <scope>provided</scope>
+    </dependency>
+	  <dependency>
     	<groupId>org.springframework</groupId>
 	    <artifactId>spring-core</artifactId>
 	    <scope>provided</scope>
@@ -55,12 +62,6 @@
         <artifactId>resteasy-spring</artifactId>
         <version>${resteasy.version}</version>
         <scope>test</scope>
-    </dependency>
-	<dependency>
-       <groupId>org.eclipse.jetty</groupId>
-       <artifactId>jetty-webapp</artifactId>
-       <version>${jetty.version}</version>
-       <scope>test</scope>
     </dependency>
     <dependency>
         <groupId>org.springframework</groupId>
@@ -79,16 +80,17 @@
         <artifactId>spring-webmvc</artifactId>
         <version>${spring.version}</version>
         <scope>provided</scope>
-    </dependency>  
-    <dependency>
-        <groupId>org.eclipse.jetty</groupId>
-        <artifactId>jetty-servlet</artifactId>
-        <version>${jetty.version}</version>
-        <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-http-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <!-- for servlet 2.5 -->
+      <version>7.6.21.v20160908</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
