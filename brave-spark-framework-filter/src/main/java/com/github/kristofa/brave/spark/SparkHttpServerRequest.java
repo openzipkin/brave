@@ -3,18 +3,16 @@ package com.github.kristofa.brave.spark;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import spark.Request;
 
+import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
 
-/**
- * Created by 00013708 on 2017/3/10.
- */
-public class SparkHttpServerRequest implements HttpServerRequest {
+
+class SparkHttpServerRequest implements HttpServerRequest {
     private Request request;
 
     public SparkHttpServerRequest(Request request) {
         this.request = request;
     }
-
 
     @Override
     public String getHttpHeaderValue(String headerName) {
@@ -23,7 +21,12 @@ public class SparkHttpServerRequest implements HttpServerRequest {
 
     @Override
     public URI getUri() {
-        return URI.create(this.request.uri());
+        HttpServletRequest httpServletRequest = request.raw();
+        StringBuffer url = httpServletRequest.getRequestURL();
+        if (httpServletRequest.getQueryString() != null && !httpServletRequest.getQueryString().isEmpty()) {
+            url.append('?').append(httpServletRequest.getQueryString());
+        }
+        return URI.create(url.toString());
     }
 
     @Override

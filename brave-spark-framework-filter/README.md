@@ -7,7 +7,7 @@ create and submit span with `sr`', `ss` annotations.
 
 Here is a use Example:
 
-First,add dependency
+Add a dependency:
 
 ```
 <dependency>
@@ -17,40 +17,23 @@ First,add dependency
 </dependency>
         
 ```
-Second,configure Brave
-```
-@Configuration
-public class BraveConfiguration {
 
-    /*@Bean 
-    Sender sender() {
-        return OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
-    }*/
-
-    @Bean
-    public Reporter reporter() {
-        return new MyLogReporter();// I just report to log files,then use flume to gather.
-        //return AsyncReporter.builder(sender()).build();
-    }
-
-    @Bean
-    public Brave brave(Reporter reporter) {
-        Brave brave = new Brave.Builder("esb-producer").reporter(reporter).build();
-        return brave;
-    }
-}
+Use it in Spark:
 
 ```
-
-Third,use it in Spark
-
-```
-    ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
+    Sender sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
     
-    Brave brave = context.getBean(Brave.class);
+    Reporter reporter = new LoggingReporter();
+    //Reporter reporter = AsyncReporter.builder(sender()).build();
+    
+    Brave brave = new Brave.Builder("service-name").reporter(reporter).build();
     
     Spark.before(BraveSparkRequestFilter.create(brave));
-     
+    
+    Spark.get("/foo", (req, res) -> "bar");
+    
+    Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandlerImpl()));
+    
     Spark.after(BraveSparkResponseFilter.create(brave));
 
 ```

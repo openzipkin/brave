@@ -3,19 +3,19 @@ package com.github.kristofa.brave.spark;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.spark.internal.MaybeAddClientAddressFromRequest;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-/**
- * Created by 00013708 on 2017/3/13.
- */
+
 public class BraveSparkRequestFilter implements Filter {
 
     public static BraveSparkRequestFilter create(Brave brave) {
@@ -47,21 +47,23 @@ public class BraveSparkRequestFilter implements Filter {
     private final ServerRequestInterceptor requestInterceptor;
     private final ServerSpanThreadBinder serverThreadBinder;
     private final SpanNameProvider spanNameProvider;
-
-
-    BraveSparkRequestFilter(SpanNameProvider spanNameProvider, Brave brave) {
-        this(builder(brave).spanNameProvider(spanNameProvider));
-    }
+    private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     BraveSparkRequestFilter(Builder b) { // intentionally hidden
         this.requestInterceptor = b.brave.serverRequestInterceptor();
         this.serverThreadBinder = b.brave.serverSpanThreadBinder();
         this.spanNameProvider = b.spanNameProvider;
+        maybeAddClientAddressFromRequest = MaybeAddClientAddressFromRequest.create(b.brave);
     }
 
     @Override
     public void handle(Request request, Response response) throws Exception {
         this.requestInterceptor.handle(new HttpServerRequestAdapter(new SparkHttpServerRequest(request), this.spanNameProvider));
+        if (maybeAddClientAddressFromRequest != null) {
+            maybeAddClientAddressFromRequest.accept(request.raw());
+        }
+        ServerSpan serverSpan =  serverThreadBinder.getCurrentServerSpan();
+        System.out.println("REQ serverSpan=>"+serverSpan.toString());
     }
-
 }
+

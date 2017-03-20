@@ -1,8 +1,6 @@
 package com.github.kristofa.brave.spark;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ServerResponseInterceptor;
-import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -12,9 +10,7 @@ import spark.Response;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-/**
- * Created by 00013708 on 2017/3/13.
- */
+
 public class BraveSparkResponseFilter implements Filter {
 
     public static BraveSparkResponseFilter create(Brave brave) {
@@ -47,17 +43,24 @@ public class BraveSparkResponseFilter implements Filter {
     private final ServerResponseInterceptor responseInterceptor;
     private final ServerSpanThreadBinder serverThreadBinder;
     private final SpanNameProvider spanNameProvider;
+    private final ServerTracer serverTracer;
 
     BraveSparkResponseFilter(Builder b) { // intentionally hidden
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.serverThreadBinder = b.brave.serverSpanThreadBinder();
         this.spanNameProvider = b.spanNameProvider;
+        this.serverTracer = b.brave.serverTracer();
     }
 
 
     @Override
     public void handle(Request request, Response response) throws Exception {
+        int status = response.raw().getStatus();
+        System.out.println("status=>"+status);
+        ServerSpan serverSpan =  serverThreadBinder.getCurrentServerSpan();
+        System.out.println("RESP serverSpan=>"+serverSpan.toString());
+        serverTracer.submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, String.valueOf(404));
+
         this.responseInterceptor.handle(new HttpServerResponseAdapter(new SparkHttpServerResponse(response)));
     }
-
 }
