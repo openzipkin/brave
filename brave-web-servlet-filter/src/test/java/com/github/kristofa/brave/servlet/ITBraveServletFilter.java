@@ -18,10 +18,6 @@ import org.junit.Test;
 
 public class ITBraveServletFilter extends ITServletContainer {
 
-  @Override @Test public void reportsSpanOnTransportException() throws Exception {
-    throw new AssumptionViolatedException("TODO: fix error reporting");
-  }
-
   @Override @Test public void addsStatusCodeWhenNotOk() throws Exception {
     throw new AssumptionViolatedException("TODO: fix error reporting");
   }
@@ -49,7 +45,7 @@ public class ITBraveServletFilter extends ITServletContainer {
   static class DisconnectServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-      throw new IOException();
+      throw new IOException(); // null exception message!
     }
   }
 

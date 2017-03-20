@@ -161,7 +161,9 @@ public final class BraveTracingInterceptor implements Interceptor {
       return chain.proceed(request);
     } catch (IOException | RuntimeException | Error e) {
       // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
-      localTracer.submitBinaryAnnotation(Constants.ERROR, e.getMessage());
+      String message = e.getMessage();
+      if (message == null) message = e.getClass().getSimpleName();
+      localTracer.submitBinaryAnnotation(Constants.ERROR, message);
       throw e;
     } finally {
       localTracer.finishSpan(); // span must be closed!
@@ -177,7 +179,9 @@ public final class BraveTracingInterceptor implements Interceptor {
       return response;
     } catch (IOException | RuntimeException | Error e) {
       // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
-      clientTracer.submitAnnotation(Constants.ERROR);
+      String message = e.getMessage();
+      if (message == null) message = e.getClass().getSimpleName();
+      clientTracer.submitBinaryAnnotation(Constants.ERROR, message);
       throw e;
     } finally {
       clientTracer.setClientReceived(); // span must be closed!

@@ -5,6 +5,7 @@ import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
+import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -58,6 +60,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
     private final ServerSpanThreadBinder serverThreadBinder;
     private final SpanNameProvider spanNameProvider;
     @Nullable // while deprecated constructor is in use
+    private final ServerTracer serverTracer;
     private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
     @Autowired // internal
@@ -70,6 +73,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         this.responseInterceptor = b.brave.serverResponseInterceptor();
         this.serverThreadBinder = b.brave.serverSpanThreadBinder();
         this.spanNameProvider = b.spanNameProvider;
+        this.serverTracer = b.brave.serverTracer();
         this.maybeAddClientAddressFromRequest = MaybeAddClientAddressFromRequest.create(b.brave);
     }
 
@@ -82,6 +86,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
         this.spanNameProvider = spanNameProvider;
         this.responseInterceptor = responseInterceptor;
         this.serverThreadBinder = serverThreadBinder;
+        this.serverTracer = null;
         this.maybeAddClientAddressFromRequest = null;
     }
 
@@ -109,6 +114,13 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 
         if (span != null) {
             serverThreadBinder.setCurrentSpan(span);
+        }
+
+        if (serverTracer != null && ex != null) {
+            // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
+            String message = ex.getMessage();
+            if (message == null) message = ex.getClass().getSimpleName();
+            serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
         }
 
        responseInterceptor.handle(new HttpServerResponseAdapter(response::getStatus));
