@@ -11,7 +11,18 @@ import zipkin.Constants;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
- * Created by 00013708 on 2017/3/18.
+ * All your ExceptionHandler implements must be wrapped by BraveSparkExceptionHandler,
+ * If not,when exception happens,server span can't be generated,because AfterFilters won't be executed.
+ * See https://github.com/perwendel/spark/issues/715 .
+ * Code Example :
+ * {@code
+ * Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandler() {
+        @Override
+        public void handle(Exception exception, Request request, Response response) {
+            //do something you want
+        }
+    }));
+ * }
  */
 public class BraveSparkExceptionHandler implements ExceptionHandler {
 
@@ -35,9 +46,7 @@ public class BraveSparkExceptionHandler implements ExceptionHandler {
         try {
             try {
                 ServerTracer serverTracer = brave.serverTracer();
-                if (serverTracer != null) {
-                    serverTracer.submitBinaryAnnotation(Constants.ERROR, ex.getMessage());
-                }
+                serverTracer.submitBinaryAnnotation(Constants.ERROR, ex.getMessage());
             } finally {
                 brave.serverResponseInterceptor().handle(new HttpServerResponseAdapter(new SparkHttpServerResponse(response)));
             }

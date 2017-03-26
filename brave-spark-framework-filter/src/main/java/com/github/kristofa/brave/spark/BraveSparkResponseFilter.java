@@ -55,12 +55,6 @@ public class BraveSparkResponseFilter implements Filter {
 
     @Override
     public void handle(Request request, Response response) throws Exception {
-        int status = response.raw().getStatus();
-        System.out.println("status=>"+status);
-        ServerSpan serverSpan =  serverThreadBinder.getCurrentServerSpan();
-        System.out.println("RESP serverSpan=>"+serverSpan.toString());
-        serverTracer.submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, String.valueOf(404));
-
         this.responseInterceptor.handle(new HttpServerResponseAdapter(new SparkHttpServerResponse(response)));
     }
 }
