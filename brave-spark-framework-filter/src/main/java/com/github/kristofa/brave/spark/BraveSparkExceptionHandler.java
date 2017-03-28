@@ -2,29 +2,15 @@ package com.github.kristofa.brave.spark;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.ServerTracer;
-import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import spark.ExceptionHandler;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-/**
- * All your ExceptionHandler implements must be wrapped by BraveSparkExceptionHandler,
- * If not,when exception happens,server span can't be generated,because AfterFilters won't be executed.
- * See https://github.com/perwendel/spark/issues/715 .
- * Code Example :
- * {@code
- * Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandler() {
-        @Override
-        public void handle(Exception exception, Request request, Response response) {
-            //do something you want
-        }
-    }));
- * }
- */
-public class BraveSparkExceptionHandler implements ExceptionHandler {
+public final class BraveSparkExceptionHandler implements ExceptionHandler {
 
     private final Brave brave;
 
@@ -44,12 +30,18 @@ public class BraveSparkExceptionHandler implements ExceptionHandler {
     @Override
     public void handle(Exception ex, Request request, Response response) {
         try {
-            try {
-                ServerTracer serverTracer = brave.serverTracer();
-                serverTracer.submitBinaryAnnotation(Constants.ERROR, ex.getMessage());
-            } finally {
-                brave.serverResponseInterceptor().handle(new HttpServerResponseAdapter(new SparkHttpServerResponse(response)));
+            ServerTracer serverTracer = brave.serverTracer();
+            StringBuilder sb = new StringBuilder();
+            if (StringUtils.isNotEmpty(ex.getMessage())) {
+                sb.append(ex.getMessage()).append("\n");
             }
+            if (StringUtils.isNotEmpty(response.body())) {
+                sb.append(response.body()).append("\n");
+            }
+            if (sb.length() == 0) {
+                sb.append("exception happens no exception msg nor response body.");
+            }
+            serverTracer.submitBinaryAnnotation(Constants.ERROR, sb.toString());
         } finally {
             exceptionHandler.handle(ex, request, response);
         }
