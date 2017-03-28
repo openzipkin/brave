@@ -9,11 +9,13 @@ Here is a use Example:
 
 ```java
 
+    // setup brave tracing...
     Spark.before(BraveSparkFilter.create(brave).requestFilter());
-    Spark.get("/foo", (req, res) -> "bar");
-    //if you need add binaryAnnotation "error",use this.
-    Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandlerImpl()));
     Spark.afterAfter(BraveSparkFilter.create(brave).responseFilter());
+    Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandlerImpl()));
+    
+    // any routes you add are now traced, such as the below
+     Spark.get("/foo", (req, res) -> "bar");
     
 ```
 
