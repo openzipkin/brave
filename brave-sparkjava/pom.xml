@@ -19,11 +19,6 @@
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-http</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
       <artifactId>brave-web-servlet-filter</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -31,11 +26,6 @@
       <groupId>com.sparkjava</groupId>
       <artifactId>spark-core</artifactId>
       <version>2.5.5</version>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-http-tests</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>
