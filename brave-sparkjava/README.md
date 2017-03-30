@@ -10,9 +10,10 @@ Here is a use Example:
 ```java
 
     // setup brave tracing...
-    Spark.before(BraveSparkFilter.create(brave).requestFilter());
-    Spark.afterAfter(BraveSparkFilter.create(brave).responseFilter());
-    Spark.exception(Exception.class, BraveSparkExceptionHandler.create(brave, new ExceptionHandlerImpl()));
+    BraveTracingSparkJava tracing = BraveTracingSparkJava.create(brave);
+    Spark.before(tracing.before());
+    Spark.exception(Exception.class, tracing.exception(new ExceptionHandlerImpl()));
+    Spark.afterAfter(tracing.afterAfter());
     
     // any routes you add are now traced, such as the below
      Spark.get("/foo", (req, res) -> "bar");
