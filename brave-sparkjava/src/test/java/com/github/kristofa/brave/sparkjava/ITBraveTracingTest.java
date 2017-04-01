@@ -11,7 +11,7 @@ import spark.Request;
 import spark.Response;
 import spark.Spark;
 
-public class ITBraveSparkTest extends ITHttpServer {
+public class ITBraveTracingTest extends ITHttpServer {
 
   /**
    * After filters executed before NotFoundRoute.
@@ -28,8 +28,8 @@ public class ITBraveSparkTest extends ITHttpServer {
   protected void init(Brave brave, SpanNameProvider spanNameProvider) throws Exception {
     stop();
 
-    BraveTracingSparkJava tracing =
-        BraveTracingSparkJava.builder(brave).spanNameProvider(spanNameProvider).build();
+    BraveTracing tracing =
+        BraveTracing.builder(brave).spanNameProvider(spanNameProvider).build();
     Spark.before(tracing.before());
     Spark.exception(Exception.class, tracing.exception(new ExceptionHandler() {
       @Override public void handle(Exception exception, Request request, Response response) {

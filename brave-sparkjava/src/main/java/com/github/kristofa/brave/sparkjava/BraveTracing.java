@@ -18,14 +18,14 @@ import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-public final class BraveTracingSparkJava {
+public final class BraveTracing {
 
-  public static BraveTracingSparkJava create(Brave brave) {
-    return new BraveTracingSparkJava.Builder(brave).build();
+  public static BraveTracing create(Brave brave) {
+    return new BraveTracing.Builder(brave).build();
   }
 
-  public static BraveTracingSparkJava.Builder builder(Brave brave) {
-    return new BraveTracingSparkJava.Builder(brave);
+  public static BraveTracing.Builder builder(Brave brave) {
+    return new BraveTracing.Builder(brave);
   }
 
   public static final class Builder {
@@ -36,13 +36,13 @@ public final class BraveTracingSparkJava {
       this.brave = checkNotNull(brave, "brave");
     }
 
-    public BraveTracingSparkJava.Builder spanNameProvider(SpanNameProvider spanNameProvider) {
+    public BraveTracing.Builder spanNameProvider(SpanNameProvider spanNameProvider) {
       this.spanNameProvider = checkNotNull(spanNameProvider, "spanNameProvider");
       return this;
     }
 
-    public BraveTracingSparkJava build() {
-      return new BraveTracingSparkJava(this);
+    public BraveTracing build() {
+      return new BraveTracing(this);
     }
   }
 
@@ -53,7 +53,7 @@ public final class BraveTracingSparkJava {
   private final ServerTracer serverTracer;
   private final MaybeAddClientAddressFromRequest maybeAddClientAddressFromRequest;
 
-  BraveTracingSparkJava(BraveTracingSparkJava.Builder b) { // intentionally hidden
+  BraveTracing(BraveTracing.Builder b) { // intentionally hidden
     this.requestInterceptor = b.brave.serverRequestInterceptor();
     this.responseInterceptor = b.brave.serverResponseInterceptor();
     this.serverThreadBinder = b.brave.serverSpanThreadBinder();
