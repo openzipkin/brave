@@ -38,6 +38,7 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
             <version>${grpc.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

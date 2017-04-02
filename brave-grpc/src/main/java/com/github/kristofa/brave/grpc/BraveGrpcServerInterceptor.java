@@ -24,7 +24,6 @@ import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import io.grpc.Status.Code;
 
-import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -53,12 +52,10 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     private final ServerRequestInterceptor serverRequestInterceptor;
     private final ServerResponseInterceptor serverResponseInterceptor;
-    private final MaybeAddClientAddressFromAttributes maybeAddClientAddressFromAttributes;
 
     BraveGrpcServerInterceptor(Builder b) { // intentionally hidden
         this.serverRequestInterceptor = b.brave.serverRequestInterceptor();
         this.serverResponseInterceptor = b.brave.serverResponseInterceptor();
-        this.maybeAddClientAddressFromAttributes = new MaybeAddClientAddressFromAttributes(b.brave);
     }
 
     /**
@@ -76,7 +73,6 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
             @Override
             public void request(int numMessages) {
                 serverRequestInterceptor.handle(new GrpcServerRequestAdapter<>(call, requestHeaders));
-                maybeAddClientAddressFromAttributes.accept(call.attributes());
                 super.request(numMessages);
             }
 
@@ -131,14 +127,8 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
         @Override
         public Collection<KeyValueAnnotation> requestAnnotations() {
-            SocketAddress socketAddress = call.attributes().get(ServerCall.REMOTE_ADDR_KEY);
-            if (socketAddress != null) {
-                KeyValueAnnotation remoteAddrAnnotation = KeyValueAnnotation.create(
-                    GrpcKeys.GRPC_REMOTE_ADDR, socketAddress.toString());
-                return Collections.singleton(remoteAddrAnnotation);
-            } else {
-                return Collections.emptyList();
-            }
+            // the remote-addr attribute was removed in grpc 1.2
+            return Collections.emptyList();
         }
     }
 
