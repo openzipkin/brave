@@ -11,16 +11,9 @@
 
   <name>brave-core</name>
   <description>Brave core.</description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-        <name>Apache 2</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-    </license>
-   </licenses>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
   </properties>
@@ -63,7 +56,6 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
-      <version>${project.version}</version>
       <optional>true</optional>
     </dependency>
     <!-- for testing SpanId -->

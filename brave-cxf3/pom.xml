@@ -12,16 +12,9 @@
   <description>
     CXF 3.x integration that uses the brave api to submit client and server side span information.
   </description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-      <name>Apache 2</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
     <cxf.version>3.1.9</cxf.version>
   </properties>
 
@@ -29,7 +22,6 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-http</artifactId>
-      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.cxf</groupId>

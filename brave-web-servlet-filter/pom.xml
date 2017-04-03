@@ -14,11 +14,14 @@
         Servlet Filter implementation.
     </description>
 
+    <properties>
+        <main.basedir>${project.basedir}/..</main.basedir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <!-- compile dep on 3.0.1 runtime on 2.5 -->
         <dependency>

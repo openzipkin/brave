@@ -13,16 +13,9 @@
   <description>
     RestEasy client and server side interceptors that use the brave api to submit client and server side span information.
   </description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-        <name>Apache 2</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-    </license>
-   </licenses>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
     <resteasy.version>3.1.0.Final</resteasy.version>
   </properties>
   
@@ -30,12 +23,10 @@
     <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-http</artifactId>
-        <version>${project.version}</version>
     </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-jaxrs2</artifactId>
-        <version>${project.version}</version>
       </dependency>
     <!-- provided dep in brave-jaxrs2 -->
     <dependency>
