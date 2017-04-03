@@ -490,5 +490,5 @@ Propagating a trace context instead of a span is a right fit for several reasons
 * Brave's recorder is keyed on context, so there's no feature loss in this choice
 
 ### Public namespace
-Brave 4's pubic namespace is more defensive that the past, using a package
+Brave 4's public namespace is more defensive that the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).
