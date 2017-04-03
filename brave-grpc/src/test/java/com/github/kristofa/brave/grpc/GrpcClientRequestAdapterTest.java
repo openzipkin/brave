@@ -30,7 +30,7 @@ public class GrpcClientRequestAdapterTest {
     adapter.addSpanIdToRequest(SpanId.builder().traceId(1234L).spanId(1234L).build());
 
     assertThat(metadata.keys())
-        .containsExactly("x-b3-sampled", "x-b3-traceid", "x-b3-spanid");
+        .containsExactlyInAnyOrder("x-b3-sampled", "x-b3-traceid", "x-b3-spanid");
 
     assertThat(metadata.get(BravePropagationKeys.Sampled))
         .isEqualTo("1");
@@ -45,7 +45,7 @@ public class GrpcClientRequestAdapterTest {
     adapter.addSpanIdToRequest(SpanId.builder().traceId(1234L).parentId(1234L).spanId(5678L).build());
 
     assertThat(metadata.keys())
-        .containsExactly("x-b3-sampled", "x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid");
+        .containsExactlyInAnyOrder("x-b3-sampled", "x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid");
 
     assertThat(metadata.get(BravePropagationKeys.Sampled))
         .isEqualTo("1");
@@ -62,7 +62,7 @@ public class GrpcClientRequestAdapterTest {
     adapter.addSpanIdToRequest(SpanId.builder().traceIdHigh(1L).traceId(2L).spanId(2L).build());
 
     assertThat(metadata.keys())
-        .containsExactly("x-b3-sampled", "x-b3-traceid", "x-b3-spanid");
+        .containsExactlyInAnyOrder("x-b3-sampled", "x-b3-traceid", "x-b3-spanid");
 
     assertThat(metadata.get(BravePropagationKeys.Sampled))
         .isEqualTo("1");
