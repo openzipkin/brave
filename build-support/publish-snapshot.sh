@@ -17,7 +17,7 @@ set -euo pipefail
 set -x
 
 if ./mvnw help:evaluate -N -Dexpression=project.version | grep -v '\['  | grep -q SNAPSHOT; then
-    ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -pl -:brave-benchmarks,-:brave-http-tests deploy
+    ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -pl -:brave-benchmarks deploy
 else
     echo "Not building release versions, those are built by the tag builder using the publish-stable.sh script"
 fi

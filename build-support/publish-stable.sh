@@ -17,5 +17,5 @@ set -euo pipefail
 set -x
 
 ./mvnw -DskipTests install -nsu
-./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -pl -:brave-benchmarks,-:brave-http-tests deploy
+./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -pl -:brave-benchmarks deploy
 ./mvnw --batch-mode -s ./.settings.xml -nsu -N io.zipkin.centralsync-maven-plugin:centralsync-maven-plugin:sync
