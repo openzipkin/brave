@@ -16,6 +16,12 @@ import org.apache.cxf.phase.Phase;
 import static com.github.kristofa.brave.cxf3.BraveCxfConstants.BRAVE_SERVER_SPAN;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+/**
+ * @deprecated This component is deprecated and will no longer be published after Brave 4.1. Please
+ * use CXF's <a href="https://cwiki.apache.org/confluence/display/CXF20DOC/Using+OpenZipkin+Brave">built-in
+ * Brave tracing integration</a> instead.
+ */
+@Deprecated
 public final class BraveServerInInterceptor extends AbstractPhaseInterceptor<Message> {
 
   /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
