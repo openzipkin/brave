@@ -7,6 +7,7 @@ import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.ServerSpanThreadBinder;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
@@ -123,7 +124,11 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
             serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
         }
 
-       responseInterceptor.handle(new HttpServerResponseAdapter(response::getStatus));
+       responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
+           // retrolambda fails to backport response::getStatus
+           @Override public int getHttpStatusCode() {
+               return response.getStatus(); // This won't work in Servlet 2.5
+           }
+       }));
     }
-
 }

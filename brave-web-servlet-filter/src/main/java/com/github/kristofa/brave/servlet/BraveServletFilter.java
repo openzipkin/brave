@@ -1,7 +1,9 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseAdapter;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
@@ -11,6 +13,8 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 
 import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
+import java.util.Collection;
+import java.util.Collections;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -22,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
 import zipkin.Constants;
+import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -105,7 +110,8 @@ public class BraveServletFilter implements Filter {
             request.setAttribute(alreadyFilteredAttributeName, Boolean.TRUE);
 
             HttpServletRequest httpRequest = (HttpServletRequest) request;
-            final StatusExposingServletResponse statusExposingServletResponse = new StatusExposingServletResponse((HttpServletResponse) response);
+            final Servlet25ServerResponseAdapter
+                servlet25ServerResponseAdapter = new Servlet25ServerResponseAdapter((HttpServletResponse) response);
             requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest(httpRequest), spanNameProvider));
 
             if (maybeAddClientAddressFromRequest != null) {
@@ -113,7 +119,7 @@ public class BraveServletFilter implements Filter {
             }
 
             try {
-                filterChain.doFilter(request, statusExposingServletResponse);
+                filterChain.doFilter(request, servlet25ServerResponseAdapter);
             } catch (IOException | ServletException| RuntimeException | Error e) {
                 if (serverTracer != null) {
                     // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
@@ -123,8 +129,7 @@ public class BraveServletFilter implements Filter {
                 }
                 throw e;
             } finally {
-                responseInterceptor.handle(new HttpServerResponseAdapter(
-                    statusExposingServletResponse::getStatus));
+                responseInterceptor.handle(servlet25ServerResponseAdapter);
             }
         }
     }
@@ -146,12 +151,13 @@ public class BraveServletFilter implements Filter {
         return (this.filterConfig != null ? this.filterConfig.getFilterName() : null);
     }
 
-
-    private static class StatusExposingServletResponse extends HttpServletResponseWrapper {
+    /** When deployed in Servlet 2.5 environment {@link #getStatus} is not available. */
+    static final class Servlet25ServerResponseAdapter extends HttpServletResponseWrapper implements
+        ServerResponseAdapter {
         // The Servlet spec says: calling setStatus is optional, if no status is set, the default is OK.
         int httpStatus = HttpServletResponse.SC_OK;
 
-        StatusExposingServletResponse(HttpServletResponse response) {
+        Servlet25ServerResponseAdapter(HttpServletResponse response) {
             super(response);
         }
 
@@ -160,27 +166,26 @@ public class BraveServletFilter implements Filter {
             super.setStatus(sc, sm);
         }
 
-        @Override
-        public void sendError(int sc) throws IOException {
+        @Override public void sendError(int sc) throws IOException {
             httpStatus = sc;
             super.sendError(sc);
         }
 
-        @Override
-        public void sendError(int sc, String msg) throws IOException {
+        @Override public void sendError(int sc, String msg) throws IOException {
             httpStatus = sc;
             super.sendError(sc, msg);
         }
 
-        @Override
-        public void setStatus(int sc) {
+        @Override public void setStatus(int sc) {
             httpStatus = sc;
             super.setStatus(sc);
         }
 
-        @Override
-        public int getStatus() { // note! this wasn't added until Servlet 3.0
-            return httpStatus;
+        /** Alternative to {@link #getStatus}, but for Servlet 2.5+ */
+        @Override public Collection<KeyValueAnnotation> responseAnnotations() {
+            return Collections.singleton(
+                KeyValueAnnotation.create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus))
+            );
         }
     }
 }
