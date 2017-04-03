@@ -12,16 +12,9 @@
   <description>
     Jersey integration that uses the brave api to submit client and server side span information.
   </description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-        <name>Apache 2</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-    </license>
-   </licenses>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
     <!-- indirectly depends on servlet 3.0.1 -->
     <jersey.version>1.19.3</jersey.version>
   </properties>
@@ -30,12 +23,10 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-web-servlet-filter</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>

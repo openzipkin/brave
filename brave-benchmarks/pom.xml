@@ -31,19 +31,16 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-core</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-http</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <!-- for benchmarking SpanId -->

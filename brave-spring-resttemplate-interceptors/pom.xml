@@ -13,11 +13,14 @@
       Spring RestTemplate interceptor implementation.
   </description>
 
+  <properties>
+    <main.basedir>${project.basedir}/..</main.basedir>
+  </properties>
+
   <dependencies>
      <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-http</artifactId>
-        <version>${project.version}</version>
      </dependency>
 
      <dependency>

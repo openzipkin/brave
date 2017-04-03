@@ -12,16 +12,9 @@
     <description>
         p6spy integration for brave
     </description>
-    <url>https://github.com/kristofa/brave</url>
-    <licenses>
-        <license>
-            <name>Apache 2</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
+
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <main.basedir>${project.basedir}/..</main.basedir>
         <p6spy.version>3.0.0</p6spy.version>
         <derby.version>10.13.1.1</derby.version>
         <!-- Tests fail on connect exception using latest liquibase -->
@@ -33,7 +26,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <dependency>

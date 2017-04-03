@@ -13,11 +13,14 @@
       Spring HandlerInterceptorAdapter implementation.
   </description>
 
+  <properties>
+    <main.basedir>${project.basedir}/..</main.basedir>
+  </properties>
+
     <dependencies>
      <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-web-servlet-filter</artifactId>
-        <version>${project.version}</version>
      </dependency>
      <!-- implicitly servlet 3.0.1 -->
      <dependency>

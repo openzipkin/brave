@@ -13,16 +13,9 @@
   <description>
     RestEasy client and server side interceptors that use the brave api to submit client and server side span information.
   </description>
-  <url>https://github.com/kristofa/brave</url>
-  <licenses>
-    <license>
-        <name>Apache 2</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-    </license>
-   </licenses>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
     <!-- 2.3.10.Final has an unpublished dependency. This is the version prior to that -->
     <!-- indirectly depends on servlet 2.5 -->
     <resteasy.version>2.3.7.Final</resteasy.version>
@@ -32,7 +25,6 @@
     <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-http</artifactId>
-        <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jboss.resteasy</groupId>
