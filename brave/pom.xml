@@ -71,5 +71,11 @@
       <version>${grpc.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>finagle-core_2.12</artifactId>
+      <version>${finagle.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

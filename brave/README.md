@@ -230,6 +230,121 @@ span = contextOrFlags.context() != null
     : tracer.newTrace(contextOrFlags.samplingFlags());
 ```
 
+## Current Span
+
+Brave supports a "current span" concept which represents the in-flight
+operation. `Tracer.currentSpan()` can be used to add custom tags to a
+span and `Tracer.nextSpan()` can be used to create a child of whatever
+is in-flight.
+
+### Setting a span in scope via custom executors
+
+Many frameworks allow you to specify an executor which is used for user
+callbacks. The type `CurrentTraceContext` implements all functionality
+needed to support the current span. It also exposes utilities which you
+can use to decorate executors.
+
+```java
+CurrentTraceContext currentTraceContext = new CurrentTraceContext.Default();
+tracer = Tracer.newBuilder()
+               .currentTraceContext(currentTraceContext)
+               ...
+               .build();
+
+Client c = Client.create();
+c.setExecutorService(currentTraceContext.executorService(realExecutorService));
+```
+
+### Setting a span in scope manually
+
+When writing new instrumentation, it is important to place a span you
+created in scope as the current span. Not only does this allow users to
+access it with `Tracer.currentSpan()`, but it also allows customizations
+like SLF4J MDC to see the current trace IDs.
+
+`Tracer.withSpanInScope(Span)` facilitates this and is most conveniently
+employed via the try-with-resources idiom. Whenever external code might
+be invoked (such as proceeding an interceptor or otherwise), place the
+span in scope like this.
+
+```java
+try (SpanInScope ws = tracer.withSpanInScope(span)) {
+  return inboundRequest.invoke();
+} finally { // note the scope is independent of the span
+  span.finish();
+}
+```
+
+### Working with callbacks
+
+Many libraries expose a callback model as opposed to an interceptor one.
+When creating new instrumentation, you may find places where you need to
+place a span in scope in one callback (like `onStart()`) and end the scope
+in another callback (like `onFinish()`).
+
+Provided the library guarantees these run on the same thread, you can
+simply propagate the result of `Tracer.withSpanInScope(Span)` from the
+starting callback to the closing one. This is typically done with a
+request-scoped attribute.
+
+Here's an example:
+```java
+class MyFilter extends Filter {
+  public void onStart(Request request, Attributes attributes) {
+    // Assume you have code to start the span and add relevant tags...
+
+    // We now set the span in scope so that any code between here and
+    // the end of the request can see it with Tracer.currentSpan()
+    SpanInScope spanInScope = tracer.withSpanInScope(span);
+
+    // We don't want to leak the scope, so we place it somewhere we can
+    // lookup later
+    attributes.put(SpanInScope.class, spanInScope);
+  }
+
+  public void onFinish(Response response, Attributes attributes) {
+    // as long as we are on the same thread, we can read the span started above
+    Span span = tracer.currentSpan();
+
+    // Assume you have code to complete the span
+
+    // We now remove the scope (which implicitly detaches it from the span)
+    attributes.get(SpanInScope.class).close();
+  }
+}
+```
+
+### Working with callbacks that occur on different threads
+
+The examples above work because the callbacks happen on the same thread.
+You should not set a span in scope if you cannot close that scope on the
+same thread. This may be the case in some asynchronous libraries. Often,
+you will need to propagate the span directly in a custom attribute. This
+will allow you to trace the RPC, even if this approach doesn't facilitate
+use of `Tracer.currentSpan()` from external code.
+
+Here's an example of explicit propagation:
+```java
+class MyFilter extends Filter {
+  public void onStart(Request request, Attributes attributes) {
+    // Assume you have code to start the span and add relevant tags...
+
+    // We can't open a scope as onFinish happens on another thread.
+    // Instead, we propagate the span manually so at least basic tracing
+    // will work.
+    attributes.put(Span.class, span);
+  }
+
+  public void onFinish(Response response, Attributes attributes) {
+    // We can't rely on Tracer.currentSpan(), but we can rely on explicit
+    // propagation
+    Span span = attributes.get(Span.class);
+
+    // Assume you have code to complete the span
+  }
+}
+```
+
 ## Performance
 Brave has been built with performance in mind. Using the core Span api,
 you can record spans in sub-microseconds. When a span is sampled, there's
@@ -359,6 +474,20 @@ context from a carrier. While naming is similar, Brave optimizes for
 direct integration with carrier types (such as http request) vs routing
 through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
+
+
+### CurrentTraceContext Api
+The first design of `CurrentTraceContext` was borrowed from `ContextUtils`
+in Google's [instrumentation-java](https://github.com/google/instrumentation-java) project.
+This was possible because of high collaboration between the projects and
+an almost identical goal. Slight departures including naming (which prefers
+Guice's naming conventions), and that the object scoped is a TraceContext
+vs a Span.
+
+Propagating a trace context instead of a span is a right fit for several reasons:
+* `TraceContext` can be created without a reference to a tracer
+* Common tasks like making child spans and staining log context only need the context
+* Brave's recorder is keyed on context, so there's no feature loss in this choice
 
 ### Public namespace
 Brave 4's pubic namespace is more defensive that the past, using a package
