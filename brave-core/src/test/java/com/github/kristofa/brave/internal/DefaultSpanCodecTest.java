@@ -13,6 +13,10 @@ import static org.junit.Assert.assertEquals;
 
 public class DefaultSpanCodecTest {
 
+  static {
+    InternalSpan.initializeInstanceForTests();
+  }
+
   Endpoint browser = Endpoint.create("browser-client", 1 << 24 | 2 << 16 | 3);
   Endpoint web = Endpoint.builder()
       .serviceName("web")
