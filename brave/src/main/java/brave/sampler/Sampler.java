@@ -6,10 +6,10 @@ package brave.sampler;
  *
  * <p>Zipkin v1 uses before-the-fact sampling. This means that the decision to keep or drop the
  * trace is made before any work is measured, or annotations are added. As such, the input parameter
- * to zipkin v1 samplers is the trace ID (64-bit random number).
+ * to zipkin v1 samplers is the trace ID (lower 64-bits under the assumption all bits are random).
  *
  * <p>The instrumentation sampling decision happens once, at the root of the trace, and is
- * propagated downstream. For this reason, the decision needn't be consistent based on trace ID.
+ * propagated downstream. For this reason, the algorithm needn't be consistent based on trace ID.
  */
 // abstract for factory-method support on Java language level 7
 public abstract class Sampler {
