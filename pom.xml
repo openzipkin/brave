@@ -496,7 +496,7 @@
               </goals>
               <configuration>
                 <target>${main.java.version}</target>
-                <fork>false</fork>
+                <fork>true</fork>
               </configuration>
             </execution>
           </executions>
