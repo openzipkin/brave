@@ -22,6 +22,8 @@ dependencies:
     - ./build-support/go-offline.sh
 
 test:
+  override:
+    - ./mvnw integration-test
   post:
     # parameters used during release
     # allocate commits to CI, not the owner of the deploy key
