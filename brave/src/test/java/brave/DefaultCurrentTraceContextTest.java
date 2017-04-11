@@ -48,16 +48,14 @@ public class DefaultCurrentTraceContextTest {
     }
   }
 
-  @Test public void instancesAreIndependent() {
-    CurrentTraceContext.Default currentTraceContext2 = new CurrentTraceContext.Default();
-
-    try (CurrentTraceContext.Scope scope1 = currentTraceContext.newScope(context)) {
-      assertThat(currentTraceContext2.get()).isNull();
-
-      try (CurrentTraceContext.Scope scope2 = currentTraceContext2.newScope(context2)) {
-        assertThat(currentTraceContext.get()).isEqualTo(context);
-        assertThat(currentTraceContext2.get()).isEqualTo(context2);
-      }
+  /**
+   * Ensures default scope is per thread, not per thread,instance. This is needed when using {@link
+   * Tracer#current()} such as instrumenting JDBC.
+   */
+  @Test public void perThreadScope() {
+    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+      assertThat(Tracer.current().currentSpan().context())
+          .isEqualTo(context);
     }
   }
 

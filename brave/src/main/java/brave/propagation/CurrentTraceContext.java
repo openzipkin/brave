@@ -34,9 +34,12 @@ public abstract class CurrentTraceContext {
     @Override void close();
   }
 
-  /** Default implementation which is backed by an inheritable thread local */
+  /** Default implementation which is backed by a static inheritable thread local */
   public static final class Default extends CurrentTraceContext {
-    final InheritableThreadLocal<TraceContext> local = new InheritableThreadLocal<>();
+    // static as we want one context per thread, not one context per thread-instance.
+    // if this is not static, patterns that coordinate via statics (like Tracer.current()) will break.
+    // static ThreadLocal was also used in Brave 3's ThreadLocalServerClientAndLocalSpanState
+    static final InheritableThreadLocal<TraceContext> local = new InheritableThreadLocal<>();
 
     @Override public TraceContext get() {
       return local.get();

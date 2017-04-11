@@ -44,7 +44,35 @@ import zipkin.reporter.Sender;
  * @see Span
  * @see Propagation
  */
-public final class Tracer {
+public final class Tracer implements Closeable {
+  // volatile for visibility on get. writes guarded by Tracer.class
+  static volatile Tracer current = null;
+
+  /**
+   * Returns the most recently created tracer iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static Tracer current() {
+    return current;
+  }
+
+  private void maybeSetCurrent() {
+    if (current != null) return;
+    synchronized (Tracer.class) {
+      if (current == null) current = this;
+    }
+  }
+
+  /** Ensures this tracer can be garbage collected, by making it not {@link #current()} */
+  @Override public void close() {
+    if (current != this) return;
+    // don't blindly set most recent to null as there could be a race
+    synchronized (Tracer.class) {
+      if (current == this) current = null;
+    }
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -170,6 +198,7 @@ public final class Tracer {
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit;
+    maybeSetCurrent();
   }
 
   /** Used internally by operations such as {@link Span#finish()}, exposed for convenience. */

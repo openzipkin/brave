@@ -18,10 +18,28 @@ public class StrictCurrentTraceContextTest {
 
   Tracer tracer = Tracer.newBuilder().build();
   TraceContext context = tracer.newTrace().context();
+  TraceContext context2 = tracer.newTrace().context();
 
   @After public void after() throws InterruptedException {
     executor.shutdownNow();
     executor.awaitTermination(1, TimeUnit.SECONDS);
+  }
+
+  /**
+   * When using strict current context, scope is per thread,instance. Interactions like JDBC will
+   * need to share a static instance explicitly.
+   */
+  @Test public void instancesAreIndependent() {
+    CurrentTraceContext.Default currentTraceContext2 = new CurrentTraceContext.Default();
+
+    try (CurrentTraceContext.Scope scope1 = currentTraceContext.newScope(context)) {
+      assertThat(currentTraceContext2.get()).isNull();
+
+      try (CurrentTraceContext.Scope scope2 = currentTraceContext2.newScope(context2)) {
+        assertThat(currentTraceContext.get()).isEqualTo(context);
+        assertThat(currentTraceContext2.get()).isEqualTo(context2);
+      }
+    }
   }
 
   @Test public void scope_isNotInheritable() throws InterruptedException {

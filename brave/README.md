@@ -28,6 +28,11 @@ tracer = Tracer.newBuilder()
               .localServiceName("my-service")
               .reporter(reporter)
               .build();
+
+// When all tracing tasks are complete, close the tracer and reporter
+// This might be a shutdown hook for some users
+tracer.close();
+reporter.close();
 ```
 
 ## Tracing
@@ -229,6 +234,15 @@ span = contextOrFlags.context() != null
     ? tracer.joinSpan(contextOrFlags.context())
     : tracer.newTrace(contextOrFlags.samplingFlags());
 ```
+
+## Current Tracer
+Brave supports a "current tracer" concept which should only be used when
+you have no other means to get a reference to a tracer. This was made
+for JDBC connections, as they often initialize prior to the tracer.
+
+The most recent tracer instantiated is available via `Tracer.current()`.
+If you use `Tracer.current()` do not cache the result. Instead, lookup
+`Tracer.current()` prior to creating a new span.
 
 ## Current Span
 
@@ -475,6 +489,16 @@ direct integration with carrier types (such as http request) vs routing
 through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
 
+### Current Tracer Api
+The first design work of `Tracer.current()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
+which was itself influenced by Finagle's implicit Tracer api. This feature
+is noted as edge-case, when other means to get a reference to a trace are
+impossible. The only instrumentation that needed this was JDBC.
+
+Returning a possibly null reference from `Tracer.current()` implies:
+* Users never cache the reference returned (noted in javadocs)
+* Less code and type constraints on Tracer vs a lazy forwarding delegate
+* Less documentation as we don't have to explain what a Noop tracer does
 
 ### CurrentTraceContext Api
 The first design of `CurrentTraceContext` was borrowed from `ContextUtils`
