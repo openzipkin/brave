@@ -6,6 +6,7 @@ import brave.propagation.TraceContext;
 /** Useful when developing instrumentation as state is enforced more strictly */
 public final class StrictCurrentTraceContext extends CurrentTraceContext {
   // intentionally not inheritable to ensure instrumentation propagation doesn't accidentally work
+  // intentionally not static to make explicit when instrumentation need per thread semantics
   final ThreadLocal<TraceContext> local = new ThreadLocal<>();
 
   @Override public TraceContext get() {
