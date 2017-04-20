@@ -11,7 +11,7 @@ import zipkin.Endpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracerTest {
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracer tracer = Tracing.newBuilder().build().tracer();
 
   @Test public void sampler() {
     Sampler sampler = new Sampler() {
@@ -20,14 +20,14 @@ public class TracerTest {
       }
     };
 
-    tracer = Tracer.newBuilder().sampler(sampler).build();
+    tracer = Tracing.newBuilder().sampler(sampler).build().tracer();
 
     assertThat(tracer.sampler)
         .isSameAs(sampler);
   }
 
   @Test public void localServiceName() {
-    tracer = Tracer.newBuilder().localServiceName("my-foo").build();
+    tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
     assertThat(tracer.localEndpoint.serviceName)
         .isEqualTo("my-foo");
@@ -40,8 +40,8 @@ public class TracerTest {
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
     Endpoint localEndpoint = Endpoint.create("my-bar", 127 << 24 | 1);
-    tracer = Tracer.newBuilder().localServiceName("my-foo")
-        .localEndpoint(localEndpoint).build();
+    tracer = Tracing.newBuilder().localServiceName("my-foo")
+        .localEndpoint(localEndpoint).build().tracer();
 
     assertThat(tracer.localEndpoint)
         .isSameAs(localEndpoint);
@@ -49,7 +49,7 @@ public class TracerTest {
 
   @Test public void clock() {
     Clock clock = () -> 0L;
-    tracer = Tracer.newBuilder().clock(clock).build();
+    tracer = Tracing.newBuilder().clock(clock).build().tracer();
 
     assertThat(tracer.clock())
         .isSameAs(clock);
@@ -62,14 +62,14 @@ public class TracerTest {
   }
 
   @Test public void newTrace_traceId128Bit() {
-    tracer = Tracer.newBuilder().traceId128Bit(true).build();
+    tracer = Tracing.newBuilder().traceId128Bit(true).build().tracer();
 
     assertThat(tracer.newTrace().context().traceIdHigh())
         .isNotZero();
   }
 
   @Test public void newTrace_unsampled_tracer() {
-    tracer = Tracer.newBuilder().sampler(Sampler.NEVER_SAMPLE).build();
+    tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
 
     assertThat(tracer.newTrace())
         .isInstanceOf(NoopSpan.class);
@@ -82,7 +82,7 @@ public class TracerTest {
 
   @Test public void newTrace_debug_flag() {
     List<zipkin.Span> spans = new ArrayList<>();
-    tracer = Tracer.newBuilder().reporter(spans::add).build();
+    tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
 
     Span root = tracer.newTrace(SamplingFlags.DEBUG).start();
     root.finish();

@@ -1,6 +1,7 @@
 package brave.internal;
 
 import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.ExecutorService;
@@ -16,7 +17,7 @@ public class StrictCurrentTraceContextTest {
   // override default so that it isn't inheritable
   CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
 
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracer tracer = Tracing.newBuilder().build().tracer();
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 

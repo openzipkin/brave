@@ -23,15 +23,18 @@ http (as opposed to Kafka).
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender).build();
 
-// Now, create a tracer with the service name you want to see in Zipkin.
-tracer = Tracer.newBuilder()
-              .localServiceName("my-service")
-              .reporter(reporter)
-              .build();
+// Create a tracing component with the service name you want to see in Zipkin.
+tracing = Tracing.newBuilder()
+                 .localServiceName("my-service")
+                 .reporter(reporter)
+                 .build();
 
-// When all tracing tasks are complete, close the tracer and reporter
+// Tracing exposes objects you might need, most importantly the tracer
+tracer = tracing.tracer();
+
+// When all tracing tasks are complete, close the tracing component and reporter
 // This might be a shutdown hook for some users
-tracer.close();
+tracing.close();
 reporter.close();
 ```
 
@@ -235,14 +238,16 @@ span = contextOrFlags.context() != null
     : tracer.newTrace(contextOrFlags.samplingFlags());
 ```
 
-## Current Tracer
-Brave supports a "current tracer" concept which should only be used when
-you have no other means to get a reference to a tracer. This was made
-for JDBC connections, as they often initialize prior to the tracer.
+## Current Tracing Component
+Brave supports a "current tracing component" concept which should only
+be used when you have no other means to get a reference. This was made
+for JDBC connections, as they often initialize prior to the tracing
+component.
 
-The most recent tracer instantiated is available via `Tracer.current()`.
-If you use `Tracer.current()` do not cache the result. Instead, lookup
-`Tracer.current()` prior to creating a new span.
+The most recent tracing component instantiated is available via
+`Tracing.current()`. You there's also a shortcut to get only the tracer
+via `Tracing.currentTracer()`. If you use either of these methods, do
+noot cache the result. Instead, look them up each time you need them.
 
 ## Current Span
 
@@ -260,10 +265,10 @@ can use to decorate executors.
 
 ```java
 CurrentTraceContext currentTraceContext = new CurrentTraceContext.Default();
-tracer = Tracer.newBuilder()
-               .currentTraceContext(currentTraceContext)
-               ...
-               .build();
+tracing = Tracing.newBuilder()
+                 .currentTraceContext(currentTraceContext)
+                 ...
+                 .build();
 
 Client c = Client.create();
 c.setExecutorService(currentTraceContext.executorService(realExecutorService));
@@ -380,8 +385,8 @@ If your code uses Brave 3 apis, all you need to do is use `TracerAdapter`
 to create a (Brave 3) .. Brave. You don't have to change anything else.
 
 ```java
-Tracer brave4 = Tracer.newBuilder()...build();
-Brave brave3 = TracerAdapter.newBrave(brave4);
+Tracing brave4 = Tracing.newBuilder()...build();
+Brave brave3 = TracerAdapter.newBrave(brave4.tracer());
 ```
 
 ### Converting between types

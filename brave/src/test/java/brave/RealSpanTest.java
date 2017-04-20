@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.tuple;
 public class RealSpanTest {
   List<zipkin.Span> spans = new ArrayList();
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  Tracer tracer = Tracer.newBuilder().reporter(spans::add).build();
+  Tracer tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
   Span span = tracer.newTrace();
 
   @Test public void isNotNoop() {

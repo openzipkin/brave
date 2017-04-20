@@ -2,6 +2,7 @@ package brave.features.finagle_context;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import com.twitter.finagle.context.MarshalledContext;
@@ -25,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class FinagleContextInteropTest {
 
   @Test public void finagleBraveInterop() throws Exception {
-    Tracer tracer = Tracer.newBuilder().currentTraceContext(new FinagleCurrentTraceContext()).build();
+    Tracer tracer = Tracing.newBuilder()
+        .currentTraceContext(new FinagleCurrentTraceContext()).build().tracer();
 
     Span parent = tracer.newTrace(); // start a trace in Brave
     try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {

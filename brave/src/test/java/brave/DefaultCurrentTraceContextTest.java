@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DefaultCurrentTraceContextTest {
   CurrentTraceContext.Default currentTraceContext = new CurrentTraceContext.Default();
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracer tracer = Tracing.newBuilder().build().tracer();
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 
@@ -50,11 +50,11 @@ public class DefaultCurrentTraceContextTest {
 
   /**
    * Ensures default scope is per thread, not per thread,instance. This is needed when using {@link
-   * Tracer#current()} such as instrumenting JDBC.
+   * Tracing#current()} such as instrumenting JDBC.
    */
   @Test public void perThreadScope() {
     try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
-      assertThat(Tracer.current().currentSpan().context())
+      assertThat(Tracing.current().tracer().currentSpan().context())
           .isEqualTo(context);
     }
   }

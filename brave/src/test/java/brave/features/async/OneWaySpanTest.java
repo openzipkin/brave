@@ -1,8 +1,7 @@
 package brave.features.async;
 
 import brave.Span;
-import brave.Tracer;
-import brave.propagation.Propagation;
+import brave.Tracing;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
@@ -36,11 +35,11 @@ public class OneWaySpanTest {
   InMemoryStorage storage = new InMemoryStorage();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
-  Tracer clientTracer = Tracer.newBuilder()
+  Tracing clientTracing = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("client").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
-  Tracer serverTracer = Tracer.newBuilder()
+  Tracing serverTracing = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("server").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
@@ -51,11 +50,11 @@ public class OneWaySpanTest {
     server.setDispatcher(new Dispatcher() {
       @Override public MockResponse dispatch(RecordedRequest recordedRequest) {
         // pull the context out of the incoming request
-        TraceContextOrSamplingFlags result =
-            Propagation.B3_STRING.extractor(RecordedRequest::getHeader).extract(recordedRequest);
+        TraceContextOrSamplingFlags result = serverTracing.propagation()
+            .extractor(RecordedRequest::getHeader).extract(recordedRequest);
 
         // in real life, we'd guard result.context was set and start a new trace if not
-        serverTracer.joinSpan(result.context())
+        serverTracing.tracer().joinSpan(result.context())
             .name(recordedRequest.getMethod())
             .kind(Span.Kind.SERVER)
             .start().flush(); // start the server side and flush instead of processing a response
@@ -70,11 +69,12 @@ public class OneWaySpanTest {
   @Test
   public void startWithOneTracerAndStopWithAnother() throws Exception {
     // start a new span representing a request
-    Span span = clientTracer.newTrace();
+    Span span = clientTracing.tracer().newTrace();
 
     // inject the trace context into the request
     Request.Builder request = new Request.Builder().url(server.url("/"));
-    Propagation.B3_STRING.injector(Request.Builder::addHeader).inject(span.context(), request);
+    clientTracing.propagation()
+        .injector(Request.Builder::addHeader).inject(span.context(), request);
 
     // fire off the request asynchronously, totally dropping any response
     new OkHttpClient().newCall(request.build()).enqueue(mock(Callback.class));
