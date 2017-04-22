@@ -108,7 +108,6 @@
     <module>brave-web-servlet-filter</module>
     <module>brave-okhttp</module>
     <module>brave-p6spy</module>
-    <module>brave-cxf3</module>
     <module>brave-sparkjava</module>
   </modules>
 
