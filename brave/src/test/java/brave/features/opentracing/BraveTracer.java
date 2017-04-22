@@ -1,7 +1,6 @@
 package brave.features.opentracing;
 
 import brave.internal.Nullable;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.SpanContext;
@@ -15,21 +14,21 @@ import java.util.Map;
 
 final class BraveTracer implements Tracer {
 
-  static BraveTracer wrap(brave.Tracer tracer) {
-    if (tracer == null) throw new NullPointerException("tracer == null");
-    return new BraveTracer(tracer);
+  static BraveTracer wrap(brave.Tracing tracing) {
+    if (tracing == null) throw new NullPointerException("tracing == null");
+    return new BraveTracer(tracing);
   }
 
-  static final List<String> PROPAGATION_KEYS = Propagation.B3_STRING.keys();
-  static final TraceContext.Injector<TextMap> INJECTOR =
-      Propagation.B3_STRING.injector(TextMap::put);
-  static final TraceContext.Extractor<TextMapView> EXTRACTOR =
-      Propagation.B3_STRING.extractor(TextMapView::get);
-
   final brave.Tracer tracer;
+  final List<String> propagationKeys;
+  final TraceContext.Injector<TextMap> injector;
+  final TraceContext.Extractor<TextMapView> extractor;
 
-  BraveTracer(brave.Tracer tracer) {
-    this.tracer = tracer;
+  BraveTracer(brave.Tracing tracing) {
+    tracer = tracing.tracer();
+    propagationKeys = tracing.propagation().keys();
+    injector = tracing.propagation().injector(TextMap::put);
+    extractor = tracing.propagation().extractor(TextMapView::get);
   }
 
   @Override public BraveSpanBuilder buildSpan(String operationName) {
@@ -41,7 +40,7 @@ final class BraveTracer implements Tracer {
       throw new UnsupportedOperationException(format + " != Format.Builtin.HTTP_HEADERS");
     }
     TraceContext traceContext = ((BraveSpanContext) spanContext).context;
-    INJECTOR.inject(traceContext, (TextMap) carrier);
+    injector.inject(traceContext, (TextMap) carrier);
   }
 
   @Override public <C> BraveSpanContext extract(Format<C> format, C carrier) {
@@ -49,7 +48,7 @@ final class BraveTracer implements Tracer {
       throw new UnsupportedOperationException(format.toString());
     }
     TraceContextOrSamplingFlags result =
-        EXTRACTOR.extract(new TextMapView(PROPAGATION_KEYS, (TextMap) carrier));
+        extractor.extract(new TextMapView(propagationKeys, (TextMap) carrier));
     TraceContext context = result.context() != null
         ? result.context().toBuilder().shared(true).build()
         : tracer.newTrace(result.samplingFlags()).context();

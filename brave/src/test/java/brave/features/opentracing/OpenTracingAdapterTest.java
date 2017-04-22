@@ -1,6 +1,6 @@
 package brave.features.opentracing;
 
-import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapExtractAdapter;
@@ -23,7 +23,7 @@ import static zipkin.internal.Util.UTF_8;
  */
 public class OpenTracingAdapterTest {
   List<zipkin.Span> spans = new ArrayList<>();
-  Tracer brave = Tracer.newBuilder().reporter(spans::add).build();
+  Tracing brave = Tracing.newBuilder().reporter(spans::add).build();
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
   @Test public void startWithOpenTracingAndFinishWithBrave() {
@@ -40,7 +40,7 @@ public class OpenTracingAdapterTest {
   }
 
   @Test public void startWithBraveAndFinishWithOpenTracing() {
-    brave.Span braveSpan = brave.newTrace().name("encode")
+    brave.Span braveSpan = brave.tracer().newTrace().name("encode")
         .tag(Constants.LOCAL_COMPONENT, "codec")
         .start(1L);
 

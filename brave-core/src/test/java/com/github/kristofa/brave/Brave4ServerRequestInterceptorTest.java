@@ -1,11 +1,11 @@
 package com.github.kristofa.brave;
 
-import brave.Tracer;
+import brave.Tracing;
 
 public class Brave4ServerRequestInterceptorTest extends ServerRequestInterceptorTest {
   @Override Brave newBrave() {
-    return TracerAdapter.newBrave(Tracer.newBuilder()
+    return TracerAdapter.newBrave(Tracing.newBuilder()
         .localEndpoint(ZIPKIN_ENDPOINT)
-        .reporter(spans::add).build());
+        .reporter(spans::add).build().tracer());
   }
 }

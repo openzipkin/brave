@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
 import brave.Span;
-import brave.Tracer;
+import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import org.junit.Test;
@@ -23,7 +23,7 @@ import static zipkin.Constants.SERVER_SEND;
 
 public class MutableSpanTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  TraceContext context = Tracer.newBuilder().build().newTrace().context();
+  TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
 
   // zipkin needs one annotation or binary annotation so that the local endpoint can be read
   @Test public void addsDefaultBinaryAnnotation() {

@@ -2,6 +2,7 @@ package brave.interop;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContextOrSamplingFlags;
 import com.github.kristofa.brave.Brave;
@@ -46,15 +47,15 @@ public class MixedBraveVersionsExample {
   InMemoryStorage storage = new InMemoryStorage();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
-  Tracer brave4Client = Tracer.newBuilder()
+  Tracer brave4Client = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("client").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
-      .build();
+      .build().tracer();
   Brave brave3Client = TracerAdapter.newBrave(brave4Client);
-  Tracer brave4Server = Tracer.newBuilder()
+  Tracer brave4Server = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("server").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
-      .build();
+      .build().tracer();
   Brave brave3Server = TracerAdapter.newBrave(brave4Server);
 
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);

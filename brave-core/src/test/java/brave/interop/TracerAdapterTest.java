@@ -1,6 +1,7 @@
 package brave.interop; // intentionally in a different package
 
 import brave.Tracer;
+import brave.Tracing;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TracerAdapter;
@@ -22,8 +23,11 @@ public class TracerAdapterTest {
 
   List<zipkin.Span> spans = new ArrayList<>();
   AtomicLong epochMicros = new AtomicLong();
-  Tracer brave4 =
-      Tracer.newBuilder().clock(epochMicros::incrementAndGet).reporter(spans::add).build();
+  Tracer brave4 = Tracing.newBuilder()
+      .clock(epochMicros::incrementAndGet)
+      .reporter(spans::add)
+      .build()
+      .tracer();
   Brave brave3 = TracerAdapter.newBrave(brave4);
 
   @Test public void startWithLocalTracerAndFinishWithTracer() {

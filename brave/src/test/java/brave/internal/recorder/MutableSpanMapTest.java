@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
+import brave.Tracing;
 import brave.propagation.TraceContext;
-import brave.Tracer;
 import brave.internal.Platform;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MutableSpanMapTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
   List<zipkin.Span> spans = new ArrayList();
-  TraceContext context = Tracer.newBuilder().build().newTrace().context();
+  TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
   MutableSpanMap map = new MutableSpanMap(localEndpoint, () -> 0L, spans::add);
 
   @Test

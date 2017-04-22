@@ -2,6 +2,7 @@ package brave.features.log4j2_context;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import org.apache.logging.log4j.ThreadContext;
@@ -19,7 +20,8 @@ public class Log4JThreadContextTest {
     assertThat(ThreadContext.get("traceID"))
         .isNull();
 
-    Tracer tracer = Tracer.newBuilder().currentTraceContext(new Log4J2CurrentTraceContext()).build();
+    Tracer tracer = Tracing.newBuilder()
+        .currentTraceContext(new Log4J2CurrentTraceContext()).build().tracer();
 
     Span parent = tracer.newTrace();
     try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {

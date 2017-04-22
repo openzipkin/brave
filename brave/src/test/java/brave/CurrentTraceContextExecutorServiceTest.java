@@ -27,7 +27,7 @@ public class CurrentTraceContextExecutorServiceTest {
   CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
   ExecutorService executor = currentTraceContext.executorService(wrappedExecutor);
 
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracer tracer = Tracing.newBuilder().build().tracer();
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 
