@@ -7,6 +7,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.io.Closeable;
@@ -145,8 +146,9 @@ public final class Tracer {
    * }</pre>
    *
    * @see Propagation
-   * @see TraceContext.Extractor#extract(Object)
+   * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
+   * @see #nextSpan(Extractor, Object)
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
@@ -259,6 +261,17 @@ public final class Tracer {
   @Nullable public Span currentSpan() {
     TraceContext currentContext = currentTraceContext.get();
     return currentContext != null ? toSpan(currentContext) : null;
+  }
+
+  /**
+   * Conditionally joins a span, or starts a new trace, depending on if a trace context was
+   * extracted from the carrier (usually an incoming request).
+   */
+  public <C> Span nextSpan(Extractor<C> extractor, C carrier) {
+    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(carrier);
+    return contextOrFlags.context() != null
+        ? joinSpan(contextOrFlags.context())
+        : newTrace(contextOrFlags.samplingFlags());
   }
 
   /** Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't. */
