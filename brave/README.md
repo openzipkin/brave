@@ -122,7 +122,7 @@ Here's how a client might model a one-way operation
 oneWaySend = tracer.newSpan(parent).kind(Span.Kind.CLIENT);
 
 // Add the trace context to the request, so it can be propagated in-band
-Propagation.B3_STRING.injector(Request::addHeader)
+tracing.propagation().injector(Request::addHeader)
                      .inject(oneWaySend.context(), request);
 
 // fire off the request asynchronously, totally dropping any response
@@ -135,11 +135,10 @@ oneWaySend.start().flush();
 And here's how a server might handle this..
 ```java
 // pull the context out of the incoming request
-contextOrFlags =
-    Propagation.B3_STRING.extractor(Request::getHeader).extract(request);
+extractor = tracing.propagation().extractor(Request::getHeader);
 
 // convert that context to a span which you can name and add tags to
-oneWayReceive = tracer.joinSpan(contextOrFlags.context())
+oneWayReceive = tracer.nextSpan(extractor, request)
     .name("process-request")
     .kind(SERVER)
     ... add tags etc.
@@ -221,21 +220,22 @@ frameworks.
 Most users will use a framework interceptor which automates propagation.
 Here's how they might work internally.
 
+Here's what client-side propagation might look like
 ```java
 // configure a function that injects a trace context into a request
-injector = Propagation.B3_STRING.injector(Request.Builder::addHeader);
+injector = tracing.propagation().injector(Request.Builder::addHeader);
 
 // before a request is sent, add the current span's context to it
 injector.inject(span.context(), request);
+```
 
+Here's what server-side propagation might look like
+```java
 // configure a function that extracts the trace context from a request
-extractor = Propagation.B3_STRING.extractor(Request::getHeader);
+extractor = tracing.propagation().extractor(Request::getHeader);
 
 // when a server receives a request, it joins or starts a new trace
-contextOrFlags = extractor.extract(request);
-span = contextOrFlags.context() != null
-    ? tracer.joinSpan(contextOrFlags.context())
-    : tracer.newTrace(contextOrFlags.samplingFlags());
+span = tracer.nextSpan(extractor, request);
 ```
 
 ## Current Tracing Component

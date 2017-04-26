@@ -1,10 +1,8 @@
 package brave.interop;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.Propagation;
-import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.TraceContext;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.TracerAdapter;
 import java.util.Collections;
@@ -47,16 +45,16 @@ public class MixedBraveVersionsExample {
   InMemoryStorage storage = new InMemoryStorage();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
-  Tracer brave4Client = Tracing.newBuilder()
+  Tracing brave4Client = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("client").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
-      .build().tracer();
-  Brave brave3Client = TracerAdapter.newBrave(brave4Client);
-  Tracer brave4Server = Tracing.newBuilder()
+      .build();
+  Brave brave3Client = TracerAdapter.newBrave(brave4Client.tracer());
+  Tracing brave4Server = Tracing.newBuilder()
       .localEndpoint(Endpoint.builder().serviceName("server").build())
       .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
-      .build().tracer();
-  Brave brave3Server = TracerAdapter.newBrave(brave4Server);
+      .build();
+  Brave brave3Server = TracerAdapter.newBrave(brave4Server.tracer());
 
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);
 
@@ -103,7 +101,8 @@ public class MixedBraveVersionsExample {
    * Brave 4 in that existing trace, you need to get a reference to the current span.
    */
   Span getServerSpanFromBrave3() {
-    return TracerAdapter.getServerSpan(brave4Client, brave3Client.serverSpanThreadBinder());
+    return TracerAdapter.getServerSpan(brave4Client.tracer(),
+        brave3Client.serverSpanThreadBinder());
   }
 
   /**
@@ -112,11 +111,11 @@ public class MixedBraveVersionsExample {
    */
   void createAndPropagateOneWaySpan(Span parent) {
     // start a new span representing a request
-    Span span = brave4Client.newChild(parent.context());
+    Span span = brave4Client.tracer().newChild(parent.context());
 
     // inject the trace context into the request
     Request.Builder request = new Request.Builder().url(server.url("/"));
-    Propagation.B3_STRING.injector(Request.Builder::addHeader).inject(span.context(), request);
+    brave4Client.propagation().injector(Request.Builder::addHeader).inject(span.context(), request);
 
     // fire off the request asynchronously, totally dropping any response
     new OkHttpClient().newCall(request.build()).enqueue(mock(Callback.class));
@@ -128,12 +127,11 @@ public class MixedBraveVersionsExample {
    * "sr" and flushes the span. Also notice we return the completed span (to create children).
    */
   Span joinOneWaySpan(RecordedRequest recordedRequest) {
-    // pull the context out of the incoming request
-    TraceContextOrSamplingFlags result =
-        Propagation.B3_STRING.extractor(RecordedRequest::getHeader).extract(recordedRequest);
+    TraceContext.Extractor<RecordedRequest> extractor =
+        brave4Server.propagation().extractor(RecordedRequest::getHeader);
 
-    // in real life, we'd guard result.context was set and start a new trace if not
-    Span serverSpan = brave4Server.joinSpan(result.context())
+    // pull the context out of the incoming request
+    Span serverSpan = brave4Server.tracer().nextSpan(extractor, recordedRequest)
         .name(recordedRequest.getMethod())
         .annotate(SERVER_RECV);
     serverSpan.flush(); // record the timestamp of the server receive and flush

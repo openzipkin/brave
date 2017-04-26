@@ -2,7 +2,7 @@ package brave.features.async;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -47,14 +47,12 @@ public class OneWaySpanTest {
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);
 
   @Before public void setup() {
+    TraceContext.Extractor<RecordedRequest> extractor =
+        serverTracing.propagation().extractor(RecordedRequest::getHeader);
+
     server.setDispatcher(new Dispatcher() {
       @Override public MockResponse dispatch(RecordedRequest recordedRequest) {
-        // pull the context out of the incoming request
-        TraceContextOrSamplingFlags result = serverTracing.propagation()
-            .extractor(RecordedRequest::getHeader).extract(recordedRequest);
-
-        // in real life, we'd guard result.context was set and start a new trace if not
-        serverTracing.tracer().joinSpan(result.context())
+        serverTracing.tracer().nextSpan(extractor, recordedRequest)
             .name(recordedRequest.getMethod())
             .kind(Span.Kind.SERVER)
             .start().flush(); // start the server side and flush instead of processing a response
@@ -69,7 +67,7 @@ public class OneWaySpanTest {
   @Test
   public void startWithOneTracerAndStopWithAnother() throws Exception {
     // start a new span representing a request
-    Span span = clientTracing.tracer().newTrace();
+    Span span = clientTracing.tracer().nextSpan();
 
     // inject the trace context into the request
     Request.Builder request = new Request.Builder().url(server.url("/"));

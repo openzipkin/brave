@@ -2,6 +2,7 @@ package brave;
 
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
@@ -192,5 +193,28 @@ public class TracerTest {
       assertThat(tracer.currentSpan())
           .isEqualTo(parent);
     }
+  }
+
+  @Test public void nextSpan_extract_defaultsToMakeNewTrace() {
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        TraceContext.newBuilder().sampled(false)
+    );
+    assertThat(tracer.nextSpan(extractor, null).context().parentId()).isNull();
+  }
+
+  @Test public void nextSpan_extract_honorsSamplingFlags() {
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        TraceContext.newBuilder().sampled(false)
+    );
+    assertThat(tracer.nextSpan(extractor, null).isNoop()).isTrue();
+  }
+
+  @Test public void nextSpan_extract_reusesSpanIds() {
+    TraceContext incomingContext = tracer.nextSpan().context();
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        incomingContext.toBuilder()
+    );
+    assertThat(tracer.nextSpan(extractor, null).context())
+        .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 }
