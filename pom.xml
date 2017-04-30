@@ -522,7 +522,7 @@
 
           <plugin>
               <artifactId>maven-surefire-plugin</artifactId>
-              <version>2.19.1</version>
+              <version>2.20</version>
               <configuration>
                   <systemPropertyVariables>
                       <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
@@ -541,7 +541,7 @@
           <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-failsafe-plugin</artifactId>
-              <version>2.19.1</version>
+              <version>2.20</version>
               <executions>
                   <execution>
                       <id>integration-test</id>
@@ -556,6 +556,11 @@
                       </goals>
                   </execution>
               </executions>
+              <configuration>
+                  <systemPropertyVariables>
+                      <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+                  </systemPropertyVariables>
+              </configuration>
           </plugin>
       <!-- Ensures checksums are added to published jars -->
       <plugin>
