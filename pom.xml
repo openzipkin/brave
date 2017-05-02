@@ -85,6 +85,7 @@
 
   <modules>
     <module>brave</module>
+    <module>context</module>
     <module>brave-core</module>
     <module>brave-benchmarks</module>
     <module>brave-http</module>
