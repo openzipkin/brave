@@ -15,17 +15,19 @@ public final class StrictCurrentTraceContext extends CurrentTraceContext {
 
   /** Identifies problems by throwing assertion errors when a scope is closed on a different thread. */
   @Override public Scope newScope(TraceContext currentSpan) {
+    TraceContext previous = local.get();
     local.set(currentSpan);
-    return new StrictScope(new Throwable(String.format("Thread %s opened scope for %s here:",
+    return new StrictScope(previous, new Error(String.format("Thread %s opened scope for %s here:",
         Thread.currentThread().getName(), currentSpan)));
   }
 
   class StrictScope implements Scope {
+    final TraceContext previous;
     final Throwable caller;
-    final TraceContext previous = local.get();
     final long threadId = Thread.currentThread().getId();
 
-    StrictScope(Throwable caller) {
+    StrictScope(TraceContext previous, Throwable caller) {
+      this.previous = previous;
       this.caller = caller;
     }
 
