@@ -59,14 +59,16 @@
     <spring.version>4.3.4.RELEASE</spring.version>
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
-    <zipkin.version>1.23.2</zipkin.version>
-    <zipkin-reporter.version>0.7.0</zipkin-reporter.version>
+    <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
+    <resteasy.version>3.1.2.Final</resteasy.version>
+    <zipkin.version>1.24.0</zipkin.version>
+    <zipkin-reporter.version>0.7.1</zipkin-reporter.version>
     <finagle.version>6.44.0</finagle.version>
     <log4j.version>2.8.1</log4j.version>
     <okhttp.version>3.6.0</okhttp.version>
     <grpc.version>1.2.0</grpc.version>
     <powermock.version>1.6.6</powermock.version>
-    <jmh.version>1.18</jmh.version>
+    <jmh.version>1.19</jmh.version>
 
     <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
     <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
@@ -193,15 +195,20 @@
                 </exclusion>
             </exclusions>
         </dependency>
-  		<dependency>
+        <dependency>
             <groupId>org.springframework</groupId>
-			<artifactId>spring-core</artifactId>
-			<version>${spring.version}</version>
+            <artifactId>spring-core</artifactId>
+            <version>${spring.version}</version>
         </dependency>
         <dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-context</artifactId>
-			<version>${spring.version}</version>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>${spring.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -216,7 +223,7 @@
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value</artifactId>
-            <version>1.4</version>
+            <version>1.4.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -238,6 +245,16 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
             <version>4.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-client</artifactId>
+            <version>${resteasy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-spring</artifactId>
+            <version>${resteasy.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
