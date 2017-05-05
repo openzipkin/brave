@@ -112,13 +112,19 @@ public final class B3Propagation<K> implements Propagation<K> {
           ? sampledString.equals("1") || sampledString.equalsIgnoreCase("true")
           : null;
       boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
+
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
-      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampled).debug(debug);
-      if (traceIdString != null) {
-        result.traceIdHigh(
-            traceIdString.length() == 32 ? lowerHexToUnsignedLong(traceIdString, 0) : 0);
-        result.traceId(lowerHexToUnsignedLong(traceIdString));
+      if (traceIdString == null) { // return early if there's no trace ID
+        return TraceContextOrSamplingFlags.create(
+            new SamplingFlags.Builder().sampled(sampled).debug(debug).build()
+        );
       }
+
+      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampled).debug(debug);
+      result.traceIdHigh(
+          traceIdString.length() == 32 ? lowerHexToUnsignedLong(traceIdString, 0) : 0
+      );
+      result.traceId(lowerHexToUnsignedLong(traceIdString));
       String spanIdString = getter.get(carrier, propagation.spanIdKey);
       if (spanIdString != null) {
         result.spanId(lowerHexToUnsignedLong(spanIdString));
