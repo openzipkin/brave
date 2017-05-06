@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.zipkin.brave</groupId>
+    <artifactId>brave-parent</artifactId>
+    <version>4.3.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>brave-instrumentation-parent</artifactId>
+  <name>Brave: Instrumentation</name>
+  <packaging>pom</packaging>
+
+  <properties>
+    <main.basedir>${project.basedir}/..</main.basedir>
+    <protobuf.version>3.0.2</protobuf.version>
+  </properties>
+
+  <modules>
+    <module>http-tests</module>
+    <module>benchmarks</module>
+    <module>grpc</module>
+    <module>httpasyncclient</module>
+    <module>httpclient</module>
+    <module>jaxrs2</module>
+    <module>mysql</module>
+    <module>okhttp3</module>
+    <module>p6spy</module>
+    <module>servlet</module>
+    <module>sparkjava</module>
+    <module>spring-web</module>
+    <module>spring-webmvc</module>
+  </modules>
+
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.5.0.Final</version>
+      </extension>
+    </extensions>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-invoker-plugin</artifactId>
+          <version>2.0.0</version>
+          <configuration>
+            <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
+            <settingsFile>${main.basedir}/src/it/settings.xml</settingsFile>
+            <profiles>
+              <profile>!release</profile>
+            </profiles>
+            <localRepositoryPath>${project.build.directory}/local-repo</localRepositoryPath>
+            <postBuildHookScript>verify</postBuildHookScript>
+            <addTestClassPath>true</addTestClassPath>
+            <skipInvocation>${skipTests}</skipInvocation>
+            <streamLogs>true</streamLogs>
+          </configuration>
+          <executions>
+            <execution>
+              <id>integration-test</id>
+              <goals>
+                <goal>install</goal>
+                <goal>run</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.xolstice.maven.plugins</groupId>
+          <artifactId>protobuf-maven-plugin</artifactId>
+          <version>0.5.0</version>
+          <configuration>
+            <protocArtifact>
+              com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
+            </protocArtifact>
+            <pluginId>grpc-java</pluginId>
+            <pluginArtifact>
+              io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
+            </pluginArtifact>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>
