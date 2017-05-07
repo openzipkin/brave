@@ -32,7 +32,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     remoteServiceName = httpTracing.serverName();
-    handler = new HttpClientHandler<>(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
     injector = httpTracing.tracing().propagation().injector(HttpHeaders::set);
   }
 
@@ -40,13 +40,18 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
       ClientHttpRequestExecution execution) throws IOException {
     Span span = tracer.nextSpan();
     parseServerAddress(request, span);
-    handler.handleSend(request, span);
     injector.inject(span.context(), request.getHeaders());
+    handler.handleSend(request, span);
+
+    ClientHttpResponse response = null;
+    Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return handler.handleReceive(execution.execute(request, body), span);
+      return response = execution.execute(request, body);
     } catch (IOException | RuntimeException e) {
-      handler.handleError(e, span);
+      error = e;
       throw e;
+    } finally {
+      handler.handleReceive(response, error, span);
     }
   }
 

@@ -37,7 +37,7 @@ import static javax.ws.rs.RuntimeType.SERVER;
 
   @Inject TracingContainerFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = new HttpServerHandler<>(new HttpAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(new HttpAdapter(), httpTracing.serverParser());
     extractor = httpTracing.tracing().propagation()
         .extractor(ContainerRequestContext::getHeaderString);
   }
@@ -57,14 +57,14 @@ import static javax.ws.rs.RuntimeType.SERVER;
     }
   }
 
-  private Span startSpan(ContainerRequestContext context) {
+  Span startSpan(ContainerRequestContext context) {
     Span span = tracer.nextSpan(extractor, context);
     parseClientAddress(context, span);
     handler.handleReceive(context, span);
     return span;
   }
 
-  void parseClientAddress(ContainerRequestContext context, Span span) {
+  static void parseClientAddress(ContainerRequestContext context, Span span) {
     if (span.isNoop()) return;
     Endpoint.Builder builder = Endpoint.builder().serviceName("");
     if (builder.parseIp(context.getHeaderString("X-Forwarded-For"))) {
@@ -90,7 +90,7 @@ import static javax.ws.rs.RuntimeType.SERVER;
     if (statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
       span.tag(Constants.ERROR, statusInfo.getReasonPhrase());
     }
-    handler.handleSend(response, span);
+    handler.handleSend(response, null, span);
   }
 
   /**

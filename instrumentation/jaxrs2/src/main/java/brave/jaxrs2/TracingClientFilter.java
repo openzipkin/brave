@@ -41,7 +41,7 @@ final class TracingClientFilter implements ClientRequestFilter, ClientResponseFi
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     tracer = httpTracing.tracing().tracer();
     remoteServiceName = httpTracing.serverName();
-    handler = new HttpClientHandler<>(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
     injector = httpTracing.tracing().propagation().injector(MultivaluedMap::putSingle);
   }
 
@@ -65,10 +65,10 @@ final class TracingClientFilter implements ClientRequestFilter, ClientResponseFi
 
   @Override
   public void filter(ClientRequestContext request, ClientResponseContext response) {
-    SpanInScope spanInScope = (SpanInScope) request.getProperty(SpanInScope.class.getName());
-    if (spanInScope == null) return;
-    handler.handleReceive(response, tracer.currentSpan());
-    spanInScope.close();
+    Span span = tracer.currentSpan();
+    if (span == null) return;
+    ((Tracer.SpanInScope) request.getProperty(Tracer.SpanInScope.class.getName())).close();
+    handler.handleReceive(response, null, span);
   }
 
   static final class HttpAdapter

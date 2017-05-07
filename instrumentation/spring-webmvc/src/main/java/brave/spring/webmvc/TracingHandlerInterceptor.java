@@ -4,9 +4,10 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
+import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
-import brave.servlet.HttpServletHandler;
+import brave.servlet.HttpServletAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,42 +26,34 @@ public class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
   }
 
   final Tracer tracer;
-  final HttpServletHandler handler;
+  final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<HttpServletRequest> extractor;
 
   @Autowired TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
     tracer = httpTracing.tracing().tracer();
-    handler = new HttpServletHandler(httpTracing.serverParser());
+    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
     extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
   }
 
   @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-      Object handler) {
+  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object o) {
     if (request.getAttribute(SpanInScope.class.getName()) != null) {
       return true; // already handled (possibly due to async request)
     }
 
     Span span = tracer.nextSpan(extractor, request);
-    try {
-      this.handler.handleReceive(request, span);
-      request.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
-    } catch (RuntimeException e) {
-      throw this.handler.handleError(e, span);
-    }
+    HttpServletAdapter.parseClientAddress(request, span);
+    handler.handleReceive(request, span);
+    request.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     return true;
   }
 
   @Override
   public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-      Object handler, Exception ex) {
+      Object o, Exception ex) {
     Span span = tracer.currentSpan();
     if (span == null) return;
     ((SpanInScope) request.getAttribute(SpanInScope.class.getName())).close();
-    if (ex != null) {
-      this.handler.handleError(ex, span);
-    } else {
-      this.handler.handleSend(response, span);
-    }
+    handler.handleSend(response, ex, span);
   }
 }

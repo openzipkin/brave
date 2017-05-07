@@ -1,42 +1,23 @@
 package brave.http;
 
-import brave.Tracing;
 import brave.internal.HexCodec;
-import brave.internal.StrictCurrentTraceContext;
-import brave.propagation.CurrentTraceContext;
 import brave.sampler.Sampler;
-import java.util.Collections;
 import java.util.List;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
-import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.Util;
-import zipkin.storage.InMemoryStorage;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
-public abstract class ITHttpServer {
-
-  @Rule public ExpectedException thrown = ExpectedException.none();
-  public OkHttpClient client = new OkHttpClient();
-
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
-
-  protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
-  protected HttpTracing httpTracing;
+public abstract class ITHttpServer extends ITHttp {
+  OkHttpClient client = new OkHttpClient();
 
   @Before
   public void setup() throws Exception {
@@ -228,11 +209,7 @@ public abstract class ITHttpServer {
         .extracting(s -> s.name)
         .containsExactly("get /foo");
 
-    assertThat(collectedSpans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly(url(uri));
+    assertReportedTagsInclude(TraceKeys.HTTP_URL, url(uri));
   }
 
   @Test
@@ -245,9 +222,7 @@ public abstract class ITHttpServer {
       // some servers think 400 is an error
     }
 
-    assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .contains(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "400", local));
+    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
   }
 
   @Test
@@ -305,25 +280,6 @@ public abstract class ITHttpServer {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_PATH))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly("/foo");
-  }
-
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
-        .currentTraceContext(currentTraceContext)
-        .localEndpoint(local)
-        .sampler(sampler);
-  }
-
-  protected List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    if (result.isEmpty()) return Collections.emptyList();
-    assertThat(result).hasSize(1);
-    return result.get(0);
+    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
   }
 }
