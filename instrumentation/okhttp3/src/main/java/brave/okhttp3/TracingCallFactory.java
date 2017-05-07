@@ -42,7 +42,7 @@ public final class TracingCallFactory implements Call.Factory {
     if (ok == null) throw new NullPointerException("OkHttpClient == null");
     tracer = httpTracing.tracing().tracer();
     remoteServiceName = httpTracing.serverName();
-    handler = new HttpClientHandler<>(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
     injector = httpTracing.tracing().propagation().injector(Request.Builder::addHeader);
     this.ok = ok;
   }
@@ -97,14 +97,19 @@ public final class TracingCallFactory implements Call.Factory {
       Span span = tracer.nextSpan();
       parseServerAddress(chain.connection(), span);
       Request request = chain.request();
-      handler.handleSend(request, span);
       Request.Builder requestBuilder = request.newBuilder();
       injector.inject(span.context(), requestBuilder);
+      handler.handleSend(request, span);
+
+      Response response = null;
+      Throwable error = null;
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-        return handler.handleReceive(chain.proceed(requestBuilder.build()), span);
+        return response = chain.proceed(requestBuilder.build());
       } catch (IOException | RuntimeException e) {
-        handler.handleError(e, span);
+        error = e;
         throw e;
+      } finally {
+        handler.handleReceive(response, error, span);
       }
     }
   }

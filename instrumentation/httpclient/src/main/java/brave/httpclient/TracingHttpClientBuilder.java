@@ -39,7 +39,7 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.tracer = httpTracing.tracing().tracer();
     this.remoteServiceName = httpTracing.serverName();
-    this.handler = new HttpClientHandler<>(new HttpAdapter(), httpTracing.clientParser());
+    this.handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
     this.injector = httpTracing.tracing().propagation().injector(HttpMessage::setHeader);
   }
 
@@ -70,7 +70,11 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
   @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
     return (route, request, context, execAware) -> {
       Span span = tracer.currentSpan();
+      CloseableHttpResponse response = null;
+      Throwable error = null;
       try {
+        injector.inject(span.context(), request);
+
         HttpHost host = HttpClientContext.adapt(context).getTargetHost();
         if (!span.isNoop() && host != null) {
           parseServerAddress(host, span);
@@ -78,18 +82,13 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
         } else {
           handler.handleSend(request, span);
         }
-
-        injector.inject(span.context(), request);
-
-        CloseableHttpResponse response = exec.execute(route, request, context, execAware);
-
-        handler.handleReceive(response, span);
-        return response;
+        return response = exec.execute(route, request, context, execAware);
       } catch (IOException | HttpException | RuntimeException e) {
-        handler.handleError(e, span);
+        error = e;
         throw e;
       } finally {
         context.getAttribute(SpanInScope.class.getName(), SpanInScope.class).close();
+        handler.handleReceive(response, error, span);
       }
     };
   }

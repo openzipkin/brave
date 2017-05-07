@@ -1,6 +1,7 @@
 package brave.servlet;
 
 import brave.Span;
+import brave.http.HttpServerHandler;
 import brave.internal.Nullable;
 import java.io.IOException;
 import javax.servlet.AsyncEvent;
@@ -28,7 +29,8 @@ abstract class ServletRuntime {
 
   abstract boolean isAsync(HttpServletRequest request);
 
-  abstract void handleAsync(HttpServletHandler handler, HttpServletRequest request, Span span);
+  abstract void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+      HttpServletRequest request, Span span);
 
   ServletRuntime() {
   }
@@ -63,20 +65,21 @@ abstract class ServletRuntime {
       return response.getStatus();
     }
 
-    @Override void handleAsync(HttpServletHandler handler, HttpServletRequest request, Span span) {
+    @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+        HttpServletRequest request, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
       request.getAsyncContext().addListener(new AsyncListener() {
         @Override public void onComplete(AsyncEvent e) throws IOException {
-          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), span);
+          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
         }
 
         @Override public void onTimeout(AsyncEvent e) throws IOException {
           span.tag(ERROR, String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), span);
+          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
         }
 
         @Override public void onError(AsyncEvent e) throws IOException {
-          handler.handleError(e.getThrowable(), span);
+          handler.handleSend(null, e.getThrowable(), span);
         }
 
         @Override public void onStartAsync(AsyncEvent e) throws IOException {
@@ -94,7 +97,8 @@ abstract class ServletRuntime {
       return false;
     }
 
-    @Override void handleAsync(HttpServletHandler handler, HttpServletRequest request, Span span) {
+    @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+        HttpServletRequest request, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }
 

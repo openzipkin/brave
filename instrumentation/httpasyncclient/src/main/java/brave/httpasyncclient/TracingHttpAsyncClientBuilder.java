@@ -49,7 +49,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.tracer = httpTracing.tracing().tracer();
     this.remoteServiceName = httpTracing.serverName();
-    this.handler = new HttpClientHandler<>(new HttpAdapter(), httpTracing.clientParser());
+    this.handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
     this.injector = httpTracing.tracing().propagation().injector(HttpMessage::setHeader);
   }
 
@@ -57,6 +57,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     super.addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
       Span span = parent == null ? tracer.newTrace() : tracer.newChild(parent);
+      injector.inject(span.context(), request);
 
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
       if (!span.isNoop() && host != null) {
@@ -66,7 +67,6 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
         handler.handleSend(request, span);
       }
 
-      injector.inject(span.context(), request);
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     });
@@ -79,7 +79,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     });
     super.addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
       Span span = (Span) context.getAttribute(Span.class.getName());
-      handler.handleReceive(response, span);
+      handler.handleReceive(response, null, span);
     });
     return new TracingHttpAsyncClient(super.build());
   }
@@ -186,8 +186,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void failed(Exception ex) {
       Span currentSpan = (Span) context.getAttribute(Span.class.getName());
       if (currentSpan != null) {
-        handler.handleError(ex, currentSpan);
         context.removeAttribute(Span.class.getName());
+        handler.handleReceive(null, ex, currentSpan);
       }
       requestProducer.failed(ex);
     }
@@ -228,8 +228,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void failed(Exception ex) {
       Span currentSpan = (Span) context.getAttribute(Span.class.getName());
       if (currentSpan != null) {
-        handler.handleError(ex, currentSpan);
         context.removeAttribute(Span.class.getName());
+        handler.handleReceive(null, ex, currentSpan);
       }
       responseConsumer.failed(ex);
     }

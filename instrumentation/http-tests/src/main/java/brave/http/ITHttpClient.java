@@ -2,43 +2,26 @@ package brave.http;
 
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.Tracing;
 import brave.internal.HexCodec;
-import brave.internal.StrictCurrentTraceContext;
-import brave.propagation.CurrentTraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.Util;
-import zipkin.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public abstract class ITHttpClient<C> {
-  @Rule public ExpectedException thrown = ExpectedException.none();
-  @Rule public MockWebServer server = new MockWebServer();
-
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
-
-  protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
-  protected HttpTracing httpTracing;
+public abstract class ITHttpClient<C> extends ITHttp {
   protected C client;
 
   @Before public void setup() {
@@ -175,19 +158,19 @@ public abstract class ITHttpClient<C> {
     String uri = "/foo?z=2&yAA=1";
 
     close();
-httpTracing = httpTracing.toBuilder()
-    .clientParser(new HttpClientParser() {
-      @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-        return adapter.method(req).toLowerCase() + " " + adapter.path(req);
-      }
+    httpTracing = httpTracing.toBuilder()
+        .clientParser(new HttpClientParser() {
+          @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+            return adapter.method(req).toLowerCase() + " " + adapter.path(req);
+          }
 
-      @Override
-      public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, brave.Span span) {
-        span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
-      }
-    })
-    .serverName("remote-service")
-    .build();
+          @Override
+          public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, brave.Span span) {
+            span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+          }
+        })
+        .serverName("remote-service")
+        .build();
 
     client = newClient(server.getPort());
     server.enqueue(new MockResponse());
@@ -204,11 +187,7 @@ httpTracing = httpTracing.toBuilder()
         .extracting(b -> b.endpoint.serviceName)
         .containsExactly("remote-service");
 
-    assertThat(collectedSpans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly(url(uri));
+    assertReportedTagsInclude(TraceKeys.HTTP_URL, url(uri));
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
@@ -220,9 +199,7 @@ httpTracing = httpTracing.toBuilder()
       // some clients think 404 is an error
     }
 
-    assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .contains(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "404", local));
+    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "404");
   }
 
   @Test public void redirect() throws Exception {
@@ -240,12 +217,7 @@ httpTracing = httpTracing.toBuilder()
       parent.finish();
     }
 
-    assertThat(collectedSpans())
-        .hasSize(3) // parent and two HTTP spans
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_PATH))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly("/foo", "/bar");
+    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo", "/bar");
   }
 
   @Test public void post() throws Exception {
@@ -290,28 +262,10 @@ httpTracing = httpTracing.toBuilder()
     server.enqueue(new MockResponse());
     get(client, path);
 
-    assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_PATH))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly("/foo");
+    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
   }
 
   protected String url(String pathIncludingQuery) {
     return "http://127.0.0.1:" + server.getPort() + pathIncludingQuery;
-  }
-
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
-        .currentTraceContext(currentTraceContext)
-        .localEndpoint(local)
-        .sampler(sampler);
-  }
-
-  List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    assertThat(result).hasSize(1);
-    return result.get(0);
   }
 }

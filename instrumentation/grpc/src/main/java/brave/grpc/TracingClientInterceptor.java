@@ -47,8 +47,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
-          span.kind(Span.Kind.CLIENT).name(method.getFullMethodName()).start();
           injector.inject(span.context(), headers);
+          span.kind(Span.Kind.CLIENT).name(method.getFullMethodName()).start();
           try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
             super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
               @Override public void onClose(Status status, Metadata trailers) {

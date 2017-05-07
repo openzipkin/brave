@@ -3,6 +3,7 @@ package brave.servlet;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import java.io.IOException;
@@ -26,12 +27,12 @@ public final class TracingFilter implements Filter {
 
   final ServletRuntime servlet = ServletRuntime.get();
   final Tracer tracer;
-  final HttpServletHandler handler;
+  final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<HttpServletRequest> extractor;
 
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = new HttpServletHandler(httpTracing.serverParser());
+    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
     extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
   }
 
@@ -42,19 +43,21 @@ public final class TracingFilter implements Filter {
     HttpServletResponse httpResponse = servlet.httpResponse(response);
 
     Span span = tracer.nextSpan(extractor, httpRequest);
+    HttpServletAdapter.parseClientAddress(httpRequest, span);
+    handler.handleReceive(httpRequest, span); // start the span
+
+    Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      handler.handleReceive(httpRequest, span); // start the span
-
       chain.doFilter(httpRequest, httpResponse); // any downstream filters see Tracer.currentSpan
-
+    } catch (IOException | ServletException | RuntimeException e) {
+      error = e;
+      throw e;
+    } finally {
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, span);
       } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(httpResponse, span);
+        handler.handleSend(httpResponse, error, span);
       }
-    } catch (IOException | ServletException | RuntimeException e) {
-      handler.handleError(e, span);
-      throw e;
     }
   }
 

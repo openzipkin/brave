@@ -3,9 +3,12 @@ package brave.sparkjava;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
-import brave.servlet.HttpServletHandler;
+import brave.servlet.HttpServletAdapter;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import spark.ExceptionHandler;
 import spark.Filter;
 import spark.Request;
@@ -20,18 +23,19 @@ public final class SparkTracing {
   }
 
   final Tracer tracer;
-  final HttpServletHandler handler;
+  final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<Request> extractor;
 
   SparkTracing(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = new HttpServletHandler(httpTracing.serverParser());
+    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
     extractor = httpTracing.tracing().propagation().extractor(Request::headers);
   }
 
   public Filter before() {
     return (request, response) -> {
       Span span = tracer.nextSpan(extractor, request);
+      HttpServletAdapter.parseClientAddress(request.raw(), span);
       handler.handleReceive(request.raw(), span);
       request.attribute(Tracer.SpanInScope.class.getName(), tracer.withSpanInScope(span));
     };
@@ -42,14 +46,17 @@ public final class SparkTracing {
       Span span = tracer.currentSpan();
       if (span == null) return;
       ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
-      handler.handleSend(response.raw(), span);
+      handler.handleSend(response.raw(), null, span);
     };
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
     return (exception, request, response) -> {
       Span span = tracer.currentSpan();
-      if (span != null) handler.handleError(exception, span);
+      if (span != null) {
+        ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
+        handler.handleSend(null, exception, span);
+      }
       delegate.handle(exception, request, response);
     };
   }
