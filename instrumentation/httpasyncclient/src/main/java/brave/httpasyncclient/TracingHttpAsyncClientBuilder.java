@@ -86,7 +86,9 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   void parseServerAddress(HttpHost host, Span span) {
     Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    if (!builder.parseIp(host.getAddress())) builder.parseIp(host.getHostName());
+    if (!builder.parseIp(host.getAddress())) {
+      if (!builder.parseIp(host.getHostName()) && "".equals(remoteServiceName)) return;
+    }
     builder.port(host.getPort());
     span.remoteEndpoint(builder.build());
   }

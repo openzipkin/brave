@@ -5,7 +5,6 @@ import brave.Tracer;
 import brave.Tracing;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
-import java.net.InetAddress;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -31,7 +30,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
       String sql = info.getSql();
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
       span.tag(TraceKeys.SQL_QUERY, sql);
-      remoteEndpoint(info.getConnectionInformation().getConnection(), span);
+      parseServerAddress(info.getConnectionInformation().getConnection(), span);
       span.start();
     }
 
@@ -61,24 +60,23 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   /**
    * This attempts to get the ip and port from the JDBC URL. Ex. localhost and 5555 from {@code
-   * jdbc:mysql://localhost:5555/isSampled}.
+   * jdbc:mysql://localhost:5555/mydatabase}.
    */
-  void remoteEndpoint(Connection connection, Span span) {
+  void parseServerAddress(Connection connection, Span span) {
     try {
       URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
       Endpoint.Builder builder = Endpoint.builder().port(url.getPort());
+      boolean parsed = builder.parseIp(url.getHost());
       if (remoteServiceName == null || "".equals(remoteServiceName)) {
         String databaseName = connection.getCatalog();
         if (databaseName != null && !databaseName.isEmpty()) {
           builder.serviceName(databaseName);
         } else {
+          if (!parsed) return;
           builder.serviceName("");
         }
       } else {
         builder.serviceName(remoteServiceName);
-      }
-      if (!builder.parseIp(url.getHost())) { // try for IP address
-        builder.parseIp(InetAddress.getByName(url.getHost())); // nslookup
       }
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {
