@@ -15,6 +15,10 @@
 machine:
   java:
     version: openjdk8
+  services:
+    - mysql
+  environment:
+    MYSQL_USER: root
 
 dependencies:
   override:
