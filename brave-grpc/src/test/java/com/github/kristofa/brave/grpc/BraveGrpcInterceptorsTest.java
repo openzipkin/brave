@@ -2,7 +2,6 @@ package com.github.kristofa.brave.grpc;
 
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.atIndex;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 import com.github.kristofa.brave.Brave;
@@ -28,7 +27,6 @@ import io.grpc.examples.helloworld.HelloRequest;
 
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
-import org.assertj.core.api.Condition;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -174,12 +172,6 @@ public class BraveGrpcInterceptorsTest {
 
         assertThat(clientServerSpan.annotations).extracting(a -> a.value)
             .containsExactly("cs", "sr", "ss", "cr");
-
-        //Server spans should have the GRPC_REMOTE_ADDR binary annotation
-        assertThat(clientServerSpan.binaryAnnotations)
-            .filteredOn(ba -> ba.key.equals(GrpcKeys.GRPC_REMOTE_ADDR))
-            .extracting(ba -> new String(ba.value, Util.UTF_8))
-            .has(new Condition<>(b -> b.matches("^/127.0.0.1:[\\d]+$"), "a local IP address"), atIndex(0));
 
         //Server spans should have the client address binary annotation
         assertThat(clientServerSpan.binaryAnnotations)

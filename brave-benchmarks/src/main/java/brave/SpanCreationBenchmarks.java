@@ -40,9 +40,9 @@ public class SpanCreationBenchmarks {
   @Setup
   public void setup() {
     // real everything except reporting
-    tracer = Tracer.newBuilder()
+    tracer = Tracing.newBuilder()
         .reporter(Reporter.NOOP)
-        .build();
+        .build().tracer();
     recorder = tracer.recorder;
     clock = tracer.clock;
     brave = new Brave.Builder()

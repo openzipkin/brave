@@ -5,8 +5,8 @@ import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.grpc.BraveGrpcServerInterceptor.GrpcServerRequestAdapter;
 import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
+import io.grpc.examples.helloworld.GreeterGrpc;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,8 +29,7 @@ public class GrpcServerRequestAdapterTest {
   @Before
   public void initMocks() {
     ServerCall serverCall = mock(ServerCall.class);
-    MethodDescriptor method = mock(MethodDescriptor.class);
-    when(serverCall.getMethodDescriptor()).thenReturn(method);
+    when(serverCall.getMethodDescriptor()).thenReturn(GreeterGrpc.METHOD_SAY_HELLO);
 
     adapter = new GrpcServerRequestAdapter(serverCall, metadata);
   }

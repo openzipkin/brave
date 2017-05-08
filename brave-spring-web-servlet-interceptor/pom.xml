@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>4.0.7-SNAPSHOT</version>
+    <version>4.3.0-SNAPSHOT</version>
   </parent>
   
   <artifactId>brave-spring-web-servlet-interceptor</artifactId>
@@ -13,17 +13,27 @@
       Spring HandlerInterceptorAdapter implementation.
   </description>
 
+  <properties>
+    <main.basedir>${project.basedir}/..</main.basedir>
+  </properties>
+
     <dependencies>
      <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-web-servlet-filter</artifactId>
-        <version>${project.version}</version>
      </dependency>
+     <!-- implicitly servlet 3.0.1 -->
      <dependency>
         <groupId>org.springframework</groupId>
         <artifactId>spring-webmvc</artifactId>
         <scope>provided</scope>
      </dependency>
+      <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>3.0.1</version>
+        <scope>provided</scope>
+      </dependency>
       <dependency>
         <groupId>org.springframework</groupId>
         <artifactId>spring-test</artifactId>
@@ -35,18 +45,6 @@
         <artifactId>commons-lang3</artifactId>
         <scope>test</scope>
      </dependency>
-      <dependency>
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-webapp</artifactId>
-          <version>${jetty.version}</version>
-          <scope>test</scope>
-      </dependency>
-     <dependency>
-          <groupId>javax.servlet</groupId>
-          <artifactId>javax.servlet-api</artifactId>
-          <version>3.0.1</version>
-          <scope>provided</scope>
-      </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-http-tests</artifactId>

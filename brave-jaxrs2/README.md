@@ -41,15 +41,6 @@ public class MyApplication extends Application {
 
 }
 ```
-	
-For CXF it looks like:
-
-```java
-JAXRSServerFactoryBean factory = new JAXRSServerFactoryBean();
-...
-factory.setProviders(Arrays.asList(BraveTracingFeature.create(brave)));
-factory.create();
-```
 
 For client side setup, you just have to register the BraveTracingFeature
 with your JAX-RS 2 client before you make your request:

@@ -35,18 +35,11 @@ public class ITJerseyClientTraceFilter extends ITHttpClient<Client> {
 
   @Override protected void get(Client client, String pathIncludingQuery)
       throws IOException {
-    client.resource(server.url("/foo").uri()).get(String.class);
+    client.resource(server.url(pathIncludingQuery).uri()).get(String.class);
   }
 
   @Override protected void getAsync(Client client, String pathIncludingQuery) throws Exception {
-    client.asyncResource(server.url("/foo").uri()).get(String.class);
-  }
-
-
-  @Override
-  @Test(expected = AssertionError.class) // query params are not logged in jersey
-  public void httpUrlTagIncludesQueryParams() throws Exception {
-    super.httpUrlTagIncludesQueryParams();
+    client.asyncResource(server.url(pathIncludingQuery).uri()).get(String.class);
   }
 
   @Override

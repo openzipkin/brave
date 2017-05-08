@@ -9,6 +9,7 @@ import java.util.List;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -90,19 +91,31 @@ public abstract class ITHttpServer {
         .isEmpty();
   }
 
+
+  @Test
+  public void createsChildSpan() throws Exception {
+    createsChildSpan("/child");
+  }
+
+  @Test
+  public void createsChildSpan_async() throws Exception {
+    createsChildSpan("/childAsync");
+  }
+
   /**
    * This ensures thread-state is propagated from trace interceptors to user code. The endpoint
    * "/child" is expected to create a local span. When this works, it should be a child of the
    * "current span", in this case the span representing an incoming server request. When thread
    * state isn't managed properly, the child span will appear as a new trace.
    */
-  @Test
-  public void createsChildSpan() throws Exception {
-    String path = "/child";
-
+  private void createsChildSpan(String path) {
     Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
+      if (response.code() == 404) throw new AssumptionViolatedException(path + " not supported");
+    } catch (AssumptionViolatedException e) {
+      throw e;
+    } catch (Exception e) {
+      // ok, but the span should include an error!
     }
 
     List<Span> trace = collectedSpans();
@@ -210,10 +223,20 @@ public abstract class ITHttpServer {
 
   @Test
   public void reportsSpanOnTransportException() throws Exception {
-    String path = "/disconnect";
+    reportsSpanOnTransportException("/disconnect");
+  }
 
+  @Test
+  public void reportsSpanOnTransportException_async() throws Exception {
+    reportsSpanOnTransportException("/disconnectAsync");
+  }
+
+  private void reportsSpanOnTransportException(String path) {
     Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
+      if (response.code() == 404) throw new AssumptionViolatedException(path + " not supported");
+    } catch (AssumptionViolatedException e) {
+      throw e;
     } catch (Exception e) {
       // ok, but the span should include an error!
     }
@@ -223,7 +246,16 @@ public abstract class ITHttpServer {
 
   @Test
   public void addsErrorTagOnTransportException() throws Exception {
-    reportsSpanOnTransportException();
+    addsErrorTagOnTransportException("/disconnect");
+  }
+
+  @Test
+  public void addsErrorTagOnTransportException_async() throws Exception {
+    addsErrorTagOnTransportException("/disconnectAsync");
+  }
+
+  private void addsErrorTagOnTransportException(String path) {
+    reportsSpanOnTransportException(path);
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.binaryAnnotations)

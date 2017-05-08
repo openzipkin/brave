@@ -1,24 +1,24 @@
 package brave.internal;
 
 import brave.Span;
-import brave.Tracer;
+import brave.Tracing;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class InternalTest {
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracing tracing = Tracing.newBuilder().build();
 
   /**
    * Brave 3's LocalTracer.finish(duration) requires a read-back of the initial timestamp. While
    * that api is in use, this hook is needed.
    */
   @Test public void readBackTimestamp() {
-    long timestamp = tracer.clock().currentTimeMicroseconds();
+    long timestamp = tracing.clock().currentTimeMicroseconds();
 
-    Span span = tracer.newTrace().name("foo").start(timestamp);
+    Span span = tracing.tracer().newTrace().name("foo").start(timestamp);
 
-    assertThat(Internal.instance.timestamp(tracer, span.context()))
+    assertThat(Internal.instance.timestamp(tracing.tracer(), span.context()))
         .isEqualTo(timestamp);
   }
 }

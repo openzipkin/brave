@@ -2,6 +2,7 @@ package brave;
 
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +12,7 @@ import zipkin.Endpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracerTest {
-  Tracer tracer = Tracer.newBuilder().build();
+  Tracer tracer = Tracing.newBuilder().build().tracer();
 
   @Test public void sampler() {
     Sampler sampler = new Sampler() {
@@ -20,14 +21,14 @@ public class TracerTest {
       }
     };
 
-    tracer = Tracer.newBuilder().sampler(sampler).build();
+    tracer = Tracing.newBuilder().sampler(sampler).build().tracer();
 
     assertThat(tracer.sampler)
         .isSameAs(sampler);
   }
 
   @Test public void localServiceName() {
-    tracer = Tracer.newBuilder().localServiceName("my-foo").build();
+    tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
     assertThat(tracer.localEndpoint.serviceName)
         .isEqualTo("my-foo");
@@ -40,8 +41,8 @@ public class TracerTest {
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
     Endpoint localEndpoint = Endpoint.create("my-bar", 127 << 24 | 1);
-    tracer = Tracer.newBuilder().localServiceName("my-foo")
-        .localEndpoint(localEndpoint).build();
+    tracer = Tracing.newBuilder().localServiceName("my-foo")
+        .localEndpoint(localEndpoint).build().tracer();
 
     assertThat(tracer.localEndpoint)
         .isSameAs(localEndpoint);
@@ -49,7 +50,7 @@ public class TracerTest {
 
   @Test public void clock() {
     Clock clock = () -> 0L;
-    tracer = Tracer.newBuilder().clock(clock).build();
+    tracer = Tracing.newBuilder().clock(clock).build().tracer();
 
     assertThat(tracer.clock())
         .isSameAs(clock);
@@ -62,14 +63,14 @@ public class TracerTest {
   }
 
   @Test public void newTrace_traceId128Bit() {
-    tracer = Tracer.newBuilder().traceId128Bit(true).build();
+    tracer = Tracing.newBuilder().traceId128Bit(true).build().tracer();
 
     assertThat(tracer.newTrace().context().traceIdHigh())
         .isNotZero();
   }
 
   @Test public void newTrace_unsampled_tracer() {
-    tracer = Tracer.newBuilder().sampler(Sampler.NEVER_SAMPLE).build();
+    tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
 
     assertThat(tracer.newTrace())
         .isInstanceOf(NoopSpan.class);
@@ -82,7 +83,7 @@ public class TracerTest {
 
   @Test public void newTrace_debug_flag() {
     List<zipkin.Span> spans = new ArrayList<>();
-    tracer = Tracer.newBuilder().reporter(spans::add).build();
+    tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
 
     Span root = tracer.newTrace(SamplingFlags.DEBUG).start();
     root.finish();
@@ -146,5 +147,74 @@ public class TracerTest {
 
     assertThat(tracer.newChild(unsampled))
         .isInstanceOf(NoopSpan.class);
+  }
+
+  @Test public void currentSpan_defaultsToNull() {
+    assertThat(tracer.currentSpan()).isNull();
+  }
+
+  @Test public void nextSpan_defaultsToMakeNewTrace() {
+    assertThat(tracer.nextSpan().context().parentId()).isNull();
+  }
+
+  @Test public void nextSpan_makesChildOfCurrent() {
+    Span parent = tracer.newTrace();
+
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+      assertThat(tracer.nextSpan().context().parentId())
+          .isEqualTo(parent.context().spanId());
+    }
+  }
+
+  @Test public void withSpanInScope() {
+    Span current = tracer.newTrace();
+
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(current)) {
+      assertThat(tracer.currentSpan())
+          .isEqualTo(current);
+    }
+
+    // context was cleared
+    assertThat(tracer.currentSpan()).isNull();
+  }
+
+  @Test public void withSpanInScope_nested() {
+    Span parent = tracer.newTrace();
+
+    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+
+      Span child = tracer.newChild(parent.context());
+      try (Tracer.SpanInScope wsChild = tracer.withSpanInScope(child)) {
+        assertThat(tracer.currentSpan())
+            .isEqualTo(child);
+      }
+
+      // old parent reverted
+      assertThat(tracer.currentSpan())
+          .isEqualTo(parent);
+    }
+  }
+
+  @Test public void nextSpan_extract_defaultsToMakeNewTrace() {
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        TraceContext.newBuilder().sampled(false)
+    );
+    assertThat(tracer.nextSpan(extractor, null).context().parentId()).isNull();
+  }
+
+  @Test public void nextSpan_extract_honorsSamplingFlags() {
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        TraceContext.newBuilder().sampled(false)
+    );
+    assertThat(tracer.nextSpan(extractor, null).isNoop()).isTrue();
+  }
+
+  @Test public void nextSpan_extract_reusesSpanIds() {
+    TraceContext incomingContext = tracer.nextSpan().context();
+    TraceContext.Extractor<Void> extractor = carrier -> TraceContextOrSamplingFlags.create(
+        incomingContext.toBuilder()
+    );
+    assertThat(tracer.nextSpan(extractor, null).context())
+        .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 }

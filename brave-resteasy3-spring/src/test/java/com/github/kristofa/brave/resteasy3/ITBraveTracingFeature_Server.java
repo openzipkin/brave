@@ -9,7 +9,9 @@ import javax.servlet.ServletContext;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -76,9 +78,27 @@ public class ITBraveTracingFeature_Server extends ITServletContainer {
     }
 
     @GET
+    @Path("childAsync")
+    public void childAsync(@Suspended AsyncResponse response) throws IOException {
+      new Thread(() -> {
+        localTracer.startNewSpan("child", "child");
+        localTracer.finishSpan();
+        response.resume(Response.status(200).build());
+      }).start();
+    }
+
+    @GET
     @Path("disconnect")
     public Response disconnect() throws IOException {
       throw new IOException();
+    }
+
+    @GET
+    @Path("disconnectAsync")
+    public void disconnectAsync(@Suspended AsyncResponse response) throws IOException {
+      new Thread(() ->{
+        response.resume(new IOException());
+      }).start();
     }
   }
 

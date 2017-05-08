@@ -7,14 +7,14 @@ import zipkin.Endpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class NoopSpanTest {
-  Tracer tracer = Tracer.newBuilder().sampler(Sampler.NEVER_SAMPLE)
+  Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
       .clock(() -> {
         throw new AssertionError();
       })
       .reporter(s -> {
         throw new AssertionError();
       })
-      .build();
+      .build().tracer();
   Span span = tracer.newTrace();
 
   @Test public void isNoop() {
