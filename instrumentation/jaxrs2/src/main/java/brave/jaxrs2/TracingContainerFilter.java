@@ -28,8 +28,8 @@ import static javax.ws.rs.RuntimeType.SERVER;
 // Currently not using PreMatching because we are attempting to detect if the method is async or not
 @Provider
 @Priority(0) // to make the span in scope visible to other filters
-@ConstrainedTo(SERVER) final class TracingContainerFilter
-    implements ContainerRequestFilter, ContainerResponseFilter {
+@ConstrainedTo(SERVER)
+final class TracingContainerFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   final Tracer tracer;
   final HttpServerHandler<ContainerRequestContext, ContainerResponseContext> handler;

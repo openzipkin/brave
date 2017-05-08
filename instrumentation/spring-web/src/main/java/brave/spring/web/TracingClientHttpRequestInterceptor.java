@@ -59,7 +59,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     if (span.isNoop()) return;
     URI uri = request.getURI();
     Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    builder.parseIp(uri.getHost());
+    if (!builder.parseIp(uri.getHost()) && "".equals(remoteServiceName)) return;
     builder.port(uri.getPort());
     span.remoteEndpoint(builder.build());
   }

@@ -8,7 +8,6 @@ import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
 import com.mysql.jdbc.Statement;
 import com.mysql.jdbc.StatementInterceptorV2;
-import java.net.InetAddress;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -39,7 +38,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
       }
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
       span.tag(TraceKeys.SQL_QUERY, sql);
-      remoteEndpoint(connection, span);
+      parseServerAddress(connection, span);
       span.start();
     }
 
@@ -77,9 +76,9 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
 
   /**
    * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
-   * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/isSampled}, or 3306 if absent.
+   * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/database}, or 3306 if absent.
    */
-  static void remoteEndpoint(Connection connection, Span span) {
+  static void parseServerAddress(Connection connection, Span span) {
     try {
       URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
       int port = url.getPort() == -1 ? 3306 : url.getPort();
@@ -93,9 +92,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
         }
       }
       Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName).port(port);
-      if (!builder.parseIp(connection.getHost())) { // try for IP address
-        builder.parseIp(InetAddress.getByName(connection.getHost())); // nslookup
-      }
+      if (!builder.parseIp(connection.getHost())) return;
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {
       // remote address is optional

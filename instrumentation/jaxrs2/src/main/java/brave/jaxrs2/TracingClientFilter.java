@@ -58,7 +58,7 @@ final class TracingClientFilter implements ClientRequestFilter, ClientResponseFi
     if (span.isNoop()) return;
     URI uri = request.getUri();
     Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    builder.parseIp(uri.getHost());
+    if (!builder.parseIp(uri.getHost()) && "".equals(remoteServiceName)) return;
     builder.port(uri.getPort());
     span.remoteEndpoint(builder.build());
   }
