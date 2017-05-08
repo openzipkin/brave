@@ -77,4 +77,9 @@ public class ITTracingClientHttpRequestInterceptor
   public void redirect() throws Exception { // blind to the implementation of redirects
     super.redirect();
   }
+
+  @Override @Test(expected = AssertionError.class)
+  public void reportsServerAddress() throws Exception { // doesn't know the remote address
+    super.reportsServerAddress();
+  }
 }

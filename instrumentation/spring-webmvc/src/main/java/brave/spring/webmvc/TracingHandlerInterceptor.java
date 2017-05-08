@@ -31,7 +31,7 @@ public class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
 
   @Autowired TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
     extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
   }
 
@@ -41,9 +41,7 @@ public class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
       return true; // already handled (possibly due to async request)
     }
 
-    Span span = tracer.nextSpan(extractor, request);
-    HttpServletAdapter.parseClientAddress(request, span);
-    handler.handleReceive(request, span);
+    Span span = handler.handleReceive(extractor, request);
     request.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     return true;
   }

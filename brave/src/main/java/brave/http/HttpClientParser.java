@@ -9,7 +9,8 @@ public class HttpClientParser {
   }
 
   public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Span span) {
-    span.tag(TraceKeys.HTTP_PATH, adapter.path(req));
+    String path = adapter.path(req);
+    if (path != null) span.tag(TraceKeys.HTTP_PATH, path);
   }
 
   public <Resp> void responseTags(HttpAdapter<?, Resp> adapter, Resp res, Span span) {

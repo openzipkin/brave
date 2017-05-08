@@ -21,6 +21,7 @@ import zipkin.Endpoint;
  * {@link Tracer#currentSpan()}
  */
 // NOTE: this is not an interceptor because the current span can get lost when there's a backlog.
+// This will be completely different after https://github.com/square/okhttp/issues/270
 public final class TracingCallFactory implements Call.Factory {
 
   public static Call.Factory create(Tracing tracing, OkHttpClient ok) {
@@ -42,7 +43,7 @@ public final class TracingCallFactory implements Call.Factory {
     if (ok == null) throw new NullPointerException("OkHttpClient == null");
     tracer = httpTracing.tracing().tracer();
     remoteServiceName = httpTracing.serverName();
-    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     injector = httpTracing.tracing().propagation().injector(Request.Builder::addHeader);
     this.ok = ok;
   }
@@ -53,28 +54,6 @@ public final class TracingCallFactory implements Call.Factory {
     if (currentSpan != null) b.interceptors().add(0, new SetParentSpanInScope(currentSpan));
     b.networkInterceptors().add(0, new TracingNetworkInterceptor());
     return b.build().newCall(request);
-  }
-
-  static final class HttpAdapter extends brave.http.HttpAdapter<Request, Response> {
-    @Override public String method(Request request) {
-      return request.method();
-    }
-
-    @Override public String path(Request request) {
-      return request.url().encodedPath();
-    }
-
-    @Override public String url(Request request) {
-      return request.url().toString();
-    }
-
-    @Override public String requestHeader(Request request, String name) {
-      return request.header(name);
-    }
-
-    @Override public Integer statusCode(Response response) {
-      return response.code();
-    }
   }
 
   /** In case a request is deferred due to a backlog, we re-apply the span that was in scope */
@@ -94,18 +73,16 @@ public final class TracingCallFactory implements Call.Factory {
 
   class TracingNetworkInterceptor implements Interceptor {
     @Override public Response intercept(Chain chain) throws IOException {
-      Span span = tracer.nextSpan();
-      parseServerAddress(chain.connection(), span);
       Request request = chain.request();
       Request.Builder requestBuilder = request.newBuilder();
-      injector.inject(span.context(), requestBuilder);
-      handler.handleSend(request, span);
 
+      Span span = handler.handleSend(injector, requestBuilder, request);
+      parseServerAddress(chain.connection(), span);
       Response response = null;
       Throwable error = null;
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
         return response = chain.proceed(requestBuilder.build());
-      } catch (IOException | RuntimeException e) {
+      } catch (IOException | RuntimeException | Error e) {
         error = e;
         throw e;
       } finally {
@@ -114,6 +91,7 @@ public final class TracingCallFactory implements Call.Factory {
     }
   }
 
+  /** This is different than default because the request does not hold the address */
   void parseServerAddress(Connection connection, Span span) {
     if (span.isNoop()) return;
     InetSocketAddress remoteAddress = connection.route().socketAddress();
@@ -121,5 +99,27 @@ public final class TracingCallFactory implements Call.Factory {
     builder.parseIp(remoteAddress.getAddress());
     builder.port(remoteAddress.getPort());
     span.remoteEndpoint(builder.build());
+  }
+
+  static final class HttpAdapter extends brave.http.HttpClientAdapter<Request, Response> {
+    @Override public String method(Request request) {
+      return request.method();
+    }
+
+    @Override public String path(Request request) {
+      return request.url().encodedPath();
+    }
+
+    @Override public String url(Request request) {
+      return request.url().toString();
+    }
+
+    @Override public String requestHeader(Request request, String name) {
+      return request.header(name);
+    }
+
+    @Override public Integer statusCode(Response response) {
+      return response.code();
+    }
   }
 }

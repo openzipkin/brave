@@ -32,7 +32,7 @@ public final class TracingFilter implements Filter {
 
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
     extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
   }
 
@@ -42,14 +42,11 @@ public final class TracingFilter implements Filter {
     HttpServletRequest httpRequest = (HttpServletRequest) request;
     HttpServletResponse httpResponse = servlet.httpResponse(response);
 
-    Span span = tracer.nextSpan(extractor, httpRequest);
-    HttpServletAdapter.parseClientAddress(httpRequest, span);
-    handler.handleReceive(httpRequest, span); // start the span
-
+    Span span = handler.handleReceive(extractor, httpRequest);
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       chain.doFilter(httpRequest, httpResponse); // any downstream filters see Tracer.currentSpan
-    } catch (IOException | ServletException | RuntimeException e) {
+    } catch (IOException | ServletException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {

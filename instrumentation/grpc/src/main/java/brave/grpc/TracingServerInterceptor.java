@@ -5,6 +5,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.ForwardingServerCall;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
@@ -31,7 +32,10 @@ final class TracingServerInterceptor implements ServerInterceptor {
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
       final Metadata requestHeaders, final ServerCallHandler<ReqT, RespT> next) {
-    Span span = tracer.nextSpan(extractor, requestHeaders);
+    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(requestHeaders);
+    Span span = contextOrFlags.context() != null
+        ? tracer.joinSpan(contextOrFlags.context())
+        : tracer.newTrace(contextOrFlags.samplingFlags());
     return next.startCall(new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
       @Override
       public void request(int numMessages) {

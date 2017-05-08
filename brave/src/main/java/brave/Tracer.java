@@ -59,13 +59,13 @@ public final class Tracer {
       return this;
     }
 
-    /**  @see Tracing.Builder#localEndpoint(Endpoint) */
+    /** @see Tracing.Builder#localEndpoint(Endpoint) */
     public Builder localEndpoint(Endpoint localEndpoint) {
       delegate.localEndpoint(localEndpoint);
       return this;
     }
 
-    /**  @see Tracing.Builder#reporter(Reporter) */
+    /** @see Tracing.Builder#reporter(Reporter) */
     public Builder reporter(Reporter<zipkin.Span> reporter) {
       delegate.reporter(reporter);
       return this;
@@ -263,19 +263,8 @@ public final class Tracer {
     return currentContext != null ? toSpan(currentContext) : null;
   }
 
-  /**
-   * Conditionally joins a span, or starts a new trace, depending on if a trace context was
-   * extracted from the carrier (usually an incoming request).
-   */
-  public <C> Span nextSpan(Extractor<C> extractor, C carrier) {
-    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(carrier);
-    return contextOrFlags.context() != null
-        ? joinSpan(contextOrFlags.context())
-        : newTrace(contextOrFlags.samplingFlags());
-  }
-
   /** Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't. */
-  @Nullable public Span nextSpan() {
+  public Span nextSpan() {
     TraceContext parent = currentTraceContext.get();
     return parent == null ? newTrace() : newChild(parent);
   }

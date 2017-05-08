@@ -41,6 +41,7 @@ public abstract class HttpTracing {
    * }</pre>
    *
    * @see zipkin.Constants#SERVER_ADDR
+   * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */
   public abstract String serverName();

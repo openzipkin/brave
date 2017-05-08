@@ -71,6 +71,11 @@ public class ITTracingFeature_Client extends ITHttpClient<Client> {
     super.redirect();
   }
 
+  @Override @Test(expected = AssertionError.class)
+  public void reportsServerAddress() throws Exception { // doesn't know the remote address
+    super.reportsServerAddress();
+  }
+
   @Override @Test(expected = AssertionError.class) // doesn't yet close a span on exception
   public void reportsSpanOnTransportException() throws Exception {
     super.reportsSpanOnTransportException();

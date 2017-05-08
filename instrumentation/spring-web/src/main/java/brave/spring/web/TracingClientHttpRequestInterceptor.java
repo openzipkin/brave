@@ -7,13 +7,11 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import java.io.IOException;
-import java.net.URI;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
-import zipkin.Endpoint;
 
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
@@ -25,29 +23,23 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   }
 
   final Tracer tracer;
-  final String remoteServiceName;
   final HttpClientHandler<HttpRequest, ClientHttpResponse> handler;
   final TraceContext.Injector<HttpHeaders> injector;
 
   TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    remoteServiceName = httpTracing.serverName();
-    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     injector = httpTracing.tracing().propagation().injector(HttpHeaders::set);
   }
 
   @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,
       ClientHttpRequestExecution execution) throws IOException {
-    Span span = tracer.nextSpan();
-    parseServerAddress(request, span);
-    injector.inject(span.context(), request.getHeaders());
-    handler.handleSend(request, span);
-
+    Span span = handler.handleSend(injector, request.getHeaders(), request);
     ClientHttpResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return response = execution.execute(request, body);
-    } catch (IOException | RuntimeException e) {
+    } catch (IOException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
@@ -55,17 +47,9 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     }
   }
 
-  void parseServerAddress(HttpRequest request, Span span) {
-    if (span.isNoop()) return;
-    URI uri = request.getURI();
-    Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    if (!builder.parseIp(uri.getHost()) && "".equals(remoteServiceName)) return;
-    builder.port(uri.getPort());
-    span.remoteEndpoint(builder.build());
-  }
+  static final class HttpAdapter
+      extends brave.http.HttpClientAdapter<HttpRequest, ClientHttpResponse> {
 
-  static final class HttpAdapter extends
-      brave.http.HttpAdapter<HttpRequest, ClientHttpResponse> {
     @Override public String method(HttpRequest request) {
       return request.getMethod().name();
     }

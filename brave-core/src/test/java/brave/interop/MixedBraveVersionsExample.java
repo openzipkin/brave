@@ -2,7 +2,7 @@ package brave.interop;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.TracerAdapter;
 import java.util.Collections;
@@ -127,11 +127,11 @@ public class MixedBraveVersionsExample {
    * "sr" and flushes the span. Also notice we return the completed span (to create children).
    */
   Span joinOneWaySpan(RecordedRequest recordedRequest) {
-    TraceContext.Extractor<RecordedRequest> extractor =
-        brave4Server.propagation().extractor(RecordedRequest::getHeader);
+    TraceContextOrSamplingFlags result =
+        brave4Server.propagation().extractor(RecordedRequest::getHeader).extract(recordedRequest);
 
-    // pull the context out of the incoming request
-    Span serverSpan = brave4Server.tracer().nextSpan(extractor, recordedRequest)
+    // in real life, we'd guard result.context was set and start a new trace if not
+    Span serverSpan = brave4Server.tracer().joinSpan(result.context())
         .name(recordedRequest.getMethod())
         .annotate(SERVER_RECV);
     serverSpan.flush(); // record the timestamp of the server receive and flush

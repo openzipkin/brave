@@ -1,11 +1,11 @@
 package brave.httpasyncclient;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.util.concurrent.Future;
@@ -40,40 +40,34 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     return new TracingHttpAsyncClientBuilder(httpTracing);
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final TraceContext.Injector<HttpMessage> injector;
   final HttpClientHandler<HttpRequest, HttpResponse> handler;
-  final String remoteServiceName;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    this.tracer = httpTracing.tracing().tracer();
-    this.remoteServiceName = httpTracing.serverName();
-    this.handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
+    this.currentTraceContext = httpTracing.tracing().currentTraceContext();
+    this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     this.injector = httpTracing.tracing().propagation().injector(HttpMessage::setHeader);
   }
 
   @Override public CloseableHttpAsyncClient build() {
     super.addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
-      TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
-      Span span = parent == null ? tracer.newTrace() : tracer.newChild(parent);
-      injector.inject(span.context(), request);
-
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
-      if (!span.isNoop() && host != null) {
-        parseServerAddress(host, span);
-        handler.handleSend(HttpRequestWrapper.wrap(request, host), span);
-      } else {
-        handler.handleSend(request, span);
+
+      TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
+      Span span;
+      try (Scope scope = currentTraceContext.newScope(parent)) {
+        span = handler.handleSend(injector, request, HttpRequestWrapper.wrap(request, host));
       }
 
       context.setAttribute(Span.class.getName(), span);
-      context.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
+      context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
     });
     super.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
-      SpanInScope scope = (SpanInScope) context.getAttribute(SpanInScope.class.getName());
+      Scope scope = (Scope) context.getAttribute(Scope.class.getName());
       if (scope != null) {
-        context.removeAttribute(SpanInScope.class.getName());
+        context.removeAttribute(Scope.class.getName());
         scope.close();
       }
     });
@@ -84,16 +78,19 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     return new TracingHttpAsyncClient(super.build());
   }
 
-  void parseServerAddress(HttpHost host, Span span) {
-    Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    if (!builder.parseIp(host.getAddress())) {
-      if (!builder.parseIp(host.getHostName()) && "".equals(remoteServiceName)) return;
-    }
-    builder.port(host.getPort());
-    span.remoteEndpoint(builder.build());
-  }
+  static final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequest, HttpResponse> {
 
-  static final class HttpAdapter extends brave.http.HttpAdapter<HttpRequest, HttpResponse> {
+    @Override public boolean parseServerAddress(HttpRequest httpRequest, Endpoint.Builder builder) {
+      if (!(httpRequest instanceof HttpRequestWrapper)) return false;
+      HttpHost target = ((HttpRequestWrapper) httpRequest).getTarget();
+      if (target == null) return false;
+      if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
+        builder.port(target.getPort());
+        return true;
+      }
+      return false;
+    }
+
     @Override public String method(HttpRequest request) {
       return request.getRequestLine().getMethod();
     }
@@ -126,15 +123,14 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   final class TracingHttpAsyncClient extends CloseableHttpAsyncClient {
     private final CloseableHttpAsyncClient delegate;
 
-    public TracingHttpAsyncClient(CloseableHttpAsyncClient delegate) {
+    TracingHttpAsyncClient(CloseableHttpAsyncClient delegate) {
       this.delegate = delegate;
     }
 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
         HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
         FutureCallback<T> callback) {
-      Span span = tracer.currentSpan();
-      context.setAttribute(TraceContext.class.getName(), span != null ? span.context() : null);
+      context.setAttribute(TraceContext.class.getName(), currentTraceContext.get());
       return delegate.execute(
           new TracingAsyncRequestProducer(requestProducer, context),
           new TracingAsyncResponseConsumer<>(responseConsumer, context),

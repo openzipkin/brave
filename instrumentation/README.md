@@ -62,3 +62,92 @@ httpTracing = httpTracing.toBuilder()
 apache = TracingHttpClientBuilder.create(httpTracing).build();
 okhttp = TracingCallFactory.create(httpTracing, new OkHttpClient());
 ```
+
+# Developing new instrumentation
+
+## Http Client
+
+The first step in developing http client instrumentation is implementing
+a `HttpClientAdapter` for your native library. This ensures users can
+portably control tags using `HttpClientParser`.
+
+Next, you'll need to indicate how to insert trace IDs into the outgoing
+request. Often, this is as simple as `Request::setHeader`.
+
+With these two items, you now have the most important parts needed to
+trace your server library. You'll likely initialize the following in a
+constructor like so:
+```java
+MyTracingFilter(HttpTracing httpTracing) {
+  tracer = httpTracing.tracing().tracer();
+  handler = HttpClientHandler.create(httpTracing, new MyHttpClientAdapter());
+  extractor = httpTracing.tracing().propagation().injector(Request::setHeader);
+}
+```
+
+### Synchronous Interceptors
+
+Synchronous interception is the most straight forward instrumentation.
+You generally need to...
+1. Start the span and add trace headers to the request
+2. Put the span in scope so things like log integration works
+3. Invoke the request
+4. Catch any errors
+5. Complete the span
+
+```java
+Span span = handler.handleSend(injector, request); // 1.
+Throwable error = null;
+try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // 2.
+  response = invoke(request); // 3.
+} catch (RuntimeException | Error e) {
+  error = e; // 4.
+  throw e;
+} finally {
+  handler.handleReceive(response, error, span); // 5.
+}
+```
+
+## Http Server
+
+The first step in developing http server instrumentation is implementing
+a `HttpServerAdapter` for your native library. This ensures users can
+portably control tags using `HttpServerParser`. See [HttpServletAdapter](./servlet/src/main/java/brave/servlet/HttpServletAdapter.java)
+as an example (you may even be able to use it!).
+
+Next, you'll need to indicate how to extract trace IDs from the incoming
+request. Often, this is as simple as `Request::getHeader`.
+
+With these two items, you now have the most important parts needed to
+trace your server library. You'll likely initialize the following in a
+constructor like so:
+```java
+MyTracingInterceptor(HttpTracing httpTracing) {
+  tracer = httpTracing.tracing().tracer();
+  handler = HttpServerHandler.create(httpTracing, new MyHttpServerAdapter());
+  extractor = httpTracing.tracing().propagation().extractor(Request::getHeader);
+}
+```
+
+### Synchronous Interceptors
+
+Synchronous interception is the most straight forward instrumentation.
+You generally need to...
+1. Extract any trace IDs from headers and start the span
+2. Put the span in scope so things like log integration works
+3. Invoke the request
+4. Catch any errors
+5. Complete the span
+
+```java
+Span span = handler.handleReceive(extractor, request); // 1.
+Throwable error = null;
+try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // 2.
+  response = invoke(request); // 3.
+} catch (RuntimeException | Error e) {
+  error = e; // 4.
+  throw e;
+} finally {
+  handler.handleSend(response, error, span); // 5.
+}
+```
