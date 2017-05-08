@@ -6,7 +6,6 @@ import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
-import java.net.URI;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.ConstrainedTo;
@@ -16,7 +15,6 @@ import javax.ws.rs.client.ClientResponseContext;
 import javax.ws.rs.client.ClientResponseFilter;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
-import zipkin.Endpoint;
 
 import static javax.ws.rs.RuntimeType.CLIENT;
 
@@ -33,34 +31,20 @@ import static javax.ws.rs.RuntimeType.CLIENT;
 final class TracingClientFilter implements ClientRequestFilter, ClientResponseFilter {
 
   final Tracer tracer;
-  final String remoteServiceName;
   final HttpClientHandler<ClientRequestContext, ClientResponseContext> handler;
   final TraceContext.Injector<MultivaluedMap> injector;
 
   @Inject TracingClientFilter(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     tracer = httpTracing.tracing().tracer();
-    remoteServiceName = httpTracing.serverName();
-    handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
+    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     injector = httpTracing.tracing().propagation().injector(MultivaluedMap::putSingle);
   }
 
   @Override
   public void filter(ClientRequestContext request) {
-    Span span = tracer.nextSpan();
-    parseServerAddress(request, span);
-    handler.handleSend(request, span);
-    injector.inject(span.context(), request.getHeaders());
+    Span span = handler.handleSend(injector, request.getHeaders(), request);
     request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
-  }
-
-  void parseServerAddress(ClientRequestContext request, Span span) {
-    if (span.isNoop()) return;
-    URI uri = request.getUri();
-    Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    if (!builder.parseIp(uri.getHost()) && "".equals(remoteServiceName)) return;
-    builder.port(uri.getPort());
-    span.remoteEndpoint(builder.build());
   }
 
   @Override
@@ -72,7 +56,8 @@ final class TracingClientFilter implements ClientRequestFilter, ClientResponseFi
   }
 
   static final class HttpAdapter
-      extends brave.http.HttpAdapter<ClientRequestContext, ClientResponseContext> {
+      extends brave.http.HttpClientAdapter<ClientRequestContext, ClientResponseContext> {
+
     @Override public String method(ClientRequestContext request) {
       return request.getMethod();
     }

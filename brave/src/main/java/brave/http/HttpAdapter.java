@@ -20,11 +20,13 @@ public abstract class HttpAdapter<Req, Resp> {
    * @see TraceKeys#HTTP_PATH
    */
   @Nullable public String path(Req request) {
-    return URI.create(url(request)).getPath(); // TODO benchmark
+    String url = url(request);
+    if (url == null) return null;
+    return URI.create(url).getPath(); // TODO benchmark
   }
 
   /**
-   * The entire URL, including the scheme, host and query parameters if available  or null if
+   * The entire URL, including the scheme, host and query parameters if available or null if
    * unreadable.
    *
    * @see TraceKeys#HTTP_URL
@@ -42,4 +44,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * @see TraceKeys#HTTP_STATUS_CODE
    */
   @Nullable public abstract Integer statusCode(Resp response);
+
+  HttpAdapter() {
+  }
 }

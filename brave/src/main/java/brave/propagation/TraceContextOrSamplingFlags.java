@@ -19,8 +19,12 @@ public abstract class TraceContextOrSamplingFlags {
   /** When present, create the span via {@link brave.Tracer#newTrace(SamplingFlags)} */
   @Nullable public abstract SamplingFlags samplingFlags();
 
-  static TraceContextOrSamplingFlags create(SamplingFlags flags) {
+  public static TraceContextOrSamplingFlags create(SamplingFlags flags) {
     return new AutoValue_TraceContextOrSamplingFlags(null, flags);
+  }
+
+  public static TraceContextOrSamplingFlags create(TraceContext context) {
+    return new AutoValue_TraceContextOrSamplingFlags(context, null);
   }
 
   public static TraceContextOrSamplingFlags create(TraceContext.Builder builder) {
