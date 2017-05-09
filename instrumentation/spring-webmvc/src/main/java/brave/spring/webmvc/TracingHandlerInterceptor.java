@@ -11,11 +11,9 @@ import brave.servlet.HttpServletAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
-@Configuration // not final because of @Configuration
-public class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
+public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
 
   public static HandlerInterceptorAdapter create(Tracing tracing) {
     return new TracingHandlerInterceptor(HttpTracing.create(tracing));
