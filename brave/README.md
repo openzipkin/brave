@@ -21,8 +21,7 @@ http (as opposed to Kafka).
 // Configure a reporter, which controls how often spans are sent
 //   (the dependency is io.zipkin.reporter:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v1/spans");
-reporter = AsyncReporter.builder(sender).build();
-
+reporter = AsyncReporter.create(sender);
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
