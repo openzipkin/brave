@@ -56,7 +56,9 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <spring.version>4.3.4.RELEASE</spring.version>
+    <!-- Ensure older versions of spring still work -->
+    <spring4.version>4.3.4.RELEASE</spring4.version>
+    <spring.version>3.2.18.RELEASE</spring.version>
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>

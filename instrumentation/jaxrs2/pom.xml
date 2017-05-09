@@ -50,13 +50,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-web</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.jboss.resteasy</groupId>
-      <artifactId>resteasy-spring</artifactId>
+      <artifactId>resteasy-jaxrs</artifactId>
+      <version>${resteasy.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- to test the inject annotations -->

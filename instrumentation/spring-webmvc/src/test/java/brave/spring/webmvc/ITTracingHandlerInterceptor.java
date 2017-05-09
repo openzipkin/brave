@@ -9,12 +9,14 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -31,23 +33,23 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
 
     @RequestMapping(value = "/foo")
     public ResponseEntity<Void> foo() throws IOException {
-      return ResponseEntity.ok().build();
+      return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/badrequest")
     public ResponseEntity<Void> badrequest() throws IOException {
-      return ResponseEntity.badRequest().build();
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @RequestMapping(value = "/child")
     public ResponseEntity<Void> child() {
       tracer.nextSpan().name("child").start().finish();
-      return ResponseEntity.ok().build();
+      return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/async")
     public Callable<ResponseEntity<Void>> async() throws IOException {
-      return () -> ResponseEntity.ok().build();
+      return () -> new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/exception")
@@ -65,15 +67,17 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
 
   @Configuration
   @EnableWebMvc
-  @Import(TracingHandlerInterceptor.class)
   static class TracingConfig extends WebMvcConfigurerAdapter {
+    @Bean AsyncHandlerInterceptor tracingInterceptor(HttpTracing httpTracing) {
+      return TracingHandlerInterceptor.create(httpTracing);
+    }
 
     @Autowired
-    private TracingHandlerInterceptor interceptor;
+    private AsyncHandlerInterceptor tracingInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-      registry.addInterceptor(interceptor).addPathPatterns();
+      registry.addInterceptor(tracingInterceptor);
     }
   }
 

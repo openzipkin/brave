@@ -17,21 +17,7 @@ public class TracingClientHttpRequestInterceptorAutowireTest {
     }
   }
 
-  @Configuration @Import({
-      HttpTracingConfiguration.class,
-      TracingClientHttpRequestInterceptor.class
-  })
-  static class ImportConfiguration {
-  }
-
-  @Test public void autowiredWithImportConfig() {
-    AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-    ctx.register(ImportConfiguration.class);
-    ctx.refresh();
-
-    ctx.getBean(ClientHttpRequestInterceptor.class);
-  }
-
+  // NOTE: while bean configuration via @Import works with Spring 4, it does not with Spring 3
   @Configuration @Import(HttpTracingConfiguration.class)
   static class BeanConfiguration {
     @Bean ClientHttpRequestInterceptor tracingInterceptor(HttpTracing httpTracing) {

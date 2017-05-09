@@ -12,8 +12,9 @@ import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,21 +34,20 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
   static class TestController {
     final LocalTracer localTracer;
 
-    @Autowired
-    TestController(Brave brave) {
+    @Autowired TestController(Brave brave) {
       this.localTracer = brave.localTracer();
     }
 
     @RequestMapping(value = "/foo")
     public ResponseEntity<Void> foo() throws IOException {
-      return ResponseEntity.ok().build();
+      return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/child")
     public ResponseEntity<Void> child() {
       localTracer.startNewSpan("child", "child");
       localTracer.finishSpan();
-      return ResponseEntity.ok().build();
+      return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/childAsync")
@@ -55,7 +55,7 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
       return () -> {
         localTracer.startNewSpan("child", "child");
         localTracer.finishSpan();
-        return ResponseEntity.ok().build();
+        return new ResponseEntity<>(HttpStatus.OK);
       };
     }
 
@@ -65,7 +65,7 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/disconnectAsync")
-    public  Callable<ResponseEntity<Void>> disconnectAsync() throws IOException {
+    public Callable<ResponseEntity<Void>> disconnectAsync() throws IOException {
       return () -> {
         throw new IOException();
       };
@@ -74,8 +74,11 @@ public class ITServletHandlerInterceptor extends ITServletContainer {
 
   @Configuration
   @EnableWebMvc
-  @Import(ServletHandlerInterceptor.class)
   static class TracingConfig extends WebMvcConfigurerAdapter {
+    @Bean
+    ServletHandlerInterceptor tracingInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
+      return ServletHandlerInterceptor.builder(brave).spanNameProvider(spanNameProvider).build();
+    }
 
     @Autowired
     private ServletHandlerInterceptor interceptor;

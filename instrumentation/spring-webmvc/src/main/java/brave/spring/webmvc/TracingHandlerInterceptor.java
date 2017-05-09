@@ -11,15 +11,21 @@ import brave.servlet.HttpServletAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
+/**
+ * Tracing interceptor for Spring Web MVC, which can be used as both an {@link
+ * AsyncHandlerInterceptor} or a normal {@link HandlerInterceptor}.
+ */
 public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
 
-  public static HandlerInterceptorAdapter create(Tracing tracing) {
+  public static AsyncHandlerInterceptor create(Tracing tracing) {
     return new TracingHandlerInterceptor(HttpTracing.create(tracing));
   }
 
-  public static HandlerInterceptorAdapter create(HttpTracing httpTracing) {
+  public static AsyncHandlerInterceptor create(HttpTracing httpTracing) {
     return new TracingHandlerInterceptor(httpTracing);
   }
 
