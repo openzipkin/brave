@@ -7,6 +7,7 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import java.io.IOException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -26,7 +27,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   final HttpClientHandler<HttpRequest, ClientHttpResponse> handler;
   final TraceContext.Injector<HttpHeaders> injector;
 
-  TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
+  @Autowired TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     injector = httpTracing.tracing().propagation().injector(HttpHeaders::set);
