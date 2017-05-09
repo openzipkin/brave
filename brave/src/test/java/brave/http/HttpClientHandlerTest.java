@@ -13,6 +13,9 @@ import zipkin.Constants;
 import zipkin.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +25,9 @@ public class HttpClientHandlerTest {
   HttpTracing httpTracing;
   @Mock HttpClientAdapter<Object, Object> adapter;
   @Mock TraceContext.Injector<Object> injector;
+  @Mock brave.Span span;
   Object request = new Object();
+  Object response = new Object();
   HttpClientHandler<Object, Object> handler;
 
   @Before public void init() {
@@ -30,6 +35,7 @@ public class HttpClientHandlerTest {
     handler = HttpClientHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
+    when(adapter.parseError(eq(response), anyObject())).thenCallRealMethod();
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {
@@ -69,5 +75,29 @@ public class HttpClientHandlerTest {
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(Constants.SERVER_ADDR))
         .isEmpty();
+  }
+
+  @Test public void handleReceive_doesntErrorOnRedirect() {
+    when(adapter.statusCode(response)).thenReturn(302);
+
+    handler.handleReceive(response, null, span);
+
+    verify(span, never()).tag("error", "302");
+  }
+
+  @Test public void handleReceive_tagsErrorOnResponseCode() {
+    when(adapter.statusCode(response)).thenReturn(400);
+
+    handler.handleReceive(response, null, span);
+
+    verify(span).tag("error", "400");
+  }
+
+  @Test public void handleReceive_tagsErrorPrefersExceptionVsResponseCode() {
+    when(adapter.statusCode(response)).thenReturn(400);
+
+    handler.handleReceive(response, new RuntimeException("drat"), span);
+
+    verify(span).tag("error", "drat");
   }
 }

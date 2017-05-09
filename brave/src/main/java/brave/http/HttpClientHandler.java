@@ -24,6 +24,7 @@ import zipkin.Endpoint;
  *   handler.handleReceive(response, error, span);
  * }
  * }</pre>
+ *
  * @param <Req> the native http request type of the client.
  * @param <Resp> the native http response type of the client.
  */
@@ -90,10 +91,9 @@ public final class HttpClientHandler<Req, Resp> {
     if (span.isNoop()) return;
 
     try {
-      if (error != null) {
-        String message = error.getMessage();
-        if (message == null) message = error.getClass().getSimpleName();
-        span.tag(zipkin.Constants.ERROR, message);
+      if (response != null || error != null) {
+        String message = adapter.parseError(response, error);
+        if (message != null) span.tag(zipkin.Constants.ERROR, message);
       }
       if (response != null) parser.responseTags(adapter, response, span);
     } finally {

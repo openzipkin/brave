@@ -191,15 +191,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
-    server.enqueue(new MockResponse().setResponseCode(404));
+    server.enqueue(new MockResponse().setResponseCode(400));
 
     try {
       get(client, "/foo");
     } catch (RuntimeException e) {
-      // some clients think 404 is an error
+      // some clients think 400 is an error
     }
 
-    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "404");
+    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
+    assertReportedTagsInclude(Constants.ERROR, "400");
   }
 
   @Test public void redirect() throws Exception {

@@ -223,6 +223,7 @@ public abstract class ITHttpServer extends ITHttp {
     }
 
     assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
+    assertReportedTagsInclude(Constants.ERROR, "400");
   }
 
   @Test
