@@ -57,11 +57,10 @@ httpTracing = httpTracing.toBuilder()
         span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
       }
     })
-    .serverName("remote-service") // assume both libraries are calling the same service
     .build();
 
-apache = TracingHttpClientBuilder.create(httpTracing).build();
-okhttp = TracingCallFactory.create(httpTracing, new OkHttpClient());
+apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3")).build();
+okhttp = TracingCallFactory.create(httpTracing.clientOf("sqs"), new OkHttpClient());
 ```
 
 # Developing new instrumentation
