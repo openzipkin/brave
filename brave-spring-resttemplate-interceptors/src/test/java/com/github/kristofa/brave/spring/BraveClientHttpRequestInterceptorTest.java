@@ -6,24 +6,23 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientTracer;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import java.io.IOException;
+import java.net.URI;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import zipkin.TraceKeys;
-
-import java.io.IOException;
-import java.net.URI;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.junit.Assert.assertSame;
@@ -33,6 +32,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = BraveClientHttpRequestInterceptorTest.AppConfig.class)
 public class BraveClientHttpRequestInterceptorTest {
     @Autowired ClientTracer clientTracer;
     @Autowired SpanNameProvider spanNameProvider;
@@ -130,8 +130,12 @@ public class BraveClientHttpRequestInterceptorTest {
     }
 
     @Configuration
-    @Import(BraveClientHttpRequestInterceptor.class)
     static class AppConfig {
+        @Bean
+        BraveClientHttpRequestInterceptor tracingInterceptor(SpanNameProvider spanNameProvider, Brave brave) {
+            return BraveClientHttpRequestInterceptor.builder(brave).spanNameProvider(spanNameProvider).build();
+        }
+
         @Bean ClientTracer clientTracer() {
             return mock(ClientTracer.class);
         }

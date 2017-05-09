@@ -53,6 +53,7 @@ public final class TracingCallFactory implements Call.Factory {
     OkHttpClient.Builder b = ok.newBuilder();
     if (currentSpan != null) b.interceptors().add(0, new SetParentSpanInScope(currentSpan));
     b.networkInterceptors().add(0, new TracingNetworkInterceptor());
+    // TODO: This can hide errors at the beginning of call.execute, such as invalid host!
     return b.build().newCall(request);
   }
 

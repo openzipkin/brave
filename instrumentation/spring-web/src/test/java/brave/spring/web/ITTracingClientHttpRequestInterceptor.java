@@ -1,63 +1,57 @@
 package brave.spring.web;
 
 import brave.http.ITHttpClient;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.OkHttp3ClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingClientHttpRequestInterceptor
-    extends ITHttpClient<OkHttp3ClientHttpRequestFactory> {
+public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
 
   ClientHttpRequestInterceptor interceptor;
 
-  OkHttp3ClientHttpRequestFactory configureClient(
-      ClientHttpRequestInterceptor interceptor) {
-    OkHttp3ClientHttpRequestFactory factory = new OkHttp3ClientHttpRequestFactory();
+  ClientHttpRequestFactory configureClient(ClientHttpRequestInterceptor interceptor) {
+    HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
     factory.setReadTimeout(1000);
     factory.setConnectTimeout(1000);
     this.interceptor = interceptor;
     return factory;
   }
 
-  @Override protected OkHttp3ClientHttpRequestFactory newClient(int port) {
+  @Override protected ClientHttpRequestFactory newClient(int port) {
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(OkHttp3ClientHttpRequestFactory client) throws IOException {
-    client.destroy();
+  @Override protected void closeClient(ClientHttpRequestFactory client) {
+    ((HttpComponentsClientHttpRequestFactory) client).destroy();
   }
 
-  @Override protected void get(OkHttp3ClientHttpRequestFactory client, String pathIncludingQuery)
+  @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery)
       throws Exception {
     RestTemplate restTemplate = new RestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForObject(url(pathIncludingQuery), String.class);
   }
 
-  @Override
-  protected void post(OkHttp3ClientHttpRequestFactory client, String pathIncludingQuery,
-      String content) throws Exception {
+  @Override protected void post(ClientHttpRequestFactory client, String uri, String content) {
     RestTemplate restTemplate = new RestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
-    restTemplate.postForObject(url(pathIncludingQuery), content, String.class);
+    restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Override
-  protected void getAsync(OkHttp3ClientHttpRequestFactory client, String pathIncludingQuery) {
+  @Override protected void getAsync(ClientHttpRequestFactory client, String uri) {
     throw new AssumptionViolatedException("TODO: async rest template has its own interceptor");
   }
 
-  @Test
-  public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
