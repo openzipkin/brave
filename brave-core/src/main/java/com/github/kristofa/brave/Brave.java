@@ -141,9 +141,7 @@ public class Brave {
          * <p>For example, here's how to batch send spans via http:
          *
          * <pre>{@code
-         * reporter = AsyncReporter.builder(URLConnectionSender.create("http://localhost:9411/api/v1/spans"))
-         *                         .build();
-         *
+         * reporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v1/spans"));
          * braveBuilder.reporter(reporter);
          * }</pre>
          *
