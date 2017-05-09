@@ -169,8 +169,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
             span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
           }
         })
-        .serverName("remote-service")
-        .build();
+        .build().clientOf("remote-service");
 
     client = newClient(server.getPort());
     server.enqueue(new MockResponse());

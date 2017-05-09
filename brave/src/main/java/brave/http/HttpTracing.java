@@ -35,9 +35,7 @@ public abstract class HttpTracing {
    *
    * For example:
    * <pre>{@code
-   * github = TracingHttpClientBuilder.create(
-   *   httpTracing.toBuilder().serverName("github").build()
-   * ).build();
+   * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
    * @see zipkin.Constants#SERVER_ADDR
@@ -45,6 +43,15 @@ public abstract class HttpTracing {
    * @see brave.Span#remoteEndpoint(Endpoint)
    */
   public abstract String serverName();
+
+  /**
+   * Scopes this component for a client of the indicated server.
+   *
+   * @see #serverName()
+   */
+  public HttpTracing clientOf(String serverName) {
+    return toBuilder().serverName(serverName).build();
+  }
 
   public abstract HttpServerParser serverParser();
 
@@ -56,11 +63,11 @@ public abstract class HttpTracing {
 
     public abstract Builder clientParser(HttpClientParser clientParser);
 
-    public abstract Builder serverName(String serverName);
-
     public abstract Builder serverParser(HttpServerParser serverParser);
 
     public abstract HttpTracing build();
+
+    abstract Builder serverName(String serverName);
 
     Builder() {
     }
