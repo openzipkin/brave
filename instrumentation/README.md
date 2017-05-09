@@ -35,6 +35,7 @@ By default, the following is added for both http clients and servers:
 * Tags/binary annotations:
   * "http.path", which does not include query parameters.
   * "http.status_code" when the status us not success.
+  * "error", when there is an exception or status is >=400
 * Remote IP and port information
 
 Naming and tags are configurable in a library-agnostic way. For example,

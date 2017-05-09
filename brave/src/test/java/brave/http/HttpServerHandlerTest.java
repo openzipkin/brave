@@ -13,6 +13,8 @@ import org.mockito.runners.MockitoJUnitRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -20,7 +22,9 @@ public class HttpServerHandlerTest {
   Tracer tracer;
   @Mock HttpServerAdapter<Object, Object> adapter;
   @Mock TraceContext.Extractor<Object> extractor;
+  @Mock brave.Span span;
   Object request = new Object();
+  Object response = new Object();
   HttpServerHandler<Object, Object> handler;
 
   @Before public void init() {
@@ -30,6 +34,7 @@ public class HttpServerHandlerTest {
 
     when(adapter.method(request)).thenReturn("GET");
     when(adapter.parseClientAddress(eq(request), anyObject())).thenCallRealMethod();
+    when(adapter.parseError(eq(response), anyObject())).thenCallRealMethod();
   }
 
   @Test public void handleReceive_defaultsToMakeNewTrace() {
@@ -56,5 +61,29 @@ public class HttpServerHandlerTest {
 
     assertThat(handler.handleReceive(extractor, request).context())
         .isEqualTo(incomingContext.toBuilder().shared(true).build());
+  }
+
+  @Test public void handleSend_doesntErrorOnRedirect() {
+    when(adapter.statusCode(response)).thenReturn(302);
+
+    handler.handleSend(response, null, span);
+
+    verify(span, never()).tag("error", "302");
+  }
+
+  @Test public void handleSend_tagsErrorOnResponseCode() {
+    when(adapter.statusCode(response)).thenReturn(400);
+
+    handler.handleSend(response, null, span);
+
+    verify(span).tag("error", "400");
+  }
+
+  @Test public void handleSend_tagsErrorPrefersExceptionVsResponseCode() {
+    when(adapter.statusCode(response)).thenReturn(400);
+
+    handler.handleSend(response, new RuntimeException("drat"), span);
+
+    verify(span).tag("error", "drat");
   }
 }

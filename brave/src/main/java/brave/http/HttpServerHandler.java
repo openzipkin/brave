@@ -86,10 +86,9 @@ public final class HttpServerHandler<Req, Resp> {
     if (span.isNoop()) return;
 
     try {
-      if (error != null) {
-        String message = error.getMessage();
-        if (message == null) message = error.getClass().getSimpleName();
-        span.tag(zipkin.Constants.ERROR, message);
+      if (response != null || error != null) {
+        String message = adapter.parseError(response, error);
+        if (message != null) span.tag(zipkin.Constants.ERROR, message);
       }
       if (response != null) parser.responseTags(adapter, response, span);
     } finally {
