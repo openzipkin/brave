@@ -45,17 +45,6 @@ public abstract class HttpAdapter<Req, Resp> {
    */
   @Nullable public abstract Integer statusCode(Resp response);
 
-  String parseError(@Nullable Resp response, @Nullable Throwable error) {
-    if (error != null) {
-      String message = error.getMessage();
-      return message != null ? message : error.getClass().getSimpleName();
-    }
-    Integer httpStatus = statusCode(response);
-    if (httpStatus != null && (httpStatus < 200 || httpStatus > 399)) {
-      return String.valueOf(httpStatus);
-    }
-    return null;
-  }
   HttpAdapter() {
   }
 }

@@ -13,8 +13,7 @@ import zipkin.Constants;
 import zipkin.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,7 +34,6 @@ public class HttpClientHandlerTest {
     handler = HttpClientHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
-    when(adapter.parseError(eq(response), anyObject())).thenCallRealMethod();
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {
@@ -77,27 +75,30 @@ public class HttpClientHandlerTest {
         .isEmpty();
   }
 
-  @Test public void handleReceive_doesntErrorOnRedirect() {
-    when(adapter.statusCode(response)).thenReturn(302);
+  @Test public void handleReceive_nothingOnNoop_success() {
+    when(span.isNoop()).thenReturn(true);
 
     handler.handleReceive(response, null, span);
 
-    verify(span, never()).tag("error", "302");
+    verify(span, never()).finish();
   }
 
-  @Test public void handleReceive_tagsErrorOnResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+  @Test public void handleReceive_nothingOnNoop_error() {
+    when(span.isNoop()).thenReturn(true);
 
-    handler.handleReceive(response, null, span);
+    handler.handleReceive(null, new RuntimeException("drat"), span);
 
-    verify(span).tag("error", "400");
+    verify(span, never()).finish();
   }
 
-  @Test public void handleReceive_tagsErrorPrefersExceptionVsResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+  @Test public void handleReceive_finishedEvenIfAdapterThrows() {
+    when(adapter.statusCode(response)).thenThrow(new RuntimeException());
 
-    handler.handleReceive(response, new RuntimeException("drat"), span);
-
-    verify(span).tag("error", "drat");
+    try {
+      handler.handleReceive(response, null, span);
+      failBecauseExceptionWasNotThrown(RuntimeException.class);
+    } catch (RuntimeException e) {
+      verify(span).finish();
+    }
   }
 }

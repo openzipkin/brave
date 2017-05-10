@@ -1,7 +1,6 @@
 package brave.servlet;
 
 import brave.http.HttpServerAdapter;
-import brave.internal.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import zipkin.Endpoint;
@@ -16,7 +15,7 @@ public final class HttpServletAdapter
    * Parses the remote address, via the "X-Forwarded-For" header, falling back to the
    * {@linkplain HttpServletRequest#getRemoteAddr() remote address}.
    */
-  @Nullable public boolean parseClientAddress(HttpServletRequest req, Endpoint.Builder builder) {
+  @Override public boolean parseClientAddress(HttpServletRequest req, Endpoint.Builder builder) {
     if (builder.parseIp(req.getHeader("X-Forwarded-For")) || builder.parseIp(req.getRemoteAddr())) {
       builder.port(req.getRemotePort());
       return true;

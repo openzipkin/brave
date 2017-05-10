@@ -65,6 +65,8 @@ public final class HttpClientHandler<Req, Resp> {
   /**
    * Like {@link #handleSend(TraceContext.Injector, Object)}, except for when the carrier of
    * trace data is not the same as the request.
+   *
+   * @see HttpClientParser#requestTags(HttpAdapter, Object, Span)
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request) {
     Span span = tracer.nextSpan();
@@ -86,16 +88,13 @@ public final class HttpClientHandler<Req, Resp> {
    *
    * <p>This is typically called once the response headers are received, and after the span is
    * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
+   *
+   * @see HttpClientParser#responseTags(HttpAdapter, Object, Throwable, Span)
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
-
     try {
-      if (response != null || error != null) {
-        String message = adapter.parseError(response, error);
-        if (message != null) span.tag(zipkin.Constants.ERROR, message);
-      }
-      if (response != null) parser.responseTags(adapter, response, span);
+      parser.responseTags(adapter, response, error, span);
     } finally {
       span.finish();
     }
