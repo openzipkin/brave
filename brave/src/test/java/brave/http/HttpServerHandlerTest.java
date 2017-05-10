@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.never;
@@ -34,7 +35,6 @@ public class HttpServerHandlerTest {
 
     when(adapter.method(request)).thenReturn("GET");
     when(adapter.parseClientAddress(eq(request), anyObject())).thenCallRealMethod();
-    when(adapter.parseError(eq(response), anyObject())).thenCallRealMethod();
   }
 
   @Test public void handleReceive_defaultsToMakeNewTrace() {
@@ -63,27 +63,30 @@ public class HttpServerHandlerTest {
         .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 
-  @Test public void handleSend_doesntErrorOnRedirect() {
-    when(adapter.statusCode(response)).thenReturn(302);
+  @Test public void handleSend_nothingOnNoop_success() {
+    when(span.isNoop()).thenReturn(true);
 
     handler.handleSend(response, null, span);
 
-    verify(span, never()).tag("error", "302");
+    verify(span, never()).finish();
   }
 
-  @Test public void handleSend_tagsErrorOnResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+  @Test public void handleSend_nothingOnNoop_error() {
+    when(span.isNoop()).thenReturn(true);
 
-    handler.handleSend(response, null, span);
+    handler.handleSend(null, new RuntimeException("drat"), span);
 
-    verify(span).tag("error", "400");
+    verify(span, never()).finish();
   }
 
-  @Test public void handleSend_tagsErrorPrefersExceptionVsResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+  @Test public void handleSend_finishedEvenIfAdapterThrows() {
+    when(adapter.statusCode(response)).thenThrow(new RuntimeException());
 
-    handler.handleSend(response, new RuntimeException("drat"), span);
-
-    verify(span).tag("error", "drat");
+    try {
+      handler.handleSend(response, null, span);
+      failBecauseExceptionWasNotThrown(RuntimeException.class);
+    } catch (RuntimeException e) {
+      verify(span).finish();
+    }
   }
 }

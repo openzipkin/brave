@@ -58,6 +58,8 @@ public final class HttpServerHandler<Req, Resp> {
   /**
    * Like {@link #handleReceive(TraceContext.Extractor, Object)}, except for when the carrier of
    * trace data is not the same as the request.
+   *
+   * @see HttpServerParser#requestTags(HttpAdapter, Object, Span)
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
     TraceContextOrSamplingFlags contextOrFlags = extractor.extract(carrier);
@@ -81,16 +83,13 @@ public final class HttpServerHandler<Req, Resp> {
    *
    * <p>This is typically called once the response headers are sent, and after the span is
    * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
+   *
+   * @see HttpServerParser#responseTags(HttpAdapter, Object, Throwable, Span)
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
-
     try {
-      if (response != null || error != null) {
-        String message = adapter.parseError(response, error);
-        if (message != null) span.tag(zipkin.Constants.ERROR, message);
-      }
-      if (response != null) parser.responseTags(adapter, response, span);
+      parser.responseTags(adapter, response, error, span);
     } finally {
       span.finish();
     }
