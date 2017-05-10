@@ -3,6 +3,7 @@ package brave.http;
 import brave.Span;
 import brave.Tracer;
 import brave.internal.Nullable;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import zipkin.Endpoint;
@@ -35,13 +36,15 @@ public final class HttpServerHandler<Req, Resp> {
     return new HttpServerHandler<>(httpTracing, adapter);
   }
 
-  final HttpServerParser parser;
   final Tracer tracer;
+  final HttpSampler sampler;
+  final HttpServerParser parser;
   final HttpServerAdapter<Req, Resp> adapter;
 
   HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
-    this.parser = httpTracing.serverParser();
     this.tracer = httpTracing.tracing().tracer();
+    this.sampler = httpTracing.serverSampler();
+    this.parser = httpTracing.serverParser();
     this.adapter = adapter;
   }
 
@@ -62,10 +65,7 @@ public final class HttpServerHandler<Req, Resp> {
    * @see HttpServerParser#requestTags(HttpAdapter, Object, Span)
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
-    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(carrier);
-    Span span = contextOrFlags.context() != null
-        ? tracer.joinSpan(contextOrFlags.context())
-        : tracer.newTrace(contextOrFlags.samplingFlags());
+    Span span = nextSpan(extractor.extract(carrier), request);
     if (span.isNoop()) return span;
 
     // all of the parsing here occur before a timestamp is recorded on the span
@@ -76,6 +76,30 @@ public final class HttpServerHandler<Req, Resp> {
       span.remoteEndpoint(remoteEndpoint.serviceName("").build());
     }
     return span.start();
+  }
+
+  /** Creates a potentially noop span representing this request */
+  Span nextSpan(TraceContextOrSamplingFlags contextOrFlags, Req request) {
+    TraceContext extracted = contextOrFlags.context();
+    if (extracted != null) {
+      // If there were trace IDs in the request and a sampling decision, honor it
+      if (extracted.sampled() != null) return tracer.joinSpan(contextOrFlags.context());
+
+      // Otherwise, try to make a new decision
+      return tracer.joinSpan(extracted.toBuilder()
+          .sampled(sampler.trySample(adapter, request))
+          .build());
+    }
+
+    // There was no trace in the incoming requests. However, there might be sampling flags
+    SamplingFlags flags = contextOrFlags.samplingFlags();
+    if (flags.sampled() == null) {
+      flags = new SamplingFlags.Builder()
+          .sampled(sampler.trySample(adapter, request))
+          .debug(flags.debug()) // should always be false if unsampled!
+          .build();
+    }
+    return tracer.newTrace(flags);
   }
 
   /**

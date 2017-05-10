@@ -15,7 +15,9 @@ public abstract class HttpTracing {
         .tracing(tracing)
         .serverName("")
         .clientParser(new HttpClientParser())
-        .serverParser(new HttpServerParser());
+        .serverParser(new HttpServerParser())
+        .clientSampler(HttpSampler.TRACE_ID)
+        .serverSampler(HttpSampler.TRACE_ID);
   }
 
   public abstract Tracing tracing();
@@ -55,15 +57,44 @@ public abstract class HttpTracing {
 
   public abstract HttpServerParser serverParser();
 
+  /**
+   * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
+   * the {@link HttpSampler#TRACE_ID trace ID instead}.
+   *
+   * <p>This decision happens when a trace was not yet started in process. For example, you may be
+   * making an http request as a part of booting your application. You may want to opt-out of
+   * tracing client requests that did not originate from a server request.
+   */
+  public abstract HttpSampler clientSampler();
+
+  /**
+   * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
+   * the {@link HttpSampler#TRACE_ID trace ID instead}.
+   *
+   * <p>This decision happens when trace IDs were not in headers, or a sampling decision has not yet
+   * been made. For example, if a trace is already in progress, this function is not called. You can
+   * implement this to skip paths that you never want to trace.
+   */
+  public abstract HttpSampler serverSampler();
+
   public abstract Builder toBuilder();
 
   @AutoValue.Builder
   public static abstract class Builder {
+    /** @see HttpTracing#tracing() */
     public abstract Builder tracing(Tracing tracing);
 
+    /** @see HttpTracing#clientParser() */
     public abstract Builder clientParser(HttpClientParser clientParser);
 
+    /** @see HttpTracing#serverParser() */
     public abstract Builder serverParser(HttpServerParser serverParser);
+
+    /** @see HttpTracing#clientSampler() */
+    public abstract Builder clientSampler(HttpSampler clientSampler);
+
+    /** @see HttpTracing#serverSampler() */
+    public abstract Builder serverSampler(HttpSampler serverSampler);
 
     public abstract HttpTracing build();
 
