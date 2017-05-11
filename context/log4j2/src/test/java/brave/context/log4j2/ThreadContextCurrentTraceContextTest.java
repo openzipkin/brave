@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ThreadContextCurrentTraceContextTest {
   Logger testLogger = LogManager.getLogger();
 
-  @Test public void customCurrentTraceContext() {
+  @Test public void testSpan() {
     assertThat(ThreadContext.get("traceId"))
         .isNull();
     assertThat(ThreadContext.get("spanId"))
@@ -34,6 +34,16 @@ public class ThreadContextCurrentTraceContextTest {
           .isEqualTo(parent.context().traceIdString());
       assertThat(ThreadContext.get("spanId"))
           .isEqualTo(HexCodec.toLowerHex(parent.context().spanId()));
+
+      try (Tracer.SpanInScope noSpan = tracer.withSpanInScope(null)) {
+        noSpan.toString(); // make sure it doesn't crash
+        testLogger.info("with no span");
+
+        assertThat(ThreadContext.get("traceId"))
+            .isNull();
+        assertThat(ThreadContext.get("spanId"))
+            .isNull();
+      }
 
       Span child = tracer.newChild(parent.context());
       try (Tracer.SpanInScope wsChild = tracer.withSpanInScope(child)) {

@@ -33,8 +33,13 @@ public final class ThreadContextCurrentTraceContext extends CurrentTraceContext 
     final String previousTraceId = ThreadContext.get("traceId");
     final String previousSpanId = ThreadContext.get("spanId");
 
-    ThreadContext.put("traceId", currentSpan.traceIdString());
-    ThreadContext.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+    if (currentSpan != null) {
+      ThreadContext.put("traceId", currentSpan.traceIdString());
+      ThreadContext.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+    } else {
+      ThreadContext.remove("traceId");
+      ThreadContext.remove("spanId");
+    }
 
     Scope scope = delegate.newScope(currentSpan);
     return () -> {
