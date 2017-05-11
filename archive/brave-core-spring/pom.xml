@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.zipkin.brave</groupId>
+    <artifactId>brave-parent</artifactId>
+    <version>4.3.0-SNAPSHOT</version>
+  </parent>
+  
+  <artifactId>brave-core-spring</artifactId>
+  <packaging>jar</packaging>
+  <name>archive/brave-core-spring</name>
+  <description>
+    Spring Configuration and helper classes for using brave-core with Spring as dependency injection 
+    framework.
+  </description>
+
+  <properties>
+    <main.basedir>${project.basedir}/../..</main.basedir>
+  </properties>
+  <dependencies>
+     <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-core</artifactId>
+     </dependency>
+     <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-core</artifactId>
+        <scope>provided</scope>
+     </dependency>
+     <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-context</artifactId>
+        <scope>provided</scope>
+     </dependency>
+  </dependencies>
+</project>

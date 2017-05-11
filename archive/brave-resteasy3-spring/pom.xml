@@ -1,0 +1,65 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+  	<groupId>io.zipkin.brave</groupId>
+    <artifactId>brave-parent</artifactId>
+    <version>4.3.0-SNAPSHOT</version>
+  </parent>   
+  
+  <artifactId>brave-resteasy3-spring</artifactId>
+  <packaging>jar</packaging>
+
+  <name>archive/brave-resteasy3-spring</name>
+  <description>
+    RestEasy client and server side interceptors that use the brave api to submit client and server side span information.
+  </description>
+
+  <properties>
+    <main.basedir>${project.basedir}/../..</main.basedir>
+    <spring.version>${spring4.version}</spring.version>
+  </properties>
+  
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-jaxrs2</artifactId>
+    </dependency>
+    <!-- provided dep in brave-jaxrs2 -->
+    <dependency>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>javax.ws.rs-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- All dependencies below are added since adding integration tests -->
+    <dependency>
+      <groupId>org.jboss.resteasy</groupId>
+      <artifactId>resteasy-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.resteasy</groupId>
+      <artifactId>resteasy-spring</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-http-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>
