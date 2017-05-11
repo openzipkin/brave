@@ -80,17 +80,17 @@ start a trace for any http call, even ones that didn't come from a server
 request.
 
 You can change the sampling policy by specifying it in the `HttpTracing`
-component. Here's an example which only starts traces for requests
-originating from the  `/api` endpoint. It chooses 100% of such requests.
+component. Here's an example which doesn't start new traces for requests
+to favicon (which many browsers automatically fetch).
 
 ```java
 httpTracing = httpTracing.toBuilder()
     .serverSampler(new HttpSampler() {
        @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-         return adapter.path(request).startsWith("/api");
+         if (adapter.path(request).startsWith("/favicon")) return false;
+         return null; // defer decision to probabilistic on trace ID
        }
      })
-    .clientSampler(HttpSampler.NEVER_SAMPLE)
     .build();
 ```
 
