@@ -4,6 +4,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import zipkin.Endpoint;
 
@@ -36,6 +37,7 @@ public final class HttpClientHandler<Req, Resp> {
   }
 
   final Tracer tracer;
+  final HttpSampler sampler;
   final CurrentTraceContext currentTraceContext;
   final HttpClientParser parser;
   final HttpClientAdapter<Req, Resp> adapter;
@@ -44,6 +46,7 @@ public final class HttpClientHandler<Req, Resp> {
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
     this.tracer = httpTracing.tracing().tracer();
+    this.sampler = httpTracing.clientSampler();
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
     this.parser = httpTracing.clientParser();
     this.serverName = httpTracing.serverName();
@@ -69,7 +72,7 @@ public final class HttpClientHandler<Req, Resp> {
    * @see HttpClientParser#requestTags(HttpAdapter, Object, Span)
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request) {
-    Span span = tracer.nextSpan();
+    Span span = nextSpan(request);
     injector.inject(span.context(), carrier);
     if (span.isNoop()) return span;
 
@@ -81,6 +84,17 @@ public final class HttpClientHandler<Req, Resp> {
       span.remoteEndpoint(remoteEndpoint.serviceName(serverName).build());
     }
     return span.start();
+  }
+
+  /** Creates a potentially noop span representing this request */
+  Span nextSpan(Req request) {
+    TraceContext parent = currentTraceContext.get();
+    if (parent != null) return tracer.newChild(parent);
+
+    // If there was no parent, we are making a new trace. Try to sample the request.
+    Boolean sampled = sampler.trySample(adapter, request);
+    if (sampled == null) return tracer.newTrace(); // defer sampling decision to trace ID
+    return tracer.newTrace(sampled ? SamplingFlags.SAMPLED : SamplingFlags.NOT_SAMPLED);
   }
 
   /**

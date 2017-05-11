@@ -2,6 +2,7 @@ package brave.http;
 
 import brave.Tracer;
 import brave.Tracing;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import org.junit.Before;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServerHandlerTest {
   Tracer tracer;
+  @Mock HttpSampler sampler;
   @Mock HttpServerAdapter<Object, Object> adapter;
   @Mock TraceContext.Extractor<Object> extractor;
   @Mock brave.Span span;
@@ -29,7 +31,8 @@ public class HttpServerHandlerTest {
   HttpServerHandler<Object, Object> handler;
 
   @Before public void init() {
-    HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder().build());
+    HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().build())
+        .serverSampler(sampler).build();
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, adapter);
 
@@ -39,11 +42,22 @@ public class HttpServerHandlerTest {
 
   @Test public void handleReceive_defaultsToMakeNewTrace() {
     when(extractor.extract(request))
-        .thenReturn(TraceContextOrSamplingFlags.create(TraceContext.newBuilder()));
+        .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
-    assertThat(handler.handleReceive(extractor, request))
-        .extracting(s -> s.isNoop(), s -> s.context().parentId())
-        .containsExactly(false, null);
+    // request sampler abstains (trace ID sampler will say true)
+    when(sampler.trySample(adapter, request)).thenReturn(null);
+
+    assertThat(handler.handleReceive(extractor, request).isNoop())
+        .isFalse();
+  }
+
+  @Test public void handleReceive_reusesSpanIds() {
+    TraceContext incomingContext = tracer.nextSpan().context();
+    when(extractor.extract(request))
+        .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
+
+    assertThat(handler.handleReceive(extractor, request).context())
+        .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 
   @Test public void handleReceive_honorsSamplingFlags() {
@@ -54,13 +68,28 @@ public class HttpServerHandlerTest {
         .isTrue();
   }
 
-  @Test public void handleReceive_reusesSpanIds() {
-    TraceContext incomingContext = tracer.nextSpan().context();
+  @Test public void handleReceive_makesRequestBasedSamplingDecision_flags() {
+    when(extractor.extract(request))
+        .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+
+    // request sampler says false eventhough trace ID sampler would have said true
+    when(sampler.trySample(adapter, request)).thenReturn(false);
+
+    assertThat(handler.handleReceive(extractor, request).isNoop())
+        .isTrue();
+  }
+
+
+  @Test public void handleReceive_makesRequestBasedSamplingDecision_context() {
+    TraceContext incomingContext = tracer.nextSpan().context().toBuilder().sampled(null).build();
     when(extractor.extract(request))
         .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
-    assertThat(handler.handleReceive(extractor, request).context())
-        .isEqualTo(incomingContext.toBuilder().shared(true).build());
+    // request sampler says false eventhough trace ID sampler would have said true
+    when(sampler.trySample(adapter, request)).thenReturn(false);
+
+    assertThat(handler.handleReceive(extractor, request).isNoop())
+        .isTrue();
   }
 
   @Test public void handleSend_nothingOnNoop_success() {

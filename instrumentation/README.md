@@ -22,14 +22,15 @@ httpTracing = HttpTracing.newBuilder(tracing).serverName("github").build();
 okhttp = TracingCallFactory.create(httpTracing, new OkHttpClient());
 ```
 
-### Http tracing
+# Http tracing
 Most instrumentation are based on http communication. For this reason,
 we have specialized handlers for http clients and servers. All of these
 are configured with `HttpTracing`.
 
-The `HttpTracing` class holds a reference to a tracing component and also
-includes instructions on what to put into http spans.
+The `HttpTracing` class holds a reference to a tracing component,
+instructions on what to put into http spans, and sampling policy.
 
+## Tagging policy
 By default, the following is added for both http clients and servers:
 * Span.name as the http method in lowercase: ex "get"
 * Tags/binary annotations:
@@ -61,6 +62,36 @@ httpTracing = httpTracing.toBuilder()
 
 apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3")).build();
 okhttp = TracingCallFactory.create(httpTracing.clientOf("sqs"), new OkHttpClient());
+```
+
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+server and client requests.
+
+For example, if there's a incoming request that has no trace IDs in its
+headers, the sampler indicated by `Tracing.Builder.sampler` decides whether
+or not to start a new trace. Once a trace is in progress, it is used for
+any outgoing http client requests.
+
+On the other hand, you may have http client requests that didn't originate
+from a server. For example, you may be bootstrapping your application,
+and that makes an http call to a system service. The default policy will
+start a trace for any http call, even ones that didn't come from a server
+request.
+
+You can change the sampling policy by specifying it in the `HttpTracing`
+component. Here's an example which doesn't start new traces for requests
+to favicon (which many browsers automatically fetch).
+
+```java
+httpTracing = httpTracing.toBuilder()
+    .serverSampler(new HttpSampler() {
+       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+         if (adapter.path(request).startsWith("/favicon")) return false;
+         return null; // defer decision to probabilistic on trace ID
+       }
+     })
+    .build();
 ```
 
 # Developing new instrumentation
