@@ -193,4 +193,19 @@ public class TracerTest {
           .isEqualTo(parent);
     }
   }
+
+  @Test public void withSpanInScope_clear() {
+    Span parent = tracer.newTrace();
+
+    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+      try (Tracer.SpanInScope clearScope = tracer.withSpanInScope(null)) {
+        assertThat(tracer.currentSpan())
+            .isNull();
+      }
+
+      // old parent reverted
+      assertThat(tracer.currentSpan())
+          .isEqualTo(parent);
+    }
+  }
 }

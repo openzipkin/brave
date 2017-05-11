@@ -4,6 +4,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.HexCodec;
+import org.apache.logging.log4j.ThreadContext;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MDCCurrentTraceContextTest {
   Logger testLogger = LoggerFactory.getLogger(getClass());
 
-  @Test public void customCurrentTraceContext() {
+  @Test public void test() {
     assertThat(MDC.get("traceId"))
         .isNull();
     assertThat(MDC.get("spanId"))
@@ -28,6 +29,16 @@ public class MDCCurrentTraceContextTest {
     Span parent = tracer.newTrace();
     try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
       testLogger.info("with span: " + parent);
+
+      try (Tracer.SpanInScope noSpan = tracer.withSpanInScope(null)) {
+        noSpan.toString(); // make sure it doesn't crash
+        testLogger.info("with no span");
+
+        assertThat(ThreadContext.get("traceId"))
+            .isNull();
+        assertThat(ThreadContext.get("spanId"))
+            .isNull();
+      }
 
       // the trace id is now in the logging context
       assertThat(MDC.get("traceId"))

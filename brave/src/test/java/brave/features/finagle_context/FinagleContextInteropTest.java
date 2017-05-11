@@ -19,6 +19,7 @@ import scala.Option;
 import scala.Some;
 import scala.collection.immutable.Map;
 import scala.runtime.AbstractFunction0;
+import scala.runtime.AbstractFunction1;
 
 import static com.twitter.finagle.context.Contexts.broadcast;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +35,21 @@ public class FinagleContextInteropTest {
       // Inside the parent scope, trace context is consistent between finagle and brave
       assertThat(tracer.currentSpan().context().spanId())
           .isEqualTo(Trace.id().spanId().self());
+
+      // Clear a scope temporarily
+      try (Tracer.SpanInScope noScope = tracer.withSpanInScope(null)) {
+        assertThat(tracer.currentSpan())
+            .isNull();
+      }
+
+      // Clear it temporarily in scala!
+      Trace.letClear(new AbstractFunction0<Object>() {
+        @Override public Object apply() {
+          assertThat(tracer.currentSpan())
+              .isNull();
+          return null;
+        }
+      });
 
       // create a child in finagle
       Trace.letId(Trace.nextId(), false, new AbstractFunction0<Void>() {
@@ -90,10 +106,20 @@ public class FinagleContextInteropTest {
 
     @Override public Scope newScope(TraceContext currentSpan) {
       Map<Buf, MarshalledContext.Cell> saved = broadcast().env();
-      Map<Buf, MarshalledContext.Cell> update = broadcast().env().updated(
-          TRACE_ID_KEY.marshalId(),
-          broadcast().Real().apply(TRACE_ID_KEY, new Some(toTraceId(currentSpan)))
-      );
+      Map<Buf, MarshalledContext.Cell> update;
+      if (currentSpan != null) { // replace the existing trace context with this one
+        update = broadcast().env().updated(
+            TRACE_ID_KEY.marshalId(),
+            broadcast().Real().apply(TRACE_ID_KEY, new Some(toTraceId(currentSpan)))
+        );
+      } else { // remove the existing trace context from scope
+        update = broadcast().env().filterKeys(
+            new AbstractFunction1<Buf, Object>() {
+              @Override public Object apply(Buf v1) {
+                return !v1.equals(TRACE_ID_KEY.marshalId());
+              }
+            });
+      }
       broadcastLocal.set(new Some(update));
       return () -> broadcastLocal.set(new Some(saved));
     }

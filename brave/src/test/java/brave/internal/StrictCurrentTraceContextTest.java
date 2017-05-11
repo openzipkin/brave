@@ -57,6 +57,19 @@ public class StrictCurrentTraceContextTest {
     }
   }
 
+  @Test public void scope_canClearScope() {
+    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+      try (CurrentTraceContext.Scope noScope = currentTraceContext.newScope(null)) {
+        assertThat(currentTraceContext.get())
+            .isNull();
+      }
+
+      // old context reverted
+      assertThat(currentTraceContext.get())
+          .isEqualTo(context);
+    }
+  }
+
   @Test public void scope_enforcesCloseOnSameThread() throws InterruptedException {
     final Exception[] spawnedThreadException = new Exception[1];
     Thread scopingThread = new Thread(() -> {

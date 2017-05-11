@@ -29,6 +29,12 @@ public class Log4JThreadContextTest {
       assertThat(ThreadContext.get("traceId"))
           .isEqualTo(parent.context().traceIdString());
 
+      // Clear a scope temporarily
+      try (Tracer.SpanInScope noScope = tracer.withSpanInScope(null)) {
+        assertThat(tracer.currentSpan())
+            .isNull();
+      }
+
       Span child = tracer.newChild(parent.context());
       try (Tracer.SpanInScope wsChild = tracer.withSpanInScope(child)) {
         // nesting worked
@@ -53,7 +59,11 @@ public class Log4JThreadContextTest {
 
     @Override public Scope newScope(TraceContext currentSpan) {
       final String previousTraceId = ThreadContext.get("traceId");
-      ThreadContext.put("traceId", currentSpan.traceIdString());
+      if (currentSpan != null) {
+        ThreadContext.put("traceId", currentSpan.traceIdString());
+      } else {
+        ThreadContext.remove("traceId");
+      }
       Scope scope = delegate.newScope(currentSpan);
       return () -> {
         scope.close();

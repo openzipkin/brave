@@ -148,7 +148,6 @@ public final class Tracer {
    * @see Propagation
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
-   * @see #nextSpan(Extractor, Object)
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
@@ -252,9 +251,11 @@ public final class Tracer {
    * the result have no effect on the input. For example, calling close on the result does not
    * finish the span. Not only is it safe to call close, you must call close to end the scope, or
    * risk leaking resources associated with the scope.
+   *
+   * @param span span to place into scope or null to clear the scope
    */
-  public SpanInScope withSpanInScope(Span span) {
-    return new SpanInScope(currentTraceContext.newScope(span.context()));
+  public SpanInScope withSpanInScope(@Nullable Span span) {
+    return new SpanInScope(currentTraceContext.newScope(span != null ? span.context() : null));
   }
 
   /** Returns the current span in scope or null if there isn't one. */

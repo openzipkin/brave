@@ -293,6 +293,16 @@ try (SpanInScope ws = tracer.withSpanInScope(span)) {
 }
 ```
 
+In edge cases, you may need to clear the current span temporarily. For
+example, launching a task that should not be associated with the current
+request. To do this, simply pass null to `withSpanInScope`.
+
+```java
+try (SpanInScope cleared = tracer.withSpanInScope(null)) {
+  startBackgroundThread();
+}
+```
+
 ### Working with callbacks
 
 Many libraries expose a callback model as opposed to an interceptor one.
