@@ -18,6 +18,7 @@
 
   <modules>
     <module>slf4j</module>
+    <module>log4j12</module>
     <module>log4j2</module>
   </modules>
 
