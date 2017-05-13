@@ -2,7 +2,6 @@ package brave.http;
 
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
-import java.util.List;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -49,7 +48,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans()).allSatisfy(s -> {
+    assertThat(spans).allSatisfy(s -> {
       assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
       assertThat(HexCodec.toLowerHex(s.parentId)).isEqualTo(parentId);
       assertThat(HexCodec.toLowerHex(s.id)).isEqualTo(spanId);
@@ -68,7 +67,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .isEmpty();
   }
 
@@ -87,8 +86,7 @@ public abstract class ITHttpServer extends ITHttp {
       throw e;
     }
 
-    List<Span> trace = collectedSpans();
-    assertThat(trace).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   /**
@@ -110,11 +108,10 @@ public abstract class ITHttpServer extends ITHttp {
       // ok, but the span should include an error!
     }
 
-    List<Span> trace = collectedSpans();
-    assertThat(trace).hasSize(2);
+    assertThat(spans).hasSize(2);
 
-    Span child = trace.get(0);
-    Span parent = trace.get(1);
+    Span child = spans.pop();
+    Span parent = spans.pop();
 
     assertThat(parent.traceId).isEqualTo(child.traceId);
     assertThat(parent.id).isEqualTo(child.parentId);
@@ -131,7 +128,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key)
         .contains(Constants.CLIENT_ADDR);
@@ -148,7 +145,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key, b -> b.endpoint.ipv4)
         .contains(tuple(Constants.CLIENT_ADDR, 1 << 24 | 2 << 16 | 3 << 8 | 4));
@@ -163,7 +160,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("sr", "ss");
@@ -178,7 +175,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("get");
   }
@@ -204,8 +201,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    List<Span> collectedSpans = collectedSpans();
-    assertThat(collectedSpans)
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("get /foo");
 
@@ -246,7 +242,7 @@ public abstract class ITHttpServer extends ITHttp {
       // ok, but the span should include an error!
     }
 
-    assertThat(collectedSpans()).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   @Test
@@ -266,7 +262,7 @@ public abstract class ITHttpServer extends ITHttp {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key)
         .contains(Constants.ERROR);

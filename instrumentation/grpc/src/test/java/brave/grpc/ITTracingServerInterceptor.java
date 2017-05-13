@@ -106,7 +106,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans()).allSatisfy(s -> {
+    assertThat(spans).allSatisfy(s -> {
       assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
       assertThat(HexCodec.toLowerHex(s.parentId)).isEqualTo(parentId);
       assertThat(HexCodec.toLowerHex(s.id)).isEqualTo(spanId);
@@ -120,7 +120,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .isEmpty();
   }
 
@@ -128,7 +128,7 @@ public class ITTracingServerInterceptor {
   public void reportsServerAnnotationsToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("sr", "ss");
@@ -138,7 +138,7 @@ public class ITTracingServerInterceptor {
   public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("helloworld.greeter/sayhello");
   }
@@ -150,7 +150,7 @@ public class ITTracingServerInterceptor {
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      assertThat(collectedSpans())
+      assertThat(spans)
           .flatExtracting(s -> s.binaryAnnotations)
           .contains(
               BinaryAnnotation.create(Constants.ERROR, e.getStatus().getCode().toString(), local));
@@ -165,7 +165,7 @@ public class ITTracingServerInterceptor {
         .sampler(sampler);
   }
 
-  List<Span> collectedSpans() {
+  List<Span> spans {
     List<List<Span>> result = storage.spanStore().getRawTraces();
     if (result.isEmpty()) return Collections.emptyList();
     assertThat(result).hasSize(1);

@@ -31,7 +31,7 @@ The `HttpTracing` class holds a reference to a tracing component,
 instructions on what to put into http spans, and sampling policy.
 
 ## Tagging policy
-By default, the following is added for both http clients and servers:
+By default, the following are added to both http client and server spans:
 * Span.name as the http method in lowercase: ex "get"
 * Tags/binary annotations:
   * "http.path", which does not include query parameters.
@@ -60,7 +60,7 @@ httpTracing = httpTracing.toBuilder()
     })
     .build();
 
-apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3")).build();
+apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3"));
 okhttp = TracingCallFactory.create(httpTracing.clientOf("sqs"), new OkHttpClient());
 ```
 

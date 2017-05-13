@@ -26,10 +26,11 @@ public abstract class HttpSampler {
       return "DeferDecision";
     }
   };
+
   /**
-   * Returns false to never start new traces for http requests. This could make sense for http
-   * clients. For example, you may wish to never capture http traces unless they originated for a
-   * server request. For example, this would filter out client requests made during bootstrap.
+   * Returns false to never start new traces for http requests. For example, you may wish to only
+   * capture traces if they originated from an inbound server request. Such a policy would filter
+   * out client requests made during bootstrap.
    */
   public static final HttpSampler NEVER_SAMPLE = new HttpSampler() {
     @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {

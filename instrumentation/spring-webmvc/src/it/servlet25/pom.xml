@@ -62,11 +62,6 @@
 
   <build>
     <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
-    <testResources>
-      <testResource>
-        <directory>@project.basedir@/test/resources</directory>
-      </testResource>
-    </testResources>
     <plugins>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>

@@ -60,7 +60,7 @@ public class ITTracingP6Factory {
       parent.finish();
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .hasSize(2);
   }
 
@@ -68,7 +68,7 @@ public class ITTracingP6Factory {
   public void reportsClientAnnotationsToZipkin() throws Exception {
     prepareExecuteSelect(QUERY);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("cs", "cr");
@@ -78,7 +78,7 @@ public class ITTracingP6Factory {
   public void defaultSpanNameIsOperationName() throws Exception {
     prepareExecuteSelect(QUERY);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("select");
   }
@@ -87,7 +87,7 @@ public class ITTracingP6Factory {
   public void addsQueryTag() throws Exception {
     prepareExecuteSelect(QUERY);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(TraceKeys.SQL_QUERY))
         .extracting(a -> new String(a.value, Util.UTF_8))
@@ -98,7 +98,7 @@ public class ITTracingP6Factory {
   public void reportsServerAddress() throws Exception {
     prepareExecuteSelect(QUERY);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key, b -> b.endpoint.serviceName)
         .contains(tuple(Constants.SERVER_ADDR, "myservice"));
@@ -122,7 +122,7 @@ public class ITTracingP6Factory {
         .sampler(sampler);
   }
 
-  List<Span> collectedSpans() {
+  List<Span> spans {
     List<List<Span>> result = storage.spanStore().getRawTraces();
     assertThat(result).hasSize(1);
     return result.get(0);
