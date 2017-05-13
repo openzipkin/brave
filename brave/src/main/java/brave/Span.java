@@ -3,7 +3,6 @@ package brave;
 import brave.propagation.TraceContext;
 import zipkin.Constants;
 import zipkin.Endpoint;
-import zipkin.TraceKeys;
 
 /**
  * Used to model the latency of an operation.
@@ -22,7 +21,7 @@ import zipkin.TraceKeys;
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
 // can simply call start when they are ready.
-public abstract class Span {
+public abstract class Span implements Tagger {
   public enum Kind {
     CLIENT,
     SERVER
@@ -75,16 +74,8 @@ public abstract class Span {
   /** Like {@link #annotate(String)}, except with a given timestamp in microseconds. */
   public abstract Span annotate(long timestamp, String value);
 
-  /**
-   * Tags give your span context for search, viewing and analysis. For example, a key
-   * "your_app.version" would let you lookup spans by version. A tag {@link TraceKeys#SQL_QUERY}
-   * isn't searchable, but it can help in debugging when viewing a trace.
-   *
-   * @param key Name used to lookup spans, such as "your_app.version". See {@link TraceKeys} for
-   * standard ones.
-   * @param value String value, cannot be <code>null</code>.
-   */
-  public abstract Span tag(String key, String value);
+  /** {@inheritDoc} */
+  @Override public abstract Span tag(String key, String value);
 
   /**
    * For a client span, this would be the server's address.

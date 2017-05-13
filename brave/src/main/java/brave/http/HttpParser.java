@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.Span;
+import brave.Tagger;
 import brave.internal.Nullable;
 import zipkin.Constants;
 import zipkin.TraceKeys;
@@ -16,27 +16,29 @@ public class HttpParser {
   }
 
   /** By default, this adds the {@link TraceKeys#HTTP_PATH}. */
-  public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Span span) {
+  public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
     String path = adapter.path(req);
-    if (path != null) span.tag(TraceKeys.HTTP_PATH, path);
+    if (path != null) tagger.tag(TraceKeys.HTTP_PATH, path);
   }
 
   /***
    * By default, this adds {@link TraceKeys#HTTP_STATUS_CODE} when it is not 2xx. If there's an
    * exception or the status code is neither 2xx nor 3xx, it adds {@link Constants#ERROR}.
    *
-   * <p>Note: Either the response or error parameters may be null, but not both
+   * <p>Note: Either the response or error parameters may be null, but not both.
    *
    * @see #parseError(Integer, Throwable)
    */
+  // This accepts response or exception because sometimes http 500 is an exception and sometimes not
+  // If this were not an abstraction, we'd use separate hooks for response and error.
   public <Resp> void responseTags(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
-      @Nullable Throwable error, Span span) {
+      @Nullable Throwable error, Tagger tagger) {
     Integer httpStatus = res != null ? adapter.statusCode(res) : null;
     if (httpStatus != null && (httpStatus < 200 || httpStatus > 299)) {
-      span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus));
+      tagger.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus));
     }
     String message = parseError(httpStatus, error);
-    if (message != null) span.tag(Constants.ERROR, message);
+    if (message != null) tagger.tag(Constants.ERROR, message);
   }
 
   /**

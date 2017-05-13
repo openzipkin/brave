@@ -18,9 +18,7 @@ import javax.ws.rs.container.PreMatching;
 import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import zipkin.Constants;
 
 import static javax.ws.rs.RuntimeType.SERVER;
 
@@ -68,11 +66,6 @@ import static javax.ws.rs.RuntimeType.SERVER;
       span = handler.handleReceive(extractor, request);
     } else {
       return; // unknown state
-    }
-
-    Response.StatusType statusInfo = response.getStatusInfo();
-    if (statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
-      span.tag(Constants.ERROR, statusInfo.getReasonPhrase());
     }
     handler.handleSend(response, null, span);
   }

@@ -75,14 +75,39 @@ try {
 }
 ```
 
+### Customizing spans
 Once you have a span, you can add tags to it, which can be used as lookup
-keys or details. For example, you might add a tag with your runtime version:
+keys or details. For example, you might add a tag with your runtime
+version.
 
 ```java
 span.tag("clnt/finagle.version", "6.36.0");
 ```
 
+When exposing the ability to customize spans to third parties, prefer
+`brave.Tagger` as opposed to `brave.Span`. The former is simpler to
+understand and test, and doesn't tempt users with span lifecycle hooks.
+
+```java
+interface MyTraceCallback {
+  void requestTags(Request request, Tagger tagger);
+}
+```
+
+Since `brave.Span` implements `brave.Tagger`, it is just as easy for you
+to pass to users.
+
+Ex.
+```java
+for (MyTraceCallback callback : userCallbacks) {
+  callback.requestTags(request, span);
+}
+```
+
 ### RPC tracing
+Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
+before rolling your own RPC instrumentation!
+
 RPC tracing is often done automatically by interceptors. Under the scenes,
 they add tags and events that relate to their role in an RPC operation.
 
