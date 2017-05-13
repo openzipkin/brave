@@ -24,8 +24,8 @@ By default, the following are added to cassandra client spans:
 To change the span and tag naming policy, you can do something like this:
 
 ```java
-cassandraDriverTracing = cassandraDriverTracing.toBuilder()
-    .parser(new CassandraParser() {
+cassandraClientTracing = cassandraClientTracing.toBuilder()
+    .parser(new CassandraClientParser() {
         @Override public String spanName(Statement statement) {
           return "query";
         }
@@ -37,7 +37,7 @@ cassandraDriverTracing = cassandraDriverTracing.toBuilder()
     })
     .build();
 
-tracesSession = TracingSession.create(cassandraDriverTracing.clientOf("remote-cluster"), session);
+tracesSession = TracingSession.create(cassandraClientTracing.clientOf("remote-cluster"), session);
 ```
 
 ## Sampling Policy
@@ -47,12 +47,12 @@ For example, if there's no trace already in progress, the sampler
 indicated by `Tracing.Builder.sampler` decides whether or not to start a
 new trace for the cassandra client request.
 
-You can change the sampling policy by specifying it in the `CassandraDriverTracing`
+You can change the sampling policy by specifying it in the `CassandraClientTracing`
 component. Here's an example which only starts new traces for bound statements.
 
 ```java
-cassandraDriverTracing = cassandraDriverTracing.toBuilder()
-    .sampler(new CassandraDriverSampler() {
+cassandraClientTracing = cassandraClientTracing.toBuilder()
+    .sampler(new CassandraClientSampler() {
        @Override public Boolean trySample(Statement statement) {
          return statement instanceof BoundStatement;
        }

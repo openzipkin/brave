@@ -41,7 +41,7 @@ public class ITTracingSession {
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing;
-  CassandraDriverTracing cassandraTracing;
+  CassandraClientTracing cassandraTracing;
   Cluster cluster;
   Session session;
   PreparedStatement prepared;
@@ -62,7 +62,7 @@ public class ITTracingSession {
   }
 
   Session newSession() {
-    cassandraTracing = CassandraDriverTracing.create(tracing);
+    cassandraTracing = CassandraClientTracing.create(tracing);
     Session result = TracingSession.create(cassandraTracing, cluster.connect());
     prepared = result.prepare("SELECT * from system.schema_keyspaces");
     return result;
@@ -174,7 +174,7 @@ public class ITTracingSession {
 
   @Test public void customSampler() throws Exception {
     cassandraTracing = cassandraTracing.toBuilder()
-        .sampler(CassandraDriverSampler.NEVER_SAMPLE).build();
+        .sampler(CassandraClientSampler.NEVER_SAMPLE).build();
     session = TracingSession.create(cassandraTracing, ((TracingSession) session).delegate);
 
     invokeBoundStatement();
@@ -184,7 +184,7 @@ public class ITTracingSession {
 
   @Test public void supportsCustomization() throws Exception {
     cassandraTracing = cassandraTracing.toBuilder()
-        .parser(new CassandraDriverParser() {
+        .parser(new CassandraClientParser() {
           @Override public String spanName(Statement statement) {
             return "query";
           }

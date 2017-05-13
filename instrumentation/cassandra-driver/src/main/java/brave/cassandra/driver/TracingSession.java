@@ -30,22 +30,22 @@ import static zipkin.internal.Util.checkNotNull;
 
 public final class TracingSession extends AbstractSession {
   public static Session create(Tracing tracing, Session delegate) {
-    return new TracingSession(CassandraDriverTracing.create(tracing), delegate);
+    return new TracingSession(CassandraClientTracing.create(tracing), delegate);
   }
 
-  public static Session create(CassandraDriverTracing cassandraTracing, Session delegate) {
+  public static Session create(CassandraClientTracing cassandraTracing, Session delegate) {
     return new TracingSession(cassandraTracing, delegate);
   }
 
   final Tracer tracer;
-  final CassandraDriverSampler sampler;
-  final CassandraDriverParser parser;
+  final CassandraClientSampler sampler;
+  final CassandraClientParser parser;
   final String remoteServiceName;
   final TraceContext.Injector<Map<String, ByteBuffer>> injector;
   final ProtocolVersion version;
   final Session delegate;
 
-  TracingSession(CassandraDriverTracing cassandraTracing, Session target) {
+  TracingSession(CassandraClientTracing cassandraTracing, Session target) {
     checkNotNull(cassandraTracing, "cassandraTracing");
     this.delegate = checkNotNull(target, "delegate");
     tracer = cassandraTracing.tracing().tracer();

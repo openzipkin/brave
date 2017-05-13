@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
  *
  * <p>Ex. Here's a sampler that only starts traces for bound statements
  * <pre>{@code
- * cassandraDriverTracingBuilder.serverSampler(new CassandraDriverSampler() {
+ * cassandraClientTracingBuilder.serverSampler(new CassandraClientSampler() {
  *   @Override public <Req> Boolean trySample(Statement statement) {
  *     return statement instanceof BoundStatement;
  *   }
@@ -16,9 +16,9 @@ import javax.annotation.Nullable;
  * }</pre>
  */
 // abstract class as it lets us make helpers in the future
-public abstract class CassandraDriverSampler {
+public abstract class CassandraClientSampler {
   /** Ignores the request and uses the {@link brave.sampler.Sampler trace ID instead}. */
-  public static final CassandraDriverSampler TRACE_ID = new CassandraDriverSampler() {
+  public static final CassandraClientSampler TRACE_ID = new CassandraClientSampler() {
     @Override public Boolean trySample(Statement statement) {
       return null;
     }
@@ -28,7 +28,7 @@ public abstract class CassandraDriverSampler {
     }
   };
   /** Returns false to never start new traces for cassandra client requests. */
-  public static final CassandraDriverSampler NEVER_SAMPLE = new CassandraDriverSampler() {
+  public static final CassandraClientSampler NEVER_SAMPLE = new CassandraClientSampler() {
     @Override public Boolean trySample(Statement statement) {
       return false;
     }

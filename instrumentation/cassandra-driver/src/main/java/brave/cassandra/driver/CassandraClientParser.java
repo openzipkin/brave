@@ -12,7 +12,7 @@ import static zipkin.Constants.ERROR;
  * Provides reasonable defaults for the data contained in cassandra client spans. Subclass to
  * customize, for example, to add tags based on response headers.
  */
-public class CassandraDriverParser {
+public class CassandraClientParser {
 
   /**
    * Override to change what data from the statement are parsed into the span representing it. By
