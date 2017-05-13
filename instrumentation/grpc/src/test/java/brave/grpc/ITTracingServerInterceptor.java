@@ -21,32 +21,28 @@ import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloRequest;
-import java.util.Collections;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
-import zipkin.Endpoint;
 import zipkin.Span;
-import zipkin.storage.InMemoryStorage;
+import zipkin.internal.Util;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.tuple;
 
 public class ITTracingServerInterceptor {
 
   @Rule public ExpectedException thrown = ExpectedException.none();
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing;
   Server server;
@@ -152,23 +148,15 @@ public class ITTracingServerInterceptor {
     } catch (StatusRuntimeException e) {
       assertThat(spans)
           .flatExtracting(s -> s.binaryAnnotations)
-          .contains(
-              BinaryAnnotation.create(Constants.ERROR, e.getStatus().getCode().toString(), local));
+          .extracting(b -> tuple(b.key, new String(b.value, Util.UTF_8)))
+          .contains(tuple(Constants.ERROR, e.getStatus().getCode().toString()));
     }
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
+        .reporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())
-        .localEndpoint(local)
         .sampler(sampler);
-  }
-
-  List<Span> spans {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    if (result.isEmpty()) return Collections.emptyList();
-    assertThat(result).hasSize(1);
-    return result.get(0);
   }
 }

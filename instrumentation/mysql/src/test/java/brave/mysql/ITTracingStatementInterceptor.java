@@ -9,18 +9,16 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.Constants;
-import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.TraceKeys;
+import zipkin.internal.MergeById;
 import zipkin.internal.Util;
-import zipkin.storage.InMemoryStorage;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.Assume.assumeTrue;
@@ -29,8 +27,7 @@ import static zipkin.internal.Util.envOr;
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   Connection connection;
@@ -52,7 +49,7 @@ public class ITTracingStatementInterceptor {
         dataSource.getUser() != null);
     dataSource.setPassword(envOr("MYSQL_PASS", ""));
     connection = dataSource.getConnection();
-    storage.clear(); // clear any spans for test statements
+    spans.clear();
   }
 
   @After public void close() throws SQLException {
@@ -125,15 +122,8 @@ public class ITTracingStatementInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
+        .reporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())
-        .localEndpoint(local)
         .sampler(sampler);
-  }
-
-  List<Span> spans {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    assertThat(result).hasSize(1);
-    return result.get(0);
   }
 }
