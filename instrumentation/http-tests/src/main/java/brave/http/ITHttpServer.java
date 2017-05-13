@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.Tagger;
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
 import okhttp3.OkHttpClient;
@@ -189,9 +190,8 @@ public abstract class ITHttpServer extends ITHttp {
         return adapter.method(req).toLowerCase() + " " + adapter.path(req);
       }
 
-      @Override
-      public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, brave.Span span) {
-        span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+      @Override public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
+        tagger.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
       }
     }).build();
     init();

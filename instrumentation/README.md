@@ -54,8 +54,8 @@ httpTracing = httpTracing.toBuilder()
       }
 
       @Override
-      public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, brave.Span span) {
-        span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
+      public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
+        tagger.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
       }
     })
     .build();

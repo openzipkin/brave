@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.Span;
+import brave.Tagger;
 import brave.internal.Nullable;
 
 /**
@@ -14,8 +14,8 @@ public class HttpClientParser extends HttpParser {
    *
    * <p>{@inheritDoc}
    */
-  @Override public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Span span) {
-    super.requestTags(adapter, req, span);
+  @Override public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
+    super.requestTags(adapter, req, tagger);
   }
 
   /**
@@ -24,7 +24,7 @@ public class HttpClientParser extends HttpParser {
    * <p>{@inheritDoc}
    */
   @Override public <Resp> void responseTags(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
-      @Nullable Throwable error, Span span) {
-    super.responseTags(adapter, res, error, span);
+      @Nullable Throwable error, Tagger tagger) {
+    super.responseTags(adapter, res, error, tagger);
   }
 }
