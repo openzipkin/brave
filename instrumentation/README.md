@@ -30,7 +30,7 @@ are configured with `HttpTracing`.
 The `HttpTracing` class holds a reference to a tracing component,
 instructions on what to put into http spans, and sampling policy.
 
-## Tagging policy
+## Span data policy
 By default, the following are added to both http client and server spans:
 * Span.name as the http method in lowercase: ex "get"
 * Tags/binary annotations:
@@ -49,19 +49,28 @@ can do something like this:
 ```java
 httpTracing = httpTracing.toBuilder()
     .clientParser(new HttpClientParser() {
-      @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-        return adapter.method(req).toLowerCase() + " " + adapter.path(req);
-      }
-
       @Override
-      public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
-        tagger.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
+      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+        customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
+        customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
       }
     })
     .build();
 
 apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3"));
 okhttp = TracingCallFactory.create(httpTracing.clientOf("sqs"), new OkHttpClient());
+```
+
+If you just want to control span naming policy, override `spanName` in
+your client or server parser.
+
+Ex:
+```java
+overrideSpanName = new HttpClientParser() {
+  @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+    return adapter.method(req).toLowerCase() + " " + adapter.path(req);
+  }
+};
 ```
 
 ## Sampling Policy

@@ -1,30 +1,31 @@
 package brave.http;
 
-import brave.Tagger;
+import brave.SpanCustomizer;
 import brave.internal.Nullable;
 
 /**
- * Provides reasonable defaults for the data contained in http client spans. Subclass to customize,
- * for example, to add tags based on response headers.
+ * Parses the request and response into reasonable defaults for http client spans. Subclass to
+ * customize, for example, to add tags based on response headers.
  */
 public class HttpClientParser extends HttpParser {
 
   /**
-   * Adds any tags based on the request that will be sent to the server.
+   * Customizes the span based on the request that will be sent to the server.
    *
    * <p>{@inheritDoc}
    */
-  @Override public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
-    super.requestTags(adapter, req, tagger);
+  @Override public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
+      SpanCustomizer customizer) {
+    super.request(adapter, req, customizer);
   }
 
   /**
-   * Adds any tags based on the response received from the server.
+   * Customizes the span based on the response received from the server.
    *
    * <p>{@inheritDoc}
    */
-  @Override public <Resp> void responseTags(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
-      @Nullable Throwable error, Tagger tagger) {
-    super.responseTags(adapter, res, error, tagger);
+  @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
+      @Nullable Throwable error, SpanCustomizer customizer) {
+    super.response(adapter, res, error, customizer);
   }
 }

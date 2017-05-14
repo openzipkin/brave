@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.SpanCustomizer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -14,7 +15,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class HttpParserTest {
   @Mock HttpClientAdapter<Object, Object> adapter;
-  @Mock brave.Span span;
+  @Mock SpanCustomizer customizer;
   Object request = new Object();
   Object response = new Object();
   HttpParser parser = new HttpParser();
@@ -26,47 +27,48 @@ public class HttpParserTest {
         .isEqualTo("GET");
   }
 
-  @Test public void requestTags_addsPath() {
+  @Test public void request_addsPath() {
     when(adapter.path(request)).thenReturn("/foo");
 
-    parser.requestTags(adapter, request, span);
+    parser.request(adapter, request, customizer);
 
-    verify(span).tag(TraceKeys.HTTP_PATH, "/foo");
+    verify(customizer).tag(TraceKeys.HTTP_PATH, "/foo");
   }
 
-  @Test public void requestTags_doesntCrashOnNullPath() {
-    parser.requestTags(adapter, request, span);
+  @Test public void request_doesntCrashOnNullPath() {
+    parser.request(adapter, request, customizer);
 
-    verify(span, never()).tag(TraceKeys.HTTP_PATH, null);
+    verify(customizer, never()).tag(TraceKeys.HTTP_PATH, null);
   }
 
-  @Test public void responseTags_tagsErrorOnResponseCode() {
+  @Test public void response_tagsStatusAndErrorOnResponseCode() {
     when(adapter.statusCode(response)).thenReturn(400);
 
-    parser.responseTags(adapter, response, null, span);
+    parser.response(adapter, response, null, customizer);
 
-    verify(span).tag("error", "400");
+    verify(customizer).tag("http.status_code", "400");
+    verify(customizer).tag("error", "400");
   }
 
-  @Test public void responseTags_tagsErrorFromException() {
-    parser.responseTags(adapter, response, new RuntimeException("drat"), span);
+  @Test public void response_tagsErrorFromException() {
+    parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
-    verify(span).tag("error", "drat");
+    verify(customizer).tag("error", "drat");
   }
 
-  @Test public void responseTags_tagsErrorPrefersExceptionVsResponseCode() {
+  @Test public void response_tagsErrorPrefersExceptionVsResponseCode() {
     when(adapter.statusCode(response)).thenReturn(400);
 
-    parser.responseTags(adapter, response, new RuntimeException("drat"), span);
+    parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
-    verify(span).tag("error", "drat");
+    verify(customizer).tag("error", "drat");
   }
 
-  @Test public void responseTags_tagsErrorOnExceptionEvenIfStatusOk() {
+  @Test public void response_tagsErrorOnExceptionEvenIfStatusOk() {
     when(adapter.statusCode(response)).thenReturn(200);
 
-    parser.responseTags(adapter, response, new RuntimeException("drat"), span);
+    parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
-    verify(span).tag("error", "drat");
+    verify(customizer).tag("error", "drat");
   }
 }

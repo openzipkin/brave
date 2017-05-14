@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.Tagger;
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.internal.HexCodec;
@@ -172,13 +172,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
     close();
     httpTracing = httpTracing.toBuilder()
         .clientParser(new HttpClientParser() {
-          @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-            return adapter.method(req).toLowerCase() + " " + adapter.path(req);
-          }
-
           @Override
-          public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
-            tagger.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+          public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+            customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
+            customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
           }
         })
         .build().clientOf("remote-service");

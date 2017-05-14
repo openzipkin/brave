@@ -1,6 +1,7 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
@@ -69,7 +70,7 @@ public final class HttpClientHandler<Req, Resp> {
    * Like {@link #handleSend(TraceContext.Injector, Object)}, except for when the carrier of
    * trace data is not the same as the request.
    *
-   * @see HttpClientParser#requestTags(HttpAdapter, Object, Span)
+   * @see HttpClientParser#request(HttpAdapter, Object, SpanCustomizer)
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request) {
     Span span = nextSpan(request);
@@ -78,7 +79,7 @@ public final class HttpClientHandler<Req, Resp> {
 
     // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.CLIENT).name(parser.spanName(adapter, request));
-    parser.requestTags(adapter, request, span);
+    parser.request(adapter, request, span);
     Endpoint.Builder remoteEndpoint = Endpoint.builder();
     if (adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet) {
       span.remoteEndpoint(remoteEndpoint.serviceName(serverName).build());
@@ -103,12 +104,12 @@ public final class HttpClientHandler<Req, Resp> {
    * <p>This is typically called once the response headers are received, and after the span is
    * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
    *
-   * @see HttpClientParser#responseTags(HttpAdapter, Object, Throwable, Span)
+   * @see HttpClientParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
     try {
-      parser.responseTags(adapter, response, error, span);
+      parser.response(adapter, response, error, span);
     } finally {
       span.finish();
     }
