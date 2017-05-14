@@ -10,11 +10,13 @@ import zipkin.TraceKeys;
  * <p>This type is safer to expose directly to users than {@link Span}, as it has no hooks that
  * can affect the span lifecycle.
  */
-public abstract class SpanCustomizer {
+// Note: this is exposed to users. We cannot add methods to this until Java 8 is dropped or we do a
+// major version bump
+public interface SpanCustomizer {
   /**
    * Sets the string name for the logical operation this span represents.
    */
-  public abstract SpanCustomizer name(String name);
+  SpanCustomizer name(String name);
 
   /**
    * Tags give your span context for search, viewing and analysis. For example, a key
@@ -25,7 +27,7 @@ public abstract class SpanCustomizer {
    * standard ones.
    * @param value String value, cannot be <code>null</code>.
    */
-  public abstract SpanCustomizer tag(String key, String value);
+  SpanCustomizer tag(String key, String value);
 
   /**
    * Associates an event that explains latency with the current system time.
@@ -33,8 +35,8 @@ public abstract class SpanCustomizer {
    * @param value A short tag indicating the event, like "finagle.retry"
    * @see Constants
    */
-  public abstract SpanCustomizer annotate(String value);
+  SpanCustomizer annotate(String value);
 
   /** Like {@link #annotate(String)}, except with a given timestamp in microseconds. */
-  public abstract SpanCustomizer annotate(long timestamp, String value);
+  SpanCustomizer annotate(long timestamp, String value);
 }
