@@ -1,6 +1,6 @@
 # brave-instrumentation-sparkjava
 
-This module contains SparkJava filters and exception handlers.
+This module contains tracing filters and exception handlers for [SparkJava](http://sparkjava.com/)
 The filters extract trace state from incoming requests. Then, they
 reports Zipkin how long each request takes, along with relevant tags
 like the http url. The exception handler ensures any errors are also

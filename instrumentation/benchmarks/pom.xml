@@ -33,7 +33,7 @@
 
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave</artifactId>
+      <artifactId>brave-instrumentation-http</artifactId>
     </dependency>
 
     <dependency>

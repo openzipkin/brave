@@ -18,13 +18,13 @@
 
   <dependencies>
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-servlet</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.sparkjava</groupId>
       <artifactId>spark-core</artifactId>
       <version>${sparkjava.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-servlet</artifactId>
     </dependency>
 
     <dependency>

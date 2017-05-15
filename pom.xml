@@ -94,9 +94,9 @@
 
   <modules>
     <module>brave</module>
-    <module>brave-spring-beans</module>
     <module>context</module>
     <module>instrumentation</module>
+    <module>spring-beans</module>
     <module>archive/brave-core</module>
     <module>archive/brave-benchmarks</module>
     <module>archive/brave-http</module>
@@ -148,6 +148,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>brave-instrumentation-servlet</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -169,16 +174,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http-tests</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-instrumentation-http-tests</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-instrumentation-servlet</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

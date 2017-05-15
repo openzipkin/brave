@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>brave-instrumentation-http-tests</artifactId>
-  <name>Brave Instrumentation: Http Tests</name>
+  <name>Brave Instrumentation: Http Interop Tests</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
@@ -17,6 +17,10 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-http</artifactId>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

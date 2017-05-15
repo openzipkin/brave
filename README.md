@@ -10,6 +10,11 @@ Zipkin is based on [Dapper](http://research.google.com/pubs/pub36356.html). Dapp
 
 ## What's included
 
+Brave's dependency-free [tracer library](brave/) works against JRE6+.
+This is the underlying api that instrumentation use to time operations
+and add tags that describe them. This library also includes code that
+parses `X-B3-TraceId` headers.
+
 Most users won't write tracing code directly. Rather, they reuse instrumentation
 code  others have written. Check for [instrumentation written here](instrumentation/) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
 before rolling your own. Common tracing libraries like JDBC, Servlet
@@ -26,17 +31,12 @@ You may want to put trace IDs into your log files, or change thread local
 behavior. Look at our [context libraries](context/), for integration with
 tools such as SLF4J.
 
-Brave's dependency-free [tracer library](brave/) works against JRE6+.
-This is the underlying api that instrumentation use to time operations
-and add tags that describe them. This library also includes code that
-parses `X-B3-TraceId` headers.
-
 ## Writing new instrumentation
 We worked very hard to make writing new instrumentation easy and efficient.
 Most of our built-in instrumentation are 50-100 lines of code, yet allow
 flexible configuration of tags and sampling policy.
 
-If you need to write new http instrumentation, check [our docs](instrumentation/README.md),
+If you need to write new http instrumentation, check [our docs](instrumentation/http/README.md),
 as this shows how to write it in a way that is least effort for you and
 easy for others to configure. For example, we have a standard [test suite](instrumentation/http-tests)
 you can use to make sure things interop, and standard configuration works.
