@@ -3,10 +3,10 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
-import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 
 /**

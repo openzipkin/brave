@@ -32,7 +32,7 @@
       <groupId>org.jvnet</groupId>
       <artifactId>animal-sniffer-annotation</artifactId>
       <version>1.0</version>
-      <!-- annotations are not runtime rentition, so don't need a runtime dep -->
+      <!-- annotations are not runtime retention, so don't need a runtime dep -->
       <scope>provided</scope>
     </dependency>
     <!-- for value types... don't worry. this dependency is compile only! -->

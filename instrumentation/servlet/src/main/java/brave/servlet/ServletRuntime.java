@@ -2,8 +2,8 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerHandler;
-import brave.internal.Nullable;
 import java.io.IOException;
+import javax.annotation.Nullable;
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
 import javax.servlet.ServletResponse;

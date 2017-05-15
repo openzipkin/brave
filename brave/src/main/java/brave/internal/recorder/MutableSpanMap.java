@@ -1,7 +1,6 @@
 package brave.internal.recorder;
 
 import brave.Clock;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -10,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
 

@@ -1,11 +1,12 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
-import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 
 /**
@@ -62,7 +63,7 @@ public final class HttpServerHandler<Req, Resp> {
    * Like {@link #handleReceive(TraceContext.Extractor, Object)}, except for when the carrier of
    * trace data is not the same as the request.
    *
-   * @see HttpServerParser#requestTags(HttpAdapter, Object, Span)
+   * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
     Span span = nextSpan(extractor.extract(carrier), request);
@@ -108,7 +109,7 @@ public final class HttpServerHandler<Req, Resp> {
    * <p>This is typically called once the response headers are sent, and after the span is
    * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
    *
-   * @see HttpServerParser#responseTags(HttpAdapter, Object, Throwable, Span)
+   * @see HttpServerParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;

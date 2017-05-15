@@ -1,8 +1,8 @@
 package brave.internal.recorder;
 
 import brave.Span;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import javax.annotation.Nullable;
 import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
 import zipkin.Constants;

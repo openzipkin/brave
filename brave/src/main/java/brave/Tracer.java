@@ -1,6 +1,5 @@
 package brave;
 
-import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.recorder.Recorder;
 import brave.propagation.CurrentTraceContext;
@@ -11,6 +10,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
 
