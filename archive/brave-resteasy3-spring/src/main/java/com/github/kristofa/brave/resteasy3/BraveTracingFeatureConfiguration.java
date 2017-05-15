@@ -4,7 +4,12 @@ import com.github.kristofa.brave.jaxrs2.BraveTracingFeature;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-/** Imports jaxrs2 filters used in resteasy3. */
+/**
+ * Imports jaxrs2 filters used in resteasy3.
+ *
+ * @deprecated Import {@code TracingFeature} from brave-instrumentation-jaxrs2
+ */
+@Deprecated
 @Configuration
 @Import(BraveTracingFeature.class)
 public class BraveTracingFeatureConfiguration {

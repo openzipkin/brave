@@ -21,6 +21,8 @@ import static com.github.kristofa.brave.InetAddressUtilities.getLocalHostLANAddr
 import static com.github.kristofa.brave.InetAddressUtilities.toInt;
 import static zipkin.internal.Util.checkNotNull;
 
+/** @deprecated Replaced by {@link brave.Tracing} */
+@Deprecated
 public class Brave {
     private final Clock clock;
     private final ServerTracer serverTracer;

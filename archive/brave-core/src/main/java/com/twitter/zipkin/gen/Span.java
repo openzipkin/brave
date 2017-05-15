@@ -11,7 +11,12 @@ import java.util.Locale;
 
 import static com.github.kristofa.brave.internal.Util.equal;
 
-/** This is an internal type representing a span in the trace tree. */
+/**
+ * This is an internal type representing a span in the trace tree.
+ *
+ * @deprecated Replaced by {@code brave.Span}
+ */
+@Deprecated
 public class Span implements Serializable {
   static {
     InternalSpan.instance = new InternalSpan(){

@@ -3,6 +3,10 @@ package com.github.kristofa.brave.http;
 
 import java.net.URI;
 
+/**
+ * @deprecated Replaced by {@code HttpClientAdapter} or {@code HttpServerAdapter} from brave-http
+ */
+@Deprecated
 public interface HttpRequest {
 
     /**

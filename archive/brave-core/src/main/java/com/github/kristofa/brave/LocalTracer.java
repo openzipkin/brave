@@ -28,7 +28,9 @@ import static zipkin.Constants.LOCAL_COMPONENT;
  * </pre>
  *
  * @see Constants#LOCAL_COMPONENT
+ * @deprecated Replaced by {@code brave.Span}
  */
+@Deprecated
 @AutoValue
 public abstract class LocalTracer extends AnnotationSubmitter {
 

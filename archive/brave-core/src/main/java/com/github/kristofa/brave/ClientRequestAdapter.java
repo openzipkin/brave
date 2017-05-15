@@ -1,14 +1,16 @@
 package com.github.kristofa.brave;
 
-import java.util.Collection;
-
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
+import java.util.Collection;
 
 /**
  * Adapter used to get tracing information from and add tracing information to a new request.
  *
+ * @deprecated Replaced by {@code HttpClientParser} from brave-http or {@code brave.SpanCustomizer}
+ * if not http.
  */
+@Deprecated
 public interface ClientRequestAdapter {
 
     /**

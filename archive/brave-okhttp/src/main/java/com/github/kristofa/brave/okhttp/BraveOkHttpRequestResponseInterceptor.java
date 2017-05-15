@@ -15,6 +15,10 @@ import java.io.IOException;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+/**
+ * @deprecated Replaced by {@code TracingInterceptor} from brave-instrumentation-okhttp3
+ */
+@Deprecated
 public class BraveOkHttpRequestResponseInterceptor implements Interceptor {
 
   /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */

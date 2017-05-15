@@ -10,11 +10,11 @@ import org.springframework.context.annotation.Scope;
  * <p>
  * You will need to provide your own configuration for the Brave object which is
  * configured through the Brave.Builder and which configures SpanCollector, Sampler,...
- * </p>
- * @deprecated this is no longer needed as instrumentation can now be built directly from Brave
+ *
+ * @deprecated Please provide {@code brave.Tracing} or {@code brave.http.HttpTracing} instead.
  */
-@Configuration
 @Deprecated
+@Configuration
 public class BraveApiConfig {
 
     @Autowired

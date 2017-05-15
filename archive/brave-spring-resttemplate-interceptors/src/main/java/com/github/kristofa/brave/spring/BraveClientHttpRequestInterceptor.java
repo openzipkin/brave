@@ -31,7 +31,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * The service name will be 'service'. The span name will be '/path/a/b'.
  * <p/>
  * For the response, it inspects the state. If the response indicates an error it submits error code and failure annotation. Finally it submits the client received annotation.
+ *
+ * @deprecated Replaced by {@code TracingClientHttpRequestInterceptor} from brave-instrumentation-spring-web
  */
+@Deprecated
 @Component
 public class BraveClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 

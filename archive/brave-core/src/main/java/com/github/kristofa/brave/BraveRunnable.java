@@ -14,7 +14,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  *
  * @author kristof
  * @see BraveExecutorService
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 @AutoValue
 public abstract class BraveRunnable implements Runnable {
 

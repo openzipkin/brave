@@ -18,7 +18,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 /**
  * Intercepts JAX-RS 2 client requests and adds or forwards tracing information in the header.
  * Also sends cs annotations.
+ *
+ * @deprecated Replaced by {@code TracingClientFilter} from brave-instrumentation-jaxrs2
  */
+@Deprecated
 @Provider
 @Priority(0)
 public class BraveClientRequestFilter implements ClientRequestFilter {

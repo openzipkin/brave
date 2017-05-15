@@ -10,7 +10,9 @@ package com.github.kristofa.brave;
  *
  * <p>The instrumentation sampling decision happens once, at the root of the trace, and is
  * propagated downstream. For this reason, the decision needn't be consistent based on trace ID.
+ * @deprecated Replaced by {@code brave.sampler.Sampler}
  */
+@Deprecated
 // abstract for factory-method support on Java language level 7
 public abstract class Sampler {
 

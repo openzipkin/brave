@@ -15,7 +15,9 @@ import com.twitter.zipkin.gen.Span;
  * {@link LocalTracer#finishSpan() finish spans} or clear the local span at
  * completion of the local trace span to avoid linking spans with incorrect
  * parents and avoid leaking spans and associated memory.
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 public final class InheritableServerClientAndLocalSpanState implements ServerClientAndLocalSpanState {
 
     private final InheritableThreadLocal<ServerSpan> currentServerSpan =

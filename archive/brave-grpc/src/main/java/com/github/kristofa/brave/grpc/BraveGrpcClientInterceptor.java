@@ -23,13 +23,16 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.Status.Code;
-
 import java.util.Collection;
 import java.util.Collections;
 
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * @deprecated Replaced by {@code GrpcTracing} from brave-instrumentation-grpc
+ */
+@Deprecated
 public final class BraveGrpcClientInterceptor implements ClientInterceptor {
 
     /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */

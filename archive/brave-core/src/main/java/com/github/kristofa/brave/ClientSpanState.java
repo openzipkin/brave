@@ -13,7 +13,9 @@ import com.twitter.zipkin.gen.Span;
  * </ul>
  *
  * @author kristof
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 public interface ClientSpanState extends CommonSpanState {
 
     /**

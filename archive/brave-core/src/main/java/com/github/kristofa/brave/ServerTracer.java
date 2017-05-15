@@ -24,7 +24,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotBlank;
  * </ol>
  *
  * @author kristof
+ * @deprecated Replaced by {@code brave.Span} with kind=Kind.SERVER
  */
+@Deprecated
 @AutoValue
 public abstract class ServerTracer extends AnnotationSubmitter {
 

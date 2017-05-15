@@ -47,7 +47,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * The service name will be 'service. The span name will be '/path/a/b'.
  *
  * @author kristof
+ * @deprecated There is no plan to continue supporting RestEasy 2.x
  */
+@Deprecated
 @Component
 @Provider
 @ClientInterceptor

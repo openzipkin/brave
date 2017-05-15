@@ -15,6 +15,10 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 
+/**
+ * @deprecated Replaced by {@code TracingJdbcEventListener} from brave-instrumentation-p6spy
+ */
+@Deprecated
 public final class BraveP6SpyListener extends JdbcEventListener {
     // TODO: Figure out a better approach
     static volatile ClientTracer clientTracer;

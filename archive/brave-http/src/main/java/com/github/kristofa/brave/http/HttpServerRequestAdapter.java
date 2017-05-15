@@ -10,6 +10,10 @@ import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.IdConversion.convertToLong;
 
+/**
+ * @deprecated Replaced by {@code HttpServerParser} from brave-http
+ */
+@Deprecated
 public class HttpServerRequestAdapter implements ServerRequestAdapter {
     private final HttpServerRequest request;
     private final SpanNameProvider spanNameProvider;

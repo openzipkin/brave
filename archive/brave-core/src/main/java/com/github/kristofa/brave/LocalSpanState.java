@@ -11,7 +11,9 @@ import com.twitter.zipkin.gen.Span;
  *     <li>The root-span of a trace originated by Brave</li>
  *     <li>A child of a server span originated by Brave</li>
  * </ul>
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 public interface LocalSpanState extends CommonSpanState {
 
     /**

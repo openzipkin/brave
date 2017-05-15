@@ -13,7 +13,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * - Submit `Server Received` annotation
  *
  * @see ServerRequestAdapter
+ * @deprecated Replaced by {@code HttpServerHander} from brave-instrumentation-http
  */
+@Deprecated
 public class ServerRequestInterceptor {
 
     private final static Logger LOGGER = Logger.getLogger(ServerRequestInterceptor.class.getName());

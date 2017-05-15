@@ -21,6 +21,10 @@ import static com.github.kristofa.brave.internal.Util.UTF_8;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 import static java.lang.String.format;
 
+/**
+ * @deprecated There is no plan to continue supporting ZooKeeper sampling
+ */
+@Deprecated
 public final class ZooKeeperSampler extends Sampler implements Watcher, Closeable {
 
   private final static Logger LOGGER = Logger.getLogger(ZooKeeperSampler.class.getName());

@@ -1,6 +1,9 @@
 package com.github.kristofa.brave.http;
 
-
+/**
+ * @deprecated Replaced by {@code HttpClientAdapter} from brave-http
+ */
+@Deprecated
 public interface HttpClientRequest extends HttpRequest {
 
     /**

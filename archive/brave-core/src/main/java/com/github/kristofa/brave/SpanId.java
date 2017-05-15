@@ -14,7 +14,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  *
  * <p>Particularly, this includes sampled state, and a portable binary representation. The
  * implementation is a port of {@code com.twitter.finagle.tracing.TraceId}.
+ * @deprecated Replaced by {@code brave.propagation.TraceContext}
  */
+@Deprecated
 public final class SpanId {
 
   public static final int FLAG_DEBUG = 1 << 0;

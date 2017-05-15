@@ -23,7 +23,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * Client client = Client.create()
  * client.addFilter(JerseyClientTraceFilter.create(brave));
  * </pre>
+ *
+ * @deprecated There is no plan to continue supporting Jersey 1.x
  */
+@Deprecated
 @Singleton
 public class JerseyClientTraceFilter extends ClientFilter {
 

@@ -32,7 +32,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * </ol>
  *
  * @author kristof
+ * @deprecated There is no plan to continue supporting RestEasy 2.x
  */
+@Deprecated
 @Component
 @Provider
 @ServerInterceptor

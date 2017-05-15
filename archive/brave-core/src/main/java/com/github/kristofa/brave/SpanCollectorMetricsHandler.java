@@ -4,7 +4,9 @@ package com.github.kristofa.brave;
  * Monitor {@linkplain SpanCollector} by implementing reactions to these events, e.g. updating suitable metrics.
  *
  * See DropwizardMetricsScribeCollectorMetricsHandlerExample in isSampled sources for an example.
+ * @deprecated Replaced by {@code zipkin.reporter.ReporterMetrics}
  */
+@Deprecated
 public interface SpanCollectorMetricsHandler {
 
     /**

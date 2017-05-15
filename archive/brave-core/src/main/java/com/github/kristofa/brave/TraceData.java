@@ -5,7 +5,10 @@ import com.google.auto.value.AutoValue;
 
 /**
  * Trace properties we potentially get from incoming request.
+ *
+ * @deprecated Replaced by {@code brave.propagation.TraceContext}
  */
+@Deprecated
 @AutoValue
 public abstract class TraceData {
     /** Indicates an uninstrumented caller. */

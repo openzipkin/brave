@@ -11,6 +11,10 @@ import zipkin.TraceKeys;
 import java.util.Collection;
 import java.util.Collections;
 
+/**
+ * @deprecated Replaced by {@code HttpClientParser} from brave-http
+ */
+@Deprecated
 public class HttpClientRequestAdapter implements ClientRequestAdapter {
 
     private final HttpClientRequest request;

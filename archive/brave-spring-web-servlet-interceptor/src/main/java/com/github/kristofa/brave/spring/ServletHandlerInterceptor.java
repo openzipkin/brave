@@ -24,6 +24,10 @@ import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+/**
+ * @deprecated Replaced by {@code TracingHandlerInterceptor} from brave-instrumentation-spring-webmvc
+ */
+@Deprecated
 @Configuration
 public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
 

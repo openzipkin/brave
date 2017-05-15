@@ -10,7 +10,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * Used to submit application specific annotations.
  *
  * @author kristof
+ * @deprecated Replaced by {@code brave.Span}
  */
+@Deprecated
 public abstract class AnnotationSubmitter {
 
     /**

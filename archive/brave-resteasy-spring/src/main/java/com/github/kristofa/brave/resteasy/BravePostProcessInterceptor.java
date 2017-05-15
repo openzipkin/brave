@@ -20,6 +20,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * Rest Easy {@link PostProcessInterceptor} that will submit server send state.
  * 
  * @author kristof
+ * @deprecated There is no plan to continue supporting RestEasy 2.x
  */
 @Component
 @Provider

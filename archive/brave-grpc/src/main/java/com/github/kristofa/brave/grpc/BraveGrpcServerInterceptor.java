@@ -27,6 +27,10 @@ import io.grpc.Status.Code;
 import java.util.Collection;
 import java.util.Collections;
 
+/**
+ * @deprecated Replaced by {@code GrpcTracing} from brave-instrumentation-grpc
+ */
+@Deprecated
 public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
     /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */
