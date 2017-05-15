@@ -1,13 +1,13 @@
 package brave;
 
 import brave.internal.Internal;
-import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;

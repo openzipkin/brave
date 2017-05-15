@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.internal.Nullable;
+import javax.annotation.Nullable;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.

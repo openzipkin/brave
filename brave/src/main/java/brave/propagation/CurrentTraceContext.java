@@ -1,10 +1,10 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
 import java.io.Closeable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import javax.annotation.Nullable;
 
 /**
  * This makes a given span the current span by placing it in scope (usually but not always a thread

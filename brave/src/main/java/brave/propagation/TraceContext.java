@@ -1,7 +1,7 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import javax.annotation.Nullable;
 
 import static brave.internal.HexCodec.writeHexLong;
 

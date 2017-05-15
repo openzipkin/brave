@@ -1,7 +1,7 @@
 package brave.http;
 
-import brave.internal.Nullable;
 import java.net.URI;
+import javax.annotation.Nullable;
 import zipkin.TraceKeys;
 
 public abstract class HttpAdapter<Req, Resp> {

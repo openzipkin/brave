@@ -324,6 +324,17 @@
   </dependencyManagement>
 
   <dependencies>
+    <!--
+       For javax.annotation.ParametersAreNonnullByDefault and javax.annotation.Nullable
+       This is added as a root-level dependency to prevent javadoc from failing.
+       -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>3.0.2</version>
+      <!-- eventhough annotations are runtime retention, we do not look them up reflectively -->
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

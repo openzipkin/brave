@@ -1,7 +1,7 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import brave.internal.Nullable;
+import javax.annotation.Nullable;
 import zipkin.Constants;
 import zipkin.TraceKeys;
 
@@ -60,11 +60,11 @@ public class HttpParser {
    */
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
       SpanCustomizer customizer) {
-    String message;
+    String message = null;
     if (error != null) {
       message = error.getMessage();
       if (message == null) message = error.getClass().getSimpleName();
-    } else {
+    } else if (httpStatus != null){
       message = httpStatus < 200 || httpStatus > 399 ? String.valueOf(httpStatus) : null;
     }
     if (message != null) customizer.tag(Constants.ERROR, message);

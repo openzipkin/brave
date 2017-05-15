@@ -1,7 +1,7 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import javax.annotation.Nullable;
 
 /**
  * Union type that contains either a trace context or sampling flags, but not both.

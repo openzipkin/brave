@@ -1,7 +1,7 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import brave.internal.Nullable;
+import javax.annotation.Nullable;
 
 /**
  * Parses the request and response into reasonable defaults for http server spans. Subclass to
