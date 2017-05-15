@@ -10,7 +10,7 @@ import zipkin.TraceKeys;
  * <p>This type is safer to expose directly to users than {@link Span}, as it has no hooks that
  * can affect the span lifecycle.
  */
-// Note: this is exposed to users. We cannot add methods to this until Java 8 is dropped or we do a
+// Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
 // major version bump
 public interface SpanCustomizer {
   /**
