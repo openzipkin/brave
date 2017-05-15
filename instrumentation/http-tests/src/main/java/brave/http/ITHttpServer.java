@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.Tagger;
+import brave.SpanCustomizer;
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
 import okhttp3.OkHttpClient;
@@ -186,12 +186,10 @@ public abstract class ITHttpServer extends ITHttp {
     String uri = "/foo?z=2&yAA=1";
 
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
-      @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-        return adapter.method(req).toLowerCase() + " " + adapter.path(req);
-      }
-
-      @Override public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, Tagger tagger) {
-        tagger.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+      @Override
+      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+        customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
+        customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
       }
     }).build();
     init();

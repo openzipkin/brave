@@ -85,22 +85,22 @@ span.tag("clnt/finagle.version", "6.36.0");
 ```
 
 When exposing the ability to customize spans to third parties, prefer
-`brave.Tagger` as opposed to `brave.Span`. The former is simpler to
+`brave.SpanCustomizer` as opposed to `brave.Span`. The former is simpler to
 understand and test, and doesn't tempt users with span lifecycle hooks.
 
 ```java
 interface MyTraceCallback {
-  void requestTags(Request request, Tagger tagger);
+  void request(Request request, SpanCustomizer customizer);
 }
 ```
 
-Since `brave.Span` implements `brave.Tagger`, it is just as easy for you
+Since `brave.Span` implements `brave.SpanCustomizer`, it is just as easy for you
 to pass to users.
 
 Ex.
 ```java
 for (MyTraceCallback callback : userCallbacks) {
-  callback.requestTags(request, span);
+  callback.request(request, span);
 }
 ```
 

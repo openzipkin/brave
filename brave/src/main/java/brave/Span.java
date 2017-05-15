@@ -21,7 +21,7 @@ import zipkin.Endpoint;
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
 // can simply call start when they are ready.
-public abstract class Span implements Tagger {
+public abstract class Span implements SpanCustomizer {
   public enum Kind {
     CLIENT,
     SERVER
@@ -47,10 +47,8 @@ public abstract class Span implements Tagger {
   /** Like {@link #start()}, except with a given timestamp in microseconds. */
   public abstract Span start(long timestamp);
 
-  /**
-   * Sets the string name for the logical operation this span represents.
-   */
-  public abstract Span name(String name);
+  /** {@inheritDoc} */
+  @Override public abstract Span name(String name);
 
   /**
    * The kind of span is optional. When set, it affects how a span is reported. For example, if the
@@ -59,20 +57,11 @@ public abstract class Span implements Tagger {
    */
   public abstract Span kind(Kind kind);
 
-  /**
-   * Associates an event that explains latency with the current system time.
-   *
-   * <p>Implicitly {@link #start() starts} the span if needed.
-   *
-   * <p>Implicitly {@link #finish() finishes} the span when the value is special (ex. "ss" or "cr").
-   *
-   * @param value A short tag indicating the event, like "finagle.retry"
-   * @see Constants
-   */
-  public abstract Span annotate(String value);
+  /** {@inheritDoc} */
+  @Override public abstract Span annotate(String value);
 
-  /** Like {@link #annotate(String)}, except with a given timestamp in microseconds. */
-  public abstract Span annotate(long timestamp, String value);
+  /** {@inheritDoc} */
+  @Override public abstract Span annotate(long timestamp, String value);
 
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
