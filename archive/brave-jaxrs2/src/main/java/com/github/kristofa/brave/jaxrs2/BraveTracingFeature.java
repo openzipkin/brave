@@ -10,6 +10,10 @@ import javax.ws.rs.ext.Provider;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+/**
+ * @deprecated Replaced by {@code TracingFeature} from brave-instrumentation-jaxrs2
+ */
+@Deprecated
 @Provider
 public final class BraveTracingFeature implements Feature {
 

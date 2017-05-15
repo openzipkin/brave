@@ -8,6 +8,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
+/**
+ * @deprecated Replaced by {@code HttpClientParser} from brave-http
+ */
+@Deprecated
 public class HttpClientResponseAdapter implements ClientResponseAdapter {
 
     private final HttpResponse response;

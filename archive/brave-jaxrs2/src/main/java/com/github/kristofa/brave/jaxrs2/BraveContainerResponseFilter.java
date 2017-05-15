@@ -19,7 +19,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Intercepts outgoing container responses and sends ss annotations.
+ *
+ * @deprecated Replaced by {@code TracingContainerFilter} from brave-instrumentation-jaxrs2
  */
+@Deprecated
 @Provider
 @Priority(0)
 public class BraveContainerResponseFilter implements ContainerResponseFilter {

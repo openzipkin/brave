@@ -62,7 +62,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  *   .dispatcher(new Dispatcher(tracePropagatingExecutor));
  *   .build();
  * }</pre>
+ *
+ * @deprecated Replaced by {@code TracingInterceptor} from brave-instrumentation-okhttp3
  */
+@Deprecated
 public final class BraveTracingInterceptor implements Interceptor {
   public static BraveTracingInterceptor create(Brave brave) {
     return builder(brave).build();

@@ -26,7 +26,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * @author kristof
  * @see BraveCallable
  * @see BraveRunnable
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 public class BraveExecutorService implements ExecutorService, Closeable {
 
     /**

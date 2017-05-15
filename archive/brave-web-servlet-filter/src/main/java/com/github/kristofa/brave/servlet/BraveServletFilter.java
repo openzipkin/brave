@@ -33,6 +33,8 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 /**
  * Servlet filter that will extract trace headers from the request and send
  * sr (server received) and ss (server sent) annotations.
+ *
+ * @deprecated Replaced by {@code TracingFilter} from brave-instrumentation-servlet
  */
 public class BraveServletFilter implements Filter {
 

@@ -8,8 +8,10 @@ package com.github.kristofa.brave.http;
  * These can be used to submit as HTTP header in a new request.
  *
  * <p>See https://github.com/openzipkin/b3-propagation for details
- * @author kristof
+ *
+ * @deprecated Replaced by {@code Propagation.B3} from brave instead.
  */
+@Deprecated
 public enum BraveHttpHeaders {
 
     /**

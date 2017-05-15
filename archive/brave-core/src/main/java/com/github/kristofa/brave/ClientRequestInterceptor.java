@@ -16,8 +16,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * The only thing you have to do is implement a ClientRequestAdapter.
  *
  * @see ClientRequestAdapter
- *
+ * @deprecated Replaced by {@code HttpClientHander} from brave-instrumentation-http
  */
+@Deprecated
 public class ClientRequestInterceptor {
 
     private final ClientTracer clientTracer;

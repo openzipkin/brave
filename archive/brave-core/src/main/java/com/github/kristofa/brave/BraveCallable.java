@@ -17,7 +17,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * @author kristof
  * @param <T> Return type.
  * @see BraveExecutorService
+ * @deprecated Replaced by {@code brave.propagation.CurrentTraceContext}
  */
+@Deprecated
 @AutoValue
 public abstract class BraveCallable<T> implements Callable<T> {
 

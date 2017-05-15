@@ -10,7 +10,9 @@ import com.twitter.zipkin.gen.Endpoint;
  * </p>
  * 
  * @author kristof
+ * @deprecated Replaced by {@code brave.propagation.TraceContext}
  */
+@Deprecated
 public interface CommonSpanState {
 
     /** @deprecated alias for the sampled flag on {@link ServerSpanState#getCurrentServerSpan()}. */

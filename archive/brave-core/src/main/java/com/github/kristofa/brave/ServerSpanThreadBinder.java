@@ -14,6 +14,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * original span state to the new thread.
  * 
  * @author kristof
+ * @deprecated Replaced by {@code brave.Tracer#withSpanInScope}
  */
 public class ServerSpanThreadBinder extends CurrentSpan {
 

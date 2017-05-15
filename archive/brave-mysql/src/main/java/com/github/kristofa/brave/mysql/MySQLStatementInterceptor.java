@@ -29,7 +29,10 @@ import java.util.Properties;
  *     Note that this class must be injected with the {@linkplain ClientTracer} to use to communicate with Zipkin via the {@linkplain #setClientTracer} method;
  *     this is normally done by the {@linkplain MySQLStatementInterceptorManagementBean}.
  * </p>
+ *
+ * @deprecated Replaced by {@code TracingStatementInterceptor} from brave-instrumentation-mysql
  */
+@Deprecated
 public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 	
 	private final static String SERVICE_NAME_KEY = "zipkinServiceName";

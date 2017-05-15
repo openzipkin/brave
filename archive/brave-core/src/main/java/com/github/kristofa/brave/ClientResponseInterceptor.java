@@ -12,7 +12,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * You will have to implement ClientResponseAdapter.
  *
  * @see ClientResponseAdapter
+ * @deprecated Replaced by {@code HttpClientHander} from brave-instrumentation-http
  */
+@Deprecated
 public class ClientResponseInterceptor {
 
     private final ClientTracer clientTracer;

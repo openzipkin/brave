@@ -14,7 +14,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Apache http client request interceptor.
+ *
+ * @deprecated Replaced by {@code TracingHttpClientBuilder} from brave-instrumentation-httpclient
  */
+@Deprecated
 public class BraveHttpRequestInterceptor implements HttpRequestInterceptor {
 
     static final String SPAN_ATTRIBUTE = BraveHttpResponseInterceptor.class.getName() + ".span";

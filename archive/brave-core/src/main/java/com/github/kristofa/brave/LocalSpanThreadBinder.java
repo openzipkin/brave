@@ -13,6 +13,7 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * #getCurrentLocalSpan()} and save the result to pass to the callback method (e.g., local final
  * variable) In the callback method, call {@link #setCurrentSpan} before calling {@link
  * LocalTracer#finishSpan()}
+ * @deprecated Replaced by {@code brave.Tracer#withSpanInScope}
  */
 public final class LocalSpanThreadBinder extends CurrentSpan {
 

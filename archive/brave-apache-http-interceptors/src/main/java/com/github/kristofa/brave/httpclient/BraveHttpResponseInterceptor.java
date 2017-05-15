@@ -5,18 +5,20 @@ import com.github.kristofa.brave.ClientResponseInterceptor;
 import com.github.kristofa.brave.ClientSpanThreadBinder;
 import com.github.kristofa.brave.http.HttpClientResponseAdapter;
 import com.twitter.zipkin.gen.Span;
+import java.io.IOException;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
 
-import java.io.IOException;
-
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Apache http client response interceptor.
+ *
+ * @deprecated Replaced by {@code TracingHttpClientBuilder} from brave-instrumentation-httpclient
  */
+@Deprecated
 public class BraveHttpResponseInterceptor implements HttpResponseInterceptor {
 
     /** Creates a tracing interceptor with defaults. Use {@link #builder(Brave)} to customize. */

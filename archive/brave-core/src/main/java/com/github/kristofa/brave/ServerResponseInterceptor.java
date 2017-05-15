@@ -10,7 +10,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * - Add custom annotations if adapter provides them.
  * - Will submit server send annotation.
  *
+ * @deprecated Replaced by {@code HttpServerHander} from brave-instrumentation-http
  */
+@Deprecated
 public class ServerResponseInterceptor {
 
     private final static Logger LOGGER = Logger.getLogger(ServerResponseInterceptor.class.getName());

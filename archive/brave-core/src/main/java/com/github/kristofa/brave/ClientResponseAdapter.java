@@ -2,6 +2,11 @@ package com.github.kristofa.brave;
 
 import java.util.Collection;
 
+/**
+ * @deprecated Replaced by {@code HttpClientParser} from brave-http or {@code brave.SpanCustomizer}
+ * if not http.
+ */
+@Deprecated
 public interface ClientResponseAdapter {
 
     /**

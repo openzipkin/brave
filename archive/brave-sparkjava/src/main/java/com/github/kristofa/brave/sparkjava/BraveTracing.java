@@ -18,6 +18,10 @@ import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
+/**
+ * @deprecated Replaced by {@code SparkTracing} from brave-instrumentation-sparkjava
+ */
+@Deprecated
 public final class BraveTracing {
 
   public static BraveTracing create(Brave brave) {

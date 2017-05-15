@@ -12,7 +12,9 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * callback method (e.g., local final variable)
  * In the callback method, call {@link #setCurrentSpan} before calling {@link com.github.kristofa.brave.ClientTracer#setClientReceived()}
  * @author hzhao on 8/11/14.
+ * @deprecated Replaced by {@code brave.Tracer#withSpanInScope}
  */
+@Deprecated
 public final class ClientSpanThreadBinder extends CurrentSpan {
 
     private final ClientSpanState state;

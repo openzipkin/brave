@@ -22,7 +22,9 @@ import zipkin.reporter.Reporter;
  * @see ClientRequestInterceptor
  * @see ClientResponseInterceptor
  * @author kristof
+ * @deprecated Replaced by {@code brave.Span} with kind=Kind.CLIENT
  */
+@Deprecated
 @AutoValue
 public abstract class ClientTracer extends AnnotationSubmitter {
 

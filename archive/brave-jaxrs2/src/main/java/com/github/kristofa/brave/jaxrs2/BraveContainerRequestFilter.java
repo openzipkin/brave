@@ -22,7 +22,10 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
 /**
  * Intercepts incoming container requests and extracts any trace information from the request header
  * Also sends sr annotations.
+ *
+ * @deprecated Replaced by {@code TracingContainerFilter} from brave-instrumentation-jaxrs2
  */
+@Deprecated
 @Provider
 @PreMatching
 @Priority(0)

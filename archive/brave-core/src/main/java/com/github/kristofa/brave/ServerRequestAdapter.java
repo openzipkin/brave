@@ -6,7 +6,11 @@ import java.util.Collection;
  * Provides properties needed for dealing with server request.
  *
  * @see ServerRequestInterceptor
+ *
+ * @deprecated Replaced by {@code HttpServerParser} from brave-http or {@code brave.SpanCustomizer}
+ * if not http.
  */
+@Deprecated
 public interface ServerRequestAdapter {
 
     /**

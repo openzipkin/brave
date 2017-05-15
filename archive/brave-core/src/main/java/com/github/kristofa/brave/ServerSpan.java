@@ -9,7 +9,9 @@ import com.twitter.zipkin.gen.Span;
  * The ServerSpan is initialized by {@link ServerTracer} and keeps track of Trace/Span state of our service request.
  *
  * @author adriaens
+ * @deprecated Replaced by {@code brave.propagation.TraceContext}
  */
+@Deprecated
 @AutoValue
 public abstract class ServerSpan {
 
