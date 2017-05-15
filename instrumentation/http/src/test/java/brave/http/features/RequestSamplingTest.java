@@ -1,4 +1,4 @@
-package brave.features.http;
+package brave.http.features;
 
 import brave.Tracing;
 import brave.http.HttpAdapter;

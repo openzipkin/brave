@@ -1,7 +1,6 @@
 # brave-instrumentation-p6spy
-This includes a tracing [p6spy](https://github.com/p6spy/p6spy) module
-which is a proxy for calls to your JDBC driver. It reports to Zipkin how
-long each statement takes, along with relevant tags like the query.
+This includes a tracing event listener for [P6Spy](https://github.com/p6spy/p6spy) (a proxy for calls to your JDBC driver).
+It reports to Zipkin how long each statement takes, along with relevant tags like the query.
 
 P6Spy requires a `spy.properties` in your application classpath
 (ex `src/main/resources`). `brave.p6spy.TracingP6Factory` must be in the
