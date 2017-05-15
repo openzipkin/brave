@@ -98,7 +98,6 @@
     <module>instrumentation</module>
     <module>spring-beans</module>
     <module>archive/brave-core</module>
-    <module>archive/brave-benchmarks</module>
     <module>archive/brave-http</module>
     <module>archive/brave-http-tests</module>
     <module>archive/brave-core-spring</module>
@@ -110,7 +109,6 @@
     <module>archive/brave-spancollector-local</module>
     <module>archive/brave-sampler-zookeeper</module>
     <module>archive/brave-jersey</module>
-    <module>archive/brave-jersey2</module>
     <module>archive/brave-jaxrs2</module>
     <module>archive/brave-grpc</module>
     <module>archive/brave-apache-http-interceptors</module>
