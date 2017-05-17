@@ -21,6 +21,9 @@
     <module>http</module>
     <module>http-tests</module>
     <module>grpc</module>
+    <module>cassandra-tests</module>
+    <module>cassandra</module>
+    <module>cassandra-driver</module>
     <module>httpasyncclient</module>
     <module>httpclient</module>
     <module>jaxrs2</module>
@@ -51,6 +54,26 @@
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-servlet</artifactId>
         <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.cassandra</groupId>
+        <artifactId>cassandra-all</artifactId>
+        <version>3.10</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.cassandra</groupId>
+        <artifactId>cassandra-driver-core</artifactId>
+        <version>3.2.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
