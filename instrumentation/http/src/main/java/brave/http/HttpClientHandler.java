@@ -29,6 +29,7 @@ import zipkin.Endpoint;
  *
  * @param <Req> the native http request type of the client.
  * @param <Resp> the native http response type of the client.
+ * @since 4.3
  */
 public final class HttpClientHandler<Req, Resp> {
 
@@ -73,7 +74,26 @@ public final class HttpClientHandler<Req, Resp> {
    * @see HttpClientParser#request(HttpAdapter, Object, SpanCustomizer)
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request) {
-    Span span = nextSpan(request);
+    return handleSend(injector, carrier, request, nextSpan(request));
+  }
+
+  /**
+   * Like {@link #handleSend(TraceContext.Injector, Object)}, except explicitly controls the span
+   * representing the request.
+   *
+   * @since 4.4
+   */
+  public Span handleSend(TraceContext.Injector<Req> injector, Req request, Span span) {
+    return handleSend(injector, request, request, span);
+  }
+
+  /**
+   * Like {@link #handleSend(TraceContext.Injector, Object, Object)}, except explicitly controls the
+   * span representing the request.
+   *
+   * @since 4.4
+   */
+  public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
     if (span.isNoop()) return span;
 
@@ -87,8 +107,13 @@ public final class HttpClientHandler<Req, Resp> {
     return span.start();
   }
 
-  /** Creates a potentially noop span representing this request */
-  Span nextSpan(Req request) {
+  /**
+   * Creates a potentially noop span representing this request. This is used when you need to
+   * provision a span in a different scope than where the request is executed.
+   *
+   * @since 4.4
+   */
+  public Span nextSpan(Req request) {
     TraceContext parent = currentTraceContext.get();
     if (parent != null) return tracer.newChild(parent);
 

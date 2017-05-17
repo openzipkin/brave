@@ -18,7 +18,7 @@ public abstract class ITHttp {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
 
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  protected ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
   protected HttpTracing httpTracing;

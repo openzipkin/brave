@@ -3,11 +3,17 @@ package brave.httpasyncclient;
 import brave.http.ITHttpClient;
 import java.io.IOException;
 import java.net.URI;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.util.EntityUtils;
+import org.junit.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpAsyncClient> {
 
@@ -37,5 +43,22 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpA
 
   @Override protected void getAsync(CloseableHttpAsyncClient client, String pathIncludingQuery) {
     client.execute(new HttpGet(URI.create(url(pathIncludingQuery))), null);
+  }
+
+  @Test public void currentSpanVisibleToUserFilters() throws Exception {
+    server.enqueue(new MockResponse());
+    closeClient(client);
+
+    client = TracingHttpAsyncClientBuilder.create(httpTracing)
+        .addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
+            request.setHeader("my-id", currentTraceContext.get().traceIdString())
+        ).build();
+    client.start();
+
+    get(client, "/foo");
+
+    RecordedRequest request = server.takeRequest();
+    assertThat(request.getHeader("x-b3-traceId"))
+        .isEqualTo(request.getHeader("my-id"));
   }
 }

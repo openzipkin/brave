@@ -16,6 +16,9 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
+import org.apache.http.impl.execchain.MainClientExec;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
 import zipkin.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
@@ -40,22 +43,33 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
   }
 
   /**
-   * main exec is the first in the execution chain, so last to execute. This creates a concrete http
-   * request, so this is where the span is created.
+   * protocol exec is the last in the execution chain, so first to execute. We eagerly create a span
+   * here so that user interceptors can see it.
    */
-  @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
-    return (route, request, context, execAware) -> {
-      Span span = handler.handleSend(injector, request);
+  @Override protected ClientExecChain decorateProtocolExec(ClientExecChain protocolExec) {
+    return (route, request, clientContext, execAware) -> {
+      Span span = handler.nextSpan(request);
       CloseableHttpResponse response = null;
       Throwable error = null;
       try (SpanInScope ws = tracer.withSpanInScope(span)) {
-        return response = exec.execute(route, request, context, execAware);
+        return response = protocolExec.execute(route, request, clientContext, execAware);
       } catch (IOException | HttpException | RuntimeException | Error e) {
         error = e;
         throw e;
       } finally {
         handler.handleReceive(response, error, span);
       }
+    };
+  }
+
+  /**
+   * Main exec is the first in the execution chain, so last to execute. This creates a concrete http
+   * request, so this is where the span is started.
+   */
+  @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
+    return (route, request, context, execAware) -> {
+      handler.handleSend(injector, request, tracer.currentSpan());
+      return exec.execute(route, request, context, execAware);
     };
   }
 
