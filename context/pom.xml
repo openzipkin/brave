@@ -17,9 +17,10 @@
   </properties>
 
   <modules>
-    <module>slf4j</module>
+    <module>grpc</module>
     <module>log4j12</module>
     <module>log4j2</module>
+    <module>slf4j</module>
   </modules>
 
   <dependencies>
