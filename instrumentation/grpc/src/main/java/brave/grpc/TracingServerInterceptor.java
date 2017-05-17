@@ -7,6 +7,7 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.ForwardingServerCall;
+import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
@@ -36,26 +37,37 @@ final class TracingServerInterceptor implements ServerInterceptor {
     Span span = contextOrFlags.context() != null
         ? tracer.joinSpan(contextOrFlags.context())
         : tracer.newTrace(contextOrFlags.samplingFlags());
-    return next.startCall(new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
-      @Override
-      public void request(int numMessages) {
-        try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-          span.kind(Span.Kind.SERVER).name(call.getMethodDescriptor().getFullMethodName()).start();
-          super.request(numMessages);
-        }
-      }
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      return next.startCall(new TracingServerCall<>(span, call), requestHeaders);
+    }
+  }
 
-      @Override
-      public void close(Status status, Metadata trailers) {
-        try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-          if (!status.getCode().equals(Status.Code.OK)) {
-            span.tag(Constants.ERROR, String.valueOf(status.getCode()));
-          }
-          super.close(status, trailers);
-        } finally {
-          span.finish();
-        }
+  final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
+    private final Span span;
+    private final ServerCall<ReqT, RespT> call;
+
+    TracingServerCall(Span span, ServerCall<ReqT, RespT> call) {
+      super(call);
+      this.span = span;
+      this.call = call;
+    }
+
+    @Override public void request(int numMessages) {
+      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+        span.kind(Span.Kind.SERVER).name(call.getMethodDescriptor().getFullMethodName()).start();
+        super.request(numMessages);
       }
-    }, requestHeaders);
+    }
+
+    @Override public void close(Status status, Metadata trailers) {
+      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+        if (!status.getCode().equals(Status.Code.OK)) {
+          span.tag(Constants.ERROR, String.valueOf(status.getCode()));
+        }
+        super.close(status, trailers);
+      } finally {
+        span.finish();
+      }
+    }
   }
 }

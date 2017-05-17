@@ -36,6 +36,16 @@
       <artifactId>assertj-core</artifactId>
       <version>@assertj.version@</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-context-log4j2</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-1.2-api</artifactId>
+      <version>@log4j.version@</version>
+    </dependency>
   </dependencies>
 
   <build>

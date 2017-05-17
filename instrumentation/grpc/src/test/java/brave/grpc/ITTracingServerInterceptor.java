@@ -1,8 +1,10 @@
 package brave.grpc;
 
 import brave.Tracing;
+import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.HexCodec;
 import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -17,12 +19,19 @@ import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloRequest;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,6 +48,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.assertj.core.api.Assertions.tuple;
 
 public class ITTracingServerInterceptor {
+  Logger testLogger = LogManager.getLogger();
 
   @Rule public ExpectedException thrown = ExpectedException.none();
 
@@ -54,11 +64,20 @@ public class ITTracingServerInterceptor {
   }
 
   void init() throws Exception {
+    init(null);
+  }
+
+  void init(@Nullable ServerInterceptor userInterceptor) throws Exception {
     stop();
 
+    // tracing interceptor needs to go last
+    ServerInterceptor tracingInterceptor = GrpcTracing.create(tracing).newServerInterceptor();
+    ServerInterceptor[] interceptors = userInterceptor != null
+        ? new ServerInterceptor[] {userInterceptor, tracingInterceptor}
+        : new ServerInterceptor[] {tracingInterceptor};
+
     server = ServerBuilder.forPort(PickUnusedPort.get())
-        .addService(ServerInterceptors.intercept(new GreeterImpl(),
-            GrpcTracing.create(tracing).newServerInterceptor()))
+        .addService(ServerInterceptors.intercept(new GreeterImpl(), interceptors))
         .build().start();
 
     client = ManagedChannelBuilder.forAddress("localhost", server.getPort())
@@ -120,6 +139,29 @@ public class ITTracingServerInterceptor {
         .isEmpty();
   }
 
+  /**
+   * NOTE: for this to work, the tracing interceptor must be last (so that it executes first)
+   *
+   * <p>Also notice that we are only making the current context available in the request side.
+   */
+  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+    AtomicReference<TraceContext> fromUserInterceptor = new AtomicReference<>();
+    init(new ServerInterceptor() {
+      @Override
+      public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+          Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        testLogger.info("in span!");
+        fromUserInterceptor.set(tracing.currentTraceContext().get());
+        return next.startCall(call, headers);
+      }
+    });
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(fromUserInterceptor.get())
+        .isNotNull();
+  }
+
   @Test
   public void reportsServerAnnotationsToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -156,7 +198,8 @@ public class ITTracingServerInterceptor {
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
         .reporter(spans::add)
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext( // connect to log4
+            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
   }
 }
