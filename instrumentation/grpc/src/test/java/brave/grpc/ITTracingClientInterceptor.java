@@ -2,6 +2,7 @@ package brave.grpc;
 
 import brave.Tracer;
 import brave.Tracing;
+import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -25,6 +26,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +41,8 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public class ITTracingClientInterceptor {
+  Logger testLogger = LogManager.getLogger();
+
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing;
@@ -206,9 +211,9 @@ public class ITTracingClientInterceptor {
   }
 
   /**
-   * NOTE: for this to work, the brave interceptor must be last (so that it executes first)
+   * NOTE: for this to work, the tracing interceptor must be last (so that it executes first)
    *
-   * <p>Also notice that we are only making the current context available in the request side. The
+   * <p>Also notice that we are only making the current context available in the request side.
    */
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
     Map<String, String> scopes = new ConcurrentHashMap<>();
@@ -218,6 +223,7 @@ public class ITTracingClientInterceptor {
         new ClientInterceptor() {
           @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
               MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+            testLogger.info("in span!");
             scopes.put("before", tracing.currentTraceContext().get().traceIdString());
             return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
                 next.newCall(method, callOptions)) {
@@ -241,7 +247,8 @@ public class ITTracingClientInterceptor {
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
         .reporter(spans::add)
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext( // connect to log4
+            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
   }
 }
