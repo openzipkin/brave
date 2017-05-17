@@ -54,8 +54,10 @@ deployment:
   publish-stable:
     owner: openzipkin
     tag: /\d+\.\d+\.\d+/
+    # triples the timeout to 30 minutes as maven central sync takes a lot longer than 10m
     commands:
-      - ./build-support/publish-stable.sh
+      - ./build-support/publish-stable.sh:
+        timeout: 1800
   publish-snapshot:
     owner: openzipkin
     branch: master
