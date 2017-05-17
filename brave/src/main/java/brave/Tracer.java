@@ -110,9 +110,10 @@ public final class Tracer {
   Tracer(Tracing.Builder builder) {
     this.clock = builder.clock;
     this.localEndpoint = builder.localEndpoint;
-    this.recorder = new Recorder(localEndpoint, clock, builder.reporter);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
+    this.recorder = new Recorder(localEndpoint, clock,
+        new ContextClearingReporter(currentTraceContext, builder.reporter));
     this.traceId128Bit = builder.traceId128Bit;
   }
 
@@ -287,6 +288,31 @@ public final class Tracer {
 
     @Override public String toString() {
       return scope.toString();
+    }
+  }
+
+  /** Clears the trace scope so that trace IDs don't end up in the logs made by logging reporters o*/
+  static final class ContextClearingReporter implements Reporter<zipkin.Span> {
+    private final CurrentTraceContext context;
+    private final Reporter<zipkin.Span> delegate;
+
+    ContextClearingReporter(CurrentTraceContext context, Reporter<zipkin.Span> delegate) {
+      this.context = context;
+      this.delegate = delegate;
+    }
+
+    @Override public void report(zipkin.Span span) {
+      if (context.get() == null) {
+        delegate.report(span);
+      } else {
+        try (CurrentTraceContext.Scope wc = context.newScope(null)) {
+          delegate.report(span);
+        }
+      }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 }

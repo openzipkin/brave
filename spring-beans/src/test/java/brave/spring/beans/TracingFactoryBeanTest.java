@@ -68,7 +68,7 @@ public class TracingFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Tracing.class))
-        .extracting("tracer.recorder.reporter")
+        .extracting("tracer.recorder.reporter.delegate")
         .containsExactly(Reporter.CONSOLE);
   }
 

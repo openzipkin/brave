@@ -1,10 +1,13 @@
 package brave;
 
+import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import zipkin.Endpoint;
 
@@ -207,5 +210,25 @@ public class TracerTest {
       assertThat(tracer.currentSpan())
           .isEqualTo(parent);
     }
+  }
+
+  /** Avoid putting trace context into log files when people have logging reporters */
+  @Test public void reporterClearsContext() {
+    AtomicInteger reportedSpans = new AtomicInteger();
+    CurrentTraceContext context = new StrictCurrentTraceContext();
+    Tracer tracer = Tracing.newBuilder()
+        .currentTraceContext(context)
+        .reporter(s -> { // synchronous reporting will throw an AssertionError and break the test
+          assertThat(context.get()).isNull();
+          reportedSpans.incrementAndGet();
+        }).build().tracer();
+
+    Span parent = tracer.newTrace().name("foo").start();
+    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+      tracer.nextSpan().name("bar").start().finish(); // context should be clear
+    }
+    parent.finish(); // context should also be clear
+
+    assertThat(reportedSpans.get()).isEqualTo(2); // sanity check
   }
 }
