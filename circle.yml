@@ -27,7 +27,7 @@ dependencies:
 
 test:
   override:
-    - ./mvnw integration-test
+    - ./mvnw verify
   post:
     # parameters used during release
     # allocate commits to CI, not the owner of the deploy key

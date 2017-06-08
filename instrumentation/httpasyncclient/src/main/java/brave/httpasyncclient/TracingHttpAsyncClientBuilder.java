@@ -30,6 +30,10 @@ import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.HttpContext;
 import zipkin.Endpoint;
 
+/**
+ * Note: The current span is only visible to interceptors {@link #addInterceptorLast(HttpRequestInterceptor)
+ * added last}.
+ */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
 
   public static HttpAsyncClientBuilder create(Tracing tracing) {

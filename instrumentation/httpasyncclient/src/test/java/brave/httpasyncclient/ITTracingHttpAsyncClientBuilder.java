@@ -50,7 +50,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpA
     closeClient(client);
 
     client = TracingHttpAsyncClientBuilder.create(httpTracing)
-        .addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
+        .addInterceptorLast((HttpRequestInterceptor) (request, context) ->
             request.setHeader("my-id", currentTraceContext.get().traceIdString())
         ).build();
     client.start();
