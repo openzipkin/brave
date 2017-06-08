@@ -65,19 +65,24 @@ and that makes an http call to a system service. The default policy will
 start a trace for any http call, even ones that didn't come from a server
 request.
 
+This allows you to declare rules based on http patterns. These decide
+which sample rate to apply.
+
 You can change the sampling policy by specifying it in the `HttpTracing`
-component. Here's an example which doesn't start new traces for requests
-to favicon (which many browsers automatically fetch).
+component. The default implementation is `HttpRuleSampler`, which allows
+you to declare rules based on http patterns.
+
+Ex. Here's a sampler that traces 80% requests to /foo and 10% of POST
+requests to /bar. This doesn't start new traces for requests to favicon
+(which many browsers automatically fetch). Other requests will use a
+global rate provided by the tracing component.
 
 ```java
-httpTracing = httpTracing.toBuilder()
-    .serverSampler(new HttpSampler() {
-       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-         if (adapter.path(request).startsWith("/favicon")) return false;
-         return null; // defer decision to probabilistic on trace ID
-       }
-     })
-    .build();
+httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
+  .addRule(null, "/favicon", 0.0f)
+  .addRule(null, "/foo", 0.8f)
+  .addRule("POST", "/bar", 0.1f)
+  .build());
 ```
 
 # Developing new instrumentation

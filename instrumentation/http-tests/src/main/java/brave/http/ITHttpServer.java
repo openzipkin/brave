@@ -64,6 +64,24 @@ public abstract class ITHttpServer extends ITHttp {
         .isEmpty();
   }
 
+
+  @Test public void customSampler() throws Exception {
+    String path = "/foo";
+
+    httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
+        .addRule(null, path, 0.0f)
+        .build()).build();
+    init();
+
+    Request request = new Request.Builder().url(url(path)).build();
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+    }
+
+    assertThat(spans)
+        .isEmpty();
+  }
+
   /**
    * Tests that the span propagates between under asynchronous callbacks (even if explicitly)
    */
