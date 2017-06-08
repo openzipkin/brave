@@ -89,6 +89,17 @@ public class ITTracingStatementInterceptor {
         .containsExactly("select");
   }
 
+  /** This intercepts all SQL, not just queries. This ensures single-word statements work */
+  @Test
+  public void defaultSpanNameIsOperationName_oneWord() throws Exception {
+    connection.setAutoCommit(false);
+    connection.commit();
+
+    assertThat(spans)
+        .extracting(s -> s.name)
+        .contains("commit");
+  }
+
   @Test
   public void addsQueryTag() throws Exception {
     prepareExecuteSelect(QUERY);
