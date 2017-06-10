@@ -21,7 +21,7 @@ class TestServer {
       Propagation.Factory.B3.create(AsciiMetadataKeyFactory.INSTANCE).extractor(Metadata::get);
 
   Server server = ServerBuilder.forPort(PickUnusedPort.get())
-      .addService(ServerInterceptors.intercept(new GreeterImpl(), new ServerInterceptor() {
+      .addService(ServerInterceptors.intercept(new GreeterImpl(null), new ServerInterceptor() {
 
         @Override
         public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,

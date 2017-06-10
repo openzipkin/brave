@@ -77,7 +77,7 @@ public class ITTracingServerInterceptor {
         : new ServerInterceptor[] {tracingInterceptor};
 
     server = ServerBuilder.forPort(PickUnusedPort.get())
-        .addService(ServerInterceptors.intercept(new GreeterImpl(), interceptors))
+        .addService(ServerInterceptors.intercept(new GreeterImpl(tracing), interceptors))
         .build().start();
 
     client = ManagedChannelBuilder.forAddress("localhost", server.getPort())
@@ -160,6 +160,11 @@ public class ITTracingServerInterceptor {
 
     assertThat(fromUserInterceptor.get())
         .isNotNull();
+  }
+
+  @Test public void currentSpanVisibleToImpl() throws Exception {
+    assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
+        .isNotEmpty();
   }
 
   @Test
