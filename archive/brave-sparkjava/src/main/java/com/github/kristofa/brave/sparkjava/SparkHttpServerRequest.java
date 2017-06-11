@@ -1,9 +1,10 @@
 package com.github.kristofa.brave.sparkjava;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
-import java.net.URI;
-import javax.servlet.http.HttpServletRequest;
 import spark.Request;
+
+import javax.servlet.http.HttpServletRequest;
+import java.net.URI;
 
 class SparkHttpServerRequest implements HttpServerRequest {
   private Request request;
