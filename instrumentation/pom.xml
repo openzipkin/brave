@@ -33,6 +33,7 @@
     <module>sparkjava</module>
     <module>spring-web</module>
     <module>spring-webmvc</module>
+    <module>netty</module>
   </modules>
 
   <dependencies>
