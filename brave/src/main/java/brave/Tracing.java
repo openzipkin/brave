@@ -1,13 +1,13 @@
 package brave;
 
 import brave.internal.Internal;
-import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Reporter;
@@ -121,8 +121,7 @@ public abstract class Tracing implements Closeable {
      * <p>For example, here's how to batch send spans via http:
      *
      * <pre>{@code
-     * reporter = AsyncReporter.builder(URLConnectionSender.create("http://localhost:9411/api/v1/spans"))
-     *                         .build();
+     * reporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v1/spans"));
      *
      * tracerBuilder.reporter(reporter);
      * }</pre>

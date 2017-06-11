@@ -1,6 +1,5 @@
 package brave;
 
-import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.recorder.Recorder;
 import brave.propagation.CurrentTraceContext;
@@ -11,6 +10,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
 
@@ -59,13 +59,13 @@ public final class Tracer {
       return this;
     }
 
-    /**  @see Tracing.Builder#localEndpoint(Endpoint) */
+    /** @see Tracing.Builder#localEndpoint(Endpoint) */
     public Builder localEndpoint(Endpoint localEndpoint) {
       delegate.localEndpoint(localEndpoint);
       return this;
     }
 
-    /**  @see Tracing.Builder#reporter(Reporter) */
+    /** @see Tracing.Builder#reporter(Reporter) */
     public Builder reporter(Reporter<zipkin.Span> reporter) {
       delegate.reporter(reporter);
       return this;
@@ -148,7 +148,6 @@ public final class Tracer {
    * @see Propagation
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
-   * @see #nextSpan(Extractor, Object)
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
@@ -252,9 +251,11 @@ public final class Tracer {
    * the result have no effect on the input. For example, calling close on the result does not
    * finish the span. Not only is it safe to call close, you must call close to end the scope, or
    * risk leaking resources associated with the scope.
+   *
+   * @param span span to place into scope or null to clear the scope
    */
-  public SpanInScope withSpanInScope(Span span) {
-    return new SpanInScope(currentTraceContext.newScope(span.context()));
+  public SpanInScope withSpanInScope(@Nullable Span span) {
+    return new SpanInScope(currentTraceContext.newScope(span != null ? span.context() : null));
   }
 
   /** Returns the current span in scope or null if there isn't one. */
@@ -263,19 +264,8 @@ public final class Tracer {
     return currentContext != null ? toSpan(currentContext) : null;
   }
 
-  /**
-   * Conditionally joins a span, or starts a new trace, depending on if a trace context was
-   * extracted from the carrier (usually an incoming request).
-   */
-  public <C> Span nextSpan(Extractor<C> extractor, C carrier) {
-    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(carrier);
-    return contextOrFlags.context() != null
-        ? joinSpan(contextOrFlags.context())
-        : newTrace(contextOrFlags.samplingFlags());
-  }
-
   /** Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't. */
-  @Nullable public Span nextSpan() {
+  public Span nextSpan() {
     TraceContext parent = currentTraceContext.get();
     return parent == null ? newTrace() : newChild(parent);
   }

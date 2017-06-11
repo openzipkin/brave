@@ -4,26 +4,30 @@ import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.http.ITServletContainer;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
+import org.jboss.resteasy.plugins.server.servlet.ListenerBootstrap;
 import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
-import org.jboss.resteasy.plugins.spring.SpringContextLoaderListener;
+import org.jboss.resteasy.spi.ResteasyConfiguration;
+import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 public class ITTracingFeature_Container extends ITServletContainer {
 
@@ -98,30 +102,30 @@ public class ITTracingFeature_Container extends ITServletContainer {
     }
   }
 
-  /** Imports jaxrs2 filters used in resteasy3. */
-  @Configuration
-  @Import(TracingFeature.class)
-  public static class TracingFeatureConfiguration {
-  }
-
   @Override public void init(ServletContextHandler handler) {
-    AnnotationConfigWebApplicationContext appContext =
-        new AnnotationConfigWebApplicationContext() {
-          // overriding this allows us to register dependencies of TracingFeature
-          // without passing static state to a configuration class.
-          @Override protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) {
-            beanFactory.registerSingleton("httpTracing", httpTracing);
-            super.loadBeanDefinitions(beanFactory);
-          }
-        };
 
-    appContext.register(TestResource.class); // the test resource
-    appContext.register(CatchAllExceptions.class);
-    appContext.register(TracingFeatureConfiguration.class); // generic tracing setup
 
-    // resteasy + spring configuration, programmatically as opposed to using web.xml
+    // Adds application programmatically as opposed to using web.xml
     handler.addServlet(new ServletHolder(new HttpServletDispatcher()), "/*");
-    handler.addEventListener(new ResteasyBootstrap());
-    handler.addEventListener(new SpringContextLoaderListener(appContext));
+    handler.addEventListener(new ResteasyBootstrap() {
+      @Override public void contextInitialized(ServletContextEvent event) {
+        deployment = new ResteasyDeployment();
+        deployment.setApplication(new Application(){
+          @Override public Set<Object> getSingletons() {
+            return new LinkedHashSet<>(Arrays.asList(
+                new TestResource(httpTracing),
+                new CatchAllExceptions(),
+                new TracingFeature(httpTracing)
+            ));
+          }
+        });
+        ServletContext servletContext = event.getServletContext();
+        ListenerBootstrap config = new ListenerBootstrap(servletContext);
+        servletContext.setAttribute(ResteasyDeployment.class.getName(), deployment);
+        deployment.getDefaultContextObjects().put(ResteasyConfiguration.class, config);
+        config.createDeployment();
+        deployment.start();
+      }
+    });
   }
 }

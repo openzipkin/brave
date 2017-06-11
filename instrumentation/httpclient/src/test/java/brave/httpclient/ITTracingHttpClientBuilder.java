@@ -41,20 +41,16 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     throw new AssumptionViolatedException("This is not an async library");
   }
 
-  @Test
-  public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserFilters() throws Exception {
     server.enqueue(new MockResponse());
+    closeClient(client);
 
-    try (CloseableHttpClient client = TracingHttpClientBuilder.create(httpTracing)
-        .disableAutomaticRetries()
-        .addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
-          request.addHeader("my-id",
-              currentTraceContext.get().traceIdString());
-        })
-        .build()) {
+    client = TracingHttpClientBuilder.create(httpTracing).disableAutomaticRetries()
+        .addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
+            request.setHeader("my-id", currentTraceContext.get().traceIdString())
+        ).build();
 
-      get(client, "/foo");
-    }
+    get(client, "/foo");
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))

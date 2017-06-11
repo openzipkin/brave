@@ -45,18 +45,17 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpA
     client.execute(new HttpGet(URI.create(url(pathIncludingQuery))), null);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserFilters() throws Exception {
     server.enqueue(new MockResponse());
+    closeClient(client);
 
-    try (CloseableHttpAsyncClient client = TracingHttpAsyncClientBuilder.create(httpTracing)
-        .addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
-          request.addHeader("my-id", currentTraceContext.get().traceIdString());
-        })
-        .build()) {
-      client.start();
+    client = TracingHttpAsyncClientBuilder.create(httpTracing)
+        .addInterceptorLast((HttpRequestInterceptor) (request, context) ->
+            request.setHeader("my-id", currentTraceContext.get().traceIdString())
+        ).build();
+    client.start();
 
-      get(client, "/foo");
-    }
+    get(client, "/foo");
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))

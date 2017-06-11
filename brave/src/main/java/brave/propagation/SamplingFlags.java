@@ -1,6 +1,6 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
+import javax.annotation.Nullable;
 
 public abstract class SamplingFlags {
   public static final SamplingFlags EMPTY = new SamplingFlagsImpl(null, false);

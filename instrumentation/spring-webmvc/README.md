@@ -20,16 +20,18 @@ Then, configure `TracingHandlerInterceptor` in either XML or Java.
 
 ```java
 @Configuration
-@Import(TracingHandlerInterceptor.class)
-public class WebConfig extends WebMvcConfigurerAdapter {
+@EnableWebMvc
+class TracingConfig extends WebMvcConfigurerAdapter {
+  @Bean AsyncHandlerInterceptor tracingInterceptor(HttpTracing httpTracing) {
+    return TracingHandlerInterceptor.create(httpTracing);
+  }
 
-    @Autowired
-    private TracingHandlerInterceptor interceptor;
+  @Autowired
+  private AsyncHandlerInterceptor tracingInterceptor;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(interceptor);
-    }
-
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(tracingInterceptor);
+  }
 }
 ```

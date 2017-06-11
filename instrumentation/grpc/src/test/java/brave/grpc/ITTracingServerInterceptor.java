@@ -1,8 +1,10 @@
 package brave.grpc;
 
 import brave.Tracing;
+import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.HexCodec;
 import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -17,36 +19,40 @@ import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloRequest;
-import java.util.Collections;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
-import zipkin.Endpoint;
 import zipkin.Span;
-import zipkin.storage.InMemoryStorage;
+import zipkin.internal.Util;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.tuple;
 
 public class ITTracingServerInterceptor {
+  Logger testLogger = LogManager.getLogger();
 
   @Rule public ExpectedException thrown = ExpectedException.none();
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing;
   Server server;
@@ -58,11 +64,20 @@ public class ITTracingServerInterceptor {
   }
 
   void init() throws Exception {
+    init(null);
+  }
+
+  void init(@Nullable ServerInterceptor userInterceptor) throws Exception {
     stop();
 
+    // tracing interceptor needs to go last
+    ServerInterceptor tracingInterceptor = GrpcTracing.create(tracing).newServerInterceptor();
+    ServerInterceptor[] interceptors = userInterceptor != null
+        ? new ServerInterceptor[] {userInterceptor, tracingInterceptor}
+        : new ServerInterceptor[] {tracingInterceptor};
+
     server = ServerBuilder.forPort(PickUnusedPort.get())
-        .addService(ServerInterceptors.intercept(new GreeterImpl(),
-            GrpcTracing.create(tracing).newServerInterceptor()))
+        .addService(ServerInterceptors.intercept(new GreeterImpl(tracing), interceptors))
         .build().start();
 
     client = ManagedChannelBuilder.forAddress("localhost", server.getPort())
@@ -106,7 +121,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans()).allSatisfy(s -> {
+    assertThat(spans).allSatisfy(s -> {
       assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
       assertThat(HexCodec.toLowerHex(s.parentId)).isEqualTo(parentId);
       assertThat(HexCodec.toLowerHex(s.id)).isEqualTo(spanId);
@@ -120,15 +135,43 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .isEmpty();
+  }
+
+  /**
+   * NOTE: for this to work, the tracing interceptor must be last (so that it executes first)
+   *
+   * <p>Also notice that we are only making the current context available in the request side.
+   */
+  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+    AtomicReference<TraceContext> fromUserInterceptor = new AtomicReference<>();
+    init(new ServerInterceptor() {
+      @Override
+      public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+          Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        testLogger.info("in span!");
+        fromUserInterceptor.set(tracing.currentTraceContext().get());
+        return next.startCall(call, headers);
+      }
+    });
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(fromUserInterceptor.get())
+        .isNotNull();
+  }
+
+  @Test public void currentSpanVisibleToImpl() throws Exception {
+    assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
+        .isNotEmpty();
   }
 
   @Test
   public void reportsServerAnnotationsToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("sr", "ss");
@@ -138,7 +181,7 @@ public class ITTracingServerInterceptor {
   public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("helloworld.greeter/sayhello");
   }
@@ -150,25 +193,18 @@ public class ITTracingServerInterceptor {
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      assertThat(collectedSpans())
+      assertThat(spans)
           .flatExtracting(s -> s.binaryAnnotations)
-          .contains(
-              BinaryAnnotation.create(Constants.ERROR, e.getStatus().getCode().toString(), local));
+          .extracting(b -> tuple(b.key, new String(b.value, Util.UTF_8)))
+          .contains(tuple(Constants.ERROR, e.getStatus().getCode().toString()));
     }
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
-        .currentTraceContext(new StrictCurrentTraceContext())
-        .localEndpoint(local)
+        .reporter(spans::add)
+        .currentTraceContext( // connect to log4
+            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
-  }
-
-  List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    if (result.isEmpty()) return Collections.emptyList();
-    assertThat(result).hasSize(1);
-    return result.get(0);
   }
 }

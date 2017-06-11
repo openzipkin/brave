@@ -58,14 +58,10 @@
   </dependencies>
 
   <build>
-    <testResources>
-      <testResource>
-        <directory>@project.basedir@/src/test/resources</directory>
-      </testResource>
-    </testResources>
     <plugins>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <version>@maven-failsafe-plugin.version@</version>
         <configuration>
           <failIfNoTests>true</failIfNoTests>
         </configuration>

@@ -2,6 +2,7 @@ package brave.grpc;
 
 import brave.Tracer;
 import brave.Tracing;
+import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -21,28 +22,28 @@ import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.Constants;
-import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.internal.Util;
-import zipkin.storage.InMemoryStorage;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public class ITTracingClientInterceptor {
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  Logger testLogger = LogManager.getLogger();
+
+  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
   Tracing tracing;
   TestServer server = new TestServer();
@@ -143,7 +144,7 @@ public class ITTracingClientInterceptor {
   @Test public void reportsClientAnnotationsToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("cs", "cr");
@@ -152,7 +153,7 @@ public class ITTracingClientInterceptor {
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("helloworld.greeter/sayhello");
   }
@@ -166,7 +167,7 @@ public class ITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(collectedSpans()).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
@@ -177,7 +178,7 @@ public class ITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
         .extracting(a -> new String(a.value, Util.UTF_8))
@@ -187,7 +188,7 @@ public class ITTracingClientInterceptor {
   @Test public void addsErrorTag_onTransportException() throws Exception {
     reportsSpanOnTransportException();
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
         .extracting(a -> new String(a.value, Util.UTF_8))
@@ -202,7 +203,7 @@ public class ITTracingClientInterceptor {
 
     close(); // blocks until the cancel finished
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
         .extracting(a -> new String(a.value, Util.UTF_8))
@@ -210,9 +211,9 @@ public class ITTracingClientInterceptor {
   }
 
   /**
-   * NOTE: for this to work, the brave interceptor must be last (so that it executes first)
+   * NOTE: for this to work, the tracing interceptor must be last (so that it executes first)
    *
-   * <p>Also notice that we are only making the current context available in the request side. The
+   * <p>Also notice that we are only making the current context available in the request side.
    */
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
     Map<String, String> scopes = new ConcurrentHashMap<>();
@@ -222,6 +223,7 @@ public class ITTracingClientInterceptor {
         new ClientInterceptor() {
           @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
               MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+            testLogger.info("in span!");
             scopes.put("before", tracing.currentTraceContext().get().traceIdString());
             return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
                 next.newCall(method, callOptions)) {
@@ -244,15 +246,9 @@ public class ITTracingClientInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
-        .currentTraceContext(new StrictCurrentTraceContext())
-        .localEndpoint(local)
+        .reporter(spans::add)
+        .currentTraceContext( // connect to log4
+            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
-  }
-
-  List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
-    assertThat(result).hasSize(1);
-    return result.get(0);
   }
 }

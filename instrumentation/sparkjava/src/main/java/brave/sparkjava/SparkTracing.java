@@ -28,15 +28,13 @@ public final class SparkTracing {
 
   SparkTracing(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(new HttpServletAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
     extractor = httpTracing.tracing().propagation().extractor(Request::headers);
   }
 
   public Filter before() {
     return (request, response) -> {
-      Span span = tracer.nextSpan(extractor, request);
-      HttpServletAdapter.parseClientAddress(request.raw(), span);
-      handler.handleReceive(request.raw(), span);
+      Span span = handler.handleReceive(extractor, request, request.raw());
       request.attribute(Tracer.SpanInScope.class.getName(), tracer.withSpanInScope(span));
     };
   }

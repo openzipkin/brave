@@ -1,5 +1,5 @@
 # brave-instrumentation-servlet
-This module contains a Servlet 2.5+ compatible tracing filter.
+This module contains a tracing filter for Servlet 2.5+ (including Async).
 `TracingFilter` extracts trace state from incoming requests. Then, it
 reports Zipkin how long each request takes, along with relevant tags
 like the http url.

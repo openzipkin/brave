@@ -75,7 +75,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     Request request = new Request.Builder().url(url(path)).build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      String idString = collectedSpans().iterator().next().idString();
+      String idString = spans.iterator().next().idString();
       assertThat(idString).startsWith(response.header("my-id"));
     }
   }

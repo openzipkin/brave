@@ -24,6 +24,19 @@ public class DefaultCurrentTraceContextTest {
     }
   }
 
+  @Test public void scope_canClearScope() {
+    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+      try (CurrentTraceContext.Scope noScope = currentTraceContext.newScope(null)) {
+        assertThat(currentTraceContext.get())
+            .isNull();
+      }
+
+      // old context reverted
+      assertThat(currentTraceContext.get())
+          .isEqualTo(context);
+    }
+  }
+
   @Test public void scope_isDefinedPerThread() throws InterruptedException {
     final TraceContext[] threadValue = new TraceContext[1];
 

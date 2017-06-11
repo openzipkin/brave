@@ -18,18 +18,15 @@ import javax.ws.rs.container.PreMatching;
 import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import zipkin.Constants;
-import zipkin.Endpoint;
 
 import static javax.ws.rs.RuntimeType.SERVER;
 
 // Currently not using PreMatching because we are attempting to detect if the method is async or not
 @Provider
 @Priority(0) // to make the span in scope visible to other filters
-@ConstrainedTo(SERVER)
-final class TracingContainerFilter implements ContainerRequestFilter, ContainerResponseFilter {
+@ConstrainedTo(SERVER) final class TracingContainerFilter
+    implements ContainerRequestFilter, ContainerResponseFilter {
 
   final Tracer tracer;
   final HttpServerHandler<ContainerRequestContext, ContainerResponseContext> handler;
@@ -37,7 +34,7 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
 
   @Inject TracingContainerFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(new HttpAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(httpTracing, new HttpAdapter());
     extractor = httpTracing.tracing().propagation()
         .extractor(ContainerRequestContext::getHeaderString);
   }
@@ -48,27 +45,12 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
    */
   @Context ResourceInfo resourceInfo;
 
-  @Override public void filter(ContainerRequestContext context) {
-    Span span = startSpan(context);
+  @Override public void filter(ContainerRequestContext request) {
+    Span span = handler.handleReceive(extractor, request);
     if (shouldPutSpanInScope(resourceInfo)) {
-      context.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
+      request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     } else {
-      context.setProperty(Span.class.getName(), span);
-    }
-  }
-
-  Span startSpan(ContainerRequestContext context) {
-    Span span = tracer.nextSpan(extractor, context);
-    parseClientAddress(context, span);
-    handler.handleReceive(context, span);
-    return span;
-  }
-
-  static void parseClientAddress(ContainerRequestContext context, Span span) {
-    if (span.isNoop()) return;
-    Endpoint.Builder builder = Endpoint.builder().serviceName("");
-    if (builder.parseIp(context.getHeaderString("X-Forwarded-For"))) {
-      span.remoteEndpoint(builder.build());
+      request.setProperty(Span.class.getName(), span);
     }
   }
 
@@ -81,14 +63,9 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
       span = tracer.currentSpan();
       spanInScope.close();
     } else if (response.getStatus() == 404) {
-      span = startSpan(request);
+      span = handler.handleReceive(extractor, request);
     } else {
       return; // unknown state
-    }
-
-    Response.StatusType statusInfo = response.getStatusInfo();
-    if (statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
-      span.tag(Constants.ERROR, statusInfo.getReasonPhrase());
     }
     handler.handleSend(response, null, span);
   }
@@ -111,7 +88,7 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
   }
 
   static final class HttpAdapter
-      extends brave.http.HttpAdapter<ContainerRequestContext, ContainerResponseContext> {
+      extends brave.http.HttpServerAdapter<ContainerRequestContext, ContainerResponseContext> {
     @Override public String method(ContainerRequestContext request) {
       return request.getMethod();
     }

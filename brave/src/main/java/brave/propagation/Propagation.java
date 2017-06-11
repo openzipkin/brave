@@ -1,7 +1,7 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
 import java.util.List;
+import javax.annotation.Nullable;
 
 /**
  * Injects and extracts {@link TraceContext trace identifiers} as text into carriers that travel

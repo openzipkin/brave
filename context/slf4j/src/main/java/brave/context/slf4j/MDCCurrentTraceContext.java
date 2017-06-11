@@ -33,8 +33,13 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     final String previousTraceId = MDC.get("traceId");
     final String previousSpanId = MDC.get("spanId");
 
-    MDC.put("traceId", currentSpan.traceIdString());
-    MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+    if (currentSpan != null) {
+      MDC.put("traceId", currentSpan.traceIdString());
+      MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+    } else {
+      MDC.remove("traceId");
+      MDC.remove("spanId");
+    }
 
     Scope scope = delegate.newScope(currentSpan);
     return () -> {

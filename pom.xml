@@ -5,7 +5,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>4.3.0-SNAPSHOT</version>
+  <version>4.3.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -56,14 +56,16 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <spring.version>4.3.4.RELEASE</spring.version>
+    <!-- Ensure older versions of spring still work -->
+    <spring4.version>4.3.4.RELEASE</spring4.version>
+    <spring.version>3.2.18.RELEASE</spring.version>
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.1.2.Final</resteasy.version>
     <zipkin.version>1.24.0</zipkin.version>
-    <zipkin-reporter.version>0.7.1</zipkin-reporter.version>
+    <zipkin-reporter.version>0.10.0</zipkin-reporter.version>
     <finagle.version>6.44.0</finagle.version>
     <log4j.version>2.8.2</log4j.version>
     <okhttp.version>3.7.0</okhttp.version>
@@ -82,6 +84,7 @@
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-failsafe-plugin.version>2.20</maven-failsafe-plugin.version>
     <centralsync-maven-plugin.version>0.1.0</centralsync-maven-plugin.version>
 
     <!-- Catch common Java mistakes as compile-time errors -->
@@ -94,30 +97,29 @@
     <module>brave</module>
     <module>context</module>
     <module>instrumentation</module>
-    <module>brave-core</module>
-    <module>brave-benchmarks</module>
-    <module>brave-http</module>
-    <module>brave-http-tests</module>
-    <module>brave-core-spring</module>
-    <module>brave-resteasy-spring</module>
-    <module>brave-resteasy3-spring</module>
-    <module>brave-spancollector-http</module>
-    <module>brave-spancollector-scribe</module>
-    <module>brave-spancollector-kafka</module>
-    <module>brave-spancollector-local</module>
-    <module>brave-sampler-zookeeper</module>
-    <module>brave-jersey</module>
-    <module>brave-jersey2</module>
-    <module>brave-jaxrs2</module>
-    <module>brave-grpc</module>
-    <module>brave-apache-http-interceptors</module>
-    <module>brave-spring-web-servlet-interceptor</module>
-    <module>brave-spring-resttemplate-interceptors</module>
-    <module>brave-mysql</module>
-    <module>brave-web-servlet-filter</module>
-    <module>brave-okhttp</module>
-    <module>brave-p6spy</module>
-    <module>brave-sparkjava</module>
+    <module>spring-beans</module>
+    <module>archive/brave-core</module>
+    <module>archive/brave-http</module>
+    <module>archive/brave-http-tests</module>
+    <module>archive/brave-core-spring</module>
+    <module>archive/brave-resteasy-spring</module>
+    <module>archive/brave-resteasy3-spring</module>
+    <module>archive/brave-spancollector-http</module>
+    <module>archive/brave-spancollector-scribe</module>
+    <module>archive/brave-spancollector-kafka</module>
+    <module>archive/brave-spancollector-local</module>
+    <module>archive/brave-sampler-zookeeper</module>
+    <module>archive/brave-jersey</module>
+    <module>archive/brave-jaxrs2</module>
+    <module>archive/brave-grpc</module>
+    <module>archive/brave-apache-http-interceptors</module>
+    <module>archive/brave-spring-web-servlet-interceptor</module>
+    <module>archive/brave-spring-resttemplate-interceptors</module>
+    <module>archive/brave-mysql</module>
+    <module>archive/brave-web-servlet-filter</module>
+    <module>archive/brave-okhttp</module>
+    <module>archive/brave-p6spy</module>
+    <module>archive/brave-sparkjava</module>
   </modules>
 
   <distributionManagement>
@@ -145,6 +147,16 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>brave-context-log4j2</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>brave-instrumentation-servlet</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -166,16 +178,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http-tests</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-instrumentation-http-tests</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-instrumentation-servlet</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -326,6 +328,17 @@
   </dependencyManagement>
 
   <dependencies>
+    <!--
+       For javax.annotation.ParametersAreNonnullByDefault and javax.annotation.Nullable
+       This is added as a root-level dependency to prevent javadoc from failing.
+       -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>3.0.2</version>
+      <!-- eventhough annotations are runtime retention, we do not look them up reflectively -->
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -561,7 +574,7 @@
 
           <plugin>
               <artifactId>maven-surefire-plugin</artifactId>
-              <version>2.20</version>
+              <version>${maven-failsafe-plugin.version}</version>
               <configuration>
                   <systemPropertyVariables>
                       <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>

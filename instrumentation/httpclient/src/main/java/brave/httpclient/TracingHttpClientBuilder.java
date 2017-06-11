@@ -11,13 +11,14 @@ import java.io.IOException;
 import org.apache.http.Header;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpMessage;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
-import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
+import org.apache.http.impl.execchain.MainClientExec;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
 import zipkin.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
@@ -31,78 +32,61 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
   }
 
   final Tracer tracer;
-  final TraceContext.Injector<HttpMessage> injector;
+  final TraceContext.Injector<HttpRequestWrapper> injector;
   final HttpClientHandler<HttpRequestWrapper, HttpResponse> handler;
-  final String remoteServiceName;
 
   TracingHttpClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.tracer = httpTracing.tracing().tracer();
-    this.remoteServiceName = httpTracing.serverName();
-    this.handler = HttpClientHandler.create(new HttpAdapter(), httpTracing.clientParser());
-    this.injector = httpTracing.tracing().propagation().injector(HttpMessage::setHeader);
+    this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
+    this.injector = httpTracing.tracing().propagation().injector(HttpRequestWrapper::setHeader);
   }
 
   /**
-   * protocol exec is the second in the execution chain, so is invoked before a request is
-   * provisioned. We provision and scope a span here, so that application interceptors can see
-   * it via {@link Tracer#currentSpan()}.
+   * protocol exec is the last in the execution chain, so first to execute. We eagerly create a span
+   * here so that user interceptors can see it.
    */
-  @Override protected ClientExecChain decorateProtocolExec(ClientExecChain exec) {
-    return (route, request, context, execAware) -> {
-      Span next = tracer.nextSpan();
-      context.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(next));
-      try {
-        return exec.execute(route, request, context, execAware);
-      } catch (IOException | HttpException | RuntimeException e) {
-        context.getAttribute(SpanInScope.class.getName(), SpanInScope.class).close();
-        throw e;
-      }
-    };
-  }
-
-  /**
-   * main exec is the first in the execution chain, so last to execute. This creates a concrete http
-   * request, so this is where the timing in the span occurs.
-   *
-   * <p>This ends the span (and scoping of it) created by {@link #decorateMainExec(ClientExecChain)}.
-   */
-  @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
-    return (route, request, context, execAware) -> {
-      Span span = tracer.currentSpan();
+  @Override protected ClientExecChain decorateProtocolExec(ClientExecChain protocolExec) {
+    return (route, request, clientContext, execAware) -> {
+      Span span = handler.nextSpan(request);
       CloseableHttpResponse response = null;
       Throwable error = null;
-      try {
-        injector.inject(span.context(), request);
-
-        HttpHost host = HttpClientContext.adapt(context).getTargetHost();
-        if (!span.isNoop() && host != null) {
-          parseServerAddress(host, span);
-          handler.handleSend(HttpRequestWrapper.wrap(request, host), span);
-        } else {
-          handler.handleSend(request, span);
-        }
-        return response = exec.execute(route, request, context, execAware);
-      } catch (IOException | HttpException | RuntimeException e) {
+      try (SpanInScope ws = tracer.withSpanInScope(span)) {
+        return response = protocolExec.execute(route, request, clientContext, execAware);
+      } catch (IOException | HttpException | RuntimeException | Error e) {
         error = e;
         throw e;
       } finally {
-        context.getAttribute(SpanInScope.class.getName(), SpanInScope.class).close();
         handler.handleReceive(response, error, span);
       }
     };
   }
 
-  void parseServerAddress(HttpHost host, Span span) {
-    Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName);
-    if (!builder.parseIp(host.getAddress())) {
-      if (!builder.parseIp(host.getHostName()) && "".equals(remoteServiceName)) return;
-    }
-    builder.port(host.getPort());
-    span.remoteEndpoint(builder.build());
+  /**
+   * Main exec is the first in the execution chain, so last to execute. This creates a concrete http
+   * request, so this is where the span is started.
+   */
+  @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
+    return (route, request, context, execAware) -> {
+      handler.handleSend(injector, request, tracer.currentSpan());
+      return exec.execute(route, request, context, execAware);
+    };
   }
 
-  static final class HttpAdapter extends brave.http.HttpAdapter<HttpRequestWrapper, HttpResponse> {
+  static final class HttpAdapter
+      extends brave.http.HttpClientAdapter<HttpRequestWrapper, HttpResponse> {
+
+    @Override
+    public boolean parseServerAddress(HttpRequestWrapper httpRequest, Endpoint.Builder builder) {
+      HttpHost target = httpRequest.getTarget();
+      if (target == null) return false;
+      if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
+        builder.port(target.getPort());
+        return true;
+      }
+      return false;
+    }
+
     @Override public String method(HttpRequestWrapper request) {
       return request.getRequestLine().getMethod();
     }

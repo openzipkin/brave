@@ -1,11 +1,11 @@
 package brave.http;
 
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -15,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin.Constants;
 import zipkin.Endpoint;
-import zipkin.Span;
 import zipkin.TraceKeys;
 
 import static java.util.Arrays.asList;
@@ -119,11 +118,24 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .containsEntry("x-b3-sampled", asList("0"));
   }
 
+  @Test public void customSampler() throws Exception {
+    close();
+    httpTracing = httpTracing.toBuilder().clientSampler(HttpSampler.NEVER_SAMPLE).build();
+    client = newClient(server.getPort());
+
+    server.enqueue(new MockResponse());
+    get(client, "/foo");
+
+    RecordedRequest request = server.takeRequest();
+    assertThat(request.getHeaders().toMultimap())
+        .containsEntry("x-b3-sampled", asList("0"));
+  }
+
   @Test public void reportsClientAnnotationsToZipkin() throws Exception {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("cs", "cr");
@@ -134,7 +146,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(Constants.SERVER_ADDR))
         .extracting(b -> b.endpoint)
@@ -149,7 +161,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("get");
   }
@@ -160,28 +172,23 @@ public abstract class ITHttpClient<C> extends ITHttp {
     close();
     httpTracing = httpTracing.toBuilder()
         .clientParser(new HttpClientParser() {
-          @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-            return adapter.method(req).toLowerCase() + " " + adapter.path(req);
-          }
-
           @Override
-          public <Req> void requestTags(HttpAdapter<Req, ?> adapter, Req req, brave.Span span) {
-            span.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+          public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+            customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
+            customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
           }
         })
-        .serverName("remote-service")
-        .build();
+        .build().clientOf("remote-service");
 
     client = newClient(server.getPort());
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    List<Span> collectedSpans = collectedSpans();
-    assertThat(collectedSpans)
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("get /foo");
 
-    assertThat(collectedSpans)
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(Constants.SERVER_ADDR))
         .extracting(b -> b.endpoint.serviceName)
@@ -191,15 +198,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
-    server.enqueue(new MockResponse().setResponseCode(404));
+    server.enqueue(new MockResponse().setResponseCode(400));
 
     try {
       get(client, "/foo");
     } catch (RuntimeException e) {
-      // some clients think 404 is an error
+      // some clients think 400 is an error
     }
 
-    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "404");
+    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
+    assertReportedTagsInclude(Constants.ERROR, "400");
   }
 
   @Test public void redirect() throws Exception {
@@ -230,7 +238,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(server.takeRequest().getBody().readUtf8())
         .isEqualTo(body);
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .extracting(s -> s.name)
         .containsExactly("post");
   }
@@ -244,13 +252,13 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // ok, but the span should include an error!
     }
 
-    assertThat(collectedSpans()).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   @Test public void addsErrorTagOnTransportException() throws Exception {
     reportsSpanOnTransportException();
 
-    assertThat(collectedSpans())
+    assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key)
         .contains(Constants.ERROR);

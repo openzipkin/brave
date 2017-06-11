@@ -1,10 +1,10 @@
 package brave.propagation;
 
-import brave.internal.Nullable;
 import java.io.Closeable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import javax.annotation.Nullable;
 
 /**
  * This makes a given span the current span by placing it in scope (usually but not always a thread
@@ -25,8 +25,10 @@ public abstract class CurrentTraceContext {
   /**
    * Sets the current span in scope until the returned object is closed. It is a programming
    * error to drop or never close the result. Using try-with-resources is preferred for this reason.
+   *
+   * @param currentSpan span to place into scope or null to clear the scope
    */
-  public abstract Scope newScope(TraceContext currentSpan);
+  public abstract Scope newScope(@Nullable TraceContext currentSpan);
 
   /** A span remains in the scope it was bound to until close is called. */
   public interface Scope extends Closeable {
