@@ -31,6 +31,7 @@
     <module>sparkjava</module>
     <module>spring-web</module>
     <module>spring-webmvc</module>
+    <module>netty</module>
   </modules>
 
   <!-- ${project.groupId}:brave version is set in the root pom.
