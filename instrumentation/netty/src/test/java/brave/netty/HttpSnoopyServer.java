@@ -31,15 +31,15 @@ import org.slf4j.LoggerFactory;
 import zipkin.Span;
 import zipkin.reporter.Reporter;
 
-public class HttpSnoopServer implements Runnable {
-  private static final Logger logger = LoggerFactory.getLogger(HttpSnoopServer.class);
+public class HttpSnoopyServer implements Runnable {
+  private static final Logger logger = LoggerFactory.getLogger(HttpSnoopyServer.class);
 
   private final int port;
   private ChannelInitializer<SocketChannel> channelInitializer;
   EventLoopGroup bossGroup = new NioEventLoopGroup();
   EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-  public HttpSnoopServer(int port, ChannelInitializer<SocketChannel> channelInitializer) {
+  public HttpSnoopyServer(int port, ChannelInitializer<SocketChannel> channelInitializer) {
     this.port = port;
     this.channelInitializer = channelInitializer;
   }
@@ -83,8 +83,24 @@ public class HttpSnoopServer implements Runnable {
                   })
               .build();
 
-      httpTracing = HttpTracing.newBuilder(tracing).serverName("github").build();
+      httpTracing = HttpTracing.newBuilder(tracing).build();
     }
-    new HttpSnoopServer(port, new HttpSnoopServerInitializer(httpTracing)).run();
+    new HttpSnoopyServer(port, new HttpSnoopyServerInitializer(httpTracing)).run();
+  }
+
+  public static void main(String[] args) {
+    Tracing tracing =
+        Tracing.newBuilder().sampler(Sampler.ALWAYS_SAMPLE).localServiceName("my-service")
+            .reporter(
+                new Reporter<Span>() {
+                  @Override public void report(Span span) {
+                    logger.info(span.toString());
+                  }
+                })
+            .build();
+
+    HttpTracing httpTracing = HttpTracing.newBuilder(tracing).build();
+
+    new Thread(new HttpSnoopyServer(7654,new HttpSnoopyServerInitializer(httpTracing))).start();
   }
 }

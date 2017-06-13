@@ -13,6 +13,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.util.AttributeKey;
 
 public final class NettyTracing {
   public static NettyTracing create(Tracing tracing) {
@@ -29,7 +30,7 @@ public final class NettyTracing {
 
   NettyTracing(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(new HttpNettyAdapter(), httpTracing.serverParser());
+    handler = HttpServerHandler.create(httpTracing, new HttpNettyAdapter());
     extractor = httpTracing.tracing().propagation().extractor(HttpHeaders::get);
   }
 
@@ -38,16 +39,15 @@ public final class NettyTracing {
       @Override
       public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         HttpRequest httpRequest = (HttpRequest) msg;
-        httpRequest = (HttpRequest) msg;
-        HttpHeaders headers = httpRequest.headers();
-        //貌似是这个
-        Span span = tracer.nextSpan(extractor, headers);
-        HttpNettyAdapter.parseClientAddress(httpRequest, span);
-        handler.handleReceive(httpRequest, span);
+        HttpHeaders httpHeaders = httpRequest.headers();
+
+        Span span = handler.handleReceive(extractor, httpHeaders, httpRequest);
+        ctx.channel().attr(AttributeKey.valueOf(Span.class.getName())).set(span);
 
         try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+          ctx.channel().attr(AttributeKey.valueOf(Tracer.SpanInScope.class.getName())).set(ws);
           super.channelRead(ctx, httpRequest);
-        } catch (Exception e) {
+        } catch (Exception | Error e) {
           throw e;
         }
       }
@@ -61,13 +61,20 @@ public final class NettyTracing {
       public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
           throws Exception {
         HttpResponse response = (HttpResponse) msg;
-        Span span = tracer.currentSpan();
-        if (span == null) return;
+        Span span = (Span) ctx.channel().attr(AttributeKey.newInstance(Span.class.getName())).get();
 
-        tracer.withSpanInScope(span).close();
-        handler.handleSend(response, null, span);
-
-        super.write(ctx, msg, promise);
+        Throwable error = null;
+        try (Tracer.SpanInScope ws = (Tracer.SpanInScope) ctx.channel()
+            .attr(AttributeKey.valueOf(Tracer.SpanInScope.class.getName()))
+            .get()) {
+          ws.close();
+          super.write(ctx, msg, promise);
+        } catch (Exception | Error e) {
+          error = e;
+          throw e;
+        } finally {
+          handler.handleSend(response, error, span);
+        }
       }
     };
   }

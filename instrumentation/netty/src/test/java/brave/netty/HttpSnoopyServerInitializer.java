@@ -23,10 +23,10 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 
-public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel> {
+public class HttpSnoopyServerInitializer extends ChannelInitializer<SocketChannel> {
   private HttpTracing httpTracing;
 
-  public HttpSnoopServerInitializer(HttpTracing httpTracing) {
+  public HttpSnoopyServerInitializer(HttpTracing httpTracing) {
     this.httpTracing = httpTracing;
   }
 
@@ -42,7 +42,7 @@ public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel
 
     p.addLast("braveRequest", NettyTracing.create(httpTracing).createHttpRequestHandler());
 
-    p.addLast("handler", new HttpSnoopServerHandler(httpTracing));
+    p.addLast("handler", new HttpSnoopyServerHandler(httpTracing));
     //p.addLast("exception", new ExceptionHandler());//Make sure this is the last line when init the pipeline.
 
   }

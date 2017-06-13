@@ -11,7 +11,7 @@ public class ITNettyTracing extends ITHttpServer {
     new Thread(() -> {
       try {
         //HttpSnoopServer.main(args);
-        HttpSnoopServer.start(port,null);
+        HttpSnoopyServer.start(port,httpTracing);
       } catch (Exception e) {
         e.printStackTrace();
       }

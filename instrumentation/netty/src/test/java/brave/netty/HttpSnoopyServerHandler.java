@@ -37,12 +37,12 @@ import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
-public class HttpSnoopServerHandler extends ChannelInboundHandlerAdapter {
+public class HttpSnoopyServerHandler extends ChannelInboundHandlerAdapter {
 
   private FullHttpRequest httpRequest;
   private HttpTracing httpTracing;
 
-  public HttpSnoopServerHandler(HttpTracing httpTracing) {
+  public HttpSnoopyServerHandler(HttpTracing httpTracing) {
     this.httpTracing = httpTracing;
   }
 
