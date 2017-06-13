@@ -51,6 +51,20 @@ WebTarget target = target("/mytarget");
 target.register(TracingFeature.create(tracing));
 ```
 
+## Customizing Span data based on Java Annotations
+JAX-RS resources are declared via annotations. You may want to consider
+the resource method when choosing name or tags.
+
+For example, the below adds the java method name as the span name:
+```java
+TracingFeature.create(httpTracing.toBuilder().serverParser(new HttpServerParser() {
+  @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+    Method method = ((ContainerAdapter) adapter).resourceMethod(req);
+    return method.getName().toLowerCase();
+  }
+}).build());
+```
+
 ## Exception handling
 `ContainerResponseFilter` has no means to handle uncaught exceptions.
 Unless you provide a catch-all exception mapper, requests that result in

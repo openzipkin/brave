@@ -25,8 +25,8 @@ import static javax.ws.rs.RuntimeType.SERVER;
 // Currently not using PreMatching because we are attempting to detect if the method is async or not
 @Provider
 @Priority(0) // to make the span in scope visible to other filters
-@ConstrainedTo(SERVER) final class TracingContainerFilter
-    implements ContainerRequestFilter, ContainerResponseFilter {
+@ConstrainedTo(SERVER)
+final class TracingContainerFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   final Tracer tracer;
   final HttpServerHandler<ContainerRequestContext, ContainerResponseContext> handler;
@@ -34,7 +34,7 @@ import static javax.ws.rs.RuntimeType.SERVER;
 
   @Inject TracingContainerFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(httpTracing, new HttpAdapter());
+    handler = HttpServerHandler.create(httpTracing, new ContainerAdapter());
     extractor = httpTracing.tracing().propagation()
         .extractor(ContainerRequestContext::getHeaderString);
   }
@@ -46,7 +46,9 @@ import static javax.ws.rs.RuntimeType.SERVER;
   @Context ResourceInfo resourceInfo;
 
   @Override public void filter(ContainerRequestContext request) {
+    if (resourceInfo != null) request.setProperty(ResourceInfo.class.getName(), resourceInfo);
     Span span = handler.handleReceive(extractor, request);
+    request.removeProperty(ResourceInfo.class.getName());
     if (shouldPutSpanInScope(resourceInfo)) {
       request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     } else {
@@ -85,28 +87,5 @@ import static javax.ws.rs.RuntimeType.SERVER;
       }
     }
     return true;
-  }
-
-  static final class HttpAdapter
-      extends brave.http.HttpServerAdapter<ContainerRequestContext, ContainerResponseContext> {
-    @Override public String method(ContainerRequestContext request) {
-      return request.getMethod();
-    }
-
-    @Override public String path(ContainerRequestContext request) {
-      return request.getUriInfo().getRequestUri().getPath();
-    }
-
-    @Override public String url(ContainerRequestContext request) {
-      return request.getUriInfo().getRequestUri().toString();
-    }
-
-    @Override public String requestHeader(ContainerRequestContext request, String name) {
-      return request.getHeaderString(name);
-    }
-
-    @Override public Integer statusCode(ContainerResponseContext response) {
-      return response.getStatus();
-    }
   }
 }
