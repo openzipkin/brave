@@ -189,6 +189,28 @@ By default, there's a global sampler that applies a single rate to all
 traced operations. `Tracer.Builder.sampler` is how you indicate this,
 and it defaults to trace every request.
 
+### Declarative sampling
+
+Some need to sample based on the type or annotations of a java method.
+
+Most users will use a framework interceptor which automates this sort of
+policy. Here's how they might work internally.
+
+```java
+// derives a sample rate from an annotation on a java method
+DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRate);
+
+@Around("@annotation(traced)")
+public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
+  Span span = tracing.tracer().newTrace(sampler.sample(traced))...
+  try {
+    return pjp.proceed();
+  } finally {
+    span.finish();
+  }
+}
+```
+
 ### Custom sampling
 
 You may want to apply different policies depending on what the operation
@@ -209,6 +231,8 @@ Span newTrace(Request input) {
   return tracer.newTrace(flags);
 }
 ```
+
+Note: the above is the basis for the built-in [http sampler](../instrumentation/http)
 
 ## Propagation
 Propagation is needed to ensure activity originating from the same root
