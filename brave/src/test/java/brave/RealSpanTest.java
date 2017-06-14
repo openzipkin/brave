@@ -61,6 +61,13 @@ public class RealSpanTest {
         .containsExactly(3L);
   }
 
+  @Test public void abandon() {
+    span.start();
+    span.abandon();
+
+    assertThat(spans).hasSize(0);
+  }
+
   @Test public void annotate() {
     span.annotate("foo");
     span.flush();
@@ -91,6 +98,22 @@ public class RealSpanTest {
 
     span.finish();
     span.finish();
+
+    assertThat(spans).hasSize(1);
+  }
+
+  @Test public void finishAfterAbandonDoesntReport() {
+    span.start();
+    span.abandon();
+    span.finish();
+
+    assertThat(spans).hasSize(0);
+  }
+
+  @Test public void abandonAfterFinishDoesNothing() {
+    span.start();
+    span.finish();
+    span.abandon();
 
     assertThat(spans).hasSize(1);
   }

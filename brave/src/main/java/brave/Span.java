@@ -76,6 +76,9 @@ public abstract class Span implements SpanCustomizer {
   /** Reports the span complete, assigning the most precise duration possible. */
   public abstract void finish();
 
+  /** Throws away the current span without reporting it. */
+  public abstract void abandon();
+
   /**
    * Like {@link #finish()}, except with a given timestamp in microseconds.
    *
