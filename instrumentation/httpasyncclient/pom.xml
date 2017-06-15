@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>brave-instrumentation-httpasyncclient</artifactId>
-  <name>Brave Instrumentation: Apache HttpClient v4.3+</name>
+  <name>Brave Instrumentation: Apache HttpAsyncClient v4.0+</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
