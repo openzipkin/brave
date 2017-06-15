@@ -44,6 +44,7 @@ public final class NettyTracing {
         Span span = handler.handleReceive(extractor, httpHeaders, httpRequest);
         ctx.channel().attr(AttributeKey.valueOf(Span.class.getName())).set(span);
 
+
         try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
           ctx.channel().attr(AttributeKey.valueOf(Tracer.SpanInScope.class.getName())).set(ws);
           super.channelRead(ctx, httpRequest);
@@ -61,7 +62,7 @@ public final class NettyTracing {
       public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
           throws Exception {
         HttpResponse response = (HttpResponse) msg;
-        Span span = (Span) ctx.channel().attr(AttributeKey.newInstance(Span.class.getName())).get();
+        Span span = (Span) ctx.channel().attr(AttributeKey.valueOf(Span.class.getName())).get();
 
         Throwable error = null;
         try (Tracer.SpanInScope ws = (Tracer.SpanInScope) ctx.channel()

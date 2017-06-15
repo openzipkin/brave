@@ -44,6 +44,5 @@ public class HttpSnoopyServerInitializer extends ChannelInitializer<SocketChanne
 
     p.addLast("handler", new HttpSnoopyServerHandler(httpTracing));
     //p.addLast("exception", new ExceptionHandler());//Make sure this is the last line when init the pipeline.
-
   }
 }

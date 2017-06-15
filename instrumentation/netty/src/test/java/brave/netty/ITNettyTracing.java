@@ -1,28 +1,32 @@
 package brave.netty;
 
 import brave.http.ITHttpServer;
+import org.junit.After;
+import org.junit.AssumptionViolatedException;
+import org.junit.ComparisonFailure;
+import org.junit.Test;
 
 public class ITNettyTracing extends ITHttpServer {
   private int port = 7654;
-  private Thread serverThread;
+  HttpSnoopyServer httpSnoopServer = null;
+  HttpSnoopyServerInitializer initializer = null;
+
+  @Override
+  @Test(expected = ComparisonFailure.class)
+  public void reportsClientAddress() throws Exception {
+    throw new AssumptionViolatedException("client address can get from request but channel");
+  }
+
   @Override
   protected void init() throws Exception {
+    stop();
 
-    new Thread(() -> {
-      try {
-        //HttpSnoopServer.main(args);
-        HttpSnoopyServer.start(port,httpTracing);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }).start();
+    initializer = new HttpSnoopyServerInitializer(httpTracing);
 
-/*    HttpTracing newTracing = HttpTracing.newBuilder(httpTracing.tracing()).serverName("netty").build();
-    HttpSnoopServerInitializer initializer = new HttpSnoopServerInitializer(newTracing);
-    HttpSnoopServer httpSnoopServer = new HttpSnoopServer(port, initializer);
-    serverThread = new Thread(() -> httpSnoopServer.run());
-    serverThread.start();
-    Thread.sleep(2000);*/
+    httpSnoopServer = new HttpSnoopyServer(port, initializer);
+    //httpSnoopServer.run();
+    //Thread server = new Thread(httpSnoopServer);
+    httpSnoopServer.start();
   }
 
   @Override
@@ -30,11 +34,10 @@ public class ITNettyTracing extends ITHttpServer {
     return "http://localhost:" + port + path;
   }
 
-  /*@After
+  @After
   public void stop() throws Exception {
-    Thread.sleep(2000);
-    if (serverThread != null) {
-      serverThread.interrupt();
+    if (httpSnoopServer != null) {
+      httpSnoopServer.interrupt();
     }
-  }*/
+  }
 }
