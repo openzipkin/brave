@@ -67,6 +67,10 @@ abstract class RealSpan extends Span {
     recorder().finish(context(), timestamp);
   }
 
+  @Override public void abandon() {
+    recorder().abandon(context());
+  }
+
   @Override public void flush() {
     recorder().flush(context());
   }

@@ -35,6 +35,7 @@ public class NoopSpanTest {
     span.remoteEndpoint(Endpoint.create("lalala", 127 << 24 | 1));
     span.finish(1L);
     span.finish();
+    span.abandon();
     span.flush();
   }
 }

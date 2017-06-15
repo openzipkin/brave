@@ -76,6 +76,11 @@ public final class Recorder {
     }
   }
 
+  /** @see Span#abandon() */
+  public void abandon(TraceContext context) {
+    spanMap.remove(context);
+  }
+
   /** @see Span#flush() */
   public void flush(TraceContext context) {
     MutableSpan span = spanMap.remove(context);
