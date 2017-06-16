@@ -7,25 +7,21 @@ import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 public class ITNettyTracing extends ITHttpServer {
-  private int port = 7654;
+  private int port = 4567;
   HttpSnoopyServer httpSnoopServer = null;
-  HttpSnoopyServerInitializer initializer = null;
 
   @Override
   @Test(expected = ComparisonFailure.class)
   public void reportsClientAddress() throws Exception {
-    throw new AssumptionViolatedException("client address can get from request but channel");
+    throw new AssumptionViolatedException("client address can get from channel not request");
   }
 
   @Override
   protected void init() throws Exception {
     stop();
-
-    initializer = new HttpSnoopyServerInitializer(httpTracing);
-
+    
+    HttpSnoopyServerInitializer initializer = new HttpSnoopyServerInitializer(httpTracing);
     httpSnoopServer = new HttpSnoopyServer(port, initializer);
-    //httpSnoopServer.run();
-    //Thread server = new Thread(httpSnoopServer);
     httpSnoopServer.start();
   }
 

@@ -22,7 +22,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,23 +48,17 @@ public class HttpSnoopyServer extends Thread {
 
       Channel ch = b.bind(port).sync().channel();
       logger.info("netty httpserver start");
-      System.out.println("netty httpserver start");
       ch.closeFuture().sync();
     } catch (InterruptedException e) {
       logger.info("netty httpserver interrupted");
-      System.out.println("netty httpserver interrupted");
+      logger.error(e.getMessage(), e);
     } finally {
-      stop();
+      shutdown();
     }
   }
 
   public void shutdown() {
-    try {
-      if (bossGroup != null) bossGroup.awaitTermination(2, TimeUnit.SECONDS);
-
-      if (workerGroup != null) workerGroup.awaitTermination(2, TimeUnit.SECONDS);
-    } catch (InterruptedException ex) {
-      ex.printStackTrace();
-    }
+    if (bossGroup != null) bossGroup.shutdownGracefully();
+    if (workerGroup != null) workerGroup.shutdownGracefully();
   }
 }

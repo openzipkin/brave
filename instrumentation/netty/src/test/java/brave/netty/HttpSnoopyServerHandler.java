@@ -78,11 +78,6 @@ public class HttpSnoopyServerHandler extends ChannelInboundHandlerAdapter {
     writeResponse(status, content, ctx);
   }
 
-  private void writeResponse(String content,
-      ChannelHandlerContext ctx) {
-    writeResponse(null, content, ctx);
-  }
-
   private boolean writeResponse(HttpResponseStatus responseStatus, String content,
       ChannelHandlerContext ctx) {
     if (StringUtil.isNullOrEmpty(content)) {
@@ -117,7 +112,7 @@ public class HttpSnoopyServerHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-    ctx.fireExceptionCaught(cause);//这样的话，下面的会被调用
+    ctx.fireExceptionCaught(cause);
     // Write the response.
     writeResponse(EXPECTATION_FAILED, null, ctx);
   }

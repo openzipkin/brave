@@ -37,12 +37,11 @@ public class HttpSnoopyServerInitializer extends ChannelInitializer<SocketChanne
     p.addLast("decoder", new HttpRequestDecoder());
     p.addLast("encoder", new HttpResponseEncoder());
     p.addLast("aggregator", new HttpObjectAggregator(1048576));
-
+    //add brave tracing
     p.addLast("braveResponse", NettyTracing.create(httpTracing).createHttpResponseHandler());
-
     p.addLast("braveRequest", NettyTracing.create(httpTracing).createHttpRequestHandler());
 
     p.addLast("handler", new HttpSnoopyServerHandler(httpTracing));
-    //p.addLast("exception", new ExceptionHandler());//Make sure this is the last line when init the pipeline.
+
   }
 }

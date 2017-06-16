@@ -44,7 +44,6 @@ public final class NettyTracing {
         Span span = handler.handleReceive(extractor, httpHeaders, httpRequest);
         ctx.channel().attr(AttributeKey.valueOf(Span.class.getName())).set(span);
 
-
         try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
           ctx.channel().attr(AttributeKey.valueOf(Tracer.SpanInScope.class.getName())).set(ws);
           super.channelRead(ctx, httpRequest);
