@@ -33,6 +33,7 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static io.netty.handler.codec.http.HttpHeaders.Values;
 import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.EXPECTATION_FAILED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -58,24 +59,23 @@ public class HttpSnoopyServerHandler extends ChannelInboundHandlerAdapter {
     }
     String uri = httpRequest.uri();
     String content = null;
-
+    HttpResponseStatus status = OK;
     if (uri.startsWith("/foo")) {
       content = "bar";
     } else if (uri.startsWith("/child")) {
       httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
       content = "happy";
-    } else if (uri.startsWith("/disconnect")) {
-      throw new IOException();
+    } else if (uri.startsWith("/exception")) {
+      throw new IOException("exception");
+    } else if (uri.startsWith("/async")) {
+      content = "async";
+    } else if (uri.startsWith("/badrequest")) {
+      status = BAD_REQUEST;
     } else {//not found
-      writeResponse(NOT_FOUND, null, ctx);
+      status = NOT_FOUND;
     }
 
-    writeResponse(content, ctx);
-  }
-
-  private void writeResponse(String content,
-      ChannelHandlerContext ctx) {
-    writeResponse(null, content, ctx);
+    writeResponse(status, content, ctx);
   }
 
   private boolean writeResponse(HttpResponseStatus responseStatus, String content,
@@ -110,9 +110,10 @@ public class HttpSnoopyServerHandler extends ChannelInboundHandlerAdapter {
     return keepAlive;
   }
 
-
-   /* @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)throws Exception{
-        //ctx.fireExceptionCaught(cause);
-    }*/
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    ctx.fireExceptionCaught(cause);
+    // Write the response.
+    writeResponse(EXPECTATION_FAILED, null, ctx);
+  }
 }

@@ -15,9 +15,6 @@
  */
 package brave.netty;
 
-import brave.Tracing;
-import brave.http.HttpTracing;
-import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -25,13 +22,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zipkin.Span;
-import zipkin.reporter.Reporter;
 
-public class HttpSnoopyServer implements Runnable {
+public class HttpSnoopyServer extends Thread {
   private static final Logger logger = LoggerFactory.getLogger(HttpSnoopyServer.class);
 
   private final int port;
@@ -44,6 +38,7 @@ public class HttpSnoopyServer implements Runnable {
     this.channelInitializer = channelInitializer;
   }
 
+  @Override
   public void run() {
     try {
       ServerBootstrap b = new ServerBootstrap();
@@ -56,51 +51,14 @@ public class HttpSnoopyServer implements Runnable {
       ch.closeFuture().sync();
     } catch (InterruptedException e) {
       logger.info("netty httpserver interrupted");
+      logger.error(e.getMessage(), e);
     } finally {
-      stop();
+      shutdown();
     }
   }
 
-  public void stop() {
-    try {
-      if (bossGroup != null) bossGroup.awaitTermination(10, TimeUnit.SECONDS);
-
-      if (workerGroup != null) workerGroup.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (InterruptedException ex) {
-      ex.printStackTrace();
-    }
-  }
-
-  public static void start(int port, HttpTracing httpTracing) throws Exception {
-    if (httpTracing == null) {
-      Tracing tracing =
-          Tracing.newBuilder().sampler(Sampler.ALWAYS_SAMPLE).localServiceName("my-service")
-              .reporter(
-                  new Reporter<Span>() {
-                    @Override public void report(Span span) {
-                      logger.info(span.toString());
-                    }
-                  })
-              .build();
-
-      httpTracing = HttpTracing.newBuilder(tracing).build();
-    }
-    new HttpSnoopyServer(port, new HttpSnoopyServerInitializer(httpTracing)).run();
-  }
-
-  public static void main(String[] args) {
-    Tracing tracing =
-        Tracing.newBuilder().sampler(Sampler.ALWAYS_SAMPLE).localServiceName("my-service")
-            .reporter(
-                new Reporter<Span>() {
-                  @Override public void report(Span span) {
-                    logger.info(span.toString());
-                  }
-                })
-            .build();
-
-    HttpTracing httpTracing = HttpTracing.newBuilder(tracing).build();
-
-    new Thread(new HttpSnoopyServer(7654,new HttpSnoopyServerInitializer(httpTracing))).start();
+  public void shutdown() {
+    if (bossGroup != null) bossGroup.shutdownGracefully();
+    if (workerGroup != null) workerGroup.shutdownGracefully();
   }
 }
