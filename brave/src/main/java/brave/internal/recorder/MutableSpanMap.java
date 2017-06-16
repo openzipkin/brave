@@ -7,6 +7,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
@@ -32,11 +33,18 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
   final Endpoint localEndpoint;
   final Clock clock;
   final Reporter<zipkin.Span> reporter;
+  final AtomicBoolean noop;
 
-  MutableSpanMap(Endpoint localEndpoint, Clock clock, Reporter<zipkin.Span> reporter) {
+  MutableSpanMap(
+      Endpoint localEndpoint,
+      Clock clock,
+      Reporter<zipkin.Span> reporter,
+      AtomicBoolean noop
+  ) {
     this.localEndpoint = localEndpoint;
     this.clock = clock;
     this.reporter = reporter;
+    this.noop = noop;
   }
 
   @Nullable MutableSpan get(TraceContext context) {
@@ -68,7 +76,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
     while ((reference = poll()) != null) {
       TraceContext context = reference.get();
       MutableSpan value = delegate.remove(reference);
-      if (value == null) continue;
+      if (value == null || noop.get()) continue;
       try {
         value.annotate(clock.currentTimeMicroseconds(), "brave.flush");
         reporter.report(value.toSpan());

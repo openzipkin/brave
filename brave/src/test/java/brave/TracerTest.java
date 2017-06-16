@@ -80,6 +80,13 @@ public class TracerTest {
         .isInstanceOf(RealSpan.class);
   }
 
+  @Test public void newTrace_noop_on_sampled_flag() {
+    tracer.noop.set(true);
+
+    assertThat(tracer.newTrace(SamplingFlags.SAMPLED))
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void newTrace_debug_flag() {
     List<zipkin.Span> spans = new ArrayList<>();
     tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
@@ -89,6 +96,13 @@ public class TracerTest {
 
     assertThat(spans).extracting(s -> s.debug)
         .containsExactly(true);
+  }
+
+  @Test public void newTrace_noop_on_debug_flag() {
+    tracer.noop.set(true);
+
+    assertThat(tracer.newTrace(SamplingFlags.DEBUG))
+        .isInstanceOf(NoopSpan.class);
   }
 
   @Test public void newTrace_notsampled_flag() {
@@ -102,6 +116,15 @@ public class TracerTest {
 
     assertThat(tracer.joinSpan(fromIncomingRequest).context())
         .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+  }
+
+  @Test public void join_noop() {
+    TraceContext fromIncomingRequest = tracer.newTrace().context();
+
+    tracer.noop.set(true);
+
+    assertThat(tracer.joinSpan(fromIncomingRequest))
+        .isInstanceOf(NoopSpan.class);
   }
 
   @Test public void join_ensuresSampling() {
@@ -121,6 +144,15 @@ public class TracerTest {
         .containsExactly(context);
   }
 
+  @Test public void toSpan_noop() {
+    TraceContext context = tracer.newTrace().context();
+
+    tracer.noop.set(true);
+
+    assertThat(tracer.toSpan(context))
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void toSpan_unsampledIsNoop() {
     TraceContext unsampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -138,6 +170,15 @@ public class TracerTest {
           assertThat(c.context().parentId()).isEqualTo(parent.spanId());
         })
         .isInstanceOf(RealSpan.class);
+  }
+
+  @Test public void newChild_noop() {
+    TraceContext parent = tracer.newTrace().context();
+
+    tracer.noop.set(true);
+
+    assertThat(tracer.newChild(parent))
+        .isInstanceOf(NoopSpan.class);
   }
 
   @Test public void newChild_unsampledIsNoop() {
