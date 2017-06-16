@@ -52,6 +52,7 @@ public class HttpSnoopyServer extends Thread {
     } catch (InterruptedException e) {
       logger.info("netty httpserver interrupted");
       logger.error(e.getMessage(), e);
+      Thread.currentThread().interrupt();
     } finally {
       shutdown();
     }
