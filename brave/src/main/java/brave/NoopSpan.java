@@ -53,6 +53,9 @@ abstract class NoopSpan extends Span {
   @Override public void finish(long timestamp) {
   }
 
+  @Override public void abandon() {
+  }
+
   @Override public void flush() {
   }
 }

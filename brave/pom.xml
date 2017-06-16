@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>4.3.4-SNAPSHOT</version>
+    <version>4.4.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave</artifactId>
@@ -75,6 +75,22 @@
       <groupId>com.twitter</groupId>
       <artifactId>finagle-core_2.12</artifactId>
       <version>${finagle.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.aspectj</groupId>
+      <artifactId>aspectjweaver</artifactId>
+      <version>1.8.10</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

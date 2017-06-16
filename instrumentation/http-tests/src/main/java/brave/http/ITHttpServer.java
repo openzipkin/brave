@@ -3,6 +3,7 @@ package brave.http;
 import brave.SpanCustomizer;
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
+import java.io.IOException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -38,16 +39,12 @@ public abstract class ITHttpServer extends ITHttp {
     final String parentId = traceId;
     final String spanId = "48485a3953bb6124";
 
-    Request request = new Request.Builder().url(url(path))
+    get(new Request.Builder().url(url(path))
         .header("X-B3-TraceId", traceId)
         .header("X-B3-ParentSpanId", parentId)
         .header("X-B3-SpanId", spanId)
         .header("X-B3-Sampled", "1")
-        .build();
-
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+        .build());
 
     assertThat(spans).allSatisfy(s -> {
       assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
@@ -61,12 +58,7 @@ public abstract class ITHttpServer extends ITHttp {
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     init();
 
-    String path = "/foo";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+    get("/foo");
 
     assertThat(spans)
         .isEmpty();
@@ -77,15 +69,7 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void async() throws Exception {
-    String path = "/async";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      if (response.code() == 404) throw new AssumptionViolatedException(path + " not supported");
-      assertThat(response.isSuccessful()).isTrue();
-    } catch (AssumptionViolatedException e) {
-      throw e;
-    }
+    get("/async");
 
     assertThat(spans).hasSize(1);
   }
@@ -98,16 +82,7 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void createsChildSpan() throws Exception {
-    String path = "/child";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      if (response.code() == 404) throw new AssumptionViolatedException(path + " not supported");
-    } catch (AssumptionViolatedException e) {
-      throw e;
-    } catch (Exception e) {
-      // ok, but the span should include an error!
-    }
+    get("/child");
 
     assertThat(spans).hasSize(2);
 
@@ -122,12 +97,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void reportsClientAddress() throws Exception {
-    String path = "/foo";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+    get("/foo");
 
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
@@ -137,14 +107,9 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void reportsClientAddress_XForwardedFor() throws Exception {
-    String path = "/foo";
-
-    Request request = new Request.Builder().url(url(path))
+    get(new Request.Builder().url(url("/foo"))
         .header("X-Forwarded-For", "1.2.3.4")
-        .build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+        .build());
 
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
@@ -154,12 +119,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void reportsServerAnnotationsToZipkin() throws Exception {
-    String path = "/foo";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+    get("/foo");
 
     assertThat(spans)
         .flatExtracting(s -> s.annotations)
@@ -169,12 +129,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void defaultSpanNameIsMethodName() throws Exception {
-    String path = "/foo";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+    get("/foo");
 
     assertThat(spans)
         .extracting(s -> s.name)
@@ -183,8 +138,6 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void supportsPortableCustomization() throws Exception {
-    String uri = "/foo?z=2&yAA=1";
-
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
@@ -194,10 +147,8 @@ public abstract class ITHttpServer extends ITHttp {
     }).build();
     init();
 
-    Request request = new Request.Builder().url(url(uri)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
+    String uri = "/foo?z=2&yAA=1";
+    get(uri);
 
     assertThat(spans)
         .extracting(s -> s.name)
@@ -208,10 +159,8 @@ public abstract class ITHttpServer extends ITHttp {
 
   @Test
   public void addsStatusCode_badRequest() throws Exception {
-    String path = "/badrequest";
-
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
+    try {
+      get("/badrequest");
     } catch (RuntimeException e) {
       // some servers think 400 is an error
     }
@@ -230,15 +179,8 @@ public abstract class ITHttpServer extends ITHttp {
     reportsSpanOnException("/exceptionAsync");
   }
 
-  private void reportsSpanOnException(String path) {
-    Request request = new Request.Builder().url(url(path)).build();
-    try (Response response = client.newCall(request).execute()) {
-      if (response.code() == 404) throw new AssumptionViolatedException(path + " not supported");
-    } catch (AssumptionViolatedException e) {
-      throw e;
-    } catch (Exception e) {
-      // ok, but the span should include an error!
-    }
+  private void reportsSpanOnException(String path) throws IOException {
+    get(path);
 
     assertThat(spans).hasSize(1);
   }
@@ -253,7 +195,27 @@ public abstract class ITHttpServer extends ITHttp {
     addsErrorTagOnException("/exceptionAsync");
   }
 
-  private void addsErrorTagOnException(String path) {
+  @Test
+  public void httpPathTagExcludesQueryParams() throws Exception {
+    get("/foo?z=2&yAA=1");
+
+    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
+  }
+
+  protected Response get(String path) throws IOException {
+    return get(new Request.Builder().url(url(path)).build());
+  }
+
+  protected Response get(Request request) throws IOException {
+    try (Response response = client.newCall(request).execute()) {
+      if (response.code() == 404) {
+        throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
+      }
+      return response;
+    }
+  }
+
+  private void addsErrorTagOnException(String path) throws IOException {
     reportsSpanOnException(path);
     try {
       Thread.sleep(1000L);
@@ -264,17 +226,5 @@ public abstract class ITHttpServer extends ITHttp {
         .flatExtracting(s -> s.binaryAnnotations)
         .extracting(b -> b.key)
         .contains(Constants.ERROR);
-  }
-
-  @Test
-  public void httpPathTagExcludesQueryParams() throws Exception {
-    String uri = "/foo?z=2&yAA=1";
-
-    Request request = new Request.Builder().url(url(uri)).build();
-    try (Response response = client.newCall(request).execute()) {
-      assertThat(response.isSuccessful()).isTrue();
-    }
-
-    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
   }
 }
