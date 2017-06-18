@@ -3,6 +3,7 @@ package brave.internal.recorder;
 import brave.Clock;
 import brave.Span;
 import brave.propagation.TraceContext;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
@@ -12,10 +13,17 @@ public final class Recorder {
 
   final MutableSpanMap spanMap;
   final Reporter<zipkin.Span> reporter;
+  final AtomicBoolean noop;
 
-  public Recorder(Endpoint localEndpoint, Clock clock, Reporter<zipkin.Span> reporter) {
-    this.spanMap = new MutableSpanMap(localEndpoint, clock, reporter);
+  public Recorder(
+      Endpoint localEndpoint,
+      Clock clock,
+      Reporter<zipkin.Span> reporter,
+      AtomicBoolean noop
+  ) {
+    this.spanMap = new MutableSpanMap(localEndpoint, clock, reporter, noop);
     this.reporter = reporter;
+    this.noop = noop;
   }
 
   /**
@@ -69,7 +77,7 @@ public final class Recorder {
   /** @see Span#finish() */
   public void finish(TraceContext context, long finishTimestamp) {
     MutableSpan span = spanMap.remove(context);
-    if (span == null) return;
+    if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(finishTimestamp);
       reporter.report(span.toSpan());
@@ -84,7 +92,7 @@ public final class Recorder {
   /** @see Span#flush() */
   public void flush(TraceContext context) {
     MutableSpan span = spanMap.remove(context);
-    if (span == null) return;
+    if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(null);
       reporter.report(span.toSpan());

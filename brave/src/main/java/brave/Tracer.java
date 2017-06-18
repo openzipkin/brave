@@ -10,13 +10,14 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
 
 /**
- * Using a tracer, you can create a root span capturing the critical path of a request. Child
- * spans can be created to allocate latency relating to outgoing requests.
+ * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
+ * can be created to allocate latency relating to outgoing requests.
  *
  * Here's a contrived example:
  * <pre>{@code
@@ -106,11 +107,13 @@ public final class Tracer {
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
   final boolean traceId128Bit;
+  final AtomicBoolean noop;
 
-  Tracer(Tracing.Builder builder) {
+  Tracer(Tracing.Builder builder, AtomicBoolean noop) {
+    this.noop = noop;
     this.clock = builder.clock;
     this.localEndpoint = builder.localEndpoint;
-    this.recorder = new Recorder(localEndpoint, clock, builder.reporter);
+    this.recorder = new Recorder(localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit;
@@ -179,7 +182,7 @@ public final class Tracer {
   /** Converts the context as-is to a Span object */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    if (context.sampled() == null || context.sampled()) {
+    if (noop.get() == false && Boolean.TRUE.equals(context.sampled())) {
       return RealSpan.create(context, clock, recorder);
     }
     return NoopSpan.create(context);

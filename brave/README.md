@@ -178,6 +178,7 @@ next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
 There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
 
 ## Sampling
+
 Sampling may be employed to reduce the data collected and reported out
 of process. When a span isn't sampled, it adds no overhead (noop).
 
@@ -421,6 +422,12 @@ class MyFilter extends Filter {
   }
 }
 ```
+
+## Disabling Tracing
+
+If you are in a situation where you need to turn off tracing at runtime,
+invoke `Tracing.setNoop(true)`. This will turn any new spans into "noop"
+spans, and drop any data until `Tracing.setNoop(false)` is invoked.
 
 ## Performance
 Brave has been built with performance in mind. Using the core Span api,

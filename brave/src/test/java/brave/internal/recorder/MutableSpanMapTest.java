@@ -1,11 +1,12 @@
 package brave.internal.recorder;
 
 import brave.Tracing;
-import brave.propagation.TraceContext;
 import brave.internal.Platform;
+import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 import zipkin.Endpoint;
 
@@ -15,7 +16,8 @@ public class MutableSpanMapTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
   List<zipkin.Span> spans = new ArrayList();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
-  MutableSpanMap map = new MutableSpanMap(localEndpoint, () -> 0L, spans::add);
+  MutableSpanMap map =
+      new MutableSpanMap(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
 
   @Test
   public void getOrCreate_lazyCreatesASpan() throws Exception {
@@ -144,13 +146,44 @@ public class MutableSpanMapTest {
         .containsExactly("brave.flush", "brave.flush");
   }
 
+  @Test
+  public void noop_afterGC() throws Exception {
+    TraceContext context1 = context.toBuilder().spanId(1).build();
+    map.getOrCreate(context1);
+    TraceContext context2 = context.toBuilder().spanId(2).build();
+    map.getOrCreate(context2);
+    TraceContext context3 = context.toBuilder().spanId(3).build();
+    map.getOrCreate(context3);
+    TraceContext context4 = context.toBuilder().spanId(4).build();
+    map.getOrCreate(context4);
+
+    map.noop.set(true);
+
+    // By clearing strong references in this test, we are left with the weak ones in the map
+    context1 = context2 = null;
+    blockOnGC();
+
+    // After GC, we expect that the weak references of context1 and context2 to be cleared
+    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+        .containsExactlyInAnyOrder(null, null, context3, context4);
+
+    map.reportOrphanedSpans();
+
+    // After reporting, we expect no the weak references of null
+    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+        .containsExactlyInAnyOrder(context3, context4);
+
+    // since this is noop, we don't expect any spans to be reported
+    assertThat(spans).isEmpty();
+  }
+
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() throws Exception {
     MutableSpanMap map = new MutableSpanMap(localEndpoint, () -> 0, span ->
     {
       throw new RuntimeException("die!");
-    });
+    }, new AtomicBoolean(true));
 
     // We drop the reference to the context, which means the next GC should attempt to flush it
     map.getOrCreate(context.toBuilder().build());
@@ -188,7 +221,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void realKey_equalToItself(){
+  public void realKey_equalToItself() {
     MutableSpanMap.RealKey key = new MutableSpanMap.RealKey(context, map);
     assertThat(key).isEqualTo(key);
     key.clear();
@@ -196,7 +229,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void realKey_equalToEquivalent(){
+  public void realKey_equalToEquivalent() {
     MutableSpanMap.RealKey key = new MutableSpanMap.RealKey(context, map);
     MutableSpanMap.RealKey key2 = new MutableSpanMap.RealKey(context, map);
     assertThat(key).isEqualTo(key2);

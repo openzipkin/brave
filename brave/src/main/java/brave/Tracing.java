@@ -7,6 +7,7 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
 import zipkin.reporter.AsyncReporter;
@@ -66,6 +67,28 @@ public abstract class Tracing implements Closeable {
   @Nullable public static Tracer currentTracer() {
     Tracing tracing = current;
     return tracing != null ? tracing.tracer() : null;
+  }
+
+  final AtomicBoolean noop = new AtomicBoolean(false);
+
+  /**
+   * When true, no recording is done and nothing is reported to zipkin. However, trace context is
+   * still injected into outgoing requests.
+   *
+   * @see Span#isNoop()
+   */
+  public boolean isNoop() {
+    return noop.get();
+  }
+
+  /**
+   * Set true to drop data and only return {@link Span#isNoop() noop spans} regardless of sampling
+   * policy. This allows operators to stop tracing in risk scenarios.
+   *
+   * @see #isNoop()
+   */
+  public void setNoop(boolean noop) {
+    this.noop.set(noop);
   }
 
   /**
@@ -199,7 +222,7 @@ public abstract class Tracing implements Closeable {
     final Clock clock;
 
     Default(Builder builder) {
-      this.tracer = new Tracer(builder);
+      this.tracer = new Tracer(builder, noop);
       this.propagationFactory = builder.propagationFactory;
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
