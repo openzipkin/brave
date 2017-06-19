@@ -120,7 +120,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   @Test public void customSampler() throws Exception {
     close();
-    httpTracing = httpTracing.toBuilder().clientSampler(HttpSampler.NEVER_SAMPLE).build();
+    httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
+        .addRule(null, "/foo", 0.0f)
+        .build()).build();
     client = newClient(server.getPort());
 
     server.enqueue(new MockResponse());

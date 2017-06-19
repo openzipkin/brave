@@ -16,9 +16,6 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
-import org.apache.http.impl.execchain.MainClientExec;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
 import zipkin.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
@@ -92,7 +89,7 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
     }
 
     @Override public String path(HttpRequestWrapper request) {
-      String result = request.getRequestLine().getUri();
+      String result = request.getURI().getPath();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }

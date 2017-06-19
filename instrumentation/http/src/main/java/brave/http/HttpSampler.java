@@ -13,6 +13,8 @@ import javax.annotation.Nullable;
  *   }
  * });
  * }</pre>
+ *
+ * @see HttpRuleSampler
  */
 // abstract class as you can't lambda generic methods anyway. This lets us make helpers in the future
 public abstract class HttpSampler {
