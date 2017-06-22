@@ -5,9 +5,9 @@ package brave;
  *
  * Handles the case of there being no current span in scope.
  */
-public class CurrentSpanCustomizer implements SpanCustomizer {
+public final class CurrentSpanCustomizer implements SpanCustomizer {
 
-  private Tracing tracing;
+  private final Tracer tracer;
 
   /** Creates a span customizer that will affect the current span in scope if present */
   public static CurrentSpanCustomizer create(Tracing tracing) {
@@ -15,12 +15,12 @@ public class CurrentSpanCustomizer implements SpanCustomizer {
   }
 
   CurrentSpanCustomizer(Tracing tracing) {
-    this.tracing = tracing;
+    this.tracer = tracing.tracer();
   }
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer name(String name) {
-    Span currentSpan = tracing.tracer().currentSpan();
+    Span currentSpan = tracer.currentSpan();
     if (currentSpan != null) {
       currentSpan.name(name);
     }
@@ -29,7 +29,7 @@ public class CurrentSpanCustomizer implements SpanCustomizer {
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer tag(String key, String value) {
-    Span currentSpan = tracing.tracer().currentSpan();
+    Span currentSpan = tracer.currentSpan();
     if (currentSpan != null) {
       currentSpan.tag(key, value);
     }
@@ -38,7 +38,7 @@ public class CurrentSpanCustomizer implements SpanCustomizer {
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer annotate(String value) {
-    Span currentSpan = tracing.tracer().currentSpan();
+    Span currentSpan = tracer.currentSpan();
     if (currentSpan != null) {
       currentSpan.annotate(value);
     }
@@ -47,7 +47,7 @@ public class CurrentSpanCustomizer implements SpanCustomizer {
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer annotate(long timestamp, String value) {
-    Span currentSpan = tracing.tracer().currentSpan();
+    Span currentSpan = tracer.currentSpan();
     if (currentSpan != null) {
       currentSpan.annotate(timestamp, value);
     }
