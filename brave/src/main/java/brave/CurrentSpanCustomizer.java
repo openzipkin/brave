@@ -3,7 +3,7 @@ package brave;
 /**
  * Provides a mechanism for end users to be able to customise the current span.
  *
- * Handles the case of there being no current span in scope.
+ * <p>Handles the case of there being no current span in scope.
  */
 public final class CurrentSpanCustomizer implements SpanCustomizer {
 
