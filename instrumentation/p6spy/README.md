@@ -13,7 +13,7 @@ url=jdbc:p6spy:derby:memory:p6spy;create=true
 
 By default the service name corresponding to your database is the name
 of the database, but you can add another property to `spy.properties`
-named `zipkinServiceName` to customise it.
+named `remoteServiceName` to customise it.
 
 The current tracing component is used at runtime. Until you have
 instantiated `brave.Tracing`, no traces will appear.
