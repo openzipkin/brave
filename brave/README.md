@@ -104,6 +104,28 @@ for (MyTraceCallback callback : userCallbacks) {
 }
 ```
 
+### Implicitly looking up the current span
+
+Sometimes you won't know if a trace is in progress or not, and you don't
+want users to do null checks. `brave.CurrentSpanCustomizer` adds to any
+span that's in progress or drops data accordingly.
+
+Ex.
+```java
+// Some DI configuration wires up the current span customizer
+@Bean SpanCustomizer currentSpanCustomizer(Tracing tracing) {
+  return CurrentSpanCustomizer.create(tracing);
+}
+
+// user code can then inject this without a chance of it being null.
+@Inject SpanCustomizer span;
+
+void userCode() {
+  span.annotate("tx.started");
+  ...
+}
+```
+
 ### RPC tracing
 Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
 before rolling your own RPC instrumentation!
