@@ -11,7 +11,7 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <protobuf.version>3.0.2</protobuf.version>
+    <protobuf.version>3.3.1</protobuf.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.5.0</protobuf-maven-plugin.version>
   </properties>
@@ -53,7 +53,8 @@
         </executions>
         <configuration>
           <protocArtifact>
-            com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
+            <!-- TODO: change to ${grpc.version} once 3.3.1 is out -->
+            com.google.protobuf:protoc:3.3.0:exe:${os.detected.classifier}
           </protocArtifact>
           <pluginId>grpc-java</pluginId>
           <pluginArtifact>
@@ -67,6 +68,7 @@
         <configuration>
           <extraArtifacts>
             <extraArtifact>io.grpc:grpc-all:1.2.0:jar</extraArtifact>
+            <extraArtifact>com.google.protobuf:protoc:3.2.0:exe:${os.detected.classifier}</extraArtifact>
           </extraArtifacts>
         </configuration>
       </plugin>
