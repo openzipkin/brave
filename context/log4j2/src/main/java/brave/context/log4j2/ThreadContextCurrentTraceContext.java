@@ -42,10 +42,13 @@ public final class ThreadContextCurrentTraceContext extends CurrentTraceContext 
     }
 
     Scope scope = delegate.newScope(currentSpan);
-    return () -> {
-      scope.close();
-      ThreadContext.put("traceId", previousTraceId);
-      ThreadContext.put("spanId", previousSpanId);
-    };
+    class ThreadContextCurrentTraceContextScope implements Scope {
+      @Override public void close() {
+        scope.close();
+        ThreadContext.put("traceId", previousTraceId);
+        ThreadContext.put("spanId", previousSpanId);
+      }
+    }
+    return new ThreadContextCurrentTraceContextScope();
   }
 }

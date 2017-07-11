@@ -50,28 +50,39 @@ public abstract class CurrentTraceContext {
     @Override public Scope newScope(TraceContext currentSpan) {
       final TraceContext previous = local.get();
       local.set(currentSpan);
-      return () -> local.set(previous);
+      class DefaultCurrentTraceContextScope implements Scope {
+        @Override public void close() {
+          local.set(previous);
+        }
+      }
+      return new DefaultCurrentTraceContextScope();
     }
   }
 
   /** Wraps the input so that it executes with the same context as now. */
   public <C> Callable<C> wrap(Callable<C> task) {
     final TraceContext invocationContext = get();
-    return () -> {
-      try (Scope scope = newScope(invocationContext)) {
-        return task.call();
+    class CurrentTraceContextCallable implements Callable<C> {
+      @Override public C call() throws Exception {
+        try (Scope scope = newScope(invocationContext)) {
+          return task.call();
+        }
       }
-    };
+    }
+    return new CurrentTraceContextCallable();
   }
 
   /** Wraps the input so that it executes with the same context as now. */
   public Runnable wrap(Runnable task) {
     final TraceContext invocationContext = get();
-    return () -> {
-      try (Scope scope = newScope(invocationContext)) {
-        task.run();
+    class CurrentTraceContextRunnable implements Runnable {
+      @Override public void run() {
+        try (Scope scope = newScope(invocationContext)) {
+          task.run();
+        }
       }
-    };
+    }
+    return new CurrentTraceContextRunnable();
   }
 
   /**

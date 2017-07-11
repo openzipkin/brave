@@ -42,10 +42,13 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     }
 
     Scope scope = delegate.newScope(currentSpan);
-    return () -> {
-      scope.close();
-      MDC.put("traceId", previousTraceId);
-      MDC.put("spanId", previousSpanId);
-    };
+    class MDCCurrentTraceContextScope implements Scope {
+      @Override public void close() {
+        scope.close();
+        MDC.put("traceId", previousTraceId);
+        MDC.put("spanId", previousSpanId);
+      }
+    }
+    return new MDCCurrentTraceContextScope();
   }
 }
