@@ -522,7 +522,34 @@ class MyFilter extends Filter {
     // Assume you have code to complete the span
 
     // We now remove the scope (which implicitly detaches it from the span)
-    attributes.get(SpanInScope.class).close();
+    attributes.remove(SpanInScope.class).close();
+  }
+}
+```
+
+Sometimes you have to instrument a library where There's no attribute
+namespace shared across request and response. For this scenario, you can
+use `ThreadLocalSpan` to temporarily store the span between callbacks.
+
+Here's an example:
+```java
+class MyFilter extends Filter {
+  final ThreadLocalSpan threadLocalSpan;
+
+  public void onStart(Request request) {
+    // Assume you have code to start the span and add relevant tags...
+
+    // We now set the span in scope so that any code between here and
+    // the end of the request can see it with Tracer.currentSpan()
+    threadLocalSpan.set(span);
+  }
+
+  public void onFinish(Response response, Attributes attributes) {
+    // as long as we are on the same thread, we can read the span started above
+    Span span = threadLocalSpan.remove();
+    if (span == null) return;
+
+    // Assume you have code to complete the span
   }
 }
 ```
@@ -551,7 +578,7 @@ class MyFilter extends Filter {
   public void onFinish(Response response, Attributes attributes) {
     // We can't rely on Tracer.currentSpan(), but we can rely on explicit
     // propagation
-    Span span = attributes.get(Span.class);
+    Span span = attributes.remove(Span.class);
 
     // Assume you have code to complete the span
   }
