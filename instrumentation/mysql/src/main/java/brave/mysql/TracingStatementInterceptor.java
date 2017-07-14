@@ -62,10 +62,10 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
     Tracer tracer = Tracing.currentTracer();
     if (tracer == null) return null;
 
-    Tracer.SpanInScope spanInScope = currentSpanInScope.get();
-    if (spanInScope == null) return null;
     Span span = tracer.currentSpan();
-    spanInScope.close();
+    if (span == null) return null;
+    currentSpanInScope.get().close();
+    currentSpanInScope.remove();
 
     if (statementException != null) {
       span.tag(Constants.ERROR, Integer.toString(statementException.getErrorCode()));

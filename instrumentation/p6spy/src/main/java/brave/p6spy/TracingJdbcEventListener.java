@@ -47,10 +47,10 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     Tracer tracer = Tracing.currentTracer();
     if (tracer == null) return;
 
-    Tracer.SpanInScope spanInScope = currentSpanInScope.get();
-    if (spanInScope == null) return;
     Span span = tracer.currentSpan();
-    spanInScope.close();
+    if (span == null) return;
+    currentSpanInScope.get().close();
+    currentSpanInScope.remove();
 
     if (e != null) {
       span.tag(Constants.ERROR, Integer.toString(e.getErrorCode()));
