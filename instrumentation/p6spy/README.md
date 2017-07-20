@@ -22,14 +22,14 @@ By default the zipkin service name for your database is the name of the database
 remoteServiceName=myProductionDatabase
 ```
 
-`logJdbcParameterValues`
+`includeParameterValues`
 
-By default JDBC parameter values are not logged and will appear as '?' in the logged statement. Set this property to 'true' to also log JDBC parameter values.
+When set to to true, the tag `sql.query` will also include the JDBC parameter values.
  
 **Note**: if you enable this please also consider enabling 'excludebinary' to avoid logging large blob values as hex (see http://p6spy.readthedocs.io/en/latest/configandusage.html#excludebinary).
 
 ```  
-logJdbcParameterValues=true
+includeParameterValues=true
 excludebinary=true
 ```
 
