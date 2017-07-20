@@ -25,7 +25,7 @@ final class TracingP6SpyOptions extends P6SpyOptions {
     return optionsRepository.get(String.class, REMOTE_SERVICE_NAME);
   }
 
-  Boolean logSqlWithParameterValues() {
+  Boolean logJdbcParameterValues() {
     Boolean logParameterValues = optionsRepository.get(Boolean.class, LOG_JDBC_PARAMETER_VALUES);
     return logParameterValues == null ? false : logParameterValues;
   }
