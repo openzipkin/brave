@@ -1,6 +1,6 @@
-# brave-instrumentation-mysql
+# brave-instrumentation-mysql-6
 
-This includes a MySQL-6 statement interceptor that will report to Zipkin
+This includes a mysql-connector-java 6+ statement interceptor that will report to Zipkin
 how long each statement takes, along with relevant tags like the query.
 
 To use it, append `?statementInterceptors=brave.mysql6.TracingStatementInterceptor`

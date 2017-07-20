@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.Assume.assumeTrue;
 import static zipkin.internal.Util.envOr;
 
-@SuppressWarnings("Duplicates")
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
 
@@ -41,6 +40,7 @@ public class ITTracingStatementInterceptor {
     if (db != null) url.append("/").append(db);
     url.append("?statementInterceptors=").append(TracingStatementInterceptor.class.getName());
     url.append("&zipkinServiceName=").append("myservice");
+    url.append("&serverTimezone=").append("UTC");
 
     MysqlDataSource dataSource = new MysqlDataSource();
     dataSource.setUrl(url.toString());

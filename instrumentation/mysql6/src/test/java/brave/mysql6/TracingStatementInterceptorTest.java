@@ -2,10 +2,10 @@ package brave.mysql6;
 
 import brave.Span;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import com.mysql.cj.api.jdbc.JdbcConnection;
 import com.mysql.cj.jdbc.DatabaseMetaData;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class TracingStatementInterceptorTest {
   @Mock
-  Connection connection;
+  JdbcConnection connection;
   @Mock
   DatabaseMetaData metaData;
 
@@ -79,10 +79,10 @@ public class TracingStatementInterceptorTest {
 
   Properties setupAndReturnPropertiesForHost(String host) throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
-    when(metaData.getURL()).thenReturn(url);
+    when(connection.getURL()).thenReturn(url);
     Properties properties = new Properties();
-    when(connection.getClientInfo()).thenReturn(properties);
-    when(connection.getClientInfo("ClientHostname")).thenReturn(host);
+    when(connection.getProperties()).thenReturn(properties);
+    when(connection.getHost()).thenReturn(host);
     return properties;
   }
 }

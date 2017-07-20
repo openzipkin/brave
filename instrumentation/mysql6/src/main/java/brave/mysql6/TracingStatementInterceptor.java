@@ -4,12 +4,12 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import com.mysql.cj.api.MysqlConnection;
+import com.mysql.cj.api.jdbc.JdbcConnection;
 import com.mysql.cj.api.jdbc.Statement;
 import com.mysql.cj.api.jdbc.interceptors.StatementInterceptor;
 import com.mysql.cj.api.log.Log;
 import com.mysql.cj.api.mysqla.result.Resultset;
 import java.net.URI;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -42,7 +42,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
       int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
       span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
       span.tag(TraceKeys.SQL_QUERY, sql);
-      parseServerAddress(interceptedStatement.getConnection(), span);
+      parseServerAddress(connection, span);
       span.start();
     }
 
@@ -56,6 +56,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
    * a reference to the span in scope, so that we can close it in the response.
    */
   final ThreadLocal<Tracer.SpanInScope> currentSpanInScope = new ThreadLocal<>();
+  private MysqlConnection connection;
 
   @Override
   public <T extends Resultset> T postProcess(String sql, Statement interceptedStatement, T originalResultSet, int warningCount, boolean noIndexUsed, boolean noGoodIndexUsed, Exception statementException) throws SQLException {
@@ -79,13 +80,13 @@ public class TracingStatementInterceptor implements StatementInterceptor {
    * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
    * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/database}, or 3306 if absent.
    */
-  static void parseServerAddress(Connection connection, Span span) {
+  static void parseServerAddress(MysqlConnection connection, Span span) {
     try {
-      URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
+      URI url = URI.create(connection.getURL().substring(5)); // strip "jdbc:"
       int port = url.getPort() == -1 ? 3306 : url.getPort();
-      String remoteServiceName = connection.getClientInfo().getProperty("zipkinServiceName");
+      String remoteServiceName = connection.getProperties().getProperty("zipkinServiceName");
       if (remoteServiceName == null || "".equals(remoteServiceName)) {
-        String databaseName = connection.getCatalog();
+        String databaseName = getDatabaseName(connection);
         if (databaseName != null && !databaseName.isEmpty()) {
           remoteServiceName = "mysql-" + databaseName;
         } else {
@@ -93,11 +94,25 @@ public class TracingStatementInterceptor implements StatementInterceptor {
         }
       }
       Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName).port(port);
-      if (!builder.parseIp(connection.getClientInfo("ClientHostname"))) return;
+      if (!builder.parseIp(getHost(connection))) return;
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {
       // remote address is optional
     }
+  }
+
+  private static String getDatabaseName(MysqlConnection connection) throws SQLException {
+      if (connection instanceof JdbcConnection) {
+          return ((JdbcConnection) connection).getCatalog();
+      }
+      return "";
+  }
+
+  private static String getHost(MysqlConnection connection) throws SQLException {
+      if (connection instanceof JdbcConnection) {
+          return ((JdbcConnection) connection).getHost();
+      }
+      return "";
   }
 
   @Override
@@ -107,7 +122,9 @@ public class TracingStatementInterceptor implements StatementInterceptor {
 
   @Override
   public StatementInterceptor init(MysqlConnection mysqlConnection, Properties properties, Log log) {
-    return null; //Don't care
+    TracingStatementInterceptor interceptor = new TracingStatementInterceptor();
+    interceptor.connection = mysqlConnection;
+    return interceptor;
   }
 
   @Override
