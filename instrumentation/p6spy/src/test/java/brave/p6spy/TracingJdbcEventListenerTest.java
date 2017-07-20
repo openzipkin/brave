@@ -1,5 +1,9 @@
 package brave.p6spy;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import brave.Span;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -9,10 +13,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import zipkin.Endpoint;
-
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingJdbcEventListenerTest {
@@ -26,7 +26,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("").parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
     verify(span).remoteEndpoint(Endpoint.builder().serviceName("")
         .ipv4(127 << 24 | 1).port(5555).build());
@@ -37,7 +37,7 @@ public class TracingJdbcEventListenerTest {
     when(metaData.getURL()).thenReturn(url);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    new TracingJdbcEventListener("").parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
     verify(span).remoteEndpoint(Endpoint.builder().serviceName("mydatabase")
         .ipv4(127 << 24 | 1).port(5555).build());
@@ -47,7 +47,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("foo").parseServerAddress(connection, span);
+    new TracingJdbcEventListener("foo", false).parseServerAddress(connection, span);
 
     verify(span).remoteEndpoint(Endpoint.builder().serviceName("foo")
         .ipv4(127 << 24 | 1).port(5555).build());
@@ -57,7 +57,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn("jdbc:mysql://localhost:5555/mydatabase");
 
-    new TracingJdbcEventListener("").parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
     verifyNoMoreInteractions(span);
   }
 
