@@ -15,9 +15,11 @@ import zipkin.TraceKeys;
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   final String remoteServiceName;
+  final boolean includeParameterValues;
 
-  TracingJdbcEventListener(String remoteServiceName) {
+  TracingJdbcEventListener(String remoteServiceName, boolean includeParameterValues) {
     this.remoteServiceName = remoteServiceName;
+    this.includeParameterValues = includeParameterValues;
   }
 
   @Override public void onBeforeAnyExecute(StatementInformation info) {
@@ -27,7 +29,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     Span span = tracer.nextSpan();
     // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
     if (!span.isNoop()) {
-      String sql = info.getSql();
+      String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
       span.tag(TraceKeys.SQL_QUERY, sql);
       parseServerAddress(info.getConnectionInformation().getConnection(), span);
