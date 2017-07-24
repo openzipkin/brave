@@ -13,6 +13,10 @@ import zipkin.Endpoint;
 import zipkin.TraceKeys;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
+  /**
+   * Use this instead of the actual sql if p6spy wasn't able to intercept it.
+   */
+  static final String QUERY_PLACEHOLDER = "query ";
 
   final String remoteServiceName;
   final boolean includeParameterValues;
@@ -30,6 +34,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
     if (!span.isNoop()) {
       String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
+      if (sql == null) sql = QUERY_PLACEHOLDER;
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
       span.tag(TraceKeys.SQL_QUERY, sql);
       parseServerAddress(info.getConnectionInformation().getConnection(), span);
