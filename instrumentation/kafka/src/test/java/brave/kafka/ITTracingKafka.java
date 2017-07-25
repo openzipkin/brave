@@ -1,18 +1,24 @@
 package brave.kafka;
 
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+
 import brave.Tracing;
 import brave.sampler.Sampler;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Collections;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Future;
 import kafka.admin.AdminUtils;
-import kafka.admin.RackAwareMode;
 import kafka.server.KafkaConfig;
-import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
-import kafka.utils.MockTime;
 import kafka.utils.TestUtils;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 import kafka.zk.EmbeddedZookeeper;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -24,15 +30,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.Span;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Collections;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Future;
-
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ITTracingKafka {
 
@@ -47,13 +44,24 @@ public class ITTracingKafka {
     private KafkaServer kafkaServer;
     private ZkUtils zkUtils;
 
+    private Tracing consumerTracing;
+    private Tracing producerTracing;
+
     private ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
     private ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
 
     @Before
-    public void initKafkaServer() throws IOException {
-        String zkAddress = setupZookeeper();
-        setupKafka(zkAddress);
+    public void setUp() throws Exception {
+        consumerTracing = Tracing.newBuilder()
+            .reporter(consumerSpans::add)
+            .sampler(Sampler.ALWAYS_SAMPLE)
+            .build();
+        producerTracing = Tracing.newBuilder()
+            .reporter(producerSpans::add)
+            .sampler(Sampler.ALWAYS_SAMPLE)
+            .build();
+
+        initKafkaServer();
     }
 
     @After
@@ -71,32 +79,25 @@ public class ITTracingKafka {
         // Block for synchronous send
         send.get();
 
-        ConsumerRecords<String, String> poll = tracingConsumer.poll(1000);
+        ConsumerRecords<String, String> records = tracingConsumer.poll(1000);
 
-        assertThat(poll).hasSize(1);
+        assertThat(records).hasSize(1);
+        assertThat(producerSpans).hasSize(1);
+        assertThat(consumerSpans).hasSize(1);
+
         assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
-                .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
+            .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
+
+        RecordTracing recordTracing = new RecordTracing(consumerTracing);
+        for (ConsumerRecord<String, String> record : records) {
+            brave.Span span = recordTracing.nexSpanFromRecord(record);
+            assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
+        }
     }
 
-    private TracingConsumer<String, String> createTracingConsumer() {
-        Tracing consumerTracing = Tracing.newBuilder()
-                .reporter(consumerSpans::add)
-                .sampler(Sampler.ALWAYS_SAMPLE)
-                .build();
-
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
-        consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
-        return new TracingConsumer<>(consumerTracing, consumer);
-    }
-
-    private TracingProducer<String, String> createTracingProducer() {
-        Tracing producerTracing = Tracing.newBuilder()
-                .reporter(producerSpans::add)
-                .sampler(Sampler.ALWAYS_SAMPLE)
-                .build();
-
-        KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
-        return new TracingProducer<>(producerTracing, producer);
+    private void initKafkaServer() throws IOException {
+        String zkAddress = setupZookeeper();
+        setupKafka(zkAddress);
     }
 
     private String setupZookeeper() {
@@ -123,7 +124,18 @@ public class ITTracingKafka {
         kafkaServer = TestUtils.createServer(config, Time.SYSTEM);
         kafkaServer.startup();
         AdminUtils.createTopic(
-                zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
+            zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
+    }
+
+    private TracingConsumer<String, String> createTracingConsumer() {
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
+        consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
+        return new TracingConsumer<>(consumerTracing, consumer);
+    }
+
+    private TracingProducer<String, String> createTracingProducer() {
+        KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
+        return new TracingProducer<>(producerTracing, producer);
     }
 
     private Properties getDefaultProducerProperties() {
