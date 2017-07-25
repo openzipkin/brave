@@ -15,3 +15,12 @@ Same goes for the consumer :
 Consumer<String, String> consumer = new KafkaConsumer<>(settings);
 TracingConsumer<String, String> tracingConsumer = new TracingConsumer<>(tracing, consumer);
 ```
+
+## Continue traces after consuming
+Because Kafka batches messages while consuming, we flush every spans in the headers during poll.
+
+If you wish to continue a trace you can use:
+```java
+Span s = RecordTracing.nexSpanFromRecord(ConsumerRecord);
+```
+and use the retrieved span as usual.

@@ -1,17 +1,11 @@
 package brave.kafka;
 
-import brave.Span;
-import brave.Span.Kind;
 import brave.Tracing;
-import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-import zipkin.internal.Util;
 
 import java.util.Collection;
 import java.util.List;
@@ -23,29 +17,20 @@ import java.util.regex.Pattern;
 
 public class TracingConsumer<K, V> implements Consumer<K, V> {
 
-    private Tracing tracing;
-    private TraceContext.Extractor<Headers> extractor;
+    private final RecordTracing recordTracing;
     private Consumer<K, V> wrappedConsumer;
 
     public TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
-        this.tracing = tracing;
+        this.recordTracing = new RecordTracing(tracing);
         this.wrappedConsumer = consumer;
-
-        this.extractor = tracing.propagation().extractor(
-                (carrier, key) -> {
-                    Header header = carrier.lastHeader(key);
-                    if (header == null) return null;
-                    return new String(header.value(), Util.UTF_8);
-                });
     }
 
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
         ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
         for (ConsumerRecord<K, V> record : records) {
-            createSpans(record);
+            recordTracing.finishProducerSpan(record);
         }
-
         return records;
     }
 
@@ -192,13 +177,5 @@ public class TracingConsumer<K, V> implements Consumer<K, V> {
     @Override
     public void wakeup() {
         wrappedConsumer.wakeup();
-    }
-
-    private void createSpans(ConsumerRecord<K, V> record) {
-        TraceContext context = extractor.extract(record.headers()).context();
-        if (context != null) {
-            Span span = tracing.tracer().joinSpan(context);
-            span.kind(Kind.SERVER).start().flush();
-        }
     }
 }
