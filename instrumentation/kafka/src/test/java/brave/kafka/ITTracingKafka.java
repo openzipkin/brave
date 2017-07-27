@@ -40,7 +40,6 @@ public class ITTracingKafka {
     private static final String TEST_KEY = "foo";
     private static final String TEST_VALUE = "bar";
 
-    private EmbeddedZookeeper zkServer;
     private KafkaServer kafkaServer;
     private ZkUtils zkUtils;
 
@@ -67,7 +66,6 @@ public class ITTracingKafka {
     @After
     public void closeKafkaServer() {
         kafkaServer.shutdown();
-        zkServer.shutdown();
     }
 
     @Test
@@ -80,6 +78,10 @@ public class ITTracingKafka {
         send.get();
 
         ConsumerRecords<String, String> records = tracingConsumer.poll(1000);
+        // Oddly we need to poll twice to retrieve content
+        if (records.isEmpty()) {
+            records = tracingConsumer.poll(1000);
+        }
 
         assertThat(records).hasSize(1);
         assertThat(producerSpans).hasSize(1);
@@ -101,7 +103,7 @@ public class ITTracingKafka {
     }
 
     private String setupZookeeper() {
-        zkServer = new EmbeddedZookeeper();
+        EmbeddedZookeeper zkServer = new EmbeddedZookeeper();
         String zkAddress = LOCALHOST + ":" + zkServer.port();
         ZkClient zkClient = new ZkClient(zkAddress, 30000, 30000, ZKStringSerializer$.MODULE$);
         zkUtils = ZkUtils.apply(zkClient, false);
