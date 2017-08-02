@@ -49,7 +49,8 @@ final class TracingServerInterceptor implements ServerInterceptor {
     return new ScopingServerCallListener<>(tracer, span, result);
   }
 
-  final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
+  static final class TracingServerCall<ReqT, RespT>
+      extends SimpleForwardingServerCall<ReqT, RespT> {
     private final Span span;
 
     TracingServerCall(Span span, ServerCall<ReqT, RespT> call) {
@@ -74,7 +75,8 @@ final class TracingServerInterceptor implements ServerInterceptor {
     }
   }
 
-  final class ScopingServerCallListener<ReqT> extends SimpleForwardingServerCallListener<ReqT> {
+  static final class ScopingServerCallListener<ReqT>
+      extends SimpleForwardingServerCallListener<ReqT> {
     final Tracer tracer;
     final Span span;
 

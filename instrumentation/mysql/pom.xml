@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>4.4.1-SNAPSHOT</version>
+    <version>4.5.2-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -18,7 +18,7 @@
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>5.1.41</version>
+      <version>5.1.42</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

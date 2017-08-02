@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave-parent</artifactId>
         <groupId>io.zipkin.brave</groupId>
-        <version>4.4.1-SNAPSHOT</version>
+        <version>4.5.2-SNAPSHOT</version>
     </parent>
    <artifactId>brave-jersey</artifactId>
    <packaging>jar</packaging>
@@ -16,7 +16,7 @@
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- indirectly depends on servlet 3.0.1 -->
-    <jersey.version>1.19.3</jersey.version>
+    <jersey.version>1.19.4</jersey.version>
   </properties>
 
     <dependencies>

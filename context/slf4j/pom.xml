@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-context-parent</artifactId>
-    <version>4.4.1-SNAPSHOT</version>
+    <version>4.5.2-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -26,7 +26,7 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.2.2</version>
+      <version>1.2.3</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
