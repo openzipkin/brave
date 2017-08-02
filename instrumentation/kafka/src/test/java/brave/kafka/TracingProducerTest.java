@@ -1,56 +1,53 @@
 package brave.kafka;
 
-
 import brave.Tracing;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import static org.assertj.core.api.Assertions.assertThat;
-
 
 public class TracingProducerTest {
 
-    private static final String TEST_TOPIC = "myTopic";
-    private static final String TEST_KEY = "foo";
-    private static final String TEST_VALUE = "bar";
+  private static final String TEST_TOPIC = "myTopic";
+  private static final String TEST_KEY = "foo";
+  private static final String TEST_VALUE = "bar";
 
-    private Tracing tracing;
+  private Tracing tracing;
 
-    @Before
-    public void setup() throws Exception {
-        tracing = Tracing.newBuilder().build();
-    }
+  @Before
+  public void setup() throws Exception {
+    tracing = Tracing.newBuilder().build();
+  }
 
-    @Test
-    public void should_add_b3_headers_to_records() {
-        MockProducer<String, String> mockProducer = new MockProducer<>();
-        TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
-        tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+  @Test
+  public void should_add_b3_headers_to_records() {
+    MockProducer<String, String> mockProducer = new MockProducer<>();
+    TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
-        List<String> headerKeys = mockProducer.history().stream()
-                .flatMap(records -> Arrays.stream(records.headers().toArray()))
-                .map(Header::key)
-                .collect(Collectors.toList());
+    List<String> headerKeys = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .map(Header::key)
+        .collect(Collectors.toList());
 
-        List<String> expectedHeaders = Arrays.asList(
-                "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+    List<String> expectedHeaders = Arrays.asList(
+        "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
 
-        assertThat(headerKeys).containsAll(expectedHeaders);
-    }
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
 
-    @Test
-    public void should_call_wrapped_producer() {
-        MockProducer<String, String> mockProducer = new MockProducer<>();
-        TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
-        tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+  @Test
+  public void should_call_wrapped_producer() {
+    MockProducer<String, String> mockProducer = new MockProducer<>();
+    TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
-        assertThat(mockProducer.history()).hasSize(1);
-    }
+    assertThat(mockProducer.history()).hasSize(1);
+  }
 }

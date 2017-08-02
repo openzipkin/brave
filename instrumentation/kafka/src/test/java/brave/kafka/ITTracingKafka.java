@@ -1,7 +1,5 @@
 package brave.kafka;
 
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-
 import brave.Tracing;
 import brave.sampler.Sampler;
 import java.io.IOException;
@@ -31,131 +29,146 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin.Span;
 
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+
 public class ITTracingKafka {
 
-    private static final String LOCALHOST = "127.0.0.1";
-    private static final String KAFKA_PORT = "9092";
+  private static final String LOCALHOST = "127.0.0.1";
+  private static final String KAFKA_PORT = "9092";
 
-    private static final String TEST_TOPIC = "myTopic";
-    private static final String TEST_KEY = "foo";
-    private static final String TEST_VALUE = "bar";
+  private static final String TEST_TOPIC = "myTopic";
+  private static final String TEST_KEY = "foo";
+  private static final String TEST_VALUE = "bar";
 
-    private KafkaServer kafkaServer;
-    private ZkUtils zkUtils;
+  private KafkaServer kafkaServer;
+  private ZkUtils zkUtils;
 
-    private Tracing consumerTracing;
-    private Tracing producerTracing;
+  private Tracing consumerTracing;
+  private Tracing producerTracing;
 
-    private ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
-    private ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
+  private ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
+  private ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
 
-    @Before
-    public void setUp() throws Exception {
-        consumerTracing = Tracing.newBuilder()
-            .reporter(consumerSpans::add)
-            .sampler(Sampler.ALWAYS_SAMPLE)
-            .build();
-        producerTracing = Tracing.newBuilder()
-            .reporter(producerSpans::add)
-            .sampler(Sampler.ALWAYS_SAMPLE)
-            .build();
+  @Before
+  public void setUp() throws Exception {
+    consumerTracing = Tracing.newBuilder()
+        .reporter(consumerSpans::add)
+        .sampler(Sampler.ALWAYS_SAMPLE)
+        .build();
+    producerTracing = Tracing.newBuilder()
+        .reporter(producerSpans::add)
+        .sampler(Sampler.ALWAYS_SAMPLE)
+        .build();
 
-        initKafkaServer();
+    initKafkaServer();
+  }
+
+  @After
+  public void closeKafkaServer() {
+    kafkaServer.shutdown();
+  }
+
+  @Test
+  public void produce_and_consume_kafka_message() throws Exception {
+    TracingProducer<String, String> tracingProducer = createTracingProducer();
+    TracingConsumer<String, String> tracingConsumer = createTracingConsumer();
+
+    Future<RecordMetadata> send =
+        tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    // Block for synchronous send
+    send.get();
+
+    ConsumerRecords<String, String> records = null;
+    Long startTime = System.currentTimeMillis();
+    Long elapsedTime = 0L;
+    final Long pollTimeout = 10 * 1000L; // 10 sec
+    while (elapsedTime < pollTimeout) {
+      records = tracingConsumer.poll(1000);
+      elapsedTime = startTime - System.currentTimeMillis();
+      if (!records.isEmpty()) {
+        // No need to poll more, we have the records
+        break;
+      }
     }
 
-    @After
-    public void closeKafkaServer() {
-        kafkaServer.shutdown();
+    assertThat(elapsedTime).isLessThan(pollTimeout);
+
+    assertThat(records).hasSize(1);
+    assertThat(producerSpans).hasSize(1);
+    assertThat(consumerSpans).hasSize(1);
+
+    assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
+        .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
+
+    RecordTracing recordTracing = new RecordTracing(consumerTracing);
+    for (ConsumerRecord<String, String> record : records) {
+      brave.Span span = recordTracing.nexSpanFromRecord(record);
+      assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
     }
+  }
 
-    @Test
-    public void produce_and_consume_kafka_message() throws Exception {
-        TracingProducer<String, String> tracingProducer = createTracingProducer();
-        TracingConsumer<String, String> tracingConsumer = createTracingConsumer();
+  private void initKafkaServer() throws IOException {
+    String zkAddress = setupZookeeper();
+    setupKafka(zkAddress);
+  }
 
-        Future<RecordMetadata> send = tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
-        // Block for synchronous send
-        send.get();
+  private String setupZookeeper() {
+    EmbeddedZookeeper zkServer = new EmbeddedZookeeper();
+    String zkAddress = LOCALHOST + ":" + zkServer.port();
+    ZkClient zkClient = new ZkClient(zkAddress, 30000, 30000, ZKStringSerializer$.MODULE$);
+    zkUtils = ZkUtils.apply(zkClient, false);
+    return zkAddress;
+  }
 
-        ConsumerRecords<String, String> records = tracingConsumer.poll(1000);
-        // Oddly we need to poll twice to retrieve content
-        if (records.isEmpty()) {
-            records = tracingConsumer.poll(1000);
-        }
+  private void setupKafka(String zkAddress) throws IOException {
+    Properties brokerProps = new Properties();
+    brokerProps.setProperty("zookeeper.connect", zkAddress);
+    brokerProps.setProperty("broker.id", "0");
+    brokerProps.setProperty("log.dirs",
+        Files.createTempDirectory("kafka-").toAbsolutePath().toString());
+    brokerProps.setProperty("listeners", "PLAINTEXT://" + LOCALHOST + ":" + KAFKA_PORT);
 
-        assertThat(records).hasSize(1);
-        assertThat(producerSpans).hasSize(1);
-        assertThat(consumerSpans).hasSize(1);
+    brokerProps.setProperty("replica.socket.timeout.ms", "1000");
+    brokerProps.setProperty("controller.socket.timeout.ms", "1000");
+    brokerProps.setProperty("offsets.topic.replication.factor", "1");
+    brokerProps.setProperty("offsets.topic.num.partitions", "1");
 
-        assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
-            .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
+    KafkaConfig config = new KafkaConfig(brokerProps);
 
-        RecordTracing recordTracing = new RecordTracing(consumerTracing);
-        for (ConsumerRecord<String, String> record : records) {
-            brave.Span span = recordTracing.nexSpanFromRecord(record);
-            assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
-        }
-    }
+    kafkaServer = TestUtils.createServer(config, Time.SYSTEM);
+    kafkaServer.startup();
+    AdminUtils.createTopic(
+        zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
+  }
 
-    private void initKafkaServer() throws IOException {
-        String zkAddress = setupZookeeper();
-        setupKafka(zkAddress);
-    }
+  private TracingConsumer<String, String> createTracingConsumer() {
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
+    consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
+    return new TracingConsumer<>(consumerTracing, consumer);
+  }
 
-    private String setupZookeeper() {
-        EmbeddedZookeeper zkServer = new EmbeddedZookeeper();
-        String zkAddress = LOCALHOST + ":" + zkServer.port();
-        ZkClient zkClient = new ZkClient(zkAddress, 30000, 30000, ZKStringSerializer$.MODULE$);
-        zkUtils = ZkUtils.apply(zkClient, false);
-        return zkAddress;
-    }
+  private TracingProducer<String, String> createTracingProducer() {
+    KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
+    return new TracingProducer<>(producerTracing, producer);
+  }
 
-    private void setupKafka(String zkAddress) throws IOException {
-        Properties brokerProps = new Properties();
-        brokerProps.setProperty("zookeeper.connect", zkAddress);
-        brokerProps.setProperty("broker.id", "0");
-        brokerProps.setProperty("log.dirs", Files.createTempDirectory("kafka-").toAbsolutePath().toString());
-        brokerProps.setProperty("listeners", "PLAINTEXT://" + LOCALHOST + ":" + KAFKA_PORT);
+  private Properties getDefaultProducerProperties() {
+    Properties properties = new Properties();
+    properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
+    properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    return properties;
+  }
 
-        brokerProps.setProperty("replica.socket.timeout.ms", "1000");
-        brokerProps.setProperty("controller.socket.timeout.ms", "1000");
-        brokerProps.setProperty("offsets.topic.replication.factor", "1");
-
-        KafkaConfig config = new KafkaConfig(brokerProps);
-
-        kafkaServer = TestUtils.createServer(config, Time.SYSTEM);
-        kafkaServer.startup();
-        AdminUtils.createTopic(
-            zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
-    }
-
-    private TracingConsumer<String, String> createTracingConsumer() {
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
-        consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
-        return new TracingConsumer<>(consumerTracing, consumer);
-    }
-
-    private TracingProducer<String, String> createTracingProducer() {
-        KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
-        return new TracingProducer<>(producerTracing, producer);
-    }
-
-    private Properties getDefaultProducerProperties() {
-        Properties properties = new Properties();
-        properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
-        properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        return properties;
-    }
-
-    private Properties getDefaultConsumerProperties() {
-        Properties properties = new Properties();
-        properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
-        properties.put("group.id", "test");
-        properties.put("client.id", "test-0");
-        properties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put("auto.offset.reset", "earliest");
-        return properties;
-    }
+  private Properties getDefaultConsumerProperties() {
+    Properties properties = new Properties();
+    properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
+    properties.put("group.id", "test");
+    properties.put("client.id", "test-0");
+    properties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    properties.put("value.deserializer",
+        "org.apache.kafka.common.serialization.StringDeserializer");
+    properties.put("auto.offset.reset", "earliest");
+    return properties;
+  }
 }
