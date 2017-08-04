@@ -1,5 +1,8 @@
 package com.twitter.zipkin.gen;
 
+import javax.annotation.Generated;
+
+@Generated("thrift")
 public enum AnnotationType {
   BOOL(0),
   BYTES(1),

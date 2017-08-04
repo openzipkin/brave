@@ -3,6 +3,7 @@ package com.twitter.zipkin.gen;
 import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
+import javax.annotation.Generated;
 
 import static com.github.kristofa.brave.internal.Util.UTF_8;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
@@ -24,6 +25,7 @@ import static com.github.kristofa.brave.internal.Util.equal;
  * rewriting, like "/api/v1/myresource" vs "/myresource. Via the host field,
  * you can see the different points of view, which often help in debugging.
  */
+@Generated("thrift")
 public class BinaryAnnotation implements Serializable {
 
   static final long serialVersionUID = 1L;
