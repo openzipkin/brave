@@ -3,6 +3,7 @@ package com.twitter.zipkin.gen;
 import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
+import javax.annotation.Generated;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static com.github.kristofa.brave.internal.Util.equal;
@@ -17,6 +18,7 @@ import static zipkin.internal.Util.checkArgument;
  * allows zipkin to display network context of uninstrumented services, or
  * clients such as web browsers.
  */
+@Generated("thrift")
 public class Endpoint implements Serializable {
 
   /**
