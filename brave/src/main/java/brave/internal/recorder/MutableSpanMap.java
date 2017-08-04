@@ -12,6 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
+import zipkin.internal.Span2Converter;
 import zipkin.reporter.Reporter;
 
 /**
@@ -79,7 +80,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       if (value == null || noop.get()) continue;
       try {
         value.annotate(clock.currentTimeMicroseconds(), "brave.flush");
-        reporter.report(value.toSpan());
+        reporter.report(Span2Converter.toSpan(value.toSpan()));
       } catch (RuntimeException e) {
         // don't crash the caller if there was a problem reporting an unrelated span.
         if (context != null && logger.isLoggable(Level.FINE)) {
