@@ -6,13 +6,13 @@ The consumer is responsible to close the producer span.
 
 To use the producer simply wrap it like this : 
 ```java
-Producer<String, String> stringProducer = new KafkaProducer<>(settings);
+Producer<K, V> stringProducer = new KafkaProducer<>(settings);
 TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 ```
 
 Same goes for the consumer : 
 ```java
-Consumer<String, String> consumer = new KafkaConsumer<>(settings);
+Consumer<K, V> consumer = new KafkaConsumer<>(settings);
 TracingConsumer<K, V> tracingConsumer = new TracingConsumer<>(consumer);
 ```
 
