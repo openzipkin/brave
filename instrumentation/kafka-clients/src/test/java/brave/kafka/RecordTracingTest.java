@@ -50,7 +50,7 @@ public class RecordTracingTest {
   public void should_create_child_from_headers() throws Exception {
     addB3Headers();
 
-    Span span = recordTracing.nexSpanFromRecord(fakeRecord);
+    Span span = recordTracing.nextSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isEqualTo(TRACE_ID);
@@ -60,7 +60,7 @@ public class RecordTracingTest {
 
   @Test
   public void should_create_new_span_from_headers() throws Exception {
-    Span span = recordTracing.nexSpanFromRecord(fakeRecord);
+    Span span = recordTracing.nextSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isNotEqualTo(TRACE_ID);
@@ -71,7 +71,7 @@ public class RecordTracingTest {
   @Test
   public void should_finish_span_from_headers() throws Exception {
     addB3Headers();
-    recordTracing.finishProducerSpan(fakeRecord);
+    recordTracing.maybeFinishProducerSpan(fakeRecord);
 
     assertThat(spans)
         .extracting(s -> Long.toHexString(s.id))
@@ -85,7 +85,7 @@ public class RecordTracingTest {
 
   @Test
   public void should_do_nothing_if_b3_missing() throws Exception {
-    recordTracing.finishProducerSpan(fakeRecord);
+    recordTracing.maybeFinishProducerSpan(fakeRecord);
 
     assertThat(spans).isEmpty();
   }

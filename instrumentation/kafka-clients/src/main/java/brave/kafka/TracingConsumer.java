@@ -19,7 +19,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
-public class TracingConsumer<K, V> implements Consumer<K, V> {
+class TracingConsumer<K, V> implements Consumer<K, V> {
 
   private final RecordTracing recordTracing;
   private Consumer<K, V> wrappedConsumer;
@@ -33,7 +33,7 @@ public class TracingConsumer<K, V> implements Consumer<K, V> {
   public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
-      recordTracing.finishProducerSpan(record);
+      recordTracing.maybeFinishProducerSpan(record);
     }
     return records;
   }

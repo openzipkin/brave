@@ -1,6 +1,7 @@
 package brave.kafka;
 
 import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -11,13 +12,13 @@ import zipkin.internal.Util;
 /**
  * Util class which creates a child span according to the headers.
  */
-public class RecordTracing {
+public final class RecordTracing {
 
   private final TraceContext.Extractor<Headers> extractor;
-  private final Tracing tracing;
+  private final Tracer tracer;
 
   RecordTracing(Tracing tracing) {
-    this.tracing = tracing;
+    this.tracer = tracing.tracer();
     this.extractor = tracing.propagation().extractor(
         (carrier, key) -> {
           Header header = carrier.lastHeader(key);
@@ -30,25 +31,22 @@ public class RecordTracing {
    * Continues the trace extracted from the headers or creates a new one if the extract fails. Call
    * this method while consumming your kafka records.
    */
-  public Span nexSpanFromRecord(ConsumerRecord record) {
-    Span newChild;
+  public Span nextSpan(ConsumerRecord record) {
     TraceContext context = extractor.extract(record.headers()).context();
     if (context != null) {
-      newChild = tracing.tracer().newChild(context);
+      return tracer.newChild(context);
     } else {
-      // Should we throw an exception ? Create a new span ?
-      newChild = tracing.tracer().nextSpan();
+      return tracer.nextSpan();
     }
-    return newChild;
   }
 
   /**
    * Close the producer async span extracted from the headers.
    */
-  void finishProducerSpan(ConsumerRecord record) {
+  void maybeFinishProducerSpan(ConsumerRecord record) {
     TraceContext context = extractor.extract(record.headers()).context();
     if (context != null) {
-      Span span = tracing.tracer().joinSpan(context);
+      Span span = tracer.joinSpan(context);
       span.kind(Span.Kind.SERVER).start().flush();
     }
   }

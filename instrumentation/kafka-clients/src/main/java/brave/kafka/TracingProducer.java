@@ -21,9 +21,9 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.Headers;
 import zipkin.internal.Util;
 
-public class TracingProducer<K, V> implements Producer<K, V> {
+import static brave.kafka.KafkaTags.KAFKA_TOPIC_TAG;
 
-  public static final String KAFKA_TOPIC_TAG = "kafka.topic";
+class TracingProducer<K, V> implements Producer<K, V> {
 
   private Tracing tracing;
   private TraceContext.Injector<Headers> injector;

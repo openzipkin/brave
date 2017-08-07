@@ -33,21 +33,21 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ITTracingKafka {
 
-  private static final String LOCALHOST = "127.0.0.1";
-  private static final String KAFKA_PORT = "9092";
+  String LOCALHOST = "127.0.0.1";
+  String KAFKA_PORT = "9092";
 
-  private static final String TEST_TOPIC = "myTopic";
-  private static final String TEST_KEY = "foo";
-  private static final String TEST_VALUE = "bar";
+  String TEST_TOPIC = "myTopic";
+  String TEST_KEY = "foo";
+  String TEST_VALUE = "bar";
 
-  private KafkaServer kafkaServer;
-  private ZkUtils zkUtils;
+  KafkaServer kafkaServer;
+  ZkUtils zkUtils;
 
-  private Tracing consumerTracing;
-  private Tracing producerTracing;
+  Tracing consumerTracing;
+  Tracing producerTracing;
 
-  private ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
-  private ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
+  ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
+  ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
 
   @Before
   public void setUp() throws Exception {
@@ -102,17 +102,17 @@ public class ITTracingKafka {
 
     RecordTracing recordTracing = new RecordTracing(consumerTracing);
     for (ConsumerRecord<String, String> record : records) {
-      brave.Span span = recordTracing.nexSpanFromRecord(record);
+      brave.Span span = recordTracing.nextSpan(record);
       assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
     }
   }
 
-  private void initKafkaServer() throws IOException {
+  void initKafkaServer() throws IOException {
     String zkAddress = setupZookeeper();
     setupKafka(zkAddress);
   }
 
-  private String setupZookeeper() {
+  String setupZookeeper() {
     EmbeddedZookeeper zkServer = new EmbeddedZookeeper();
     String zkAddress = LOCALHOST + ":" + zkServer.port();
     ZkClient zkClient = new ZkClient(zkAddress, 30000, 30000, ZKStringSerializer$.MODULE$);
@@ -120,7 +120,7 @@ public class ITTracingKafka {
     return zkAddress;
   }
 
-  private void setupKafka(String zkAddress) throws IOException {
+  void setupKafka(String zkAddress) throws IOException {
     Properties brokerProps = new Properties();
     brokerProps.setProperty("zookeeper.connect", zkAddress);
     brokerProps.setProperty("broker.id", "0");
@@ -141,18 +141,18 @@ public class ITTracingKafka {
         zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
   }
 
-  private TracingConsumer<String, String> createTracingConsumer() {
+  TracingConsumer<String, String> createTracingConsumer() {
     KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
     consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
     return new TracingConsumer<>(consumerTracing, consumer);
   }
 
-  private TracingProducer<String, String> createTracingProducer() {
+  TracingProducer<String, String> createTracingProducer() {
     KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
     return new TracingProducer<>(producerTracing, producer);
   }
 
-  private Properties getDefaultProducerProperties() {
+  Properties getDefaultProducerProperties() {
     Properties properties = new Properties();
     properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
     properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -160,7 +160,7 @@ public class ITTracingKafka {
     return properties;
   }
 
-  private Properties getDefaultConsumerProperties() {
+  Properties getDefaultConsumerProperties() {
     Properties properties = new Properties();
     properties.put("bootstrap.servers", LOCALHOST + ":" + KAFKA_PORT);
     properties.put("group.id", "test");

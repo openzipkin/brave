@@ -7,13 +7,13 @@ The consumer is responsible to close the producer span.
 To use the producer simply wrap it like this : 
 ```java
 Producer<String, String> stringProducer = new KafkaProducer<>(settings);
-TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
+TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 ```
 
 Same goes for the consumer : 
 ```java
 Consumer<String, String> consumer = new KafkaConsumer<>(settings);
-TracingConsumer<String, String> tracingConsumer = new TracingConsumer<>(tracing, consumer);
+TracingConsumer<K, V> tracingConsumer = new TracingConsumer<>(consumer);
 ```
 
 ## Continue traces after consuming
@@ -21,6 +21,9 @@ Because Kafka batches messages while consuming, we flush every spans in the head
 
 If you wish to continue a trace you can use:
 ```java
-Span s = RecordTracing.nexSpanFromRecord(ConsumerRecord);
+Span s = RecordTracing.nexSpan(record);
 ```
 and use the retrieved span as usual.
+
+## Note
+This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
