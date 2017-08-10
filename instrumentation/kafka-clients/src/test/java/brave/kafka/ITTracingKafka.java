@@ -5,8 +5,8 @@ import brave.sampler.Sampler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Future;
 import kafka.admin.AdminUtils;
 import kafka.server.KafkaConfig;
@@ -16,10 +16,12 @@ import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 import kafka.zk.EmbeddedZookeeper;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -46,8 +48,8 @@ public class ITTracingKafka {
   Tracing consumerTracing;
   Tracing producerTracing;
 
-  ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
-  ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
+  LinkedList<Span> consumerSpans = new LinkedList<>();
+  LinkedList<Span> producerSpans = new LinkedList<>();
 
   @Before
   public void setUp() throws Exception {
@@ -70,8 +72,8 @@ public class ITTracingKafka {
 
   @Test
   public void produce_and_consume_kafka_message() throws Exception {
-    TracingProducer<String, String> tracingProducer = createTracingProducer();
-    TracingConsumer<String, String> tracingConsumer = createTracingConsumer();
+    Producer<String, String> tracingProducer = createTracingProducer();
+    Consumer<String, String> tracingConsumer = createTracingConsumer();
 
     Future<RecordMetadata> send =
         tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
@@ -141,15 +143,15 @@ public class ITTracingKafka {
         zkUtils, TEST_TOPIC, 1, 1, new Properties(), null);
   }
 
-  TracingConsumer<String, String> createTracingConsumer() {
+  Consumer<String, String> createTracingConsumer() {
     KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getDefaultConsumerProperties());
     consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
-    return new TracingConsumer<>(consumerTracing, consumer);
+    return KafkaTracing.create(consumerTracing).consumer(consumer);
   }
 
-  TracingProducer<String, String> createTracingProducer() {
+  Producer<String, String> createTracingProducer() {
     KafkaProducer<String, String> producer = new KafkaProducer<>(getDefaultProducerProperties());
-    return new TracingProducer<>(producerTracing, producer);
+    return KafkaTracing.create(producerTracing).producer(producer);
   }
 
   Properties getDefaultProducerProperties() {

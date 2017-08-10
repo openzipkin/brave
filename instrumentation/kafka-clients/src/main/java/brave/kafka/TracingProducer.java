@@ -21,15 +21,19 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.Headers;
 import zipkin.internal.Util;
 
+import static brave.kafka.KafkaTags.KAFKA_KEY_TAG;
 import static brave.kafka.KafkaTags.KAFKA_TOPIC_TAG;
 
+/**
+ *
+ */
 class TracingProducer<K, V> implements Producer<K, V> {
 
   private Tracing tracing;
   private TraceContext.Injector<Headers> injector;
   private Producer<K, V> wrappedProducer;
 
-  public TracingProducer(Tracing tracing, Producer<K, V> producer) {
+  TracingProducer(Tracing tracing, Producer<K, V> producer) {
     this.wrappedProducer = producer;
 
     this.tracing = tracing;
@@ -72,7 +76,7 @@ class TracingProducer<K, V> implements Producer<K, V> {
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
     Span span = tracing.tracer().nextSpan();
-    span.tag(KAFKA_TOPIC_TAG, record.topic());
+    addZipkinTags(record, span);
 
     injector.inject(span.context(), record.headers());
 
@@ -112,5 +116,12 @@ class TracingProducer<K, V> implements Producer<K, V> {
       String consumerGroupId)
       throws ProducerFencedException {
     wrappedProducer.sendOffsetsToTransaction(offsets, consumerGroupId);
+  }
+
+  private void addZipkinTags(ProducerRecord<K, V> record, Span span) {
+    if (record.key() != null) {
+      span.tag(KAFKA_KEY_TAG, record.key().toString());
+    }
+    span.tag(KAFKA_TOPIC_TAG, record.topic());
   }
 }

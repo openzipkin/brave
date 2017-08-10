@@ -4,6 +4,9 @@ import brave.Tracing;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 
+/**
+ * Use this class to decorate your Kafka consumer / producer and enable Tracing.
+ */
 public final class KafkaTracing {
 
   public static KafkaTracing create(Tracing tracing) {

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
@@ -47,7 +48,7 @@ public class TracingConsumerTest {
         new ConsumerRecord<>(TEST_TOPIC, 0, 0, TEST_KEY, TEST_VALUE);
     consumer.addRecord(consumerRecord);
 
-    TracingConsumer<String, String> tracingConsumer = new TracingConsumer<>(tracing, consumer);
+    Consumer<String, String> tracingConsumer = KafkaTracing.create(tracing).consumer(consumer);
     tracingConsumer.poll(10);
 
     // offset changed

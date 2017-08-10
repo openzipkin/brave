@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.producer.MockProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Before;
@@ -28,7 +29,7 @@ public class TracingProducerTest {
   @Test
   public void should_add_b3_headers_to_records() {
     MockProducer<String, String> mockProducer = new MockProducer<>();
-    TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
+    Producer<String, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<String> headerKeys = mockProducer.history().stream()
@@ -45,7 +46,7 @@ public class TracingProducerTest {
   @Test
   public void should_call_wrapped_producer() {
     MockProducer<String, String> mockProducer = new MockProducer<>();
-    TracingProducer<String, String> tracingProducer = new TracingProducer<>(tracing, mockProducer);
+    Producer<String, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     assertThat(mockProducer.history()).hasSize(1);

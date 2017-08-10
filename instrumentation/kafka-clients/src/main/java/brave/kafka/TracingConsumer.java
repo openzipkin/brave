@@ -19,17 +19,23 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+/**
+ * Kafka Consumer decorator. Read records headers and finish producers spans if possible.
+ */
 class TracingConsumer<K, V> implements Consumer<K, V> {
 
   private final RecordTracing recordTracing;
   private Consumer<K, V> wrappedConsumer;
 
-  public TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
+  TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
     this.recordTracing = new RecordTracing(tracing);
     this.wrappedConsumer = consumer;
   }
 
   @Override
+  /**
+   * For each poll, finish all spans in the record list.
+   */
   public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
