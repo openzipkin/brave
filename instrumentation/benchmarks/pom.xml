@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>4.5.2-SNAPSHOT</version>
+    <version>4.5.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-benchmarks</artifactId>
@@ -140,6 +140,25 @@
         <executions>
           <execution>
             <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <!-- disable errorprone on JMH source tree -->
+            <configuration>
+              <compilerId>javac-with-errorprone</compilerId>
+              <compilerArgs>
+                <arg>-XepDisableAllChecks</arg>
+              </compilerArgs>
+            </configuration>
           </execution>
         </executions>
       </plugin>

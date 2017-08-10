@@ -6,12 +6,11 @@ import static org.junit.Assert.assertSame;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -21,8 +20,8 @@ import zipkin.reporter.Reporter;
 public class LocalTracingInheritanceTest {
 
     private Reporter<zipkin.Span> reporter;
-    private List<String> spansReported = new CopyOnWriteArrayList<>();
-    private List<String> spansCreated = new CopyOnWriteArrayList<>();
+    private ConcurrentLinkedDeque<String> spansReported = new ConcurrentLinkedDeque<>();
+    private ConcurrentLinkedDeque<String> spansCreated = new ConcurrentLinkedDeque<>();
     private Brave brave;
     private ServerClientAndLocalSpanState state;
     private ThreadFactory threadFactory;
@@ -68,7 +67,7 @@ public class LocalTracingInheritanceTest {
                 localTracer.currentServerSpan());
     }
 
-    @Test @Ignore // flakey
+    @Test
     public void testNestedLocalTraces() throws Exception {
         LocalTracer localTracer = brave.localTracer();
 

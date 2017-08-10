@@ -6,6 +6,7 @@ import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
+import zipkin.internal.Span2Converter;
 import zipkin.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
@@ -34,7 +35,7 @@ public final class Recorder {
   @Nullable public Long timestamp(TraceContext context) {
     MutableSpan span = spanMap.get(context);
     if (span == null) return null;
-    return span.startTimestamp == 0 ? null : span.startTimestamp;
+    return span.timestamp == 0 ? null : span.timestamp;
   }
 
   /** @see brave.Span#start(long) */
@@ -80,7 +81,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(finishTimestamp);
-      reporter.report(span.toSpan());
+      reporter.report(Span2Converter.toSpan(span.toSpan()));
     }
   }
 
@@ -95,7 +96,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(null);
-      reporter.report(span.toSpan());
+      reporter.report(Span2Converter.toSpan(span.toSpan()));
     }
   }
 }

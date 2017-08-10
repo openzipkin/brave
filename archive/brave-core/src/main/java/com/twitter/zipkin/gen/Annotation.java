@@ -2,6 +2,7 @@ package com.twitter.zipkin.gen;
 
 import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
+import javax.annotation.Generated;
 
 import static zipkin.internal.Util.equal;
 
@@ -9,6 +10,7 @@ import static zipkin.internal.Util.equal;
  * An annotation is similar to a log statement. It includes a host field which
  * allows these events to be attributed properly, and also aggregatable.
  */
+@Generated("thrift")
 public class Annotation implements Serializable {
   static final long serialVersionUID = 1L;
 

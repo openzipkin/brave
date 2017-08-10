@@ -42,7 +42,6 @@ public class BraveTracingInterceptorTest {
   @Rule public MockWebServer server = new MockWebServer();
 
   Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  Endpoint sa = local.toBuilder().serviceName("").port(server.getPort()).build();
   InMemoryStorage storage = new InMemoryStorage();
 
   OkHttpClient client;
@@ -69,7 +68,6 @@ public class BraveTracingInterceptorTest {
 
     RecordedRequest request = server.takeRequest();
     Map<String, List<String>> headers = washIds(request.getHeaders().toMultimap());
-    assertThat(headers.get(TraceId.getName())).isEqualTo(asList("1"));
 
     assertThat(headers).contains(
         entry(TraceId.getName(), asList("1")),

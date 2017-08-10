@@ -84,10 +84,8 @@ public class OneWaySpanTest {
     // block on the server handling the request, so we can run assertions
     flushedIncomingRequest.await();
 
-    // zipkin doesn't backfill timestamp and duration when storing raw spans
+    //// zipkin doesn't backfill timestamp and duration when storing raw spans
     List<zipkin.Span> spans = storage.spanStore().getRawTrace(span.context().traceId());
-    assertThat(spans).flatExtracting(s -> s.timestamp, s -> s.duration)
-        .allSatisfy(u -> assertThat(u).isNull());
 
     // check that the client send arrived first
     zipkin.Span clientSpan = spans.get(0);
@@ -102,6 +100,10 @@ public class OneWaySpanTest {
     assertThat(serverSpan.annotations)
         .extracting(a -> a.value, a -> a.endpoint.serviceName)
         .containsExactly(tuple(SERVER_RECV, "server"));
+
+    // check that the server span duration doesn't override the client
+    assertThat(serverSpan.timestamp).isNull();
+    assertThat(serverSpan.duration).isNull();
 
     // Zipkin will backfill the timestamp and duration on normal getTrace used by the UI
     assertThat(storage.spanStore().getTrace(clientSpan.traceId))
