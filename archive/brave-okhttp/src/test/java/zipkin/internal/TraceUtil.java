@@ -7,20 +7,28 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Logger;
 import zipkin.Span;
 
 import static java.util.Arrays.asList;
 
 /** In internal package to access zipkin internal code */
 public class TraceUtil {
+  private static final Logger logger = Logger.getLogger(TraceUtil.class.getName());
+
   public static List<Span> washIds(List<Span> trace) {
     // we want to return spans in their original order
     Map<Span, Span> map = new LinkedHashMap<>();
-    for (Span span : trace) map.put(span, span);
 
     long traceId = 1L, id = 1L;
+    Node.TreeBuilder<Span> treeBuilder = new Node.TreeBuilder<>(logger, Util.toLowerHex(traceId));
+    for (Span span : trace) {
+      map.put(span, span);
+      treeBuilder.addNode(span.parentId, span.id, span);
+    }
+
     // traverse the tree breadth-first, and replace the ids with incrementing ones
-    for (Iterator<Node<Span>> iter = Node.constructTree(trace).traverse(); iter.hasNext(); id++) {
+    for (Iterator<Node<Span>> iter = treeBuilder.build().traverse(); iter.hasNext(); id++) {
       Node<Span> next = iter.next();
       if (next.parent() == null) {
         Span root = next.value().toBuilder().traceId(traceId).id(id).build();

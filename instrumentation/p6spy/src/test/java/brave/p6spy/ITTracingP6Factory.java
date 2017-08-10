@@ -32,7 +32,7 @@ public class ITTracingP6Factory {
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
   Connection connection;
 
   @Before
@@ -110,7 +110,7 @@ public class ITTracingP6Factory {
     }
   }
 
-  Tracing.Builder tracingBuilder(Sampler sampler) {
+  static Tracing.Builder tracingBuilder(Sampler sampler, ConcurrentLinkedDeque<Span> spans) {
     return Tracing.newBuilder()
         .reporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())

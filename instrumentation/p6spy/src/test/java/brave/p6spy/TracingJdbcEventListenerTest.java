@@ -1,23 +1,32 @@
 package brave.p6spy;
 
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 import brave.Span;
+import brave.Tracing;
+import brave.sampler.Sampler;
+import com.p6spy.engine.common.ConnectionInformation;
+import com.p6spy.engine.common.StatementInformation;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import zipkin.Endpoint;
 
+import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 @RunWith(MockitoJUnitRunner.class)
 public class TracingJdbcEventListenerTest {
   @Mock Connection connection;
   @Mock DatabaseMetaData metaData;
+  @Mock StatementInformation statementInformation;
+  @Mock ConnectionInformation ci;
 
   @Mock Span span;
   String url = "jdbc:mysql://127.0.0.1:5555/mydatabase";
@@ -65,5 +74,24 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenThrow(new SQLException());
 
     verifyNoMoreInteractions(span);
+  }
+
+
+  @Test public void nullSqlWontNPE() throws SQLException {
+    ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+    try (Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build()) {
+
+      when(statementInformation.getSql()).thenReturn(null);
+      when(statementInformation.getConnectionInformation()).thenReturn(ci);
+      when(ci.getConnection()).thenReturn(connection);
+      when(connection.getMetaData()).thenReturn(metaData);
+      when(metaData.getURL()).thenReturn(url);
+
+      TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);
+      listener.onBeforeAnyExecute(statementInformation);
+      listener.onAfterAnyExecute(statementInformation, 1, null);
+
+      assertThat(spans).isEmpty();
+    }
   }
 }

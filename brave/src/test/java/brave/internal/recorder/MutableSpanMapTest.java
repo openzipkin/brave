@@ -24,7 +24,6 @@ public class MutableSpanMapTest {
     MutableSpan span = map.getOrCreate(context);
 
     assertThat(span).isNotNull();
-    assertThat(span.localEndpoint).isEqualTo(localEndpoint);
   }
 
   @Test

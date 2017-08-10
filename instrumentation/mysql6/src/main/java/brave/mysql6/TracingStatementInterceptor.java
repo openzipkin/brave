@@ -28,7 +28,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
 
 
   @Override
-  public <T extends Resultset> T preProcess(String sql, Statement interceptedStatement) throws SQLException {
+  public Resultset preProcess(String sql, Statement interceptedStatement) throws SQLException {
     Tracer tracer = Tracing.currentTracer();
     if (tracer == null) return null;
 

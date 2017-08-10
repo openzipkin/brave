@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import javax.annotation.Generated;
 
 import static com.github.kristofa.brave.internal.Util.equal;
 
@@ -17,6 +18,7 @@ import static com.github.kristofa.brave.internal.Util.equal;
  * @deprecated Replaced by {@code brave.Span}
  */
 @Deprecated
+@Generated("thrift")
 public class Span implements Serializable {
   static {
     InternalSpan.instance = new InternalSpan(){

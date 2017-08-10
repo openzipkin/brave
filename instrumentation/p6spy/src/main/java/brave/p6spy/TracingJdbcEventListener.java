@@ -25,11 +25,13 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
   @Override public void onBeforeAnyExecute(StatementInformation info) {
     Tracer tracer = Tracing.currentTracer();
     if (tracer == null) return;
+    String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
+    // don't start a span unless there is SQL as we cannot choose a relevant name without it
+    if (sql == null || sql.isEmpty()) return;
 
     Span span = tracer.nextSpan();
     // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
     if (!span.isNoop()) {
-      String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
       span.tag(TraceKeys.SQL_QUERY, sql);
       parseServerAddress(info.getConnectionInformation().getConnection(), span);
