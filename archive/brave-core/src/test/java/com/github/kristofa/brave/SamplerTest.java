@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 import java.util.Random;
-import java.util.function.LongPredicate;
 import org.assertj.core.data.Percentage;
 import org.junit.Rule;
 import org.junit.Test;

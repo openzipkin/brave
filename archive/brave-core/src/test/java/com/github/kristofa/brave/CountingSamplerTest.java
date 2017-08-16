@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import org.assertj.core.data.Percentage;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import static org.assertj.core.data.Percentage.withPercentage;
 

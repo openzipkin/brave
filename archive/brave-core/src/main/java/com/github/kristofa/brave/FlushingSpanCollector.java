@@ -12,7 +12,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ScheduledFuture;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -80,7 +80,9 @@ public abstract class FlushingSpanCollector implements SpanCollector, Flushable,
       this.flushable = flushable;
       this.scheduler = Executors.newSingleThreadScheduledExecutor(
           r -> new Thread(r, threadPoolName));
-      this.scheduler.scheduleWithFixedDelay(this, 0, flushInterval, SECONDS);
+      ScheduledFuture<?> future =
+          this.scheduler.scheduleWithFixedDelay(this, 0, flushInterval, SECONDS);
+      if (future.isCancelled()) throw new IllegalStateException("cancelled flushing spans");
     }
 
     @Override

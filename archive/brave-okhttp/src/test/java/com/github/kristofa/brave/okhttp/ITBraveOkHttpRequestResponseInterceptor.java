@@ -15,8 +15,6 @@ import okhttp3.Response;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
-
 public class ITBraveOkHttpRequestResponseInterceptor extends ITHttpClient<OkHttpClient> {
 
   @Override protected OkHttpClient newClient(int port) {

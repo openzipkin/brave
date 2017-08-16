@@ -1,15 +1,13 @@
 package com.github.kristofa.brave.http;
 
-
 import com.github.kristofa.brave.KeyValueAnnotation;
+import java.util.Collection;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.TraceKeys;
 
-import java.util.Collection;
-
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class HttpServerResponseAdapterTest {

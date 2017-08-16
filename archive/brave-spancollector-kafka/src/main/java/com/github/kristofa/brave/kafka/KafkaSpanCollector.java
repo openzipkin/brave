@@ -7,9 +7,11 @@ import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.SpanCodec;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.concurrent.Future;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
  * SpanCollector which sends a thrift-encoded list of spans to a Kafka topic (default: "zipkin")
@@ -99,7 +101,9 @@ public final class KafkaSpanCollector extends AbstractSpanCollector {
 
   @Override
   protected void sendSpans(byte[] thrift) throws IOException {
-    producer.send(new ProducerRecord<byte[], byte[]>(this.topic, thrift));
+    Future<RecordMetadata> future =
+        producer.send(new ProducerRecord<byte[], byte[]>(this.topic, thrift));
+    if (future.isCancelled()) throw new IllegalStateException("cancelled sending spans");
   }
 
   @Override

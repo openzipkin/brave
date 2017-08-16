@@ -5,6 +5,8 @@ import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import java.net.Inet6Address;
+import java.net.UnknownHostException;
 import org.junit.Test;
 import zipkin.Constants;
 
@@ -21,8 +23,7 @@ public class DefaultSpanCodecTest {
   Endpoint web = Endpoint.builder()
       .serviceName("web")
       .ipv4(124 << 24 | 13 << 16 | 90 << 8 | 3)
-      // Cheat so we don't have to catch an exception here
-      .ipv6(sun.net.util.IPAddressUtil.textToNumericFormatV6("2001:db8::c001"))
+      .ipv6(fromIPv6Literal("2001:db8::c001"))
       .port(80).build();
 
   Span span = newSpan(SpanId.builder().spanId(-692101025335252320L).build()) // browser calls web
@@ -59,5 +60,13 @@ public class DefaultSpanCodecTest {
 
     byte[] encoded = DefaultSpanCodec.JSON.writeSpan(span);
     assertEquals(span, DefaultSpanCodec.JSON.readSpan(encoded));
+  }
+
+  static byte[] fromIPv6Literal(String literal) {
+    try {
+      return Inet6Address.getByName(literal).getAddress();
+    } catch (UnknownHostException e) {
+      throw new AssertionError(e);
+    }
   }
 }
