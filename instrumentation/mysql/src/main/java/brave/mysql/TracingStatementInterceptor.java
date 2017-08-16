@@ -1,8 +1,7 @@
 package brave.mysql;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracing;
+import brave.propagation.ThreadLocalSpan;
 import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.PreparedStatement;
 import com.mysql.jdbc.ResultSetInternalMethods;
@@ -21,49 +20,38 @@ import zipkin2.Endpoint;
  */
 public class TracingStatementInterceptor implements StatementInterceptorV2 {
 
+  /**
+   * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
+   * all callbacks happen on the same thread.
+   *
+   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before tracing.
+   */
   @Override
   public ResultSetInternalMethods preProcess(String sql, Statement interceptedStatement,
       Connection connection) throws SQLException {
-    Tracer tracer = Tracing.currentTracer();
-    if (tracer == null) return null;
+    // Gets the next span (and places it in scope) so code between here and postProcess can read it
+    Span span = ThreadLocalSpan.CURRENT_TRACER.next();
+    if (span == null || span.isNoop()) return null;
 
-    Span span = tracer.nextSpan();
-    // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
-    if (!span.isNoop()) {
-      // When running a prepared statement, sql will be null and we must fetch the sql from the statement itself
-      if (interceptedStatement instanceof PreparedStatement) {
-        sql = ((PreparedStatement) interceptedStatement).getPreparedSql();
-      }
-      int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
-      span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
-      span.tag("sql.query", sql);
-      parseServerAddress(connection, span);
-      span.start();
+    // When running a prepared statement, sql will be null and we must fetch the sql from the statement itself
+    if (interceptedStatement instanceof PreparedStatement) {
+      sql = ((PreparedStatement) interceptedStatement).getPreparedSql();
     }
-
-    currentSpanInScope.set(tracer.withSpanInScope(span));
-
+    int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
+    span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
+    span.tag("sql.query", sql);
+    parseServerAddress(connection, span);
+    span.start();
     return null;
   }
-
-  /**
-   * There's no attribute namespace shared across request and response. Hence, we need to save off
-   * a reference to the span in scope, so that we can close it in the response.
-   */
-  final ThreadLocal<Tracer.SpanInScope> currentSpanInScope = new ThreadLocal<>();
 
   @Override
   public ResultSetInternalMethods postProcess(String sql, Statement interceptedStatement,
       ResultSetInternalMethods originalResultSet, Connection connection, int warningCount,
       boolean noIndexUsed, boolean noGoodIndexUsed, SQLException statementException)
       throws SQLException {
-    Tracer tracer = Tracing.currentTracer();
-    if (tracer == null) return null;
-
-    Span span = tracer.currentSpan();
-    if (span == null) return null;
-    currentSpanInScope.get().close();
-    currentSpanInScope.remove();
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return null;
 
     if (statementException != null) {
       span.tag("error", Integer.toString(statementException.getErrorCode()));

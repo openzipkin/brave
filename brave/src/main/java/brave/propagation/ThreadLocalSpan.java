@@ -2,6 +2,8 @@ package brave.propagation;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
+import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
 
 /**
@@ -53,46 +55,68 @@ import javax.annotation.Nullable;
  *   final ThreadLocalSpan threadLocalSpan;
  *
  *   public void onStart(Request request) {
- *     // Assume you have code to start the span and add relevant tags...
+ *     // Allocates a span and places it in scope so that code between here and onFinish can see it
+ *     Span span = threadLocalSpan.next();
+ *     if (span == null || span.isNoop()) return; // skip below logic on noop
  *
- *     // We now set the span in scope so that any code between here and
- *     // the end of the request can see it with Tracer.currentSpan()
- *     threadLocalSpan.set(span);
+ *     // Assume you have code to start the span and add relevant tags...
  *   }
  *
  *   public void onFinish(Response response, Attributes attributes) {
  *     // as long as we are on the same thread, we can read the span started above
  *     Span span = threadLocalSpan.remove();
- *     if (span == null) return;
+ *     if (span == null || span.isNoop()) return; // skip below logic on noop
  *
  *     // Assume you have code to complete the span
  *   }
  * }
  * }</pre>
  */
-public final class ThreadLocalSpan {
+@AutoValue
+public abstract class ThreadLocalSpan {
+  /**
+   * This uses the {@link Tracing#currentTracer()}, which means calls to {@link #next()} may return
+   * null. Use this when you have no other means to get a reference to the tracer. For example, JDBC
+   * connections, as they often initialize prior to the tracing component.
+   */
+  public static final ThreadLocalSpan CURRENT_TRACER = new ThreadLocalSpan() {
+    @Override Tracer tracer() {
+      return Tracing.currentTracer();
+    }
+  };
+
   public static ThreadLocalSpan create(Tracer tracer) {
-    return new ThreadLocalSpan(tracer);
+    return new AutoValue_ThreadLocalSpan(tracer);
   }
 
-  final Tracer tracer;
   final ThreadLocal<Tracer.SpanInScope> currentSpanInScope = new ThreadLocal<>();
 
-  ThreadLocalSpan(Tracer tracer) {
-    this.tracer = tracer;
+  abstract Tracer tracer();
+
+  /**
+   * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
+   * available.
+   */
+  public @Nullable Span next() {
+    Tracer tracer = tracer();
+    if (tracer == null) return null;
+    Span next = tracer.nextSpan();
+    currentSpanInScope.set(tracer.withSpanInScope(next));
+    return next;
   }
 
-  public void set(Span span) {
-    currentSpanInScope.set(tracer.withSpanInScope(span));
-  }
-
+  /** Returns the span set in scope via {@link #next()} or null if there was none. */
   public @Nullable Span remove() {
-    Span span = tracer.currentSpan();
+    Tracer tracer = tracer();
+    Span span = tracer != null ? tracer.currentSpan() : null;
     Tracer.SpanInScope scope = currentSpanInScope.get();
     if (scope != null) {
       scope.close();
       currentSpanInScope.remove();
     }
     return span;
+  }
+
+  ThreadLocalSpan() {
   }
 }
