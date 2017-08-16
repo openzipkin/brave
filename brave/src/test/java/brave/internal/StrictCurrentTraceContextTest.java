@@ -35,7 +35,7 @@ public class StrictCurrentTraceContextTest {
    * need to share a static instance explicitly.
    */
   @Test public void instancesAreIndependent() {
-    CurrentTraceContext.Default currentTraceContext2 = new CurrentTraceContext.Default();
+    CurrentTraceContext currentTraceContext2 = new StrictCurrentTraceContext();
 
     try (CurrentTraceContext.Scope scope1 = currentTraceContext.newScope(context)) {
       assertThat(currentTraceContext2.get()).isNull();

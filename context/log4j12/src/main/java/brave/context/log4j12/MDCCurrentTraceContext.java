@@ -11,7 +11,7 @@ import org.apache.log4j.MDC;
  */
 public final class MDCCurrentTraceContext extends CurrentTraceContext {
   public static MDCCurrentTraceContext create() {
-    return new MDCCurrentTraceContext(new Default());
+    return create(CurrentTraceContext.Default.inheritable());
   }
 
   public static MDCCurrentTraceContext create(CurrentTraceContext delegate) {

@@ -53,7 +53,7 @@ public class Log4JThreadContextTest {
   }
 
   static class Log4J2CurrentTraceContext extends CurrentTraceContext {
-    CurrentTraceContext delegate = new CurrentTraceContext.Default();
+    CurrentTraceContext delegate = CurrentTraceContext.Default.create();
 
     @Override public TraceContext get() {
       return delegate.get();
