@@ -8,7 +8,6 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.ServerTracer;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
-import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
 import com.github.kristofa.brave.internal.Nullable;

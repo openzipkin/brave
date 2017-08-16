@@ -255,11 +255,11 @@ public final class SpanId {
   public int hashCode() {
     int h = 1;
     h *= 1000003;
-    h ^= (traceIdHigh >>> 32) ^ traceIdHigh;
+    h ^= (int) (h ^ ((traceIdHigh >>> 32) ^ traceIdHigh));
     h *= 1000003;
-    h ^= (traceId >>> 32) ^ traceId;
+    h ^= (int) (h ^ ((traceId >>> 32) ^ traceId));
     h *= 1000003;
-    h ^= (spanId >>> 32) ^ spanId;
+    h ^= (int) (h ^ ((spanId >>> 32) ^ spanId));
     return h;
   }
 

@@ -6,10 +6,7 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import zipkin.Span;
 import zipkin.storage.InMemoryStorage;
 
 public enum TraceFilters {

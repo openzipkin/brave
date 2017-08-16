@@ -1,6 +1,7 @@
 package com.twitter.zipkin.gen;
 
 import java.net.Inet6Address;
+import java.net.UnknownHostException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -38,10 +39,9 @@ public class EndpointTest {
   }
 
   @Test
-  public void testToStringIsJson_ipv6() {
+  public void testToStringIsJson_ipv6() throws UnknownHostException {
     assertThat(Endpoint.builder().serviceName("foo")
-        // Cheat so we don't have to catch an exception here
-        .ipv6(sun.net.util.IPAddressUtil.textToNumericFormatV6("2001:db8::c001")).build())
+        .ipv6(Inet6Address.getByName("2001:db8::c001").getAddress()).build())
         .hasToString("{\"serviceName\":\"foo\",\"ipv6\":\"2001:db8::c001\"}");
   }
 

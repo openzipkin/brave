@@ -16,7 +16,6 @@ import org.junit.Test;
 import zipkin.Constants;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.MergeById;
 import zipkin.internal.Util;
 
 import static org.assertj.core.api.Assertions.assertThat;
