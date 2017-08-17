@@ -102,9 +102,9 @@ public class ITTracingKafka {
     assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
         .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
 
-    RecordTracing recordTracing = new RecordTracing(consumerTracing);
+    KafkaTracing kafkaTracing = KafkaTracing.create(consumerTracing);
     for (ConsumerRecord<String, String> record : records) {
-      brave.Span span = recordTracing.nextSpan(record);
+      brave.Span span = kafkaTracing.nextSpan(record);
       assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
     }
   }

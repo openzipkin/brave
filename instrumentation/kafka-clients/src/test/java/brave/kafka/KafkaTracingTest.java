@@ -15,7 +15,7 @@ import zipkin.internal.Util;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-public class RecordTracingTest {
+public class KafkaTracingTest {
   private static final String TRACE_ID = "463ac35c9f6413ad";
   private static final String PARENT_ID = "463ac35c9f6413ab";
   private static final String SPAN_ID = "48485a3953bb6124";
@@ -25,7 +25,7 @@ public class RecordTracingTest {
   private static final String TEST_KEY = "foo";
   private static final String TEST_VALUE = "bar";
 
-  private RecordTracing recordTracing;
+  private KafkaTracing kafkaTracing;
   private ConsumerRecord<String, String> fakeRecord;
 
   private List<zipkin.Span> spans = new ArrayList<>();
@@ -37,7 +37,7 @@ public class RecordTracingTest {
         .sampler(Sampler.NEVER_SAMPLE)
         .build();
 
-    recordTracing = new RecordTracing(tracing);
+    kafkaTracing = KafkaTracing.create(tracing);
     fakeRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1, TEST_KEY, TEST_VALUE);
   }
 
@@ -50,7 +50,7 @@ public class RecordTracingTest {
   public void should_create_child_from_headers() throws Exception {
     addB3Headers();
 
-    Span span = recordTracing.nextSpan(fakeRecord);
+    Span span = kafkaTracing.nextSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isEqualTo(TRACE_ID);
@@ -60,34 +60,12 @@ public class RecordTracingTest {
 
   @Test
   public void should_create_new_span_from_headers() throws Exception {
-    Span span = recordTracing.nextSpan(fakeRecord);
+    Span span = kafkaTracing.nextSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isNotEqualTo(TRACE_ID);
     assertThat(context.parentId()).isNull();
     assertThat(context.sampled()).isEqualTo(false);
-  }
-
-  @Test
-  public void should_finish_span_from_headers() throws Exception {
-    addB3Headers();
-    recordTracing.maybeFinishProducerSpan(fakeRecord);
-
-    assertThat(spans)
-        .extracting(s -> Long.toHexString(s.id))
-        .containsExactly(SPAN_ID);
-
-    assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr");
-  }
-
-  @Test
-  public void should_do_nothing_if_b3_missing() throws Exception {
-    recordTracing.maybeFinishProducerSpan(fakeRecord);
-
-    assertThat(spans).isEmpty();
   }
 
   private void addB3Headers() {

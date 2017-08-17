@@ -1,6 +1,9 @@
 package brave.kafka;
 
+import brave.Span;
 import brave.Tracing;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,30 +21,54 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
+import zipkin.internal.Util;
 
 /**
  * Kafka Consumer decorator. Read records headers and finish producers spans if possible.
  */
 class TracingConsumer<K, V> implements Consumer<K, V> {
 
-  private final RecordTracing recordTracing;
-  private Consumer<K, V> wrappedConsumer;
+  private final Tracing tracing;
+  private final Consumer<K, V> wrappedConsumer;
 
   TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
-    this.recordTracing = new RecordTracing(tracing);
     this.wrappedConsumer = consumer;
+    this.tracing = tracing;
   }
 
-  @Override
   /**
    * For each poll, finish all spans in the record list.
    */
+  @Override
   public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
-      recordTracing.maybeFinishProducerSpan(record);
+      maybeFinishProducerSpan(record);
     }
     return records;
+  }
+
+  /**
+   * Close the producer async span extracted from the headers.
+   */
+  private void maybeFinishProducerSpan(ConsumerRecord record) {
+    TraceContext context = tracing.propagation()
+        .extractor(getHeaders())
+        .extract(record).context();
+
+    if (context != null) {
+      Span span = tracing.tracer().joinSpan(context);
+      span.kind(Span.Kind.CONSUMER).start().finish();
+    }
+  }
+
+  private Propagation.Getter<ConsumerRecord, String> getHeaders() {
+    return (ConsumerRecord carrier, String key) -> {
+      Header header = carrier.headers().lastHeader(key);
+      if (header == null) return null;
+      return new String(header.value(), Util.UTF_8);
+    };
   }
 
   @Override

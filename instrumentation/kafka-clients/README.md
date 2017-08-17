@@ -13,7 +13,7 @@ TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 Same goes for the consumer : 
 ```java
 Consumer<K, V> consumer = new KafkaConsumer<>(settings);
-TracingConsumer<K, V> tracingConsumer = new TracingConsumer<>(consumer);
+TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
 ```
 
 ## Continue traces after consuming
@@ -21,7 +21,7 @@ Because Kafka batches messages while consuming, we flush every spans in the head
 
 If you wish to continue a trace you can use:
 ```java
-Span s = RecordTracing.nexSpan(record);
+Span s = kafkaTracing.nextSpan(record);
 ```
 and use the retrieved span as usual.
 
