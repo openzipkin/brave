@@ -184,7 +184,7 @@ And here's how a server might handle this..
 extractor = tracing.propagation().extractor(Request::getHeader);
 
 // convert that context to a span which you can name and add tags to
-oneWayReceive = tracer.nextSpan(extractor, request)
+oneWayReceive = nextSpan(tracer, extractor.extract(request))
     .name("process-request")
     .kind(SERVER)
     ... add tags etc.
@@ -196,6 +196,8 @@ oneWayReceive.start().flush();
 // you can create children to represent follow-up work.
 next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
 ```
+
+**Note** The above propagation logic is a simplified version of our [http handlers](https://github.com/openzipkin/brave/tree/master/instrumentation/http#http-server).
 
 There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
 
