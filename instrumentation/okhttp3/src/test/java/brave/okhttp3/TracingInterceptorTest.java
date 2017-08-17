@@ -4,6 +4,7 @@ import brave.Span;
 import brave.Tracing;
 import brave.http.HttpTracing;
 import okhttp3.Connection;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -26,5 +27,9 @@ public class TracingInterceptorTest {
 
     verify(span).isNoop();
     verifyNoMoreInteractions(span);
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 }

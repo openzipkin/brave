@@ -48,6 +48,8 @@ public class Log4JThreadContextTest {
     }
     assertThat(ThreadContext.get("traceId"))
         .isNull();
+
+    Tracing.current().close();
   }
 
   static class Log4J2CurrentTraceContext extends CurrentTraceContext {

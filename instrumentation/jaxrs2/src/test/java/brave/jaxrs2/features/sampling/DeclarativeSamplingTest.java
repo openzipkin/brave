@@ -37,6 +37,10 @@ public class DeclarativeSamplingTest extends ServletContainer {
         }
       })).build();
 
+  @After public void close(){
+    Tracing.current().close();
+  }
+
   @Path("")
   public static class Resource { // public for resteasy to inject
 

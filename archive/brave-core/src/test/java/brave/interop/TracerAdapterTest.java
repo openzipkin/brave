@@ -9,6 +9,7 @@ import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Constants;
 
@@ -29,6 +30,10 @@ public class TracerAdapterTest {
       .build()
       .tracer();
   Brave brave3 = TracerAdapter.newBrave(brave4);
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @Test public void startWithLocalTracerAndFinishWithTracer() {
     SpanId spanId = brave3.localTracer().startNewSpan("codec", "encode", 1L);

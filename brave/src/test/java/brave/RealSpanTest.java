@@ -3,6 +3,7 @@ package brave;
 import brave.internal.Platform;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
@@ -16,6 +17,10 @@ public class RealSpanTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
   Tracer tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
   Span span = tracer.newTrace();
+
+  @After public void close() {
+    Tracing.current().close();
+  }
 
   @Test public void isNotNoop() {
     assertThat(span.isNoop()).isFalse();

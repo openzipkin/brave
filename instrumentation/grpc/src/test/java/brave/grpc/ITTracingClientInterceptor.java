@@ -45,19 +45,20 @@ public class ITTracingClientInterceptor {
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
-  Tracing tracing;
+  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   TestServer server = new TestServer();
   ManagedChannel client;
 
   @Before public void setup() throws IOException {
     server.start();
-    tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
     client = newClient();
   }
 
   @After public void close() throws Exception {
     closeClient(client);
     server.stop();
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   ManagedChannel newClient() {

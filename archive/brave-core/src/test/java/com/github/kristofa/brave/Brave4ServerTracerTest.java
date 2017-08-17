@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import brave.Tracing;
+import org.junit.After;
 
 public class Brave4ServerTracerTest extends ServerTracerTest {
   @Override Brave newBrave() {
@@ -8,5 +9,9 @@ public class Brave4ServerTracerTest extends ServerTracerTest {
         .clock(clock::currentTimeMicroseconds)
         .localEndpoint(ZIPKIN_ENDPOINT)
         .reporter(spans::add).build().tracer());
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 }

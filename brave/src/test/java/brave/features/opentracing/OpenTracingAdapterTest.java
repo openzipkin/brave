@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Constants;
 
@@ -25,6 +26,10 @@ public class OpenTracingAdapterTest {
   List<zipkin.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder().reporter(spans::add).build();
   BraveTracer opentracing = BraveTracer.wrap(brave);
+
+  @After public void close() {
+    Tracing.current().close();
+  }
 
   @Test public void startWithOpenTracingAndFinishWithBrave() {
     io.opentracing.Span openTracingSpan = opentracing.buildSpan("encode")

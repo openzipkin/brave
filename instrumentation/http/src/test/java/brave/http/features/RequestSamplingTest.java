@@ -14,6 +14,7 @@ import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -59,6 +60,10 @@ public class RequestSamplingTest {
         }
       }
     }));
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 
   @Test public void serverDoesntTraceFoo() throws Exception {

@@ -3,6 +3,7 @@ package brave;
 import brave.internal.Platform;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
@@ -18,6 +19,10 @@ public class CurrentSpanCustomizerTest {
   Tracing tracing = Tracing.newBuilder().reporter(spans::add).build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @Test public void name() {
     span.start();

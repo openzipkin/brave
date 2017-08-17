@@ -70,5 +70,7 @@ public class MDCCurrentTraceContextTest {
         .isNull();
     assertThat(MDC.get("spanId"))
         .isNull();
+
+    Tracing.current().close();
   }
 }

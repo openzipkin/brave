@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -15,6 +16,11 @@ public class CurrentTracingTest {
   @Before
   public void reset() {
     Tracing.current = null;
+  }
+
+  @After public void close(){
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test public void defaultsToNull() {

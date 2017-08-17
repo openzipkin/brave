@@ -95,6 +95,8 @@ public class ITTracingServerInterceptor {
       server.shutdown();
       server.awaitTermination();
     }
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test

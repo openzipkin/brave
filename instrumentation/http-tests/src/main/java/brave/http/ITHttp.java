@@ -5,8 +5,10 @@ import brave.internal.StrictCurrentTraceContext;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.mockwebserver.MockWebServer;
+import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import zipkin.Span;
@@ -22,6 +24,11 @@ public abstract class ITHttp {
 
   protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
   protected HttpTracing httpTracing;
+
+  @After public void close() throws IOException {
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
+  }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()

@@ -3,6 +3,7 @@ package brave;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
+import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,6 +13,10 @@ public class DefaultCurrentTraceContextTest {
   Tracer tracer = Tracing.newBuilder().build().tracer();
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @Test public void currentSpan_defaultsToNull() {
     assertThat(currentTraceContext.get()).isNull();
