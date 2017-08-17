@@ -7,6 +7,7 @@ import brave.internal.HexCodec;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
+import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,5 +71,7 @@ public class MDCCurrentTraceContextTest {
         .isNull();
     assertThat(MDC.get("spanId"))
         .isNull();
+
+    Tracing.current().close();
   }
 }

@@ -14,6 +14,7 @@ import com.twitter.finagle.tracing.TraceId;
 import com.twitter.io.Buf;
 import com.twitter.util.Local;
 import java.lang.reflect.Field;
+import org.junit.After;
 import org.junit.Test;
 import scala.Option;
 import scala.Some;
@@ -25,7 +26,6 @@ import static com.twitter.finagle.context.Contexts.broadcast;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FinagleContextInteropTest {
-
   @Test public void finagleBraveInterop() throws Exception {
     Tracer tracer = Tracing.newBuilder()
         .currentTraceContext(new FinagleCurrentTraceContext()).build().tracer();
@@ -80,6 +80,8 @@ public class FinagleContextInteropTest {
     // Outside a scope, trace context is consistent between finagle and brave
     assertThat(tracer.currentSpan()).isNull();
     assertThat(Trace.idOption().isDefined()).isFalse();
+
+    Tracing.current().close();
   }
 
   /**

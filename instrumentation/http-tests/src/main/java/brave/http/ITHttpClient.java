@@ -39,8 +39,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   protected abstract void getAsync(C client, String pathIncludingQuery) throws Exception;
 
-  @After public void close() throws IOException {
+  @Override @After public void close() throws IOException {
     closeClient(client);
+    super.close();
   }
 
   @Test public void propagatesSpan() throws Exception {

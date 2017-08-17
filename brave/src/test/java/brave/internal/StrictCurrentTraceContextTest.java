@@ -21,6 +21,10 @@ public class StrictCurrentTraceContextTest {
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 
+  @After public void close() {
+    Tracing.current().close();
+  }
+
   @After public void after() throws InterruptedException {
     executor.shutdownNow();
     executor.awaitTermination(1, TimeUnit.SECONDS);

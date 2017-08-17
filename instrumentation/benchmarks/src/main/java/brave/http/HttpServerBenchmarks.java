@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.Tracing;
 import io.undertow.Undertow;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
@@ -49,6 +50,7 @@ public abstract class HttpServerBenchmarks {
   @TearDown(Level.Trial) public void close() throws Exception {
     if (server != null) server.stop();
     client.dispatcher().executorService().shutdown();
+    Tracing.current().close();
   }
 
   protected int initServer() throws ServletException {

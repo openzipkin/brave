@@ -4,6 +4,7 @@ import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import io.grpc.Metadata;
+import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +17,10 @@ public class NonStringPropagationKeysTest {
   );
   TraceContext.Extractor<Metadata> extractor = grpcPropagation.extractor(Metadata::get);
   TraceContext.Injector<Metadata> injector = grpcPropagation.injector(Metadata::put);
+
+  @After public void close() {
+    tracing.close();
+  }
 
   @Test
   public void injectExtractTraceContext() throws Exception {

@@ -2,6 +2,7 @@ package brave.spring.web;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
+import org.junit.After;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -31,5 +32,9 @@ public class TracingClientHttpRequestInterceptorAutowireTest {
     ctx.refresh();
 
     ctx.getBean(ClientHttpRequestInterceptor.class);
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 }

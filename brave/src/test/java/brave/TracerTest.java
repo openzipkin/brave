@@ -5,6 +5,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Endpoint;
 
@@ -12,6 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracerTest {
   Tracer tracer = Tracing.newBuilder().build().tracer();
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @Test public void sampler() {
     Sampler sampler = new Sampler() {

@@ -1,6 +1,7 @@
 package brave;
 
 import brave.sampler.Sampler;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Endpoint;
 
@@ -16,6 +17,10 @@ public class NoopSpanTest {
       })
       .build().tracer();
   Span span = tracer.newTrace();
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @Test public void isNoop() {
     assertThat(span.isNoop()).isTrue();

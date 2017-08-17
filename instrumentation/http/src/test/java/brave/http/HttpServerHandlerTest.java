@@ -5,6 +5,7 @@ import brave.Tracing;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,6 +39,10 @@ public class HttpServerHandlerTest {
 
     when(adapter.method(request)).thenReturn("GET");
     when(adapter.parseClientAddress(eq(request), anyObject())).thenCallRealMethod();
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 
   @Test public void handleReceive_defaultsToMakeNewTrace() {

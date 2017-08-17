@@ -73,6 +73,7 @@ public abstract class HttpClientBenchmarks<C> {
     close(unsampledClient);
     close(tracedClient);
     server.stop();
+    Tracing.current().close();
   }
 
   @Benchmark public void client_get() throws Exception {

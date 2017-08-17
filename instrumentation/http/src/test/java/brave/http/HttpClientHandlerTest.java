@@ -5,6 +5,7 @@ import brave.Tracing;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,6 +38,10 @@ public class HttpClientHandlerTest {
     handler = HttpClientHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {

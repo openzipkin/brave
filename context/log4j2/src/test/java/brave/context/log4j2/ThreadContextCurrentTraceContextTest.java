@@ -69,5 +69,7 @@ public class ThreadContextCurrentTraceContextTest {
         .isNull();
     assertThat(ThreadContext.get("spanId"))
         .isNull();
+
+    Tracing.current().close();
   }
 }

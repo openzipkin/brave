@@ -7,6 +7,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.After;
 import org.junit.Test;
 import zipkin.Endpoint;
 
@@ -18,6 +19,10 @@ public class MutableSpanMapTest {
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
   MutableSpanMap map =
       new MutableSpanMap(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
+
+  @After public void close() {
+    Tracing.current().close();
+  }
 
   @Test
   public void getOrCreate_lazyCreatesASpan() throws Exception {

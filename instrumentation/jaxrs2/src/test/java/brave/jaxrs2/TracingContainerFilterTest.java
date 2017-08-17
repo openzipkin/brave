@@ -12,6 +12,7 @@ import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,6 +29,10 @@ public class TracingContainerFilterTest {
   @Mock ContainerRequestContext context;
   @Mock UriInfo uriInfo;
   @Mock ResourceInfo resourceInfo;
+
+  @After public void close(){
+    Tracing.current().close();
+  }
 
   @GET
   @Path("foo")

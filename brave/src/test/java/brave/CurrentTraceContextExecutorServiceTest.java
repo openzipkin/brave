@@ -34,6 +34,8 @@ public class CurrentTraceContextExecutorServiceTest {
   @After public void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   final TraceContext[] threadValues = new TraceContext[2];

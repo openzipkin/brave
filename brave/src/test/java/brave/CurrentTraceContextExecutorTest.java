@@ -28,6 +28,8 @@ public class CurrentTraceContextExecutorTest {
   @After public void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test

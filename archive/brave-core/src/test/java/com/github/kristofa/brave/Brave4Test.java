@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import brave.Tracing;
+import org.junit.After;
 
 public class Brave4Test extends BraveTest {
 
@@ -18,5 +19,9 @@ public class Brave4Test extends BraveTest {
 
   @Override protected Brave newBraveWith128BitTraceIds() {
     return TracerAdapter.newBrave(Tracing.newBuilder().traceId128Bit(true).build().tracer());
+  }
+
+  @After public void close(){
+    Tracing.current().close();
   }
 }
