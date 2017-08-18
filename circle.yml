@@ -19,6 +19,8 @@ machine:
     - mysql
   environment:
     MYSQL_USER: root
+    # Quiet Maven invoker logs (Downloading... when running /src/it)
+    MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 dependencies:
   override:
