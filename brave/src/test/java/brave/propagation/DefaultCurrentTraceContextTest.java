@@ -1,11 +1,15 @@
-package brave;
+package brave.propagation;
 
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.TraceContext;
+import brave.Tracer;
+import brave.Tracing;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,7 +20,12 @@ public class DefaultCurrentTraceContextTest {
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 
-  @After public void close(){
+  @Before public void ensureNoOtherTestsTaint() {
+    CurrentTraceContext.Default.INHERITABLE.set(null);
+    CurrentTraceContext.Default.DEFAULT.set(null);
+  }
+
+  @After public void close() {
     Tracing.current().close();
   }
 
@@ -47,13 +56,17 @@ public class DefaultCurrentTraceContextTest {
   @Test public void show_inheritable_leak() throws Exception {
     currentTraceContext = CurrentTraceContext.Default.inheritable();
 
-    ExecutorService service = Executors.newCachedThreadPool();
+    // use a single-threaded version of newCachedThreadPool
+    ExecutorService service = new ThreadPoolExecutor(0, 1,
+        60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+
+    // submitting a job grows the pool, attaching the context to its thread
     try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
       assertThat(service.submit(() -> currentTraceContext.get()).get())
           .isEqualTo(context);
     }
 
-    // notice it is still there (leaked and not cleaned up)
+    // same thread executes the next job and still has the same context (leaked and not cleaned up)
     assertThat(service.submit(() -> currentTraceContext.get()).get())
         .isEqualTo(context);
 
