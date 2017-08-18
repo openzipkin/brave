@@ -5,7 +5,7 @@ import brave.Tracing;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
@@ -58,7 +58,7 @@ public class DefaultCurrentTraceContextTest {
 
     // use a single-threaded version of newCachedThreadPool
     ExecutorService service = new ThreadPoolExecutor(0, 1,
-        60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+        60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
     // submitting a job grows the pool, attaching the context to its thread
     try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
