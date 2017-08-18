@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.Tracing;
 import java.io.Closeable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
@@ -36,12 +37,60 @@ public abstract class CurrentTraceContext {
     @Override void close();
   }
 
-  /** Default implementation which is backed by a static inheritable thread local */
+  /**
+   * Default implementation which is backed by a static thread local.
+   *
+   * <p>A static thread local ensures we have one context per thread, as opposed to one per thread-
+   * tracer. This means all tracer instances will be able to see any tracer's contexts.
+   *
+   * <p>The trade-off of this (instance-based reference) vs the reverse: trace contexts are not
+   * separated by tracer by default. For example, to make a trace invisible to another tracer, you
+   * have to use a non-default implementation.
+   *
+   * <p>Sometimes people make different instances of the tracer just to change configuration like
+   * the local service name. If we used a thread-instance approach, none of these would be able to
+   * see eachother's scopes. This would break {@link Tracing#currentTracer()} scope visibility in a
+   * way few would want to debug. It might be phrased as "MySQL always starts a new trace and I
+   * don't know why."
+   *
+   * <p>If you want a different behavior, use a different subtype of {@link CurrentTraceContext},
+   * possibly your own, or raise an issue and explain what your use case is.
+   */
   public static final class Default extends CurrentTraceContext {
-    // static as we want one context per thread, not one context per thread-instance.
-    // if this is not static, patterns that coordinate via statics (like Tracer.current()) will break.
-    // static ThreadLocal was also used in Brave 3's ThreadLocalServerClientAndLocalSpanState
-    static final InheritableThreadLocal<TraceContext> local = new InheritableThreadLocal<>();
+    static final ThreadLocal<TraceContext> DEFAULT = new ThreadLocal<>();
+    // Inheritable as Brave 3's ThreadLocalServerClientAndLocalSpanState was inheritable
+    static final InheritableThreadLocal<TraceContext> INHERITABLE = new InheritableThreadLocal<>();
+
+    final ThreadLocal<TraceContext> local;
+
+    /** @deprecated prefer {@link #create()} as it isn't inheritable, so can't leak contexts. */
+    @Deprecated
+    public Default() {
+      this(INHERITABLE);
+    }
+
+    /** Uses a non-inheritable static thread local */
+    public static CurrentTraceContext create() {
+      return new Default(DEFAULT);
+    }
+
+    /**
+     * Uses an inheritable static thread local which allows arbitrary calls to {@link
+     * Thread#start()} to automatically inherit this context. This feature is available as it is was
+     * the default in Brave 3, because some users couldn't control threads in their applications.
+     *
+     * <p>This can be a problem in scenarios such as thread pool expansion, leading to data being
+     * recorded in the wrong span, or spans with the wrong parent. If you are impacted by this,
+     * switch to {@link #create()}.
+     */
+    public static CurrentTraceContext inheritable() {
+      return new Default(INHERITABLE);
+    }
+
+    Default(ThreadLocal<TraceContext> local) {
+      if (local == null) throw new NullPointerException("local == null");
+      this.local = local;
+    }
 
     @Override public TraceContext get() {
       return local.get();

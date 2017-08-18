@@ -3,14 +3,16 @@ package brave;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DefaultCurrentTraceContextTest {
-  CurrentTraceContext.Default currentTraceContext = new CurrentTraceContext.Default();
-  Tracer tracer = Tracing.newBuilder().build().tracer();
+  CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.create();
+  Tracer tracer = Tracing.newBuilder().currentTraceContext(currentTraceContext).build().tracer();
   TraceContext context = tracer.newTrace().context();
   TraceContext context2 = tracer.newTrace().context();
 
@@ -42,39 +44,34 @@ public class DefaultCurrentTraceContextTest {
     }
   }
 
-  @Test public void scope_isDefinedPerThread() throws InterruptedException {
-    final TraceContext[] threadValue = new TraceContext[1];
+  @Test public void show_inheritable_leak() throws Exception {
+    currentTraceContext = CurrentTraceContext.Default.inheritable();
 
+    ExecutorService service = Executors.newCachedThreadPool();
     try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
-      Thread t = new Thread(() -> { // inheritable thread local
-        assertThat(currentTraceContext.get())
-            .isEqualTo(context);
-
-        try (CurrentTraceContext.Scope scope2 = currentTraceContext.newScope(context2)) {
-          assertThat(currentTraceContext.get())
-              .isEqualTo(context2);
-          threadValue[0] = context2;
-        }
-      });
-
-      t.start();
-      t.join();
-      assertThat(currentTraceContext.get())
+      assertThat(service.submit(() -> currentTraceContext.get()).get())
           .isEqualTo(context);
-      assertThat(threadValue[0])
-          .isEqualTo(context2);
     }
+
+    // notice it is still there (leaked and not cleaned up)
+    assertThat(service.submit(() -> currentTraceContext.get()).get())
+        .isEqualTo(context);
+
+    service.shutdownNow();
   }
 
-  /**
-   * Ensures default scope is per thread, not per thread,instance. This is needed when using {@link
-   * Tracing#current()} such as instrumenting JDBC.
-   */
-  @Test public void perThreadScope() {
+  @Test public void isnt_inheritable() throws Exception {
+    ExecutorService service = Executors.newCachedThreadPool();
+
     try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
-      assertThat(Tracing.current().tracer().currentSpan().context())
-          .isEqualTo(context);
+      assertThat(service.submit(() -> currentTraceContext.get()).get())
+          .isNull();
     }
+
+    assertThat(service.submit(() -> currentTraceContext.get()).get())
+        .isNull();
+
+    service.shutdownNow();
   }
 
   @Test

@@ -11,7 +11,7 @@ import org.apache.logging.log4j.ThreadContext;
  */
 public final class ThreadContextCurrentTraceContext extends CurrentTraceContext {
   public static ThreadContextCurrentTraceContext create() {
-    return new ThreadContextCurrentTraceContext(new CurrentTraceContext.Default());
+    return create(CurrentTraceContext.Default.inheritable());
   }
 
   public static ThreadContextCurrentTraceContext create(CurrentTraceContext delegate) {

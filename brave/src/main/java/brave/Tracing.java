@@ -109,7 +109,7 @@ public abstract class Tracing implements Closeable {
     Reporter<zipkin.Span> reporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
-    CurrentTraceContext currentTraceContext = new CurrentTraceContext.Default();
+    CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false;
     Propagation.Factory propagationFactory = Propagation.Factory.B3;
 
