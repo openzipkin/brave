@@ -2,7 +2,6 @@ package brave.kafka;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.Collection;
 import java.util.List;
@@ -21,8 +20,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Header;
-import zipkin.internal.Util;
 
 /**
  * Kafka Consumer decorator. Read records headers and finish producers spans if possible.
@@ -44,31 +41,36 @@ class TracingConsumer<K, V> implements Consumer<K, V> {
   public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
-      maybeFinishProducerSpan(record);
+      handleConsumed(record);
     }
     return records;
+  }
+
+  private void handleConsumed(ConsumerRecord record) {
+    Span span = startAndFinishConsumerSpan(record);
+    // remove B3 headers from the record
+    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+
+    // Inject new B3 headers
+    tracing.propagation().injector(new KafkaPropagation.ConsumerInjector())
+        .inject(span.context(), record);
   }
 
   /**
    * Close the producer async span extracted from the headers.
    */
-  private void maybeFinishProducerSpan(ConsumerRecord record) {
+  private Span startAndFinishConsumerSpan(ConsumerRecord record) {
     TraceContext context = tracing.propagation()
-        .extractor(getHeaders())
+        .extractor(new KafkaPropagation.ConsumerExtractor())
         .extract(record).context();
 
-    if (context != null) {
-      Span span = tracing.tracer().joinSpan(context);
+    if (context == null) {
+      return tracing.tracer().nextSpan();
+    } else {
+      Span span = tracing.tracer().newChild(context);
       span.kind(Span.Kind.CONSUMER).start().finish();
+      return span;
     }
-  }
-
-  private Propagation.Getter<ConsumerRecord, String> getHeaders() {
-    return (ConsumerRecord carrier, String key) -> {
-      Header header = carrier.headers().lastHeader(key);
-      if (header == null) return null;
-      return new String(header.value(), Util.UTF_8);
-    };
   }
 
   @Override

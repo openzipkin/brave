@@ -51,7 +51,7 @@ public class ITTracingKafka {
   }
 
   @Test
-  public void produce_and_consume_kafka_message() throws Exception {
+  public void produce_and_consume_kafka_message_continues_a_trace() throws Exception {
     Producer<String, String> tracingProducer = createTracingProducer();
     Consumer<String, String> tracingConsumer = createTracingConsumer();
 

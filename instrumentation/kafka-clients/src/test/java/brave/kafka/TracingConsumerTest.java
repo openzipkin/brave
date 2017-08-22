@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
@@ -77,9 +78,9 @@ public class TracingConsumerTest {
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(1L);
 
-    // span closed
+    // new span from headers
     assertThat(spans)
-        .extracting(s -> Long.toHexString(s.id))
+        .extracting(s -> Long.toHexString(s.parentId))
         .containsExactly(SPAN_ID);
 
     // annotations are correct
@@ -90,15 +91,20 @@ public class TracingConsumerTest {
   }
 
   @Test
-  public void should_do_nothing_if_b3_missing() throws Exception {
+  public void should_add_new_trace_headers_if_b3_missing() throws Exception {
     consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 0, 1, TEST_KEY, TEST_VALUE));
     Map<TopicPartition, Long> offsets = new HashMap<>();
     offsets.put(topicPartition, 1L);
     consumer.updateBeginningOffsets(offsets);
 
     Consumer<String, String> tracingConsumer = KafkaTracing.create(tracing).consumer(consumer);
-    tracingConsumer.poll(10);
+    ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
 
-    assertThat(spans).isEmpty();
+    assertThat(poll)
+        .hasSize(1)
+        .extracting(ConsumerRecord::headers)
+        .extracting(headers -> headers.headers("X-B3-TraceId"))
+        .isNotEmpty()
+        .isNotEqualTo(TRACE_ID);
   }
 }

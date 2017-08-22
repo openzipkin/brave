@@ -1,15 +1,11 @@
 package brave.kafka;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-import zipkin.internal.Util;
 
 /**
  * Use this class to decorate your Kafka consumer / producer and enable Tracing.
@@ -38,21 +34,12 @@ public final class KafkaTracing {
   }
 
   /**
-   * Continues the trace extracted from the headers or creates a new one if the extract fails. Call
-   * this method while consumming your kafka records.
+   * Retrive the span extracted from the record headers.
    */
   public Span nextSpan(ConsumerRecord record) {
-    TraceContext.Extractor<Headers> extractor = tracing.propagation().extractor(
-        (carrier, key) -> {
-          Header header = carrier.lastHeader(key);
-          if (header == null) return null;
-          return new String(header.value(), Util.UTF_8);
-        });
-    TraceContext context = extractor.extract(record.headers()).context();
-    if (context != null) {
-      return tracing.tracer().newChild(context);
-    } else {
-      return tracing.tracer().nextSpan();
-    }
+    TraceContext context = tracing.propagation()
+        .extractor(new KafkaPropagation.ConsumerExtractor())
+        .extract(record).context();
+    return tracing.tracer().toSpan(context);
   }
 }

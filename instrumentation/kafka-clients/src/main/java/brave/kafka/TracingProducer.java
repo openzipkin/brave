@@ -3,7 +3,6 @@ package brave.kafka;
 import brave.Span;
 import brave.Span.Kind;
 import brave.Tracing;
-import brave.propagation.Propagation;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -18,7 +17,6 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
-import zipkin.internal.Util;
 
 import static brave.kafka.KafkaTags.KAFKA_KEY_TAG;
 import static brave.kafka.KafkaTags.KAFKA_TOPIC_TAG;
@@ -73,18 +71,14 @@ class TracingProducer<K, V> implements Producer<K, V> {
     Span span = tracing.tracer().nextSpan();
     addZipkinTags(record, span);
 
-    tracing.propagation().injector(addHeaders())
+    tracing.propagation()
+        .injector(new KafkaPropagation.ProducerInjector())
         .inject(span.context(), record);
 
     Future<RecordMetadata> recordMetadataFuture = wrappedProducer.send(record, callback);
     span.kind(Kind.PRODUCER).start().finish();
 
     return recordMetadataFuture;
-  }
-
-  private Propagation.Setter<ProducerRecord, String> addHeaders() {
-    return (ProducerRecord carrier, String key, String value) -> carrier.headers()
-        .add(key, value.getBytes(Util.UTF_8));
   }
 
   @Override

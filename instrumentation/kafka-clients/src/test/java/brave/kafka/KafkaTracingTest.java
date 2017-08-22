@@ -16,19 +16,19 @@ import zipkin.internal.Util;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class KafkaTracingTest {
-  private static final String TRACE_ID = "463ac35c9f6413ad";
-  private static final String PARENT_ID = "463ac35c9f6413ab";
-  private static final String SPAN_ID = "48485a3953bb6124";
-  private static final String SAMPLED = "1";
+  String TRACE_ID = "463ac35c9f6413ad";
+  String PARENT_ID = "463ac35c9f6413ab";
+  String SPAN_ID = "48485a3953bb6124";
+  String SAMPLED = "1";
 
-  private static final String TEST_TOPIC = "myTopic";
-  private static final String TEST_KEY = "foo";
-  private static final String TEST_VALUE = "bar";
+  String TEST_TOPIC = "myTopic";
+  String TEST_KEY = "foo";
+  String TEST_VALUE = "bar";
 
-  private KafkaTracing kafkaTracing;
-  private ConsumerRecord<String, String> fakeRecord;
+  KafkaTracing kafkaTracing;
+  ConsumerRecord<String, String> fakeRecord;
 
-  private List<zipkin.Span> spans = new ArrayList<>();
+  List<zipkin.Span> spans = new ArrayList<>();
 
   @Before
   public void setUp() throws IOException {
@@ -47,28 +47,18 @@ public class KafkaTracingTest {
   }
 
   @Test
-  public void should_create_child_from_headers() throws Exception {
+  public void should_retrieve_span_from_headers() throws Exception {
     addB3Headers();
 
     Span span = kafkaTracing.nextSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isEqualTo(TRACE_ID);
-    assertThat(Long.toHexString(context.parentId())).isEqualTo(SPAN_ID);
+    assertThat(Long.toHexString(context.spanId())).isEqualTo(SPAN_ID);
     assertThat(context.sampled()).isEqualTo(true);
   }
 
-  @Test
-  public void should_create_new_span_from_headers() throws Exception {
-    Span span = kafkaTracing.nextSpan(fakeRecord);
-
-    TraceContext context = span.context();
-    assertThat(Long.toHexString(context.traceId())).isNotEqualTo(TRACE_ID);
-    assertThat(context.parentId()).isNull();
-    assertThat(context.sampled()).isEqualTo(false);
-  }
-
-  private void addB3Headers() {
+  void addB3Headers() {
     fakeRecord.headers()
         .add("X-B3-TraceId", TRACE_ID.getBytes(Util.UTF_8))
         .add("X-B3-ParentSpanId", PARENT_ID.getBytes(Util.UTF_8))
