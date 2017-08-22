@@ -1,5 +1,5 @@
 # brave-instrumentation-httpclient
-This module contains a tracing decorator for [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.4.x/index.html) 4.3+.
+This module contains a tracing decorator for [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.4.x/index.html) 4.4+.
 `TracingHttpClientBuilder` adds trace headers to outgoing requests. It
 then reports to Zipkin how long each request takes, along with relevant
 tags like the http url.
