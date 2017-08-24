@@ -5,9 +5,9 @@ import brave.internal.Internal;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import com.github.kristofa.brave.internal.InternalSpan;
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 import zipkin.Constants;
 
 /**
@@ -96,7 +96,7 @@ public final class TracerAdapter {
       this.delegate = tracer;
     }
 
-    @Override Span nextSpan(SpanId maybeParent) {
+    @Override Span nextSpan(@Nullable SpanId maybeParent) {
       brave.Span span = maybeParent != null
           ? delegate.newChild(toTraceContext(maybeParent))
           : delegate.newTrace();

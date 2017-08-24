@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 
 abstract class CurrentSpan { // intentionally not public
 

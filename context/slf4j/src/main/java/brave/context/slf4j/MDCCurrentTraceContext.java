@@ -3,6 +3,7 @@ package brave.context.slf4j;
 import brave.internal.HexCodec;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
+import javax.annotation.Nullable;
 import org.slf4j.MDC;
 
 /**
@@ -29,7 +30,7 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     return delegate.get();
   }
 
-  @Override public Scope newScope(TraceContext currentSpan) {
+  @Override public Scope newScope(@Nullable TraceContext currentSpan) {
     final String previousTraceId = MDC.get("traceId");
     final String previousSpanId = MDC.get("spanId");
 

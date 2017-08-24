@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 
 /**
  * Maintains state for a single local span. This means nesting is not supported.
@@ -33,5 +33,5 @@ public interface LocalSpanState extends CommonSpanState {
      * 
      * @param span Local span.
      */
-    void setCurrentLocalSpan(Span span);
+    void setCurrentLocalSpan(@Nullable Span span);
 }

@@ -6,6 +6,8 @@ import java.util.concurrent.LinkedBlockingDeque;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using {@link InheritableThreadLocal}
@@ -49,12 +51,13 @@ public final class InheritableServerClientAndLocalSpanState implements ServerCli
 
     /** Never returns null: {@code setCurrentServerSpan(null)} coerces to {@link ServerSpan#EMPTY} */
     @Override
+    @Nonnull
     public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();
     }
 
     @Override
-    public void setCurrentServerSpan(final ServerSpan span) {
+    public void setCurrentServerSpan(@Nullable ServerSpan span) {
         if (span == null) {
             currentServerSpan.remove();
         } else {
@@ -68,12 +71,13 @@ public final class InheritableServerClientAndLocalSpanState implements ServerCli
     }
 
     @Override
+    @Nullable
     public Span getCurrentClientSpan() {
         return currentClientSpan.get();
     }
 
     @Override
-    public void setCurrentClientSpan(final Span span) {
+    public void setCurrentClientSpan(@Nullable Span span) {
         currentClientSpan.set(span);
     }
 
@@ -94,7 +98,7 @@ public final class InheritableServerClientAndLocalSpanState implements ServerCli
      * @param span Local span.
      */
     @Override
-    public void setCurrentLocalSpan(Span span) {
+    public void setCurrentLocalSpan(@Nullable Span span) {
         Deque<Span> deque = currentLocalSpan.get();
         if (span == null) {
             // pop to remove

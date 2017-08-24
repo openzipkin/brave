@@ -1,6 +1,6 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
+import javax.annotation.Nullable;
 
 /**
  * Maintains state for a single server span.
@@ -33,5 +33,5 @@ public interface ServerSpanState extends CommonSpanState {
      * 
      * @param span Span for current request.
      */
-    void setCurrentServerSpan(final ServerSpan span);
+    void setCurrentServerSpan(@Nullable ServerSpan span);
 }

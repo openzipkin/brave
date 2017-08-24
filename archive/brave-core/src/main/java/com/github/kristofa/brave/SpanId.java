@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import java.nio.ByteBuffer;
+import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

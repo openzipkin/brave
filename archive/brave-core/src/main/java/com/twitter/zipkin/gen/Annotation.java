@@ -1,8 +1,8 @@
 package com.twitter.zipkin.gen;
 
-import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import javax.annotation.Generated;
+import javax.annotation.Nullable;
 
 import static zipkin.internal.Util.equal;
 

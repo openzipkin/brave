@@ -1,8 +1,8 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 import zipkin.Constants;
 
 import static zipkin.Constants.LOCAL_COMPONENT;

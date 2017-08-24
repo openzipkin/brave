@@ -96,7 +96,7 @@ public abstract class CurrentTraceContext {
       return local.get();
     }
 
-    @Override public Scope newScope(TraceContext currentSpan) {
+    @Override public Scope newScope(@Nullable TraceContext currentSpan) {
       final TraceContext previous = local.get();
       local.set(currentSpan);
       class DefaultCurrentTraceContextScope implements Scope {

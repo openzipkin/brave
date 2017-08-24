@@ -1,9 +1,9 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 
 /**
  * @deprecated this type was only used for {@link AnnotationSubmitter#create(SpanAndEndpoint,

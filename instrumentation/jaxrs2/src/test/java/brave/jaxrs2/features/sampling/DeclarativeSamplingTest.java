@@ -8,6 +8,7 @@ import brave.http.ServletContainer;
 import brave.jaxrs2.TracingBootstrap;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -31,7 +32,7 @@ public class DeclarativeSamplingTest extends ServletContainer {
       .reporter(spans::add)
       .build())
       .serverSampler(new Traced.Sampler(new HttpSampler() {
-        @Nullable @Override
+        @Override @Nonnull
         public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
           return !"/foo".equals(adapter.path(request));
         }

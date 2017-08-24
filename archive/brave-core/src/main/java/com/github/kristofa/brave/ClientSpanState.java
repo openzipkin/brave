@@ -1,6 +1,7 @@
 package com.github.kristofa.brave;
 
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 
 /**
  * Maintains state for a single client span.
@@ -25,7 +26,7 @@ public interface ClientSpanState extends CommonSpanState {
      * 
      * @return Client request span for current thread.
      */
-    Span getCurrentClientSpan();
+    @Nullable Span getCurrentClientSpan();
 
     /**
      * Sets current client span.
@@ -34,5 +35,5 @@ public interface ClientSpanState extends CommonSpanState {
      * 
      * @param span Client span.
      */
-    void setCurrentClientSpan(final Span span);
+    void setCurrentClientSpan(@Nullable Span span);
 }
