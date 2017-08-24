@@ -1,8 +1,8 @@
 package brave.http;
 
 import brave.Tracing;
-import brave.internal.StrictCurrentTraceContext;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;

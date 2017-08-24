@@ -1,7 +1,7 @@
 package brave;
 
-import brave.internal.StrictCurrentTraceContext;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;

@@ -3,7 +3,7 @@ package brave.grpc;
 import brave.Tracer;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextCurrentTraceContext;
-import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;

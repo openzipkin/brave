@@ -1,9 +1,7 @@
-package brave.internal;
+package brave.propagation;
 
 import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.TraceContext;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
