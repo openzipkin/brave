@@ -462,6 +462,30 @@ Unlike previous implementations, Brave 4 only needs one timestamp per
 span. All annotations are recorded on an offset basis, using the less
 expensive and more precise `System.nanoTime()` function.
 
+## Unit testing instrumentation
+
+When writing unit tests, there are a few tricks that will make bugs
+easier to find:
+
+* Report spans into a concurrent queue, so you can read them in tests
+* Use `StrictCurrentTraceContext` to reveal subtle propagation bugs
+* Unconditionally cleanup `Tracing.current()`, to prevent leaks
+
+Here's an example setup for your unit test fixture:
+```java
+ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+
+Tracing tracing = Tracing.newBuilder()
+                 .currentTraceContext(new StrictCurrentTraceContext())
+                 .reporter(spans::add)
+                 .build();
+
+  @After public void close() {
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
+  }
+```
+
 ## Upgrading from Brave 3
 Brave 4 was designed to live alongside Brave 3. Using `TracerAdapter`,
 you can navigate between apis, buying you time to update as appropriate.

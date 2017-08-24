@@ -3,7 +3,7 @@ package brave.grpc;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.HexCodec;
-import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import io.grpc.CallOptions;

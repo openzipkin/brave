@@ -2,7 +2,7 @@ package brave.spring.beans;
 
 import brave.Clock;
 import brave.Tracing;
-import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
@@ -106,7 +106,7 @@ public class TracingFactoryBeanTest {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"currentTraceContext\">\n"
-        + "    <bean class=\"brave.internal.StrictCurrentTraceContext\"/>\n"
+        + "    <bean class=\"brave.propagation.StrictCurrentTraceContext\"/>\n"
         + "  </property>\n"
         + "</bean>"
     );

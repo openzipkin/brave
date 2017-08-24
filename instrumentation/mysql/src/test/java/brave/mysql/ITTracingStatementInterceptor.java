@@ -2,7 +2,7 @@ package brave.mysql;
 
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
-import brave.internal.StrictCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import java.nio.charset.Charset;
