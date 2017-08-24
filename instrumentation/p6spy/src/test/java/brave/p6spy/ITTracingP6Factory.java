@@ -4,6 +4,7 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -16,7 +17,6 @@ import org.junit.Test;
 import zipkin.Constants;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.Util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -86,7 +86,7 @@ public class ITTracingP6Factory {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(TraceKeys.SQL_QUERY))
-        .extracting(a -> new String(a.value, Util.UTF_8))
+        .extracting(a -> new String(a.value, Charset.forName("UTF-8")))
         .containsExactly(QUERY);
   }
 

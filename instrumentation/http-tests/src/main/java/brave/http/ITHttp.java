@@ -6,13 +6,13 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import zipkin.Span;
-import zipkin.internal.Util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,7 +49,7 @@ public abstract class ITHttp {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(key))
-        .extracting(b -> new String(b.value, Util.UTF_8))
+        .extracting(b -> new String(b.value, Charset.forName("UTF-8")))
         .containsExactly(values);
   }
 }

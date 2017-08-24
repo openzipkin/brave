@@ -5,6 +5,7 @@ import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
 import brave.http.HttpTracing;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
@@ -19,7 +20,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import zipkin.Endpoint;
-import zipkin.internal.Util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,7 +77,7 @@ public class RequestSamplingTest {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals("http.path"))
-        .extracting(b -> new String(b.value, Util.UTF_8))
+        .extracting(b -> new String(b.value, Charset.forName("UTF-8")))
         .containsOnly("/api", "/next");
   }
 

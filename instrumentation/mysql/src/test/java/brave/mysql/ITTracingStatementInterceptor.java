@@ -5,6 +5,7 @@ import brave.Tracing;
 import brave.internal.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,12 +17,10 @@ import org.junit.Test;
 import zipkin.Constants;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.Util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.Assume.assumeTrue;
-import static zipkin.internal.Util.envOr;
 
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
@@ -106,7 +105,7 @@ public class ITTracingStatementInterceptor {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(TraceKeys.SQL_QUERY))
-        .extracting(a -> new String(a.value, Util.UTF_8))
+        .extracting(a -> new String(a.value, Charset.forName("UTF-8")))
         .containsExactly(QUERY);
   }
 
@@ -135,5 +134,13 @@ public class ITTracingStatementInterceptor {
         .reporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())
         .sampler(sampler);
+  }
+
+  static int envOr(String key, int fallback) {
+    return System.getenv(key) != null ? Integer.parseInt(System.getenv(key)) : fallback;
+  }
+
+  static String envOr(String key, String fallback) {
+    return System.getenv(key) != null ? System.getenv(key) : fallback;
   }
 }

@@ -22,6 +22,7 @@ import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -33,7 +34,6 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin.Constants;
 import zipkin.Span;
-import zipkin.internal.Util;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public class ITTracingClientInterceptor {
+  static final Charset UTF_8 = Charset.forName("UTF-8");
   Logger testLogger = LogManager.getLogger();
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
@@ -182,7 +183,7 @@ public class ITTracingClientInterceptor {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
-        .extracting(a -> new String(a.value, Util.UTF_8))
+        .extracting(a -> new String(a.value, UTF_8))
         .containsExactly("UNIMPLEMENTED");
   }
 
@@ -192,7 +193,7 @@ public class ITTracingClientInterceptor {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
-        .extracting(a -> new String(a.value, Util.UTF_8))
+        .extracting(a -> new String(a.value, UTF_8))
         .containsExactly("UNAVAILABLE");
   }
 
@@ -207,7 +208,7 @@ public class ITTracingClientInterceptor {
     assertThat(spans)
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(a -> a.key.equals(Constants.ERROR))
-        .extracting(a -> new String(a.value, Util.UTF_8))
+        .extracting(a -> new String(a.value, UTF_8))
         .containsExactly("CANCELLED");
   }
 

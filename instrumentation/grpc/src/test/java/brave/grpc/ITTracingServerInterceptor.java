@@ -26,6 +26,7 @@ import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloRequest;
+import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,7 +40,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import zipkin.Constants;
 import zipkin.Span;
-import zipkin.internal.Util;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
@@ -197,7 +197,7 @@ public class ITTracingServerInterceptor {
     } catch (StatusRuntimeException e) {
       assertThat(spans)
           .flatExtracting(s -> s.binaryAnnotations)
-          .extracting(b -> tuple(b.key, new String(b.value, Util.UTF_8)))
+          .extracting(b -> tuple(b.key, new String(b.value, Charset.forName("UTF-8"))))
           .contains(tuple(Constants.ERROR, e.getStatus().getCode().toString()));
     }
   }

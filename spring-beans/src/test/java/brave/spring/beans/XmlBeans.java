@@ -1,11 +1,12 @@
 package brave.spring.beans;
 
+import java.nio.charset.Charset;
 import org.springframework.context.support.AbstractXmlApplicationContext;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import zipkin.internal.Util;
 
 class XmlBeans extends AbstractXmlApplicationContext {
+  static final Charset UTF_8 = Charset.forName("UTF-8");
 
   final ByteArrayResource resource;
 
@@ -14,7 +15,7 @@ class XmlBeans extends AbstractXmlApplicationContext {
     for (String bean : beans) {
       joined.append(bean).append('\n');
     }
-    this.resource = new ByteArrayResource(beans(joined.toString()).getBytes(Util.UTF_8));
+    this.resource = new ByteArrayResource(beans(joined.toString()).getBytes(UTF_8));
   }
 
   @Override protected Resource[] getConfigResources() {
