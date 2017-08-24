@@ -1,5 +1,7 @@
 package brave.propagation;
 
+import javax.annotation.Nullable;
+
 /**
  * Useful when developing instrumentation as state is enforced more strictly.
  *
@@ -18,7 +20,7 @@ public final class StrictCurrentTraceContext extends CurrentTraceContext {
   }
 
   /** Identifies problems by throwing assertion errors when a scope is closed on a different thread. */
-  @Override public Scope newScope(TraceContext currentSpan) {
+  @Override public Scope newScope(@Nullable TraceContext currentSpan) {
     TraceContext previous = local.get();
     local.set(currentSpan);
     return new StrictScope(previous, new Error(String.format("Thread %s opened scope for %s here:",

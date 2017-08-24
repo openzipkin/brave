@@ -10,10 +10,10 @@ import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
 import java.util.Collection;
 import java.util.Collections;
+import javax.annotation.Nullable;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;

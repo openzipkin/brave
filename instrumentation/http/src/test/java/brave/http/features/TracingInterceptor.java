@@ -6,6 +6,7 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import java.io.IOException;
+import javax.annotation.Nullable;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -38,23 +39,23 @@ final class TracingInterceptor implements Interceptor {
   }
 
   static final class OkHttpAdapter extends brave.http.HttpClientAdapter<Request, Response> {
-    @Override public String method(Request request) {
+    @Override @Nullable public String method(Request request) {
       return request.method();
     }
 
-    @Override public String path(Request request) {
+    @Override @Nullable public String path(Request request) {
       return request.url().encodedPath();
     }
 
-    @Override public String url(Request request) {
+    @Override @Nullable public String url(Request request) {
       return request.url().toString();
     }
 
-    @Override public String requestHeader(Request request, String name) {
+    @Override @Nullable public String requestHeader(Request request, String name) {
       return request.header(name);
     }
 
-    @Override public Integer statusCode(Response response) {
+    @Override @Nullable public Integer statusCode(Response response) {
       return response.code();
     }
   }

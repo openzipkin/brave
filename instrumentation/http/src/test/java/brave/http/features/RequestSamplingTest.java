@@ -7,6 +7,8 @@ import brave.http.HttpTracing;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,7 +37,8 @@ public class RequestSamplingTest {
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
       // server starts traces under the path /api
       .serverSampler(new HttpSampler() {
-        @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+        @Override @Nonnull
+        public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
           return adapter.path(request).startsWith("/api");
         }
       })

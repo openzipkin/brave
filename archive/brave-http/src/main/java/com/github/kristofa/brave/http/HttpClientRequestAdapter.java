@@ -4,8 +4,8 @@ import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
-import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
+import javax.annotation.Nullable;
 import zipkin.TraceKeys;
 
 import java.util.Collection;

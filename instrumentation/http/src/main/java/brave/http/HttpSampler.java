@@ -1,5 +1,6 @@
 package brave.http;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
@@ -20,7 +21,7 @@ import javax.annotation.Nullable;
 public abstract class HttpSampler {
   /** Ignores the request and uses the {@link brave.sampler.Sampler trace ID instead}. */
   public static final HttpSampler TRACE_ID = new HttpSampler() {
-    @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    @Override @Nullable public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return null;
     }
 
@@ -35,7 +36,7 @@ public abstract class HttpSampler {
    * out client requests made during bootstrap.
    */
   public static final HttpSampler NEVER_SAMPLE = new HttpSampler() {
-    @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    @Override @Nonnull public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return false;
     }
 

@@ -4,6 +4,7 @@ import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import javax.annotation.Nullable;
 
 /**
  * Example that shows ServerClientAndLocalSpanState can be implemented outside brave's package.
@@ -21,7 +22,7 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
     }
 
     @Override
-    public void setCurrentServerSpan(final ServerSpan span) {
+    public void setCurrentServerSpan(@Nullable ServerSpan span) {
         currentServerSpan = span;
     }
 
@@ -36,7 +37,7 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
     }
 
     @Override
-    public void setCurrentClientSpan(Span span) {
+    public void setCurrentClientSpan(@Nullable Span span) {
         currentClientSpan = span;
     }
 
@@ -51,7 +52,7 @@ public class TestServerClientAndLocalSpanStateCompilation implements ServerClien
     }
 
     @Override
-    public void setCurrentLocalSpan(Span span) {
+    public void setCurrentLocalSpan(@Nullable Span span) {
         currentLocalSpan = span;
     }
 }

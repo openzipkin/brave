@@ -6,6 +6,7 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import javax.annotation.Nullable;
 import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;

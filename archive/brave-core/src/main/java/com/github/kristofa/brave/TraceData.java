@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import javax.annotation.Nullable;
 
 /**
  * Trace properties we potentially get from incoming request.
@@ -32,12 +32,12 @@ public abstract class TraceData {
         SpanId spanId;
         Boolean sample;
 
-        @Override public Builder spanId(SpanId spanId) {
+        @Override public Builder spanId(@Nullable SpanId spanId) {
             this.spanId = spanId;
             return this;
         }
 
-        @Override public Builder sample(Boolean sample) {
+        @Override public Builder sample(@Nullable Boolean sample) {
             this.sample = sample;
             return this;
         }
