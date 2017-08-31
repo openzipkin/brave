@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Span;
 import brave.Span.Kind;
@@ -16,15 +16,11 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.ProducerFencedException;
 
-import static brave.kafka.KafkaTags.KAFKA_KEY_TAG;
-import static brave.kafka.KafkaTags.KAFKA_TOPIC_TAG;
-
-/**
- *
- */
 class TracingProducer<K, V> implements Producer<K, V> {
+
+  private static final KafkaPropagation.ProducerInjector injector =
+      new KafkaPropagation.ProducerInjector();
 
   private final Tracing tracing;
   private final Producer<K, V> wrappedProducer;
@@ -40,17 +36,17 @@ class TracingProducer<K, V> implements Producer<K, V> {
   }
 
   @Override
-  public void beginTransaction() throws ProducerFencedException {
+  public void beginTransaction() {
     wrappedProducer.beginTransaction();
   }
 
   @Override
-  public void commitTransaction() throws ProducerFencedException {
+  public void commitTransaction() {
     wrappedProducer.commitTransaction();
   }
 
   @Override
-  public void abortTransaction() throws ProducerFencedException {
+  public void abortTransaction() {
     wrappedProducer.abortTransaction();
   }
 
@@ -69,10 +65,14 @@ class TracingProducer<K, V> implements Producer<K, V> {
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
     Span span = tracing.tracer().nextSpan();
-    addZipkinTags(record, span);
+
+    if (record.key() != null) {
+      span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+    }
+    span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
 
     tracing.propagation()
-        .injector(new KafkaPropagation.ProducerInjector())
+        .injector(injector)
         .inject(span.context(), record);
 
     Future<RecordMetadata> recordMetadataFuture = wrappedProducer.send(record, callback);
@@ -108,15 +108,7 @@ class TracingProducer<K, V> implements Producer<K, V> {
 
   @Override
   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
-      String consumerGroupId)
-      throws ProducerFencedException {
+      String consumerGroupId) {
     wrappedProducer.sendOffsetsToTransaction(offsets, consumerGroupId);
-  }
-
-  private void addZipkinTags(ProducerRecord<K, V> record, Span span) {
-    if (record.key() != null) {
-      span.tag(KAFKA_KEY_TAG, record.key().toString());
-    }
-    span.tag(KAFKA_TOPIC_TAG, record.topic());
   }
 }

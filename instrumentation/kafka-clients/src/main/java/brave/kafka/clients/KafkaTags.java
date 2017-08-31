@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 class KafkaTags {
   static final String KAFKA_TOPIC_TAG = "kafka.topic";

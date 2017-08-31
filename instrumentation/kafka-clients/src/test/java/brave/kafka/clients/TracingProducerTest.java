@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Tracing;
 import java.util.Arrays;

@@ -9,7 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-kafka</artifactId>
+  <artifactId>brave-instrumentation-kafka-clients</artifactId>
   <name>Brave Instrumentation: Kafka</name>
 
   <properties>

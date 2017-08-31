@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
@@ -22,9 +22,15 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * Kafka Consumer decorator. Read records headers and finish producers spans if possible.
+ * Kafka Consumer decorator.
+ * Read records headers to create and complete a child of the incoming producers span if possible.
  */
 class TracingConsumer<K, V> implements Consumer<K, V> {
+
+  private final KafkaPropagation.ConsumerInjector injector =
+      new KafkaPropagation.ConsumerInjector();
+  private final KafkaPropagation.ConsumerExtractor extractor =
+      new KafkaPropagation.ConsumerExtractor();
 
   private final Tracing tracing;
   private final Consumer<K, V> wrappedConsumer;
@@ -35,7 +41,7 @@ class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   /**
-   * For each poll, finish all spans in the record list.
+   * For each poll, handle span creation.
    */
   @Override
   public ConsumerRecords<K, V> poll(long timeout) {
@@ -48,20 +54,20 @@ class TracingConsumer<K, V> implements Consumer<K, V> {
 
   private void handleConsumed(ConsumerRecord record) {
     Span span = startAndFinishConsumerSpan(record);
-    // remove B3 headers from the record
+    // remove propagation headers from the record
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
 
-    // Inject new B3 headers
-    tracing.propagation().injector(new KafkaPropagation.ConsumerInjector())
+    // Inject new propagation headers
+    tracing.propagation().injector(injector)
         .inject(span.context(), record);
   }
 
   /**
-   * Close the producer async span extracted from the headers.
+   * Start a consumer span child of the producer span. And immediately finish It.
    */
   private Span startAndFinishConsumerSpan(ConsumerRecord record) {
     TraceContext context = tracing.propagation()
-        .extractor(new KafkaPropagation.ConsumerExtractor())
+        .extractor(extractor)
         .extract(record).context();
 
     if (context == null) {

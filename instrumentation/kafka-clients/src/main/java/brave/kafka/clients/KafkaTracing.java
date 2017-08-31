@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
@@ -12,11 +12,14 @@ import org.apache.kafka.clients.producer.Producer;
  */
 public final class KafkaTracing {
 
+  private final KafkaPropagation.ConsumerExtractor extractor =
+      new KafkaPropagation.ConsumerExtractor();
+
   public static KafkaTracing create(Tracing tracing) {
     return new KafkaTracing(tracing);
   }
 
-  final Tracing tracing;
+  private final Tracing tracing;
 
   KafkaTracing(Tracing tracing) { // hidden constructor
     if (tracing == null) {
@@ -34,12 +37,17 @@ public final class KafkaTracing {
   }
 
   /**
-   * Retrive the span extracted from the record headers.
+   * Retrieve the span extracted from the record headers. Creates a root span if the context is not
+   * available.
    */
   public Span nextSpan(ConsumerRecord record) {
     TraceContext context = tracing.propagation()
-        .extractor(new KafkaPropagation.ConsumerExtractor())
+        .extractor(extractor)
         .extract(record).context();
-    return tracing.tracer().toSpan(context);
+    if (context != null) {
+      return tracing.tracer().toSpan(context);
+    } else {
+      return tracing.tracer().newTrace();
+    }
   }
 }

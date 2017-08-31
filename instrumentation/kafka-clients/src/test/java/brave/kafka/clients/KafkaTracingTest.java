@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
@@ -56,6 +56,16 @@ public class KafkaTracingTest {
     assertThat(Long.toHexString(context.traceId())).isEqualTo(TRACE_ID);
     assertThat(Long.toHexString(context.spanId())).isEqualTo(SPAN_ID);
     assertThat(context.sampled()).isEqualTo(true);
+  }
+
+  @Test
+  public void should_create_span_if_no_headers() throws Exception {
+    Span span = kafkaTracing.nextSpan(fakeRecord);
+
+    TraceContext context = span.context();
+    assertThat(Long.toHexString(context.traceId())).isNotEmpty().isNotEqualTo(TRACE_ID);
+    assertThat(Long.toHexString(context.spanId())).isNotEmpty().isNotEqualTo(SPAN_ID);
+    assertThat(context.sampled()).isEqualTo(false);
   }
 
   void addB3Headers() {

@@ -1,4 +1,4 @@
-package brave.kafka;
+package brave.kafka.clients;
 
 import brave.Tracing;
 import brave.sampler.Sampler;
@@ -16,7 +16,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
+import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import zipkin.Span;
@@ -29,25 +29,25 @@ public class ITTracingKafka {
   String TEST_KEY = "foo";
   String TEST_VALUE = "bar";
 
-  Tracing consumerTracing;
-  Tracing producerTracing;
-
   LinkedList<Span> consumerSpans = new LinkedList<>();
   LinkedList<Span> producerSpans = new LinkedList<>();
+
+  KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
+      .reporter(consumerSpans::add)
+      .sampler(Sampler.ALWAYS_SAMPLE)
+      .build());
+  KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
+      .reporter(producerSpans::add)
+      .sampler(Sampler.ALWAYS_SAMPLE)
+      .build());
 
   @Rule
   public KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
 
-  @Before
-  public void setUp() throws Exception {
-    consumerTracing = Tracing.newBuilder()
-        .reporter(consumerSpans::add)
-        .sampler(Sampler.ALWAYS_SAMPLE)
-        .build();
-    producerTracing = Tracing.newBuilder()
-        .reporter(producerSpans::add)
-        .sampler(Sampler.ALWAYS_SAMPLE)
-        .build();
+  @After
+  public void close() throws Exception {
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test
@@ -69,9 +69,8 @@ public class ITTracingKafka {
     assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
         .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
 
-    KafkaTracing kafkaTracing = KafkaTracing.create(consumerTracing);
     for (ConsumerRecord<String, String> record : records) {
-      brave.Span span = kafkaTracing.nextSpan(record);
+      brave.Span span = consumerTracing.nextSpan(record);
       assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
     }
   }
@@ -79,11 +78,11 @@ public class ITTracingKafka {
   Consumer<String, String> createTracingConsumer() {
     KafkaConsumer<String, String> consumer = kafkaRule.helper().createStringConsumer();
     consumer.assign(Collections.singleton(new TopicPartition(TEST_TOPIC, 0)));
-    return KafkaTracing.create(consumerTracing).consumer(consumer);
+    return consumerTracing.consumer(consumer);
   }
 
   Producer<String, String> createTracingProducer() {
     KafkaProducer<String, String> producer = kafkaRule.helper().createStringProducer();
-    return KafkaTracing.create(producerTracing).producer(producer);
+    return producerTracing.producer(producer);
   }
 }
