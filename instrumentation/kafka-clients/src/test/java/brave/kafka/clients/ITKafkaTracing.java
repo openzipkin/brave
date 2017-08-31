@@ -23,7 +23,7 @@ import zipkin.Span;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-public class ITTracingKafka {
+public class ITKafkaTracing {
 
   String TEST_TOPIC = "myTopic";
   String TEST_KEY = "foo";

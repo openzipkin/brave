@@ -22,22 +22,21 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * Kafka Consumer decorator.
- * Read records headers to create and complete a child of the incoming producers span if possible.
+ * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
+ * producers span if possible.
  */
 class TracingConsumer<K, V> implements Consumer<K, V> {
 
-  private final KafkaPropagation.ConsumerInjector injector =
-      new KafkaPropagation.ConsumerInjector();
-  private final KafkaPropagation.ConsumerExtractor extractor =
-      new KafkaPropagation.ConsumerExtractor();
-
   private final Tracing tracing;
+  private final TraceContext.Injector<ConsumerRecord> injector;
+  private final TraceContext.Extractor<ConsumerRecord> extractor;
   private final Consumer<K, V> wrappedConsumer;
 
   TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
     this.wrappedConsumer = consumer;
     this.tracing = tracing;
+    this.injector = tracing.propagation().injector(new KafkaPropagation.ConsumerRecordSetter());
+    this.extractor = tracing.propagation().extractor(new KafkaPropagation.ConsumerRecordGetter());
   }
 
   /**
@@ -58,17 +57,14 @@ class TracingConsumer<K, V> implements Consumer<K, V> {
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
 
     // Inject new propagation headers
-    tracing.propagation().injector(injector)
-        .inject(span.context(), record);
+    injector.inject(span.context(), record);
   }
 
   /**
    * Start a consumer span child of the producer span. And immediately finish It.
    */
   private Span startAndFinishConsumerSpan(ConsumerRecord record) {
-    TraceContext context = tracing.propagation()
-        .extractor(extractor)
-        .extract(record).context();
+    TraceContext context = extractor.extract(record).context();
 
     if (context == null) {
       return tracing.tracer().nextSpan();

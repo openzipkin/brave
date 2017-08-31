@@ -3,6 +3,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Span.Kind;
 import brave.Tracing;
+import brave.propagation.TraceContext;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -16,18 +17,19 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import zipkin.internal.Nullable;
 
 class TracingProducer<K, V> implements Producer<K, V> {
 
-  private static final KafkaPropagation.ProducerInjector injector =
-      new KafkaPropagation.ProducerInjector();
-
   private final Tracing tracing;
+  private final TraceContext.Injector<ProducerRecord> injector;
   private final Producer<K, V> wrappedProducer;
 
   TracingProducer(Tracing tracing, Producer<K, V> producer) {
     this.wrappedProducer = producer;
     this.tracing = tracing;
+    this.injector =
+        tracing.propagation().injector(new KafkaPropagation.ProducerRecordSetter());
   }
 
   @Override
@@ -63,7 +65,7 @@ class TracingProducer<K, V> implements Producer<K, V> {
    * We wrap the send method to add tracing.
    */
   @Override
-  public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
+  public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     Span span = tracing.tracer().nextSpan();
 
     if (record.key() != null) {
@@ -71,14 +73,11 @@ class TracingProducer<K, V> implements Producer<K, V> {
     }
     span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
 
-    tracing.propagation()
-        .injector(injector)
-        .inject(span.context(), record);
+    injector.inject(span.context(), record);
 
-    Future<RecordMetadata> recordMetadataFuture = wrappedProducer.send(record, callback);
-    span.kind(Kind.PRODUCER).start().finish();
-
-    return recordMetadataFuture;
+    span.kind(Kind.PRODUCER).start();
+    TracingCallback tracingCallback = new TracingCallback(span, callback);
+    return wrappedProducer.send(record, tracingCallback);
   }
 
   @Override

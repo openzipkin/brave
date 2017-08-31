@@ -3,6 +3,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Tracing;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -12,20 +13,19 @@ import org.apache.kafka.clients.producer.Producer;
  */
 public final class KafkaTracing {
 
-  private final KafkaPropagation.ConsumerExtractor extractor =
-      new KafkaPropagation.ConsumerExtractor();
-
   public static KafkaTracing create(Tracing tracing) {
     return new KafkaTracing(tracing);
   }
 
   private final Tracing tracing;
+  private final TraceContext.Extractor<ConsumerRecord> extractor;
 
   KafkaTracing(Tracing tracing) { // hidden constructor
     if (tracing == null) {
       throw new NullPointerException("tracing == null");
     }
     this.tracing = tracing;
+    this.extractor = tracing.propagation().extractor(new KafkaPropagation.ConsumerRecordGetter());
   }
 
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
@@ -41,13 +41,11 @@ public final class KafkaTracing {
    * available.
    */
   public Span nextSpan(ConsumerRecord record) {
-    TraceContext context = tracing.propagation()
-        .extractor(extractor)
-        .extract(record).context();
-    if (context != null) {
-      return tracing.tracer().toSpan(context);
+    TraceContextOrSamplingFlags contextOrSamplingFlags = extractor.extract(record);
+    if (contextOrSamplingFlags.context() != null) {
+      return tracing.tracer().toSpan(contextOrSamplingFlags.context());
     } else {
-      return tracing.tracer().newTrace();
+        return tracing.tracer().newTrace(contextOrSamplingFlags.samplingFlags());
     }
   }
 }
