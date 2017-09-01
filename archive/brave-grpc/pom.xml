@@ -4,7 +4,7 @@
     <parent>
         <artifactId>brave-parent</artifactId>
         <groupId>io.zipkin.brave</groupId>
-        <version>4.6.0</version>
+        <version>4.6.1-SNAPSHOT</version>
     </parent>
     <artifactId>brave-grpc</artifactId>
     <packaging>jar</packaging>
