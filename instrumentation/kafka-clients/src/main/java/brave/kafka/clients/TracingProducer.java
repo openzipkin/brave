@@ -2,12 +2,14 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Span.Kind;
+import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.TraceContext;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -17,97 +19,93 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import zipkin.internal.Nullable;
+import org.apache.kafka.common.header.Headers;
 
-class TracingProducer<K, V> implements Producer<K, V> {
+import static brave.kafka.clients.KafkaTracing.finish;
 
-  private final Tracing tracing;
-  private final TraceContext.Injector<ProducerRecord> injector;
-  private final Producer<K, V> wrappedProducer;
+final class TracingProducer<K, V> implements Producer<K, V> {
 
-  TracingProducer(Tracing tracing, Producer<K, V> producer) {
-    this.wrappedProducer = producer;
+  final Tracing tracing;
+  final TraceContext.Injector<Headers> injector;
+  final Producer<K, V> delegate;
+
+  TracingProducer(Tracing tracing, Producer<K, V> delegate) {
+    this.delegate = delegate;
     this.tracing = tracing;
-    this.injector =
-        tracing.propagation().injector(new KafkaPropagation.ProducerRecordSetter());
+    this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
   }
 
-  @Override
-  public void initTransactions() {
-    wrappedProducer.initTransactions();
+  @Override public void initTransactions() {
+    delegate.initTransactions();
   }
 
-  @Override
-  public void beginTransaction() {
-    wrappedProducer.beginTransaction();
+  @Override public void beginTransaction() {
+    delegate.beginTransaction();
   }
 
-  @Override
-  public void commitTransaction() {
-    wrappedProducer.commitTransaction();
+  @Override public void commitTransaction() {
+    delegate.commitTransaction();
   }
 
-  @Override
-  public void abortTransaction() {
-    wrappedProducer.abortTransaction();
+  @Override public void abortTransaction() {
+    delegate.abortTransaction();
   }
 
   /**
    * Send with a callback is always called for KafkaProducer. We do the same here to enable
    * tracing.
    */
-  @Override
-  public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
+  @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
     return this.send(record, null);
   }
 
-  /**
-   * We wrap the send method to add tracing.
-   */
+  /** We wrap the send method to add tracing. */
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     Span span = tracing.tracer().nextSpan();
 
-    if (record.key() != null) {
-      span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+    if (!span.isNoop()) {
+      if (record.key() != null) {
+        span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+      }
+      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
     }
-    span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+    // TODO: consider making remove a normal part of propagation
+    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
 
-    injector.inject(span.context(), record);
-
+    injector.inject(span.context(), record.headers());
     span.kind(Kind.PRODUCER).start();
-    TracingCallback tracingCallback = new TracingCallback(span, callback);
-    return wrappedProducer.send(record, tracingCallback);
+    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+      return delegate.send(record, new TracingCallback(span, callback));
+    } catch (RuntimeException | Error e) {
+      finish(span, e);
+      throw e;
+    }
   }
 
-  @Override
-  public void flush() {
-    wrappedProducer.flush();
+  @Override public void flush() {
+    delegate.flush();
   }
 
-  @Override
-  public List<PartitionInfo> partitionsFor(String topic) {
-    return wrappedProducer.partitionsFor(topic);
+  @Override public List<PartitionInfo> partitionsFor(String topic) {
+    return delegate.partitionsFor(topic);
   }
 
-  @Override
-  public Map<MetricName, ? extends Metric> metrics() {
-    return wrappedProducer.metrics();
+  @Override public Map<MetricName, ? extends Metric> metrics() {
+    return delegate.metrics();
   }
 
-  @Override
-  public void close() {
-    wrappedProducer.close();
+  @Override public void close() {
+    delegate.close();
   }
 
-  @Override
-  public void close(long timeout, TimeUnit unit) {
-    wrappedProducer.close(timeout, unit);
+  @Override public void close(long timeout, TimeUnit unit) {
+    delegate.close(timeout, unit);
   }
 
   @Override
   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
       String consumerGroupId) {
-    wrappedProducer.sendOffsetsToTransaction(offsets, consumerGroupId);
+    delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
 }

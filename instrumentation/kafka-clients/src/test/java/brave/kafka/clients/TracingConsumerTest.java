@@ -88,6 +88,12 @@ public class TracingConsumerTest {
         .flatExtracting(s -> s.annotations)
         .extracting(a -> a.value)
         .containsExactly("wr", "mr");
+
+    // tags are correct
+    assertThat(spans)
+        .flatExtracting(s -> s.annotations)
+        .extracting(a -> a.value)
+        .containsExactly("wr", "mr");
   }
 
   @Test

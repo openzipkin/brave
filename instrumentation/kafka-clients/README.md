@@ -22,7 +22,7 @@ Because Kafka batches messages while consuming, we create the new span from the 
 The new span then replace the previous record headers with the new propagation headers.
 When processing a message later, you can continue the trace like this:
 ```java
-Span s = kafkaTracing.nextSpan(record);
+Span forProcessor = kafkaTracing.joinSpan(record);
 ```
 and use the retrieved span as usual.
 
