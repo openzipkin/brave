@@ -70,7 +70,7 @@ public class ITKafkaTracing {
         .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
 
     for (ConsumerRecord<String, String> record : records) {
-      brave.Span span = consumerTracing.nextSpan(record);
+      brave.Span span = consumerTracing.joinSpan(record);
       assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
     }
   }

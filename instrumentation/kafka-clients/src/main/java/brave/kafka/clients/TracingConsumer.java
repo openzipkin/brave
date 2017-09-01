@@ -3,6 +3,8 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Tracing;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -20,205 +22,181 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
  * producers span if possible.
  */
-class TracingConsumer<K, V> implements Consumer<K, V> {
+final class TracingConsumer<K, V> implements Consumer<K, V> {
 
-  private final Tracing tracing;
-  private final TraceContext.Injector<ConsumerRecord> injector;
-  private final TraceContext.Extractor<ConsumerRecord> extractor;
-  private final Consumer<K, V> wrappedConsumer;
+  final Tracing tracing;
+  final Injector<Headers> injector;
+  final Extractor<Headers> extractor;
+  final Consumer<K, V> delegate;
 
-  TracingConsumer(Tracing tracing, Consumer<K, V> consumer) {
-    this.wrappedConsumer = consumer;
+  TracingConsumer(Tracing tracing, Consumer<K, V> delegate) {
+    this.delegate = delegate;
     this.tracing = tracing;
-    this.injector = tracing.propagation().injector(new KafkaPropagation.ConsumerRecordSetter());
-    this.extractor = tracing.propagation().extractor(new KafkaPropagation.ConsumerRecordGetter());
+    this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
+    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
   }
 
-  /**
-   * For each poll, handle span creation.
-   */
-  @Override
-  public ConsumerRecords<K, V> poll(long timeout) {
-    ConsumerRecords<K, V> records = wrappedConsumer.poll(timeout);
+  /** Each poll handles span creation. */
+  @Override public ConsumerRecords<K, V> poll(long timeout) {
+    ConsumerRecords<K, V> records = delegate.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
       handleConsumed(record);
     }
     return records;
   }
 
-  private void handleConsumed(ConsumerRecord record) {
+  void handleConsumed(ConsumerRecord record) {
     Span span = startAndFinishConsumerSpan(record);
     // remove propagation headers from the record
+    // TODO: consider making remove a normal part of propagation
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
 
     // Inject new propagation headers
-    injector.inject(span.context(), record);
+    injector.inject(span.context(), record.headers());
   }
 
   /**
    * Start a consumer span child of the producer span. And immediately finish It.
    */
-  private Span startAndFinishConsumerSpan(ConsumerRecord record) {
-    TraceContext context = extractor.extract(record).context();
-
+  Span startAndFinishConsumerSpan(ConsumerRecord record) {
+    TraceContext context = extractor.extract(record.headers()).context();
     if (context == null) {
       return tracing.tracer().nextSpan();
     } else {
       Span span = tracing.tracer().newChild(context);
+      if (!span.isNoop()) {
+        if (record.key() != null) {
+          span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+        }
+        span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+      }
       span.kind(Span.Kind.CONSUMER).start().finish();
       return span;
     }
   }
 
-  @Override
-  public Set<TopicPartition> assignment() {
-    return wrappedConsumer.assignment();
+  @Override public Set<TopicPartition> assignment() {
+    return delegate.assignment();
   }
 
-  @Override
-  public Set<String> subscription() {
-    return wrappedConsumer.subscription();
+  @Override public Set<String> subscription() {
+    return delegate.subscription();
   }
 
-  @Override
-  public void subscribe(Collection<String> topics) {
-    wrappedConsumer.subscribe(topics);
+  @Override public void subscribe(Collection<String> topics) {
+    delegate.subscribe(topics);
   }
 
-  @Override
-  public void subscribe(Collection<String> topics, ConsumerRebalanceListener callback) {
-    wrappedConsumer.subscribe(topics, callback);
+  @Override public void subscribe(Collection<String> topics, ConsumerRebalanceListener callback) {
+    delegate.subscribe(topics, callback);
   }
 
-  @Override
-  public void assign(Collection<TopicPartition> partitions) {
-    wrappedConsumer.assign(partitions);
+  @Override public void assign(Collection<TopicPartition> partitions) {
+    delegate.assign(partitions);
   }
 
-  @Override
-  public void subscribe(Pattern pattern, ConsumerRebalanceListener callback) {
-    wrappedConsumer.subscribe(pattern, callback);
+  @Override public void subscribe(Pattern pattern, ConsumerRebalanceListener callback) {
+    delegate.subscribe(pattern, callback);
   }
 
-  @Override
-  public void unsubscribe() {
-    wrappedConsumer.unsubscribe();
+  @Override public void unsubscribe() {
+    delegate.unsubscribe();
   }
 
-  @Override
-  public void commitSync() {
-    wrappedConsumer.commitSync();
+  @Override public void commitSync() {
+    delegate.commitSync();
   }
 
-  @Override
-  public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets) {
-    wrappedConsumer.commitSync(offsets);
+  @Override public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets) {
+    delegate.commitSync(offsets);
   }
 
-  @Override
-  public void commitAsync() {
-    wrappedConsumer.commitAsync();
+  @Override public void commitAsync() {
+    delegate.commitAsync();
   }
 
-  @Override
-  public void commitAsync(OffsetCommitCallback callback) {
-    wrappedConsumer.commitAsync(callback);
+  @Override public void commitAsync(OffsetCommitCallback callback) {
+    delegate.commitAsync(callback);
   }
 
-  @Override
-  public void commitAsync(Map<TopicPartition, OffsetAndMetadata> offsets,
+  @Override public void commitAsync(Map<TopicPartition, OffsetAndMetadata> offsets,
       OffsetCommitCallback callback) {
-    wrappedConsumer.commitAsync(offsets, callback);
+    delegate.commitAsync(offsets, callback);
   }
 
-  @Override
-  public void seek(TopicPartition partition, long offset) {
-    wrappedConsumer.seek(partition, offset);
+  @Override public void seek(TopicPartition partition, long offset) {
+    delegate.seek(partition, offset);
   }
 
-  @Override
-  public void seekToBeginning(Collection<TopicPartition> partitions) {
-    wrappedConsumer.seekToBeginning(partitions);
+  @Override public void seekToBeginning(Collection<TopicPartition> partitions) {
+    delegate.seekToBeginning(partitions);
   }
 
-  @Override
-  public void seekToEnd(Collection<TopicPartition> partitions) {
-    wrappedConsumer.seekToEnd(partitions);
+  @Override public void seekToEnd(Collection<TopicPartition> partitions) {
+    delegate.seekToEnd(partitions);
   }
 
-  @Override
-  public long position(TopicPartition partition) {
-    return wrappedConsumer.position(partition);
+  @Override public long position(TopicPartition partition) {
+    return delegate.position(partition);
   }
 
-  @Override
-  public OffsetAndMetadata committed(TopicPartition partition) {
-    return wrappedConsumer.committed(partition);
+  @Override public OffsetAndMetadata committed(TopicPartition partition) {
+    return delegate.committed(partition);
   }
 
-  @Override
-  public Map<MetricName, ? extends Metric> metrics() {
-    return wrappedConsumer.metrics();
+  @Override public Map<MetricName, ? extends Metric> metrics() {
+    return delegate.metrics();
   }
 
-  @Override
-  public List<PartitionInfo> partitionsFor(String topic) {
-    return wrappedConsumer.partitionsFor(topic);
+  @Override public List<PartitionInfo> partitionsFor(String topic) {
+    return delegate.partitionsFor(topic);
   }
 
-  @Override
-  public Map<String, List<PartitionInfo>> listTopics() {
-    return wrappedConsumer.listTopics();
+  @Override public Map<String, List<PartitionInfo>> listTopics() {
+    return delegate.listTopics();
   }
 
-  @Override
-  public Set<TopicPartition> paused() {
-    return wrappedConsumer.paused();
+  @Override public Set<TopicPartition> paused() {
+    return delegate.paused();
   }
 
-  @Override
-  public void pause(Collection<TopicPartition> partitions) {
-    wrappedConsumer.pause(partitions);
+  @Override public void pause(Collection<TopicPartition> partitions) {
+    delegate.pause(partitions);
   }
 
-  @Override
-  public void resume(Collection<TopicPartition> partitions) {
-    wrappedConsumer.resume(partitions);
+  @Override public void resume(Collection<TopicPartition> partitions) {
+    delegate.resume(partitions);
   }
 
-  @Override
-  public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
+  @Override public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
       Map<TopicPartition, Long> timestampsToSearch) {
-    return wrappedConsumer.offsetsForTimes(timestampsToSearch);
+    return delegate.offsetsForTimes(timestampsToSearch);
   }
 
   @Override
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
-    return wrappedConsumer.beginningOffsets(partitions);
+    return delegate.beginningOffsets(partitions);
   }
 
-  @Override
-  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
-    return wrappedConsumer.endOffsets(partitions);
+  @Override public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
+    return delegate.endOffsets(partitions);
   }
 
-  @Override
-  public void close() {
-    wrappedConsumer.close();
+  @Override public void close() {
+    delegate.close();
   }
 
-  @Override
-  public void close(long timeout, TimeUnit unit) {
-    wrappedConsumer.close(timeout, unit);
+  @Override public void close(long timeout, TimeUnit unit) {
+    delegate.close(timeout, unit);
   }
 
-  @Override
-  public void wakeup() {
-    wrappedConsumer.wakeup();
+  @Override public void wakeup() {
+    delegate.wakeup();
   }
 }

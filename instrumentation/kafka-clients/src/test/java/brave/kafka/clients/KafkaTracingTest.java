@@ -50,7 +50,7 @@ public class KafkaTracingTest {
   public void should_retrieve_span_from_headers() throws Exception {
     addB3Headers();
 
-    Span span = kafkaTracing.nextSpan(fakeRecord);
+    Span span = kafkaTracing.joinSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isEqualTo(TRACE_ID);
@@ -60,7 +60,7 @@ public class KafkaTracingTest {
 
   @Test
   public void should_create_span_if_no_headers() throws Exception {
-    Span span = kafkaTracing.nextSpan(fakeRecord);
+    Span span = kafkaTracing.joinSpan(fakeRecord);
 
     TraceContext context = span.context();
     assertThat(Long.toHexString(context.traceId())).isNotEmpty().isNotEqualTo(TRACE_ID);

@@ -1,32 +1,30 @@
 package brave.kafka.clients;
 
 import brave.Span;
+import javax.annotation.Nullable;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import zipkin.internal.Nullable;
+
+import static brave.kafka.clients.KafkaTracing.finish;
 
 /**
- * Decorator which finish producer span.
- * Allows tracing to register the time between batching for send and actual send.
+ * Decorator which finish producer span. Allows tracing to register the time between batching for
+ * send and actual send.
  */
-class TracingCallback implements Callback {
+final class TracingCallback implements Callback {
 
-  private final Span span;
-  private final Callback wrappedCallback;
+  final Span span;
+  @Nullable final Callback wrappedCallback;
 
   TracingCallback(Span span, @Nullable Callback wrappedCallback) {
     this.span = span;
     this.wrappedCallback = wrappedCallback;
   }
 
-  @Override public void onCompletion(RecordMetadata metadata, Exception exception) {
-    if (exception != null) {
-      // an error occurred, adding error to span
-      this.span.tag("error", exception.getMessage());
-    }
-    this.span.finish();
+  @Override public void onCompletion(RecordMetadata metadata, @Nullable Exception exception) {
+    finish(span, exception);
     if (wrappedCallback != null) {
-      this.wrappedCallback.onCompletion(metadata, exception);
+      wrappedCallback.onCompletion(metadata, exception);
     }
   }
 }
