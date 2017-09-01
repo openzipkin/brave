@@ -7,7 +7,6 @@ import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static com.github.kristofa.brave.internal.Util.equal;
-import static zipkin.internal.Util.checkArgument;
 
 /**
  * Indicates the network context of a service recording an annotation with two
@@ -121,7 +120,7 @@ public class Endpoint implements Serializable {
     /** @see Endpoint#ipv6 */
     public Endpoint.Builder ipv6(byte[] ipv6) {
       if (ipv6 != null) {
-        checkArgument(ipv6.length == 16, "ipv6 addresses are 16 bytes: " + ipv6.length);
+        if (ipv6.length != 16) throw new IllegalArgumentException("ipv6.length != 16");
         this.ipv6 = ipv6;
       }
       return this;
@@ -138,7 +137,7 @@ public class Endpoint implements Serializable {
      * @see Endpoint#port
      */
     public Endpoint.Builder port(int port) {
-      checkArgument(port >= 0 && port <= 0xffff, "invalid port %s", port);
+      if (port < 0 || port > 0xffff) throw new IllegalArgumentException("invalid port " + port);
       this.port = port == 0 ? null : (short) (port & 0xffff);
       return this;
     }

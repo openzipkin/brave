@@ -2,8 +2,6 @@ package com.github.kristofa.brave;
 
 import java.util.Random;
 
-import static zipkin.internal.Util.checkArgument;
-
 /**
  * This sampler is appropriate for high-traffic instrumentation (ex edge web servers that each
  * receive >100K requests) who provision random trace ids, and make the sampling decision only once.
@@ -28,7 +26,9 @@ public final class BoundarySampler extends Sampler {
   public static Sampler create(float rate) {
     if (rate == 0) return Sampler.NEVER_SAMPLE;
     if (rate == 1.0) return ALWAYS_SAMPLE;
-    checkArgument(rate >= 0.0001f && rate < 1, "rate should be between 0.0001 and 1: was %s", rate);
+    if (rate < 0.0001f || rate > 1) {
+      throw new IllegalArgumentException("rate should be between 0.0001 and 1: was " + rate);
+    }
     final long boundary = (long) (rate * 10000); // safe cast as less <= 1
     return new BoundarySampler(boundary);
   }

@@ -6,7 +6,7 @@ import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 import zipkin.Endpoint;
-import zipkin.internal.Span2Converter;
+import zipkin.internal.V2SpanConverter;
 import zipkin.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
@@ -81,7 +81,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(finishTimestamp);
-      reporter.report(Span2Converter.toSpan(span.toSpan()));
+      reporter.report(V2SpanConverter.toSpan(span.toSpan()));
     }
   }
 
@@ -96,7 +96,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(null);
-      reporter.report(Span2Converter.toSpan(span.toSpan()));
+      reporter.report(V2SpanConverter.toSpan(span.toSpan()));
     }
   }
 }

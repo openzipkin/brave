@@ -19,7 +19,6 @@ import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.TraceKeys;
-import zipkin.internal.Util;
 import zipkin.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
@@ -275,7 +274,7 @@ public abstract class ITHttpServer {
     assertThat(collectedSpans())
         .flatExtracting(s -> s.binaryAnnotations)
         .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value, Util.UTF_8))
+        .extracting(b -> new String(b.value, "UTF-8"))
         .containsExactly(url(path).toString());
   }
 

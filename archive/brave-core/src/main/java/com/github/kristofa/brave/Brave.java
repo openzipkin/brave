@@ -19,7 +19,6 @@ import zipkin.reporter.Sender;
 
 import static com.github.kristofa.brave.InetAddressUtilities.getLocalHostLANAddress;
 import static com.github.kristofa.brave.InetAddressUtilities.toInt;
-import static zipkin.internal.Util.checkNotNull;
 
 /** @deprecated Replaced by {@link brave.Tracing} */
 @Deprecated
@@ -150,7 +149,8 @@ public class Brave {
          * <p>See https://github.com/openzipkin/zipkin-reporter-java
          */
         public Builder reporter(Reporter<zipkin.Span> reporter) {
-            this.reporter = checkNotNull(reporter, "reporter");
+            if (reporter == null) throw new NullPointerException("reporter == null");
+            this.reporter = reporter;
             return this;
         }
 
@@ -175,7 +175,8 @@ public class Brave {
         }
 
         public Builder clock(Clock clock) {
-            this.clock = checkNotNull(clock, "clock");
+            if (clock == null) throw new NullPointerException("clock == null");
+            this.clock = clock;
             return this;
         }
 

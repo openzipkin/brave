@@ -8,8 +8,7 @@ import org.junit.After;
 import org.junit.Test;
 import zipkin.Annotation;
 import zipkin.Endpoint;
-import zipkin.internal.Span2;
-import zipkin.internal.Span2Converter;
+import zipkin.internal.V2SpanConverter;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
@@ -54,28 +53,28 @@ public class MutableSpanTest {
   }
 
   @Test public void finished_client() {
-    finish(Span.Kind.CLIENT, Span2.Kind.CLIENT);
+    finish(Span.Kind.CLIENT, zipkin.internal.v2.Span.Kind.CLIENT);
   }
 
   @Test public void finished_server() {
-    finish(Span.Kind.SERVER, Span2.Kind.SERVER);
+    finish(Span.Kind.SERVER, zipkin.internal.v2.Span.Kind.SERVER);
   }
 
   @Test public void finished_producer() {
-    finish(Span.Kind.PRODUCER, Span2.Kind.PRODUCER);
+    finish(Span.Kind.PRODUCER, zipkin.internal.v2.Span.Kind.PRODUCER);
   }
 
   @Test public void finished_consumer() {
-    finish(Span.Kind.CONSUMER, Span2.Kind.CONSUMER);
+    finish(Span.Kind.CONSUMER, zipkin.internal.v2.Span.Kind.CONSUMER);
   }
 
-  private void finish(Span.Kind braveKind, Span2.Kind span2Kind) {
+  private void finish(Span.Kind braveKind, zipkin.internal.v2.Span.Kind span2Kind) {
     MutableSpan span = newSpan();
     span.kind(braveKind);
     span.start(1L);
     span.finish(2L);
 
-    Span2 span2 = span.toSpan();
+    zipkin.internal.v2.Span span2 = span.toSpan();
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isEqualTo(1L);
@@ -83,28 +82,28 @@ public class MutableSpanTest {
   }
 
   @Test public void flushed_client() {
-    flush(Span.Kind.CLIENT, Span2.Kind.CLIENT);
+    flush(Span.Kind.CLIENT, zipkin.internal.v2.Span.Kind.CLIENT);
   }
 
   @Test public void flushed_server() {
-    flush(Span.Kind.SERVER, Span2.Kind.SERVER);
+    flush(Span.Kind.SERVER, zipkin.internal.v2.Span.Kind.SERVER);
   }
 
   @Test public void flushed_producer() {
-    flush(Span.Kind.PRODUCER, Span2.Kind.PRODUCER);
+    flush(Span.Kind.PRODUCER, zipkin.internal.v2.Span.Kind.PRODUCER);
   }
 
   @Test public void flushed_consumer() {
-    flush(Span.Kind.CONSUMER, Span2.Kind.CONSUMER);
+    flush(Span.Kind.CONSUMER, zipkin.internal.v2.Span.Kind.CONSUMER);
   }
 
-  private void flush(Span.Kind braveKind, Span2.Kind span2Kind) {
+  private void flush(Span.Kind braveKind, zipkin.internal.v2.Span.Kind span2Kind) {
     MutableSpan span = newSpan();
     span.kind(braveKind);
     span.start(1L);
     span.finish(null);
 
-    Span2 span2 = span.toSpan();
+    zipkin.internal.v2.Span span2 = span.toSpan();
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isNull();
@@ -131,12 +130,12 @@ public class MutableSpanTest {
     span.kind(SERVER);
     span.finish(2L);
 
-    assertThat(Span2Converter.toSpan(span.toSpan())).extracting(s -> s.timestamp, s -> s.duration)
+    assertThat(V2SpanConverter.toSpan(span.toSpan())).extracting(s -> s.timestamp, s -> s.duration)
         .allSatisfy(u -> assertThat(u).isNull());
   }
 
   @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
-    Span2 flushed = newSpan().finish(null).toSpan();
+    zipkin.internal.v2.Span flushed = newSpan().finish(null).toSpan();
     assertThat(flushed).extracting(s -> s.timestamp(), s -> s.duration())
         .allSatisfy(u -> assertThat(u).isNull());
   }
