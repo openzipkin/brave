@@ -12,7 +12,7 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <p6spy.version>3.0.0</p6spy.version>
+    <p6spy.version>3.2.0</p6spy.version>
     <derby.version>10.13.1.1</derby.version>
   </properties>
 
