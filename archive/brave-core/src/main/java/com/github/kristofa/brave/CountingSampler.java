@@ -3,8 +3,6 @@ package com.github.kristofa.brave;
 import java.util.BitSet;
 import java.util.Random;
 
-import static zipkin.internal.Util.checkArgument;
-
 /**
  * This sampler is appropriate for low-traffic instrumentation (ex servers that each receive <100K
  * requests), or those who do not provision random trace ids. It not appropriate for collectors as
@@ -25,7 +23,9 @@ public final class CountingSampler extends Sampler {
   public static Sampler create(final float rate) {
     if (rate == 0) return NEVER_SAMPLE;
     if (rate == 1.0) return ALWAYS_SAMPLE;
-    checkArgument(rate >= 0.01f && rate < 1, "rate should be between 0.01 and 1: was %s", rate);
+    if (rate < 0.01f || rate > 1) {
+      throw new IllegalArgumentException("rate should be between 0.01 and 1: was " + rate);
+    }
     return new CountingSampler(rate);
   }
 

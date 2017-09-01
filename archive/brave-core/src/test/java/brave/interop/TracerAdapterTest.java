@@ -6,6 +6,7 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TracerAdapter;
 import com.twitter.zipkin.gen.Span;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -18,9 +19,9 @@ import static com.github.kristofa.brave.TracerAdapter.setServerSpan;
 import static com.github.kristofa.brave.TracerAdapter.toSpan;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static zipkin.internal.Util.UTF_8;
 
 public class TracerAdapterTest {
+  static final Charset UTF_8 = Charset.forName("UTF-8");
 
   List<zipkin.Span> spans = new ArrayList<>();
   AtomicLong epochMicros = new AtomicLong();

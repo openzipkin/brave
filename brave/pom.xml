@@ -142,10 +142,12 @@
               </artifactSet>
               <filters>
                 <filter>
-                  <!-- Shade references to span2 until zipkin2 is out -->
+                  <!-- Shade references to v2 until zipkin2 is out -->
                   <artifact>io.zipkin.java:zipkin</artifact>
                   <includes>
-                    <include>zipkin/internal/*Span2*.class</include>
+                    <include>zipkin/internal/v2/*Span*.class</include>
+                    <include>zipkin/internal/V2SpanConverter*.class</include>
+                    <!-- TODO: v2 currently indirectly references Util -->
                     <include>zipkin/internal/Util.class</include>
                   </includes>
                   <excludes>

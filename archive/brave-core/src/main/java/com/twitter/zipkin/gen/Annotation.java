@@ -4,8 +4,6 @@ import java.io.Serializable;
 import javax.annotation.Generated;
 import javax.annotation.Nullable;
 
-import static zipkin.internal.Util.equal;
-
 /**
  * An annotation is similar to a log statement. It includes a host field which
  * allows these events to be attributed properly, and also aggregatable.
@@ -50,6 +48,10 @@ public class Annotation implements Serializable {
           && equal(this.host, that.host);
     }
     return false;
+  }
+
+  static boolean equal(Object a, Object b) {
+    return a == b || a != null && a.equals(b);
   }
 
   @Override
