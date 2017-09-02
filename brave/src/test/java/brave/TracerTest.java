@@ -10,6 +10,7 @@ import org.junit.Test;
 import zipkin.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static zipkin.internal.V2SpanConverter.convert;
 
 public class TracerTest {
   Tracer tracer = Tracing.newBuilder().build().tracer();
@@ -34,13 +35,13 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer.localEndpoint.serviceName)
+    assertThat(tracer.localEndpoint.serviceName())
         .isEqualTo("my-foo");
   }
 
-  @Test public void localServiceName_defaultIsUnknown() {
-    assertThat(tracer.localEndpoint.serviceName)
-        .isEqualTo("unknown");
+  @Test public void localServiceName_defaultIsNull() {
+    assertThat(tracer.localEndpoint.serviceName())
+        .isNull();
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
@@ -49,7 +50,7 @@ public class TracerTest {
         .localEndpoint(localEndpoint).build().tracer();
 
     assertThat(tracer.localEndpoint)
-        .isSameAs(localEndpoint);
+        .isEqualTo(convert(localEndpoint));
   }
 
   @Test public void clock() {

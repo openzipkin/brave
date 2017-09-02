@@ -24,7 +24,8 @@ public class TraceUtil {
     Node.TreeBuilder<Span> treeBuilder = new Node.TreeBuilder<>(logger, Util.toLowerHex(traceId));
     for (Span span : trace) {
       map.put(span, span);
-      treeBuilder.addNode(span.parentId, span.id, span);
+      String parent = span.parentId != null ? Util.toLowerHex(span.parentId) : null;
+      treeBuilder.addNode(parent, Util.toLowerHex(span.id), span);
     }
 
     // traverse the tree breadth-first, and replace the ids with incrementing ones

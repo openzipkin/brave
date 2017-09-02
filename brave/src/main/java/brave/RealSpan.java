@@ -4,6 +4,7 @@ import brave.internal.recorder.Recorder;
 import brave.propagation.TraceContext;
 import com.google.auto.value.AutoValue;
 import zipkin.Endpoint;
+import zipkin.internal.V2SpanConverter;
 
 /** This wraps the public api and guards access to a mutable span. */
 @AutoValue
@@ -55,6 +56,10 @@ abstract class RealSpan extends Span {
   }
 
   @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
+    return v2RemoteEndpoint(V2SpanConverter.convert(remoteEndpoint));
+  }
+
+  @Override Span v2RemoteEndpoint(zipkin.internal.v2.Endpoint remoteEndpoint) {
     recorder().remoteEndpoint(context(), remoteEndpoint);
     return this;
   }

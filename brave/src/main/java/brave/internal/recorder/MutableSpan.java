@@ -1,9 +1,10 @@
 package brave.internal.recorder;
 
 import brave.Span;
+import brave.internal.HexCodec;
 import brave.propagation.TraceContext;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
+import zipkin.internal.v2.Endpoint;
 
 final class MutableSpan {
   final zipkin.internal.v2.Span.Builder span;
@@ -13,11 +14,10 @@ final class MutableSpan {
   // Since this is not exposed, this class could be refactored later as needed to act in a pool
   // to reduce GC churn. This would involve calling span.clear and resetting the fields below.
   MutableSpan(TraceContext context, Endpoint localEndpoint) {
-    this.span = zipkin.internal.v2.Span.builder()
-        .traceIdHigh(context.traceIdHigh())
-        .traceId(context.traceId())
-        .parentId(context.parentId())
-        .id(context.spanId())
+    this.span = zipkin.internal.v2.Span.newBuilder()
+        .traceId(HexCodec.toLowerHex(context.traceIdHigh(), context.traceId()))
+        .parentId(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null)
+        .id(HexCodec.toLowerHex(context.spanId()))
         .debug(context.debug())
         .shared(context.shared())
         .localEndpoint(localEndpoint);

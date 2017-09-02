@@ -91,6 +91,8 @@ public abstract class Span implements SpanCustomizer {
    */
   public abstract Span remoteEndpoint(Endpoint endpoint);
 
+  abstract Span v2RemoteEndpoint(zipkin.internal.v2.Endpoint remoteEndpoint);
+
   /** Reports the span complete, assigning the most precise duration possible. */
   public abstract void finish();
 

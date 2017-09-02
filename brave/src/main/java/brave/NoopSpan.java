@@ -43,6 +43,10 @@ abstract class NoopSpan extends Span {
     return this;
   }
 
+  @Override Span v2RemoteEndpoint(zipkin.internal.v2.Endpoint remoteEndpoint) {
+    return this;
+  }
+
   @Override public Span tag(String key, String value) {
     return this;
   }

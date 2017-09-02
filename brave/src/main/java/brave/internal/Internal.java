@@ -1,8 +1,10 @@
 package brave.internal;
 
 import brave.Tracer;
+import brave.Tracing;
 import brave.propagation.TraceContext;
 import javax.annotation.Nullable;
+import zipkin.reporter.AsyncReporter;
 
 /**
  * Allows internal classes outside the package {@code brave} to use non-public methods. This allows
@@ -15,6 +17,10 @@ public abstract class Internal {
 
   // Used by Brave 3 apis
   public abstract @Nullable Long timestamp(Tracer tracer, TraceContext context);
+
+  // used to test-drive the v2 model
+  public abstract void v2Reporter(Tracing.Builder tracingBuilder,
+      AsyncReporter.Builder reporterBuilder);
 
   public static Internal instance;
 }
