@@ -2,6 +2,7 @@ package brave.propagation;
 
 import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 
 /**
  * Union type that contains either a trace context or sampling flags, but not both.
@@ -10,6 +11,7 @@ import javax.annotation.Nullable;
  *
  * @see TraceContext.Extractor
  */
+@Immutable
 @AutoValue
 public abstract class TraceContextOrSamplingFlags {
 

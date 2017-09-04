@@ -1,7 +1,9 @@
 package brave.propagation;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 
+@Immutable
 public abstract class SamplingFlags {
   public static final SamplingFlags EMPTY = new SamplingFlagsImpl(null, false);
   public static final SamplingFlags SAMPLED = new SamplingFlagsImpl(true, false);

@@ -96,6 +96,7 @@
 
   <modules>
     <module>brave</module>
+    <module>brave-tests</module>
     <module>context</module>
     <module>instrumentation</module>
     <module>spring-beans</module>
@@ -159,6 +160,11 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>brave-tests</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

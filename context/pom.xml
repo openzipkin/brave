@@ -27,5 +27,10 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

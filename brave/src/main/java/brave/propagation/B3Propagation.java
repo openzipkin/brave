@@ -80,11 +80,10 @@ public final class B3Propagation<K> implements Propagation<K> {
         setter.put(carrier, propagation.parentSpanIdKey,
             HexCodec.toLowerHex(traceContext.parentId()));
       }
-      if (traceContext.sampled() != null) {
-        setter.put(carrier, propagation.sampledKey, traceContext.sampled() ? "1" : "0");
-      }
       if (traceContext.debug()) {
         setter.put(carrier, propagation.debugKey, "1");
+      } else if (traceContext.sampled() != null) {
+        setter.put(carrier, propagation.sampledKey, traceContext.sampled() ? "1" : "0");
       }
     }
   }
