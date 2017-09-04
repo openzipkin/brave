@@ -22,6 +22,7 @@
       <groupId>p6spy</groupId>
       <artifactId>p6spy</artifactId>
       <version>${p6spy.version}</version>
+      <!-- intentionally not provided scope as users are unlikely to already be using p6spy -->
     </dependency>
 
     <dependency>

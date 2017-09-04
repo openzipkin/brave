@@ -25,6 +25,7 @@
       <groupId>com.sparkjava</groupId>
       <artifactId>spark-core</artifactId>
       <version>${sparkjava.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
