@@ -33,6 +33,11 @@
     </dependency>
 
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>com.github.charithe</groupId>
       <artifactId>kafka-junit</artifactId>
       <version>3.1.0</version>
