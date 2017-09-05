@@ -6,6 +6,7 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.apache.http.Header;
@@ -19,6 +20,10 @@ import org.apache.http.impl.execchain.ClientExecChain;
 import zipkin.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
+  static final Propagation.Setter<HttpRequestWrapper, String> SETTER = (wrapper, key, value) -> {
+    wrapper.removeHeaders(key);
+    if (value != null) wrapper.setHeader(key, value);
+  };
 
   public static HttpClientBuilder create(Tracing tracing) {
     return new TracingHttpClientBuilder(HttpTracing.create(tracing));
@@ -36,7 +41,7 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.tracer = httpTracing.tracing().tracer();
     this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    this.injector = httpTracing.tracing().propagation().injector(HttpRequestWrapper::setHeader);
+    this.injector = httpTracing.tracing().propagation().injector(SETTER);
   }
 
   /**

@@ -5,6 +5,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,14 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
+  static final Propagation.Setter<HttpHeaders, String> SETTER = (headers, key, value) -> {
+    if (value == null) {
+      headers.remove(key);
+    } else {
+      headers.set(key, value);
+    }
+  };
+
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));
   }
@@ -30,7 +39,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   @Autowired TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    injector = httpTracing.tracing().propagation().injector(HttpHeaders::set);
+    injector = httpTracing.tracing().propagation().injector(SETTER);
   }
 
   @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,

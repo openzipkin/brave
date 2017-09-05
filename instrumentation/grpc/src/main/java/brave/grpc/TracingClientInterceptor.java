@@ -3,7 +3,7 @@ package brave.grpc;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -18,18 +18,21 @@ import zipkin.Constants;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingClientInterceptor implements ClientInterceptor {
+  static final Setter<Metadata, Metadata.Key<String>> SETTER =
+      new Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
+        @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
+          metadata.removeAll(key);
+          if (value != null) metadata.put(key, value);
+        }
+      };
 
   final Tracer tracer;
   final TraceContext.Injector<Metadata> injector;
 
   TracingClientInterceptor(Tracing tracing) {
     tracer = tracing.tracer();
-    injector = tracing.propagationFactory().create(AsciiMetadataKeyFactory.INSTANCE)
-        .injector(new Propagation.Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
-          @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
-            metadata.put(key, value);
-          }
-        });
+    injector =
+        tracing.propagationFactory().create(AsciiMetadataKeyFactory.INSTANCE).injector(SETTER);
   }
 
   /**

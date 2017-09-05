@@ -6,6 +6,7 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.util.concurrent.Future;
@@ -35,6 +36,10 @@ import zipkin.Endpoint;
  * added last}.
  */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
+  static final Propagation.Setter<HttpMessage, String> SETTER = (message, key, value) ->{
+    message.removeHeaders(key);
+    if (value != null) message.setHeader(key, value);
+  };
 
   public static HttpAsyncClientBuilder create(Tracing tracing) {
     return new TracingHttpAsyncClientBuilder(HttpTracing.create(tracing));
