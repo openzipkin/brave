@@ -9,8 +9,12 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
+import zipkin.internal.V2SpanConverter;
+import zipkin.internal.v2.Endpoint;
+import zipkin.internal.v2.codec.BytesEncoder;
 import zipkin.reporter.AsyncReporter;
+import zipkin.reporter.Encoder;
+import zipkin.reporter.Encoding;
 import zipkin.reporter.Reporter;
 import zipkin.reporter.Sender;
 
@@ -106,7 +110,7 @@ public abstract class Tracing implements Closeable {
   public static final class Builder {
     String localServiceName;
     Endpoint localEndpoint;
-    Reporter<zipkin.Span> reporter;
+    Reporter<zipkin.internal.v2.Span> reporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
@@ -115,7 +119,7 @@ public abstract class Tracing implements Closeable {
 
     /**
      * Controls the name of the service being traced, while still using a default site-local IP.
-     * This is an alternative to {@link #localEndpoint(Endpoint)}.
+     * This is an alternative to {@link #localEndpoint(zipkin.Endpoint)}.
      *
      * @param localServiceName name of the service being traced. Defaults to "unknown".
      */
@@ -128,7 +132,12 @@ public abstract class Tracing implements Closeable {
     /**
      * @param localEndpoint Endpoint of the local service being traced. Defaults to site local.
      */
-    public Builder localEndpoint(Endpoint localEndpoint) {
+    public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
+      if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
+      return v2LocalEndpoint(V2SpanConverter.convert(localEndpoint));
+    }
+
+    Builder v2LocalEndpoint(Endpoint localEndpoint) {
       if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
       this.localEndpoint = localEndpoint;
       return this;
@@ -152,6 +161,11 @@ public abstract class Tracing implements Closeable {
      * <p>See https://github.com/openzipkin/zipkin-reporter-java
      */
     public Builder reporter(Reporter<zipkin.Span> reporter) {
+      if (reporter == null) throw new NullPointerException("reporter == null");
+      return v2Reporter(span -> reporter.report(V2SpanConverter.toSpan(span)));
+    }
+
+    Builder v2Reporter(Reporter<zipkin.internal.v2.Span> reporter) {
       if (reporter == null) throw new NullPointerException("reporter == null");
       this.reporter = reporter;
       return this;
@@ -210,6 +224,19 @@ public abstract class Tracing implements Closeable {
     Internal.instance = new Internal() {
       @Override public Long timestamp(Tracer tracer, TraceContext context) {
         return tracer.recorder.timestamp(context);
+      }
+
+      @Override
+      public void v2Reporter(Builder tracingBuilder, AsyncReporter.Builder reporterBuilder) {
+        tracingBuilder.v2Reporter(reporterBuilder.build(new Encoder<zipkin.internal.v2.Span>() {
+          @Override public Encoding encoding() {
+            return Encoding.JSON;
+          }
+
+          @Override public byte[] encode(zipkin.internal.v2.Span span) {
+            return BytesEncoder.JSON.encode(span);
+          }
+        }));
       }
     };
   }

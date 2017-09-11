@@ -5,14 +5,13 @@ import brave.Tracer;
 import com.google.auto.value.AutoValue;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Enumeration;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
-import zipkin.Endpoint;
+import zipkin.internal.v2.Endpoint;
 import zipkin.reporter.Reporter;
 
 /**
@@ -20,7 +19,7 @@ import zipkin.reporter.Reporter;
  *
  * <p>Originally designed by OkHttp team, derived from {@code okhttp3.internal.platform.Platform}
  */
-public abstract class Platform implements Clock, Reporter<zipkin.Span> {
+public abstract class Platform implements Clock, Reporter<zipkin.internal.v2.Span> {
   static final Logger logger = Logger.getLogger(Tracer.class.getName());
 
   private static final Platform PLATFORM = findPlatform();
@@ -35,7 +34,7 @@ public abstract class Platform implements Clock, Reporter<zipkin.Span> {
     createTick = System.nanoTime();
   }
 
-  @Override public void report(zipkin.Span span) {
+  @Override public void report(zipkin.internal.v2.Span span) {
     if (!logger.isLoggable(Level.INFO)) return;
     if (span == null) throw new NullPointerException("span == null");
     logger.info(span.toString());
@@ -54,7 +53,7 @@ public abstract class Platform implements Clock, Reporter<zipkin.Span> {
   }
 
   Endpoint produceLocalEndpoint() {
-    Endpoint.Builder builder = Endpoint.builder().serviceName("unknown");
+    Endpoint.Builder builder = Endpoint.newBuilder();
     try {
       Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
       if (nics == null) return builder.build();
@@ -64,18 +63,12 @@ public abstract class Platform implements Clock, Reporter<zipkin.Span> {
         while (addresses.hasMoreElements()) {
           InetAddress address = addresses.nextElement();
           if (address.isSiteLocalAddress()) {
-            byte[] addressBytes = address.getAddress();
-            if (addressBytes.length == 4) {
-              builder.ipv4(ByteBuffer.wrap(addressBytes).getInt());
-            } else if (addressBytes.length == 16) {
-              builder.ipv6(addressBytes);
-            }
+            builder.parseIp(address);
             break;
           }
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
       // don't crash the caller if there was a problem reading nics.
       if (logger.isLoggable(Level.FINE)) {
         logger.log(Level.FINE, "error reading nics", e);

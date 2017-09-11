@@ -6,9 +6,9 @@ import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Annotation;
-import zipkin.Endpoint;
 import zipkin.internal.V2SpanConverter;
+import zipkin.internal.v2.Annotation;
+import zipkin.internal.v2.Endpoint;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
@@ -49,7 +49,7 @@ public class MutableSpanTest {
     span.finish(2L);
 
     assertThat(span.toSpan().annotations())
-        .containsOnly(Annotation.create(2L, "foo", null));
+        .containsOnly(Annotation.create(2L, "foo"));
   }
 
   @Test public void finished_client() {
@@ -113,7 +113,7 @@ public class MutableSpanTest {
   @Test public void remoteEndpoint() {
     MutableSpan span = newSpan();
 
-    Endpoint endpoint = Endpoint.create("server", 127 | 1);
+    Endpoint endpoint = Endpoint.newBuilder().serviceName("server").ip("127.0.0.1").build();
     span.kind(CLIENT);
     span.remoteEndpoint(endpoint);
     span.start(1L);

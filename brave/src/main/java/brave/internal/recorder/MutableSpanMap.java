@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
-import zipkin.internal.V2SpanConverter;
+import zipkin.internal.v2.Endpoint;
+import zipkin.internal.v2.Span;
 import zipkin.reporter.Reporter;
 
 /**
@@ -33,13 +33,13 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
   final ConcurrentMap<Object, MutableSpan> delegate = new ConcurrentHashMap<>(64);
   final Endpoint localEndpoint;
   final Clock clock;
-  final Reporter<zipkin.Span> reporter;
+  final Reporter<Span> reporter;
   final AtomicBoolean noop;
 
   MutableSpanMap(
       Endpoint localEndpoint,
       Clock clock,
-      Reporter<zipkin.Span> reporter,
+      Reporter<Span> reporter,
       AtomicBoolean noop
   ) {
     this.localEndpoint = localEndpoint;
@@ -80,7 +80,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       if (value == null || noop.get()) continue;
       try {
         value.annotate(clock.currentTimeMicroseconds(), "brave.flush");
-        reporter.report(V2SpanConverter.toSpan(value.toSpan()));
+        reporter.report(value.toSpan());
       } catch (RuntimeException e) {
         // don't crash the caller if there was a problem reporting an unrelated span.
         if (context != null && logger.isLoggable(Level.FINE)) {

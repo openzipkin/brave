@@ -12,7 +12,7 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
+import zipkin.internal.v2.Endpoint;
 import zipkin.reporter.Reporter;
 
 /**
@@ -60,15 +60,25 @@ public final class Tracer {
       return this;
     }
 
-    /** @see Tracing.Builder#localEndpoint(Endpoint) */
-    public Builder localEndpoint(Endpoint localEndpoint) {
+    /** @see Tracing.Builder#localEndpoint(zipkin.Endpoint) */
+    public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
       delegate.localEndpoint(localEndpoint);
+      return this;
+    }
+
+    Builder v2LocalEndpoint(zipkin.internal.v2.Endpoint localEndpoint) {
+      delegate.v2LocalEndpoint(localEndpoint);
       return this;
     }
 
     /** @see Tracing.Builder#reporter(Reporter) */
     public Builder reporter(Reporter<zipkin.Span> reporter) {
       delegate.reporter(reporter);
+      return this;
+    }
+
+    Builder v2Reporter(Reporter<zipkin.internal.v2.Span> reporter) {
+      delegate.v2Reporter(reporter);
       return this;
     }
 

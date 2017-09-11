@@ -5,21 +5,20 @@ import brave.Span;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
-import zipkin.internal.V2SpanConverter;
+import zipkin.internal.v2.Endpoint;
 import zipkin.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
 public final class Recorder {
 
   final MutableSpanMap spanMap;
-  final Reporter<zipkin.Span> reporter;
+  final Reporter<zipkin.internal.v2.Span> reporter;
   final AtomicBoolean noop;
 
   public Recorder(
       Endpoint localEndpoint,
       Clock clock,
-      Reporter<zipkin.Span> reporter,
+      Reporter<zipkin.internal.v2.Span> reporter,
       AtomicBoolean noop
   ) {
     this.spanMap = new MutableSpanMap(localEndpoint, clock, reporter, noop);
@@ -69,7 +68,7 @@ public final class Recorder {
     spanMap.getOrCreate(context).tag(key, value);
   }
 
-  /** @see brave.Span#remoteEndpoint(Endpoint) */
+  /** @see brave.Span#remoteEndpoint(zipkin.Endpoint) */
   public void remoteEndpoint(TraceContext context, Endpoint remoteEndpoint) {
     if (remoteEndpoint == null) throw new NullPointerException("remoteEndpoint == null");
     spanMap.getOrCreate(context).remoteEndpoint(remoteEndpoint);
@@ -81,7 +80,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(finishTimestamp);
-      reporter.report(V2SpanConverter.toSpan(span.toSpan()));
+      reporter.report(span.toSpan());
     }
   }
 
@@ -96,7 +95,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(null);
-      reporter.report(V2SpanConverter.toSpan(span.toSpan()));
+      reporter.report(span.toSpan());
     }
   }
 }

@@ -17,6 +17,7 @@ import static brave.internal.HexCodec.writeHexLong;
  */
 @Immutable
 @AutoValue
+@Immutable
 public abstract class TraceContext extends SamplingFlags {
 
   /**
