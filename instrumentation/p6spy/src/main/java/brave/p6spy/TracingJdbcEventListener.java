@@ -8,11 +8,16 @@ import com.p6spy.engine.event.SimpleJdbcEventListener;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin.TraceKeys;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
+
+  private final static Pattern URL_SERVICE_NAME_FINDER =
+      Pattern.compile("zipkinServiceName=(\\w*)");
 
   final String remoteServiceName;
   final boolean includeParameterValues;
@@ -69,9 +74,18 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
   void parseServerAddress(Connection connection, Span span) {
     try {
       URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
+      String defaultRemoteServiceName = remoteServiceName;
+      Matcher matcher = URL_SERVICE_NAME_FINDER.matcher(url.toString());
+      if (matcher.find() && matcher.groupCount() == 1) {
+        String parsedServiceName = matcher.group(1);
+        if (parsedServiceName != null
+            && !parsedServiceName.isEmpty()) { // Do not override global service name if parsed service name is invalid
+          defaultRemoteServiceName = parsedServiceName;
+        }
+      }
       Endpoint.Builder builder = Endpoint.builder().port(url.getPort());
       boolean parsed = builder.parseIp(url.getHost());
-      if (remoteServiceName == null || "".equals(remoteServiceName)) {
+      if (defaultRemoteServiceName == null || "".equals(defaultRemoteServiceName)) {
         String databaseName = connection.getCatalog();
         if (databaseName != null && !databaseName.isEmpty()) {
           builder.serviceName(databaseName);
@@ -80,7 +94,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
           builder.serviceName("");
         }
       } else {
-        builder.serviceName(remoteServiceName);
+        builder.serviceName(defaultRemoteServiceName);
       }
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {
