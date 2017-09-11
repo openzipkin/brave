@@ -30,6 +30,8 @@ public class TracingJdbcEventListenerTest {
 
   @Mock Span span;
   String url = "jdbc:mysql://127.0.0.1:5555/mydatabase";
+  String urlWithServiceName = url + "?zipkinServiceName=mysql_service&foo=bar";
+  String urlWithEmptyServiceName = url + "?zipkinServiceName=&foo=bar";
 
   @Test public void parseServerAddress_ipAndPortFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
@@ -44,6 +46,28 @@ public class TracingJdbcEventListenerTest {
   @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
+    when(connection.getCatalog()).thenReturn("mydatabase");
+
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+
+    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mydatabase")
+        .ipv4(127 << 24 | 1).port(5555).build());
+  }
+
+  @Test public void parseServerAddress_serviceNameFromUrl() throws SQLException {
+    when(connection.getMetaData()).thenReturn(metaData);
+    when(metaData.getURL()).thenReturn(urlWithServiceName);
+    when(connection.getCatalog()).thenReturn("mydatabase");
+
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+
+    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mysql_service")
+        .ipv4(127 << 24 | 1).port(5555).build());
+  }
+
+  @Test public void parseServerAddress_emptyServiceNameFromUrl() throws SQLException {
+    when(connection.getMetaData()).thenReturn(metaData);
+    when(metaData.getURL()).thenReturn(urlWithEmptyServiceName);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
