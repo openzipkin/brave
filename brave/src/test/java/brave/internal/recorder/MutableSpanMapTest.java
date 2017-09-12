@@ -9,13 +9,15 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Endpoint;
+import zipkin2.Annotation;
+import zipkin2.Endpoint;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MutableSpanMapTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  List<zipkin.Span> spans = new ArrayList();
+  List<zipkin2.Span> spans = new ArrayList();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
   MutableSpanMap map =
       new MutableSpanMap(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
@@ -146,7 +148,7 @@ public class MutableSpanMapTest {
         .containsExactlyInAnyOrder(context3, context4);
 
     // We also expect the spans to have been reported
-    assertThat(spans).flatExtracting(s -> s.annotations).extracting(a -> a.value)
+    assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::value)
         .containsExactly("brave.flush", "brave.flush");
   }
 

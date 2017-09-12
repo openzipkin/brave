@@ -1,23 +1,23 @@
 package brave.internal.recorder;
 
 import brave.Span;
+import brave.internal.HexCodec;
 import brave.propagation.TraceContext;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 final class MutableSpan {
-  final zipkin.internal.v2.Span.Builder span;
+  final zipkin2.Span.Builder span;
   boolean finished;
   long timestamp;
 
   // Since this is not exposed, this class could be refactored later as needed to act in a pool
   // to reduce GC churn. This would involve calling span.clear and resetting the fields below.
   MutableSpan(TraceContext context, Endpoint localEndpoint) {
-    this.span = zipkin.internal.v2.Span.builder()
-        .traceIdHigh(context.traceIdHigh())
-        .traceId(context.traceId())
-        .parentId(context.parentId())
-        .id(context.spanId())
+    this.span = zipkin2.Span.newBuilder()
+        .traceId(context.traceIdString())
+        .parentId(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null)
+        .id(HexCodec.toLowerHex(context.spanId()))
         .debug(context.debug())
         .shared(context.shared())
         .localEndpoint(localEndpoint);
@@ -36,7 +36,7 @@ final class MutableSpan {
 
   synchronized MutableSpan kind(Span.Kind kind) {
     try {
-      span.kind(zipkin.internal.v2.Span.Kind.valueOf(kind.name()));
+      span.kind(zipkin2.Span.Kind.valueOf(kind.name()));
     } catch (IllegalArgumentException e) {
       // TODO: log
     }
@@ -69,7 +69,7 @@ final class MutableSpan {
     return this;
   }
 
-  synchronized zipkin.internal.v2.Span toSpan() {
+  synchronized zipkin2.Span toSpan() {
     return span.build();
   }
 }

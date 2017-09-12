@@ -3,7 +3,7 @@ package brave;
 import brave.internal.recorder.Recorder;
 import brave.propagation.TraceContext;
 import com.google.auto.value.AutoValue;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /** This wraps the public api and guards access to a mutable span. */
 @AutoValue

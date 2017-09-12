@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecorderTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  List<zipkin.Span> spans = new ArrayList();
+  List<zipkin2.Span> spans = new ArrayList();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
   Recorder recorder =
       new Recorder(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
@@ -28,7 +28,7 @@ public class RecorderTest {
     recorder.start(context, 1L);
     recorder.finish(context, 6L);
 
-    assertThat(spans).extracting(s -> s.duration)
+    assertThat(spans).extracting(zipkin2.Span::duration)
         .containsExactly(5L);
   }
 
@@ -46,7 +46,7 @@ public class RecorderTest {
     recorder.start(context, 1L);
     recorder.flush(context);
 
-    assertThat(spans).extracting(s -> s.duration)
+    assertThat(spans).extracting(zipkin2.Span::duration)
         .containsNull();
   }
 

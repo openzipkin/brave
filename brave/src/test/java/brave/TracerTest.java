@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,17 +34,17 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer.localEndpoint.serviceName)
+    assertThat(tracer.localEndpoint.serviceName())
         .isEqualTo("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
-    assertThat(tracer.localEndpoint.serviceName)
+    assertThat(tracer.localEndpoint.serviceName())
         .isEqualTo("unknown");
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
-    Endpoint localEndpoint = Endpoint.create("my-bar", 127 << 24 | 1);
+    Endpoint localEndpoint = Endpoint.newBuilder().serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo")
         .localEndpoint(localEndpoint).build().tracer();
 

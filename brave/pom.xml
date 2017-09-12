@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>4.6.1-SNAPSHOT</version>
+    <version>4.7.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave</artifactId>
@@ -142,12 +142,11 @@
               </artifactSet>
               <filters>
                 <filter>
-                  <!-- Shade references to v2 until zipkin2 is out -->
+                  <!-- Shade references to internal classes -->
                   <artifact>io.zipkin.java:zipkin</artifact>
                   <includes>
-                    <include>zipkin/internal/v2/*Span*.class</include>
                     <include>zipkin/internal/V2SpanConverter*.class</include>
-                    <!-- TODO: v2 currently indirectly references Util -->
+                    <!-- TODO: V2 currently indirectly references Util -->
                     <include>zipkin/internal/Util.class</include>
                   </includes>
                   <excludes>

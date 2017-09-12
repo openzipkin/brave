@@ -11,10 +11,16 @@ Bean Factories exist for the following types:
 
 Here are some example beans using the factories in this module:
 ```xml
+  <bean id="sender" class="zipkin.reporter.okhttp3.OkHttpSender" factory-method="json"
+      destroy-method="close">
+    <constructor-arg type="String" value="http://localhost:9411/api/v2/spans"/>
+  </bean>
+
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="localServiceName" value="brave-webmvc-example"/>
     <property name="reporter">
       <bean class="brave.spring.beans.AsyncReporterFactoryBean">
+        <property name="encoder" value="JSON_V2"/>
         <property name="sender" ref="sender"/>
         <!-- wait up to half a second for any in-flight spans on close -->
         <property name="closeTimeout" value="500"/>
