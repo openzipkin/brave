@@ -33,4 +33,12 @@ includeParameterValues=true
 excludebinary=true
 ```
 
+`spy.properties` applies globally to any instrumented jdbc connection. To override this, add the `zipkinServiceName` property to your connection string.
+
+```
+jdbc:mysql://127.0.0.1:3306/mydatabase?zipkinServiceName=myServiceName
+```
+
+This will override the `remoteServiceName` set in `spy.properties`.
+
 The current tracing component is used at runtime. Until you have instantiated `brave.Tracing`, no traces will appear.
