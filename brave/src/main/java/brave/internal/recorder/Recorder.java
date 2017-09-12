@@ -83,7 +83,6 @@ public final class Recorder {
 
   /** @see Span#finish() */
   public void finish(TraceContext context, long finishTimestamp) {
-    if (noop.get()) return;
     MutableSpan span = spanMap.remove(context);
     if (span == null || noop.get()) return;
     synchronized (span) {
@@ -94,13 +93,11 @@ public final class Recorder {
 
   /** @see Span#abandon() */
   public void abandon(TraceContext context) {
-    if (noop.get()) return;
     spanMap.remove(context);
   }
 
   /** @see Span#flush() */
   public void flush(TraceContext context) {
-    if (noop.get()) return;
     MutableSpan span = spanMap.remove(context);
     if (span == null || noop.get()) return;
     synchronized (span) {
