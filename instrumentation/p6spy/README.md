@@ -33,8 +33,7 @@ includeParameterValues=true
 excludebinary=true
 ```
 
-`spy.properties` applies globally to any instrumented jdbc connection. If you need more flexibility to set the remoteServiceName you can add
-`zipkinServiceName` property to your connection string.
+`spy.properties` applies globally to any instrumented jdbc connection. To override this, add the `zipkinServiceName` property to your connection string.
 
 ```
 jdbc:mysql://127.0.0.1:3306/mydatabase?zipkinServiceName=myServiceName
