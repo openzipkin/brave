@@ -12,8 +12,8 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
+import zipkin2.Endpoint;
 
 /**
  * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
@@ -60,15 +60,31 @@ public final class Tracer {
       return this;
     }
 
+    /**
+     * @deprecated use {@link #localEndpoint(Endpoint)}, possibly with {@link
+     * zipkin.Endpoint#toV2()}
+     */
+    @Deprecated
+    public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
+      return localEndpoint(localEndpoint.toV2());
+    }
+
     /** @see Tracing.Builder#localEndpoint(Endpoint) */
     public Builder localEndpoint(Endpoint localEndpoint) {
       delegate.localEndpoint(localEndpoint);
       return this;
     }
 
-    /** @see Tracing.Builder#reporter(Reporter) */
+    /** @deprecated use {@link #spanReporter(Reporter)} */
+    @Deprecated
     public Builder reporter(Reporter<zipkin.Span> reporter) {
       delegate.reporter(reporter);
+      return this;
+    }
+
+    /** @see Tracing.Builder#spanReporter(Reporter) */
+    public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
+      delegate.spanReporter(reporter);
       return this;
     }
 

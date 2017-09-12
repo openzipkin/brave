@@ -2,7 +2,7 @@ package brave;
 
 import brave.propagation.TraceContext;
 import com.google.auto.value.AutoValue;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 @AutoValue
 abstract class NoopSpan extends Span {

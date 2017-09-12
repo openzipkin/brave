@@ -1,7 +1,7 @@
 package brave;
 
 import brave.propagation.TraceContext;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /**
  * Used to model the latency of an operation.
@@ -25,8 +25,8 @@ public abstract class Span implements SpanCustomizer {
     CLIENT,
     SERVER,
     /**
-     * When present, {@link #start()} is the moment a producer sent a message to a destination.
-     * A duration between {@link #start()} and {@link #finish()} may imply batching delay. {@link
+     * When present, {@link #start()} is the moment a producer sent a message to a destination. A
+     * duration between {@link #start()} and {@link #finish()} may imply batching delay. {@link
      * #remoteEndpoint(Endpoint)} indicates the destination, such as a broker.
      *
      * <p>Unlike {@link #CLIENT}, messaging spans never share a span ID. For example, the {@link
@@ -35,9 +35,9 @@ public abstract class Span implements SpanCustomizer {
      */
     PRODUCER,
     /**
-     * When present, {@link #start()} is the moment a consumer received a message from an
-     * origin. A duration between {@link #start()} and {@link #finish()} may imply a processing backlog.
-     * while {@link #remoteEndpoint(Endpoint)} indicates the origin, such as a broker.
+     * When present, {@link #start()} is the moment a consumer received a message from an origin. A
+     * duration between {@link #start()} and {@link #finish()} may imply a processing backlog. while
+     * {@link #remoteEndpoint(Endpoint)} indicates the origin, such as a broker.
      *
      * <p>Unlike {@link #SERVER}, messaging spans never share a span ID. For example, the {@link
      * #PRODUCER} of this message is the {@link TraceContext#parentId()} of this span.
@@ -70,8 +70,8 @@ public abstract class Span implements SpanCustomizer {
 
   /**
    * The kind of span is optional. When set, it affects how a span is reported. For example, if the
-   * kind is {@link Kind#SERVER}, the span's start timestamp is implicitly annotated as "sr"
-   * and that plus its duration as "ss".
+   * kind is {@link Kind#SERVER}, the span's start timestamp is implicitly annotated as "sr" and
+   * that plus its duration as "ss".
    */
   public abstract Span kind(Kind kind);
 
@@ -83,6 +83,15 @@ public abstract class Span implements SpanCustomizer {
 
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
+
+  /**
+   * @deprecated use {@link #remoteEndpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()}
+   */
+  @Deprecated
+  public final Span remoteEndpoint(zipkin.Endpoint endpoint) {
+    if (isNoop()) return this;
+    return remoteEndpoint(endpoint.toV2());
+  }
 
   /**
    * For a client span, this would be the server's address.
@@ -118,9 +127,9 @@ public abstract class Span implements SpanCustomizer {
   /**
    * Reports the span, even if unfinished. Most users will not call this method.
    *
-   * <p>This primarily supports two use cases: one-way spans and orphaned spans.
-   * For example, a one-way span can be modeled as a span where one tracer calls start and another
-   * calls finish. In order to report that span from its origin, flush must be called.
+   * <p>This primarily supports two use cases: one-way spans and orphaned spans. For example, a
+   * one-way span can be modeled as a span where one tracer calls start and another calls finish. In
+   * order to report that span from its origin, flush must be called.
    *
    * <p>Another example is where a user didn't call finish within a deadline or before a shutdown
    * occurs. By flushing, you can report what was in progress.

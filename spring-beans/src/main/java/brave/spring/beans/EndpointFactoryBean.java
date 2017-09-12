@@ -1,7 +1,7 @@
 package brave.spring.beans;
 
 import org.springframework.beans.factory.FactoryBean;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class EndpointFactoryBean implements FactoryBean<Endpoint> {
@@ -11,7 +11,7 @@ public class EndpointFactoryBean implements FactoryBean<Endpoint> {
   Integer port;
 
   @Override public Endpoint getObject() throws Exception {
-    Endpoint.Builder builder = Endpoint.builder();
+    Endpoint.Builder builder = Endpoint.newBuilder();
     if (serviceName != null) builder.serviceName(serviceName);
     if (ip != null && !builder.parseIp(ip)) {
       throw new IllegalArgumentException("endpoint.ip: " + ip + " is not an IP literal");

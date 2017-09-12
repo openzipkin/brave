@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Logger;
 import zipkin.Span;
+import zipkin2.internal.Node;
 
 import static java.util.Arrays.asList;
 
@@ -24,7 +25,8 @@ public class TraceUtil {
     Node.TreeBuilder<Span> treeBuilder = new Node.TreeBuilder<>(logger, Util.toLowerHex(traceId));
     for (Span span : trace) {
       map.put(span, span);
-      treeBuilder.addNode(span.parentId, span.id, span);
+      treeBuilder.addNode(span.parentId != null ? Util.toLowerHex(span.parentId) : null,
+          Util.toLowerHex(span.id), span);
     }
 
     // traverse the tree breadth-first, and replace the ids with incrementing ones

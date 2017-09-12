@@ -5,15 +5,15 @@ import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.sampler.Sampler;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
-import zipkin.Endpoint;
 import zipkin.reporter.Reporter;
+import zipkin2.Endpoint;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
 
   String localServiceName;
   Endpoint localEndpoint;
-  Reporter<zipkin.Span> reporter;
+  Reporter<zipkin2.Span> reporter, spanReporter;
   Clock clock;
   Sampler sampler;
   CurrentTraceContext currentTraceContext;
@@ -23,7 +23,8 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     Tracing.Builder builder = Tracing.newBuilder();
     if (localServiceName != null) builder.localServiceName(localServiceName);
     if (localEndpoint != null) builder.localEndpoint(localEndpoint);
-    if (reporter != null) builder.reporter(reporter);
+    if (spanReporter != null) builder.spanReporter(spanReporter);
+    if (reporter != null) builder.spanReporter(reporter);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
     if (currentTraceContext != null) builder.currentTraceContext(currentTraceContext);
@@ -51,8 +52,12 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     this.localEndpoint = localEndpoint;
   }
 
-  public void setReporter(Reporter<zipkin.Span> reporter) {
+  public void setReporter(Reporter<zipkin2.Span> reporter) {
     this.reporter = reporter;
+  }
+
+  public void setSpanReporter(Reporter<zipkin2.Span> spanReporter) {
+    this.spanReporter = spanReporter;
   }
 
   public void setClock(Clock clock) {

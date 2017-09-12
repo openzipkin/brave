@@ -20,7 +20,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -31,7 +31,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest({Platform.class, NetworkInterface.class})
 public class PlatformTest {
-  Endpoint unknownEndpoint = Endpoint.builder().serviceName("unknown").build();
+  Endpoint unknownEndpoint = Endpoint.newBuilder().serviceName("unknown").build();
   Platform platform = Platform.Jre7.buildIfSupported();
 
   @Test public void relativeTimestamp_incrementsAccordingToNanoTick() {
@@ -99,7 +99,7 @@ public class PlatformTest {
     nicWithAddress(InetAddress.getByAddress("local", new byte[] {(byte) 192, (byte) 168, 0, 1}));
 
     assertThat(platform.produceLocalEndpoint())
-        .isEqualTo(unknownEndpoint.toBuilder().ipv4(192 << 24 | 168 << 16 | 1).build());
+        .isEqualTo(unknownEndpoint.toBuilder().ip("192.168.0.1").build());
   }
 
   @Test public void produceLocalEndpoint_siteLocal_ipv6() throws Exception {
@@ -107,7 +107,7 @@ public class PlatformTest {
     nicWithAddress(ipv6);
 
     assertThat(platform.produceLocalEndpoint())
-        .isEqualTo(unknownEndpoint.toBuilder().ipv6(ipv6.getAddress()).build());
+        .isEqualTo(unknownEndpoint.toBuilder().ip(ipv6).build());
   }
 
   @Test public void produceLocalEndpoint_notSiteLocal_ipv4() throws Exception {

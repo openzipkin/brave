@@ -5,18 +5,17 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Annotation;
-import zipkin.BinaryAnnotation;
-import zipkin.Endpoint;
+import zipkin2.Annotation;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.entry;
 
 public class CurrentSpanCustomizerTest {
 
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  List<zipkin.Span> spans = new ArrayList();
-  Tracing tracing = Tracing.newBuilder().reporter(spans::add).build();
+  List<zipkin2.Span> spans = new ArrayList();
+  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
 
@@ -31,7 +30,7 @@ public class CurrentSpanCustomizerTest {
     }
     span.flush();
 
-    assertThat(spans).extracting(s -> s.name)
+    assertThat(spans).extracting(zipkin2.Span::name)
         .containsExactly("newname");
   }
 
@@ -46,8 +45,8 @@ public class CurrentSpanCustomizerTest {
     }
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.binaryAnnotations)
-        .containsExactly(BinaryAnnotation.create("foo", "bar", localEndpoint));
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("foo", "bar"));
   }
 
   @Test public void tag_when_no_current_span() {
@@ -61,9 +60,9 @@ public class CurrentSpanCustomizerTest {
     }
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value, a -> a.endpoint)
-        .containsExactly(tuple("foo", localEndpoint));
+    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
+        .extracting(Annotation::value)
+        .containsExactly("foo");
   }
 
   @Test public void annotate_when_no_current_span() {
@@ -77,8 +76,8 @@ public class CurrentSpanCustomizerTest {
     }
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.annotations)
-        .containsExactly(Annotation.create(2L, "foo", localEndpoint));
+    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
+        .containsExactly(Annotation.create(2L, "foo"));
   }
 
   @Test public void annotate_timestamp_when_no_current_span() {

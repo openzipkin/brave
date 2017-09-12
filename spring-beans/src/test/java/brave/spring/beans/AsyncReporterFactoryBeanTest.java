@@ -7,6 +7,7 @@ import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.Encoding;
 import zipkin.reporter.ReporterMetrics;
 import zipkin.reporter.Sender;
+import zipkin.reporter.SpanEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -139,5 +140,21 @@ public class AsyncReporterFactoryBeanTest {
     assertThat(context.getBean(AsyncReporter.class))
         .extracting("pending.maxBytes")
         .containsExactly(512);
+  }
+
+  @Test public void encoder() {
+    context = new XmlBeans(""
+        + "<bean id=\"asyncReporter\" class=\"brave.spring.beans.AsyncReporterFactoryBean\">\n"
+        + "  <property name=\"sender\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".SENDER\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"encoder\" value=\"JSON_V2\"/>\n"
+        + "</bean>"
+    );
+    context.refresh();
+
+    assertThat(context.getBean(AsyncReporter.class))
+        .extracting("encoder")
+        .containsExactly(SpanEncoder.JSON_V2);
   }
 }

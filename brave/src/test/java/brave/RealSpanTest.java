@@ -1,21 +1,17 @@
 package brave;
 
-import brave.internal.Platform;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Annotation;
-import zipkin.BinaryAnnotation;
-import zipkin.Endpoint;
+import zipkin2.Annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanTest {
-  List<zipkin.Span> spans = new ArrayList();
-  Endpoint localEndpoint = Platform.get().localEndpoint();
-  Tracer tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
+  List<zipkin2.Span> spans = new ArrayList();
+  Tracer tracer = Tracing.newBuilder().spanReporter(spans::add).build().tracer();
   Span span = tracer.newTrace();
 
   @After public void close() {
@@ -35,7 +31,7 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(s -> s.timestamp)
+        .extracting(zipkin2.Span::timestamp)
         .isNotNull();
   }
 
@@ -44,7 +40,7 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(s -> s.timestamp)
+        .extracting(zipkin2.Span::timestamp)
         .containsExactly(2L);
   }
 
@@ -53,7 +49,7 @@ public class RealSpanTest {
     span.finish();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(s -> s.duration)
+        .extracting(zipkin2.Span::duration)
         .isNotNull();
   }
 
@@ -62,7 +58,7 @@ public class RealSpanTest {
     span.finish(5);
 
     assertThat(spans).hasSize(1).first()
-        .extracting(s -> s.duration)
+        .extracting(zipkin2.Span::duration)
         .containsExactly(3L);
   }
 
@@ -77,25 +73,25 @@ public class RealSpanTest {
     span.annotate("foo");
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value, a -> a.endpoint)
-        .containsExactly(tuple("foo", localEndpoint));
+    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
+        .extracting(Annotation::value)
+        .containsExactly("foo");
   }
 
   @Test public void annotate_timestamp() {
     span.annotate(2, "foo");
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.annotations)
-        .containsExactly(Annotation.create(2L, "foo", localEndpoint));
+    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
+        .containsExactly(Annotation.create(2L, "foo"));
   }
 
   @Test public void tag() {
     span.tag("foo", "bar");
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.binaryAnnotations)
-        .containsExactly(BinaryAnnotation.create("foo", "bar", localEndpoint));
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("foo", "bar"));
   }
 
   @Test public void doubleFinishDoesntDoubleReport() {

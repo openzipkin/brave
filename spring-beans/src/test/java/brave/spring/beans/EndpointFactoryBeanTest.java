@@ -3,7 +3,7 @@ package brave.spring.beans;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.beans.factory.BeanCreationException;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -24,7 +24,7 @@ public class EndpointFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Endpoint.class))
-        .isEqualTo(Endpoint.builder().serviceName("brave-webmvc-example").build());
+        .isEqualTo(Endpoint.newBuilder().serviceName("brave-webmvc-example").build());
   }
 
   @Test public void ip() {
@@ -37,9 +37,9 @@ public class EndpointFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Endpoint.class))
-        .isEqualTo(Endpoint.builder()
+        .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
-            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
+            .ip("1.2.3.4")
             .build());
   }
 
@@ -72,9 +72,9 @@ public class EndpointFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Endpoint.class))
-        .isEqualTo(Endpoint.builder()
+        .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
-            .ipv4(1 << 24 | 2 << 16 | 3 << 8 | 4)
+            .ip("1.2.3.4")
             .port(8080).build());
   }
 }

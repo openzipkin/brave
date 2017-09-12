@@ -5,10 +5,12 @@ import org.springframework.beans.factory.config.AbstractFactoryBean;
 import zipkin.reporter.AsyncReporter;
 import zipkin.reporter.ReporterMetrics;
 import zipkin.reporter.Sender;
+import zipkin.reporter.SpanEncoder;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class AsyncReporterFactoryBean extends AbstractFactoryBean<AsyncReporter> {
   Sender sender;
+  SpanEncoder encoder = SpanEncoder.JSON_V1;
   ReporterMetrics metrics;
   Integer messageMaxBytes;
   Integer messageTimeout;
@@ -28,7 +30,7 @@ public class AsyncReporterFactoryBean extends AbstractFactoryBean<AsyncReporter>
     if (closeTimeout != null) builder.closeTimeout(closeTimeout, TimeUnit.MILLISECONDS);
     if (queuedMaxSpans != null) builder.queuedMaxSpans(queuedMaxSpans);
     if (queuedMaxBytes != null) builder.queuedMaxBytes(queuedMaxBytes);
-    return builder.build();
+    return builder.build(encoder);
   }
 
   @Override protected void destroyInstance(AsyncReporter instance) throws Exception {
@@ -41,6 +43,10 @@ public class AsyncReporterFactoryBean extends AbstractFactoryBean<AsyncReporter>
 
   public void setSender(Sender sender) {
     this.sender = sender;
+  }
+
+  public void setEncoder(SpanEncoder encoder) {
+    this.encoder = encoder;
   }
 
   public void setMetrics(ReporterMetrics metrics) {

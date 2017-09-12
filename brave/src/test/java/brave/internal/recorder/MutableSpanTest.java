@@ -1,14 +1,14 @@
 package brave.internal.recorder;
 
-import brave.Span;
+import brave.Span.Kind;
 import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.Annotation;
-import zipkin.Endpoint;
-import zipkin.internal.V2SpanConverter;
+import zipkin2.Annotation;
+import zipkin2.Endpoint;
+import zipkin2.Span;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
@@ -49,32 +49,32 @@ public class MutableSpanTest {
     span.finish(2L);
 
     assertThat(span.toSpan().annotations())
-        .containsOnly(Annotation.create(2L, "foo", null));
+        .containsOnly(Annotation.create(2L, "foo"));
   }
 
   @Test public void finished_client() {
-    finish(Span.Kind.CLIENT, zipkin.internal.v2.Span.Kind.CLIENT);
+    finish(Kind.CLIENT, Span.Kind.CLIENT);
   }
 
   @Test public void finished_server() {
-    finish(Span.Kind.SERVER, zipkin.internal.v2.Span.Kind.SERVER);
+    finish(Kind.SERVER, Span.Kind.SERVER);
   }
 
   @Test public void finished_producer() {
-    finish(Span.Kind.PRODUCER, zipkin.internal.v2.Span.Kind.PRODUCER);
+    finish(Kind.PRODUCER, Span.Kind.PRODUCER);
   }
 
   @Test public void finished_consumer() {
-    finish(Span.Kind.CONSUMER, zipkin.internal.v2.Span.Kind.CONSUMER);
+    finish(Kind.CONSUMER, Span.Kind.CONSUMER);
   }
 
-  private void finish(Span.Kind braveKind, zipkin.internal.v2.Span.Kind span2Kind) {
+  private void finish(Kind braveKind, Span.Kind span2Kind) {
     MutableSpan span = newSpan();
     span.kind(braveKind);
     span.start(1L);
     span.finish(2L);
 
-    zipkin.internal.v2.Span span2 = span.toSpan();
+    Span span2 = span.toSpan();
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isEqualTo(1L);
@@ -82,28 +82,28 @@ public class MutableSpanTest {
   }
 
   @Test public void flushed_client() {
-    flush(Span.Kind.CLIENT, zipkin.internal.v2.Span.Kind.CLIENT);
+    flush(Kind.CLIENT, Span.Kind.CLIENT);
   }
 
   @Test public void flushed_server() {
-    flush(Span.Kind.SERVER, zipkin.internal.v2.Span.Kind.SERVER);
+    flush(Kind.SERVER, Span.Kind.SERVER);
   }
 
   @Test public void flushed_producer() {
-    flush(Span.Kind.PRODUCER, zipkin.internal.v2.Span.Kind.PRODUCER);
+    flush(Kind.PRODUCER, Span.Kind.PRODUCER);
   }
 
   @Test public void flushed_consumer() {
-    flush(Span.Kind.CONSUMER, zipkin.internal.v2.Span.Kind.CONSUMER);
+    flush(Kind.CONSUMER, Span.Kind.CONSUMER);
   }
 
-  private void flush(Span.Kind braveKind, zipkin.internal.v2.Span.Kind span2Kind) {
+  private void flush(Kind braveKind, Span.Kind span2Kind) {
     MutableSpan span = newSpan();
     span.kind(braveKind);
     span.start(1L);
     span.finish(null);
 
-    zipkin.internal.v2.Span span2 = span.toSpan();
+    Span span2 = span.toSpan();
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isNull();
@@ -113,30 +113,31 @@ public class MutableSpanTest {
   @Test public void remoteEndpoint() {
     MutableSpan span = newSpan();
 
-    Endpoint endpoint = Endpoint.create("server", 127 | 1);
+    Endpoint endpoint = Endpoint.newBuilder().serviceName("server").build();
     span.kind(CLIENT);
     span.remoteEndpoint(endpoint);
     span.start(1L);
     span.finish(2L);
 
-    assertThat(span.toSpan().remoteEndpoint()).isEqualTo(endpoint);
+    assertThat(span.toSpan().remoteEndpoint())
+        .isEqualTo(endpoint);
   }
 
-  // This prevents the server timestamp from overwriting the client one
-  @Test public void doesntReportServerTimestampOnSharedSpans() {
+  // This prevents the server timestamp from overwriting the client one on the collector
+  @Test public void reportsSharedStatus() {
     MutableSpan span = new MutableSpan(context.toBuilder().shared(true).build(), localEndpoint);
 
     span.start(1L);
     span.kind(SERVER);
     span.finish(2L);
 
-    assertThat(V2SpanConverter.toSpan(span.toSpan())).extracting(s -> s.timestamp, s -> s.duration)
-        .allSatisfy(u -> assertThat(u).isNull());
+    assertThat(span.toSpan().shared())
+        .isTrue();
   }
 
   @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
-    zipkin.internal.v2.Span flushed = newSpan().finish(null).toSpan();
-    assertThat(flushed).extracting(s -> s.timestamp(), s -> s.duration())
+    Span flushed = newSpan().finish(null).toSpan();
+    assertThat(flushed).extracting(Span::timestamp, Span::duration)
         .allSatisfy(u -> assertThat(u).isNull());
   }
 
