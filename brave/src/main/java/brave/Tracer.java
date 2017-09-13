@@ -230,7 +230,7 @@ public final class Tracer {
   TraceContext nextContext(@Nullable TraceContext parent, SamplingFlags samplingFlags) {
     long nextId = Platform.get().randomLong();
     if (parent != null) {
-      return parent.toBuilder().spanId(nextId).parentId(parent.spanId()).build();
+      return parent.toBuilder().spanId(nextId).parentId(parent.spanId()).shared(false).build();
     }
     return TraceContext.newBuilder()
         .sampled(samplingFlags.sampled())

@@ -177,6 +177,14 @@ public class TracerTest {
         .isInstanceOf(RealSpan.class);
   }
 
+  /** A child span is not sharing a span ID with its parent by definition */
+  @Test public void newChild_isntShared() {
+    TraceContext parent = tracer.newTrace().context();
+
+    assertThat(tracer.newChild(parent).context().shared())
+        .isFalse();
+  }
+
   @Test public void newChild_noop() {
     TraceContext parent = tracer.newTrace().context();
 
