@@ -1,6 +1,13 @@
 package brave.p6spy;
 
+import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import brave.Span;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.sampler.Sampler;
 import com.p6spy.engine.common.ConnectionInformation;
@@ -15,11 +22,6 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import zipkin.Endpoint;
 
-import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingJdbcEventListenerTest {
@@ -116,6 +118,17 @@ public class TracingJdbcEventListenerTest {
       listener.onAfterAnyExecute(statementInformation, 1, null);
 
       assertThat(spans).isEmpty();
+    }
+  }
+
+  @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
+    ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+    Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
+    Span span = tracing.tracer().nextSpan().start();
+    try (SpanInScope spanInScope = tracing.tracer().withSpanInScope(span)) {
+      TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);
+      listener.onAfterAnyExecute(statementInformation, 1, null);
+      listener.onAfterAnyExecute(statementInformation, 1, null);
     }
   }
 }
