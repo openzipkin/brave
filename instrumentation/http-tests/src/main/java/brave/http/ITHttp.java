@@ -6,13 +6,13 @@ import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
-import zipkin.Span;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,12 +32,12 @@ public abstract class ITHttp {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(s -> {
+        .spanReporter(s -> {
           // make sure the context was cleared prior to finish.. no leaks!
           TraceContext current = httpTracing.tracing().currentTraceContext().get();
           if (current != null) {
             assertThat(current.spanId())
-                .isNotEqualTo(s.id);
+                .isNotEqualTo(s.id());
           }
           spans.add(s);
         })
@@ -47,9 +47,9 @@ public abstract class ITHttp {
 
   void assertReportedTagsInclude(String key, String... values) {
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(key))
-        .extracting(b -> new String(b.value, Charset.forName("UTF-8")))
+        .flatExtracting(s -> s.tags().entrySet())
+        .filteredOn(e -> e.getKey().equals(key))
+        .extracting(Map.Entry::getValue)
         .containsExactly(values);
   }
 }

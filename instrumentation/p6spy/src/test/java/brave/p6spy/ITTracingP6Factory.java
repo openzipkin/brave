@@ -4,7 +4,6 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
-import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,12 +13,10 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Constants;
-import zipkin.Span;
-import zipkin.TraceKeys;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.entry;
 
 public class ITTracingP6Factory {
   static final String URL = "jdbc:p6spy:derby:memory:p6spy;create=true";
@@ -61,13 +58,12 @@ public class ITTracingP6Factory {
   }
 
   @Test
-  public void reportsClientAnnotationsToZipkin() throws Exception {
+  public void reportsClientKindToZipkin() throws Exception {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("cs", "cr");
+        .flatExtracting(Span::kind)
+        .containsExactly(Span.Kind.CLIENT);
   }
 
   @Test
@@ -75,7 +71,7 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("select");
   }
 
@@ -84,10 +80,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(a -> a.key.equals(TraceKeys.SQL_QUERY))
-        .extracting(a -> new String(a.value, Charset.forName("UTF-8")))
-        .containsExactly(QUERY);
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("sql.query", QUERY));
   }
 
   @Test
@@ -95,9 +89,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key, b -> b.endpoint.serviceName)
-        .contains(tuple(Constants.SERVER_ADDR, "myservice"));
+        .flatExtracting(Span::remoteServiceName)
+        .containsExactly("myservice");
   }
 
   void prepareExecuteSelect(String query) throws SQLException {
@@ -112,7 +105,7 @@ public class ITTracingP6Factory {
 
   static Tracing.Builder tracingBuilder(Sampler sampler, ConcurrentLinkedDeque<Span> spans) {
     return Tracing.newBuilder()
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())
         .sampler(sampler);
   }

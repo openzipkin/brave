@@ -17,7 +17,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
   static final Propagation.Setter<HttpRequestWrapper, String> SETTER = (wrapper, key, value) -> {
@@ -83,7 +83,8 @@ public final class TracingHttpClientBuilder extends HttpClientBuilder {
       HttpHost target = httpRequest.getTarget();
       if (target == null) return false;
       if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
-        builder.port(target.getPort());
+        int port = target.getPort();
+        if (port > 0) builder.port(port);
         return true;
       }
       return false;

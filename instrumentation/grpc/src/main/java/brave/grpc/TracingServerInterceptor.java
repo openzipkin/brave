@@ -13,7 +13,6 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-import zipkin.Constants;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
@@ -66,7 +65,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
     @Override public void close(Status status, Metadata trailers) {
       try {
         if (!status.getCode().equals(Status.Code.OK)) {
-          span.tag(Constants.ERROR, String.valueOf(status.getCode()));
+          span.tag("error", String.valueOf(status.getCode()));
         }
         super.close(status, trailers);
       } finally {

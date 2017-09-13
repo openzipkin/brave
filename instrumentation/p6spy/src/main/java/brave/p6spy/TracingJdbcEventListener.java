@@ -10,19 +10,18 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import zipkin.Constants;
-import zipkin.Endpoint;
-import zipkin.TraceKeys;
+import javax.annotation.Nullable;
+import zipkin2.Endpoint;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   private final static Pattern URL_SERVICE_NAME_FINDER =
       Pattern.compile("zipkinServiceName=(\\w*)");
 
-  final String remoteServiceName;
+  @Nullable final String remoteServiceName;
   final boolean includeParameterValues;
 
-  TracingJdbcEventListener(String remoteServiceName, boolean includeParameterValues) {
+  TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues) {
     this.remoteServiceName = remoteServiceName;
     this.includeParameterValues = includeParameterValues;
   }
@@ -38,7 +37,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
     if (!span.isNoop()) {
       span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
-      span.tag(TraceKeys.SQL_QUERY, sql);
+      span.tag("sql.query", sql);
       parseServerAddress(info.getConnectionInformation().getConnection(), span);
       span.start();
     }
@@ -62,7 +61,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     currentSpanInScope.remove();
 
     if (e != null) {
-      span.tag(Constants.ERROR, Integer.toString(e.getErrorCode()));
+      span.tag("error", Integer.toString(e.getErrorCode()));
     }
     span.finish();
   }
@@ -83,7 +82,9 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
           defaultRemoteServiceName = parsedServiceName;
         }
       }
-      Endpoint.Builder builder = Endpoint.builder().port(url.getPort());
+      Endpoint.Builder builder = Endpoint.newBuilder();
+      int port = url.getPort();
+      if (port > 0) builder.port(port);
       boolean parsed = builder.parseIp(url.getHost());
       if (defaultRemoteServiceName == null || "".equals(defaultRemoteServiceName)) {
         String databaseName = connection.getCatalog();

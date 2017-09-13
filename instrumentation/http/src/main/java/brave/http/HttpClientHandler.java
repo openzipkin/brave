@@ -7,7 +7,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import javax.annotation.Nullable;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -100,9 +100,16 @@ public final class HttpClientHandler<Req, Resp> {
     // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.CLIENT).name(parser.spanName(adapter, request));
     parser.request(adapter, request, span);
-    Endpoint.Builder remoteEndpoint = Endpoint.builder();
-    if (adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet) {
-      span.remoteEndpoint(remoteEndpoint.serviceName(serverName).build());
+
+    zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder()
+        .serviceName(serverNameSet ? serverName : "");
+    if (adapter.parseServerAddress(request, deprecatedEndpoint)) {
+      span.remoteEndpoint(deprecatedEndpoint.serviceName(serverName).build());
+    } else {
+      Endpoint.Builder remoteEndpoint = Endpoint.newBuilder().serviceName(serverName);
+      if (adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet) {
+        span.remoteEndpoint(remoteEndpoint.build());
+      }
     }
     return span.start();
   }

@@ -9,7 +9,6 @@ import brave.jaxrs2.TracingBootstrap;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import okhttp3.OkHttpClient;
@@ -21,7 +20,7 @@ import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Span;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,7 +28,7 @@ public class DeclarativeSamplingTest extends ServletContainer {
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
   OkHttpClient client = new OkHttpClient();
   HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder()
-      .reporter(spans::add)
+      .spanReporter(spans::add)
       .build())
       .serverSampler(new Traced.Sampler(new HttpSampler() {
         @Override @Nonnull

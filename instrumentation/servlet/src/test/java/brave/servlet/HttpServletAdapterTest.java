@@ -6,7 +6,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -40,11 +40,11 @@ public class HttpServletAdapterTest {
     when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("127.0.0.1");
 
     assertParsedEndpoint()
-        .isEqualTo(Endpoint.builder().serviceName("").ipv4(127 << 24 | 1).build());
+        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
   }
 
   @Test public void parseClientAddress_skipsOnNoIp() {
-    assertThat(adapter.parseClientAddress(request, Endpoint.builder()))
+    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
         .isFalse();
   }
 
@@ -53,28 +53,28 @@ public class HttpServletAdapterTest {
     when(request.getRemotePort()).thenReturn(61687);
 
     assertParsedEndpoint()
-        .isEqualTo(Endpoint.builder().serviceName("").ipv4(127 << 24 | 1).port(61687).build());
+        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").port(61687).build());
   }
 
   @Test public void parseClientAddress_acceptsRemoteAddr() {
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
 
     assertParsedEndpoint()
-        .isEqualTo(Endpoint.builder().serviceName("").ipv4(127 << 24 | 1).build());
+        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
   }
 
   @Test public void parseClientAddress_doesntNsLookup() {
     when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("localhost");
 
-    assertThat(adapter.parseClientAddress(request, Endpoint.builder()))
+    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
         .isFalse();
   }
 
   AbstractObjectAssert<?, Endpoint> assertParsedEndpoint() {
-    Endpoint.Builder remoteAddress = Endpoint.builder();
+    Endpoint.Builder remoteAddress = Endpoint.newBuilder();
     assertThat(adapter.parseClientAddress(request, remoteAddress))
         .isTrue();
 
-    return assertThat(remoteAddress.serviceName("").build());
+    return assertThat(remoteAddress.build());
   }
 }

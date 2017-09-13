@@ -14,12 +14,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Span;
 import zipkin.internal.Util;
+import zipkin2.Span;
 
+import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class TracingConsumerTest {
@@ -42,7 +44,7 @@ public class TracingConsumerTest {
   @Before
   public void init() throws IOException {
     tracing = Tracing.newBuilder()
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .sampler(Sampler.ALWAYS_SAMPLE)
         .build();
 
@@ -80,20 +82,18 @@ public class TracingConsumerTest {
 
     // new span from headers
     assertThat(spans)
-        .extracting(s -> Long.toHexString(s.parentId))
+        .extracting(Span::parentId)
         .containsExactly(SPAN_ID);
 
-    // annotations are correct
+    // kind is correct
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("wr", "mr");
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.CONSUMER);
 
     // tags are correct
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("wr", "mr");
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("kafka.key", "foo"), entry("kafka.topic", "myTopic"));
   }
 
   @Test

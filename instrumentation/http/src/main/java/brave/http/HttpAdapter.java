@@ -2,14 +2,13 @@ package brave.http;
 
 import java.net.URI;
 import javax.annotation.Nullable;
-import zipkin.TraceKeys;
 
 public abstract class HttpAdapter<Req, Resp> {
 
   /**
    * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
    *
-   * @see TraceKeys#HTTP_METHOD
+   * <p>Conventionally associated with the key "http.method"
    */
   @Nullable public abstract String method(Req request);
 
@@ -17,7 +16,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * The absolute http path, without any query parameters or null if unreadable. Ex.
    * "/objects/abcd-ff"
    *
-   * @see TraceKeys#HTTP_PATH
+   * <p>Conventionally associated with the key "http.path"
    */
   @Nullable public String path(Req request) {
     String url = url(request);
@@ -29,7 +28,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * The entire URL, including the scheme, host and query parameters if available or null if
    * unreadable.
    *
-   * @see TraceKeys#HTTP_URL
+   * <p>Conventionally associated with the key "http.url"
    */
   @Nullable public abstract String url(Req request);
 
@@ -41,7 +40,7 @@ public abstract class HttpAdapter<Req, Resp> {
   /**
    * The HTTP status code or null if unreadable.
    *
-   * @see TraceKeys#HTTP_STATUS_CODE
+   * <p>Conventionally associated with the key "http.status_code"
    */
   @Nullable public abstract Integer statusCode(Resp response);
 

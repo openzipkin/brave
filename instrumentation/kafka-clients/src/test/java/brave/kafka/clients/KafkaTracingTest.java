@@ -28,12 +28,12 @@ public class KafkaTracingTest {
   KafkaTracing kafkaTracing;
   ConsumerRecord<String, String> fakeRecord;
 
-  List<zipkin.Span> spans = new ArrayList<>();
+  List<zipkin2.Span> spans = new ArrayList<>();
 
   @Before
   public void setUp() throws IOException {
     Tracing tracing = Tracing.newBuilder()
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .sampler(Sampler.NEVER_SAMPLE)
         .build();
 

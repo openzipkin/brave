@@ -9,7 +9,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -28,8 +28,8 @@ public class TracingStatementInterceptorTest {
 
     TracingStatementInterceptor.parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mysql")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
+        .ip("127.0.0.1").port(5555).build());
   }
 
   @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
@@ -38,8 +38,8 @@ public class TracingStatementInterceptorTest {
 
     TracingStatementInterceptor.parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mysql-mydatabase")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql-mydatabase")
+        .ip("127.0.0.1").port(5555).build());
   }
 
   @Test public void parseServerAddress_propertiesOverrideServiceName() throws SQLException {
@@ -47,8 +47,8 @@ public class TracingStatementInterceptorTest {
 
     TracingStatementInterceptor.parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("foo")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("foo")
+        .ip("127.0.0.1").port(5555).build());
   }
 
   @Test public void parseServerAddress_emptyZipkinServiceNameIgnored() throws SQLException {
@@ -56,8 +56,8 @@ public class TracingStatementInterceptorTest {
 
     TracingStatementInterceptor.parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mysql")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
+        .ip("127.0.0.1").port(5555).build());
   }
 
   @Test public void parseServerAddress_doesntNsLookup() throws SQLException {

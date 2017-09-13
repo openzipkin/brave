@@ -5,10 +5,8 @@ import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
 import brave.http.HttpTracing;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -21,18 +19,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /** This is an example of http request sampling */
 public class RequestSamplingTest {
   @Rule public MockWebServer server = new MockWebServer();
 
-  ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+  ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
   Tracing tracing = Tracing.newBuilder()
-      .localEndpoint(Endpoint.builder().serviceName("server").build())
-      .reporter(spans::push)
+      .localEndpoint(Endpoint.newBuilder().serviceName("server").build())
+      .spanReporter(spans::push)
       .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
       // server starts traces under the path /api
@@ -78,10 +77,8 @@ public class RequestSamplingTest {
     callServer("/api");
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals("http.path"))
-        .extracting(b -> new String(b.value, Charset.forName("UTF-8")))
-        .containsOnly("/api", "/next");
+        .flatExtracting(s -> s.tags().entrySet())
+        .contains(entry("http.path", "/api"), entry("http.path", "/next"));
   }
 
   void callServer(String path) throws IOException {

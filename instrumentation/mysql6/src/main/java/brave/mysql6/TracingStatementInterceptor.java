@@ -9,14 +9,11 @@ import com.mysql.cj.api.jdbc.Statement;
 import com.mysql.cj.api.jdbc.interceptors.StatementInterceptor;
 import com.mysql.cj.api.log.Log;
 import com.mysql.cj.api.mysqla.result.Resultset;
+import com.mysql.cj.jdbc.PreparedStatement;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import com.mysql.cj.jdbc.PreparedStatement;
-import zipkin.Constants;
-import zipkin.Endpoint;
-import zipkin.TraceKeys;
+import zipkin2.Endpoint;
 
 /**
  * A MySQL statement interceptor that will report to Zipkin how long each statement takes.
@@ -41,7 +38,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
       }
       int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
       span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
-      span.tag(TraceKeys.SQL_QUERY, sql);
+      span.tag("sql.query", sql);
       parseServerAddress(connection, span);
       span.start();
     }
@@ -69,7 +66,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
     currentSpanInScope.remove();
 
     if (statementException != null && statementException instanceof SQLException) {
-      span.tag(Constants.ERROR, Integer.toString(((SQLException)statementException).getErrorCode()));
+      span.tag("error", Integer.toString(((SQLException)statementException).getErrorCode()));
     }
     span.finish();
 
@@ -93,7 +90,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
           remoteServiceName = "mysql";
         }
       }
-      Endpoint.Builder builder = Endpoint.builder().serviceName(remoteServiceName).port(port);
+      Endpoint.Builder builder = Endpoint.newBuilder().serviceName(remoteServiceName).port(port);
       if (!builder.parseIp(getHost(connection))) return;
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {

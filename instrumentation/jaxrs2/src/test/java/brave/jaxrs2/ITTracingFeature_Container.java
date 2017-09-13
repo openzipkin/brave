@@ -17,6 +17,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -86,7 +87,7 @@ public class ITTracingFeature_Container extends ITServletContainer {
     get("/foo");
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("foo");
   }
 

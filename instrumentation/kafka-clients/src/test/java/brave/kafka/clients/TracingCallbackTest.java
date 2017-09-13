@@ -13,10 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingCallbackTest {
 
-  LinkedList<zipkin.Span> spans = new LinkedList<>();
+  LinkedList<zipkin2.Span> spans = new LinkedList<>();
 
   Tracing tracing = Tracing.newBuilder()
-      .reporter(spans::add)
+      .spanReporter(spans::add)
       .sampler(Sampler.ALWAYS_SAMPLE)
       .build();
 
@@ -44,13 +44,11 @@ public class TracingCallbackTest {
     TracingCallback callback = new TracingCallback(span, null);
     callback.onCompletion(null, new Exception("Test exception"));
 
-    assertThat(spans.getFirst().binaryAnnotations)
-        .extracting("key")
-        .contains("error");
+    assertThat(spans.getFirst().tags())
+        .containsKey("error");
 
-    assertThat(spans.getFirst().binaryAnnotations)
-        .extracting("value")
-        .contains("Test exception".getBytes());
+    assertThat(spans.getFirst().tags())
+        .containsEntry("error", "Test exception");
   }
 
   RecordMetadata createRecordMetadata() {

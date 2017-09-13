@@ -2,7 +2,7 @@ package brave.http;
 
 import brave.Tracing;
 import com.google.auto.value.AutoValue;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 @AutoValue
 public abstract class HttpTracing {
@@ -40,7 +40,7 @@ public abstract class HttpTracing {
    * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
-   * @see zipkin.Constants#SERVER_ADDR
+   * @see zipkin2.Constants#SERVER_ADDR
    * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */

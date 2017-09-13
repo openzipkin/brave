@@ -2,13 +2,11 @@ package brave.http;
 
 import brave.SpanCustomizer;
 import javax.annotation.Nullable;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 public class HttpParser {
   /**
    * Override to change what data from the http request are parsed into the span representing it. By
-   * default, this sets the span name to the http method and tags {@link TraceKeys#HTTP_PATH}
+   * default, this sets the span name to the http method and tags "http.path"
    *
    * <p>If you only want to change the span name, you can override {@link #spanName(HttpAdapter,
    * Object)} instead.
@@ -18,7 +16,7 @@ public class HttpParser {
   public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
     customizer.name(spanName(adapter, req));
     String path = adapter.path(req);
-    if (path != null) customizer.tag(TraceKeys.HTTP_PATH, path);
+    if (path != null) customizer.tag("http.path", path);
   }
 
   /** Returns the span name of the request. Defaults to the http method. */
@@ -28,8 +26,8 @@ public class HttpParser {
 
   /**
    * Override to change what data from the http response or error are parsed into the span modeling
-   * it. By default, this tags {@link TraceKeys#HTTP_STATUS_CODE} when it is not 2xx. If there's an
-   * exception or the status code is neither 2xx nor 3xx, it tags {@link Constants#ERROR}.
+   * it. By default, this tags "http.status_code" when it is not 2xx. If there's an exception or the
+   * status code is neither 2xx nor 3xx, it tags "error".
    *
    * <p>If you only want to change how exceptions are parsed, override {@link #error(Integer,
    * Throwable, SpanCustomizer)} instead.
@@ -44,19 +42,18 @@ public class HttpParser {
       @Nullable Throwable error, SpanCustomizer customizer) {
     Integer httpStatus = res != null ? adapter.statusCode(res) : null;
     if (httpStatus != null && (httpStatus < 200 || httpStatus > 299)) {
-      customizer.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus));
+      customizer.tag("http.status_code", String.valueOf(httpStatus));
     }
     error(httpStatus, error, customizer);
   }
 
   /**
    * Override to change what data from the http error are parsed into the span modeling it. By
-   * default, this tags {@link Constants#ERROR} as the exception or the status code if it is neither
-   * 2xx nor 3xx.
+   * default, this tags "error" as the exception or the status code if it is neither 2xx nor 3xx.
    *
    * <p>Note: Either the httpStatus or error parameters may be null, but not both
    *
-   * @see Constants#ERROR
+   * <p>Conventionally associated with the tag key "error"
    */
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
       SpanCustomizer customizer) {
@@ -64,10 +61,10 @@ public class HttpParser {
     if (error != null) {
       message = error.getMessage();
       if (message == null) message = error.getClass().getSimpleName();
-    } else if (httpStatus != null){
+    } else if (httpStatus != null) {
       message = httpStatus < 200 || httpStatus > 399 ? String.valueOf(httpStatus) : null;
     }
-    if (message != null) customizer.tag(Constants.ERROR, message);
+    if (message != null) customizer.tag("error", message);
   }
 
   HttpParser() {

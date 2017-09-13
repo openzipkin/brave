@@ -5,7 +5,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import zipkin.TraceKeys;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
@@ -32,13 +31,13 @@ public class HttpParserTest {
 
     parser.request(adapter, request, customizer);
 
-    verify(customizer).tag(TraceKeys.HTTP_PATH, "/foo");
+    verify(customizer).tag("http.path", "/foo");
   }
 
   @Test public void request_doesntCrashOnNullPath() {
     parser.request(adapter, request, customizer);
 
-    verify(customizer, never()).tag(TraceKeys.HTTP_PATH, null);
+    verify(customizer, never()).tag("http.path", null);
   }
 
   @Test public void response_tagsStatusAndErrorOnResponseCode() {

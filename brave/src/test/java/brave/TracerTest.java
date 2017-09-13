@@ -93,13 +93,13 @@ public class TracerTest {
   }
 
   @Test public void newTrace_debug_flag() {
-    List<zipkin.Span> spans = new ArrayList<>();
-    tracer = Tracing.newBuilder().reporter(spans::add).build().tracer();
+    List<zipkin2.Span> spans = new ArrayList<>();
+    tracer = Tracing.newBuilder().spanReporter(spans::add).build().tracer();
 
     Span root = tracer.newTrace(SamplingFlags.DEBUG).start();
     root.finish();
 
-    assertThat(spans).extracting(s -> s.debug)
+    assertThat(spans).extracting(zipkin2.Span::debug)
         .containsExactly(true);
   }
 

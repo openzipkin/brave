@@ -13,9 +13,8 @@ import okhttp3.mockwebserver.SocketPolicy;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Constants;
-import zipkin.Endpoint;
-import zipkin.TraceKeys;
+import zipkin2.Endpoint;
+import zipkin2.Span;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,14 +133,13 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .containsEntry("x-b3-sampled", asList("0"));
   }
 
-  @Test public void reportsClientAnnotationsToZipkin() throws Exception {
+  @Test public void reportsClientKindToZipkin() throws Exception {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("cs", "cr");
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.CLIENT);
   }
 
   @Test
@@ -150,12 +148,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
     get(client, "/foo");
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(Constants.SERVER_ADDR))
-        .extracting(b -> b.endpoint)
-        .containsExactly(Endpoint.builder()
-            .serviceName("")
-            .ipv4(127 << 24 | 1)
+        .extracting(Span::remoteEndpoint)
+        .containsExactly(Endpoint.newBuilder()
+            .ip("127.0.0.1")
             .port(server.getPort()).build()
         );
   }
@@ -165,7 +160,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     get(client, "/foo");
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get");
   }
 
@@ -178,7 +173,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
           @Override
           public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
             customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-            customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+            customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
           }
         })
         .build().clientOf("remote-service");
@@ -188,16 +183,14 @@ public abstract class ITHttpClient<C> extends ITHttp {
     get(client, uri);
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get /foo");
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(Constants.SERVER_ADDR))
-        .extracting(b -> b.endpoint.serviceName)
+        .extracting(Span::remoteServiceName)
         .containsExactly("remote-service");
 
-    assertReportedTagsInclude(TraceKeys.HTTP_URL, url(uri));
+    assertReportedTagsInclude("http.url", url(uri));
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
@@ -209,8 +202,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // some clients think 400 is an error
     }
 
-    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
-    assertReportedTagsInclude(Constants.ERROR, "400");
+    assertReportedTagsInclude("http.status_code", "400");
+    assertReportedTagsInclude("error", "400");
   }
 
   @Test public void redirect() throws Exception {
@@ -228,7 +221,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo", "/bar");
+    assertReportedTagsInclude("http.path", "/foo", "/bar");
   }
 
   @Test public void post() throws Exception {
@@ -242,7 +235,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .isEqualTo(body);
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("post");
   }
 
@@ -262,9 +255,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     reportsSpanOnTransportException();
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
-        .contains(Constants.ERROR);
+        .flatExtracting(s -> s.tags().keySet())
+        .contains("error");
   }
 
   @Test public void httpPathTagExcludesQueryParams() throws Exception {
@@ -273,7 +265,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, path);
 
-    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
+    assertReportedTagsInclude("http.path", "/foo");
   }
 
   protected String url(String pathIncludingQuery) {

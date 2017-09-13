@@ -2,7 +2,6 @@ package brave.grpc;
 
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextCurrentTraceContext;
-import brave.internal.HexCodec;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -26,7 +25,6 @@ import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloRequest;
-import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,14 +36,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.Constants;
-import zipkin.Span;
+import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
-import static org.assertj.core.api.Assertions.tuple;
 
 public class ITTracingServerInterceptor {
   Logger testLogger = LogManager.getLogger();
@@ -124,9 +121,9 @@ public class ITTracingServerInterceptor {
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
     assertThat(spans).allSatisfy(s -> {
-      assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
-      assertThat(HexCodec.toLowerHex(s.parentId)).isEqualTo(parentId);
-      assertThat(HexCodec.toLowerHex(s.id)).isEqualTo(spanId);
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.parentId()).isEqualTo(parentId);
+      assertThat(s.id()).isEqualTo(spanId);
     });
   }
 
@@ -170,13 +167,12 @@ public class ITTracingServerInterceptor {
   }
 
   @Test
-  public void reportsServerAnnotationsToZipkin() throws Exception {
+  public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr", "ss");
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.SERVER);
   }
 
   @Test
@@ -184,7 +180,7 @@ public class ITTracingServerInterceptor {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("helloworld.greeter/sayhello");
   }
 
@@ -196,15 +192,14 @@ public class ITTracingServerInterceptor {
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
       assertThat(spans)
-          .flatExtracting(s -> s.binaryAnnotations)
-          .extracting(b -> tuple(b.key, new String(b.value, Charset.forName("UTF-8"))))
-          .contains(tuple(Constants.ERROR, e.getStatus().getCode().toString()));
+          .flatExtracting(s -> s.tags().entrySet())
+          .containsExactly(entry("error", e.getStatus().getCode().toString()));
     }
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .currentTraceContext( // connect to log4
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);

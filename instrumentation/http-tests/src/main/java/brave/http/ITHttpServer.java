@@ -1,21 +1,19 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import brave.internal.HexCodec;
 import brave.sampler.Sampler;
 import java.io.IOException;
+import java.util.Map;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Constants;
-import zipkin.Span;
-import zipkin.TraceKeys;
+import zipkin2.Endpoint;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.groups.Tuple.tuple;
 
 public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
@@ -47,9 +45,9 @@ public abstract class ITHttpServer extends ITHttp {
         .build());
 
     assertThat(spans).allSatisfy(s -> {
-      assertThat(HexCodec.toLowerHex(s.traceId)).isEqualTo(traceId);
-      assertThat(HexCodec.toLowerHex(s.parentId)).isEqualTo(parentId);
-      assertThat(HexCodec.toLowerHex(s.id)).isEqualTo(spanId);
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.parentId()).isEqualTo(parentId);
+      assertThat(s.id()).isEqualTo(spanId);
     });
   }
 
@@ -107,10 +105,10 @@ public abstract class ITHttpServer extends ITHttp {
     Span child = spans.pop();
     Span parent = spans.pop();
 
-    assertThat(parent.traceId).isEqualTo(child.traceId);
-    assertThat(parent.id).isEqualTo(child.parentId);
-    assertThat(parent.timestamp).isLessThan(child.timestamp);
-    assertThat(parent.duration).isGreaterThan(child.duration);
+    assertThat(parent.traceId()).isEqualTo(child.traceId());
+    assertThat(parent.id()).isEqualTo(child.parentId());
+    assertThat(parent.timestamp()).isLessThan(child.timestamp());
+    assertThat(parent.duration()).isGreaterThan(child.duration());
   }
 
   @Test
@@ -118,9 +116,8 @@ public abstract class ITHttpServer extends ITHttp {
     get("/foo");
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
-        .contains(Constants.CLIENT_ADDR);
+        .flatExtracting(Span::remoteEndpoint)
+        .doesNotContainNull();
   }
 
   @Test
@@ -130,19 +127,18 @@ public abstract class ITHttpServer extends ITHttp {
         .build());
 
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key, b -> b.endpoint.ipv4)
-        .contains(tuple(Constants.CLIENT_ADDR, 1 << 24 | 2 << 16 | 3 << 8 | 4));
+        .extracting(Span::remoteEndpoint)
+        .extracting(Endpoint::ipv4)
+        .contains("1.2.3.4");
   }
 
   @Test
-  public void reportsServerAnnotationsToZipkin() throws Exception {
+  public void reportsServerKindToZipkin() throws Exception {
     get("/foo");
 
     assertThat(spans)
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr", "ss");
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.SERVER);
   }
 
   @Test
@@ -150,7 +146,7 @@ public abstract class ITHttpServer extends ITHttp {
     get("/foo");
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get");
   }
 
@@ -160,7 +156,7 @@ public abstract class ITHttpServer extends ITHttp {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
         customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-        customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // just the path is logged by default
+        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
       }
     }).build();
     init();
@@ -169,10 +165,10 @@ public abstract class ITHttpServer extends ITHttp {
     get(uri);
 
     assertThat(spans)
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get /foo");
 
-    assertReportedTagsInclude(TraceKeys.HTTP_URL, url(uri));
+    assertReportedTagsInclude("http.url", url(uri));
   }
 
   @Test
@@ -183,8 +179,8 @@ public abstract class ITHttpServer extends ITHttp {
       // some servers think 400 is an error
     }
 
-    assertReportedTagsInclude(TraceKeys.HTTP_STATUS_CODE, "400");
-    assertReportedTagsInclude(Constants.ERROR, "400");
+    assertReportedTagsInclude("http.status_code", "400");
+    assertReportedTagsInclude("error", "400");
   }
 
   @Test
@@ -217,7 +213,7 @@ public abstract class ITHttpServer extends ITHttp {
   public void httpPathTagExcludesQueryParams() throws Exception {
     get("/foo?z=2&yAA=1");
 
-    assertReportedTagsInclude(TraceKeys.HTTP_PATH, "/foo");
+    assertReportedTagsInclude("http.path", "/foo");
   }
 
   protected Response get(String path) throws IOException {
@@ -241,8 +237,8 @@ public abstract class ITHttpServer extends ITHttp {
       e.printStackTrace();
     }
     assertThat(spans)
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
-        .contains(Constants.ERROR);
+        .flatExtracting(s -> s.tags().entrySet())
+        .extracting(Map.Entry::getKey)
+        .contains("error");
   }
 }

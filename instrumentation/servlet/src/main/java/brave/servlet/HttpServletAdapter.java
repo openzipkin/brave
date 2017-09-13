@@ -3,7 +3,7 @@ package brave.servlet;
 import brave.http.HttpServerAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /** This can also parse the remote IP of the client. */
 // public for others like sparkjava to use

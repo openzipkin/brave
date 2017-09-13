@@ -11,8 +11,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
-import static zipkin.Constants.ERROR;
-
 /**
  * Access to servlet version-specific features
  *
@@ -74,7 +72,7 @@ abstract class ServletRuntime {
         }
 
         @Override public void onTimeout(AsyncEvent e) throws IOException {
-          span.tag(ERROR, String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
+          span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
           handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
         }
 

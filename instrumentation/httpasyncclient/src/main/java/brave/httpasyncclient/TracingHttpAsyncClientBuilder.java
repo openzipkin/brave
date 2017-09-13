@@ -29,7 +29,7 @@ import org.apache.http.nio.IOControl;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.HttpContext;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 /**
  * Note: The current span is only visible to interceptors {@link #addInterceptorLast(HttpRequestInterceptor)
@@ -94,7 +94,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       HttpHost target = ((HttpRequestWrapper) httpRequest).getTarget();
       if (target == null) return false;
       if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
-        builder.port(target.getPort());
+        int port = target.getPort();
+        if (port > 0) builder.port(port);
         return true;
       }
       return false;

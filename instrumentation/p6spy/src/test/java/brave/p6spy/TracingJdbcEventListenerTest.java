@@ -13,7 +13,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 
 import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,8 +39,7 @@ public class TracingJdbcEventListenerTest {
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(Endpoint.newBuilder().ip("127.0.0.1").port(5555).build());
   }
 
   @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
@@ -50,8 +49,9 @@ public class TracingJdbcEventListenerTest {
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mydatabase")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(
+        Endpoint.newBuilder().serviceName("mydatabase").ip("127.0.0.1").port(5555).build()
+    );
   }
 
   @Test public void parseServerAddress_serviceNameFromUrl() throws SQLException {
@@ -61,8 +61,9 @@ public class TracingJdbcEventListenerTest {
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mysql_service")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(
+        Endpoint.newBuilder().serviceName("mysql_service").ip("127.0.0.1").port(5555).build()
+    );
   }
 
   @Test public void parseServerAddress_emptyServiceNameFromUrl() throws SQLException {
@@ -72,8 +73,9 @@ public class TracingJdbcEventListenerTest {
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("mydatabase")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(
+        Endpoint.newBuilder().serviceName("mydatabase").ip("127.0.0.1").port(5555).build()
+    );
   }
 
   @Test public void parseServerAddress_overrideServiceName() throws SQLException {
@@ -82,8 +84,9 @@ public class TracingJdbcEventListenerTest {
 
     new TracingJdbcEventListener("foo", false).parseServerAddress(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.builder().serviceName("foo")
-        .ipv4(127 << 24 | 1).port(5555).build());
+    verify(span).remoteEndpoint(
+        Endpoint.newBuilder().serviceName("foo").ip("127.0.0.1").port(5555).build()
+    );
   }
 
   @Test public void parseServerAddress_doesntNsLookup() throws SQLException {
@@ -102,7 +105,7 @@ public class TracingJdbcEventListenerTest {
 
 
   @Test public void nullSqlWontNPE() throws SQLException {
-    ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+    ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
     try (Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build()) {
 
       when(statementInformation.getSql()).thenReturn(null);

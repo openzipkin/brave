@@ -14,7 +14,6 @@ import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
-import zipkin.Constants;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingClientInterceptor implements ClientInterceptor {
@@ -56,7 +55,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
             super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
               @Override public void onClose(Status status, Metadata trailers) {
                 if (!status.getCode().equals(Status.Code.OK)) {
-                  span.tag(Constants.ERROR, String.valueOf(status.getCode()));
+                  span.tag("error", String.valueOf(status.getCode()));
                 }
                 span.finish();
                 super.onClose(status, trailers);

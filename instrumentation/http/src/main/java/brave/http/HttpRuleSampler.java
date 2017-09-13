@@ -2,10 +2,10 @@ package brave.http;
 
 import brave.Tracing;
 import brave.sampler.ParameterizedSampler;
+import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-import zipkin.internal.Pair;
 
 /**
  * Assigns sample rates to http routes.
@@ -50,7 +50,7 @@ public final class HttpRuleSampler extends HttpSampler {
     }
   }
 
-  final ParameterizedSampler<Pair<String>> sampler;
+  final ParameterizedSampler<MethodAndPath> sampler;
 
   HttpRuleSampler(List<MethodAndPathRule> rules) {
     this.sampler = ParameterizedSampler.create(rules);
@@ -60,10 +60,21 @@ public final class HttpRuleSampler extends HttpSampler {
     String method = adapter.method(request);
     String path = adapter.path(request);
     if (method == null || path == null) return null; // use default if we couldn't parse
-    return sampler.sample(Pair.create(method, path)).sampled();
+    return sampler.sample(MethodAndPath.create(method, path)).sampled();
   }
 
-  static final class MethodAndPathRule extends ParameterizedSampler.Rule<Pair<String>> {
+  @AutoValue
+  static abstract class MethodAndPath {
+    static MethodAndPath create(String method, String path) {
+      return new AutoValue_HttpRuleSampler_MethodAndPath(method, path);
+    }
+
+    abstract String method();
+
+    abstract String path();
+  }
+
+  static final class MethodAndPathRule extends ParameterizedSampler.Rule<MethodAndPath> {
     @Nullable final String method;
     final String path;
 
@@ -73,9 +84,9 @@ public final class HttpRuleSampler extends HttpSampler {
       this.path = path;
     }
 
-    @Override public boolean matches(Pair<String> parameters) {
-      if (method != null && !method.equals(parameters._1)) return false;
-      return parameters._2.startsWith(path);
+    @Override public boolean matches(MethodAndPath parameters) {
+      if (method != null && !method.equals(parameters.method())) return false;
+      return parameters.path().startsWith(path);
     }
   }
 }

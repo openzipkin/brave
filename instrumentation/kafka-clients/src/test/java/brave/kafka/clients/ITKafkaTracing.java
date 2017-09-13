@@ -1,6 +1,7 @@
 package brave.kafka.clients;
 
 import brave.Tracing;
+import brave.internal.HexCodec;
 import brave.sampler.Sampler;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
@@ -19,7 +20,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.Span;
+import zipkin2.Span;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -33,11 +34,11 @@ public class ITKafkaTracing {
   LinkedList<Span> producerSpans = new LinkedList<>();
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .reporter(consumerSpans::add)
+      .spanReporter(consumerSpans::add)
       .sampler(Sampler.ALWAYS_SAMPLE)
       .build());
   KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .reporter(producerSpans::add)
+      .spanReporter(producerSpans::add)
       .sampler(Sampler.ALWAYS_SAMPLE)
       .build());
 
@@ -66,12 +67,13 @@ public class ITKafkaTracing {
     assertThat(producerSpans).hasSize(1);
     assertThat(consumerSpans).hasSize(1);
 
-    assertThat(Long.toHexString(consumerSpans.getFirst().traceId))
-        .isEqualTo(Long.toHexString(producerSpans.getFirst().traceId));
+    assertThat(consumerSpans.getFirst().traceId())
+        .isEqualTo(producerSpans.getFirst().traceId());
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span span = consumerTracing.joinSpan(record);
-      assertThat(span.context().parentId()).isEqualTo(producerSpans.getLast().traceId);
+      assertThat(HexCodec.toLowerHex(span.context().parentId()))
+          .isEqualTo(producerSpans.getLast().traceId());
     }
   }
 

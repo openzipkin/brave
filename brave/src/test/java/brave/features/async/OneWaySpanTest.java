@@ -17,14 +17,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.Endpoint;
-import zipkin.storage.InMemoryStorage;
+import zipkin2.storage.InMemoryStorage;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
-import static zipkin.Constants.CLIENT_SEND;
-import static zipkin.Constants.SERVER_RECV;
 
 /**
  * This is an example of a one-way span, which is possible by use of the {@link Span#flush()}
@@ -33,16 +29,16 @@ import static zipkin.Constants.SERVER_RECV;
 public class OneWaySpanTest {
   @Rule public MockWebServer server = new MockWebServer();
 
-  InMemoryStorage storage = new InMemoryStorage();
+  InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing clientTracing = Tracing.newBuilder()
-      .localEndpoint(Endpoint.builder().serviceName("client").build())
-      .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .localServiceName("client")
+      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
   Tracing serverTracing = Tracing.newBuilder()
-      .localEndpoint(Endpoint.builder().serviceName("server").build())
-      .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .localServiceName("server")
+      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
 
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);
@@ -90,29 +86,30 @@ public class OneWaySpanTest {
     flushedIncomingRequest.await();
 
     //// zipkin doesn't backfill timestamp and duration when storing raw spans
-    List<zipkin.Span> spans = storage.spanStore().getRawTrace(span.context().traceId());
+    List<zipkin2.Span> spans =
+        storage.spanStore().getTrace(span.context().traceIdString()).execute();
 
     // check that the client send arrived first
-    zipkin.Span clientSpan = spans.get(0);
-    assertThat(clientSpan.name).isEmpty();
-    assertThat(clientSpan.annotations)
-        .extracting(a -> a.value, a -> a.endpoint.serviceName)
-        .containsExactly(tuple(CLIENT_SEND, "client"));
+    zipkin2.Span clientSpan = spans.get(0);
+    assertThat(clientSpan.name()).isNull();
+    assertThat(clientSpan.localServiceName())
+        .isEqualTo("client");
+    assertThat(clientSpan.kind())
+        .isEqualTo(zipkin2.Span.Kind.CLIENT);
 
     // check that the server receive arrived last
-    zipkin.Span serverSpan = spans.get(1);
-    assertThat(serverSpan.name).isEqualTo("get");
-    assertThat(serverSpan.annotations)
-        .extracting(a -> a.value, a -> a.endpoint.serviceName)
-        .containsExactly(tuple(SERVER_RECV, "server"));
+    zipkin2.Span serverSpan = spans.get(1);
+    assertThat(serverSpan.name()).isEqualTo("get");
+    assertThat(serverSpan.localServiceName())
+        .isEqualTo("server");
+    assertThat(serverSpan.kind())
+        .isEqualTo(zipkin2.Span.Kind.SERVER);
 
-    // check that the server span duration doesn't override the client
-    assertThat(serverSpan.timestamp).isNull();
-    assertThat(serverSpan.duration).isNull();
+    // check that the server span is shared
+    assertThat(serverSpan.shared()).isTrue();
 
-    // Zipkin will backfill the timestamp and duration on normal getTrace used by the UI
-    assertThat(storage.spanStore().getTrace(clientSpan.traceId))
-        .flatExtracting(s -> s.timestamp, s -> s.duration)
-        .allSatisfy(u -> assertThat(u).isNotNull());
+    // check that no spans reported duration
+    assertThat(clientSpan.duration()).isNull();
+    assertThat(serverSpan.duration()).isNull();
   }
 }
