@@ -1,6 +1,7 @@
 package brave.p6spy;
 
 import brave.Span;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.sampler.Sampler;
 import com.p6spy.engine.common.ConnectionInformation;
@@ -119,6 +120,17 @@ public class TracingJdbcEventListenerTest {
       listener.onAfterAnyExecute(statementInformation, 1, null);
 
       assertThat(spans).isEmpty();
+    }
+  }
+
+  @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
+    ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+    Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
+    Span span = tracing.tracer().nextSpan().start();
+    try (SpanInScope spanInScope = tracing.tracer().withSpanInScope(span)) {
+      TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);
+      listener.onAfterAnyExecute(statementInformation, 1, null);
+      listener.onAfterAnyExecute(statementInformation, 1, null);
     }
   }
 }
