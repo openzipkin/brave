@@ -1,11 +1,5 @@
 package brave.p6spy;
 
-import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 import brave.Span;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
@@ -22,6 +16,11 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import zipkin.Endpoint;
 
+import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingJdbcEventListenerTest {
