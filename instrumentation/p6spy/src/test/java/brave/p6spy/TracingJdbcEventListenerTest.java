@@ -124,7 +124,7 @@ public class TracingJdbcEventListenerTest {
   }
 
   @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
-    ConcurrentLinkedDeque<zipkin.Span> spans = new ConcurrentLinkedDeque<>();
+    ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
     Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
     Span span = tracing.tracer().nextSpan().start();
     try (SpanInScope spanInScope = tracing.tracer().withSpanInScope(span)) {
