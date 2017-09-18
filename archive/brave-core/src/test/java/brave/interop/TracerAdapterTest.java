@@ -6,28 +6,26 @@ import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TracerAdapter;
 import com.twitter.zipkin.gen.Span;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.After;
 import org.junit.Test;
 import zipkin.Constants;
+import zipkin2.Annotation;
 
 import static com.github.kristofa.brave.TracerAdapter.getServerSpan;
 import static com.github.kristofa.brave.TracerAdapter.setServerSpan;
 import static com.github.kristofa.brave.TracerAdapter.toSpan;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.entry;
 
 public class TracerAdapterTest {
-  static final Charset UTF_8 = Charset.forName("UTF-8");
-
-  List<zipkin.Span> spans = new ArrayList<>();
+  List<zipkin2.Span> spans = new ArrayList<>();
   AtomicLong epochMicros = new AtomicLong();
   Tracer brave4 = Tracing.newBuilder()
       .clock(epochMicros::incrementAndGet)
-      .reporter(spans::add)
+      .spanReporter(spans::add)
       .build()
       .tracer();
   Brave brave3 = TracerAdapter.newBrave(brave4);
@@ -136,39 +134,33 @@ public class TracerAdapterTest {
 
   void checkLocalSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
-          assertThat(s.name).isEqualTo("encode");
-          assertThat(s.timestamp).isEqualTo(1L);
-          assertThat(s.annotations).extracting(a -> a.timestamp, a -> a.value)
-              .containsExactly(tuple(2L, "pump fake"));
-          assertThat(s.binaryAnnotations).extracting(b -> b.key, b -> new String(b.value, UTF_8))
-              .containsExactly(tuple(Constants.LOCAL_COMPONENT, "codec"));
-          assertThat(s.duration).isEqualTo(2L);
+          assertThat(s.name()).isEqualTo("encode");
+          assertThat(s.timestamp()).isEqualTo(1L);
+          assertThat(s.annotations())
+              .containsExactly(Annotation.create(2L, "pump fake"));
+          assertThat(s.tags())
+              .containsExactly(entry(Constants.LOCAL_COMPONENT, "codec"));
+          assertThat(s.duration()).isEqualTo(2L);
         }
     );
   }
 
   void checkClientSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
-          assertThat(s.name).isEqualTo("get");
-          assertThat(s.timestamp).isEqualTo(1L);
-          assertThat(s.duration).isEqualTo(1L);
-          assertThat(s.annotations).extracting(a -> a.timestamp, a -> a.value).containsExactly(
-              tuple(1L, "cs"),
-              tuple(2L, "cr")
-          );
+          assertThat(s.name()).isEqualTo("get");
+          assertThat(s.timestamp()).isEqualTo(1L);
+          assertThat(s.duration()).isEqualTo(1L);
+          assertThat(s.kind()).isEqualTo(zipkin2.Span.Kind.CLIENT);
         }
     );
   }
 
   void checkServerSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
-          assertThat(s.name).isEqualTo("get");
-          assertThat(s.timestamp).isEqualTo(1L);
-          assertThat(s.duration).isEqualTo(1L);
-          assertThat(s.annotations).extracting(a -> a.timestamp, a -> a.value).containsExactly(
-              tuple(1L, "sr"),
-              tuple(2L, "ss")
-          );
+          assertThat(s.name()).isEqualTo("get");
+          assertThat(s.timestamp()).isEqualTo(1L);
+          assertThat(s.duration()).isEqualTo(1L);
+          assertThat(s.kind()).isEqualTo(zipkin2.Span.Kind.SERVER);
         }
     );
   }

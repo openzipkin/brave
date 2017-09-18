@@ -20,7 +20,6 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import zipkin.reporter.Reporter;
 
 public class WebMvcBenchmarks extends HttpServerBenchmarks {
 
@@ -47,10 +46,10 @@ public class WebMvcBenchmarks extends HttpServerBenchmarks {
   static class SpringConfig extends WebMvcConfigurerAdapter {
     @Override public void addInterceptors(InterceptorRegistry registry) {
       registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).reporter(Reporter.NOOP).build()
+          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
       )).addPathPatterns("/unsampled");
       registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder().reporter(Reporter.NOOP).build()
+          Tracing.newBuilder().spanReporter(s -> {}).build()
       )).addPathPatterns("/traced");
     }
   }

@@ -14,7 +14,6 @@ import spark.Response;
 import spark.Spark;
 import spark.servlet.SparkApplication;
 import spark.servlet.SparkFilter;
-import zipkin.reporter.Reporter;
 
 import static javax.servlet.DispatcherType.REQUEST;
 
@@ -29,7 +28,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class Unsampled implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).reporter(Reporter.NOOP).build()
+        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
     );
 
     @Override
@@ -42,7 +41,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class Traced implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder().reporter(Reporter.NOOP).build()
+        Tracing.newBuilder().spanReporter(s -> {}).build()
     );
 
     @Override
