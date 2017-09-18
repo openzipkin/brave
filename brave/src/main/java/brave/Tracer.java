@@ -118,7 +118,6 @@ public final class Tracer {
   }
 
   final Clock clock;
-  final Endpoint localEndpoint;
   final Recorder recorder;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -128,8 +127,7 @@ public final class Tracer {
   Tracer(Tracing.Builder builder, AtomicBoolean noop) {
     this.noop = noop;
     this.clock = builder.clock;
-    this.localEndpoint = builder.localEndpoint;
-    this.recorder = new Recorder(localEndpoint, clock, builder.reporter, this.noop);
+    this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit;

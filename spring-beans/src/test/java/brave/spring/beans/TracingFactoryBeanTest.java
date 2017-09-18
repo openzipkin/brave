@@ -30,7 +30,7 @@ public class TracingFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Tracing.class))
-        .extracting("tracer.localEndpoint")
+        .extracting("tracer.recorder.spanMap.localEndpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
   }
@@ -50,7 +50,7 @@ public class TracingFactoryBeanTest {
     context.refresh();
 
     assertThat(context.getBean(Tracing.class))
-        .extracting("tracer.localEndpoint")
+        .extracting("tracer.recorder.spanMap.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
