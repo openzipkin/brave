@@ -75,7 +75,8 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
    */
   void parseServerAddress(Connection connection, Span span) {
     try {
-      URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
+      final String urlAsString = connection.getMetaData().getURL().substring(5); // strip "jdbc:"
+      URI url = URI.create(urlAsString.replace(" ", "")); // Remove all white space according to RFC 2396
       String defaultRemoteServiceName = remoteServiceName;
       Matcher matcher = URL_SERVICE_NAME_FINDER.matcher(url.toString());
       if (matcher.find() && matcher.groupCount() == 1) {

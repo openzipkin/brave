@@ -33,6 +33,9 @@ public class TracingJdbcEventListenerTest {
   String url = "jdbc:mysql://127.0.0.1:5555/mydatabase";
   String urlWithServiceName = url + "?zipkinServiceName=mysql_service&foo=bar";
   String urlWithEmptyServiceName = url + "?zipkinServiceName=&foo=bar";
+  String urlWithWhiteSpace =
+      "jdbc:sqlserver://127.0.0.1;databaseName=mydatabase;applicationName=Microsoft JDBC Driver for SQL Server";
+
 
   @Test public void parseServerAddress_ipAndPortFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
@@ -104,6 +107,16 @@ public class TracingJdbcEventListenerTest {
     verifyNoMoreInteractions(span);
   }
 
+  @Test public void parseServerAddress_withWhiteSpace() throws SQLException {
+    when(connection.getMetaData()).thenReturn(metaData);
+    when(metaData.getURL()).thenReturn(urlWithWhiteSpace);
+
+    new TracingJdbcEventListener("foo", false).parseServerAddress(connection, span);
+
+    verify(span).remoteEndpoint(
+        Endpoint.newBuilder().serviceName("foo").build()
+    );
+  }
 
   @Test public void nullSqlWontNPE() throws SQLException {
     ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
