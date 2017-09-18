@@ -18,7 +18,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import zipkin.reporter.Reporter;
 
 import static io.undertow.util.Headers.CONTENT_TYPE;
 
@@ -61,10 +60,10 @@ public abstract class HttpClientBenchmarks<C> {
 
     client = newClient();
     tracedClient = newClient(HttpTracing.create(
-        Tracing.newBuilder().reporter(Reporter.NOOP).build()
+        Tracing.newBuilder().spanReporter(s -> {}).build()
     ));
     unsampledClient = newClient(HttpTracing.create(
-        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).reporter(Reporter.NOOP).build()
+        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
     ));
   }
 

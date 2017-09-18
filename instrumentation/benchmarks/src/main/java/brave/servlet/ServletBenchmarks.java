@@ -20,7 +20,6 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin.reporter.Reporter;
 
 import static javax.servlet.DispatcherType.REQUEST;
 
@@ -37,14 +36,14 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   public static class Unsampled extends ForwardingTracingFilter {
     public Unsampled() {
       super(TracingFilter.create(
-          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).reporter(Reporter.NOOP).build()
+          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
       ));
     }
   }
 
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
-      super(TracingFilter.create(Tracing.newBuilder().reporter(Reporter.NOOP).build()));
+      super(TracingFilter.create(Tracing.newBuilder().spanReporter(s -> {}).build()));
     }
   }
 

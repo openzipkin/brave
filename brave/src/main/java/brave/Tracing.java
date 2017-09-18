@@ -171,6 +171,11 @@ public abstract class Tracing implements Closeable {
     @Deprecated
     public Builder reporter(final Reporter<zipkin.Span> reporter) {
       if (reporter == null) throw new NullPointerException("reporter == null");
+      if (reporter == Reporter.NOOP) {
+        this.reporter = s -> {
+        };
+        return this;
+      }
       this.reporter = new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
           reporter.report(V2SpanConverter.toSpan(span));

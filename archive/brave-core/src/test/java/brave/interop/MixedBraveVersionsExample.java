@@ -19,13 +19,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.Endpoint;
-import zipkin.storage.InMemoryStorage;
+import zipkin2.Endpoint;
+import zipkin2.storage.InMemoryStorage;
 
+import static brave.internal.HexCodec.toLowerHex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static zipkin.Constants.CLIENT_SEND;
-import static zipkin.Constants.SERVER_RECV;
 
 /**
  * This is an example of interop between Brave 3 and Brave 4.
@@ -43,17 +42,17 @@ import static zipkin.Constants.SERVER_RECV;
 public class MixedBraveVersionsExample {
   @Rule public MockWebServer server = new MockWebServer();
 
-  InMemoryStorage storage = new InMemoryStorage();
+  InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing brave4Client = Tracing.newBuilder()
-      .localEndpoint(Endpoint.builder().serviceName("client").build())
-      .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .localEndpoint(Endpoint.newBuilder().serviceName("client").build())
+      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
   Brave brave3Client = TracerAdapter.newBrave(brave4Client.tracer());
   Tracing brave4Server = Tracing.newBuilder()
-      .localEndpoint(Endpoint.builder().serviceName("server").build())
-      .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .localEndpoint(Endpoint.newBuilder().serviceName("server").build())
+      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
   Brave brave3Server = TracerAdapter.newBrave(brave4Server.tracer());
 
@@ -95,10 +94,11 @@ public class MixedBraveVersionsExample {
     // * root server span created with Brave 3
     // * one-way child span created with Brave 4
     // * local grandchild span created with Brave 3
-    List<zipkin.Span> trace = storage.spanStore().getTrace(parent.context().traceId());
-    assertThat(trace).hasSize(3);
-    assertThat(trace.get(0).id).isEqualTo(trace.get(1).parentId);
-    assertThat(trace.get(1).id).isEqualTo(trace.get(2).parentId);
+    List<zipkin2.Span>
+        trace = storage.spanStore().getTrace(toLowerHex(parent.context().traceId())).execute();
+    assertThat(trace).hasSize(4);
+    assertThat(trace.get(2).id()).isEqualTo(trace.get(0).parentId());
+    assertThat(trace.get(0).id()).isEqualTo(trace.get(3).parentId());
   }
 
   /**
@@ -124,7 +124,7 @@ public class MixedBraveVersionsExample {
 
     // fire off the request asynchronously, totally dropping any response
     new OkHttpClient().newCall(request.build()).enqueue(mock(Callback.class));
-    span.annotate(CLIENT_SEND).flush(); // record the timestamp of the client send and flush
+    span.kind(Span.Kind.CLIENT).flush(); // record the timestamp of the client send and flush
   }
 
   /**
@@ -138,7 +138,7 @@ public class MixedBraveVersionsExample {
     // in real life, we'd guard result.context was set and start a new trace if not
     Span serverSpan = brave4Server.tracer().joinSpan(result.context())
         .name(recordedRequest.getMethod())
-        .annotate(SERVER_RECV);
+        .kind(Span.Kind.SERVER);
     serverSpan.flush(); // record the timestamp of the server receive and flush
     return serverSpan;
   }
