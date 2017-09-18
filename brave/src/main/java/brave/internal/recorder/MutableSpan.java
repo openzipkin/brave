@@ -44,7 +44,19 @@ final class MutableSpan {
   }
 
   synchronized MutableSpan annotate(long timestamp, String value) {
-    span.addAnnotation(timestamp, value);
+    if ("cs".equals(value)) {
+      span.kind(zipkin2.Span.Kind.CLIENT).timestamp(this.timestamp = timestamp);
+    } else if ("sr".equals(value)) {
+      span.kind(zipkin2.Span.Kind.SERVER).timestamp(this.timestamp = timestamp);
+    } else if ("cr".equals(value)) {
+      span.kind(zipkin2.Span.Kind.CLIENT);
+      finish(timestamp);
+    } else if ("ss".equals(value)) {
+      span.kind(zipkin2.Span.Kind.SERVER);
+      finish(timestamp);
+    } else {
+      span.addAnnotation(timestamp, value);
+    }
     return this;
   }
 
