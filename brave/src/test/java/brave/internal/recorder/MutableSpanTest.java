@@ -81,6 +81,28 @@ public class MutableSpanTest {
     assertThat(span2.kind()).isEqualTo(span2Kind);
   }
 
+  @Test
+  public void finished_client_annotation() {
+    finish("cs", "cr", Span.Kind.CLIENT);
+  }
+
+  @Test
+  public void finished_server_annotation() {
+    finish("sr", "ss", Span.Kind.SERVER);
+  }
+
+  private void finish(String start, String end, Span.Kind span2Kind) {
+    MutableSpan span = newSpan();
+    span.annotate(1L, start);
+    span.annotate(2L, end);
+
+    Span span2 = span.toSpan();
+    assertThat(span2.annotations()).isEmpty();
+    assertThat(span2.timestamp()).isEqualTo(1L);
+    assertThat(span2.duration()).isEqualTo(1L);
+    assertThat(span2.kind()).isEqualTo(span2Kind);
+  }
+
   @Test public void flushed_client() {
     flush(Kind.CLIENT, Span.Kind.CLIENT);
   }

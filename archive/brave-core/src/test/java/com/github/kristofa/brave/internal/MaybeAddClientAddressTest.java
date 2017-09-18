@@ -69,6 +69,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void kickOutIfExceptionParsingAddress() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -90,6 +91,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void kickOutIfNullAddress() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -111,6 +113,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void kickOutIfInvalidAddress() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -132,6 +135,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void ignoreExceptionParsingPort() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -154,6 +158,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void usesBlankServiceName() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -175,6 +180,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void addsPort() {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -217,6 +223,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void acceptsIpv6() throws UnknownHostException {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     final byte[] ipv6 = Inet6Address.getByName("2001:db8::c001").getAddress();
 
@@ -242,6 +249,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void acceptsIpv4MappedIpV6Address() throws UnknownHostException {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -265,6 +273,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void acceptsIpv4CompatIpV6Address() throws UnknownHostException {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
@@ -289,6 +298,7 @@ public class MaybeAddClientAddressTest {
   @Test
   public void acceptsIpV6Localhost() throws UnknownHostException {
     brave.serverTracer().setStateUnknown("foo");
+    brave.serverTracer().setServerReceived();
 
     MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
       @Override protected byte[] parseAddressBytes(Object input) {
