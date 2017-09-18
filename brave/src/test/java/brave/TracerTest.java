@@ -34,13 +34,13 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer.localEndpoint.serviceName())
-        .isEqualTo("my-foo");
+    assertThat(tracer).extracting("recorder.spanMap.localEndpoint.serviceName")
+        .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
-    assertThat(tracer.localEndpoint.serviceName())
-        .isEqualTo("unknown");
+    assertThat(tracer).extracting("recorder.spanMap.localEndpoint.serviceName")
+        .containsExactly("unknown");
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
@@ -48,8 +48,8 @@ public class TracerTest {
     tracer = Tracing.newBuilder().localServiceName("my-foo")
         .localEndpoint(localEndpoint).build().tracer();
 
-    assertThat(tracer.localEndpoint)
-        .isSameAs(localEndpoint);
+    assertThat(tracer).extracting("recorder.spanMap.localEndpoint")
+        .containsExactly(localEndpoint);
   }
 
   @Test public void clock() {
