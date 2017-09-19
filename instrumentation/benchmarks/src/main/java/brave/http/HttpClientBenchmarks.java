@@ -1,6 +1,8 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import io.undertow.Undertow;
 import java.net.InetSocketAddress;
@@ -12,7 +14,6 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
@@ -27,7 +28,7 @@ import static io.undertow.util.Headers.CONTENT_TYPE;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Threads(2)
-@State(Scope.Benchmark)
+@State(org.openjdk.jmh.annotations.Scope.Benchmark)
 public abstract class HttpClientBenchmarks<C> {
   protected abstract C newClient(HttpTracing httpTracing) throws Exception;
 
@@ -42,6 +43,8 @@ public abstract class HttpClientBenchmarks<C> {
   C client;
   C tracedClient;
   C unsampledClient;
+  TraceContext context =
+      TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
 
   protected String baseUrl() {
     return baseUrl;
@@ -60,10 +63,12 @@ public abstract class HttpClientBenchmarks<C> {
 
     client = newClient();
     tracedClient = newClient(HttpTracing.create(
-        Tracing.newBuilder().spanReporter(s -> {}).build()
+        Tracing.newBuilder().spanReporter(s -> {
+        }).build()
     ));
     unsampledClient = newClient(HttpTracing.create(
-        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
+        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {
+        }).build()
     ));
   }
 
@@ -85,5 +90,11 @@ public abstract class HttpClientBenchmarks<C> {
 
   @Benchmark public void tracedClient_get() throws Exception {
     get(tracedClient);
+  }
+
+  @Benchmark public void tracedClient_get_resumeTrace() throws Exception {
+    try (Scope scope = Tracing.current().currentTraceContext().newScope(context)) {
+      get(tracedClient);
+    }
   }
 }

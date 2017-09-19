@@ -50,7 +50,7 @@ public abstract class HttpServerBenchmarks {
   @TearDown(Level.Trial) public void close() throws Exception {
     if (server != null) server.stop();
     client.dispatcher().executorService().shutdown();
-    Tracing.current().close();
+    if (Tracing.current() != null) Tracing.current().close();
   }
 
   protected int initServer() throws ServletException {
@@ -84,9 +84,16 @@ public abstract class HttpServerBenchmarks {
     get("/traced");
   }
 
+  @Benchmark public void tracedServer_get_resumeTrace() throws Exception {
+    client.newCall(new Request.Builder().url(baseUrl() + "/traced")
+        .header("X-B3-TraceId", "7180c278b62e8f6a216a2aea45d08fc9")
+        .header("X-B3-SpanId", "5b4185666d50f68b")
+        .header("X-B3-Sampled", "1")
+        .build())
+        .execute().body().close();
+  }
+
   void get(String path) throws IOException {
-    client.newCall(new Request.Builder().url(baseUrl() + path).build())
-        .execute()
-        .body().close();
+    client.newCall(new Request.Builder().url(baseUrl() + path).build()).execute().body().close();
   }
 }

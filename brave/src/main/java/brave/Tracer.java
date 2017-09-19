@@ -143,7 +143,7 @@ public final class Tracer {
    * instead.
    */
   public Span newTrace() {
-    return ensureSampled(nextContext(null, SamplingFlags.EMPTY));
+    return toSpan(nextContext(null, SamplingFlags.EMPTY));
   }
 
   /**
@@ -169,7 +169,14 @@ public final class Tracer {
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     // If we are joining a trace, we are sharing IDs with the caller
-    return ensureSampled(context.toBuilder().shared(true).build());
+    // If the sampled flag was left unset, we need to make the decision here
+    TraceContext.Builder builder = context.toBuilder();
+    if (context.sampled() == null) {
+      builder.sampled(sampler.isSampled(context.traceId()));
+    } else {
+      builder.shared(true);
+    }
+    return toSpan(builder.build());
   }
 
   /**
@@ -190,7 +197,7 @@ public final class Tracer {
    * }</pre>
    */
   public Span newTrace(SamplingFlags samplingFlags) {
-    return ensureSampled(nextContext(null, samplingFlags));
+    return toSpan(nextContext(null, samplingFlags));
   }
 
   /** Converts the context as-is to a Span object */
@@ -211,30 +218,24 @@ public final class Tracer {
     if (Boolean.FALSE.equals(parent.sampled())) {
       return NoopSpan.create(parent);
     }
-    return ensureSampled(nextContext(parent, parent));
-  }
-
-  Span ensureSampled(TraceContext context) {
-    // If the sampled flag was left unset, we need to make the decision here
-    if (context.sampled() == null) {
-      context = context.toBuilder()
-          .sampled(sampler.isSampled(context.traceId()))
-          .shared(false)
-          .build();
-    }
-    return toSpan(context);
+    return toSpan(nextContext(parent, parent));
   }
 
   TraceContext nextContext(@Nullable TraceContext parent, SamplingFlags samplingFlags) {
     long nextId = Platform.get().randomLong();
     if (parent != null) {
-      return parent.toBuilder().spanId(nextId).parentId(parent.spanId()).shared(false).build();
+      return parent.toBuilder()
+          .spanId(nextId)
+          .parentId(parent.spanId())
+          .shared(false)
+          .build();
     }
+    Boolean sampled = samplingFlags.sampled();
+    if (sampled == null) sampled = sampler.isSampled(nextId);
     return TraceContext.newBuilder()
-        .sampled(samplingFlags.sampled())
+        .sampled(sampled)
         .debug(samplingFlags.debug())
-        .traceIdHigh(traceId128Bit ? Platform.get().randomLong() : 0L)
-        .traceId(nextId)
+        .traceIdHigh(traceId128Bit ? Platform.get().randomLong() : 0L).traceId(nextId)
         .spanId(nextId).build();
   }
 

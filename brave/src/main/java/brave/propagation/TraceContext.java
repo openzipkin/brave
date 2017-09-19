@@ -128,7 +128,7 @@ public abstract class TraceContext extends SamplingFlags {
     public abstract Builder spanId(long spanId);
 
     /** @see TraceContext#sampled */
-    public abstract Builder sampled(Boolean nullableSampled);
+    public abstract Builder sampled(@Nullable Boolean nullableSampled);
 
     /** @see TraceContext#debug() */
     public abstract Builder debug(boolean debug);
