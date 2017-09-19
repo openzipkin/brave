@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.propagation.StrictCurrentTraceContext;
@@ -24,7 +25,9 @@ import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
+import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,12 +54,12 @@ public class ITTracingServerInterceptor {
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
-  Tracing tracing;
+  GrpcTracing grpcTracing;
   Server server;
   ManagedChannel client;
 
   @Before public void setup() throws Exception {
-    tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
 
@@ -68,13 +71,13 @@ public class ITTracingServerInterceptor {
     stop();
 
     // tracing interceptor needs to go last
-    ServerInterceptor tracingInterceptor = GrpcTracing.create(tracing).newServerInterceptor();
+    ServerInterceptor tracingInterceptor = grpcTracing.newServerInterceptor();
     ServerInterceptor[] interceptors = userInterceptor != null
         ? new ServerInterceptor[] {userInterceptor, tracingInterceptor}
         : new ServerInterceptor[] {tracingInterceptor};
 
     server = ServerBuilder.forPort(PickUnusedPort.get())
-        .addService(ServerInterceptors.intercept(new GreeterImpl(tracing), interceptors))
+        .addService(ServerInterceptors.intercept(new GreeterImpl(grpcTracing), interceptors))
         .build().start();
 
     client = ManagedChannelBuilder.forAddress("localhost", server.getPort())
@@ -82,8 +85,7 @@ public class ITTracingServerInterceptor {
         .build();
   }
 
-  @After
-  public void stop() throws Exception {
+  @After public void stop() throws Exception {
     if (client != null) {
       client.shutdown();
       client.awaitTermination(1, TimeUnit.SECONDS);
@@ -96,8 +98,7 @@ public class ITTracingServerInterceptor {
     if (current != null) current.close();
   }
 
-  @Test
-  public void usesExistingTraceId() throws Exception {
+  @Test public void usesExistingTraceId() throws Exception {
     final String traceId = "463ac35c9f6413ad";
     final String parentId = traceId;
     final String spanId = "48485a3953bb6124";
@@ -127,9 +128,8 @@ public class ITTracingServerInterceptor {
     });
   }
 
-  @Test
-  public void samplingDisabled() throws Exception {
-    tracing = tracingBuilder(Sampler.NEVER_SAMPLE).build();
+  @Test public void samplingDisabled() throws Exception {
+    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     init();
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -150,7 +150,7 @@ public class ITTracingServerInterceptor {
       public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
           Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         testLogger.info("in span!");
-        fromUserInterceptor.set(tracing.currentTraceContext().get());
+        fromUserInterceptor.set(grpcTracing.tracing().currentTraceContext().get());
         return next.startCall(call, headers);
       }
     });
@@ -166,8 +166,7 @@ public class ITTracingServerInterceptor {
         .isNotEmpty();
   }
 
-  @Test
-  public void reportsServerKindToZipkin() throws Exception {
+  @Test public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(spans)
@@ -175,8 +174,7 @@ public class ITTracingServerInterceptor {
         .containsExactly(Span.Kind.SERVER);
   }
 
-  @Test
-  public void defaultSpanNameIsMethodName() throws Exception {
+  @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(spans)
@@ -184,17 +182,61 @@ public class ITTracingServerInterceptor {
         .containsExactly("helloworld.greeter/sayhello");
   }
 
-  @Test
-  public void addsErrorTagOnException() throws Exception {
+  @Test public void addsErrorTagOnException() throws Exception {
     try {
       GreeterGrpc.newBlockingStub(client)
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      assertThat(spans)
-          .flatExtracting(s -> s.tags().entrySet())
-          .containsExactly(entry("error", e.getStatus().getCode().toString()));
+      assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+          entry("error", "UNKNOWN"),
+          entry("grpc.status_code", "UNKNOWN")
+      );
     }
+  }
+
+  @Test
+  public void serverParserTest() throws Exception {
+    grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
+      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
+        span.tag("grpc.message_sent", message.toString());
+      }
+
+      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
+        span.tag("grpc.message_received", message.toString());
+      }
+
+      @Override
+      protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
+        return methodDescriptor.getType().name();
+      }
+    }).build();
+    init();
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(spans.getFirst().name()).isEqualTo("unary");
+    assertThat(spans).flatExtracting(s -> s.tags().keySet()).containsExactlyInAnyOrder(
+        "grpc.message_received", "grpc.message_sent"
+    );
+  }
+
+  @Test public void serverParserTestWithStreamingResponse() throws Exception {
+    grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
+      int responsesSent = 0;
+
+      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
+        span.tag("grpc.message_sent." + responsesSent++, message.toString());
+      }
+    }).build();
+    init();
+
+    Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
+        .sayHelloWithManyReplies(HELLO_REQUEST);
+    assertThat(replies).hasSize(10);
+    assertThat(spans).hasSize(1);
+    // all response messages are tagged to the same span
+    assertThat(spans.getFirst().tags()).hasSize(10);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {

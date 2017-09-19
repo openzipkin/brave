@@ -24,6 +24,11 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>com.google.auto.value</groupId>
+      <artifactId>auto-value</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
       <scope>test</scope>
