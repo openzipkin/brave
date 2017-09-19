@@ -214,6 +214,16 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
+    /**
+     * Controls how trace contexts are injected or extracted from remote requests, such as from http
+     * headers. Defaults to {@link Propagation.Factory#B3}
+     */
+    public Builder propagationFactory(Propagation.Factory propagationFactory) {
+      if (propagationFactory == null) throw new NullPointerException("propagationFactory == null");
+      this.propagationFactory = propagationFactory;
+      return this;
+    }
+
     /** When true, new root spans will have 128-bit trace IDs. Defaults to false (64-bit) */
     public Builder traceId128Bit(boolean traceId128Bit) {
       this.traceId128Bit = traceId128Bit;

@@ -1,5 +1,7 @@
 package brave;
 
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -121,6 +123,25 @@ public class TracerTest {
 
     assertThat(tracer.joinSpan(fromIncomingRequest).context())
         .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+  }
+
+  @Test public void join_createsChildWhenUnsupported() {
+    List<zipkin2.Span> spans = new ArrayList<>();
+    tracer = Tracing.newBuilder()
+        .propagationFactory(new Propagation.Factory(){
+          @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+            return B3Propagation.create(keyFactory);
+          }
+        })
+        .spanReporter(spans::add).build().tracer();
+
+    TraceContext fromIncomingRequest = tracer.newTrace().context();
+
+    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(shouldBeChild.shared())
+        .isFalse();
+    assertThat(shouldBeChild.parentId())
+        .isEqualTo(fromIncomingRequest.spanId());
   }
 
   @Test public void join_noop() {
