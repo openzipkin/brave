@@ -44,7 +44,6 @@ import zipkin2.Endpoint;
  * @see Propagation
  */
 public final class Tracer {
-
   /** @deprecated Please use {@link Tracing#newBuilder()} */
   @Deprecated public static Builder newBuilder() {
     return new Builder();
@@ -123,9 +122,11 @@ public final class Tracer {
   final CurrentTraceContext currentTraceContext;
   final boolean traceId128Bit;
   final AtomicBoolean noop;
+  final boolean supportsJoin;
 
   Tracer(Tracing.Builder builder, AtomicBoolean noop) {
     this.noop = noop;
+    this.supportsJoin = builder.propagationFactory.supportsJoin();
     this.clock = builder.clock;
     this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
@@ -162,12 +163,16 @@ public final class Tracer {
    *          : tracer.newTrace(contextOrFlags.samplingFlags());
    * }</pre>
    *
+   * <p><em>Note:</em> When {@link Propagation.Factory#supportsJoin()} is false, this will always
+   * fork a new child via {@link #newChild(TraceContext)}.
+   *
    * @see Propagation
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
+    if (!supportsJoin) return newChild(context);
     // If we are joining a trace, we are sharing IDs with the caller
     // If the sampled flag was left unset, we need to make the decision here
     TraceContext.Builder builder = context.toBuilder();

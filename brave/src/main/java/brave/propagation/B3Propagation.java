@@ -11,6 +11,15 @@ import static brave.internal.HexCodec.lowerHexToUnsignedLong;
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3Propagation<K> implements Propagation<K> {
+  public static final class Factory extends Propagation.Factory {
+    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+      return B3Propagation.create(keyFactory);
+    }
+
+    @Override public boolean supportsJoin() {
+      return true;
+    }
+  }
 
   public static <K> B3Propagation<K> create(KeyFactory<K> keyFactory) {
     return new B3Propagation<>(keyFactory);
