@@ -2,7 +2,6 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
-import brave.Tracing;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import io.grpc.CallOptions;
@@ -27,11 +26,13 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
   final Tracer tracer;
   final TraceContext.Injector<Metadata> injector;
+  final GrpcClientParser parser;
 
-  TracingClientInterceptor(Tracing tracing) {
-    tracer = tracing.tracer();
-    injector =
-        tracing.propagationFactory().create(AsciiMetadataKeyFactory.INSTANCE).injector(SETTER);
+  TracingClientInterceptor(GrpcTracing grpcTracing) {
+    tracer = grpcTracing.tracing().tracer();
+    injector = grpcTracing.tracing().propagationFactory()
+        .create(AsciiMetadataKeyFactory.INSTANCE).injector(SETTER);
+    parser = grpcTracing.clientParser();
   }
 
   /**
@@ -47,23 +48,42 @@ final class TracingClientInterceptor implements ClientInterceptor {
     Span span = tracer.nextSpan();
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
           injector.inject(span.context(), headers);
-          span.kind(Span.Kind.CLIENT).name(method.getFullMethodName()).start();
+          span.kind(Span.Kind.CLIENT).start();
+          parser.onStart(method, callOptions, headers, span);
           try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
             super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
-              @Override public void onClose(Status status, Metadata trailers) {
-                if (!status.getCode().equals(Status.Code.OK)) {
-                  span.tag("error", String.valueOf(status.getCode()));
+              @Override public void onMessage(RespT message) {
+                try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+                  parser.onMessageReceived(message, span);
+                  delegate().onMessage(message);
                 }
-                span.finish();
-                super.onClose(status, trailers);
+              }
+
+              @Override public void onClose(Status status, Metadata trailers) {
+                try {
+                  super.onClose(status, trailers);
+                  parser.onClose(status, trailers, span);
+                } finally {
+                  span.finish();
+                }
               }
             }, headers);
           }
         }
+
+        @Override public void sendMessage(ReqT message) {
+          super.sendMessage(message);
+          parser.onMessageSent(message, span);
+        }
       };
+    } catch (RuntimeException | Error e) {
+      parser.onError(e, span);
+      span.finish();
+      throw e;
     }
   }
 }

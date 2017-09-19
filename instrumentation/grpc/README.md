@@ -1,12 +1,16 @@
 # brave-instrumentation-grpc
 This contains tracing client and server interceptors for [grpc](github.com/grpc/grpc-java).
 
+
+The `GrpcTracing` class holds a reference to a tracing component,
+instructions on what to put into gRPC spans, and interceptors.
+
 The client interceptor adds trace headers to outgoing requests. The
 server interceptor extracts trace state from incoming requests. Both
 report to Zipkin how long each request takes, along with relevant
 tags like the response status.
 
-To enable tracing for a gRPC application, add the interceptors when when
+To enable tracing for a gRPC application, add the interceptors when
 constructing the client and server bindings:
 
 ```java
@@ -22,6 +26,38 @@ ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", serverPor
     .intercept(grpcTracing.newClientInterceptor())
     .usePlaintext(true)
     .build();
+```
+
+## Span data policy
+By default, the following are added to both gRPC client and server spans:
+* Span.name as the full method name: ex "helloworld.greeter/sayhello"
+* Tags/binary annotations:
+  * "grpc.status_code" when the status is not OK.
+  * "error", when there is an exception or status is not OK.
+
+Ex. To add a tag corresponding to a message sent to a server, you can do
+something like this:
+
+```java
+grpcTracing = grpcTracing.toBuilder()
+    .clientParser(new GrpcClientParser() {
+      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
+        span.tag("grpc.message_sent", message.toString());
+      }
+    })
+    .build();
+```
+
+If you just want to control span naming policy, override `spanName` in
+your client or server parser.
+
+Ex:
+```java
+overrideSpanName = new GrpcClientParser() {
+  @Override protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
+    return methodDescriptor.getType().name();
+  }
+};
 ```
 
 ## Development

@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextCurrentTraceContext;
@@ -21,8 +22,9 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
+import io.grpc.examples.helloworld.HelloRequest;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -41,12 +43,12 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public class ITTracingClientInterceptor {
-  static final Charset UTF_8 = Charset.forName("UTF-8");
   Logger testLogger = LogManager.getLogger();
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+  GrpcTracing tracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+  Tracer tracer = tracing.tracing().tracer();
   TestServer server = new TestServer();
   ManagedChannel client;
 
@@ -63,7 +65,7 @@ public class ITTracingClientInterceptor {
   }
 
   ManagedChannel newClient() {
-    return newClient(GrpcTracing.create(tracing).newClientInterceptor());
+    return newClient(tracing.newClientInterceptor());
   }
 
   ManagedChannel newClient(ClientInterceptor... clientInterceptors) {
@@ -87,8 +89,8 @@ public class ITTracingClientInterceptor {
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
-    brave.Span parent = tracing.tracer().newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(parent)) {
+    brave.Span parent = tracer.newTrace().name("test").start();
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     } finally {
       parent.finish();
@@ -109,16 +111,16 @@ public class ITTracingClientInterceptor {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
     GreeterGrpc.GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(client);
 
-    brave.Span parent = tracing.tracer().newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(parent)) {
+    brave.Span parent = tracer.newTrace().name("test").start();
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
       futureStub.sayHello(HELLO_REQUEST);
       futureStub.sayHello(HELLO_REQUEST);
     } finally {
       parent.finish();
     }
 
-    brave.Span otherSpan = tracing.tracer().newTrace().name("test2").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(otherSpan)) {
+    brave.Span otherSpan = tracer.newTrace().name("test2").start();
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(otherSpan)) {
       for (int i = 0; i < 2; i++) {
         TraceContext context = server.takeRequest().context();
         assertThat(context.traceId())
@@ -133,7 +135,7 @@ public class ITTracingClientInterceptor {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagates_sampledFalse() throws Exception {
-    tracing = tracingBuilder(Sampler.NEVER_SAMPLE).build();
+    tracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     closeClient(client);
     client = newClient();
 
@@ -168,28 +170,32 @@ public class ITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(spans).hasSize(1);
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+        entry("error", "UNAVAILABLE"),
+        entry("grpc.status_code", "UNAVAILABLE")
+    );
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
-
     try {
       GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST);
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("error", "UNIMPLEMENTED"));
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+        entry("error", "UNIMPLEMENTED"),
+        entry("grpc.status_code", "UNIMPLEMENTED")
+    );
   }
 
   @Test public void addsErrorTag_onTransportException() throws Exception {
     reportsSpanOnTransportException();
 
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("error", "UNAVAILABLE"));
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+        entry("error", "UNAVAILABLE"),
+        entry("grpc.status_code", "UNAVAILABLE")
+    );
   }
 
   @Test public void addsErrorTag_onCanceledFuture() throws Exception {
@@ -200,9 +206,10 @@ public class ITTracingClientInterceptor {
 
     close(); // blocks until the cancel finished
 
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("error", "CANCELLED"));
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+        entry("error", "CANCELLED"),
+        entry("grpc.status_code", "CANCELLED")
+    );
   }
 
   /**
@@ -219,24 +226,70 @@ public class ITTracingClientInterceptor {
           @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
               MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
             testLogger.info("in span!");
-            scopes.put("before", tracing.currentTraceContext().get().traceIdString());
+            scopes.put("before", tracer.currentSpan().context().traceIdString());
             return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
                 next.newCall(method, callOptions)) {
               @Override
               public void start(Listener<RespT> responseListener, Metadata headers) {
-                scopes.put("start", tracing.currentTraceContext().get().traceIdString());
+                scopes.put("start", tracer.currentSpan().context().traceIdString());
                 super.start(responseListener, headers);
               }
             };
           }
         },
-        GrpcTracing.create(tracing).newClientInterceptor()
+        tracing.newClientInterceptor()
     );
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(scopes)
         .containsKeys("before", "start");
+  }
+
+  @Test public void clientParserTest() throws Exception {
+    closeClient(client);
+    tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
+      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
+        span.tag("grpc.message_sent", message.toString());
+      }
+
+      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
+        span.tag("grpc.message_received", message.toString());
+      }
+
+      @Override
+      protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
+        return methodDescriptor.getType().name();
+      }
+    }).build();
+    client = newClient();
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(spans.getFirst().name()).isEqualTo("unary");
+    assertThat(spans).flatExtracting(s -> s.tags().keySet()).containsExactlyInAnyOrder(
+        "grpc.message_received", "grpc.message_sent"
+    );
+  }
+
+  @Test
+  public void clientParserTestStreamingResponse() throws Exception {
+    closeClient(client);
+    tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
+      int receiveCount = 0;
+
+      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
+        span.tag("grpc.message_received." + receiveCount++, message.toString());
+      }
+    }).build();
+    client = newClient();
+
+    Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
+        .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
+    assertThat(replies).hasSize(10);
+    assertThat(spans).hasSize(1);
+    // all response messages are tagged to the same span
+    assertThat(spans.getFirst().tags()).hasSize(10);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {

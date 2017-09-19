@@ -2,7 +2,6 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
-import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -18,43 +17,51 @@ import io.grpc.Status;
 final class TracingServerInterceptor implements ServerInterceptor {
   final Tracer tracer;
   final TraceContext.Extractor<Metadata> extractor;
+  final GrpcServerParser parser;
 
-  TracingServerInterceptor(Tracing tracing) {
-    tracer = tracing.tracer();
-    extractor = tracing.propagationFactory().create(AsciiMetadataKeyFactory.INSTANCE)
+  TracingServerInterceptor(GrpcTracing grpcTracing) {
+    tracer = grpcTracing.tracing().tracer();
+    extractor = grpcTracing.tracing().propagationFactory().create(AsciiMetadataKeyFactory.INSTANCE)
         .extractor(new Propagation.Getter<Metadata, Metadata.Key<String>>() { // retrolambda no like
           @Override public String get(Metadata metadata, Metadata.Key<String> key) {
             return metadata.get(key);
           }
         });
+    parser = grpcTracing.serverParser();
   }
 
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
-      final Metadata requestHeaders, final ServerCallHandler<ReqT, RespT> next) {
-    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(requestHeaders);
+      final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
+    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(headers);
     Span span = contextOrFlags.context() != null
         ? tracer.joinSpan(contextOrFlags.context())
         : tracer.newTrace(contextOrFlags.samplingFlags());
-    span.kind(Span.Kind.SERVER).name(call.getMethodDescriptor().getFullMethodName());
-
+    span.kind(Span.Kind.SERVER);
+    parser.onStart(call, headers, span);
     // startCall invokes user interceptors, so we place the span in scope here
     ServerCall.Listener<ReqT> result;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      result = next.startCall(new TracingServerCall<>(span, call), requestHeaders);
+      result = next.startCall(new TracingServerCall<>(span, call, parser), headers);
+    } catch (RuntimeException | Error e) {
+      parser.onError(e, span);
+      span.finish();
+      throw e;
     }
 
     // This ensures the server implementation can see the span in scope
-    return new ScopingServerCallListener<>(tracer, span, result);
+    return new ScopingServerCallListener<>(tracer, span, result, parser);
   }
 
   static final class TracingServerCall<ReqT, RespT>
       extends SimpleForwardingServerCall<ReqT, RespT> {
-    private final Span span;
+    final Span span;
+    final GrpcServerParser parser;
 
-    TracingServerCall(Span span, ServerCall<ReqT, RespT> call) {
+    TracingServerCall(Span span, ServerCall<ReqT, RespT> call, GrpcServerParser parser) {
       super(call);
       this.span = span;
+      this.parser = parser;
     }
 
     @Override public void request(int numMessages) {
@@ -62,12 +69,19 @@ final class TracingServerInterceptor implements ServerInterceptor {
       super.request(numMessages);
     }
 
+    @Override
+    public void sendMessage(RespT message) {
+      super.sendMessage(message);
+      parser.onMessageSent(message, span);
+    }
+
     @Override public void close(Status status, Metadata trailers) {
       try {
-        if (!status.getCode().equals(Status.Code.OK)) {
-          span.tag("error", String.valueOf(status.getCode()));
-        }
         super.close(status, trailers);
+        parser.onClose(status, trailers, span);
+      } catch (RuntimeException | Error e) {
+        parser.onError(e, span);
+        throw e;
       } finally {
         span.finish();
       }
@@ -78,15 +92,19 @@ final class TracingServerInterceptor implements ServerInterceptor {
       extends SimpleForwardingServerCallListener<ReqT> {
     final Tracer tracer;
     final Span span;
+    final GrpcServerParser parser;
 
-    ScopingServerCallListener(Tracer tracer, Span span, ServerCall.Listener<ReqT> delegate) {
+    ScopingServerCallListener(Tracer tracer, Span span, ServerCall.Listener<ReqT> delegate,
+        GrpcServerParser parser) {
       super(delegate);
       this.tracer = tracer;
       this.span = span;
+      this.parser = parser;
     }
 
     @Override public void onMessage(ReqT message) {
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+        parser.onMessageReceived(message, span);
         delegate().onMessage(message);
       }
     }
@@ -105,7 +123,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     @Override public void onComplete() {
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-        delegate().onCancel();
+        delegate().onComplete();
       }
     }
 
