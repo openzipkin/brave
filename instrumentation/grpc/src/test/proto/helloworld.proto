@@ -9,15 +9,14 @@ package helloworld;
 // The greeting service definition.
 service Greeter {
     // Sends a greeting
-    rpc SayHello (HelloRequest) returns (HelloReply) {
-    }
+    rpc SayHello (HelloRequest) returns (HelloReply);
+    rpc SayHelloWithManyReplies(HelloRequest) returns (stream HelloReply);
 }
 
 // intentionally different to test service not found
 service Grater {
     // Sends a greeting
-    rpc SeyHallo (HelloRequest) returns (HelloReply) {
-    }
+    rpc SeyHallo (HelloRequest) returns (HelloReply);
 }
 
 // The request message containing the user's name.

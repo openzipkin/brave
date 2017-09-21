@@ -98,7 +98,7 @@ public final class HttpClientHandler<Req, Resp> {
     if (span.isNoop()) return span;
 
     // all of the parsing here occur before a timestamp is recorded on the span
-    span.kind(Span.Kind.CLIENT).name(parser.spanName(adapter, request));
+    span.kind(Span.Kind.CLIENT);
     parser.request(adapter, request, span);
 
     zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder()
