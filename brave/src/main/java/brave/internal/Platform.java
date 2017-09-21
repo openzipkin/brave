@@ -11,8 +11,8 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
-import zipkin.reporter.Reporter;
 import zipkin2.Endpoint;
+import zipkin2.reporter.Reporter;
 
 /**
  * Access to platform-specific features and implements a default logging reporter.

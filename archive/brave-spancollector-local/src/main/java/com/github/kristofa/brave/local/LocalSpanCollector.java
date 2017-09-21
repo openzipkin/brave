@@ -17,8 +17,7 @@ import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 /**
  * SpanCollector which submits spans directly to a Zipkin {@link StorageComponent}.
  *
- * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code LocalSender}
- *             located in the "io.zipkin.reporter:zipkin-sender-local" dependency.
+ * @deprecated this is a niche component, please use something else
  */
 @Deprecated
 public final class LocalSpanCollector extends FlushingSpanCollector {

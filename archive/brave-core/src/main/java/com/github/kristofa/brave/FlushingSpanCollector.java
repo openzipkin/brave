@@ -20,7 +20,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Extend this class to offload the task of reporting spans to separate thread. By doing so, callers
  * are protected from latency or exceptions possible when exporting spans out of process.
  *
- * @deprecated replaced by {@link zipkin.reporter.AsyncReporter}
+ * @deprecated replaced by {@link zipkin2.reporter.AsyncReporter}
  */
 @Deprecated
 public abstract class FlushingSpanCollector implements SpanCollector, Flushable, Closeable {

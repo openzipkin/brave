@@ -2,6 +2,8 @@ package com.github.kristofa.brave;
 
 import brave.Tracing;
 import org.junit.After;
+import zipkin.Span;
+import zipkin.reporter.Reporter;
 
 public class Brave4ClientTracerTest extends ClientTracerTest {
   @Override Brave newBrave() {
@@ -9,7 +11,7 @@ public class Brave4ClientTracerTest extends ClientTracerTest {
         .clock(new AnnotationSubmitter.DefaultClock()::currentTimeMicroseconds)
         .localEndpoint(ZIPKIN_ENDPOINT)
         .clock(clock::currentTimeMicroseconds)
-        .reporter(spans::add).build().tracer());
+        .reporter((Reporter<Span>) spans::add).build().tracer());
   }
 
   @After public void close(){

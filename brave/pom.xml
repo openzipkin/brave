@@ -29,6 +29,11 @@
       <version>${zipkin-reporter.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.zipkin.reporter2</groupId>
+      <artifactId>zipkin-reporter</artifactId>
+      <version>${zipkin-reporter2.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.jvnet</groupId>
       <artifactId>animal-sniffer-annotation</artifactId>
       <version>1.0</version>

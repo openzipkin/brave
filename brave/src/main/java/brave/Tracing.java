@@ -9,11 +9,10 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.internal.V2SpanConverter;
-import zipkin.reporter.AsyncReporter;
-import zipkin.reporter.Reporter;
-import zipkin.reporter.Sender;
 import zipkin2.Endpoint;
+import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.Reporter;
+import zipkin2.reporter.Sender;
 
 /**
  * This provides utilities needed for trace instrumentation. For example, a {@link Tracer}.
@@ -154,31 +153,46 @@ public abstract class Tracing implements Closeable {
      * <p>For example, here's how to batch send spans via http:
      *
      * <pre>{@code
-     * reporter = AsyncReporter.v2(URLConnectionSender.json("http://localhost:9411/api/v2/spans"));
+     * reporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v2/spans"));
      *
-     * tracingBuilder.spanReporter(reporter);
+     * tracingBuilder.reporter(reporter);
      * }</pre>
      *
      * <p>See https://github.com/openzipkin/zipkin-reporter-java
      */
-    public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
+    public Builder reporter(Reporter<zipkin2.Span> reporter) {
       if (reporter == null) throw new NullPointerException("reporter == null");
       this.reporter = reporter;
       return this;
     }
 
-    /** @deprecated use {@link #spanReporter(Reporter)} */
+    /** @deprecated use {@link #reporter(Reporter)} */
     @Deprecated
-    public Builder reporter(final Reporter<zipkin.Span> reporter) {
+    public Builder spanReporter(zipkin.reporter.Reporter<zipkin2.Span> reporter) {
       if (reporter == null) throw new NullPointerException("reporter == null");
-      if (reporter == Reporter.NOOP) {
-        this.reporter = s -> {
-        };
+      this.reporter = new Reporter<zipkin2.Span>() {
+        @Override public void report(zipkin2.Span span) {
+          reporter.report(span);
+        }
+
+        @Override public String toString() {
+          return reporter.toString();
+        }
+      };
+      return this;
+    }
+
+    /** @deprecated use {@link #reporter(Reporter)} */
+    @Deprecated
+    public Builder reporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
+      if (reporter == null) throw new NullPointerException("reporter == null");
+      if (reporter == zipkin.reporter.Reporter.NOOP) {
+        this.reporter = Reporter.NOOP;
         return this;
       }
       this.reporter = new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
-          reporter.report(V2SpanConverter.toSpan(span));
+          reporter.report(zipkin.internal.V2SpanConverter.toSpan(span));
         }
 
         @Override public String toString() {

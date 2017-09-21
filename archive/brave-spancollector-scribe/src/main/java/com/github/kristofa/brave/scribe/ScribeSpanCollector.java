@@ -34,13 +34,11 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  *
  * @author kristof
  *
- * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code LibthriftSender}
- *             located in the "io.zipkin.reporter:zipkin-sender-libthrift" dependency.
+ * @deprecated scribe is an archived transport. Please change to something else
  */
 @Deprecated
 public class ScribeSpanCollector implements SpanCollector, Closeable {
 
-    private static final String UTF_8 = "UTF-8";
     private static final Logger LOGGER = Logger.getLogger(ScribeSpanCollector.class.getName());
 
     private final BlockingQueue<Span> spanQueue;

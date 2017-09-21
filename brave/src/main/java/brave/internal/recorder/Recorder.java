@@ -5,8 +5,8 @@ import brave.Span;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
-import zipkin.reporter.Reporter;
 import zipkin2.Endpoint;
+import zipkin2.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
 public final class Recorder {

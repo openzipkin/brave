@@ -8,7 +8,7 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author kristof
  *
- * @deprecated replaced by {@link zipkin.reporter.Reporter}
+ * @deprecated replaced by {@link zipkin2.reporter.Reporter}
  */
 @Deprecated
 public interface SpanCollector {

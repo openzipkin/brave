@@ -19,13 +19,13 @@ http (as opposed to Kafka).
 
 ```java
 // Configure a reporter, which controls how often spans are sent
-//   (the dependency is io.zipkin.reporter:zipkin-sender-okhttp3)
-sender = OkHttpSender.json("http://127.0.0.1:9411/api/v2/spans");
-spanReporter = AsyncReporter.v2(sender);
+//   (the dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
+sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
+spanReporter = AsyncReporter.create(sender);
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
-                 .spanReporter(spanReporter)
+                 .reporter(reporter)
                  .build();
 
 // Tracing exposes objects you might need, most importantly the tracer
@@ -477,7 +477,7 @@ ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
 Tracing tracing = Tracing.newBuilder()
                  .currentTraceContext(new StrictCurrentTraceContext())
-                 .reporter(spans::add)
+                 .reporter((Reporter<Span>) spans::add)
                  .build();
 
   @After public void close() {

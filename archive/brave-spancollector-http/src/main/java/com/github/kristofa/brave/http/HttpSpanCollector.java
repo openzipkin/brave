@@ -15,8 +15,8 @@ import java.util.zip.GZIPOutputStream;
 /**
  * SpanCollector which submits spans to Zipkin, using its {@code POST /spans} endpoint.
  *
- * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code URLConnectionSender}
- *             located in the "io.zipkin.reporter:zipkin-sender-urlconnection" dependency.
+ * @deprecated replaced by {@link zipkin2.reporter.AsyncReporter} and {@code URLConnectionSender}
+ *             located in the "io.zipkin.reporter2:zipkin-sender-urlconnection" dependency.
  */
 @Deprecated
 public final class HttpSpanCollector extends AbstractSpanCollector {

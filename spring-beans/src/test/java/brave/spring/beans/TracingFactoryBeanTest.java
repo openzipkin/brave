@@ -7,7 +7,7 @@ import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -61,7 +61,7 @@ public class TracingFactoryBeanTest {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"reporter\">\n"
-        + "    <util:constant static-field=\"zipkin.reporter.Reporter.CONSOLE\"/>\n"
+        + "    <util:constant static-field=\"zipkin2.reporter.Reporter.CONSOLE\"/>\n"
         + "  </property>\n"
         + "</bean>"
     );
