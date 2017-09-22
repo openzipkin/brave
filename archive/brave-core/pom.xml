@@ -28,6 +28,11 @@
       <artifactId>zipkin-reporter</artifactId>
       <version>${zipkin-reporter.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.zipkin.reporter2</groupId>
+      <artifactId>zipkin-reporter</artifactId>
+      <version>${zipkin-reporter2.version}</version>
+    </dependency>
     <!-- for value types... don't worry. this dependency is compile only! -->
     <dependency>
         <groupId>com.google.auto.value</groupId>

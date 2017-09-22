@@ -3,11 +3,11 @@ package brave.spring.beans;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Test;
-import zipkin.reporter.AsyncReporter;
-import zipkin.reporter.Encoding;
-import zipkin.reporter.ReporterMetrics;
-import zipkin.reporter.Sender;
-import zipkin.reporter.SpanEncoder;
+import zipkin2.codec.Encoding;
+import zipkin2.codec.SpanBytesEncoder;
+import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.ReporterMetrics;
+import zipkin2.reporter.Sender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -155,6 +155,6 @@ public class AsyncReporterFactoryBeanTest {
 
     assertThat(context.getBean(AsyncReporter.class))
         .extracting("encoder")
-        .containsExactly(SpanEncoder.JSON_V2);
+        .containsExactly(SpanBytesEncoder.JSON_V2);
   }
 }

@@ -18,8 +18,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  *
  * <p><b>Important</b> If using zipkin-collector-service (or zipkin-receiver-kafka), you must run v1.35+
  *
- * @deprecated replaced by {@link zipkin.reporter.AsyncReporter} and {@code KafkaSender}
- *             located in the "io.zipkin.reporter:zipkin-sender-kafka08" dependency.
+ * @deprecated replaced by {@link zipkin2.reporter.AsyncReporter} and {@code KafkaSender}
+ *             located in the "io.zipkin.reporter2:zipkin-sender-kafka11" dependency.
  */
 @Deprecated
 public final class KafkaSpanCollector extends AbstractSpanCollector {

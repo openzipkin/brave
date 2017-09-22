@@ -2,15 +2,15 @@ package brave.spring.beans;
 
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
-import zipkin.reporter.AsyncReporter;
-import zipkin.reporter.ReporterMetrics;
-import zipkin.reporter.Sender;
-import zipkin.reporter.SpanEncoder;
+import zipkin2.codec.SpanBytesEncoder;
+import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.ReporterMetrics;
+import zipkin2.reporter.Sender;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class AsyncReporterFactoryBean extends AbstractFactoryBean<AsyncReporter> {
   Sender sender;
-  SpanEncoder encoder = SpanEncoder.JSON_V1;
+  SpanBytesEncoder encoder = SpanBytesEncoder.JSON_V1;
   ReporterMetrics metrics;
   Integer messageMaxBytes;
   Integer messageTimeout;
@@ -45,7 +45,7 @@ public class AsyncReporterFactoryBean extends AbstractFactoryBean<AsyncReporter>
     this.sender = sender;
   }
 
-  public void setEncoder(SpanEncoder encoder) {
+  public void setEncoder(SpanBytesEncoder encoder) {
     this.encoder = encoder;
   }
 

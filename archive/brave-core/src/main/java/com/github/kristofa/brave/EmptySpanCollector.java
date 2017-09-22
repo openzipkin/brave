@@ -7,7 +7,7 @@ import com.twitter.zipkin.gen.Span;
  * 
  * @author adriaens
  *
- * @deprecated replaced by {@link zipkin.reporter.Reporter#NOOP}.
+ * @deprecated replaced by {@link zipkin2.reporter.Reporter#NOOP}.
  */
 @Deprecated
 public class EmptySpanCollector implements SpanCollector {
