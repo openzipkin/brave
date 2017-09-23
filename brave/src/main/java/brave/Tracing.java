@@ -153,39 +153,23 @@ public abstract class Tracing implements Closeable {
      * <p>For example, here's how to batch send spans via http:
      *
      * <pre>{@code
-     * reporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v2/spans"));
+     * spanReporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v2/spans"));
      *
-     * tracingBuilder.reporter(reporter);
+     * tracingBuilder.spanReporter(spanReporter);
      * }</pre>
      *
      * <p>See https://github.com/openzipkin/zipkin-reporter-java
      */
-    public Builder reporter(Reporter<zipkin2.Span> reporter) {
-      if (reporter == null) throw new NullPointerException("reporter == null");
+    public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
+      if (reporter == null) throw new NullPointerException("spanReporter == null");
       this.reporter = reporter;
       return this;
     }
 
-    /** @deprecated use {@link #reporter(Reporter)} */
-    @Deprecated
-    public Builder spanReporter(zipkin.reporter.Reporter<zipkin2.Span> reporter) {
-      if (reporter == null) throw new NullPointerException("reporter == null");
-      this.reporter = new Reporter<zipkin2.Span>() {
-        @Override public void report(zipkin2.Span span) {
-          reporter.report(span);
-        }
-
-        @Override public String toString() {
-          return reporter.toString();
-        }
-      };
-      return this;
-    }
-
-    /** @deprecated use {@link #reporter(Reporter)} */
+    /** @deprecated use {@link #spanReporter(Reporter)} */
     @Deprecated
     public Builder reporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
-      if (reporter == null) throw new NullPointerException("reporter == null");
+      if (reporter == null) throw new NullPointerException("spanReporter == null");
       if (reporter == zipkin.reporter.Reporter.NOOP) {
         this.reporter = Reporter.NOOP;
         return this;

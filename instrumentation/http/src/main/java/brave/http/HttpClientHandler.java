@@ -3,6 +3,7 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
+import brave.internal.Platform;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -101,11 +102,15 @@ public final class HttpClientHandler<Req, Resp> {
     span.kind(Span.Kind.CLIENT);
     parser.request(adapter, request, span);
 
-    zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder()
-        .serviceName(serverNameSet ? serverName : "");
-    if (adapter.parseServerAddress(request, deprecatedEndpoint)) {
-      span.remoteEndpoint(deprecatedEndpoint.serviceName(serverName).build());
-    } else {
+    boolean parsedEndpoint = false;
+    if (Platform.get().zipkinV1Present()) {
+      zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder()
+          .serviceName(serverNameSet ? serverName : "");
+      if ((parsedEndpoint = adapter.parseServerAddress(request, deprecatedEndpoint))) {
+        span.remoteEndpoint(deprecatedEndpoint.serviceName(serverName).build());
+      }
+    }
+    if (!parsedEndpoint) {
       Endpoint.Builder remoteEndpoint = Endpoint.newBuilder().serviceName(serverName);
       if (adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet) {
         span.remoteEndpoint(remoteEndpoint.build());

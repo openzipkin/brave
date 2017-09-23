@@ -18,7 +18,7 @@ Here are some example beans using the factories in this module:
 
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="localServiceName" value="brave-webmvc-example"/>
-    <property name="reporter">
+    <property name="spanReporter">
       <bean class="brave.spring.beans.AsyncReporterFactoryBean">
         <property name="encoder" value="JSON_V2"/>
         <property name="sender" ref="sender"/>

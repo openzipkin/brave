@@ -25,7 +25,7 @@ spanReporter = AsyncReporter.create(sender);
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
-                 .reporter(reporter)
+                 .spanReporter(spanReporter)
                  .build();
 
 // Tracing exposes objects you might need, most importantly the tracer
@@ -34,7 +34,7 @@ tracer = tracing.tracer();
 // When all tracing tasks are complete, close the tracing component and reporter
 // This might be a shutdown hook for some users
 tracing.close();
-reporter.close();
+spanReporter.close();
 ```
 
 ## Tracing
@@ -477,7 +477,7 @@ ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
 Tracing tracing = Tracing.newBuilder()
                  .currentTraceContext(new StrictCurrentTraceContext())
-                 .reporter((Reporter<Span>) spans::add)
+                 .spanReporter(spans::add)
                  .build();
 
   @After public void close() {

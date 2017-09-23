@@ -3,7 +3,7 @@ package com.github.kristofa.brave;
 
 /**
  * Empty implementation ignoring all events.
- * @deprecated Replaced by {@code zipkin2.reporter.ReporterMetrics#NOOP_METRICS}
+ * @deprecated Replaced by {@code zipkin2.spanReporter.ReporterMetrics#NOOP_METRICS}
  */
 @Deprecated
 public class EmptySpanCollectorMetricsHandler implements SpanCollectorMetricsHandler {

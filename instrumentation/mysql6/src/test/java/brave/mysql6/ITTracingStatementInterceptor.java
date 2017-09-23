@@ -14,6 +14,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -125,7 +126,11 @@ public class ITTracingStatementInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
+        .spanReporter(new Reporter<Span>() {
+          @Override public void report(Span span) {
+            spans.add(span);
+          }
+        })
         .currentTraceContext(new StrictCurrentTraceContext())
         .sampler(sampler);
   }

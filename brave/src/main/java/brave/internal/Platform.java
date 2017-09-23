@@ -15,7 +15,7 @@ import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 /**
- * Access to platform-specific features and implements a default logging reporter.
+ * Access to platform-specific features and implements a default logging spanReporter.
  *
  * <p>Originally designed by OkHttp team, derived from {@code okhttp3.internal.platform.Platform}
  */
@@ -33,6 +33,9 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
     createTimestamp = System.currentTimeMillis() * 1000;
     createTick = System.nanoTime();
   }
+
+  /** Ensure we don't raise a {@linkplain ClassNotFoundException} calling deprecated methods */
+  public abstract boolean zipkinV1Present();
 
   @Override public void report(zipkin2.Span span) {
     if (!logger.isLoggable(Level.INFO)) return;
@@ -82,14 +85,22 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
   }
 
   /** Attempt to match the host runtime to a capable Platform implementation. */
-  private static Platform findPlatform() {
+  static Platform findPlatform() {
+    // Find Zipkin v1 methods
+    boolean zipkinV1Present;
+    try {
+      Class.forName("zipkin.Endpoint");
+      zipkinV1Present = true;
+    } catch (ClassNotFoundException e) {
+      zipkinV1Present = false;
+    }
 
-    Platform jre7 = Jre7.buildIfSupported();
+    Platform jre7 = Jre7.buildIfSupported(zipkinV1Present);
 
     if (jre7 != null) return jre7;
 
     // compatible with JRE 6
-    return Jre6.build();
+    return Jre6.build(zipkinV1Present);
   }
 
   /**
@@ -110,11 +121,11 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
   @AutoValue
   static abstract class Jre7 extends Platform {
 
-    static Jre7 buildIfSupported() {
+    static Jre7 buildIfSupported(boolean zipkinV1Present) {
       // Find JRE 7 new methods
       try {
         Class.forName("java.util.concurrent.ThreadLocalRandom");
-        return new AutoValue_Platform_Jre7();
+        return new AutoValue_Platform_Jre7(zipkinV1Present);
       } catch (ClassNotFoundException e) {
         // pre JRE 7
       }
@@ -131,8 +142,8 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
   static abstract class Jre6 extends Platform {
     abstract Random prng();
 
-    static Jre6 build() {
-      return new AutoValue_Platform_Jre6(new Random(System.nanoTime()));
+    static Jre6 build(boolean zipkinV1Present) {
+      return new AutoValue_Platform_Jre6(zipkinV1Present, new Random(System.nanoTime()));
     }
 
     @Override public long randomLong() {

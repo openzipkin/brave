@@ -57,10 +57,10 @@ public class TracingFactoryBeanTest {
             .port(8080).build());
   }
 
-  @Test public void reporter() {
+  @Test public void spanReporter() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-        + "  <property name=\"reporter\">\n"
+        + "  <property name=\"spanReporter\">\n"
         + "    <util:constant static-field=\"zipkin2.reporter.Reporter.CONSOLE\"/>\n"
         + "  </property>\n"
         + "</bean>"
