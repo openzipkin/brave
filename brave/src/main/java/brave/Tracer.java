@@ -81,16 +81,9 @@ public final class Tracer {
       return this;
     }
 
-    /** @deprecated use {@link #spanReporter(Reporter)} */
-    @Deprecated
-    public Builder spanReporter(zipkin.reporter.Reporter<zipkin2.Span> reporter) {
-      delegate.spanReporter(reporter);
-      return this;
-    }
-
-    /** @see Tracing.Builder#reporter(Reporter) */
+    /** @see Tracing.Builder#spanReporter(Reporter) */
     public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
-      delegate.reporter(reporter);
+      delegate.spanReporter(reporter);
       return this;
     }
 

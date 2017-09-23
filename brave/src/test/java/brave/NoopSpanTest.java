@@ -4,6 +4,7 @@ import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,7 +13,7 @@ public class NoopSpanTest {
       .clock(() -> {
         throw new AssertionError();
       })
-      .spanReporter(s -> {
+      .spanReporter((Reporter<zipkin2.Span>) s -> {
         throw new AssertionError();
       })
       .build().tracer();
@@ -31,7 +32,7 @@ public class NoopSpanTest {
   }
 
   @Test public void doesNothing() {
-    // Since our clock and reporter throw, we know this is doing nothing
+    // Since our clock and spanReporter throw, we know this is doing nothing
     span.start();
     span.start(1L);
     span.annotate("foo");

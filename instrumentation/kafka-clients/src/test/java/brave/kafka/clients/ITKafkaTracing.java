@@ -21,6 +21,7 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import zipkin2.Span;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -34,11 +35,11 @@ public class ITKafkaTracing {
   LinkedList<Span> producerSpans = new LinkedList<>();
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .spanReporter(consumerSpans::add)
+      .spanReporter((Reporter<Span>) consumerSpans::add)
       .sampler(Sampler.ALWAYS_SAMPLE)
       .build());
   KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .spanReporter(producerSpans::add)
+      .spanReporter((Reporter<Span>) producerSpans::add)
       .sampler(Sampler.ALWAYS_SAMPLE)
       .build());
 

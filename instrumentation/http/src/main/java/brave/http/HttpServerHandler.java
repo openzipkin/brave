@@ -3,6 +3,7 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
+import brave.internal.Platform;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -73,10 +74,14 @@ public final class HttpServerHandler<Req, Resp> {
     span.kind(Span.Kind.SERVER);
     parser.request(adapter, request, span);
 
-    zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder().serviceName("");
-    if (adapter.parseClientAddress(request, deprecatedEndpoint)) {
-      span.remoteEndpoint(deprecatedEndpoint.build());
-    } else {
+    boolean parsedEndpoint = false;
+    if (Platform.get().zipkinV1Present()) {
+      zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder().serviceName("");
+      if ((parsedEndpoint = adapter.parseClientAddress(request, deprecatedEndpoint))) {
+        span.remoteEndpoint(deprecatedEndpoint.build());
+      }
+    }
+    if (!parsedEndpoint) {
       Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
       if (adapter.parseClientAddress(request, remoteEndpoint)) {
         span.remoteEndpoint(remoteEndpoint.build());
@@ -112,8 +117,8 @@ public final class HttpServerHandler<Req, Resp> {
   /**
    * Finishes the server span after assigning it tags according to the response or error.
    *
-   * <p>This is typically called once the response headers are sent, and after the span is
-   * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
+   * <p>This is typically called once the response headers are sent, and after the span is {@link
+   * brave.Tracer.SpanInScope#close() no longer in scope}.
    *
    * @see HttpServerParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */

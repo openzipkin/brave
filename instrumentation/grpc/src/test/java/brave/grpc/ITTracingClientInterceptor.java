@@ -294,8 +294,8 @@ public class ITTracingClientInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext( // connect to log4
+        .spanReporter((zipkin2.reporter.Reporter<zipkin2.Span>) spans::add)
+        .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
   }

@@ -27,6 +27,7 @@
       <groupId>io.zipkin.reporter</groupId>
       <artifactId>zipkin-reporter</artifactId>
       <version>${zipkin-reporter.version}</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
@@ -162,6 +163,10 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-invoker-plugin</artifactId>
       </plugin>
     </plugins>
   </build>

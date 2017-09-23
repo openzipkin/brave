@@ -32,7 +32,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PrepareForTest({Platform.class, NetworkInterface.class})
 public class PlatformTest {
   Endpoint unknownEndpoint = Endpoint.newBuilder().serviceName("unknown").build();
-  Platform platform = Platform.Jre7.buildIfSupported();
+  Platform platform = Platform.Jre7.buildIfSupported(true);
 
   @Test public void relativeTimestamp_incrementsAccordingToNanoTick() {
     mockStatic(System.class);
@@ -40,6 +40,10 @@ public class PlatformTest {
     when(System.nanoTime()).thenReturn(0L);
 
     Platform platform = new Platform() {
+      @Override public boolean zipkinV1Present() {
+        return true;
+      }
+
       @Override public long randomLong() {
         return 1L;
       }
@@ -48,6 +52,15 @@ public class PlatformTest {
     when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
 
     assertThat(platform.currentTimeMicroseconds()).isEqualTo(1);
+  }
+
+  @Test public void zipkinV1Absent() throws ClassNotFoundException {
+    mockStatic(Class.class);
+    when(Class.forName(zipkin.Endpoint.class.getName()))
+        .thenThrow(ClassNotFoundException.class);
+
+    assertThat(Platform.findPlatform().zipkinV1Present())
+        .isFalse();
   }
 
   @Test public void localEndpoint_lazySet() {

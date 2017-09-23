@@ -23,6 +23,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import zipkin2.reporter.Reporter;
 
 public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
 
@@ -44,7 +45,7 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
   public static class Unsampled extends Application {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(s -> {}).build()
+          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
       )));
     }
   }
@@ -53,7 +54,7 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
   public static class TracedApp extends Application {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().spanReporter(s -> {}).build()
+          Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
       )));
     }
   }

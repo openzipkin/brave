@@ -96,7 +96,6 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
           builder.serviceName(databaseName);
         } else {
           if (!parsed) return;
-          builder.serviceName("");
         }
       } else {
         builder.serviceName(defaultRemoteServiceName);

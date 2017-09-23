@@ -32,14 +32,15 @@ public class HttpClientHandlerTest {
   HttpClientHandler<Object, Object> handler;
 
   @Before public void init() {
-    httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().spanReporter(spans::add).build())
-        .clientSampler(sampler).build();
+    httpTracing = HttpTracing.newBuilder(
+        Tracing.newBuilder().spanReporter(spans::add).build()
+    ).clientSampler(sampler).build();
     handler = HttpClientHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
   }
 
-  @After public void close(){
+  @After public void close() {
     Tracing.current().close();
   }
 

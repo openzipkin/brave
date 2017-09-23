@@ -5,7 +5,6 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Annotation;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -13,7 +12,7 @@ import static org.assertj.core.api.Assertions.entry;
 public class CurrentSpanCustomizerTest {
 
   List<zipkin2.Span> spans = new ArrayList();
-  Tracing tracing = Tracing.newBuilder().reporter((Reporter<zipkin2.Span>) spans::add).build();
+  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
 

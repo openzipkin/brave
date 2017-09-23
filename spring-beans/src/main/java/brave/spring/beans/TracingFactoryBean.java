@@ -14,7 +14,7 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
 
   String localServiceName;
   Endpoint localEndpoint;
-  Reporter<Span> reporter;
+  Reporter<Span> spanReporter;
   Clock clock;
   Sampler sampler;
   CurrentTraceContext currentTraceContext;
@@ -24,7 +24,7 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     Tracing.Builder builder = Tracing.newBuilder();
     if (localServiceName != null) builder.localServiceName(localServiceName);
     if (localEndpoint != null) builder.localEndpoint(localEndpoint);
-    if (reporter != null) builder.reporter(reporter);
+    if (spanReporter != null) builder.spanReporter(spanReporter);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
     if (currentTraceContext != null) builder.currentTraceContext(currentTraceContext);
@@ -52,8 +52,8 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     this.localEndpoint = localEndpoint;
   }
 
-  public void setReporter(Reporter<Span> reporter) {
-    this.reporter = reporter;
+  public void setSpanReporter(Reporter<Span> spanReporter) {
+    this.spanReporter = spanReporter;
   }
 
   public void setClock(Clock clock) {
