@@ -37,6 +37,15 @@ tracing.close();
 spanReporter.close();
 ```
 
+### Zipkin v1 setup
+If you need to connect to an older version of the Zipkin api, you can use the following to use
+Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-reporter-java#legacy-encoding) for more.
+
+```java
+reporter = AsyncReporter.builder(URLConnectionSender.create("http://localhost:9411/api/v1/spans"))
+                        .build(SpanBytesEncoder.JSON_V1);
+```
+
 ## Tracing
 
 The tracer creates and joins spans that model the latency of potentially
