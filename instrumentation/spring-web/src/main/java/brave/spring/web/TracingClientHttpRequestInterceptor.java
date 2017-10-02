@@ -16,13 +16,7 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
-  static final Propagation.Setter<HttpHeaders, String> SETTER = (headers, key, value) -> {
-    if (value == null) {
-      headers.remove(key);
-    } else {
-      headers.set(key, value);
-    }
-  };
+  static final Propagation.Setter<HttpHeaders, String> SETTER = HttpHeaders::set;
 
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));

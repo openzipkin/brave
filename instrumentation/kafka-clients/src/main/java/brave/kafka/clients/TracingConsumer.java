@@ -54,7 +54,6 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   void handleConsumed(ConsumerRecord record) {
     Span span = startAndFinishConsumerSpan(record);
     // remove propagation headers from the record
-    // TODO: consider making remove a normal part of propagation
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
 
     // Inject new propagation headers

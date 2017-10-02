@@ -21,6 +21,16 @@ public abstract class TraceContext extends SamplingFlags {
 
   /**
    * Used to send the trace context downstream. For example, as http headers.
+   *
+   * <p>For example, to put the context on an {@link java.net.HttpURLConnection}, you can do this:
+   * <pre>{@code
+   * // in your constructor
+   * injector = tracing.propagation().injector(URLConnection::setRequestProperty);
+   *
+   * // later in your code, reuse the function you created above to add trace headers
+   * HttpURLConnection connection = (HttpURLConnection) new URL("http://myserver").openConnection();
+   * injector.inject(span.context(), connection);
+   * }</pre>
    */
   public interface Injector<C> {
     /**

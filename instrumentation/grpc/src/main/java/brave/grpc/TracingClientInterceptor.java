@@ -20,7 +20,11 @@ final class TracingClientInterceptor implements ClientInterceptor {
       new Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
         @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
           metadata.removeAll(key);
-          if (value != null) metadata.put(key, value);
+          metadata.put(key, value);
+        }
+
+        @Override public String toString() {
+          return "Metadata::put";
         }
       };
 

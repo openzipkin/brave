@@ -17,13 +17,12 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
+import org.apache.http.message.AbstractHttpMessage;
 import zipkin2.Endpoint;
 
 public final class TracingHttpClientBuilder extends HttpClientBuilder {
-  static final Propagation.Setter<HttpRequestWrapper, String> SETTER = (wrapper, key, value) -> {
-    wrapper.removeHeaders(key);
-    if (value != null) wrapper.setHeader(key, value);
-  };
+  static final Propagation.Setter<HttpRequestWrapper, String> SETTER =
+      AbstractHttpMessage::setHeader;
 
   public static HttpClientBuilder create(Tracing tracing) {
     return new TracingHttpClientBuilder(HttpTracing.create(tracing));

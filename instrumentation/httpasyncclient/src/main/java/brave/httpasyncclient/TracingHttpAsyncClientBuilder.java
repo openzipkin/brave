@@ -36,10 +36,7 @@ import zipkin2.Endpoint;
  * added last}.
  */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
-  static final Propagation.Setter<HttpMessage, String> SETTER = (message, key, value) ->{
-    message.removeHeaders(key);
-    if (value != null) message.setHeader(key, value);
-  };
+  static final Propagation.Setter<HttpMessage, String> SETTER = HttpMessage::setHeader;
 
   public static HttpAsyncClientBuilder create(Tracing tracing) {
     return new TracingHttpAsyncClientBuilder(HttpTracing.create(tracing));
