@@ -12,7 +12,7 @@ final class KafkaPropagation {
 
   static final Setter<Headers, String> HEADER_SETTER = (carrier, key, value) -> {
     carrier.remove(key);
-    if (value != null) carrier.add(key, value.getBytes(UTF_8));
+    carrier.add(key, value.getBytes(UTF_8));
   };
 
   static final Getter<Headers, String> HEADER_GETTER = (carrier, key) -> {

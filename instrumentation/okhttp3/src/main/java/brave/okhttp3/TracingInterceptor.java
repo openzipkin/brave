@@ -10,7 +10,6 @@ import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
-import okhttp3.Headers;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -22,13 +21,7 @@ import zipkin2.Endpoint;
  * In cases like that, use {@link TracingCallFactory}.
  */
 public final class TracingInterceptor implements Interceptor {
-  static final Propagation.Setter<Request.Builder, String> SETTER = (builder, key, value) -> {
-    if (value == null) {
-      builder.headers(Headers.of());
-    } else {
-      builder.header(key, value);
-    }
-  };
+  static final Propagation.Setter<Request.Builder, String> SETTER = Request.Builder::header;
 
   public static Interceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));

@@ -49,13 +49,4 @@ public abstract class PropagationSetterTest<C, K> {
     assertThat(read(carrier(), key))
         .containsExactly("463ac35c9f6413ad");
   }
-
-  @Test public void overrideNull() throws Exception {
-    K key = keyFactory().create("X-B3-ParentSpanId");
-    setter().put(carrier(), key, "48485a3953bb6124");
-    setter().put(carrier(), key, null);
-
-    assertThat(read(carrier(), key))
-        .isEmpty();
-  }
 }

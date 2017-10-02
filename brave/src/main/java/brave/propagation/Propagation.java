@@ -54,13 +54,26 @@ public interface Propagation<K> {
     void put(C carrier, K key, String value);
   }
 
-  /** The propagation fields defined */
+  /**
+   * The propagation fields defined. If your carrier is reused, you should delete the fields here
+   * before calling {@link Setter#put(Object, Object, String)}.
+   *
+   * <p>For example, if the carrier is a single-use or immutable request object, you don't need to
+   * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
+   * successive calls should clear these fields first.
+   */
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata
   // * allow a single-pass over an iterator (ex OpenTracing has no getter in TextMap)
   List<K> keys();
 
   /**
+   * Replaces a propagated field with the given value. Saved as a constant to avoid runtime
+   * allocations.
+   *
+   * For example, a setter for an {@link java.net.HttpURLConnection} would be the method reference
+   * {@link java.net.HttpURLConnection#addRequestProperty(String, String)}
+   *
    * @param setter invoked for each propagation key to add.
    */
   <C> TraceContext.Injector<C> injector(Setter<C, K> setter);
