@@ -240,7 +240,7 @@ public final class Tracer {
     return TraceContext.newBuilder()
         .sampled(sampled)
         .debug(samplingFlags.debug())
-        .traceIdHigh(traceId128Bit ? Platform.get().randomLong() : 0L).traceId(nextId)
+        .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
         .spanId(nextId).build();
   }
 

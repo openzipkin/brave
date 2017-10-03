@@ -72,6 +72,12 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class Traced128 extends ForwardingTracingFilter {
+    public Traced128() {
+      super(Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build());
+    }
+  }
+
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
@@ -79,6 +85,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("Traced", Traced.class))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
         .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
+        .addFilter(new FilterInfo("Traced128", Traced128.class))
+        .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
+        .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
         .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
   }
 
