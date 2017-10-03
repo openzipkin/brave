@@ -22,6 +22,7 @@ http (as opposed to Kafka).
 //   (the dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
 spanReporter = AsyncReporter.create(sender);
+
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
@@ -31,10 +32,12 @@ tracing = Tracing.newBuilder()
 // Tracing exposes objects you might need, most importantly the tracer
 tracer = tracing.tracer();
 
-// When all tracing tasks are complete, close the tracing component and reporter
-// This might be a shutdown hook for some users
+// Failing to close resources can result in dropped spans! When tracing is no
+// longer needed, close the components you made in reverse order. This might be
+// a shutdown hook for some users.
 tracing.close();
 spanReporter.close();
+sender.close();
 ```
 
 ### Zipkin v1 setup
@@ -42,7 +45,8 @@ If you need to connect to an older version of the Zipkin api, you can use the fo
 Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-reporter-java#legacy-encoding) for more.
 
 ```java
-reporter = AsyncReporter.builder(URLConnectionSender.create("http://localhost:9411/api/v1/spans"))
+sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans")
+reporter = AsyncReporter.builder(sender)
                         .build(SpanBytesEncoder.JSON_V1);
 ```
 
