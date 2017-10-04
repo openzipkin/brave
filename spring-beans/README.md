@@ -63,7 +63,7 @@ The factory beans can also be used in java configuration:
   @Bean
   HttpTracingFactoryBean httpTracingFactoryBean() {
     HttpTracingFactoryBean httpTracingFactoryBean = new HttpTracingFactoryBean();
-    httpTracingFactoryBean.setTracing(tracing());
+    httpTracingFactoryBean.setTracing(tracingFactoryBean().getObject());
     return httpTracingFactoryBean;
   }
 ```
