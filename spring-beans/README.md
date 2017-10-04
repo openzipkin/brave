@@ -1,6 +1,6 @@
 # brave-spring-beans
 This module contains Spring Factory Beans that allow you to configure
-tracing with only XML
+tracing with only XML. 
 
 ## Configuration
 Bean Factories exist for the following types:
@@ -33,4 +33,37 @@ Here are some example beans using the factories in this module:
   <bean id="httpTracing" class="brave.spring.beans.HttpTracingFactoryBean">
     <property name="tracing" ref="tracing"/>
   </bean>
+```
+The factory beans can also be used in java configuration:
+
+```java
+
+  @Bean
+  Sender sender() {
+    return URLConnectionSender.create("http://localhost:9411/api/v2/spans");
+  }
+
+  @Bean
+  AsyncReporterFactoryBean asyncReporterFactoryBean() {
+    AsyncReporterFactoryBean factoryBean = new AsyncReporterFactoryBean();
+    factoryBean.setEncoder(SpanBytesEncoder.JSON_V2);
+    factoryBean.setSender(sender());
+    return factoryBean;
+  }
+
+  @Bean
+  TracingFactoryBean tracingFactoryBean() throws Exception {
+    TracingFactoryBean tracingFactoryBean = new TracingFactoryBean();
+    tracingFactoryBean.setLocalServiceName("brave-webmvc-example");
+    tracingFactoryBean.setCurrentTraceContext(MDCCurrentTraceContext.create());
+    tracingFactoryBean.setSpanReporter(asyncReporterFactoryBean().getObject());
+    return tracingFactoryBean;
+  }
+
+  @Bean
+  HttpTracingFactoryBean httpTracingFactoryBean() {
+    HttpTracingFactoryBean httpTracingFactoryBean = new HttpTracingFactoryBean();
+    httpTracingFactoryBean.setTracing(tracing());
+    return httpTracingFactoryBean;
+  }
 ```
