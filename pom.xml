@@ -100,6 +100,7 @@
     <module>brave-tests</module>
     <module>context</module>
     <module>instrumentation</module>
+    <module>propagation</module>
     <module>spring-beans</module>
     <module>archive/brave-core</module>
     <module>archive/brave-http</module>
