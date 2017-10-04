@@ -21,6 +21,21 @@ public class TracingFactoryBeanTest {
     if (context != null) context.close();
   }
 
+  @Test public void autoCloses() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\"/>\n"
+    );
+    context.refresh();
+
+    assertThat(Tracing.current()).isNotNull();
+
+    context.close();
+
+    assertThat(Tracing.current()).isNull();
+
+    context = null;
+  }
+
   @Test public void localServiceName() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
