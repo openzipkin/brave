@@ -8,51 +8,73 @@ public class TraceContextOrSamplingFlagsTest {
 
   @Test public void contextWhenIdsAreSet() {
     TraceContext.Builder builder = TraceContext.newBuilder().traceId(333L).spanId(1L);
-    TraceContextOrSamplingFlags contextOrFlags = TraceContextOrSamplingFlags.create(builder);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(builder.build());
 
-    assertThat(contextOrFlags.context())
+    assertThat(extracted.context())
         .isEqualTo(builder.build());
-    assertThat(contextOrFlags.samplingFlags())
+    assertThat(extracted.traceIdContext())
+        .isNull();
+    assertThat(extracted.samplingFlags())
         .isNull();
   }
 
   @Test public void contextWhenIdsAndSamplingAreSet() {
     TraceContext.Builder builder = TraceContext.newBuilder().traceId(333L).spanId(1L).sampled(true);
-    TraceContextOrSamplingFlags contextOrFlags = TraceContextOrSamplingFlags.create(builder);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(builder.build());
 
-    assertThat(contextOrFlags.context())
+    assertThat(extracted.context())
         .isEqualTo(builder.build());
-    assertThat(contextOrFlags.samplingFlags())
+    assertThat(extracted.traceIdContext())
+        .isNull();
+    assertThat(extracted.samplingFlags())
         .isNull();
   }
 
-  @Test public void flagsWhenMissingTraceId() {
-    TraceContext.Builder builder = TraceContext.newBuilder().spanId(1L);
-    TraceContextOrSamplingFlags contextOrFlags = TraceContextOrSamplingFlags.create(builder);
+  @Test  @Deprecated public void contextWhenTraceIdAndSampledAreSet() {
+    TraceIdContext.Builder builder = TraceIdContext.newBuilder().traceId(333L).sampled(true);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(builder.build());
 
-    assertThat(contextOrFlags.context())
+    assertThat(extracted.context())
         .isNull();
-    assertThat(contextOrFlags.samplingFlags())
+    assertThat(extracted.traceIdContext())
+        .isEqualTo(builder.build());
+    assertThat(extracted.samplingFlags())
+        .isNull();
+  }
+
+  @Test @Deprecated public void deprecatedFlagsWhenMissingTraceId() {
+    TraceContext.Builder builder = TraceContext.newBuilder().spanId(1L);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(builder);
+
+    assertThat(extracted.context())
+        .isNull();
+    assertThat(extracted.traceIdContext())
+        .isNull();
+    assertThat(extracted.samplingFlags())
         .isSameAs(SamplingFlags.EMPTY);
   }
 
-  @Test public void flagsWhenMissingSpanId() {
+  @Test  @Deprecated public void deprecatedFlagsWhenMissingSpanId() {
     TraceContext.Builder builder = TraceContext.newBuilder().traceId(333L).sampled(true);
-    TraceContextOrSamplingFlags contextOrFlags = TraceContextOrSamplingFlags.create(builder);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(builder);
 
-    assertThat(contextOrFlags.context())
+    assertThat(extracted.context())
         .isNull();
-    assertThat(contextOrFlags.samplingFlags())
+    assertThat(extracted.traceIdContext())
+        .isNull();
+    assertThat(extracted.samplingFlags())
         .isSameAs(SamplingFlags.SAMPLED);
   }
 
   @Test public void flags() {
-    TraceContext.Builder builder = TraceContext.newBuilder().sampled(true);
-    TraceContextOrSamplingFlags contextOrFlags = TraceContextOrSamplingFlags.create(builder);
+    TraceContextOrSamplingFlags extracted =
+        TraceContextOrSamplingFlags.create(SamplingFlags.SAMPLED);
 
-    assertThat(contextOrFlags.context())
+    assertThat(extracted.context())
         .isNull();
-    assertThat(contextOrFlags.samplingFlags())
+    assertThat(extracted.traceIdContext())
+        .isNull();
+    assertThat(extracted.samplingFlags())
         .isSameAs(SamplingFlags.SAMPLED);
   }
 }

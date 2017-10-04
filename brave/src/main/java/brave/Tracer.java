@@ -8,6 +8,7 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -150,7 +151,7 @@ public final class Tracer {
    * instead.
    */
   public Span newTrace() {
-    return toSpan(nextContext(null, SamplingFlags.EMPTY));
+    return toSpan(nextContext(null, null, SamplingFlags.EMPTY));
   }
 
   /**
@@ -191,6 +192,13 @@ public final class Tracer {
   }
 
   /**
+   * Like {@link #newChild(TraceContext)}, where the trace ID is present, but not a span ID.
+   */
+  public Span newTrace(TraceIdContext traceIdContext) {
+    return toSpan(nextContext(null, traceIdContext, null));
+  }
+
+  /**
    * Like {@link #newTrace()}, but supports parameterized sampling, for example limiting on
    * operation or url pattern.
    *
@@ -208,7 +216,7 @@ public final class Tracer {
    * }</pre>
    */
   public Span newTrace(SamplingFlags samplingFlags) {
-    return toSpan(nextContext(null, samplingFlags));
+    return toSpan(nextContext(null, null, samplingFlags));
   }
 
   /** Converts the context as-is to a Span object */
@@ -229,10 +237,14 @@ public final class Tracer {
     if (Boolean.FALSE.equals(parent.sampled())) {
       return NoopSpan.create(parent);
     }
-    return toSpan(nextContext(parent, parent));
+    return toSpan(nextContext(parent, null, null));
   }
 
-  TraceContext nextContext(@Nullable TraceContext parent, SamplingFlags samplingFlags) {
+  TraceContext nextContext(
+      @Nullable TraceContext parent,
+      @Nullable TraceIdContext traceIdContext,
+      @Nullable SamplingFlags samplingFlags
+  ) {
     long nextId = Platform.get().randomLong();
     if (parent != null) {
       return parent.toBuilder()
@@ -240,6 +252,15 @@ public final class Tracer {
           .parentId(parent.spanId())
           .shared(false)
           .build();
+    }
+    if (traceIdContext != null) {
+      Boolean sampled = traceIdContext.sampled();
+      if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
+      return TraceContext.newBuilder()
+          .sampled(sampled)
+          .debug(traceIdContext.debug())
+          .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
+          .spanId(nextId).build();
     }
     Boolean sampled = samplingFlags.sampled();
     if (sampled == null) sampled = sampler.isSampled(nextId);

@@ -134,14 +134,12 @@ public final class B3Propagation<K> implements Propagation<K> {
           traceIdString.length() == 32 ? lowerHexToUnsignedLong(traceIdString, 0) : 0
       );
       result.traceId(lowerHexToUnsignedLong(traceIdString));
-      if (spanIdString != null) {
-        result.spanId(lowerHexToUnsignedLong(spanIdString));
-      }
+      result.spanId(lowerHexToUnsignedLong(spanIdString));
       String parentSpanIdString = getter.get(carrier, propagation.parentSpanIdKey);
       if (parentSpanIdString != null) {
         result.parentId(lowerHexToUnsignedLong(parentSpanIdString));
       }
-      return TraceContextOrSamplingFlags.create(result);
+      return TraceContextOrSamplingFlags.create(result.build());
     }
   }
 }

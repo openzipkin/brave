@@ -318,18 +318,33 @@ injector.inject(span.context(), request);
 Here's what server-side propagation might look like
 ```java
 // configure a function that extracts the trace context from a request
-extractor = tracing.propagation().extractor(Request::getHeader);
+extracted = tracing.propagation().extractor(Request::getHeader);
 
 // when a server receives a request, it joins or starts a new trace
-span = tracer.nextSpan(extractor, request);
+span = tracer.nextSpan(extracted, request);
 ```
+
+### Extracting a propagated context
+The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
+from an incoming request or message. The carrier is usually a request object
+or headers.
+
+This utility is used in standard instrumentation like [HttpServerHandler](../instrumentation/http/src/main/java/brave/http/HttpServerHandler.java),
+but can also be used for custom RPC or messaging code.
+
+`Extractor.extract` returns a union type `TraceContextOrSamplingFlags` which
+contains one of:
+* `TraceContext` if trace and span IDs were present.
+* `TraceIdContext` if a trace ID was present, but not span IDs.
+* `SamplingFlags` if no identifiers were present
 
 ### Sharing span IDs between client and server
 
-Most instrumentation use `Tracer.joinSpan` to create a server span ID. This
-attempts to reuse trace identifiers from incoming headers for the server
-operation, restarting the trace as needed. When span ID is shared, data
-reported includes a flag saying so.
+A normal instrumentation pattern is creating a span representing the server
+side of an RPC. `Extractor.extract` might return a complete trace context when
+applied to an incoming client request. `Tracer.joinSpan` attempts to continue
+the this trace, using the same span ID if supported, or creating a child span
+if not. When span ID is shared, data reported includes a flag saying so.
 
 Here's an example of B3 propagation:
 

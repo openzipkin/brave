@@ -5,6 +5,7 @@ import brave.Tracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -64,20 +65,23 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
    * Start a consumer span child of the producer span. And immediately finish It.
    */
   Span startAndFinishConsumerSpan(ConsumerRecord record) {
-    TraceContext context = extractor.extract(record.headers()).context();
-    if (context == null) {
-      return tracing.tracer().nextSpan();
+    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+    Span span;
+    if (extracted.context() != null) {
+      span = tracing.tracer().newChild(extracted.context());
+    } else if (extracted.traceIdContext() != null) {
+      span = tracing.tracer().newTrace(extracted.traceIdContext());
     } else {
-      Span span = tracing.tracer().newChild(context);
-      if (!span.isNoop()) {
-        if (record.key() != null) {
-          span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
-        }
-        span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
-      }
-      span.kind(Span.Kind.CONSUMER).start().finish();
-      return span;
+      span = tracing.tracer().nextSpan();
     }
+    if (!span.isNoop()) {
+      if (record.key() != null) {
+        span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+      }
+      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+    }
+    span.kind(Span.Kind.CONSUMER).start().finish();
+    return span;
   }
 
   @Override public Set<TopicPartition> assignment() {
