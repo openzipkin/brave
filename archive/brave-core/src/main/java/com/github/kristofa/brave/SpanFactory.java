@@ -50,7 +50,7 @@ abstract class SpanFactory {
       long newSpanId = randomGenerator().nextLong();
       if (maybeParent == null) { // new trace
         return Brave.toSpan(SpanId.builder()
-            .traceIdHigh(traceId128Bit() ? randomGenerator().nextLong() : 0L)
+            .traceIdHigh(traceId128Bit() ? nextTraceIdHigh(randomGenerator()) : 0L)
             .traceId(newSpanId)
             .spanId(newSpanId)
             .sampled(sampler().isSampled(newSpanId))
@@ -77,6 +77,13 @@ abstract class SpanFactory {
         return Brave.toSpan(context);
       }
     }
+  }
+
+  static long nextTraceIdHigh(Random prng) {
+    long epochSeconds = System.currentTimeMillis() / 1000;
+    int random = prng.nextInt();
+    return (epochSeconds & 0xffffffffL) << 32
+        |  (random & 0xffffffffL);
   }
 }
 

@@ -2,6 +2,7 @@ package brave.internal;
 
 import brave.Clock;
 import brave.Tracer;
+import brave.Tracing;
 import com.google.auto.value.AutoValue;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -112,6 +113,15 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
    */
   public abstract long randomLong();
 
+  /**
+   * Returns the high 8-bytes for use in {@link Tracing.Builder#traceId128Bit 128-bit trace IDs}.
+   *
+   * <p>The upper 4-bytes are epoch seconds and the lower 4-bytes are random. This makes it
+   * convertible to <a href="http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html"></a>Amazon
+   * X-Ray trace ID format v1</a>.
+   */
+  public abstract long nextTraceIdHigh();
+
   /** gets a timestamp based on duration since the create tick. */
   @Override
   public long currentTimeMicroseconds() {
@@ -136,6 +146,18 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
     @Override public long randomLong() {
       return java.util.concurrent.ThreadLocalRandom.current().nextLong();
     }
+
+    @IgnoreJRERequirement
+    @Override public long nextTraceIdHigh() {
+      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current());
+    }
+  }
+
+  static long nextTraceIdHigh(Random prng) {
+    long epochSeconds = System.currentTimeMillis() / 1000;
+    int random = prng.nextInt();
+    return (epochSeconds & 0xffffffffL) << 32
+        |  (random & 0xffffffffL);
   }
 
   @AutoValue
@@ -148,6 +170,10 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
 
     @Override public long randomLong() {
       return prng().nextLong();
+    }
+
+    @Override public long nextTraceIdHigh() {
+      return nextTraceIdHigh(prng());
     }
   }
 }
