@@ -2,15 +2,15 @@ package com.github.kristofa.brave;
 
 import brave.Tracing;
 import org.junit.After;
-import zipkin.Span;
-import zipkin.reporter.Reporter;
 
 public class Brave4ServerTracerTest extends ServerTracerTest {
-  @Override Brave newBrave() {
+  @Override Brave newBrave(boolean supportsJoin) {
     return TracerAdapter.newBrave(Tracing.newBuilder()
         .clock(clock::currentTimeMicroseconds)
         .localEndpoint(ZIPKIN_ENDPOINT)
-        .reporter((Reporter<Span>) spans::add).build().tracer());
+        .reporter(spans::add)
+        .supportsJoin(supportsJoin)
+        .build().tracer());
   }
 
   @After public void close(){
