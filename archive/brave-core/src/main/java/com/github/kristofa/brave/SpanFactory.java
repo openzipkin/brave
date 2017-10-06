@@ -24,6 +24,7 @@ abstract class SpanFactory {
     static Builder builder() {
       return new AutoValue_SpanFactory_Default.Builder()
           .traceId128Bit(false)
+          .supportsJoin(true)
           .randomGenerator(new Random())
           .sampler(Sampler.ALWAYS_SAMPLE);
     }
@@ -35,6 +36,8 @@ abstract class SpanFactory {
 
       Builder traceId128Bit(boolean traceId128Bit);
 
+      Builder supportsJoin(boolean supportsJoin);
+
       Builder sampler(Sampler sampler);
 
       Default build();
@@ -43,6 +46,8 @@ abstract class SpanFactory {
     abstract Random randomGenerator();
 
     abstract boolean traceId128Bit();
+
+    abstract boolean supportsJoin();
 
     abstract Sampler sampler();
 
@@ -64,6 +69,7 @@ abstract class SpanFactory {
     }
 
     @Override Span joinSpan(SpanId context) {
+      if (!supportsJoin()) return nextSpan(context);
       // If the sampled flag was left unset, we need to make the decision here
       if (context.sampled() == null) {
         return Brave.toSpan(context.toBuilder()

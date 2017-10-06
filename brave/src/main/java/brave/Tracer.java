@@ -111,6 +111,12 @@ public final class Tracer {
       return this;
     }
 
+    /** @see Tracing.Builder#supportsJoin(boolean) */
+    public Builder supportsJoin(boolean supportsJoin) {
+      delegate.supportsJoin(supportsJoin);
+      return this;
+    }
+
     public Tracer build() {
       return delegate.build().tracer();
     }
@@ -126,7 +132,7 @@ public final class Tracer {
 
   Tracer(Tracing.Builder builder, AtomicBoolean noop) {
     this.noop = noop;
-    this.supportsJoin = builder.propagationFactory.supportsJoin();
+    this.supportsJoin = builder.supportsJoin && builder.propagationFactory.supportsJoin();
     this.clock = builder.clock;
     this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;

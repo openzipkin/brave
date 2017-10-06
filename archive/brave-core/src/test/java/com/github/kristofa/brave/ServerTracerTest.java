@@ -30,7 +30,7 @@ public class ServerTracerTest {
   ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
 
   List<zipkin.Span> spans = new ArrayList<>();
-  Brave brave = newBrave();
+  Brave brave = newBrave(true);
   Recorder recorder = brave.serverTracer().recorder();
 
   @Before
@@ -38,8 +38,12 @@ public class ServerTracerTest {
     ThreadLocalServerClientAndLocalSpanState.clear();
   }
 
-  Brave newBrave() {
-    return new Brave.Builder(ENDPOINT).clock(clock).reporter(spans::add).build();
+  Brave newBrave(boolean supportsJoin) {
+    return new Brave.Builder(ENDPOINT)
+        .clock(clock)
+        .reporter(spans::add)
+        .supportsJoin(false)
+        .build();
   }
 
   @Test
@@ -54,6 +58,17 @@ public class ServerTracerTest {
 
     recorder.flush(brave.serverSpanThreadBinder().get());
     assertThat(spans.get(0).name).isEqualTo(SPAN_NAME);
+  }
+
+  @Test
+  public void setStateCurrentTrace_joinUnsupported() {
+    brave = newBrave(false);
+    recorder = brave.serverTracer().recorder();
+
+    brave.serverTracer().setStateCurrentTrace(CONTEXT, SPAN_NAME);
+
+    recorder.flush(brave.serverSpanThreadBinder().get());
+    assertThat(spans.get(0).parentId).isEqualTo(CONTEXT.spanId);
   }
 
   @Test

@@ -111,6 +111,7 @@ public abstract class Tracing implements Closeable {
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false;
+    boolean supportsJoin = true;
     Propagation.Factory propagationFactory = Propagation.Factory.B3;
 
     /**
@@ -225,6 +226,24 @@ public abstract class Tracing implements Closeable {
     /** When true, new root spans will have 128-bit trace IDs. Defaults to false (64-bit) */
     public Builder traceId128Bit(boolean traceId128Bit) {
       this.traceId128Bit = traceId128Bit;
+      return this;
+    }
+
+    /**
+     * True means the tracing system supports sharing a span ID between a {@link Span.Kind#CLIENT}
+     * and {@link Span.Kind#SERVER} span. Defaults to true.
+     *
+     * <p>Set this to false when the tracing system requires the opposite. For example, if
+     * ultimately spans are sent to Amazon X-Ray or Google Stackdriver Trace, you should set this to
+     * false.
+     *
+     * <p>This is implicitly set to false when {@link Propagation.Factory#supportsJoin()} is false,
+     * as in that case, sharing IDs isn't possible anyway.
+     *
+     * @see Propagation.Factory#supportsJoin()
+     */
+    public Builder supportsJoin(boolean supportsJoin) {
+      this.supportsJoin = supportsJoin;
       return this;
     }
 

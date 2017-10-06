@@ -324,6 +324,53 @@ extractor = tracing.propagation().extractor(Request::getHeader);
 span = tracer.nextSpan(extractor, request);
 ```
 
+### Sharing span IDs between client and server
+
+Most instrumentation use `Tracer.joinSpan` to create a server span ID. This
+attempts to reuse trace identifiers from incoming headers for the server
+operation, restarting the trace as needed. When span ID is shared, data
+reported includes a flag saying so.
+
+Here's an example of B3 propagation:
+
+```
+                              ┌───────────────────┐      ┌───────────────────┐
+ Incoming Headers             │   TraceContext    │      │   TraceContext    │
+┌───────────────────┐(extract)│ ┌───────────────┐ │(join)│ ┌───────────────┐ │
+│ X─B3-TraceId      │─────────┼─┼> TraceId      │ │──────┼─┼> TraceId      │ │
+│                   │         │ │               │ │      │ │               │ │
+│ X─B3-ParentSpanId │─────────┼─┼> ParentSpanId │ │──────┼─┼> ParentSpanId │ │
+│                   │         │ │               │ │      │ │               │ │
+│ X─B3-SpanId       │─────────┼─┼> SpanId       │ │──────┼─┼> SpanId       │ │
+└───────────────────┘         │ │               │ │      │ │               │ │
+                              │ │               │ │      │ │  Shared: true │ │
+                              │ └───────────────┘ │      │ └───────────────┘ │
+                              └───────────────────┘      └───────────────────┘
+```
+
+Some propagation systems only forward the parent span ID, detected when
+`Propagation.Factory.supportsJoin() == false`. In this case, a new span ID is
+always provisioned and the incoming context determines the parent ID.
+
+Here's an example of AWS propagation:
+```
+                              ┌───────────────────┐      ┌───────────────────┐
+ x-amzn-trace-id              │   TraceContext    │      │   TraceContext    │
+┌───────────────────┐(extract)│ ┌───────────────┐ │(join)│ ┌───────────────┐ │
+│ Root              │─────────┼─┼> TraceId      │ │──────┼─┼> TraceId      │ │
+│                   │         │ │               │ │      │ │               │ │
+│ Parent            │─────────┼─┼> SpanId       │ │──────┼─┼> ParentSpanId │ │
+└───────────────────┘         │ └───────────────┘ │      │ │               │ │
+                              └───────────────────┘      │ │  SpanId: New  │ │
+                                                         │ └───────────────┘ │
+                                                         └───────────────────┘
+```
+
+Note: Some span reporters do not support sharing span IDs. For example, if you
+set `Tracing.Builder.spanReporter(amazonXrayOrGoogleStackdrive)`, disable join
+via `Tracing.Builder.supportsJoin(false)`. This will force a new child span on
+`Tracer.join()`.
+
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
 be used when you have no other means to get a reference. This was made

@@ -186,6 +186,15 @@ public class Brave {
             return this;
         }
 
+        /**
+         * True means the tracing system supports sharing a span ID on {@link
+         * ServerTracer#setStateCurrentTrace}. Defaults to true.
+         */
+        public Builder supportsJoin(boolean supportsJoin) {
+            this.spanFactoryBuilder.supportsJoin(supportsJoin);
+            return this;
+        }
+
         public Brave build() {
             if (spanFactory == null) {
                 spanFactory = spanFactoryBuilder.build();
