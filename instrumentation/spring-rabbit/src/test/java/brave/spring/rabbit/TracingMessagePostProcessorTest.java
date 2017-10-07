@@ -26,7 +26,7 @@ public class TracingMessagePostProcessorTest {
         reportedSpans.clear();
         Tracing tracing = Tracing.newBuilder()
                 .sampler(Sampler.ALWAYS_SAMPLE)
-                .spanReporter(span -> reportedSpans.add(span))
+                .spanReporter(reportedSpans::add)
                 .build();
         tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing);
     }
