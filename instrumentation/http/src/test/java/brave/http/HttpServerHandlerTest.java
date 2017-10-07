@@ -57,6 +57,22 @@ public class HttpServerHandlerTest {
         .isFalse();
   }
 
+  @Test public void handleReceive_reusesTraceId() {
+    HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
+        .supportsJoin(false).build());
+
+    tracer = httpTracing.tracing().tracer();
+    handler = HttpServerHandler.create(httpTracing, adapter);
+
+    TraceContext incomingContext = tracer.nextSpan().context();
+    when(extractor.extract(request))
+        .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
+
+    assertThat(handler.handleReceive(extractor, request).context())
+        .extracting(TraceContext::traceId, TraceContext::parentId, TraceContext::shared)
+        .containsOnly(incomingContext.traceId(), incomingContext.spanId(), false);
+  }
+
   @Test public void handleReceive_reusesSpanIds() {
     TraceContext incomingContext = tracer.nextSpan().context();
     when(extractor.extract(request))
@@ -68,7 +84,7 @@ public class HttpServerHandlerTest {
 
   @Test public void handleReceive_honorsSamplingFlags() {
     when(extractor.extract(request))
-        .thenReturn(TraceContextOrSamplingFlags.create(TraceContext.newBuilder().sampled(false)));
+        .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED));
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
         .isTrue();

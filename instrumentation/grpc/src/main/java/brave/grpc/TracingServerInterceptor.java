@@ -33,10 +33,16 @@ final class TracingServerInterceptor implements ServerInterceptor {
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
       final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
-    TraceContextOrSamplingFlags contextOrFlags = extractor.extract(headers);
-    Span span = contextOrFlags.context() != null
-        ? tracer.joinSpan(contextOrFlags.context())
-        : tracer.newTrace(contextOrFlags.samplingFlags());
+    TraceContextOrSamplingFlags extracted = extractor.extract(headers);
+    Span span;
+    if (extracted.context() != null) {
+      span = tracer.toSpan(extracted.context());
+    } else if (extracted.traceIdContext() != null) {
+      span = tracer.newTrace(extracted.traceIdContext());
+    } else {
+      span = tracer.newTrace(extracted.samplingFlags());
+    }
+
     span.kind(Span.Kind.SERVER);
     parser.onStart(call, headers, span);
     // startCall invokes user interceptors, so we place the span in scope here

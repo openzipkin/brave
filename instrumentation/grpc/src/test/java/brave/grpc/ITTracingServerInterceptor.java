@@ -42,6 +42,7 @@ import org.junit.rules.ExpectedException;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -125,11 +126,46 @@ public class ITTracingServerInterceptor {
       assertThat(s.traceId()).isEqualTo(traceId);
       assertThat(s.parentId()).isEqualTo(parentId);
       assertThat(s.id()).isEqualTo(spanId);
+      assertThat(s.shared()).isTrue();
+    });
+  }
+
+  @Test public void createsChildWhenJoinDisabled() throws Exception {
+    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build());
+    init();
+
+    final String traceId = "463ac35c9f6413ad";
+    final String parentId = traceId;
+    final String spanId = "48485a3953bb6124";
+
+    Channel channel = ClientInterceptors.intercept(client, new ClientInterceptor() {
+      @Override
+      public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+          @Override
+          public void start(Listener<RespT> responseListener, Metadata headers) {
+            headers.put(Key.of("X-B3-TraceId", ASCII_STRING_MARSHALLER), traceId);
+            headers.put(Key.of("X-B3-ParentSpanId", ASCII_STRING_MARSHALLER), parentId);
+            headers.put(Key.of("X-B3-SpanId", ASCII_STRING_MARSHALLER), spanId);
+            super.start(responseListener, headers);
+          }
+        };
+      }
+    });
+
+    GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
+
+    assertThat(spans).allSatisfy(s -> {
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.parentId()).isEqualTo(spanId);
+      assertThat(s.id()).isNotEqualTo(spanId);
+      assertThat(s.shared()).isFalse();
     });
   }
 
   @Test public void samplingDisabled() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
+    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).build());
     init();
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
