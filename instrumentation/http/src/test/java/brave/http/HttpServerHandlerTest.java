@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.SamplingFlags;
@@ -42,7 +43,7 @@ public class HttpServerHandlerTest {
     when(adapter.parseClientAddress(eq(request), isA(Endpoint.Builder.class))).thenCallRealMethod();
   }
 
-  @After public void close(){
+  @After public void close() {
     Tracing.current().close();
   }
 
@@ -53,8 +54,9 @@ public class HttpServerHandlerTest {
     // request sampler abstains (trace ID sampler will say true)
     when(sampler.trySample(adapter, request)).thenReturn(null);
 
-    assertThat(handler.handleReceive(extractor, request).isNoop())
-        .isFalse();
+    Span newSpan = handler.handleReceive(extractor, request);
+    assertThat(newSpan.isNoop()).isFalse();
+    assertThat(newSpan.context().shared()).isFalse();
   }
 
   @Test public void handleReceive_reusesTraceId() {
@@ -100,7 +102,6 @@ public class HttpServerHandlerTest {
     assertThat(handler.handleReceive(extractor, request).isNoop())
         .isTrue();
   }
-
 
   @Test public void handleReceive_makesRequestBasedSamplingDecision_context() {
     TraceContext incomingContext = tracer.nextSpan().context().toBuilder().sampled(null).build();
