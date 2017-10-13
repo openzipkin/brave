@@ -1,6 +1,7 @@
 package brave.http;
 
 import brave.Tracer;
+import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -60,8 +61,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
         throws IOException, ServletException {
-      String traceId = currentTraceContext.get().traceIdString();
-      ((HttpServletResponse) response).setHeader("my-id", traceId);
+      String userId = ExtraFieldPropagation.current("user-id");
+      ((HttpServletResponse) response).setHeader("user-id", userId);
       chain.doFilter(request, response);
     }
 
@@ -72,11 +73,12 @@ public abstract class ITServlet25Container extends ITServletContainer {
   @Test public void currentSpanVisibleToOtherFilters() throws Exception {
     String path = "/foo";
 
-    Request request = new Request.Builder().url(url(path)).build();
+    Request request = new Request.Builder().url(url(path))
+        .header("user-id", "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      String idString = spans.iterator().next().id();
-      assertThat(idString).startsWith(response.header("my-id"));
+      assertThat(response.header("user-id"))
+          .isEqualTo("abcdefg");
     }
   }
 

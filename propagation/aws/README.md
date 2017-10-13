@@ -23,7 +23,7 @@ tracing = Tracing.newBuilder()
 ## Utilities
 There are a couple added utilities for parsing and generating an AWS trace ID string:
 
-* `AWSPropagation.rootField` - used to generate a formatted root field ID for correlation purposes.
+* `AWSPropagation.traceId` - used for correlation purposes and lookup in the X-Ray UI
 * `AWSPropagation.extract` - extracts a trace context from a string such as an environment variable.
 
 Ex. to extract a trace context from the built-in AWS Lambda variable

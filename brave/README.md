@@ -324,6 +324,31 @@ extracted = tracing.propagation().extractor(Request::getHeader);
 span = tracer.nextSpan(extracted, request);
 ```
 
+### Propagating extra fields
+
+Sometimes you need to propagate extra fields, such as a request ID or an alternate trace context.
+For example, if you are in a Cloud Foundry environment, you might want to pass the request ID:
+
+```java
+// when you initialize the builder, define the extra field you want to propagate
+tracingBuilder.propagationFactory(
+  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id")
+);
+
+// later, you can tag that request ID or use it in log correlation
+requestId = ExtraFieldPropagation.current("x-vcap-request-id");
+```
+
+You may also need to propagate a trace context you aren't using. For example, you may be in an
+Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
+correctly, pass-through its tracing header like so.
+
+```java
+tracingBuilder.propagationFactory(
+  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-amzn-trace-id")
+);
+```
+
 ### Extracting a propagated context
 The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
 from an incoming request or message. The carrier is usually a request object
