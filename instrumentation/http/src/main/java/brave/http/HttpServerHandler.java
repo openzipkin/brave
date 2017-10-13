@@ -5,10 +5,8 @@ import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.propagation.TraceIdContext;
 import zipkin2.Endpoint;
 
 /**
@@ -93,40 +91,12 @@ public final class HttpServerHandler<Req, Resp> {
 
   /** Creates a potentially noop span representing this request */
   Span nextSpan(TraceContextOrSamplingFlags extracted, Req request) {
-    // First, check to see if a complete context is present
-    TraceContext context = extracted.context();
-    if (context != null) {
-      // If there were trace IDs in the request and a sampling decision, honor it
-      if (context.sampled() != null) return tracer.joinSpan(context);
-
-      // Otherwise, try to make a new decision
-      return tracer.joinSpan(context.toBuilder()
-          .sampled(sampler.trySample(adapter, request))
-          .build());
+    if (extracted.sampled() == null) { // Otherwise, try to make a new decision
+      extracted = extracted.sampled(sampler.trySample(adapter, request));
     }
-
-    // Next, check to see if trace IDs, but not span IDs are present
-    TraceIdContext traceIdContext = extracted.traceIdContext();
-    if (traceIdContext != null) {
-      if (traceIdContext.sampled() != null) {
-        return tracer.newTrace(traceIdContext);
-      }
-
-      // Otherwise, try to make a new decision
-      return tracer.newTrace(traceIdContext.toBuilder()
-          .sampled(sampler.trySample(adapter, request))
-          .build());
-    }
-
-    // There was no trace ID in the incoming requests. However, there might be sampling flags
-    SamplingFlags samplingFlags = extracted.samplingFlags();
-    if (samplingFlags.sampled() == null) {
-      samplingFlags = new SamplingFlags.Builder()
-          .sampled(sampler.trySample(adapter, request))
-          .debug(samplingFlags.debug()) // should always be false if unsampled!
-          .build();
-    }
-    return tracer.newTrace(samplingFlags);
+    return extracted.context() != null
+        ? tracer.joinSpan(extracted.context())
+        : tracer.nextSpan(extracted);
   }
 
   /**

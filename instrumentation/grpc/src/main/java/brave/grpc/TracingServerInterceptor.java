@@ -34,14 +34,9 @@ final class TracingServerInterceptor implements ServerInterceptor {
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
       final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
     TraceContextOrSamplingFlags extracted = extractor.extract(headers);
-    Span span;
-    if (extracted.context() != null) {
-      span = tracer.toSpan(extracted.context());
-    } else if (extracted.traceIdContext() != null) {
-      span = tracer.newTrace(extracted.traceIdContext());
-    } else {
-      span = tracer.newTrace(extracted.samplingFlags());
-    }
+    Span span = extracted.context() != null
+        ? tracer.joinSpan(extracted.context())
+        : tracer.nextSpan(extracted);
 
     span.kind(Span.Kind.SERVER);
     parser.onStart(call, headers, span);

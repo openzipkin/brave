@@ -47,12 +47,14 @@ public class OneWaySpanTest {
     server.setDispatcher(new Dispatcher() {
       @Override public MockResponse dispatch(RecordedRequest recordedRequest) {
         // pull the context out of the incoming request
-        TraceContextOrSamplingFlags result = serverTracing.propagation()
+        TraceContextOrSamplingFlags extracted = serverTracing.propagation()
             .extractor(RecordedRequest::getHeader).extract(recordedRequest);
 
-        // in real life, we'd guard result.context was set and start a new trace if not
-        serverTracing.tracer().joinSpan(result.context())
-            .name(recordedRequest.getMethod())
+        Span span = extracted.context() != null
+            ? serverTracing.tracer().joinSpan(extracted.context())
+            : serverTracing.tracer().nextSpan(extracted);
+
+        span.name(recordedRequest.getMethod())
             .kind(Span.Kind.SERVER)
             .start().flush(); // start the server side and flush instead of processing a response
 

@@ -138,7 +138,8 @@ public final class Tracer {
     this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
-    this.traceId128Bit = builder.traceId128Bit;
+    this.traceId128Bit =
+        builder.traceId128Bit || builder.propagationFactory.requires128BitTraceId();
   }
 
   /** @deprecated use {@link Tracing#clock()} */
@@ -147,27 +148,32 @@ public final class Tracer {
   }
 
   /**
-   * Creates a new trace. If there is an existing trace, use {@link #newChild(TraceContext)}
-   * instead.
+   * Explicitly creates a new trace. The result will be a root span (no parent span ID).
+   *
+   * <p>To implicitly create a new trace, or a span within an existing one, use {@link
+   * #nextSpan()}.
    */
   public Span newTrace() {
-    return toSpan(nextContext(null, null, SamplingFlags.EMPTY));
+    return nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
   }
 
   /**
-   * Joining is re-using the same trace and span ids extracted from an incoming request. Here, we
-   * ensure a sampling decision has been made. If the span passed sampling, we assume this is a
-   * shared span, one where the caller and the current tracer report to the same span IDs. If no
-   * sampling decision occurred yet, we have exclusive access to this span ID.
+   * Joining is re-using the same trace and span ids extracted from an incoming RPC request. This
+   * should not be used for messaging operations, as {@link #nextSpan(TraceContextOrSamplingFlags)}
+   * is a better choice.
+   *
+   * <p>When this incoming context is sampled, we assume this is a shared span, one where the caller
+   * and the current tracer report to the same span IDs. If no sampling decision occurred yet, we
+   * have exclusive access to this span ID.
    *
    * <p>Here's an example of conditionally joining a span, depending on if a trace context was
    * extracted from an incoming request.
    *
    * <pre>{@code
-   * contextOrFlags = extractor.extract(request);
+   * extracted = extractor.extract(request);
    * span = contextOrFlags.context() != null
    *          ? tracer.joinSpan(contextOrFlags.context())
-   *          : tracer.newTrace(contextOrFlags.samplingFlags());
+   *          : tracer.nextSpan(extracted);
    * }</pre>
    *
    * <p><em>Note:</em> When {@link Propagation.Factory#supportsJoin()} is false, this will always
@@ -192,10 +198,42 @@ public final class Tracer {
   }
 
   /**
-   * Like {@link #newChild(TraceContext)}, where the trace ID is present, but not a span ID.
+   * Explicitly creates a child within an existing. The result will be have its parent ID set to the
+   * input's span ID.
+   *
+   * <p>To implicitly create a new trace, or a span within an existing one, use {@link
+   * #nextSpan()}.
    */
-  public Span newTrace(TraceIdContext traceIdContext) {
-    return toSpan(nextContext(null, traceIdContext, null));
+  public Span newChild(TraceContext parent) {
+    if (parent == null) throw new NullPointerException("parent == null");
+    return nextSpan(TraceContextOrSamplingFlags.create(parent));
+  }
+
+  /**
+   * This creates a new span based on parameters extracted from an incoming request. This will
+   * always result in a new span. If no trace identifiers were extracted, then the result will be a
+   * root span in a new trace.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * extracted = extractor.extract(request);
+   * span = tracer.nextSpan(extracted);
+   * }</pre>
+   *
+   * <p><em>Note:</em> Unlike {@link #joinSpan(TraceContext)}, this does not attempt to re-use
+   * extracted span IDs. This means the extracted context (if any) is the parent of the span
+   * returned.
+   *
+   * @see Propagation
+   * @see Extractor#extract(Object)
+   * @see TraceContextOrSamplingFlags
+   */
+  public Span nextSpan(TraceContextOrSamplingFlags extracted) {
+    TraceContext parent = extracted.context();
+    if (parent != null && Boolean.FALSE.equals(parent.sampled())) {
+      return NoopSpan.create(parent);
+    }
+    return toSpan(nextContext(extracted));
   }
 
   /**
@@ -216,7 +254,7 @@ public final class Tracer {
    * }</pre>
    */
   public Span newTrace(SamplingFlags samplingFlags) {
-    return toSpan(nextContext(null, null, samplingFlags));
+    return toSpan(nextContext(TraceContextOrSamplingFlags.create(samplingFlags)));
   }
 
   /** Converts the context as-is to a Span object */
@@ -228,47 +266,36 @@ public final class Tracer {
     return NoopSpan.create(context);
   }
 
-  /**
-   * Creates a new span within an existing trace. If there is no existing trace, use {@link
-   * #newTrace()} instead.
-   */
-  public Span newChild(TraceContext parent) {
-    if (parent == null) throw new NullPointerException("parent == null");
-    if (Boolean.FALSE.equals(parent.sampled())) {
-      return NoopSpan.create(parent);
-    }
-    return toSpan(nextContext(parent, null, null));
-  }
-
-  TraceContext nextContext(
-      @Nullable TraceContext parent,
-      @Nullable TraceIdContext traceIdContext,
-      @Nullable SamplingFlags samplingFlags
-  ) {
+  TraceContext nextContext(TraceContextOrSamplingFlags extracted) {
     long nextId = Platform.get().randomLong();
+    TraceContext parent = extracted.context();
     if (parent != null) {
-      return parent.toBuilder()
+      return parent.toBuilder() // copies "extra" from the parent
           .spanId(nextId)
           .parentId(parent.spanId())
           .shared(false)
           .build();
     }
-    if (traceIdContext != null) {
+    TraceIdContext traceIdContext = extracted.traceIdContext();
+    if (extracted.traceIdContext() != null) {
       Boolean sampled = traceIdContext.sampled();
       if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
       return TraceContext.newBuilder()
           .sampled(sampled)
           .debug(traceIdContext.debug())
           .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
-          .spanId(nextId).build();
+          .spanId(nextId)
+          .extra(extracted.extra()).build();
     }
+    SamplingFlags samplingFlags = extracted.samplingFlags();
     Boolean sampled = samplingFlags.sampled();
     if (sampled == null) sampled = sampler.isSampled(nextId);
     return TraceContext.newBuilder()
         .sampled(sampled)
         .debug(samplingFlags.debug())
         .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
-        .spanId(nextId).build();
+        .spanId(nextId)
+        .extra(extracted.extra()).build();
   }
 
   /**

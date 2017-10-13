@@ -141,8 +141,8 @@ public class ITTracingClientInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    TraceContextOrSamplingFlags context = server.takeRequest();
-    assertThat(context.context().sampled()).isFalse();
+    TraceContextOrSamplingFlags extracted = server.takeRequest();
+    assertThat(extracted.sampled()).isFalse();
   }
 
   @Test public void reportsClientKindToZipkin() throws Exception {

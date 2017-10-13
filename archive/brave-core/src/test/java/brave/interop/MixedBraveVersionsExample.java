@@ -132,14 +132,16 @@ public class MixedBraveVersionsExample {
    * "sr" and flushes the span. Also notice we return the completed span (to create children).
    */
   Span joinOneWaySpan(RecordedRequest recordedRequest) {
-    TraceContextOrSamplingFlags result =
+    TraceContextOrSamplingFlags extracted =
         brave4Server.propagation().extractor(RecordedRequest::getHeader).extract(recordedRequest);
 
-    // in real life, we'd guard result.context was set and start a new trace if not
-    Span serverSpan = brave4Server.tracer().joinSpan(result.context())
-        .name(recordedRequest.getMethod())
-        .kind(Span.Kind.SERVER);
-    serverSpan.flush(); // record the timestamp of the server receive and flush
+    Span serverSpan = extracted.context() != null
+        ? brave4Server.tracer().joinSpan(extracted.context())
+        : brave4Server.tracer().nextSpan(extracted);
+
+    serverSpan.name(recordedRequest.getMethod())
+        .kind(Span.Kind.SERVER)
+        .flush(); // record the timestamp of the server receive and flush
     return serverSpan;
   }
 

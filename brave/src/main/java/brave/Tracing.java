@@ -256,7 +256,6 @@ public abstract class Tracing implements Closeable {
         }
       }
       if (reporter == null) reporter = Platform.get();
-
       return new Default(this);
     }
 

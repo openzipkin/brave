@@ -114,6 +114,7 @@ public class ITTracingServerInterceptor {
             headers.put(Key.of("X-B3-TraceId", ASCII_STRING_MARSHALLER), traceId);
             headers.put(Key.of("X-B3-ParentSpanId", ASCII_STRING_MARSHALLER), parentId);
             headers.put(Key.of("X-B3-SpanId", ASCII_STRING_MARSHALLER), spanId);
+            headers.put(Key.of("X-B3-Sampled", ASCII_STRING_MARSHALLER), "1");
             super.start(responseListener, headers);
           }
         };
@@ -277,7 +278,7 @@ public class ITTracingServerInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter((zipkin2.reporter.Reporter<zipkin2.Span>) spans::add)
+        .spanReporter(spans::add)
         .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
