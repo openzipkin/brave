@@ -1,6 +1,5 @@
 package brave.kafka.clients;
 
-import brave.Tracing;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,28 +7,17 @@ import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
-import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
-public class TracingProducerTest {
-
-  private static final String TEST_TOPIC = "myTopic";
-  private static final String TEST_KEY = "foo";
-  private static final String TEST_VALUE = "bar";
-
-  private Tracing tracing;
-
-  @Before
-  public void setup() throws Exception {
-    tracing = Tracing.newBuilder().build();
-  }
+public class TracingProducerTest  extends BaseTracingTest {
+  MockProducer<Object, String> mockProducer = new MockProducer<>();
+  Producer<Object, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
 
   @Test
-  public void should_add_b3_headers_to_records() {
-    MockProducer<String, String> mockProducer = new MockProducer<>();
-    Producer<String, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
+  public void should_add_b3_headers_to_records() throws Exception {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<String> headerKeys = mockProducer.history().stream()
@@ -44,11 +32,39 @@ public class TracingProducerTest {
   }
 
   @Test
-  public void should_call_wrapped_producer() {
-    MockProducer<String, String> mockProducer = new MockProducer<>();
-    Producer<String, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
+  public void should_call_wrapped_producer() throws Exception {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     assertThat(mockProducer.history()).hasSize(1);
+  }
+
+  @Test
+  public void send_should_tag_topic_and_key() throws Exception {
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    mockProducer.completeNext();
+
+    assertThat(spans)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
+  }
+
+  @Test
+  public void send_shouldnt_tag_null_key() throws Exception {
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, null, TEST_VALUE));
+    mockProducer.completeNext();
+
+    assertThat(spans)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(entry("kafka.topic", TEST_TOPIC));
+  }
+
+  @Test
+  public void send_shouldnt_tag_binary_key() throws Exception {
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
+    mockProducer.completeNext();
+
+    assertThat(spans)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 }

@@ -1,12 +1,6 @@
 package brave.kafka.clients;
 
-import brave.Tracing;
-import brave.sampler.Sampler;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -14,75 +8,34 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.internal.Util;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-public class TracingConsumerTest {
-
-  String TEST_TOPIC = "myTopic";
-  String TEST_KEY = "foo";
-  String TEST_VALUE = "bar";
-
-  String TRACE_ID = "463ac35c9f6413ad";
-  String PARENT_ID = "463ac35c9f6413ab";
-  String SPAN_ID = "48485a3953bb6124";
-  String SAMPLED = "1";
-
-  MockConsumer<String, String> consumer;
-  TopicPartition topicPartition;
-  Tracing tracing;
-
-  List<Span> spans = new ArrayList<>();
+public class TracingConsumerTest extends BaseTracingTest {
+  MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+  TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, 0);
 
   @Before
-  public void init() throws IOException {
-    tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .sampler(Sampler.ALWAYS_SAMPLE)
-        .build();
-
-    consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
-    topicPartition = new TopicPartition(TEST_TOPIC, 0);
-
+  public void before() {
     Map<TopicPartition, Long> offsets = new HashMap<>();
     offsets.put(topicPartition, 0L);
 
     consumer.updateBeginningOffsets(offsets);
-    consumer.assign(Collections.singleton(topicPartition));
-
-    ConsumerRecord<String, String> fakeRecord =
-        new ConsumerRecord<>(TEST_TOPIC, 0, 0, TEST_KEY, TEST_VALUE);
-    fakeRecord.headers()
-        .add("X-B3-TraceId", TRACE_ID.getBytes(Util.UTF_8))
-        .add("X-B3-ParentSpanId", PARENT_ID.getBytes(Util.UTF_8))
-        .add("X-B3-SpanId", SPAN_ID.getBytes(Util.UTF_8))
-        .add("X-B3-Sampled", SAMPLED.getBytes(Util.UTF_8));
-    consumer.addRecord(fakeRecord);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    spans.clear();
+    consumer.assign(offsets.keySet());
   }
 
   @Test
   public void should_call_wrapped_poll_and_close_spans() {
-    Consumer<String, String> tracingConsumer = KafkaTracing.create(tracing).consumer(consumer);
+    consumer.addRecord(fakeRecord);
+    Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
 
     // offset changed
-    assertThat(consumer.position(topicPartition)).isEqualTo(1L);
-
-    // new span from headers
-    assertThat(spans)
-        .extracting(Span::parentId)
-        .containsExactly(SPAN_ID);
+    assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
     // kind is correct
     assertThat(spans)
@@ -92,24 +45,60 @@ public class TracingConsumerTest {
     // tags are correct
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("kafka.key", "foo"), entry("kafka.topic", "myTopic"));
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
   public void should_add_new_trace_headers_if_b3_missing() throws Exception {
-    consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 0, 1, TEST_KEY, TEST_VALUE));
-    Map<TopicPartition, Long> offsets = new HashMap<>();
-    offsets.put(topicPartition, 1L);
-    consumer.updateBeginningOffsets(offsets);
+    consumer.addRecord(fakeRecord);
 
-    Consumer<String, String> tracingConsumer = KafkaTracing.create(tracing).consumer(consumer);
+    Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
 
     assertThat(poll)
-        .hasSize(1)
         .extracting(ConsumerRecord::headers)
-        .extracting(headers -> headers.headers("X-B3-TraceId"))
-        .isNotEmpty()
-        .isNotEqualTo(TRACE_ID);
+        .flatExtracting(TracingConsumerTest::lastHeaders)
+        .extracting(Map.Entry::getKey)
+        .contains("X-B3-TraceId", "X-B3-SpanId");
+  }
+
+  @Test
+  public void should_createChildOfTraceHeaders() throws Exception {
+    addB3Headers(fakeRecord);
+    consumer.addRecord(fakeRecord);
+
+    Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
+    ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
+
+    assertThat(poll)
+        .extracting(ConsumerRecord::headers)
+        .flatExtracting(TracingConsumerTest::lastHeaders)
+        .contains(entry("X-B3-TraceId", TRACE_ID), entry("X-B3-ParentSpanId", SPAN_ID));
+  }
+
+  @Test
+  public void should_create_only_one_consumer_span_per_topic() {
+    Map<TopicPartition, Long> offsets = new HashMap<>();
+    // 2 partitions in the same topic
+    offsets.put(new TopicPartition(TEST_TOPIC, 0), 0L);
+    offsets.put(new TopicPartition(TEST_TOPIC, 1), 0L);
+
+    consumer.updateBeginningOffsets(offsets);
+    consumer.assign(offsets.keySet());
+
+    // create 500 messages
+    for (int i = 0; i < 250; i++) {
+      consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 0, i, TEST_KEY, TEST_VALUE));
+      consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 1, i, TEST_KEY, TEST_VALUE));
+    }
+
+    Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
+    tracingConsumer.poll(10);
+
+    // only one consumer span reported
+    assertThat(spans)
+        .hasSize(1)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 }
