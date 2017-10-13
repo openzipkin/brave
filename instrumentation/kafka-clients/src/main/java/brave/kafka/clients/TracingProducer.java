@@ -63,18 +63,14 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     Span span = tracing.tracer().nextSpan();
-
+    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+    injector.inject(span.context(), record.headers());
     if (!span.isNoop()) {
-      if (record.key() != null) {
+      if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
       }
-      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).kind(Kind.PRODUCER).start();
     }
-    // TODO: consider making remove a normal part of propagation
-    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
-
-    injector.inject(span.context(), record.headers());
-    span.kind(Kind.PRODUCER).start();
     try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       return delegate.send(record, new TracingCallback(span, callback));
     } catch (RuntimeException | Error e) {

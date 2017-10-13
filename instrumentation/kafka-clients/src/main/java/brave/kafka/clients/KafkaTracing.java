@@ -27,9 +27,9 @@ public final class KafkaTracing {
   }
 
   /**
-   * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. A child span
-   * is injected onto each message for a later processor to use. It can be read later with {@link
-   * #joinSpan(ConsumerRecord)}.
+   * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. This span is
+   * injected onto each message so it becomes the parent when a processor later calls {@link
+   * #nextSpan(ConsumerRecord)}.
    */
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
     return new TracingConsumer<>(tracing, consumer);
@@ -43,13 +43,43 @@ public final class KafkaTracing {
   /**
    * Retrieve the span extracted from the record headers. Creates a root span if the context is not
    * available.
+   *
+   * @deprecated this results in appending to a span already complete. Please use {@link
+   * #nextSpan(ConsumerRecord)}
    */
-  public Span joinSpan(ConsumerRecord record) {
+  @Deprecated
+  public Span joinSpan(ConsumerRecord<?, ?> record) {
     TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
     if (extracted.context() != null) {
       return tracing.tracer().toSpan(extracted.context()); // avoid creating an unnecessary child
     }
-    return tracing.tracer().nextSpan(extracted);
+    Span result = tracing.tracer().nextSpan(extracted);
+    if (!result.isNoop()) addTags(record, result);
+    return result;
+  }
+
+  /**
+   * Use this to create a span for processing the given record. Note: the result has no name and is
+   * not started.
+   *
+   * <p>This creates a child from identifiers extracted from the record headers, or a new span if
+   * one couldn't be extracted.
+   */
+  public Span nextSpan(ConsumerRecord<?, ?> record) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+    Span result = tracing.tracer().nextSpan(extracted);
+    if (extracted.context() == null && !result.isNoop()) {
+      addTags(record, result);
+    }
+    return result;
+  }
+
+  /** When an upstream context was not present, lookup keys are unlikely added */
+  static void addTags(ConsumerRecord<?, ?> record, Span result) {
+    if (record.key() instanceof String && !"".equals(record.key())) {
+      result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+    }
+    result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
   }
 
   static void finish(Span span, @Nullable Throwable error) {

@@ -6,6 +6,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,39 +43,44 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
   }
 
-  /** Each poll handles span creation. */
-  // TODO: consider making the one span for the poll, since it should be the parent anyway
+  /** This */
   @Override public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
-    for (ConsumerRecord<K, V> record : records) {
-      handleConsumed(record);
-    }
-    return records;
-  }
+    if (records.isEmpty() || tracing.isNoop()) return records;
+    Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
+    for (TopicPartition partition : records.partitions()) {
+      String topic = partition.topic();
+      List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
+      for (int i = 0, length = recordsInPartition.size(); i < length; i++) {
+        ConsumerRecord<K, V> record = recordsInPartition.get(i);
+        TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
 
-  void handleConsumed(ConsumerRecord record) {
-    Span span = startAndFinishConsumerSpan(record);
-    // remove propagation headers from the record
-    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
-
-    // Inject new propagation headers
-    injector.inject(span.context(), record.headers());
-  }
-
-  /**
-   * Start a consumer span child of the producer span. And immediately finish It.
-   */
-  Span startAndFinishConsumerSpan(ConsumerRecord record) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
-    Span span = tracing.tracer().nextSpan(extracted);
-    if (!span.isNoop()) {
-      if (record.key() != null) {
-        span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+        // If we extracted neither a trace context, nor request-scoped data (extra),
+        // make or reuse a span for this topic
+        if (extracted.samplingFlags() != null && extracted.extra().isEmpty()) {
+          Span consumerSpanForTopic = consumerSpansForTopic.get(topic);
+          if (consumerSpanForTopic == null) {
+            consumerSpansForTopic.put(topic,
+                consumerSpanForTopic = tracing.tracer().nextSpan(extracted)
+                    .kind(Span.Kind.CONSUMER)
+                    .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
+                    .start());
+          }
+          // no need to remove propagation headers as we failed to extract anything
+          injector.inject(consumerSpanForTopic.context(), record.headers());
+        } else { // we extracted request-scoped data, so cannot share a consumer span.
+          Span span = tracing.tracer().nextSpan(extracted).kind(Span.Kind.CONSUMER)
+              .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
+              .start();
+          span.finish();  // span won't be shared by other records
+          // remove prior propagation headers from the record
+          tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+          injector.inject(span.context(), record.headers());
+        }
       }
-      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
     }
-    span.kind(Span.Kind.CONSUMER).start().finish();
-    return span;
+    consumerSpansForTopic.values().forEach(Span::finish);
+    return records;
   }
 
   @Override public Set<TopicPartition> assignment() {
