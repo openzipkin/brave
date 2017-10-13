@@ -1,6 +1,8 @@
 package brave.propagation.aws;
 
+import brave.Tracing;
 import brave.internal.Nullable;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -61,6 +63,7 @@ public final class AWSPropagation<K> implements Propagation<K> {
   static final char[] ROOT = "Root=".toCharArray();
   static final char[] PARENT = ";Parent=".toCharArray();
   static final char[] SAMPLED = ";Sampled=".toCharArray();
+  public static final int ROOT_LENGTH = 35;
 
   final K traceIdKey;
   final List<K> fields;
@@ -125,22 +128,38 @@ public final class AWSPropagation<K> implements Propagation<K> {
     }
   }
 
+  /** Returns the current {@link #traceId(TraceContext)} or null if not available */
+  @Nullable public static String currentTraceId() {
+    Tracing tracing = Tracing.current();
+    if (tracing == null) return null;
+    TraceContext context = tracing.currentTraceContext().get();
+    if (context == null) return null;
+    return traceId(context);
+  }
+
   /**
    * Used for log correlation or {@link brave.Span#tag(String, String) tag values}
    *
    * @return a formatted Root field like "1-58406520-a006649127e371903a2de979" or null if the
    * context was not created from an instance of {@link AWSPropagation}.
    */
-  @Nullable public static String rootField(TraceContext context) {
+  @Nullable public static String traceId(TraceContext context) {
     for (int i = 0, length = context.extra().size(); i < length; i++) {
       Object next = context.extra().get(i);
       if (next instanceof Extra) {
-        char[] result = new char[35];
+        char[] result = new char[ROOT_LENGTH];
         writeRoot(context, result, 0);
         return new String(result);
       }
     }
-    return null;
+    // See if we have the field as a pass-through
+    String maybeHeader = ExtraFieldPropagation.get(context, TRACE_ID_NAME);
+    if (maybeHeader == null) return null;
+    int i = maybeHeader.indexOf("Root=");
+    if (i == -1) return null;
+    i += 5; // Root=
+    if (maybeHeader.length() < i + ROOT_LENGTH) return null;
+    return maybeHeader.substring(i, i + ROOT_LENGTH);
   }
 
   /** Writes 35 characters representing the input trace ID to the buffer at the given offset */
@@ -199,7 +218,7 @@ public final class AWSPropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
-      if (traceIdString == null) return TraceContextOrSamplingFlags.EMPTY;
+      if (traceIdString == null) return EMPTY;
 
       Boolean sampled = null;
       long traceIdHigh = 0L, traceId = 0L;
@@ -247,7 +266,7 @@ public final class AWSPropagation<K> implements Propagation<K> {
             }
             break;
           case ROOT:
-            if (i + 35 > length // 35 = length of 1-67891233-abcdef012345678912345678
+            if (i + ROOT_LENGTH > length // 35 = length of 1-67891233-abcdef012345678912345678
                 || traceIdString.charAt(i++) != '1'
                 || traceIdString.charAt(i++) != '-') {
               break OUTER; // invalid version or format
@@ -342,6 +361,8 @@ public final class AWSPropagation<K> implements Propagation<K> {
   /** When present, this context was created with AWSPropagation */
   static final Extra MARKER = new Extra();
   static final List<Object> DEFAULT_EXTRA = Collections.singletonList(MARKER);
+  static final TraceContextOrSamplingFlags EMPTY =
+      TraceContextOrSamplingFlags.EMPTY.toBuilder().extra(DEFAULT_EXTRA).build();
 
   static final class Extra { // hidden intentionally
     CharSequence fields;

@@ -1,5 +1,8 @@
 package brave.propagation.aws;
 
+import brave.Tracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -31,14 +34,75 @@ public class AWSPropagationTest {
       .extra(AWSPropagation.DEFAULT_EXTRA)
       .build();
 
-  @Test public void traceIdString() throws Exception {
-    assertThat(AWSPropagation.rootField(sampledContext))
+  @Test public void traceId() throws Exception {
+    assertThat(AWSPropagation.traceId(sampledContext))
         .isEqualTo("1-67891233-abcdef012345678912345678");
   }
 
-  @Test public void traceIdString_null_if_not_aws() throws Exception {
+  @Test public void traceIdWhenPassThrough() throws Exception {
+    carrier.put("x-amzn-trace-id", "Robot=Hello;Self=1-582113d1-1e48b74b3603af8479078ed6;  " +
+        "Root=1-58211399-36d228ad5d99923122bbe354;  " +
+        "TotalTimeSoFar=112ms;CalledFrom=Foo");
+
+    TraceContext context = contextWithPassThrough();
+
+    assertThat(AWSPropagation.traceId(context))
+        .isEqualTo("1-58211399-36d228ad5d99923122bbe354");
+  }
+
+  @Test public void traceIdWhenPassThrough_nullOnTruncated() throws Exception {
+    carrier.put("x-amzn-trace-id", "Root=1-58211399-36d228ad5d99923122bbe3");
+
+    TraceContext context = contextWithPassThrough();
+
+    assertThat(AWSPropagation.traceId(context))
+        .isNull();
+  }
+
+  TraceContext contextWithPassThrough() {
+    extractor = ExtraFieldPropagation.newFactory(Propagation.Factory.B3, "x-amzn-trace-id")
+        .create(Propagation.KeyFactory.STRING).extractor(Map::get);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+
+    // sanity check
+    assertThat(extracted.samplingFlags())
+        .isEqualTo(SamplingFlags.EMPTY);
+    assertThat(extracted.extra())
+        .isNotEmpty();
+
+    // Make a context that wasn't from AWSPropagation
+    return TraceContext.newBuilder()
+        .traceId(1L)
+        .spanId(2L)
+        .sampled(true)
+        .extra(extracted.extra())
+        .build();
+  }
+
+  @Test public void traceId_null_if_not_aws() throws Exception {
     TraceContext notAWS = sampledContext.toBuilder().extra(Collections.emptyList()).build();
-    assertThat(AWSPropagation.rootField(notAWS))
+    assertThat(AWSPropagation.traceId(notAWS))
+        .isNull();
+  }
+
+  @Test public void currentTraceId() throws Exception {
+    try (Tracing t = Tracing.newBuilder().propagationFactory(AWSPropagation.FACTORY).build();
+         CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(sampledContext)) {
+      assertThat(AWSPropagation.currentTraceId())
+          .isEqualTo("1-67891233-abcdef012345678912345678");
+    }
+  }
+
+  @Test public void currentTraceId_null_if_no_current_context() throws Exception {
+    try (Tracing t = Tracing.newBuilder().propagationFactory(AWSPropagation.FACTORY).build()) {
+      assertThat(AWSPropagation.currentTraceId())
+          .isNull();
+    }
+  }
+
+  @Test public void currentTraceId_null_if_nothing_current() throws Exception {
+    assertThat(AWSPropagation.currentTraceId())
         .isNull();
   }
 
@@ -60,6 +124,13 @@ public class AWSPropagationTest {
 
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
     assertThat(extracted.context().extra())
+        .containsExactly(AWSPropagation.MARKER);
+  }
+
+  /** If invoked extract, a 128-bit trace ID will be created, compatible with AWS format */
+  @Test public void extract_fail_containsMarker() throws Exception {
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    assertThat(extracted.extra())
         .containsExactly(AWSPropagation.MARKER);
   }
 
