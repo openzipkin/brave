@@ -1,9 +1,9 @@
 package brave.context.log4j12;
 
 import brave.internal.HexCodec;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import javax.annotation.Nullable;
 import org.apache.log4j.MDC;
 
 /**

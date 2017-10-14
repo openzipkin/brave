@@ -2,7 +2,6 @@ package com.github.kristofa.brave.internal;
 
 import com.github.kristofa.brave.SpanId;
 import com.twitter.zipkin.gen.Span;
-import javax.annotation.Nullable;
 
 /**
  * Allows internal classes outside the package {@code com.twitter.zipkin.gen} to use non-public

@@ -1,10 +1,10 @@
 package brave.context.log4j2;
 
 import brave.internal.HexCodec;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContextTest;
 import brave.propagation.TraceContext;
-import javax.annotation.Nullable;
 import org.apache.logging.log4j.ThreadContext;
 
 import static org.assertj.core.api.Assertions.assertThat;

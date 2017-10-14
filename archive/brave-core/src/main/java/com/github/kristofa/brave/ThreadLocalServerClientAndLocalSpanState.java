@@ -1,12 +1,11 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-
 import java.net.InetAddress;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 /**
  * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using a ThreadLocal variable.

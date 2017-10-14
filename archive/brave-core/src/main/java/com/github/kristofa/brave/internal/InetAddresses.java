@@ -2,7 +2,6 @@ package com.github.kristofa.brave.internal;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import javax.annotation.Nullable;
 
 /** Utilities for working with IP Addresses. */
 public final class InetAddresses {

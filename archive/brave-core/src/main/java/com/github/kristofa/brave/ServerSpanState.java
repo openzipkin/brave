@@ -1,6 +1,6 @@
 package com.github.kristofa.brave;
 
-import javax.annotation.Nullable;
+import com.github.kristofa.brave.internal.Nullable;
 
 /**
  * Maintains state for a single server span.

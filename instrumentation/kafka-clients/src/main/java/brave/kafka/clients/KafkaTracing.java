@@ -2,9 +2,9 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import javax.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;

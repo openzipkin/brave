@@ -6,12 +6,10 @@ import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
-
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.IOException;
-
-import javax.annotation.Nullable;
-import javax.inject.Inject;
 import javax.annotation.Priority;
+import javax.inject.Inject;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.PreMatching;

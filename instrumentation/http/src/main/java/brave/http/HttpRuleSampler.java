@@ -1,11 +1,11 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.sampler.ParameterizedSampler;
 import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * Assigns sample rates to http routes.

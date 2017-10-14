@@ -9,6 +9,7 @@ import com.github.kristofa.brave.ClientSpanThreadBinder;
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
@@ -24,7 +25,6 @@ import io.grpc.Status;
 import io.grpc.Status.Code;
 import java.util.Collection;
 import java.util.Collections;
-import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
 import static com.google.common.base.Preconditions.checkNotNull;

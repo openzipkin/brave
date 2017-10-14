@@ -1,9 +1,9 @@
 package brave.sampler;
 
+import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import javax.annotation.Nullable;
 
 /**
  * This is an implementation of how to decide whether to trace a request using annotations on a java

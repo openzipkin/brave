@@ -1,6 +1,6 @@
 package brave.propagation;
 
-import javax.annotation.Nullable;
+import brave.internal.Nullable;
 
 /**
  * Useful when developing instrumentation as state is enforced more strictly.

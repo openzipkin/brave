@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Span;
 import java.io.Closeable;
 import java.io.Flushable;
@@ -12,7 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import javax.annotation.Nullable;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 

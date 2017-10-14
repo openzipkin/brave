@@ -1,8 +1,8 @@
 package brave.jaxrs2;
 
 import brave.http.HttpServerAdapter;
+import brave.internal.Nullable;
 import java.lang.reflect.Method;
-import javax.annotation.Nullable;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ResourceInfo;

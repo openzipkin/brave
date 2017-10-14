@@ -1,11 +1,11 @@
 package brave.grpc;
 
 import brave.Tracing;
+import brave.internal.Nullable;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 import io.grpc.stub.StreamObserver;
-import javax.annotation.Nullable;
 
 class GreeterImpl extends GreeterGrpc.GreeterImplBase {
 

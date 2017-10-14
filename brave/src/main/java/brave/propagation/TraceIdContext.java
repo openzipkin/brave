@@ -1,8 +1,7 @@
 package brave.propagation;
 
+import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 
 import static brave.internal.HexCodec.writeHexLong;
 
@@ -10,8 +9,8 @@ import static brave.internal.HexCodec.writeHexLong;
  * Contains inbound trace ID and sampling flags, used when users control the root trace ID, but not
  * the span ID (ex Amazon X-Ray or other correlation).
  */
-@Immutable
 @AutoValue
+//@Immutable
 public abstract class TraceIdContext extends SamplingFlags {
 
   public static Builder newBuilder() {

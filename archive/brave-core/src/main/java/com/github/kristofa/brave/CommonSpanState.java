@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
-import javax.annotation.Nullable;
 
 /**
  * Keeps track of common trace/span state information.

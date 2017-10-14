@@ -11,15 +11,14 @@ import com.github.kristofa.brave.http.HttpResponse;
 import com.github.kristofa.brave.http.HttpServerRequestAdapter;
 import com.github.kristofa.brave.http.HttpServerResponseAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.servlet.ServletHttpServerRequest;
 import com.github.kristofa.brave.servlet.internal.MaybeAddClientAddressFromRequest;
-import javax.annotation.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
-import org.springframework.context.annotation.Configuration;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;

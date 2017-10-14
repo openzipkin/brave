@@ -1,8 +1,8 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import java.util.Collection;
-import javax.annotation.Nullable;
 
 /**
  * Adapter used to get tracing information from and add tracing information to a new request.

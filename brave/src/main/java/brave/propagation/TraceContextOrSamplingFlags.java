@@ -1,8 +1,7 @@
 package brave.propagation;
 
+import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 
 /**
  * Union type that contains only one of trace context, trace ID context or sampling flags.
@@ -17,8 +16,8 @@ import javax.annotation.concurrent.Immutable;
  *
  * @see TraceContext.Extractor
  */
-@Immutable
 @AutoValue
+//@Immutable
 public abstract class TraceContextOrSamplingFlags {
   /** When present, create the span via {@link brave.Tracer#joinSpan(TraceContext)} */
   @Nullable public abstract TraceContext context();

@@ -1,13 +1,12 @@
 package com.github.kristofa.brave;
 
-import java.util.Deque;
-import java.util.concurrent.LinkedBlockingDeque;
-
+import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import java.util.Deque;
+import java.util.concurrent.LinkedBlockingDeque;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 /**
  * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using {@link InheritableThreadLocal}

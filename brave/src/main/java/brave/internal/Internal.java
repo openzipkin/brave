@@ -2,7 +2,6 @@ package brave.internal;
 
 import brave.Tracer;
 import brave.propagation.TraceContext;
-import javax.annotation.Nullable;
 
 /**
  * Allows internal classes outside the package {@code brave} to use non-public methods. This allows

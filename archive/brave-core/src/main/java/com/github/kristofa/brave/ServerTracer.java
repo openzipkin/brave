@@ -1,10 +1,10 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Random;
-import javax.annotation.Nullable;
 import zipkin.Constants;
 import zipkin.reporter.Reporter;
 
