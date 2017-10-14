@@ -332,11 +332,8 @@ or headers.
 This utility is used in standard instrumentation like [HttpServerHandler](../instrumentation/http/src/main/java/brave/http/HttpServerHandler.java),
 but can also be used for custom RPC or messaging code.
 
-`Extractor.extract` returns a union type `TraceContextOrSamplingFlags` which
-contains one of:
-* `TraceContext` if trace and span IDs were present.
-* `TraceIdContext` if a trace ID was present, but not span IDs.
-* `SamplingFlags` if no identifiers were present
+`TraceContextOrSamplingFlags` is usually only used with `Tracer.nextSpan(extracted)`, unless you are
+sharing span IDs between a client and a server.
 
 ### Sharing span IDs between client and server
 
@@ -384,7 +381,21 @@ Here's an example of AWS propagation:
 Note: Some span reporters do not support sharing span IDs. For example, if you
 set `Tracing.Builder.spanReporter(amazonXrayOrGoogleStackdrive)`, disable join
 via `Tracing.Builder.supportsJoin(false)`. This will force a new child span on
-`Tracer.join()`.
+`Tracer.joinSpan()`.
+
+### Implementing Propagation
+
+`TraceContext.Extractor<C>` is implemented by a `Propagation.Factory` plugin. Internally, this code
+will create the union type `TraceContextOrSamplingFlags` with one of the following:
+* `TraceContext` if trace and span IDs were present.
+* `TraceIdContext` if a trace ID was present, but not span IDs.
+* `SamplingFlags` if no identifiers were present
+
+Some `Propagation` implementations carry extra data from point of extraction (ex reading incoming
+headers) to injection (ex writing outgoing headers). For example, it might carry a request ID. When
+implementations have extra data, here's how they handle it.
+* If a `TraceContext` was extracted, add the extra data as `TraceContext.extra()`
+* Otherwise, add it as `TraceContextOrSamplingFlags.extra()`, which `Tracer.nextSpan` handles.
 
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only

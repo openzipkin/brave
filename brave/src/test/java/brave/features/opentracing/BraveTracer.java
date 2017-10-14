@@ -47,11 +47,11 @@ final class BraveTracer implements Tracer {
     if (format != Format.Builtin.HTTP_HEADERS) {
       throw new UnsupportedOperationException(format.toString());
     }
-    TraceContextOrSamplingFlags result =
+    TraceContextOrSamplingFlags extracted =
         extractor.extract(new TextMapView(propagationKeys, (TextMap) carrier));
-    TraceContext context = result.context() != null
-        ? result.context().toBuilder().shared(true).build()
-        : tracer.newTrace(result.samplingFlags()).context();
+    TraceContext context = extracted.context() != null
+        ? tracer.joinSpan(extracted.context()).context()
+        : tracer.nextSpan(extracted).context();
     return new BraveSpanContext(context);
   }
 

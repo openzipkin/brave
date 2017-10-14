@@ -2,6 +2,9 @@ package brave.propagation;
 
 import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static brave.internal.HexCodec.writeHexLong;
 
@@ -44,7 +47,7 @@ public abstract class TraceContext extends SamplingFlags {
   /**
    * Used to join an incoming trace. For example, by reading http headers.
    *
-   * @see brave.Tracer#joinSpan
+   * @see brave.Tracer#nextSpan(TraceContextOrSamplingFlags)
    */
   public interface Extractor<C> {
 
@@ -58,7 +61,8 @@ public abstract class TraceContext extends SamplingFlags {
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_TraceContext.Builder().traceIdHigh(0L).debug(false).shared(false);
+    return new AutoValue_TraceContext.Builder().traceIdHigh(0L).debug(false).shared(false)
+        .extra(Collections.emptyList());
   }
 
   /** When non-zero, the trace containing this span uses 128-bit trace identifiers. */
@@ -89,6 +93,15 @@ public abstract class TraceContext extends SamplingFlags {
    * start the span.
    */
   public abstract boolean shared();
+
+  /**
+   * Returns a list of additional data propagated through this trace.
+   *
+   * <p>The contents are intentionally opaque, deferring to {@linkplain Propagation} to define. An
+   * example implementation could be storing a class containing a correlation value, which is
+   * extracted from incoming requests and injected as-is onto outgoing requests.
+   */
+  public abstract List<Object> extra();
 
   public abstract Builder toBuilder();
 
@@ -145,9 +158,20 @@ public abstract class TraceContext extends SamplingFlags {
     /** @see TraceContext#shared() */
     public abstract Builder shared(boolean shared);
 
-    public abstract TraceContext build();
+    /** @see TraceContext#extra() */
+    public abstract Builder extra(List<Object> extra);
 
-    abstract Boolean sampled();
+    abstract List<Object> extra();
+
+    public abstract TraceContext autoBuild();
+
+    public final TraceContext build() {
+      if (extra().isEmpty()) return autoBuild();
+      // make sure the extra data is immutable and unmodifiable
+      return extra(Collections.unmodifiableList(new ArrayList<>(extra()))).autoBuild();
+    }
+
+    @Nullable abstract Boolean sampled();
 
     abstract boolean debug();
 

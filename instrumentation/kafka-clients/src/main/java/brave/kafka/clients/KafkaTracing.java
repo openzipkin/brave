@@ -48,11 +48,8 @@ public final class KafkaTracing {
     TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
     if (extracted.context() != null) {
       return tracing.tracer().toSpan(extracted.context()); // avoid creating an unnecessary child
-    } else if (extracted.traceIdContext() != null) {
-      return tracing.tracer().newTrace(extracted.traceIdContext());
-    } else {
-      return tracing.tracer().newTrace(extracted.samplingFlags());
     }
+    return tracing.tracer().nextSpan(extracted);
   }
 
   static void finish(Span span, @Nullable Throwable error) {

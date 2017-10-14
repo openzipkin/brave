@@ -2,7 +2,6 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -44,6 +43,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   /** Each poll handles span creation. */
+  // TODO: consider making the one span for the poll, since it should be the parent anyway
   @Override public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
     for (ConsumerRecord<K, V> record : records) {
@@ -66,14 +66,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
    */
   Span startAndFinishConsumerSpan(ConsumerRecord record) {
     TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
-    Span span;
-    if (extracted.context() != null) {
-      span = tracing.tracer().newChild(extracted.context());
-    } else if (extracted.traceIdContext() != null) {
-      span = tracing.tracer().newTrace(extracted.traceIdContext());
-    } else {
-      span = tracing.tracer().nextSpan();
-    }
+    Span span = tracing.tracer().nextSpan(extracted);
     if (!span.isNoop()) {
       if (record.key() != null) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());

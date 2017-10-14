@@ -39,6 +39,10 @@ public interface Propagation<K> {
       return false;
     }
 
+    public boolean requires128BitTraceId() {
+      return false;
+    }
+
     public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
   }
 
