@@ -2,12 +2,12 @@ package brave.jaxrs2.features.sampling;
 
 import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
+import brave.internal.Nullable;
 import brave.jaxrs2.ContainerAdapter;
 import brave.sampler.DeclarativeSampler;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
-import javax.annotation.Nullable;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Traced {

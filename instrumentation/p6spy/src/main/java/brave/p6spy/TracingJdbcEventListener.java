@@ -3,6 +3,7 @@ package brave.p6spy;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
 import java.net.URI;
@@ -10,7 +11,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.annotation.Nullable;
 import zipkin2.Endpoint;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {

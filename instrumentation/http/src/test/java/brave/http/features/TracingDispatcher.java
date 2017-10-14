@@ -7,7 +7,6 @@ import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;

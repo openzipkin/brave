@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

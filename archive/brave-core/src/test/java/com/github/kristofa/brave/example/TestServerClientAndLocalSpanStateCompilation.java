@@ -2,9 +2,9 @@ package com.github.kristofa.brave.example;
 
 import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
+import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import javax.annotation.Nullable;
 
 /**
  * Example that shows ServerClientAndLocalSpanState can be implemented outside brave's package.

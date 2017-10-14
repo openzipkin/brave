@@ -1,7 +1,7 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import javax.annotation.Nullable;
+import brave.internal.Nullable;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 

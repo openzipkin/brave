@@ -1,7 +1,7 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import javax.annotation.Nullable;
+import brave.internal.Nullable;
 
 public class HttpParser {
   /**

@@ -1,9 +1,9 @@
 package brave.context.slf4j;
 
 import brave.internal.HexCodec;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import javax.annotation.Nullable;
 import org.slf4j.MDC;
 
 /**

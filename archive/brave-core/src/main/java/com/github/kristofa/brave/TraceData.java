@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
 
 /**
  * Trace properties we potentially get from incoming request.

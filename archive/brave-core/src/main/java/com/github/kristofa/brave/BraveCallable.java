@@ -1,10 +1,9 @@
 package com.github.kristofa.brave;
 
+import com.github.kristofa.brave.internal.Nullable;
+import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Span;
 import java.util.concurrent.Callable;
-
-import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

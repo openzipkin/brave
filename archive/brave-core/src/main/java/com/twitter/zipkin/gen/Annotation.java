@@ -1,8 +1,8 @@
 package com.twitter.zipkin.gen;
 
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import javax.annotation.Generated;
-import javax.annotation.Nullable;
 
 /**
  * An annotation is similar to a log statement. It includes a host field which

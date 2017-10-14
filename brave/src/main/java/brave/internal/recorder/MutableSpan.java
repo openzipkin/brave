@@ -2,8 +2,8 @@ package brave.internal.recorder;
 
 import brave.Span;
 import brave.internal.HexCodec;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
-import javax.annotation.Nullable;
 import zipkin2.Endpoint;
 
 final class MutableSpan {

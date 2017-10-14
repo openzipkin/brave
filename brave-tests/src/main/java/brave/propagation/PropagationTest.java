@@ -1,9 +1,9 @@
 package brave.propagation;
 
 import brave.internal.HexCodec;
+import brave.internal.Nullable;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,8 +1,8 @@
 package brave.sampler;
 
+import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
 import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * This is an implementation of how to decide whether to trace a request using ordered rules. For

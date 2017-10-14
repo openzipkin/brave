@@ -1,8 +1,7 @@
 package brave.propagation;
 
+import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 
 import static brave.internal.HexCodec.writeHexLong;
 
@@ -15,8 +14,8 @@ import static brave.internal.HexCodec.writeHexLong;
  * port of {@code com.twitter.finagle.tracing.TraceId}. Unlike these mentioned, this type does not
  * expose a single binary representation. That's because propagation forms can now vary.
  */
-@Immutable
 @AutoValue
+//@Immutable
 public abstract class TraceContext extends SamplingFlags {
 
   /**

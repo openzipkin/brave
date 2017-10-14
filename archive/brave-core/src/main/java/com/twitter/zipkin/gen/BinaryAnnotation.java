@@ -1,9 +1,9 @@
 package com.twitter.zipkin.gen;
 
+import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
 import javax.annotation.Generated;
-import javax.annotation.Nullable;
 
 import static com.github.kristofa.brave.internal.Util.UTF_8;
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
