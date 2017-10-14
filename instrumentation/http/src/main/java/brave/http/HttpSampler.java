@@ -1,7 +1,6 @@
 package brave.http;
 
 import brave.internal.Nullable;
-import javax.annotation.Nonnull;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.
@@ -36,7 +35,7 @@ public abstract class HttpSampler {
    * out client requests made during bootstrap.
    */
   public static final HttpSampler NEVER_SAMPLE = new HttpSampler() {
-    @Override @Nonnull public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return false;
     }
 

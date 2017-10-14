@@ -5,7 +5,6 @@ import com.github.kristofa.brave.internal.Util;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.InetAddress;
-import javax.annotation.Nonnull;
 
 /**
  * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using a ThreadLocal variable.
@@ -69,9 +68,7 @@ public final class ThreadLocalServerClientAndLocalSpanState implements ServerCli
     }
 
     /** Never returns null: {@code setCurrentServerSpan(null)} coerces to {@link ServerSpan#EMPTY} */
-    @Override
-    @Nonnull
-    public ServerSpan getCurrentServerSpan() {
+    @Override public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();
     }
 

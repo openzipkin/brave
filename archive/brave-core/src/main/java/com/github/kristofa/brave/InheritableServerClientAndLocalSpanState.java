@@ -6,7 +6,6 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Deque;
 import java.util.concurrent.LinkedBlockingDeque;
-import javax.annotation.Nonnull;
 
 /**
  * {@link ServerClientAndLocalSpanState} implementation that keeps trace state using {@link InheritableThreadLocal}
@@ -49,9 +48,7 @@ public final class InheritableServerClientAndLocalSpanState implements ServerCli
     }
 
     /** Never returns null: {@code setCurrentServerSpan(null)} coerces to {@link ServerSpan#EMPTY} */
-    @Override
-    @Nonnull
-    public ServerSpan getCurrentServerSpan() {
+    @Override public ServerSpan getCurrentServerSpan() {
         return currentServerSpan.get();
     }
 

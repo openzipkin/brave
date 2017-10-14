@@ -6,7 +6,6 @@ import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
-import javax.annotation.Nonnull;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -40,23 +39,23 @@ final class TracingDispatcher extends Dispatcher {
 
   static final class MockWebServerAdapter extends HttpServerAdapter<RecordedRequest, MockResponse> {
 
-    @Override @Nonnull public String method(RecordedRequest request) {
+    @Override public String method(RecordedRequest request) {
       return request.getMethod();
     }
 
-    @Override @Nonnull public String path(RecordedRequest request) {
+    @Override public String path(RecordedRequest request) {
       return request.getPath();
     }
 
-    @Override @Nonnull public String url(RecordedRequest request) {
+    @Override public String url(RecordedRequest request) {
       return request.getRequestUrl().toString();
     }
 
-    @Override @Nonnull public String requestHeader(RecordedRequest request, String name) {
+    @Override public String requestHeader(RecordedRequest request, String name) {
       return request.getHeader(name);
     }
 
-    @Override @Nonnull public Integer statusCode(MockResponse response) {
+    @Override public Integer statusCode(MockResponse response) {
       return Integer.parseInt(response.getStatus().split(" ")[1]);
     }
   }
