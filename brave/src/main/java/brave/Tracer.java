@@ -12,6 +12,9 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
@@ -154,7 +157,7 @@ public final class Tracer {
    * #nextSpan()}.
    */
   public Span newTrace() {
-    return nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+    return toSpan(newRootContext(SamplingFlags.EMPTY, Collections.emptyList()));
   }
 
   /**
@@ -211,8 +214,8 @@ public final class Tracer {
 
   /**
    * This creates a new span based on parameters extracted from an incoming request. This will
-   * always result in a new span. If no trace identifiers were extracted, then the result will be a
-   * root span in a new trace.
+   * always result in a new span. If no trace identifiers were extracted, a span will be created
+   * based on the implicit context in the same manner as {@link #nextSpan()}.
    *
    * <p>Ex.
    * <pre>{@code
@@ -224,16 +227,45 @@ public final class Tracer {
    * extracted span IDs. This means the extracted context (if any) is the parent of the span
    * returned.
    *
+   * <p><em>Note:</em> If a context could be extracted from the input, that trace is resumed, not
+   * whatever the {@link #currentSpan()} was. Make sure you re-apply {@link #withSpanInScope(Span)}
+   * so that data is written to the correct trace.
+   *
    * @see Propagation
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags
    */
   public Span nextSpan(TraceContextOrSamplingFlags extracted) {
     TraceContext parent = extracted.context();
-    if (parent != null && Boolean.FALSE.equals(parent.sampled())) {
-      return NoopSpan.create(parent);
+    if (extracted.samplingFlags() != null) {
+      TraceContext implicitParent = currentTraceContext.get();
+      if (implicitParent == null) {
+        return toSpan(newRootContext(extracted.samplingFlags(), extracted.extra()));
+      }
+      // fall through, with an implicit parent, not an extracted one
+      parent = appendExtra(implicitParent, extracted.extra());
     }
-    return toSpan(nextContext(extracted));
+    long nextId = Platform.get().randomLong();
+    if (parent != null) {
+      return toSpan(parent.toBuilder() // copies "extra" from the parent
+          .spanId(nextId)
+          .parentId(parent.spanId())
+          .shared(false)
+          .build());
+    }
+    TraceIdContext traceIdContext = extracted.traceIdContext();
+    if (extracted.traceIdContext() != null) {
+      Boolean sampled = traceIdContext.sampled();
+      if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
+      return toSpan(TraceContext.newBuilder()
+          .sampled(sampled)
+          .debug(traceIdContext.debug())
+          .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
+          .spanId(nextId)
+          .extra(extracted.extra()).build());
+    }
+    // TraceContextOrSamplingFlags is a union of 3 types, we've checked all three
+    throw new AssertionError("should not reach here");
   }
 
   /**
@@ -254,7 +286,7 @@ public final class Tracer {
    * }</pre>
    */
   public Span newTrace(SamplingFlags samplingFlags) {
-    return toSpan(nextContext(TraceContextOrSamplingFlags.create(samplingFlags)));
+    return toSpan(newRootContext(samplingFlags, Collections.emptyList()));
   }
 
   /** Converts the context as-is to a Span object */
@@ -266,36 +298,16 @@ public final class Tracer {
     return NoopSpan.create(context);
   }
 
-  TraceContext nextContext(TraceContextOrSamplingFlags extracted) {
+  TraceContext newRootContext(SamplingFlags samplingFlags, List<Object> extra) {
     long nextId = Platform.get().randomLong();
-    TraceContext parent = extracted.context();
-    if (parent != null) {
-      return parent.toBuilder() // copies "extra" from the parent
-          .spanId(nextId)
-          .parentId(parent.spanId())
-          .shared(false)
-          .build();
-    }
-    TraceIdContext traceIdContext = extracted.traceIdContext();
-    if (extracted.traceIdContext() != null) {
-      Boolean sampled = traceIdContext.sampled();
-      if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
-      return TraceContext.newBuilder()
-          .sampled(sampled)
-          .debug(traceIdContext.debug())
-          .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
-          .spanId(nextId)
-          .extra(extracted.extra()).build();
-    }
-    SamplingFlags samplingFlags = extracted.samplingFlags();
     Boolean sampled = samplingFlags.sampled();
     if (sampled == null) sampled = sampler.isSampled(nextId);
     return TraceContext.newBuilder()
         .sampled(sampled)
-        .debug(samplingFlags.debug())
         .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
         .spanId(nextId)
-        .extra(extracted.extra()).build();
+        .debug(samplingFlags.debug())
+        .extra(extra).build();
   }
 
   /**
@@ -364,6 +376,17 @@ public final class Tracer {
 
     @Override public String toString() {
       return scope.toString();
+    }
+  }
+
+  static TraceContext appendExtra(TraceContext context, List<Object> extra) {
+    if (extra.isEmpty()) return context;
+    if (context.extra().isEmpty()) {
+      return context.toBuilder().extra(extra).build();
+    } else {
+      List<Object> merged = new ArrayList<>(context.extra());
+      merged.addAll(extra);
+      return context.toBuilder().extra(merged).build();
     }
   }
 }
