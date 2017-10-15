@@ -7,7 +7,7 @@ public final class HexCodec {
    * Parses a 1 to 32 character lower-hex string with no prefix into an unsigned long, tossing any
    * bits higher than 64.
    */
-  public static long lowerHexToUnsignedLong(String lowerHex) {
+  public static long lowerHexToUnsignedLong(CharSequence lowerHex) {
     int length = lowerHex.length();
     if (length < 1 || length > 32) throw isntLowerHexLong(lowerHex);
 
@@ -19,9 +19,9 @@ public final class HexCodec {
 
   /**
    * Parses a 16 character lower-hex string with no prefix into an unsigned long, starting at the
-   * spe index.
+   * specified index.
    */
-  public static long lowerHexToUnsignedLong(String lowerHex, int index) {
+  public static long lowerHexToUnsignedLong(CharSequence lowerHex, int index) {
     long result = 0;
     for (int endIndex = Math.min(index + 16, lowerHex.length()); index < endIndex; index++) {
       char c = lowerHex.charAt(index);
@@ -37,7 +37,7 @@ public final class HexCodec {
     return result;
   }
 
-  static NumberFormatException isntLowerHexLong(String lowerHex) {
+  static NumberFormatException isntLowerHexLong(CharSequence lowerHex) {
     throw new NumberFormatException(
         lowerHex + " should be a 1 to 32 character lower-hex string with no prefix");
   }
@@ -76,7 +76,7 @@ public final class HexCodec {
   static final char[] HEX_DIGITS =
       {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-  static void writeHexByte(char[] data, int pos, byte b) {
+  public static void writeHexByte(char[] data, int pos, byte b) {
     data[pos + 0] = HEX_DIGITS[(b >> 4) & 0xf];
     data[pos + 1] = HEX_DIGITS[b & 0xf];
   }
