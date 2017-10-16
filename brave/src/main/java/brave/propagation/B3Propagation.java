@@ -1,29 +1,30 @@
 package brave.propagation;
 
-import brave.internal.HexCodec;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
+import static brave.internal.HexCodec.toLowerHex;
 
 /**
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3Propagation<K> implements Propagation<K> {
-  public static final class Factory extends Propagation.Factory {
+
+  public static final Propagation.Factory FACTORY = new Propagation.Factory() {
     @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return B3Propagation.create(keyFactory);
+      return new B3Propagation<>(keyFactory);
     }
 
     @Override public boolean supportsJoin() {
       return true;
     }
-  }
 
-  public static <K> B3Propagation<K> create(KeyFactory<K> keyFactory) {
-    return new B3Propagation<>(keyFactory);
-  }
+    @Override public String toString() {
+      return "B3PropagationFactory";
+    }
+  };
 
   /**
    * 128 or 64-bit trace ID lower-hex encoded into 32 or 16 characters (required)
@@ -84,10 +85,9 @@ public final class B3Propagation<K> implements Propagation<K> {
 
     @Override public void inject(TraceContext traceContext, C carrier) {
       setter.put(carrier, propagation.traceIdKey, traceContext.traceIdString());
-      setter.put(carrier, propagation.spanIdKey, HexCodec.toLowerHex(traceContext.spanId()));
+      setter.put(carrier, propagation.spanIdKey, toLowerHex(traceContext.spanId()));
       if (traceContext.parentId() != null) {
-        setter.put(carrier, propagation.parentSpanIdKey,
-            HexCodec.toLowerHex(traceContext.parentId()));
+        setter.put(carrier, propagation.parentSpanIdKey, toLowerHex(traceContext.parentId()));
       }
       if (traceContext.debug()) {
         setter.put(carrier, propagation.debugKey, "1");
@@ -114,31 +114,34 @@ public final class B3Propagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
 
-      String sampledString = getter.get(carrier, propagation.sampledKey);
-      // Official sampled value is 1, though some old instrumentation send true
-      Boolean sampled = sampledString != null
-          ? sampledString.equals("1") || sampledString.equalsIgnoreCase("true")
-          : null;
-      boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
+      String traceId = getter.get(carrier, propagation.traceIdKey);
+      String sampled = getter.get(carrier, propagation.sampledKey);
+      String debug = getter.get(carrier, propagation.debugKey);
+      if (traceId == null && sampled == null && debug == null) {
+        return TraceContextOrSamplingFlags.EMPTY;
+      }
 
-      String traceIdString = getter.get(carrier, propagation.traceIdKey);
-      String spanIdString = getter.get(carrier, propagation.spanIdKey);
-      if (traceIdString == null || spanIdString == null) { // return early if there's no trace ID
+      // Official sampled value is 1, though some old instrumentation send true
+      Boolean sampledV = sampled != null
+          ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
+          : null;
+      boolean debugV = "1".equals(debug);
+
+      String spanId = getter.get(carrier, propagation.spanIdKey);
+      if (spanId == null) { // return early if there's no span ID
         return TraceContextOrSamplingFlags.create(
-            new SamplingFlags.Builder().sampled(sampled).debug(debug).build()
+            debugV ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
         );
       }
 
-      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampled).debug(debug);
+      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampledV).debug(debugV);
       result.traceIdHigh(
-          traceIdString.length() == 32 ? lowerHexToUnsignedLong(traceIdString, 0) : 0
+          traceId.length() == 32 ? lowerHexToUnsignedLong(traceId, 0) : 0
       );
-      result.traceId(lowerHexToUnsignedLong(traceIdString));
-      result.spanId(lowerHexToUnsignedLong(spanIdString));
+      result.traceId(lowerHexToUnsignedLong(traceId));
+      result.spanId(lowerHexToUnsignedLong(spanId));
       String parentSpanIdString = getter.get(carrier, propagation.parentSpanIdKey);
-      if (parentSpanIdString != null) {
-        result.parentId(lowerHexToUnsignedLong(parentSpanIdString));
-      }
+      if (parentSpanIdString != null) result.parentId(lowerHexToUnsignedLong(parentSpanIdString));
       return TraceContextOrSamplingFlags.create(result.build());
     }
   }

@@ -146,7 +146,7 @@ public class TracerTest {
     tracer = Tracing.newBuilder()
         .propagationFactory(new Propagation.Factory(){
           @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-            return B3Propagation.create(keyFactory);
+            return B3Propagation.FACTORY.create(keyFactory);
           }
         })
         .spanReporter(spans::add).build().tracer();

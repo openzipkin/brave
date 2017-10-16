@@ -2,11 +2,11 @@
 This changes brave to use "x-amzn-trace-id" as opposed to "x-b3" prefixed headers to propagate trace
 context across processes.
 
-To enable this, configure `brave.Tracing` with `AWSPropagation.Factory` like so:
+To enable this, configure `brave.Tracing` with `AWSPropagation.FACTORY` like so:
 
 ```java
 tracing = Tracing.newBuilder()
-    .propagationFactory(new AWSPropagation.Factory())
+    .propagationFactory(AWSPropagation.FACTORY)
     ...
     .build();
 ```
@@ -23,10 +23,10 @@ tracing = Tracing.newBuilder()
 ## Utilities
 There are a couple added utilities for parsing and generating an AWS trace ID string:
 
-* `AWSPropagation.traceIdString` - used to generate a formatted trace ID for correlation purposes.
+* `AWSPropagation.rootField` - used to generate a formatted root field ID for correlation purposes.
 * `AWSPropagation.extract` - extracts a trace context from a string such as an environment variable.
 
-Ex to extract the trace ID from the built-in AWS Lambda variable
+Ex. to extract a trace context from the built-in AWS Lambda variable
 ```java
 extracted = AWSPropagation.extract(System.getenv("_X_AMZN_TRACE_ID"));
 ```

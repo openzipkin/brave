@@ -82,7 +82,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class TracedAWS extends ForwardingTracingFilter {
     public TracedAWS() {
       super(Tracing.newBuilder()
-          .propagationFactory(new AWSPropagation.Factory())
+          .propagationFactory(AWSPropagation.FACTORY)
           .spanReporter(Reporter.NOOP)
           .build());
     }

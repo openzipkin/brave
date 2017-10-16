@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static brave.propagation.TraceContext.ensureImmutable;
+
 /**
  * Union type that contains only one of trace context, trace ID context or sampling flags. This type
  * is designed for use with {@link Tracer#nextSpan(TraceContextOrSamplingFlags)}.
@@ -30,6 +32,12 @@ import java.util.List;
  */
 //@Immutable
 public final class TraceContextOrSamplingFlags {
+  public static final TraceContextOrSamplingFlags EMPTY =
+      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
+
+  public static Builder newBuilder(){
+    return new Builder();
+  }
 
   /** Returns {@link SamplingFlags#sampled()}, regardless of subtype. */
   @Nullable public Boolean sampled() {
@@ -43,7 +51,7 @@ public final class TraceContextOrSamplingFlags {
             .sampled(sampled).build(), extra);
       case 2:
         return new TraceContextOrSamplingFlags(type, ((TraceIdContext) value).toBuilder()
-            .sampled(sampled).build(), extra());
+            .sampled(sampled).build(), extra);
       case 3:
         return new TraceContextOrSamplingFlags(type, new SamplingFlags.Builder()
             .sampled(sampled).debug(value.debug()).build(), extra);
@@ -116,15 +124,52 @@ public final class TraceContextOrSamplingFlags {
   final List<Object> extra;
 
   TraceContextOrSamplingFlags(int type, SamplingFlags value, List<Object> extra) {
+    if (value == null) throw new NullPointerException("value == null");
+    if (extra == null) throw new NullPointerException("extra == null");
     this.type = type;
     this.value = value;
-    this.extra = extra.isEmpty() ? extra : Collections.unmodifiableList(new ArrayList<>(extra));
+    this.extra = ensureImmutable(extra);
   }
 
   public static final class Builder {
     int type;
     SamplingFlags value;
     List<Object> extra = Collections.emptyList();
+
+    /** @see TraceContextOrSamplingFlags#context() */
+    public final Builder context(TraceContext context) {
+      if (context == null) throw new NullPointerException("context == null");
+      type = 1;
+      value = context;
+      return this;
+    }
+
+    /** @see TraceContextOrSamplingFlags#traceIdContext() */
+    public final Builder traceIdContext(TraceIdContext traceIdContext) {
+      if (traceIdContext == null) throw new NullPointerException("traceIdContext == null");
+      type = 2;
+      value = traceIdContext;
+      return this;
+    }
+
+    /** @see TraceContextOrSamplingFlags#samplingFlags() */
+    public final Builder samplingFlags(SamplingFlags samplingFlags) {
+      if (samplingFlags == null) throw new NullPointerException("samplingFlags == null");
+      type = 3;
+      value = samplingFlags;
+      return this;
+    }
+
+    /**
+     * Shares the input with the builder, replacing any current data in the builder.
+     *
+     * @see TraceContextOrSamplingFlags#extra()
+     */
+    public final Builder extra(List<Object> extra) {
+      if (extra == null) throw new NullPointerException("extra == null");
+      this.extra = extra; // sharing a copy in case it is immutable
+      return this;
+    }
 
     /** @see TraceContextOrSamplingFlags#extra() */
     public final Builder addExtra(Object extra) {
@@ -136,6 +181,7 @@ public final class TraceContextOrSamplingFlags {
       return this;
     }
 
+    /** Returns an immutable result from the values currently in the builder */
     public final TraceContextOrSamplingFlags build() {
       if (!extra.isEmpty() && type == 1) { // move extra to the trace context
         TraceContext context = (TraceContext) value;

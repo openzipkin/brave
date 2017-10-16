@@ -166,9 +166,8 @@ public abstract class TraceContext extends SamplingFlags {
     public abstract TraceContext autoBuild();
 
     public final TraceContext build() {
-      if (extra().isEmpty()) return autoBuild();
       // make sure the extra data is immutable and unmodifiable
-      return extra(Collections.unmodifiableList(new ArrayList<>(extra()))).autoBuild();
+      return extra(ensureImmutable(extra())).autoBuild();
     }
 
     @Nullable abstract Boolean sampled();
@@ -180,5 +179,12 @@ public abstract class TraceContext extends SamplingFlags {
   }
 
   TraceContext() { // no external implementations
+  }
+
+  static List<Object> ensureImmutable(List<Object> extra) {
+    if (extra == Collections.EMPTY_LIST) return extra;
+    // Faster to make a copy than check the type to see if it is already a singleton list
+    if (extra.size() == 1) return Collections.singletonList(extra.get(0));
+    return Collections.unmodifiableList(new ArrayList<>(extra));
   }
 }

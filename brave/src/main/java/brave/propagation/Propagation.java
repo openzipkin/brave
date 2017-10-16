@@ -18,10 +18,10 @@ import java.util.List;
  * @param <K> Usually, but not always a String
  */
 public interface Propagation<K> {
-  Propagation<String> B3_STRING = Propagation.Factory.B3.create(Propagation.KeyFactory.STRING);
+  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
 
   abstract class Factory {
-    public static final Factory B3 = new B3Propagation.Factory();
+    public static final Factory B3 = B3Propagation.FACTORY;
 
     /**
      * Does the propagation implementation support sharing client and server span IDs. For example,

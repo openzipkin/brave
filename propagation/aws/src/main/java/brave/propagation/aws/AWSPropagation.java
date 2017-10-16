@@ -1,5 +1,6 @@
 package brave.propagation.aws;
 
+import brave.internal.Nullable;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -40,19 +41,20 @@ import static brave.internal.HexCodec.writeHexLong;
  * </pre>
  */
 public final class AWSPropagation<K> implements Propagation<K> {
-  public static final class Factory extends Propagation.Factory {
+
+  public static final Propagation.Factory FACTORY = new Propagation.Factory() {
     @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return AWSPropagation.create(keyFactory);
+      return new AWSPropagation<>(keyFactory);
     }
 
     @Override public boolean requires128BitTraceId() {
       return true;
     }
-  }
 
-  public static <K> AWSPropagation<K> create(KeyFactory<K> keyFactory) {
-    return new AWSPropagation<>(keyFactory);
-  }
+    @Override public String toString() {
+      return "AWSPropagationFactory";
+    }
+  };
 
   // Using lowercase field name as http is case-insensitive, but http/2 transport downcases */
   static final String TRACE_ID_NAME = "x-amzn-trace-id";
@@ -108,7 +110,7 @@ public final class AWSPropagation<K> implements Propagation<K> {
       //Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1
       char[] result = new char[74 + extraLength];
       System.arraycopy(ROOT, 0, result, 0, 5);
-      writeTraceId(traceContext, result, 5);
+      writeRoot(traceContext, result, 5);
       System.arraycopy(PARENT, 0, result, 40, 8);
       writeHexLong(result, 48, traceContext.spanId());
       System.arraycopy(SAMPLED, 0, result, 64, 9);
@@ -123,15 +125,26 @@ public final class AWSPropagation<K> implements Propagation<K> {
     }
   }
 
-  /** Used for log correlation or {@link brave.Span#tag(String, String) tag values} */
-  public static String traceIdString(TraceContext context) {
-    char[] result = new char[35];
-    writeTraceId(context, result, 0);
-    return new String(result);
+  /**
+   * Used for log correlation or {@link brave.Span#tag(String, String) tag values}
+   *
+   * @return a formatted Root field like "1-58406520-a006649127e371903a2de979" or null if the
+   * context was not created from an instance of {@link AWSPropagation}.
+   */
+  @Nullable public static String rootField(TraceContext context) {
+    for (int i = 0, length = context.extra().size(); i < length; i++) {
+      Object next = context.extra().get(i);
+      if (next instanceof Extra) {
+        char[] result = new char[35];
+        writeRoot(context, result, 0);
+        return new String(result);
+      }
+    }
+    return null;
   }
 
   /** Writes 35 characters representing the input trace ID to the buffer at the given offset */
-  static void writeTraceId(TraceContext context, char[] result, int offset) {
+  static void writeRoot(TraceContext context, char[] result, int offset) {
     result[offset] = '1'; // version
     result[offset + 1] = '-'; // delimiter
     long high = context.traceIdHigh();
@@ -186,12 +199,12 @@ public final class AWSPropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
-      if (traceIdString == null) return TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
+      if (traceIdString == null) return TraceContextOrSamplingFlags.EMPTY;
 
       Boolean sampled = null;
       long traceIdHigh = 0L, traceId = 0L;
       Long parent = null;
-      StringBuilder currentString = new StringBuilder(7 /* Sampled.length */), currentExtra = null;
+      StringBuilder currentString = new StringBuilder(7 /* Sampled.length */), extraFields = null;
       Op op = null;
       OUTER:
       for (int i = 0, length = traceIdString.length(); i < length; i++) {
@@ -211,8 +224,8 @@ public final class AWSPropagation<K> implements Propagation<K> {
             op = Op.SKIP;
           } else {
             op = Op.EXTRA;
-            if (currentExtra == null) currentExtra = new StringBuilder();
-            currentExtra.append(';').append(currentString);
+            if (extraFields == null) extraFields = new StringBuilder();
+            extraFields.append(';').append(currentString);
           }
           currentString.setLength(0);
         } else if (op == null) {
@@ -222,9 +235,9 @@ public final class AWSPropagation<K> implements Propagation<K> {
         // no longer whitespace
         switch (op) {
           case EXTRA:
-            currentExtra.append(c);
+            extraFields.append(c);
             while (i < length && (c = traceIdString.charAt(i)) != ';') {
-              currentExtra.append(c);
+              extraFields.append(c);
               i++;
             }
             break;
@@ -291,34 +304,44 @@ public final class AWSPropagation<K> implements Propagation<K> {
         }
         op = null;
       }
-      TraceContextOrSamplingFlags result;
+
+      List<Object> extra;
+      if (extraFields == null) {
+        extra = DEFAULT_EXTRA;
+      } else {
+        Extra e = new Extra();
+        e.fields = extraFields;
+        extra = Collections.singletonList(e);
+      }
 
       if (traceIdHigh == 0L) { // traceIdHigh cannot be null, so just return sampled
-        result = TraceContextOrSamplingFlags.create(
-            new SamplingFlags.Builder().sampled(sampled).build()
-        );
+        return TraceContextOrSamplingFlags.newBuilder()
+            .extra(extra)
+            .samplingFlags(SamplingFlags.Builder.build(sampled))
+            .build();
       } else if (parent == null) {
-        result = TraceContextOrSamplingFlags.create(TraceIdContext.newBuilder()
-            .traceIdHigh(traceIdHigh)
-            .traceId(traceId)
-            .sampled(sampled)
-            .build()
-        );
-      } else {
-        result = TraceContextOrSamplingFlags.create(TraceContext.newBuilder()
-            .traceIdHigh(traceIdHigh)
-            .traceId(traceId)
-            .spanId(parent)
-            .sampled(sampled)
-            .build()
-        );
+        return TraceContextOrSamplingFlags.newBuilder()
+            .extra(extra)
+            .traceIdContext(TraceIdContext.newBuilder()
+                .traceIdHigh(traceIdHigh)
+                .traceId(traceId)
+                .sampled(sampled)
+                .build())
+            .build();
       }
-      if (currentExtra == null) return result;
-      Extra extra = new Extra();
-      extra.fields = currentExtra;
-      return result.toBuilder().addExtra(extra).build();
+      return TraceContextOrSamplingFlags.create(TraceContext.newBuilder()
+          .traceIdHigh(traceIdHigh)
+          .traceId(traceId)
+          .spanId(parent)
+          .sampled(sampled)
+          .extra(extra)
+          .build());
     }
   }
+
+  /** When present, this context was created with AWSPropagation */
+  static final Extra MARKER = new Extra();
+  static final List<Object> DEFAULT_EXTRA = Collections.singletonList(MARKER);
 
   static final class Extra { // hidden intentionally
     CharSequence fields;
