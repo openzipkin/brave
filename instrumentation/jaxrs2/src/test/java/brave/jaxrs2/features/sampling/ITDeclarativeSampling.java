@@ -23,7 +23,7 @@ import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DeclarativeSamplingTest extends ServletContainer {
+public class ITDeclarativeSampling extends ServletContainer {
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
   OkHttpClient client = new OkHttpClient();
   HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder()
