@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadContextCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext currentTraceContext() {
+  @Override protected CurrentTraceContext newCurrentTraceContext() {
     return ThreadContextCurrentTraceContext.create(CurrentTraceContext.Default.create());
   }
 

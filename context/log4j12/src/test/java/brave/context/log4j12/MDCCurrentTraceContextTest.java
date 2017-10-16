@@ -13,12 +13,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext currentTraceContext() {
+  @Override protected CurrentTraceContext newCurrentTraceContext() {
     return MDCCurrentTraceContext.create();
   }
 
   @Test public void is_inheritable() throws Exception {
-    super.is_inheritable(currentTraceContext());
+    super.is_inheritable(currentTraceContext);
   }
 
   @Test(expected = ComparisonFailure.class) // Log4J 1.2.x MDC is inheritable by default
