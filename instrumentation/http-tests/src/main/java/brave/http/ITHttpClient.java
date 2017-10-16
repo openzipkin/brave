@@ -174,6 +174,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
           public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
             customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
             customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+            customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
           }
         })
         .build().clientOf("remote-service");
@@ -191,6 +192,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .containsExactly("remote-service");
 
     assertReportedTagsInclude("http.url", url(uri));
+    assertReportedTagsInclude("context.visible", "true");
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
