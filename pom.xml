@@ -86,7 +86,7 @@
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
-    <maven-failsafe-plugin.version>2.20</maven-failsafe-plugin.version>
+    <maven-failsafe-plugin.version>2.20.1</maven-failsafe-plugin.version>
     <centralsync-maven-plugin.version>0.1.0</centralsync-maven-plugin.version>
 
     <!-- Catch common Java mistakes as compile-time errors -->

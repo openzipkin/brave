@@ -132,6 +132,7 @@ public abstract class Tracing implements Closeable {
      */
     @Deprecated
     public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
+      if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
       return localEndpoint(localEndpoint.toV2());
     }
 
@@ -199,6 +200,7 @@ public abstract class Tracing implements Closeable {
      * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
      */
     public Builder sampler(Sampler sampler) {
+      if (sampler == null) throw new NullPointerException("sampler == null");
       this.sampler = sampler;
       return this;
     }
@@ -209,6 +211,7 @@ public abstract class Tracing implements Closeable {
      * other mechanisms or to synchronize with other mechanisms such as SLF4J's MDC.
      */
     public Builder currentTraceContext(CurrentTraceContext currentTraceContext) {
+      if (currentTraceContext == null) throw new NullPointerException("currentTraceContext == null");
       this.currentTraceContext = currentTraceContext;
       return this;
     }

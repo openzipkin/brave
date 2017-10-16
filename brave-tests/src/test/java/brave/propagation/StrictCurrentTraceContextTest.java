@@ -5,10 +5,9 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class StrictCurrentTraceContextTest extends CurrentTraceContextTest {
-  CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
 
-  @Override protected CurrentTraceContext currentTraceContext() {
-    return currentTraceContext;
+  @Override protected CurrentTraceContext newCurrentTraceContext() {
+    return new StrictCurrentTraceContext();
   }
 
   @Test public void scope_enforcesCloseOnSameThread() throws InterruptedException {

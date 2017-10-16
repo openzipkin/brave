@@ -4,10 +4,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class DefaultCurrentTraceContextTest extends CurrentTraceContextTest {
-  CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.create();
 
-  @Override protected CurrentTraceContext currentTraceContext() {
-    return currentTraceContext;
+  @Override protected CurrentTraceContext newCurrentTraceContext() {
+    return CurrentTraceContext.Default.create();
   }
 
   @Test public void is_inheritable() throws Exception {

@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext currentTraceContext() {
+  @Override protected CurrentTraceContext newCurrentTraceContext() {
     return MDCCurrentTraceContext.create(CurrentTraceContext.Default.create());
   }
 
