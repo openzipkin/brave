@@ -4,7 +4,7 @@
   <parent>
     <artifactId>brave-parent</artifactId>
     <groupId>io.zipkin.brave</groupId>
-    <version>4.9.0</version>
+    <version>4.9.1-SNAPSHOT</version>
   </parent>
   <artifactId>brave-http-tests</artifactId>
   <packaging>jar</packaging>
