@@ -39,13 +39,15 @@ public abstract class SamplingFlags {
       return this;
     }
 
-    public SamplingFlags build() {
-      if (debug) {
-        return DEBUG;
-      } else if (sampled != null) {
-        return sampled ? SAMPLED : NOT_SAMPLED;
-      }
+    /** Allows you to create flags from a boolean value without allocating a builder instance */
+    public static SamplingFlags build(@Nullable Boolean sampled) {
+      if (sampled != null) return sampled ? SAMPLED : NOT_SAMPLED;
       return EMPTY;
+    }
+
+    public SamplingFlags build() {
+      if (debug) return DEBUG;
+      return build(sampled);
     }
   }
 

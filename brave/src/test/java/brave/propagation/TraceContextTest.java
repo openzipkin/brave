@@ -1,5 +1,8 @@
 package brave.propagation;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,5 +38,24 @@ public class TraceContextTest {
 
     assertThat(context.toString())
         .isEqualTo("000000000000014d00000000000001bc/0000000000000003");
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void ensureImmutable_returnsImmutableEmptyList() {
+    TraceContext.ensureImmutable(new ArrayList<>()).add("foo");
+  }
+
+  @Test public void ensureImmutable_convertsToSingletonList() {
+    List<Object> list = new ArrayList<>();
+    list.add("foo");
+    TraceContext.ensureImmutable(list);
+    assertThat(TraceContext.ensureImmutable(list).getClass().getSimpleName())
+        .isEqualTo("SingletonList");
+  }
+
+  @Test public void ensureImmutable_returnsEmptyList() {
+    List<Object> list = Collections.emptyList();
+    assertThat(TraceContext.ensureImmutable(list))
+        .isSameAs(list);
   }
 }

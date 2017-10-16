@@ -19,6 +19,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.aws.AWSPropagation;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,11 +48,11 @@ public class PropagationBenchmarks {
   static final Injector<Map<String, String>> b3Injector =
       Propagation.B3_STRING.injector(Map::put);
   static final Injector<Map<String, String>> awsInjector =
-      new AWSPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
+      AWSPropagation.FACTORY.create(Propagation.KeyFactory.STRING).injector(Map::put);
   static final Extractor<Map<String, String>> b3Extractor =
       Propagation.B3_STRING.extractor(Map::get);
   static final Extractor<Map<String, String>> awsExtractor =
-      new AWSPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
+      AWSPropagation.FACTORY.create(Propagation.KeyFactory.STRING).extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -66,6 +67,8 @@ public class PropagationBenchmarks {
       awsInjector.inject(context, this);
     }
   };
+
+  static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
   Map<String, String> carrier = new LinkedHashMap<>();
 
@@ -85,10 +88,19 @@ public class PropagationBenchmarks {
     return awsExtractor.extract(incoming);
   }
 
+  @Benchmark public TraceContextOrSamplingFlags extract_b3_nothing() {
+    return b3Extractor.extract(nothingIncoming);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags extract_aws_nothing() {
+    return awsExtractor.extract(nothingIncoming);
+  }
+
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
+    new PropagationBenchmarks().extract_aws();
     Options opt = new OptionsBuilder()
-        .include(".*" + PropagationBenchmarks.class.getSimpleName() + ".extract_aws")
+        .include(".*" + PropagationBenchmarks.class.getSimpleName())
         .build();
 
     new Runner(opt).run();

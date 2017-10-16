@@ -1,37 +1,45 @@
 package brave.propagation.aws;
 
-import brave.internal.HexCodec;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
+import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class AWSPropagationTest {
   Map<String, String> carrier = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector =
-      new AWSPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
+      AWSPropagation.FACTORY.create(Propagation.KeyFactory.STRING).injector(Map::put);
   TraceContext.Extractor<Map<String, String>> extractor =
-      new AWSPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
+      AWSPropagation.FACTORY.create(Propagation.KeyFactory.STRING).extractor(Map::get);
 
   String sampledTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   TraceContext sampledContext = TraceContext.newBuilder()
-      .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
-      .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-      .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
+      .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
+      .traceId(lowerHexToUnsignedLong("2345678912345678"))
+      .spanId(lowerHexToUnsignedLong("463ac35c9f6413ad"))
       .sampled(true)
+      .extra(AWSPropagation.DEFAULT_EXTRA)
       .build();
 
   @Test public void traceIdString() throws Exception {
-    assertThat(AWSPropagation.traceIdString(sampledContext))
+    assertThat(AWSPropagation.rootField(sampledContext))
         .isEqualTo("1-67891233-abcdef012345678912345678");
+  }
+
+  @Test public void traceIdString_null_if_not_aws() throws Exception {
+    TraceContext notAWS = sampledContext.toBuilder().extra(Collections.emptyList()).build();
+    assertThat(AWSPropagation.rootField(notAWS))
+        .isNull();
   }
 
   @Test public void inject() throws Exception {
@@ -45,6 +53,14 @@ public class AWSPropagationTest {
 
     assertThat(extractor.extract(carrier).context())
         .isEqualTo(sampledContext);
+  }
+
+  @Test public void extract_containsMarker() throws Exception {
+    carrier.put("x-amzn-trace-id", sampledTraceId);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    assertThat(extracted.context().extra())
+        .containsExactly(AWSPropagation.MARKER);
   }
 
   @Test public void extract_static() throws Exception {
@@ -65,8 +81,8 @@ public class AWSPropagationTest {
 
     assertThat(extractor.extract(carrier).traceIdContext())
         .isEqualTo(TraceIdContext.newBuilder()
-            .traceIdHigh(HexCodec.lowerHexToUnsignedLong("5759e988bd862e3f"))
-            .traceId(HexCodec.lowerHexToUnsignedLong("e1be46a994272793"))
+            .traceIdHigh(lowerHexToUnsignedLong("5759e988bd862e3f"))
+            .traceId(lowerHexToUnsignedLong("e1be46a994272793"))
             .sampled(true)
             .build());
   }
@@ -97,8 +113,8 @@ public class AWSPropagationTest {
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
     assertThat(extracted.traceIdContext())
         .isEqualTo(TraceIdContext.newBuilder()
-            .traceIdHigh(HexCodec.lowerHexToUnsignedLong("5821139936d228ad"))
-            .traceId(HexCodec.lowerHexToUnsignedLong("5d99923122bbe354"))
+            .traceIdHigh(lowerHexToUnsignedLong("5821139936d228ad"))
+            .traceId(lowerHexToUnsignedLong("5d99923122bbe354"))
             .build());
 
     assertThat(((AWSPropagation.Extra) extracted.extra().get(0)).fields)
