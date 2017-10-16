@@ -57,8 +57,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
         public void start(Listener<RespT> responseListener, Metadata headers) {
           injector.inject(span.context(), headers);
           span.kind(Span.Kind.CLIENT).start();
-          parser.onStart(method, callOptions, headers, span);
           try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+            parser.onStart(method, callOptions, headers, span);
             super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
               @Override public void onMessage(RespT message) {
                 try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -68,7 +68,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
               }
 
               @Override public void onClose(Status status, Metadata trailers) {
-                try {
+                try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
                   super.onClose(status, trailers);
                   parser.onClose(status, trailers, span);
                 } finally {
@@ -80,8 +80,10 @@ final class TracingClientInterceptor implements ClientInterceptor {
         }
 
         @Override public void sendMessage(ReqT message) {
-          super.sendMessage(message);
-          parser.onMessageSent(message, span);
+          try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+            super.sendMessage(message);
+            parser.onMessageSent(message, span);
+          }
         }
       };
     } catch (RuntimeException | Error e) {

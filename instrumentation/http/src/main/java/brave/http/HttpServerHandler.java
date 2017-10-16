@@ -71,7 +71,14 @@ public final class HttpServerHandler<Req, Resp> {
 
     // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.SERVER);
-    parser.request(adapter, request, span);
+
+    // Ensure user-code can read the current trace context
+    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
+    try {
+      parser.request(adapter, request, span);
+    } finally {
+      ws.close();
+    }
 
     boolean parsedEndpoint = false;
     if (Platform.get().zipkinV1Present()) {
@@ -109,9 +116,13 @@ public final class HttpServerHandler<Req, Resp> {
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
+
+    // Ensure user-code can read the current trace context
+    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
     try {
       parser.response(adapter, response, error, span);
     } finally {
+      ws.close();
       span.finish();
     }
   }

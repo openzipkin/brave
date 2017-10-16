@@ -251,10 +251,16 @@ public class ITTracingClientInterceptor {
     tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
+        if (tracing.tracing().currentTraceContext().get() != null) {
+          span.tag("grpc.message_sent.visible", "true");
+        }
       }
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
         span.tag("grpc.message_received", message.toString());
+        if (tracing.tracing().currentTraceContext().get() != null) {
+          span.tag("grpc.message_received.visible", "true");
+        }
       }
 
       @Override
@@ -268,7 +274,8 @@ public class ITTracingClientInterceptor {
 
     assertThat(spans.getFirst().name()).isEqualTo("unary");
     assertThat(spans).flatExtracting(s -> s.tags().keySet()).containsExactlyInAnyOrder(
-        "grpc.message_received", "grpc.message_sent"
+        "grpc.message_received", "grpc.message_sent",
+        "grpc.message_received.visible", "grpc.message_sent.visible"
     );
   }
 
