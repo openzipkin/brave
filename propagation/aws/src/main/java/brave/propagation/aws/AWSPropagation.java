@@ -21,12 +21,12 @@ import static brave.internal.HexCodec.writeHexLong;
  *
  * <p>For example, if you are in a lambda environment, you can read the incoming context like this:
  * <pre>{@code
- * extracted = AWSPropagation.extract(System.getenv("_X_AMZN_TRACE_ID"));
+ * span = tracer.nextSpan(AWSPropagation.extractLambda());
  * }</pre>
  *
- * <h3>Details</h3> {@code x-amzn-trace-id} or {@code _X_AMZN_TRACE_ID} follows RFC 6265 style
- * syntax (https://tools.ietf.org/html/rfc6265#section-2.2): fields are split on semicolon and
- * optional whitespace.
+ * <h3>Details</h3> {@code x-amzn-trace-id} (and the lambda equivalent {@code _X_AMZN_TRACE_ID})
+ * follows RFC 6265 style syntax (https://tools.ietf.org/html/rfc6265#section-2.2): fields are split
+ * on semicolon and optional whitespace.
  *
  * <p>Description of the {@code Root} (or {@code Self}) field from AWS CLI help:
  *
@@ -188,13 +188,20 @@ public final class AWSPropagation<K> implements Propagation<K> {
       new AWSExtractor<>(new AWSPropagation<>(KeyFactory.STRING), (carrier, key) -> carrier);
 
   /**
-   * Like {@link TraceContext.Extractor#extract(Object)} except reading from a single field.
-   *
    * <p>This is used for extracting from the AWS lambda environment variable {@code
-   * X_AMZN_TRACE_ID}.
+   * _X_AMZN_TRACE_ID}.
+   *
+   * @see #extract(String)
+   */
+  public static TraceContextOrSamplingFlags extractLambda() {
+    return STRING_EXTRACTOR.extract(System.getenv("_X_AMZN_TRACE_ID"));
+  }
+
+  /**
+   * Like {@link TraceContext.Extractor#extract(Object)} except reading from a single field.
    */
   public static TraceContextOrSamplingFlags extract(String amznTraceId) {
-    if (amznTraceId == null) throw new NullPointerException("amznTraceId == null");
+    if (amznTraceId == null) return EMPTY;
     return STRING_EXTRACTOR.extract(amznTraceId);
   }
 
@@ -366,5 +373,9 @@ public final class AWSPropagation<K> implements Propagation<K> {
 
   static final class Extra { // hidden intentionally
     CharSequence fields;
+
+    @Override public String toString() {
+      return "AWSPropagation{" + (fields != null ? ("fields=" + fields.toString()) : "") + "}";
+    }
   }
 }

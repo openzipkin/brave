@@ -62,6 +62,24 @@ public class ExtraFieldPropagationTest {
         .isNull();
   }
 
+  @Test public void toString_one() throws Exception {
+    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.One();
+    extra.put("x-vcap-request-id", uuid);
+
+    assertThat(extra)
+        .hasToString("ExtraFieldPropagation{x-vcap-request-id=" + uuid + "}");
+  }
+
+  @Test public void toString_two() throws Exception {
+    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Many();
+    extra.put("x-amzn-trace-id", awsTraceId);
+    extra.put("x-vcap-request-id", uuid);
+
+    assertThat(extra).hasToString(
+        "ExtraFieldPropagation{x-amzn-trace-id=" + awsTraceId + ", x-vcap-request-id=" + uuid + "}"
+    );
+  }
+
   @Test public void inject_one() throws Exception {
     ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.One();
     extra.put("x-vcap-request-id", uuid);

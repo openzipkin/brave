@@ -25,10 +25,11 @@ There are a couple added utilities for parsing and generating an AWS trace ID st
 
 * `AWSPropagation.traceId` - used for correlation purposes and lookup in the X-Ray UI
 * `AWSPropagation.extract` - extracts a trace context from a string such as an environment variable.
+* `AWSPropagation.extractLambda` - special form of extract which reads from the standard lambda env.
 
-Ex. to extract a trace context from the built-in AWS Lambda variable
+For example, if you are in a lambda environment, you can read the incoming context like this:
 ```java
-extracted = AWSPropagation.extract(System.getenv("_X_AMZN_TRACE_ID"));
+span = tracer.nextSpan(AWSPropagation.extractLambda());
 ```
 
 ## Extra fields
