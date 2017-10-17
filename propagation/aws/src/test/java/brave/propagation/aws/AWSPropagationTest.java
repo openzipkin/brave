@@ -192,6 +192,21 @@ public class AWSPropagationTest {
         .contains(new StringBuilder(";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo"));
   }
 
+  @Test public void toString_fields() throws Exception {
+    AWSPropagation.Extra extra = new AWSPropagation.Extra();
+    extra.fields = ";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo";
+
+    assertThat(extra)
+        .hasToString("AWSPropagation{fields=" + extra.fields + "}");
+  }
+
+  @Test public void toString_none() throws Exception {
+    AWSPropagation.Extra extra = new AWSPropagation.Extra();
+
+    assertThat(extra)
+        .hasToString("AWSPropagation{}");
+  }
+
   @Test public void injectExtraStuff() throws Exception {
     AWSPropagation.Extra extra = new AWSPropagation.Extra();
     extra.fields = ";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo";

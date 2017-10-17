@@ -152,6 +152,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       if (key == null) return;
       setter.put(carrier, key, value);
     }
+
+    @Override public String toString() {
+      return "ExtraFieldPropagation{" + name + "=" + value + "}";
+    }
   }
 
   static final class Many extends Extra {
@@ -171,6 +175,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
         if (key == null) continue;
         setter.put(carrier, nameToKey.get(field.getKey()), field.getValue());
       }
+    }
+
+    @Override public String toString() {
+      return "ExtraFieldPropagation" + fields;
     }
   }
 
