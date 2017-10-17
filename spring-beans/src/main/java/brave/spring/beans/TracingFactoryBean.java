@@ -3,6 +3,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.Propagation;
 import brave.sampler.Sampler;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import zipkin2.Endpoint;
@@ -18,7 +19,9 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
   Clock clock;
   Sampler sampler;
   CurrentTraceContext currentTraceContext;
+  Propagation.Factory propagationFactory;
   Boolean traceId128Bit;
+  Boolean supportsJoin;
 
   @Override protected Tracing createInstance() throws Exception {
     Tracing.Builder builder = Tracing.newBuilder();
@@ -28,7 +31,9 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
     if (currentTraceContext != null) builder.currentTraceContext(currentTraceContext);
+    if (propagationFactory != null) builder.propagationFactory(propagationFactory);
     if (traceId128Bit != null) builder.traceId128Bit(traceId128Bit);
+    if (supportsJoin != null) builder.supportsJoin(supportsJoin);
     return builder.build();
   }
 
@@ -68,7 +73,23 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     this.currentTraceContext = currentTraceContext;
   }
 
+  public Propagation.Factory getPropagationFactory() {
+    return propagationFactory;
+  }
+
+  public void setPropagationFactory(Propagation.Factory propagationFactory) {
+    this.propagationFactory = propagationFactory;
+  }
+
   public void setTraceId128Bit(boolean traceId128Bit) {
     this.traceId128Bit = traceId128Bit;
+  }
+
+  public Boolean getSupportsJoin() {
+    return supportsJoin;
+  }
+
+  public void setSupportsJoin(Boolean supportsJoin) {
+    this.supportsJoin = supportsJoin;
   }
 }

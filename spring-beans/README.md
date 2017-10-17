@@ -34,3 +34,22 @@ Here are some example beans using the factories in this module:
     <property name="tracing" ref="tracing"/>
   </bean>
 ```
+
+Here's an advanced example, which propagates the request-scoped header "x-vcap-request-id" along
+with trace headers:
+
+```xml
+  <bean id="propagationFactory" class="brave.propagation.ExtraFieldPropagation" factory-method="newFactory">
+    <constructor-arg index="0">
+      <util:constant static-field="brave.propagation.B3Propagation.FACTORY"/>
+    </constructor-arg>
+    <constructor-arg index="1">
+      <list>
+        <value>x-vcap-request-id</value>
+      </list>
+    </constructor-arg>
+  </bean>
+
+  <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
+    <property name="propagationFactory" ref="propagationFactory"/>
+```
