@@ -2,8 +2,10 @@ package brave.spring.beans;
 
 import brave.Clock;
 import brave.Tracing;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
@@ -132,6 +134,32 @@ public class TracingFactoryBeanTest {
         .allMatch(o -> o instanceof StrictCurrentTraceContext);
   }
 
+  @Test public void propagationFactory() {
+    context = new XmlBeans(""
+        + "<bean id=\"propagationFactory\" class=\"brave.propagation.ExtraFieldPropagation\" factory-method=\"newFactory\">\n"
+        + "  <constructor-arg index=\"0\">\n"
+        + "    <util:constant static-field=\"brave.propagation.B3Propagation.FACTORY\"/>\n"
+        + "  </constructor-arg>\n"
+        + "  <constructor-arg index=\"1\">\n"
+        + "    <list>\n"
+        + "      <value>x-vcap-request-id</value>\n"
+        + "      <value>x-amzn-trace-id</value>\n"
+        + "    </list>"
+        + "  </constructor-arg>\n"
+        + "</bean>", ""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"propagationFactory\" ref=\"propagationFactory\"/>\n"
+        + "</bean>"
+    );
+    context.refresh();
+
+    assertThat(context.getBean(Tracing.class).propagation())
+        .isInstanceOf(ExtraFieldPropagation.class)
+        .extracting("nameToKey")
+        .allSatisfy(m -> assertThat((Map) m)
+            .containsOnlyKeys("x-vcap-request-id", "x-amzn-trace-id"));
+  }
+
   @Test public void traceId128Bit() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
@@ -142,6 +170,19 @@ public class TracingFactoryBeanTest {
 
     assertThat(context.getBean(Tracing.class))
         .extracting("tracer.traceId128Bit")
+        .containsExactly(true);
+  }
+
+  @Test public void supportsJoin() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"supportsJoin\" value=\"true\"/>\n"
+        + "</bean>"
+    );
+    context.refresh();
+
+    assertThat(context.getBean(Tracing.class))
+        .extracting("tracer.supportsJoin")
         .containsExactly(true);
   }
 }
