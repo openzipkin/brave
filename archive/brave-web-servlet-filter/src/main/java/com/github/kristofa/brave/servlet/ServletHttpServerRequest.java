@@ -1,9 +1,11 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
+import com.github.kristofa.brave.servlet.internal.UriEscaperUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
+
 
 public class ServletHttpServerRequest implements HttpServerRequest {
 
@@ -22,9 +24,13 @@ public class ServletHttpServerRequest implements HttpServerRequest {
     public URI getUri() {
         StringBuffer url = request.getRequestURL();
         if (request.getQueryString() != null && !request.getQueryString().isEmpty()) {
-            url.append('?').append(request.getQueryString());
+            url.append("?").append(request.getQueryString());
         }
-        return URI.create(url.toString());
+        try {
+            return URI.create(url.toString());
+        } catch (IllegalArgumentException iae) {
+            return URI.create(UriEscaperUtil.escape(url.toString()));
+        }
     }
 
     @Override
