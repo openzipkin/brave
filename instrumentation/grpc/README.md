@@ -1,5 +1,5 @@
 # brave-instrumentation-grpc
-This contains tracing client and server interceptors for [grpc](github.com/grpc/grpc-java).
+This contains tracing client and server interceptors for [grpc](https://github.com/grpc/grpc-java).
 
 
 The `GrpcTracing` class holds a reference to a tracing component,
