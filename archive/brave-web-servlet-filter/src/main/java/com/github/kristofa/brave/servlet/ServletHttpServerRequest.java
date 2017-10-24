@@ -1,11 +1,20 @@
 package com.github.kristofa.brave.servlet;
 
-import com.github.kristofa.brave.http.HttpServerRequest;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
-import java.net.URI;
+
+import com.github.kristofa.brave.http.HttpServerRequest;
+
 
 public class ServletHttpServerRequest implements HttpServerRequest {
+
+    private static final Logger LOGGER = Logger.getLogger(ServletHttpServerRequest.class.getName());
 
     private final HttpServletRequest request;
 
@@ -24,7 +33,13 @@ public class ServletHttpServerRequest implements HttpServerRequest {
         if (request.getQueryString() != null && !request.getQueryString().isEmpty()) {
             url.append('?').append(request.getQueryString());
         }
-        return URI.create(url.toString());
+        try
+        {
+            return URI.create(URLEncoder.encode(url.toString(), Charset.defaultCharset().name()));
+        } catch (UnsupportedEncodingException uee){
+            LOGGER.log(Level.WARNING, "Exception encoding string to URL", uee);
+            return URI.create(url.toString());
+        }
     }
 
     @Override
