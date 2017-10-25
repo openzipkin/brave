@@ -18,7 +18,7 @@ public class ServletHttpServerRequestUnitTest
         final HttpServletRequest request = mock(HttpServletRequest.class);
 
         when(request.getRequestURL()).thenAnswer((Answer<StringBuffer>) invocation ->
-           new StringBuffer("https://мойДядя.самых/честных/правил/когдаНеВШуткуЗанемог/онУважатьСебяЗаставил/")
+           new StringBuffer("https://мойДядя->самых/честных/правил/когда[Не]В~Шутку|Занемог/он УважатьСебяЗаставил")
         );
 
         ServletHttpServerRequest shsr = new ServletHttpServerRequest(request);
