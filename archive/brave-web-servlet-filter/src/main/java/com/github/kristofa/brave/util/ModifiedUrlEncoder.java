@@ -220,7 +220,7 @@ public class ModifiedUrlEncoder
      * @return  the translated {@code String}.
      * @exception  UnsupportedEncodingException
      *             If the named encoding is not supported
-     * @see URLDecoder#decode(java.lang.String, java.lang.String)
+     * @see java.net.URLDecoder#decode(java.lang.String, java.lang.String)
      * @since 1.4
      */
     public static String encode(String s, String enc)
