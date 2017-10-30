@@ -5,17 +5,10 @@ import java.net.URI;
 import javax.servlet.http.HttpServletRequest;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
-import com.google.common.net.PercentEscaper;
-
+import com.github.kristofa.brave.util.ModifiedUrlEncoder;
 
 public class ServletHttpServerRequest implements HttpServerRequest
 {
-    /**
-     * Safe chars list consumed from
-     * <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI">MDN</a>
-     * as a excerpt from 2.2 of <a href="https://www.ietf.org/rfc/rfc2396.txt">RFC2396</a>
-     */
-    private static final PercentEscaper ESCAPER = new PercentEscaper(";,/?:@&=+$-_.!~*'()#", false);
 
     private final HttpServletRequest request;
 
@@ -38,7 +31,7 @@ public class ServletHttpServerRequest implements HttpServerRequest
         {
             url.append("?").append(request.getQueryString());
         }
-        return URI.create(ESCAPER.escape(url.toString()));
+        return URI.create(ModifiedUrlEncoder.encode(url.toString()));
     }
 
     @Override
