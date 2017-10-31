@@ -5,7 +5,8 @@ import java.net.URI;
 import javax.servlet.http.HttpServletRequest;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
-import com.github.kristofa.brave.util.ModifiedUrlEncoder;
+import com.github.kristofa.brave.util.UriEscaperUtil;
+
 
 public class ServletHttpServerRequest implements HttpServerRequest
 {
@@ -31,7 +32,14 @@ public class ServletHttpServerRequest implements HttpServerRequest
         {
             url.append("?").append(request.getQueryString());
         }
-        return URI.create(ModifiedUrlEncoder.encode(url.toString()));
+        try
+        {
+            return URI.create(url.toString());
+        }
+        catch (IllegalArgumentException iae)
+        {
+            return URI.create(UriEscaperUtil.escape(url.toString()));
+        }
     }
 
     @Override
