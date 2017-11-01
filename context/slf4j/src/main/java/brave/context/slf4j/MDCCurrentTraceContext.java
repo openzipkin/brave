@@ -48,9 +48,13 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
         scope.close();
         if(previousTraceId != null) {
           MDC.put("traceId", previousTraceId);
+        } else {
+          MDC.remove("traceId");	
         }
         if(previousSpanId != null) {
           MDC.put("spanId", previousSpanId);
+        } else {
+          MDC.remove("spanId");
         }
       }
     }
