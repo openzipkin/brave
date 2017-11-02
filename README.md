@@ -24,7 +24,7 @@ and Spring already exist. Instrumentation written here are tested and
 benchmarked.
 
 If you are trying to trace legacy applications, you may be interested in
-[Spring XML Configuration](brave-spring-beans/). This allows you to setup
+[Spring XML Configuration](spring-beans/). This allows you to setup
 tracing without any custom code.
 
 You may want to put trace IDs into your log files, or change thread local
