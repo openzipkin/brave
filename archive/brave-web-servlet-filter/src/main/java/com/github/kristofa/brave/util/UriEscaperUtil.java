@@ -3,10 +3,12 @@ package com.github.kristofa.brave.util;
 import java.net.URLEncoder;
 import java.util.BitSet;
 
-
+/**
+ * Util executes extended URLEncoder flow, to omit converting list of particular symbols
+ */
 public class UriEscaperUtil {
 
-    final static BitSet dontNeedEncoding = new BitSet(256);
+    final static private BitSet dontNeedEncoding = new BitSet(256);
 
     static {
         /**
