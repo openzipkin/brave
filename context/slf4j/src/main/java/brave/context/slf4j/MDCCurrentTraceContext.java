@@ -46,8 +46,16 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     class MDCCurrentTraceContextScope implements Scope {
       @Override public void close() {
         scope.close();
-        MDC.put("traceId", previousTraceId);
-        MDC.put("spanId", previousSpanId);
+        if(previousTraceId != null) {
+          MDC.put("traceId", previousTraceId);
+        } else {
+          MDC.remove("traceId");	
+        }
+        if(previousSpanId != null) {
+          MDC.put("spanId", previousSpanId);
+        } else {
+          MDC.remove("spanId");
+        }
       }
     }
     return new MDCCurrentTraceContextScope();
