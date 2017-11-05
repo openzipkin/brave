@@ -9,3 +9,6 @@ To enable tracing, create your client using `TracingHttpClientBuilder`.
 ```java
 httpclient = TracingHttpClientBuilder.create(tracing).build();
 ```
+
+You can also use `TracingCachingHttpClientBuilder` if you depend on
+`org.apache.httpcomponents:httpclient-cache`

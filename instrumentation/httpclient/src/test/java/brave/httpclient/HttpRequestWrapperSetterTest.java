@@ -7,7 +7,7 @@ import java.util.stream.Stream;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.message.BasicHttpRequest;
 
-import static brave.httpclient.TracingHttpClientBuilder.SETTER;
+import static brave.httpclient.TracingMainExec.SETTER;
 
 public class HttpRequestWrapperSetterTest
     extends PropagationSetterTest<HttpRequestWrapper, String> {

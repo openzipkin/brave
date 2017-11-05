@@ -15,8 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class TracingHttpClientBuilder_HttpAdapterTest {
-  TracingHttpClientBuilder.HttpAdapter adapter = new TracingHttpClientBuilder.HttpAdapter();
+public class HttpAdapterTest {
+  HttpAdapter adapter = new HttpAdapter();
   @Mock HttpRequestWrapper request;
 
   @Test public void parseServerAddress_skipsOnNoop() {
