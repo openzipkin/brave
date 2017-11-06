@@ -1,7 +1,7 @@
 package com.github.kristofa.brave.servlet;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
-import com.github.kristofa.brave.util.UriEscaperUtil;
+import com.github.kristofa.brave.servlet.internal.UriEscaperUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import java.net.URI;

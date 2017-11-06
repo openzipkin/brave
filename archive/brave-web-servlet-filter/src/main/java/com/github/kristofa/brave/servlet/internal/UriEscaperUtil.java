@@ -1,4 +1,4 @@
-package com.github.kristofa.brave.util;
+package com.github.kristofa.brave.servlet.internal;
 
 import java.net.URLEncoder;
 import java.util.BitSet;
