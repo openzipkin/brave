@@ -42,6 +42,14 @@ public final class TracingFilter implements Filter {
     HttpServletRequest httpRequest = (HttpServletRequest) request;
     HttpServletResponse httpResponse = servlet.httpResponse(response);
 
+    // Prevent duplicate spans for the same request
+    if (request.getAttribute("TracingFilter") != null) {
+      chain.doFilter(request, response);
+      return;
+    }
+
+    request.setAttribute("TracingFilter", "true");
+
     Span span = handler.handleReceive(extractor, httpRequest);
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
