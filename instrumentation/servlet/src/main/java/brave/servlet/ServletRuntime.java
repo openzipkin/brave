@@ -4,6 +4,7 @@ import brave.Span;
 import brave.http.HttpServerHandler;
 import brave.internal.Nullable;
 import java.io.IOException;
+import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
 import javax.servlet.ServletResponse;
@@ -66,23 +67,48 @@ abstract class ServletRuntime {
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
         HttpServletRequest request, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
-      request.getAsyncContext().addListener(new AsyncListener() {
-        @Override public void onComplete(AsyncEvent e) throws IOException {
-          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
-        }
+      request.getAsyncContext().addListener(new TracingAsyncListener(handler, span));
+    }
 
-        @Override public void onTimeout(AsyncEvent e) throws IOException {
-          span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-          handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
-        }
+    static final class TracingAsyncListener implements AsyncListener {
+      final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
+      final Span span;
+      volatile boolean complete; // multiple async events can occur, only complete once
 
-        @Override public void onError(AsyncEvent e) throws IOException {
-          handler.handleSend(null, e.getThrowable(), span);
-        }
+      TracingAsyncListener(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+          Span span) {
+        this.handler = handler;
+        this.span = span;
+      }
 
-        @Override public void onStartAsync(AsyncEvent e) throws IOException {
-        }
-      });
+      @Override public void onComplete(AsyncEvent e) {
+        if (complete) return;
+        handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
+        complete = true;
+      }
+
+      @Override public void onTimeout(AsyncEvent e) {
+        if (complete) return;
+        span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
+        handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
+        complete = true;
+      }
+
+      @Override public void onError(AsyncEvent e) {
+        if (complete) return;
+        handler.handleSend(null, e.getThrowable(), span);
+        complete = true;
+      }
+
+      /** If another async is created (ex via asyncContext.dispatch), this needs to be re-attached */
+      @Override public void onStartAsync(AsyncEvent event) {
+        AsyncContext eventAsyncContext = event.getAsyncContext();
+        if (eventAsyncContext != null) eventAsyncContext.addListener(this);
+      }
+
+      @Override public String toString() {
+        return "TracingAsyncListener{" + span.context() + "}";
+      }
     }
   }
 
