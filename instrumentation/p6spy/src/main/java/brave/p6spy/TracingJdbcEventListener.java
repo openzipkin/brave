@@ -1,9 +1,8 @@
 package brave.p6spy;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracing;
 import brave.internal.Nullable;
+import brave.propagation.ThreadLocalSpan;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
 import java.net.URI;
@@ -26,42 +25,30 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     this.includeParameterValues = includeParameterValues;
   }
 
+  /**
+   * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
+   * all callbacks happen on the same thread.
+   *
+   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before tracing.
+   */
   @Override public void onBeforeAnyExecute(StatementInformation info) {
-    Tracer tracer = Tracing.currentTracer();
-    if (tracer == null) return;
     String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
     // don't start a span unless there is SQL as we cannot choose a relevant name without it
     if (sql == null || sql.isEmpty()) return;
 
-    Span span = tracer.nextSpan();
-    // regardless of noop or not, set it in scope so that custom contexts can see it (like slf4j)
-    if (!span.isNoop()) {
-      span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
-      span.tag("sql.query", sql);
-      parseServerAddress(info.getConnectionInformation().getConnection(), span);
-      span.start();
-    }
+    // Gets the next span (and places it in scope) so code between here and postProcess can read it
+    Span span = ThreadLocalSpan.CURRENT_TRACER.next();
+    if (span == null || span.isNoop()) return;
 
-    currentSpanInScope.set(tracer.withSpanInScope(span));
+    span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
+    span.tag("sql.query", sql);
+    parseServerAddress(info.getConnectionInformation().getConnection(), span);
+    span.start();
   }
 
-  /**
-   * There's no attribute namespace shared across request and response. Hence, we need to save off
-   * a reference to the span in scope, so that we can close it in the response.
-   */
-  final ThreadLocal<Tracer.SpanInScope> currentSpanInScope = new ThreadLocal<>();
-
   @Override public void onAfterAnyExecute(StatementInformation info, long elapsed, SQLException e) {
-    Tracer tracer = Tracing.currentTracer();
-    if (tracer == null) return;
-
-    Span span = tracer.currentSpan();
-    if (span == null) return;
-    Tracer.SpanInScope scope = currentSpanInScope.get();
-    if (scope != null) {
-      scope.close();
-      currentSpanInScope.remove();
-    }
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
 
     if (e != null) {
       span.tag("error", Integer.toString(e.getErrorCode()));
