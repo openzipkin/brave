@@ -2,22 +2,22 @@ package brave.httpclient;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.cache.CachingHttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
 
-public final class TracingHttpClientBuilder extends HttpClientBuilder {
+public final class TracingCachingHttpClientBuilder extends CachingHttpClientBuilder {
 
-  public static HttpClientBuilder create(Tracing tracing) {
-    return new TracingHttpClientBuilder(HttpTracing.create(tracing));
+  public static CachingHttpClientBuilder create(Tracing tracing) {
+    return new TracingCachingHttpClientBuilder(HttpTracing.create(tracing));
   }
 
-  public static HttpClientBuilder create(HttpTracing httpTracing) {
-    return new TracingHttpClientBuilder(httpTracing);
+  public static CachingHttpClientBuilder create(HttpTracing httpTracing) {
+    return new TracingCachingHttpClientBuilder(httpTracing);
   }
 
   final HttpTracing httpTracing;
 
-  TracingHttpClientBuilder(HttpTracing httpTracing) { // intentionally hidden
+  TracingCachingHttpClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.httpTracing = httpTracing;
   }
