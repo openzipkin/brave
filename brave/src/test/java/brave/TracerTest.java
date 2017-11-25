@@ -370,7 +370,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{reporter=MyReporter{}, currentSpan=0000000000000001/000000000000000a}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, reporter=MyReporter{}}"
       );
     }
   }
@@ -381,13 +381,21 @@ public class TracerTest {
     span.start(1L); // didn't set anything else! this is to help ensure no NPE
 
     assertThat(tracer).hasToString(
-        "Tracer{reporter=MyReporter{}, inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1,\"localEndpoint\":{\"serviceName\":\"my-service\"}}]}"
+        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1,\"localEndpoint\":{\"serviceName\":\"my-service\"}}], reporter=MyReporter{}}"
     );
 
     span.finish();
 
     assertThat(tracer).hasToString(
         "Tracer{reporter=MyReporter{}}"
+    );
+  }
+
+  @Test public void toString_whenNoop() {
+    Tracing.current().setNoop(true);
+
+    assertThat(tracer).hasToString(
+        "Tracer{noop=true, reporter=MyReporter{}}"
     );
   }
 

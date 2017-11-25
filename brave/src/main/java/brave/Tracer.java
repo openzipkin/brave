@@ -384,10 +384,11 @@ public final class Tracer {
   @Override public String toString() {
     TraceContext currentSpan = currentTraceContext.get();
     List<zipkin2.Span> inFlight = recorder.snapshot();
-    return "Tracer{reporter=" + reporter
-        + (currentSpan != null ? (", currentSpan=" + currentSpan) : "")
-        + (inFlight.size() > 0 ? (", inFlight=" + inFlight) : "")
-        + (noop.get() ? ", noop=true" : "")
+    return "Tracer{"
+        + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
+        + (inFlight.size() > 0 ? ("inFlight=" + inFlight + ", ") : "")
+        + (noop.get() ? "noop=true, " : "")
+        + "reporter=" + reporter
         + "}";
   }
 
