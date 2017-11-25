@@ -13,6 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
 import zipkin2.Endpoint;
+import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -20,28 +21,37 @@ import zipkin2.reporter.Reporter;
  *
  * <p>Originally designed by OkHttp team, derived from {@code okhttp3.internal.platform.Platform}
  */
-public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
+public abstract class Platform {
   static final Logger logger = Logger.getLogger(Tracer.class.getName());
 
   private static final Platform PLATFORM = findPlatform();
 
-  // currentTimeMicroseconds is derived by this
-  final long createTimestamp;
-  final long createTick;
+  final Clock clock;
   volatile Endpoint localEndpoint;
 
   Platform() {
-    createTimestamp = System.currentTimeMillis() * 1000;
-    createTick = System.nanoTime();
+    clock = new TickClock();
   }
 
   /** Ensure we don't raise a {@linkplain ClassNotFoundException} calling deprecated methods */
   public abstract boolean zipkinV1Present();
 
-  @Override public void report(zipkin2.Span span) {
-    if (!logger.isLoggable(Level.INFO)) return;
-    if (span == null) throw new NullPointerException("span == null");
-    logger.info(span.toString());
+  public Reporter<zipkin2.Span> reporter() {
+    return LoggingReporter.INSTANCE;
+  }
+
+  enum LoggingReporter implements Reporter<zipkin2.Span> {
+    INSTANCE;
+
+    @Override public void report(Span span) {
+      if (!logger.isLoggable(Level.INFO)) return;
+      if (span == null) throw new NullPointerException("span == null");
+      logger.info(span.toString());
+    }
+
+    @Override public String toString() {
+      return "LoggingReporter{name=" + logger.getName() + "}";
+    }
   }
 
   public Endpoint localEndpoint() {
@@ -122,10 +132,30 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
    */
   public abstract long nextTraceIdHigh();
 
+  public Clock clock() {
+    return clock;
+  }
+
   /** gets a timestamp based on duration since the create tick. */
-  @Override
-  public long currentTimeMicroseconds() {
-    return ((System.nanoTime() - createTick) / 1000) + createTimestamp;
+  static final class TickClock implements Clock {
+    final long baseEpochMicros;
+    final long tickNanos;
+
+    TickClock() {
+      baseEpochMicros = System.currentTimeMillis() * 1000;
+      tickNanos = System.nanoTime();
+    }
+
+    @Override public long currentTimeMicroseconds() {
+      return ((System.nanoTime() - tickNanos) / 1000) + baseEpochMicros;
+    }
+
+    @Override public String toString() {
+      return "TickClock{"
+          + "baseEpochMicros=" + baseEpochMicros + ", "
+          + "tickNanos=" + tickNanos
+          + "}";
+    }
   }
 
   @AutoValue
@@ -157,7 +187,7 @@ public abstract class Platform implements Clock, Reporter<zipkin2.Span> {
     long epochSeconds = System.currentTimeMillis() / 1000;
     int random = prng.nextInt();
     return (epochSeconds & 0xffffffffL) << 32
-        |  (random & 0xffffffffL);
+        | (random & 0xffffffffL);
   }
 
   @AutoValue

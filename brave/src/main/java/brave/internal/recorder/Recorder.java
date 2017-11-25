@@ -4,13 +4,14 @@ import brave.Clock;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
 public final class Recorder {
-
   final MutableSpanMap spanMap;
   final Reporter<zipkin2.Span> reporter;
   final AtomicBoolean noop;
@@ -103,5 +104,14 @@ public final class Recorder {
       span.finish(null);
       reporter.report(span.toSpan());
     }
+  }
+
+  /** Exposes which spans are in-flight, mostly for testing. */
+  public List<zipkin2.Span> snapshot() {
+    List<zipkin2.Span> result = new ArrayList<>();
+    for (MutableSpan value : spanMap.delegate.values()) {
+      result.add(value.toSpan());
+    }
+    return result;
   }
 }

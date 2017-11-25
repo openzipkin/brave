@@ -127,6 +127,7 @@ public final class Tracer {
   }
 
   final Clock clock;
+  final Reporter<zipkin2.Span> reporter; // for toString
   final Recorder recorder;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -138,6 +139,7 @@ public final class Tracer {
     this.noop = noop;
     this.supportsJoin = builder.supportsJoin && builder.propagationFactory.supportsJoin();
     this.clock = builder.clock;
+    this.reporter = builder.reporter;
     this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
@@ -377,6 +379,17 @@ public final class Tracer {
     @Override public String toString() {
       return scope.toString();
     }
+  }
+
+  @Override public String toString() {
+    TraceContext currentSpan = currentTraceContext.get();
+    List<zipkin2.Span> inFlight = recorder.snapshot();
+    return "Tracer{"
+        + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
+        + (inFlight.size() > 0 ? ("inFlight=" + inFlight + ", ") : "")
+        + (noop.get() ? "noop=true, " : "")
+        + "reporter=" + reporter
+        + "}";
   }
 
   static TraceContext appendExtra(TraceContext context, List<Object> extra) {

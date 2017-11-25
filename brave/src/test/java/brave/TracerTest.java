@@ -12,14 +12,25 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
+import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracerTest {
-  Tracer tracer = Tracing.newBuilder().build().tracer();
+  Tracer tracer = Tracing.newBuilder()
+      .spanReporter(new Reporter<zipkin2.Span>() {
+        @Override public void report(zipkin2.Span span) {
+        }
 
-  @After public void close(){
+        @Override public String toString() {
+          return "MyReporter{}";
+        }
+      })
+      .localEndpoint(Endpoint.newBuilder().serviceName("my-service").build())
+      .build().tracer();
+
+  @After public void close() {
     Tracing.current().close();
   }
 
@@ -44,6 +55,8 @@ public class TracerTest {
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
+    tracer = Tracing.newBuilder().build().tracer();
+
     assertThat(tracer).extracting("recorder.spanMap.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
@@ -144,7 +157,7 @@ public class TracerTest {
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
     List<zipkin2.Span> spans = new ArrayList<>();
     tracer = Tracing.newBuilder()
-        .propagationFactory(new Propagation.Factory(){
+        .propagationFactory(new Propagation.Factory() {
           @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
             return B3Propagation.FACTORY.create(keyFactory);
           }
@@ -351,6 +364,39 @@ public class TracerTest {
 
     // context was cleared
     assertThat(tracer.currentSpan()).isNull();
+  }
+
+  @Test public void toString_withSpanInScope() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
+      assertThat(tracer.toString()).hasToString(
+          "Tracer{currentSpan=0000000000000001/000000000000000a, reporter=MyReporter{}}"
+      );
+    }
+  }
+
+  @Test public void toString_withSpanInFlight() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
+    Span span = tracer.toSpan(context);
+    span.start(1L); // didn't set anything else! this is to help ensure no NPE
+
+    assertThat(tracer).hasToString(
+        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1,\"localEndpoint\":{\"serviceName\":\"my-service\"}}], reporter=MyReporter{}}"
+    );
+
+    span.finish();
+
+    assertThat(tracer).hasToString(
+        "Tracer{reporter=MyReporter{}}"
+    );
+  }
+
+  @Test public void toString_whenNoop() {
+    Tracing.current().setNoop(true);
+
+    assertThat(tracer).hasToString(
+        "Tracer{noop=true, reporter=MyReporter{}}"
+    );
   }
 
   @Test public void withSpanInScope_nested() {

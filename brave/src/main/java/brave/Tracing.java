@@ -251,14 +251,14 @@ public abstract class Tracing implements Closeable {
     }
 
     public Tracing build() {
-      if (clock == null) clock = Platform.get();
+      if (clock == null) clock = Platform.get().clock();
       if (localEndpoint == null) {
         localEndpoint = Platform.get().localEndpoint();
         if (localServiceName != null) {
           localEndpoint = localEndpoint.toBuilder().serviceName(localServiceName).build();
         }
       }
-      if (reporter == null) reporter = Platform.get();
+      if (reporter == null) reporter = Platform.get().reporter();
       return new Default(this);
     }
 
