@@ -7,7 +7,7 @@ import brave.propagation.TraceContext;
 import org.apache.log4j.MDC;
 
 /**
- * Adds {@linkplain MDC} properties "traceId" and "spanId" when a {@link brave.Tracer#currentSpan()
+ * Adds {@linkplain MDC} properties "traceId", "parentId" and "spanId" when a {@link brave.Tracer#currentSpan()
  * span is current}. These can be used in log correlation.
  */
 public final class MDCCurrentTraceContext extends CurrentTraceContext {
@@ -36,10 +36,13 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
   @Override
   public Scope newScope(@Nullable TraceContext currentSpan) {
     final Object previousTraceId = MDC.get("traceId");
+    final Object previousParentId = MDC.get("parentId");
     final Object previousSpanId = MDC.get("spanId");
 
     if (currentSpan != null) {
       MDC.put("traceId", currentSpan.traceIdString());
+      replace("parentId",
+          currentSpan.parentId() != null ? HexCodec.toLowerHex(currentSpan.parentId()) : null);
       MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
     } else {
       MDC.remove("traceId");
@@ -50,19 +53,19 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     class MDCCurrentTraceContextScope implements Scope {
       @Override public void close() {
         scope.close();
-        if (previousTraceId != null) {
-          MDC.put("traceId", previousTraceId);
-        } else {
-          MDC.remove("traceId");
-        }
-
-        if (previousSpanId != null) {
-          MDC.put("spanId", previousSpanId);
-        } else {
-          MDC.remove("spanId");
-        }
+        replace("traceId", previousTraceId);
+        replace("parentId", previousParentId);
+        replace("spanId", previousSpanId);
       }
     }
     return new MDCCurrentTraceContextScope();
+  }
+
+  static void replace(String key, @Nullable Object value) {
+    if (value != null) {
+      MDC.put(key, value);
+    } else {
+      MDC.remove(key);
+    }
   }
 }

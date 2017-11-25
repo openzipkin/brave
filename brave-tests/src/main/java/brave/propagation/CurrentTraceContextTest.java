@@ -23,7 +23,7 @@ public abstract class CurrentTraceContextTest {
   protected CurrentTraceContextTest() {
     currentTraceContext = newCurrentTraceContext();
     context = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
-    context2 = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+    context2 = TraceContext.newBuilder().traceId(1L).parentId(1L).spanId(2L).build();
   }
 
   protected void verifyImplicitContext(@Nullable TraceContext context) {
