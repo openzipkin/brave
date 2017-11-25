@@ -55,7 +55,35 @@ public class PlatformTest {
 
     when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
 
-    assertThat(platform.currentTimeMicroseconds()).isEqualTo(1);
+    assertThat(platform.clock().currentTimeMicroseconds()).isEqualTo(1);
+  }
+
+  @Test public void clock_hasNiceToString() {
+    mockStatic(System.class);
+    when(System.currentTimeMillis()).thenReturn(123L);
+    when(System.nanoTime()).thenReturn(456L);
+
+    Platform platform = new Platform() {
+      @Override public boolean zipkinV1Present() {
+        return true;
+      }
+
+      @Override public long randomLong() {
+        return 1L;
+      }
+
+      @Override public long nextTraceIdHigh() {
+        return 1L;
+      }
+    };
+
+    assertThat(platform.clock())
+        .hasToString("TickClock{baseEpochMicros=123000, tickNanos=456}");
+  }
+
+  @Test public void reporter_hasNiceToString() {
+    assertThat(platform.reporter())
+        .hasToString("LoggingReporter{name=brave.Tracer}");
   }
 
   // example from X-Amzn-Trace-Id: Root=1-5759e988-bd862e3fe1be46a994272793;Sampled=1

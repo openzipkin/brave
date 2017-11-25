@@ -13,6 +13,7 @@ import org.junit.After;
 import org.junit.Test;
 import zipkin.Constants;
 import zipkin2.Annotation;
+import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.TracerAdapter.getServerSpan;
 import static com.github.kristofa.brave.TracerAdapter.setServerSpan;
@@ -25,7 +26,16 @@ public class TracerAdapterTest {
   AtomicLong epochMicros = new AtomicLong();
   Tracer brave4 = Tracing.newBuilder()
       .clock(epochMicros::incrementAndGet)
-      .spanReporter(spans::add)
+      // not lambda as this test is flakey and we need a concise toString
+      .spanReporter(new Reporter<zipkin2.Span>() {
+        @Override public void report(zipkin2.Span span) {
+          spans.add(span);
+        }
+
+        @Override public String toString() {
+          return "AddToList{" + spans + "}";
+        }
+      })
       .build()
       .tracer();
   Brave brave3 = TracerAdapter.newBrave(brave4);
@@ -133,6 +143,7 @@ public class TracerAdapterTest {
   }
 
   void checkLocalSpanReportedToZipkin() {
+    assertSpansReported();
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("encode");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -146,6 +157,7 @@ public class TracerAdapterTest {
   }
 
   void checkClientSpanReportedToZipkin() {
+    assertSpansReported();
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -156,6 +168,7 @@ public class TracerAdapterTest {
   }
 
   void checkServerSpanReportedToZipkin() {
+    assertSpansReported();
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -163,5 +176,11 @@ public class TracerAdapterTest {
           assertThat(s.kind()).isEqualTo(zipkin2.Span.Kind.SERVER);
         }
     );
+  }
+
+  void assertSpansReported() {
+    assertThat(spans)
+        .withFailMessage(brave4.toString()) // helpful toString
+        .isNotEmpty();
   }
 }
