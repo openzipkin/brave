@@ -72,7 +72,7 @@ public final class TracerAdapter {
     threadBinder.setCurrentSpan(serverSpan);
   }
 
-  static TraceContext toTraceContext(SpanId spanId) {
+  public static TraceContext toTraceContext(SpanId spanId) { // visible for testing
     if (spanId == null) throw new NullPointerException("spanId == null");
     return TraceContext.newBuilder()
         .traceIdHigh(spanId.traceIdHigh)

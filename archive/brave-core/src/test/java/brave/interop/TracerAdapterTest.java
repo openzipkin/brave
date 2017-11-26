@@ -2,14 +2,18 @@ package brave.interop; // intentionally in a different package
 
 import brave.Tracer;
 import brave.Tracing;
+import brave.propagation.TraceContext;
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.SpanId;
+import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
 import com.github.kristofa.brave.TracerAdapter;
+import com.github.kristofa.brave.internal.InternalSpan;
 import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin.Constants;
 import zipkin2.Annotation;
@@ -40,7 +44,11 @@ public class TracerAdapterTest {
       .tracer();
   Brave brave3 = TracerAdapter.newBrave(brave4);
 
-  @After public void close(){
+  @Before public void clearBrave3State() {
+    ThreadLocalServerClientAndLocalSpanState.clear();
+  }
+
+  @After public void close() {
     Tracing.current().close();
   }
 
@@ -49,10 +57,16 @@ public class TracerAdapterTest {
 
     brave.Span span = toSpan(brave4, spanId);
 
+    ensureEquivalent(span.context(), InternalSpan.instance.context(
+        brave3.localSpanThreadBinder().getCurrentLocalSpan()
+    ));
+
     span.annotate(2L, "pump fake");
     span.finish(3L);
 
-    checkLocalSpanReportedToZipkin();
+    checkLocalSpanReportedToZipkin(
+        span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
+    );
   }
 
   @Test public void startWithCurrentLocalSpanAndFinishWithTracer() {
@@ -62,10 +76,14 @@ public class TracerAdapterTest {
 
     brave.Span span = toSpan(brave4, brave3Span);
 
+    ensureEquivalent(span.context(), InternalSpan.instance.context(brave3Span));
+
     span.annotate(2L, "pump fake");
     span.finish(3L);
 
-    checkLocalSpanReportedToZipkin();
+    checkLocalSpanReportedToZipkin(
+        span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
+    );
   }
 
   @Test public void startWithTracerAndFinishWithLocalTracer() {
@@ -74,12 +92,17 @@ public class TracerAdapterTest {
         .start(1L);
 
     com.twitter.zipkin.gen.Span brave3Span = toSpan(brave4Span.context());
+
+    ensureEquivalent(brave4Span.context(), InternalSpan.instance.context(brave3Span));
+
     brave3.localSpanThreadBinder().setCurrentSpan(brave3Span);
 
     brave3.localTracer().submitAnnotation("pump fake", 2L);
     brave3.localTracer().finishSpan(2L /* duration */);
 
-    checkLocalSpanReportedToZipkin();
+    checkLocalSpanReportedToZipkin(
+        brave4Span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
+    );
   }
 
   @Test public void startWithClientTracerAndFinishWithTracer() {
@@ -88,9 +111,15 @@ public class TracerAdapterTest {
 
     brave.Span span = toSpan(brave4, spanId);
 
+    ensureEquivalent(span.context(), InternalSpan.instance.context(
+        brave3.clientSpanThreadBinder().getCurrentClientSpan()
+    ));
+
     span.finish();
 
-    checkClientSpanReportedToZipkin();
+    checkClientSpanReportedToZipkin(
+        span.context(), brave3.clientSpanThreadBinder().getCurrentClientSpan()
+    );
   }
 
   @Test public void startWithCurrentClientSpanAndFinishWithTracer() {
@@ -101,9 +130,13 @@ public class TracerAdapterTest {
 
     brave.Span span = toSpan(brave4, brave3Span);
 
+    ensureEquivalent(span.context(), InternalSpan.instance.context(brave3Span));
+
     span.finish();
 
-    checkClientSpanReportedToZipkin();
+    checkClientSpanReportedToZipkin(
+        span.context(), brave3.clientSpanThreadBinder().getCurrentClientSpan()
+    );
   }
 
   @Test public void startWithTracerAndFinishWithClientTracer() {
@@ -112,11 +145,16 @@ public class TracerAdapterTest {
         .start();
 
     com.twitter.zipkin.gen.Span brave3Span = toSpan(brave4Span.context());
+
     brave3.clientSpanThreadBinder().setCurrentSpan(brave3Span);
+
+    ensureEquivalent(brave4Span.context(), InternalSpan.instance.context(brave3Span));
 
     brave3.clientTracer().setClientReceived();
 
-    checkClientSpanReportedToZipkin();
+    checkClientSpanReportedToZipkin(
+        brave4Span.context(), brave3.clientSpanThreadBinder().getCurrentClientSpan()
+    );
   }
 
   @Test public void startWithCurrentServerSpanAndFinishWithTracer() {
@@ -125,9 +163,15 @@ public class TracerAdapterTest {
 
     brave.Span span = getServerSpan(brave4, brave3.serverSpanThreadBinder());
 
+    ensureEquivalent(span.context(), InternalSpan.instance.context(
+        brave3.serverSpanThreadBinder().getCurrentServerSpan().getSpan()
+    ));
+
     span.finish();
 
-    checkServerSpanReportedToZipkin();
+    checkServerSpanReportedToZipkin(
+        span.context(), brave3.serverSpanThreadBinder().getCurrentServerSpan().getSpan()
+    );
   }
 
   @Test public void startWithTracerAndFinishWithServerTracer() {
@@ -137,13 +181,26 @@ public class TracerAdapterTest {
 
     setServerSpan(brave4Span.context(), brave3.serverSpanThreadBinder());
 
+    ensureEquivalent(brave4Span.context(), InternalSpan.instance.context(
+        brave3.serverSpanThreadBinder().getCurrentServerSpan().getSpan()
+    ));
+
     brave3.serverTracer().setServerSend();
 
-    checkServerSpanReportedToZipkin();
+    checkServerSpanReportedToZipkin(
+        brave4Span.context(), brave3.serverSpanThreadBinder().getCurrentServerSpan().getSpan()
+    );
   }
 
-  void checkLocalSpanReportedToZipkin() {
-    assertSpansReported();
+  private void ensureEquivalent(TraceContext context, SpanId spanId) {
+    assertThat(context.traceId()).isEqualTo(spanId.traceId);
+    assertThat(context.parentId()).isEqualTo(spanId.nullableParentId());
+    assertThat(context.spanId()).isEqualTo(spanId.spanId);
+    assertThat(context.sampled()).isEqualTo(spanId.sampled()).isTrue();
+  }
+
+  void checkLocalSpanReportedToZipkin(TraceContext context, Span span) {
+    assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("encode");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -156,8 +213,8 @@ public class TracerAdapterTest {
     );
   }
 
-  void checkClientSpanReportedToZipkin() {
-    assertSpansReported();
+  void checkClientSpanReportedToZipkin(TraceContext context, Span span) {
+    assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -167,8 +224,8 @@ public class TracerAdapterTest {
     );
   }
 
-  void checkServerSpanReportedToZipkin() {
-    assertSpansReported();
+  void checkServerSpanReportedToZipkin(TraceContext context, Span span) {
+    assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
           assertThat(s.timestamp()).isEqualTo(1L);
@@ -178,9 +235,10 @@ public class TracerAdapterTest {
     );
   }
 
-  void assertSpansReported() {
-    assertThat(spans)
-        .withFailMessage(brave4.toString()) // helpful toString
-        .isNotEmpty();
+  void assertSpansReported(TraceContext context, Span span) {
+    assertThat(spans).withFailMessage(String.format(
+        "Expected to close %s; brave3 current span %s; brave4 state %s",
+        context, span, brave4
+    )).isNotEmpty();
   }
 }
