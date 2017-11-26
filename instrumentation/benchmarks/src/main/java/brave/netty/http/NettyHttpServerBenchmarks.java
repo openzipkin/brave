@@ -2,6 +2,7 @@ package brave.netty.http;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -47,6 +48,15 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     final ChannelDuplexHandler traced = NettyHttpTracing.create(
         Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
     ).serverHandler();
+    final ChannelDuplexHandler traced128 = NettyHttpTracing.create(
+        Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
+    ).serverHandler();
+    final ChannelDuplexHandler tracedaws = NettyHttpTracing.create(
+        Tracing.newBuilder()
+            .propagationFactory(AWSPropagation.FACTORY)
+            .spanReporter(Reporter.NOOP)
+            .build()
+    ).serverHandler();
 
     @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
       if (!(msg instanceof HttpRequest)) return;
@@ -57,6 +67,12 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       } else if ("/traced".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced.channelRead(ctx, msg);
+      } else if ("/traced128".equals(uri)) {
+        ctx.channel().attr(URI_ATTRIBUTE).set(uri);
+        traced128.channelRead(ctx, msg);
+      } else if ("/tracedaws".equals(uri)) {
+        ctx.channel().attr(URI_ATTRIBUTE).set(uri);
+        tracedaws.channelRead(ctx, msg);
       } else {
         super.channelRead(ctx, msg);
       }
@@ -69,6 +85,10 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
         unsampled.write(ctx, msg, prm);
       } else if ("/traced".equals(uri)) {
         traced.write(ctx, msg, prm);
+      } else if ("/traced128".equals(uri)) {
+        traced128.write(ctx, msg, prm);
+      } else if ("/tracedaws".equals(uri)) {
+        tracedaws.write(ctx, msg, prm);
       } else {
         super.write(ctx, msg, prm);
       }
