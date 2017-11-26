@@ -10,9 +10,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 
+import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
@@ -27,14 +29,14 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
 
   @Override protected void get(CloseableHttpClient client, String pathIncludingQuery)
       throws IOException {
-    client.execute(new HttpGet(URI.create(url(pathIncludingQuery)))).close();
+    consume(client.execute(new HttpGet(URI.create(url(pathIncludingQuery)))).getEntity());
   }
 
   @Override protected void post(CloseableHttpClient client, String pathIncludingQuery, String body)
       throws Exception {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new StringEntity(body));
-    client.execute(post).close();
+    consume(client.execute(post).getEntity());
   }
 
   @Override protected void getAsync(CloseableHttpClient client, String pathIncludingQuery) {
