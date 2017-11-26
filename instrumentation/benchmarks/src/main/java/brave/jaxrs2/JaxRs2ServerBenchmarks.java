@@ -2,6 +2,7 @@ package brave.jaxrs2;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.Undertow;
 import io.undertow.servlet.api.DeploymentInfo;
@@ -59,6 +60,27 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  @ApplicationPath("/traced128")
+  public static class Traced128App extends Application {
+    @Override public Set<Object> getSingletons() {
+      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
+          Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
+      )));
+    }
+  }
+
+  @ApplicationPath("/tracedaws")
+  public static class TracedAWSApp extends Application {
+    @Override public Set<Object> getSingletons() {
+      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
+          Tracing.newBuilder()
+              .propagationFactory(AWSPropagation.FACTORY)
+              .spanReporter(Reporter.NOOP)
+              .build()
+      )));
+    }
+  }
+
   PortExposing server;
 
   @Override protected int initServer() throws ServletException {
@@ -66,6 +88,8 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
         .deploy(App.class)
         .deploy(Unsampled.class)
         .deploy(TracedApp.class)
+        .deploy(Traced128App.class)
+        .deploy(TracedAWSApp.class)
         .start(Undertow.builder().addHttpListener(8888, "127.0.0.1"));
     return server.getPort();
   }

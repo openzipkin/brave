@@ -111,7 +111,7 @@ public abstract class HttpServerBenchmarks {
   }
 
   @Benchmark public void tracedawsServer_get_resumeTrace() throws Exception {
-    client.newCall(new Request.Builder().url(baseUrl() + "/traced128")
+    client.newCall(new Request.Builder().url(baseUrl() + "/tracedaws")
         .header("X-Amzn-Trace-Id",
             "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1")
         .build())

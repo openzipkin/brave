@@ -1,7 +1,9 @@
 package brave.servlet;
 
+import brave.EndToEndBenchmarks;
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
@@ -48,11 +50,33 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class Traced128 extends ForwardingTracingFilter {
+    public Traced128() {
+      super(TracingFilter.create(
+          Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()));
+    }
+  }
+
+  public static class TracedAWS extends ForwardingTracingFilter {
+    public TracedAWS() {
+      super(TracingFilter.create(
+          Tracing.newBuilder()
+              .propagationFactory(AWSPropagation.FACTORY)
+              .spanReporter(Reporter.NOOP)
+              .build()
+      ));
+    }
+  }
+
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
         .addFilter(new FilterInfo("Traced", Traced.class))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
+        .addFilter(new FilterInfo("Traced128", Traced128.class))
+        .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
+        .addFilter(new FilterInfo("TracedAWS", TracedAWS.class))
+        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST)
         .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
   }
 
