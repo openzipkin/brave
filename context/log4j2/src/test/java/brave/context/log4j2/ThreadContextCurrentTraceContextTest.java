@@ -15,14 +15,18 @@ public class ThreadContextCurrentTraceContextTest extends CurrentTraceContextTes
     return ThreadContextCurrentTraceContext.create(CurrentTraceContext.Default.create());
   }
 
-  protected void verifyImplicitContext(@Nullable TraceContext context) {
+  @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
       assertThat(ThreadContext.get("traceId"))
           .isEqualTo(context.traceIdString());
+      assertThat(ThreadContext.get("parentId"))
+          .isEqualTo(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null);
       assertThat(ThreadContext.get("spanId"))
           .isEqualTo(HexCodec.toLowerHex(context.spanId()));
     } else {
       assertThat(ThreadContext.get("traceId"))
+          .isNull();
+      assertThat(ThreadContext.get("parentId"))
           .isNull();
       assertThat(ThreadContext.get("spanId"))
           .isNull();

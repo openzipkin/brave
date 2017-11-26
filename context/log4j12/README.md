@@ -12,7 +12,7 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-Then, in your log configuration, you can use `traceId` and or `spanId`.
+Then, in your log configuration, you can use `traceId`, `parentId` and `spanId`.
 
 Here's an example log4j.properties pattern:
 
