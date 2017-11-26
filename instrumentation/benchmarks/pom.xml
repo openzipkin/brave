@@ -110,6 +110,17 @@
     </dependency>
 
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-netty-codec-http</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>io.undertow</groupId>
       <artifactId>undertow-core</artifactId>
       <version>${undertow.version}</version>

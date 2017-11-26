@@ -1,10 +1,10 @@
-package brave.netty;
+package brave.netty.http;
 
 import brave.http.HttpServerAdapter;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 
-class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse> {
+final class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse> {
   @Override public String method(HttpRequest request) {
     return request.method().name();
   }

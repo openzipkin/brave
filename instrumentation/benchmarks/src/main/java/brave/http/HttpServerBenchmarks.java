@@ -8,7 +8,6 @@ import io.undertow.servlet.api.DeploymentManager;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
-import javax.servlet.ServletException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -53,7 +52,7 @@ public abstract class HttpServerBenchmarks {
     if (Tracing.current() != null) Tracing.current().close();
   }
 
-  protected int initServer() throws ServletException {
+  protected int initServer() throws Exception {
     DeploymentInfo servletBuilder = Servlets.deployment()
         .setClassLoader(getClass().getClassLoader())
         .setContextPath("/")
