@@ -12,20 +12,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import java.net.InetSocketAddress;
 import org.junit.After;
-import org.junit.AssumptionViolatedException;
-import org.junit.ComparisonFailure;
-import org.junit.Test;
 
 public class ITNettyHttpTracing extends ITHttpServer {
   EventLoopGroup bossGroup;
   EventLoopGroup workerGroup;
   int port;
-
-  @Override
-  @Test(expected = ComparisonFailure.class)
-  public void reportsClientAddress() throws Exception {
-    throw new AssumptionViolatedException("client address can get from channel not request");
-  }
 
   @Override protected void init() throws Exception {
     stop();

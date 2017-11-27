@@ -10,11 +10,10 @@ final class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse
   }
 
   @Override public String url(HttpRequest request) {
-    StringBuffer url = new StringBuffer("http://");
-    String host = request.headers().get("HOST");
-    if (host != null) url.append(host); // TODO: this will malform on null
-    url.append(request.uri());
-    return url.toString();
+    String host = requestHeader(request, "Host");
+    if (host == null) return null;
+    // TODO: we don't know if this is really http or https!
+    return "http://" + host + request.uri();
   }
 
   @Override public String requestHeader(HttpRequest request, String name) {
