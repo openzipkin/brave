@@ -59,7 +59,10 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     ).serverHandler();
 
     @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-      if (!(msg instanceof HttpRequest)) return;
+      if (!(msg instanceof HttpRequest)) {
+        ctx.fireChannelRead(msg);
+        return;
+      }
       String uri = ((HttpRequest) msg).uri();
       if ("/unsampled".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
@@ -74,13 +77,17 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         tracedaws.channelRead(ctx, msg);
       } else {
-        super.channelRead(ctx, msg);
+        ctx.fireChannelRead(msg);
       }
     }
 
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise prm) throws Exception {
       String uri = ctx.channel().attr(URI_ATTRIBUTE).get();
+      if (uri == null) {
+        ctx.write(msg, prm);
+        return;
+      }
       if ("/unsampled".equals(uri)) {
         unsampled.write(ctx, msg, prm);
       } else if ("/traced".equals(uri)) {
@@ -90,7 +97,7 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       } else if ("/tracedaws".equals(uri)) {
         tracedaws.write(ctx, msg, prm);
       } else {
-        super.write(ctx, msg, prm);
+        ctx.write(msg, prm);
       }
     }
   }
