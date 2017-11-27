@@ -32,6 +32,11 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
     </dependency>
@@ -107,6 +112,21 @@
       <groupId>com.sparkjava</groupId>
       <artifactId>spark-core</artifactId>
       <version>${sparkjava.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-netty-codec-http</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
     </dependency>
 
     <dependency>

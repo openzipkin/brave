@@ -33,6 +33,7 @@
     <module>spring-web</module>
     <module>spring-webmvc</module>
     <module>kafka-clients</module>
+    <module>netty-codec-http</module>
   </modules>
 
   <!-- ${project.groupId}:brave version is set in the root pom.

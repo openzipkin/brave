@@ -104,7 +104,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
   }
 
-  @Override protected int initServer() throws ServletException {
+  @Override protected int initServer() throws Exception {
     return PORT = super.initServer();
   }
 
