@@ -1,5 +1,6 @@
 package brave.internal;
 
+import brave.Clock;
 import com.google.common.collect.Sets;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -34,28 +35,35 @@ public class PlatformTest {
   Endpoint unknownEndpoint = Endpoint.newBuilder().serviceName("unknown").build();
   Platform platform = Platform.Jre7.buildIfSupported(true);
 
-  @Test public void relativeTimestamp_incrementsAccordingToNanoTick() {
+  @Test public void relativeTimestamp_incrementsAccordingToNanoTick_jre7() {
     mockStatic(System.class);
     when(System.currentTimeMillis()).thenReturn(0L);
     when(System.nanoTime()).thenReturn(0L);
 
-    Platform platform = new Platform() {
-      @Override public boolean zipkinV1Present() {
-        return true;
-      }
-
-      @Override public long randomLong() {
-        return 1L;
-      }
-
-      @Override public long nextTraceIdHigh() {
-        return 1L;
-      }
-    };
+    Clock clock = platform.clock();
 
     when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
 
-    assertThat(platform.clock().currentTimeMicroseconds()).isEqualTo(1);
+    assertThat(clock.currentTimeMicroseconds()).isEqualTo(1);
+  }
+
+  @Test public void relativeTimestamp_incrementsAccordingToNanoTick_jre9() {
+    mockStatic(System.class);
+    when(System.nanoTime()).thenReturn(0L); // base tick
+    Clock clock = Platform.Jre9.buildIfSupported(true).clock();
+
+    // java 9 should provide microsecond resolution
+    when(System.nanoTime()).thenReturn(1000L); // each currentTimeMicroseconds call reads nanoTime
+    long epochMicros = clock.currentTimeMicroseconds();
+    if (epochMicros % 1000 == 0) { // unlikely we are exactly at micros 0, try again
+      when(System.nanoTime()).thenReturn(1000L);
+      epochMicros = clock.currentTimeMicroseconds();
+      assertThat(epochMicros % 1000).isNotZero();
+    }
+
+    when(System.nanoTime()).thenReturn(2000L); // 1 microsecond later
+
+    assertThat(clock.currentTimeMicroseconds() - epochMicros).isEqualTo(1);
   }
 
   @Test public void clock_hasNiceToString() {

@@ -26,12 +26,7 @@ public abstract class Platform {
 
   private static final Platform PLATFORM = findPlatform();
 
-  final Clock clock;
   volatile Endpoint localEndpoint;
-
-  Platform() {
-    clock = new TickClock();
-  }
 
   /** Ensure we don't raise a {@linkplain ClassNotFoundException} calling deprecated methods */
   public abstract boolean zipkinV1Present();
@@ -106,6 +101,10 @@ public abstract class Platform {
       zipkinV1Present = false;
     }
 
+    Platform jre9 = Jre9.buildIfSupported(zipkinV1Present);
+
+    if (jre9 != null) return jre9;
+
     Platform jre7 = Jre7.buildIfSupported(zipkinV1Present);
 
     if (jre7 != null) return jre7;
@@ -133,7 +132,7 @@ public abstract class Platform {
   public abstract long nextTraceIdHigh();
 
   public Clock clock() {
-    return clock;
+    return new TickClock(System.currentTimeMillis() * 1000);
   }
 
   /** gets a timestamp based on duration since the create tick. */
@@ -141,8 +140,8 @@ public abstract class Platform {
     final long baseEpochMicros;
     final long tickNanos;
 
-    TickClock() {
-      baseEpochMicros = System.currentTimeMillis() * 1000;
+    TickClock(long baseEpochMicros) {
+      this.baseEpochMicros = baseEpochMicros;
       tickNanos = System.nanoTime();
     }
 
@@ -155,6 +154,41 @@ public abstract class Platform {
           + "baseEpochMicros=" + baseEpochMicros + ", "
           + "tickNanos=" + tickNanos
           + "}";
+    }
+  }
+
+  @AutoValue
+  static abstract class Jre9 extends Platform {
+
+    static Jre9 buildIfSupported(boolean zipkinV1Present) {
+      // Find JRE 9 new methods
+      try {
+        Class zoneId = Class.forName("java.time.ZoneId");
+        Class.forName("java.time.Clock").getMethod("tickMillis", zoneId);
+        return new AutoValue_Platform_Jre9(zipkinV1Present);
+      } catch (ClassNotFoundException e) {
+        // pre JRE 8
+      } catch (NoSuchMethodException e) {
+        // pre JRE 9
+      }
+      return null;
+    }
+
+    @IgnoreJRERequirement
+    @Override public Clock clock() {
+      java.time.Instant instant = java.time.Clock.systemUTC().instant();
+      long epochMicros = (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
+      return new TickClock(epochMicros);
+    }
+
+    @IgnoreJRERequirement
+    @Override public long randomLong() {
+      return java.util.concurrent.ThreadLocalRandom.current().nextLong();
+    }
+
+    @IgnoreJRERequirement
+    @Override public long nextTraceIdHigh() {
+      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current());
     }
   }
 
