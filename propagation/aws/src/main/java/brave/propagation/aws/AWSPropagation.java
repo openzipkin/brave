@@ -185,7 +185,11 @@ public final class AWSPropagation<K> implements Propagation<K> {
   }
 
   static final AWSExtractor<String, String> STRING_EXTRACTOR =
-      new AWSExtractor<>(new AWSPropagation<>(KeyFactory.STRING), (carrier, key) -> carrier);
+      new AWSExtractor<>(new AWSPropagation<>(KeyFactory.STRING), new Getter<String, String>() {
+        @Override public String get(String carrier, String key) {
+          return carrier;
+        }
+      });
 
   /**
    * <p>This is used for extracting from the AWS lambda environment variable {@code

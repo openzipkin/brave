@@ -36,7 +36,16 @@ import zipkin2.Endpoint;
  * added last}.
  */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
-  static final Propagation.Setter<HttpMessage, String> SETTER = HttpMessage::setHeader;
+  static final Propagation.Setter<HttpMessage, String> SETTER = // retrolambda no likey
+      new Propagation.Setter<HttpMessage, String>() {
+        @Override public void put(HttpMessage carrier, String key, String value) {
+          carrier.setHeader(key, value);
+        }
+
+        @Override public String toString() {
+          return "HttpMessage::setHeader";
+        }
+      };
 
   public static HttpAsyncClientBuilder create(Tracing tracing) {
     return new TracingHttpAsyncClientBuilder(HttpTracing.create(tracing));
@@ -54,11 +63,18 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
     this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    this.injector = httpTracing.tracing().propagation().injector(HttpMessage::setHeader);
+    this.injector = httpTracing.tracing().propagation().injector(SETTER);
   }
 
   @Override public CloseableHttpAsyncClient build() {
-    super.addInterceptorFirst((HttpRequestInterceptor) (request, context) -> {
+    super.addInterceptorFirst(new HandleSend());
+    super.addInterceptorLast(new RemoveScope());
+    super.addInterceptorLast(new HandleReceive());
+    return new TracingHttpAsyncClient(super.build());
+  }
+
+  final class HandleSend implements HttpRequestInterceptor {
+    @Override public void process(HttpRequest request, HttpContext context) {
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
 
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
@@ -69,19 +85,24 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
-    });
-    super.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
+    }
+  }
+
+  final class RemoveScope implements HttpRequestInterceptor {
+    @Override public void process(HttpRequest request, HttpContext context) {
       Scope scope = (Scope) context.getAttribute(Scope.class.getName());
-      if (scope != null) {
-        context.removeAttribute(Scope.class.getName());
-        scope.close();
-      }
-    });
-    super.addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
+      if (scope == null) return;
+      context.removeAttribute(Scope.class.getName());
+      scope.close();
+    }
+  }
+
+  final class HandleReceive implements HttpResponseInterceptor {
+    @Override public void process(HttpResponse response, HttpContext context) {
       Span span = (Span) context.getAttribute(Span.class.getName());
+      if (span == null) return;
       handler.handleReceive(response, null, span);
-    });
-    return new TracingHttpAsyncClient(super.build());
+    }
   }
 
   static final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequest, HttpResponse> {

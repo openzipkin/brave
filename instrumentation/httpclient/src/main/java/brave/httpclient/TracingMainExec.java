@@ -14,14 +14,22 @@ import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
-import org.apache.http.message.AbstractHttpMessage;
 
 /**
  * Main exec is the first in the execution chain, so last to execute. This creates a concrete http
  * request, so this is where the span is started.
  */
 final class TracingMainExec implements ClientExecChain {
-  static final Setter<HttpRequestWrapper, String> SETTER = AbstractHttpMessage::setHeader;
+  static final Setter<HttpRequestWrapper, String> SETTER = // retrolambda no likey
+      new Setter<HttpRequestWrapper, String>() {
+        @Override public void put(HttpRequestWrapper carrier, String key, String value) {
+          carrier.setHeader(key, value);
+        }
+
+        @Override public String toString() {
+          return "HttpRequestWrapper::setHeader";
+        }
+      };
 
   final Tracer tracer;
   final HttpClientHandler<HttpRequestWrapper, HttpResponse> handler;

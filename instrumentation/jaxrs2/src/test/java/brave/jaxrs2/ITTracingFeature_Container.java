@@ -57,7 +57,7 @@ public class ITTracingFeature_Container extends ITServletContainer {
     @GET
     @Path("async")
     public void async(@Suspended AsyncResponse response) throws IOException {
-      new Thread(() -> response.resume("ok")).start();
+      new Thread(() -> response.resume(Response.status(200).build())).start();
     }
 
     @GET

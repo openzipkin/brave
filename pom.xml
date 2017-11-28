@@ -65,7 +65,7 @@
     <jetty.version>8.1.22.v20160922</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
-    <resteasy.version>3.1.3.Final</resteasy.version>
+    <resteasy.version>3.1.4.Final</resteasy.version>
     <zipkin.version>2.4.0</zipkin.version>
     <zipkin-reporter2.version>2.1.4</zipkin-reporter2.version>
     <zipkin-reporter.version>1.1.2</zipkin-reporter.version>
@@ -77,10 +77,11 @@
     <sparkjava.version>2.6.0</sparkjava.version>
     <junit.version>4.12</junit.version>
     <assertj.version>3.8.0</assertj.version>
-    <powermock.version>1.6.6</powermock.version>
+    <powermock.version>2.0.0-beta.5</powermock.version>
+    <javax.annotation-api.version>1.3.1</javax.annotation-api.version>
     <jmh.version>1.19</jmh.version>
 
-    <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
     <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
     <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
@@ -88,11 +89,12 @@
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
     <maven-failsafe-plugin.version>2.20.1</maven-failsafe-plugin.version>
+    <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
     <centralsync-maven-plugin.version>0.1.0</centralsync-maven-plugin.version>
 
     <!-- Catch common Java mistakes as compile-time errors -->
     <plexus-compiler-javac-errorprone.version>2.8.2</plexus-compiler-javac-errorprone.version>
-    <errorprone.version>2.1.0</errorprone.version>
+    <errorprone.version>2.1.2</errorprone.version>
     <animal-sniffer-maven-plugin.version>1.16</animal-sniffer-maven-plugin.version>
   </properties>
 
@@ -251,7 +253,12 @@
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value</artifactId>
-            <version>1.5.1</version>
+            <version>1.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+            <version>${javax.annotation-api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -415,7 +422,7 @@
                                 <pluginExecutionFilter>
                                     <groupId>org.apache.maven.plugins</groupId>
                                     <artifactId>maven-compiler-plugin</artifactId>
-                                    <versionRange>[3.3,)</versionRange>
+                                    <versionRange>[3.7,)</versionRange>
                                     <goals>
                                         <goal>compile</goal>
                                         <goal>testCompile</goal>
@@ -527,6 +534,8 @@
             <!-- Retrolambda will rewrite lambdas as Java 6 bytecode -->
             <source>1.8</source>
             <target>1.8</target>
+            <!-- or die! com.sun.tools.javac.api.JavacTool -->
+            <fork>true</fork>
           </configuration>
           <executions>
             <execution>
@@ -619,7 +628,7 @@
           <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-failsafe-plugin</artifactId>
-              <version>2.20</version>
+              <version>${maven-failsafe-plugin.version}</version>
               <executions>
                   <execution>
                       <id>integration-test</id>
@@ -667,6 +676,25 @@
         <configuration>
           <packageName>brave</packageName>
         </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven-enforcer-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>enforce-java</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[9,)</version>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

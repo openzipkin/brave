@@ -5,6 +5,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import javax.servlet.Filter;
@@ -17,6 +18,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 public final class TracingFilter implements Filter {
+  static final Getter<HttpServletRequest, String> GETTER =
+      new Getter<HttpServletRequest, String>() {
+        @Override public String get(HttpServletRequest carrier, String key) {
+          return carrier.getHeader(key);
+        }
+
+        @Override public String toString() {
+          return "HttpServletRequest::getHeader";
+        }
+      };
+
   public static Filter create(Tracing tracing) {
     return new TracingFilter(HttpTracing.create(tracing));
   }
@@ -33,7 +45,7 @@ public final class TracingFilter implements Filter {
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
+    extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
   @Override

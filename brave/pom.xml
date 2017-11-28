@@ -47,6 +47,12 @@
       <artifactId>auto-value</artifactId>
       <scope>provided</scope>
     </dependency>
+    <!-- generated code includes Generated annotations! -->
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
     <!-- to mock Platform calls -->
     <dependency>
       <groupId>org.powermock</groupId>
@@ -56,7 +62,7 @@
     </dependency>
     <dependency>
       <groupId>org.powermock</groupId>
-      <artifactId>powermock-api-mockito</artifactId>
+      <artifactId>powermock-api-mockito2</artifactId>
       <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>

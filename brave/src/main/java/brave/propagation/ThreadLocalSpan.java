@@ -3,8 +3,8 @@ package brave.propagation;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
 
 /**
  * This type allows you to place a span in scope in one method and access it in another without
@@ -97,7 +97,7 @@ public abstract class ThreadLocalSpan {
    * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
    * available.
    */
-  public @Nullable Span next() {
+  @Nullable public Span next() {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan();
@@ -106,7 +106,7 @@ public abstract class ThreadLocalSpan {
   }
 
   /** Returns the span set in scope via {@link #next()} or null if there was none. */
-  public @Nullable Span remove() {
+  @Nullable public Span remove() {
     Tracer tracer = tracer();
     Span span = tracer != null ? tracer.currentSpan() : null;
     Tracer.SpanInScope scope = currentSpanInScope.get();
