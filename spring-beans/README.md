@@ -12,7 +12,7 @@ Bean Factories exist for the following types:
 Here are some example beans using the factories in this module:
 ```xml
   <bean id="sender" class="zipkin.reporter2.okhttp3.OkHttpSender" factory-method="create">
-    <constructor-arg type="String" value="http://localhost:9411/api/v2/spans"/>
+    <constructor-arg type="java.lang.String" value="http://localhost:9411/api/v2/spans"/>
   </bean>
 
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
