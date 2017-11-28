@@ -48,7 +48,15 @@ public interface Propagation<K> {
 
   /** Creates keys for use in propagated contexts */
   interface KeyFactory<K> {
-    KeyFactory<String> STRING = name -> name;
+    KeyFactory<String> STRING = new KeyFactory<String>() { // retrolambda no likey
+      @Override public String create(String name) {
+        return name;
+      }
+
+      @Override public String toString() {
+        return "StringKeyFactory{}";
+      }
+    };
 
     K create(String name);
   }

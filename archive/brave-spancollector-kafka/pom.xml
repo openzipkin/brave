@@ -30,6 +30,12 @@
             <artifactId>auto-value</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- generated code includes Generated annotations! -->
+        <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>

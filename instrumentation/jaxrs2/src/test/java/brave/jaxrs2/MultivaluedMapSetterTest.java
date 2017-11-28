@@ -9,24 +9,25 @@ import javax.ws.rs.core.MultivaluedMap;
 
 import static brave.jaxrs2.TracingClientFilter.SETTER;
 
-public class MultivaluedMapSetterTest extends PropagationSetterTest<MultivaluedMap, String> {
+public class MultivaluedMapSetterTest
+    extends PropagationSetterTest<MultivaluedMap<String, Object>, String> {
   LinkedHashMap<String, List<String>> delegate = new LinkedHashMap<>();
-  AbstractMultivaluedMap<String, String> carrier = new AbstractMultivaluedMap(delegate) {
+  AbstractMultivaluedMap<String, Object> carrier = new AbstractMultivaluedMap(delegate) {
   };
 
   @Override public Propagation.KeyFactory<String> keyFactory() {
     return Propagation.KeyFactory.STRING;
   }
 
-  @Override protected MultivaluedMap carrier() {
+  @Override protected MultivaluedMap<String, Object> carrier() {
     return carrier;
   }
 
-  @Override protected Propagation.Setter<MultivaluedMap, String> setter() {
+  @Override protected Propagation.Setter<MultivaluedMap<String, Object>, String> setter() {
     return SETTER;
   }
 
-  @Override protected Iterable<String> read(MultivaluedMap carrier, String key) {
+  @Override protected Iterable<String> read(MultivaluedMap<String, Object> carrier, String key) {
     return delegate.get(key);
   }
 }

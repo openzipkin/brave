@@ -6,6 +6,7 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.servlet.HttpServletAdapter;
 import javax.servlet.http.HttpServletRequest;
@@ -20,6 +21,16 @@ import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
  * AsyncHandlerInterceptor} or a normal {@link HandlerInterceptor}.
  */
 public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
+  static final Propagation.Getter<HttpServletRequest, String> GETTER =
+      new Propagation.Getter<HttpServletRequest, String>() {
+        @Override public String get(HttpServletRequest carrier, String key) {
+          return carrier.getHeader(key);
+        }
+
+        @Override public String toString() {
+          return "HttpServletRequest::getHeader";
+        }
+      };
 
   public static AsyncHandlerInterceptor create(Tracing tracing) {
     return new TracingHandlerInterceptor(HttpTracing.create(tracing));
@@ -36,7 +47,7 @@ public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
   @Autowired TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
+    extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
   @Override

@@ -13,17 +13,20 @@
 #
 
 machine:
-  java:
-    version: openjdk8
   services:
     - mysql
   environment:
+    JAVA_HOME: /usr/lib/jvm/zulu-9-amd64
     MYSQL_USER: root
     # Quiet Maven invoker logs (Downloading... when running /src/it)
     MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 dependencies:
   override:
+    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 0x219BD9C9
+    - sudo apt-add-repository -y "deb http://repos.azulsystems.com/ubuntu stable main"
+    - sudo apt-get -y update
+    - sudo apt-get -y install zulu-9
     - sudo apt-get install xsltproc
     - ./build-support/go-offline.sh
 

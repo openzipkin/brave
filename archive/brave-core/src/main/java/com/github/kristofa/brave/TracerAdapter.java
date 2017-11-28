@@ -1,5 +1,6 @@
 package com.github.kristofa.brave;
 
+import brave.Clock;
 import brave.Tracer;
 import brave.internal.Internal;
 import brave.propagation.SamplingFlags;
@@ -34,8 +35,17 @@ public final class TracerAdapter {
   public static Brave newBrave(Tracer tracer, ServerClientAndLocalSpanState state) {
     if (tracer == null) throw new NullPointerException("tracer == null");
     if (state == null) throw new NullPointerException("state == null");
+    Clock delegate = tracer.clock();
     return new Brave.Builder(state)
-        .clock(tracer.clock()::currentTimeMicroseconds)
+        .clock(new AnnotationSubmitter.Clock() {
+          @Override public long currentTimeMicroseconds() {
+            return delegate.currentTimeMicroseconds();
+          }
+
+          @Override public String toString() {
+            return delegate.toString();
+          }
+        })
         .spanFactory(new Brave4SpanFactory(tracer))
         .recorder(new Brave4Recorder(tracer)).build();
   }

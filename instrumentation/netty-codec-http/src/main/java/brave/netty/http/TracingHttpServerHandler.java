@@ -7,6 +7,7 @@ import brave.http.HttpSampler;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.netty.channel.Channel;
@@ -20,6 +21,16 @@ import java.net.InetSocketAddress;
 import zipkin2.Endpoint;
 
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
+  static final Getter<HttpHeaders, String> GETTER = new Getter<HttpHeaders, String>() {
+    @Override public String get(HttpHeaders carrier, String key) {
+      return carrier.get(key);
+    }
+
+    @Override public String toString() {
+      return "HttpHeaders::get";
+    }
+  };
+
   final Tracer tracer;
   final HttpNettyAdapter adapter;
   final TraceContext.Extractor<HttpHeaders> extractor;
@@ -31,7 +42,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     sampler = httpTracing.serverSampler();
     parser = httpTracing.serverParser();
     adapter = new HttpNettyAdapter();
-    extractor = httpTracing.tracing().propagation().extractor(HttpHeaders::get);
+    extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
   @Override public void channelRead(ChannelHandlerContext ctx, Object msg) {

@@ -5,7 +5,7 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import javax.annotation.Priority;
 import javax.inject.Inject;
@@ -30,11 +30,21 @@ import static javax.ws.rs.RuntimeType.CLIENT;
 @ConstrainedTo(CLIENT)
 @Priority(0) // to make the span in scope visible to other filters
 final class TracingClientFilter implements ClientRequestFilter, ClientResponseFilter {
-  static final Propagation.Setter<MultivaluedMap, String> SETTER = MultivaluedMap::putSingle;
+  static final Setter<MultivaluedMap<String, Object>, String> SETTER =
+      new Setter<MultivaluedMap<String, Object>, String>() {
+        @Override
+        public void put(MultivaluedMap<String, Object> carrier, String key, String value) {
+          carrier.putSingle(key, value);
+        }
+
+        @Override public String toString() {
+          return "MultivaluedMap::putSingle";
+        }
+      };
 
   final Tracer tracer;
   final HttpClientHandler<ClientRequestContext, ClientResponseContext> handler;
-  final TraceContext.Injector<MultivaluedMap> injector;
+  final TraceContext.Injector<MultivaluedMap<String, Object>> injector;
 
   @Inject TracingClientFilter(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");

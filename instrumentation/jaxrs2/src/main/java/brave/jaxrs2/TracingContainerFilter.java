@@ -5,6 +5,7 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.lang.annotation.Annotation;
 import javax.annotation.Priority;
@@ -27,6 +28,17 @@ import static javax.ws.rs.RuntimeType.SERVER;
 @Priority(0) // to make the span in scope visible to other filters
 @ConstrainedTo(SERVER)
 final class TracingContainerFilter implements ContainerRequestFilter, ContainerResponseFilter {
+  static final Getter<ContainerRequestContext, String> GETTER =
+      new Getter<ContainerRequestContext, String>() {
+
+        @Override public String get(ContainerRequestContext carrier, String key) {
+          return carrier.getHeaderString(key);
+        }
+
+        @Override public String toString() {
+          return "ContainerRequestContext::getHeaderString";
+        }
+      };
 
   final Tracer tracer;
   final HttpServerHandler<ContainerRequestContext, ContainerResponseContext> handler;
@@ -35,8 +47,7 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
   @Inject TracingContainerFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new ContainerAdapter());
-    extractor = httpTracing.tracing().propagation()
-        .extractor(ContainerRequestContext::getHeaderString);
+    extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
   /**

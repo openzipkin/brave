@@ -73,11 +73,14 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
 
     @Override
     public void filter(final ContainerRequestContext containerRequestContext, final ContainerResponseContext containerResponseContext) throws IOException {
-        HttpResponse httpResponse = containerResponseContext::getStatus;
         Response.StatusType statusInfo = containerResponseContext.getStatusInfo();
         if (serverTracer != null && statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
             serverTracer.submitBinaryAnnotation(Constants.ERROR, statusInfo.getReasonPhrase());
         }
-        responseInterceptor.handle(new HttpServerResponseAdapter(httpResponse));
+        responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
+            @Override public int getHttpStatusCode() {
+                return containerResponseContext.getStatus();
+            }
+        }));
     }
 }
