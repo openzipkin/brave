@@ -15,7 +15,7 @@ To enable tracing for an http server you need to add it to your pipeline:
 ```java
 NettyHttpTracing nettyHttpTracing = NettyHttpTracing.create(httpTracing);
 ChannelPipeline pipeline = ch.pipeline();
-... add your infrastructure handlers
+... add your infrastructure handlers, in particular HttpRequestDecoder and HttpResponseEncoder
 pipeline.addLast("tracing", nettyHttpTracing.serverHandler());
 ... add your application handlers
 ```
