@@ -282,11 +282,11 @@ public abstract class Tracing implements Closeable {
     final Clock clock;
 
     Default(Builder builder) {
-      this.tracer = new Tracer(builder, noop);
+      this.clock = builder.clock;
+      this.tracer = new Tracer(builder, clock, noop);
       this.propagationFactory = builder.propagationFactory;
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
-      this.clock = builder.clock;
       maybeSetCurrent();
     }
 

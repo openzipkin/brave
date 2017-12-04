@@ -178,6 +178,29 @@ public abstract class TraceContext extends SamplingFlags {
     }
   }
 
+  /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof TraceContext)) return false;
+    TraceContext that = (TraceContext) o;
+    return (this.traceIdHigh() == that.traceIdHigh())
+        && (this.traceId() == that.traceId())
+        && (this.spanId() == that.spanId());
+  }
+
+  /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
+  @Override public int hashCode() {
+    long traceIdHigh = traceIdHigh(), traceId = traceId(), spanId = spanId();
+    int h = 1;
+    h *= 1000003;
+    h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
+    h *= 1000003;
+    h ^= (int) ((traceId >>> 32) ^ traceId);
+    h *= 1000003;
+    h ^= (int) ((spanId >>> 32) ^ spanId);
+    return h;
+  }
+
   TraceContext() { // no external implementations
   }
 

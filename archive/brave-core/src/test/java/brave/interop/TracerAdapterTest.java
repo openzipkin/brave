@@ -217,8 +217,8 @@ public class TracerAdapterTest {
     assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
-          assertThat(s.timestamp()).isEqualTo(1L);
-          assertThat(s.duration()).isEqualTo(1L);
+          assertThat(s.timestamp()).isGreaterThan(1L);
+          assertThat(s.duration()).isNotZero();
           assertThat(s.kind()).isEqualTo(zipkin2.Span.Kind.CLIENT);
         }
     );
@@ -228,8 +228,8 @@ public class TracerAdapterTest {
     assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("get");
-          assertThat(s.timestamp()).isEqualTo(1L);
-          assertThat(s.duration()).isEqualTo(1L);
+          assertThat(s.timestamp()).isGreaterThanOrEqualTo(1L);
+          assertThat(s.duration()).isNotZero();
           assertThat(s.kind()).isEqualTo(zipkin2.Span.Kind.SERVER);
         }
     );

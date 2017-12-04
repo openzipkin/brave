@@ -57,10 +57,24 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
     MutableSpan result = get(context);
     if (result != null) return result;
 
-    MutableSpan newSpan = new MutableSpan(context, localEndpoint);
+    // save overhead calculating time if the parent is in-progress (usually is)
+    Clock clock = maybeClockFromParent(context);
+    if (clock == null) {
+      clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
+    }
+
+    MutableSpan newSpan = new MutableSpan(clock, context, localEndpoint);
     MutableSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
     return newSpan;
+  }
+
+  /** Trace contexts are equal only on trace ID and span ID. try to get the parent's clock */
+  @Nullable Clock maybeClockFromParent(TraceContext context) {
+    Long parentId = context.parentId();
+    if (parentId == null) return null;
+    MutableSpan parent = delegate.get(new LookupKey(context.toBuilder().spanId(parentId).build()));
+    return parent != null ? parent.clock : null;
   }
 
   @Nullable MutableSpan remove(TraceContext context) {
@@ -78,7 +92,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       MutableSpan value = delegate.remove(reference);
       if (value == null || noop.get()) continue;
       try {
-        value.annotate(clock.currentTimeMicroseconds(), "brave.flush");
+        value.annotate(value.clock.currentTimeMicroseconds(), "brave.flush");
         reporter.report(value.toSpan());
       } catch (RuntimeException e) {
         // don't crash the caller if there was a problem reporting an unrelated span.
@@ -143,6 +157,27 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
     /** Resolves hash code collisions */
     @Override public boolean equals(Object other) {
       return context.equals(((RealKey) other).get());
+    }
+  }
+
+  static final class TickClock implements Clock {
+    final long baseEpochMicros;
+    final long baseTickNanos;
+
+    TickClock(long baseEpochMicros, long baseTickNanos) {
+      this.baseEpochMicros = baseEpochMicros;
+      this.baseTickNanos = baseTickNanos;
+    }
+
+    @Override public long currentTimeMicroseconds() {
+      return ((System.nanoTime() - baseTickNanos) / 1000) + baseEpochMicros;
+    }
+
+    @Override public String toString() {
+      return "TickClock{"
+          + "baseEpochMicros=" + baseEpochMicros + ", "
+          + "baseTickNanos=" + baseTickNanos
+          + "}";
     }
   }
 

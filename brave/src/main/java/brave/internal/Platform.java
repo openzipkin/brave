@@ -132,29 +132,15 @@ public abstract class Platform {
   public abstract long nextTraceIdHigh();
 
   public Clock clock() {
-    return new TickClock(System.currentTimeMillis() * 1000);
-  }
+    return new Clock() {
+      @Override public long currentTimeMicroseconds() {
+        return System.currentTimeMillis() * 1000;
+      }
 
-  /** gets a timestamp based on duration since the create tick. */
-  static final class TickClock implements Clock {
-    final long baseEpochMicros;
-    final long tickNanos;
-
-    TickClock(long baseEpochMicros) {
-      this.baseEpochMicros = baseEpochMicros;
-      tickNanos = System.nanoTime();
-    }
-
-    @Override public long currentTimeMicroseconds() {
-      return ((System.nanoTime() - tickNanos) / 1000) + baseEpochMicros;
-    }
-
-    @Override public String toString() {
-      return "TickClock{"
-          + "baseEpochMicros=" + baseEpochMicros + ", "
-          + "tickNanos=" + tickNanos
-          + "}";
-    }
+      @Override public String toString() {
+        return "System.currentTimeMillis()";
+      }
+    };
   }
 
   @AutoValue
@@ -176,9 +162,17 @@ public abstract class Platform {
 
     @IgnoreJRERequirement
     @Override public Clock clock() {
-      java.time.Instant instant = java.time.Clock.systemUTC().instant();
-      long epochMicros = (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
-      return new TickClock(epochMicros);
+      return new Clock() {
+        // we could use jdk.internal.misc.VM to do this more efficiently, but it is internal
+        @Override public long currentTimeMicroseconds() {
+          java.time.Instant instant = java.time.Clock.systemUTC().instant();
+          return (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
+        }
+
+        @Override public String toString() {
+          return "Clock.systemUTC().instant()";
+        }
+      };
     }
 
     @IgnoreJRERequirement
