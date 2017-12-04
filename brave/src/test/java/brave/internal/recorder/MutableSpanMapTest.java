@@ -1,20 +1,32 @@
 package brave.internal.recorder;
 
+import brave.Clock;
 import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.when;
 
+@RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
+@PrepareForTest({MutableSpanMap.class, MutableSpan.class})
 public class MutableSpanMapTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
   List<zipkin2.Span> spans = new ArrayList();
@@ -31,6 +43,33 @@ public class MutableSpanMapTest {
     MutableSpan span = map.getOrCreate(context);
 
     assertThat(span).isNotNull();
+  }
+
+  /** Ensure we use the same clock for traces that started in-process */
+  @Test
+  public void getOrCreate_reusesClockFromParent() throws Exception {
+    TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+    TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
+    TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
+
+    MutableSpan traceSpan = map.getOrCreate(trace);
+    MutableSpan trace2Span = map.getOrCreate(trace2);
+    MutableSpan traceChildSpan = map.getOrCreate(traceChild);
+
+    assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
+    assertThat(traceSpan.clock).isNotSameAs(trace2Span.clock);
+  }
+
+  @Test
+  public void relativeTimestamp_incrementsAccordingToNanoTick() {
+    mockStatic(System.class);
+    when(System.nanoTime()).thenReturn(0L);
+
+    MutableSpan span = map.getOrCreate(context);
+
+    when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
+
+    assertThat(span.clock.currentTimeMicroseconds()).isEqualTo(1);
   }
 
   @Test

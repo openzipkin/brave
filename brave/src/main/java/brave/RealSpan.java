@@ -9,12 +9,10 @@ import zipkin2.Endpoint;
 @AutoValue
 abstract class RealSpan extends Span {
 
-  abstract Clock clock();
-
   abstract Recorder recorder();
 
-  static RealSpan create(TraceContext context, Clock clock, Recorder recorder) {
-    return new AutoValue_RealSpan(context, clock, recorder);
+  static RealSpan create(TraceContext context, Recorder recorder) {
+    return new AutoValue_RealSpan(context, recorder);
   }
 
   @Override public boolean isNoop() {
@@ -22,7 +20,8 @@ abstract class RealSpan extends Span {
   }
 
   @Override public Span start() {
-    return start(clock().currentTimeMicroseconds());
+    recorder().start(context());
+    return this;
   }
 
   @Override public Span start(long timestamp) {
@@ -41,7 +40,8 @@ abstract class RealSpan extends Span {
   }
 
   @Override public Span annotate(String value) {
-    return annotate(clock().currentTimeMicroseconds(), value);
+    recorder().annotate(context(), value);
+    return this;
   }
 
   @Override public Span annotate(long timestamp, String value) {
@@ -60,7 +60,7 @@ abstract class RealSpan extends Span {
   }
 
   @Override public void finish() {
-    finish(clock().currentTimeMicroseconds());
+    recorder().finish(context());
   }
 
   @Override public void finish(long timestamp) {

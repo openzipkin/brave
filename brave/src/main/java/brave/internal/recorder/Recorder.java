@@ -38,6 +38,12 @@ public final class Recorder {
     return span.timestamp == 0 ? null : span.timestamp;
   }
 
+  /** @see brave.Span#start() */
+  public void start(TraceContext context) {
+    if (noop.get()) return;
+    spanMap.getOrCreate(context).start();
+  }
+
   /** @see brave.Span#start(long) */
   public void start(TraceContext context, long timestamp) {
     if (noop.get()) return;
@@ -56,6 +62,13 @@ public final class Recorder {
     if (noop.get()) return;
     if (kind == null) throw new NullPointerException("kind == null");
     spanMap.getOrCreate(context).kind(kind);
+  }
+
+  /** @see brave.Span#annotate(String) */
+  public void annotate(TraceContext context, String value) {
+    if (noop.get()) return;
+    if (value == null) throw new NullPointerException("value == null");
+    spanMap.getOrCreate(context).annotate(value);
   }
 
   /** @see brave.Span#annotate(long, String) */
@@ -82,6 +95,16 @@ public final class Recorder {
   }
 
   /** @see Span#finish() */
+  public void finish(TraceContext context) {
+    MutableSpan span = spanMap.remove(context);
+    if (span == null || noop.get()) return;
+    synchronized (span) {
+      span.finish(span.clock.currentTimeMicroseconds());
+      reporter.report(span.toSpan());
+    }
+  }
+
+  /** @see Span#finish(long) */
   public void finish(TraceContext context, long finishTimestamp) {
     MutableSpan span = spanMap.remove(context);
     if (span == null || noop.get()) return;

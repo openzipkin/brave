@@ -14,6 +14,8 @@ public class TraceContextTest {
 
     assertThat(context)
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build());
+    assertThat(context.hashCode())
+        .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build().hashCode());
   }
 
   @Test public void compareEqualIds() {
@@ -21,6 +23,17 @@ public class TraceContextTest {
 
     assertThat(context)
         .isEqualTo(TraceContext.newBuilder().traceId(333L).spanId(444L).build());
+    assertThat(context.hashCode())
+        .isEqualTo(TraceContext.newBuilder().traceId(333L).spanId(444L).build().hashCode());
+  }
+
+  @Test public void equalOnSameTraceIdSpanId() {
+    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(444L).build();
+
+    assertThat(context)
+        .isEqualTo(context.toBuilder().parentId(1L).build());
+    assertThat(context.hashCode())
+        .isEqualTo(context.toBuilder().parentId(1L).build().hashCode());
   }
 
   @Test

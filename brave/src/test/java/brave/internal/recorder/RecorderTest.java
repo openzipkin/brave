@@ -15,10 +15,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecorderTest {
   Endpoint localEndpoint = Platform.get().localEndpoint();
-  List<zipkin2.Span> spans = new ArrayList();
+  List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
-  Recorder recorder =
-      new Recorder(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
+  Recorder recorder = new Recorder(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
 
   @After public void close() {
     Tracing.current().close();

@@ -13,6 +13,7 @@
  */
 package brave.internal;
 
+import brave.Clock;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -36,6 +37,9 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 public class PlatformBenchmarks {
   static final Platform jre6 = Platform.Jre6.build(false);
   static final Platform jre7 = Platform.Jre7.buildIfSupported(false);
+  static final Platform jre9 = Platform.Jre9.buildIfSupported(false);
+  static final Clock jre7Clock = jre7.clock();
+  static final Clock jre9Clock = jre9.clock();
 
   @Benchmark @Group("no_contention") @GroupThreads(1)
   public long no_contention_nextTraceIdHigh_jre6() {
@@ -95,6 +99,36 @@ public class PlatformBenchmarks {
   @Benchmark @Group("high_contention") @GroupThreads(8)
   public long high_contention_randomLong_jre7() {
     return jre7.randomLong();
+  }
+
+  @Benchmark @Group("no_contention") @GroupThreads(1)
+  public long no_contention_clock_jre7() {
+    return jre7Clock.currentTimeMicroseconds();
+  }
+
+  @Benchmark @Group("mild_contention") @GroupThreads(2)
+  public long mild_contention_clock_jre7() {
+    return jre7Clock.currentTimeMicroseconds();
+  }
+
+  @Benchmark @Group("high_contention") @GroupThreads(8)
+  public long high_contention_clock_jre7() {
+    return jre7Clock.currentTimeMicroseconds();
+  }
+
+  @Benchmark @Group("no_contention") @GroupThreads(1)
+  public long no_contention_clock_jre9() {
+    return jre9Clock.currentTimeMicroseconds();
+  }
+
+  @Benchmark @Group("mild_contention") @GroupThreads(2)
+  public long mild_contention_clock_jre9() {
+    return jre9Clock.currentTimeMicroseconds();
+  }
+
+  @Benchmark @Group("high_contention") @GroupThreads(8)
+  public long high_contention_clock_jre9() {
+    return jre9Clock.currentTimeMicroseconds();
   }
 
   // Convenience main entry-point
