@@ -27,6 +27,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 
 import static javax.servlet.DispatcherType.REQUEST;
@@ -63,19 +64,27 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
 
   public static class Unsampled extends ForwardingTracingFilter {
     public Unsampled() {
-      super(Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build());
+      super(Tracing.newBuilder()
+          .sampler(Sampler.NEVER_SAMPLE)
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
     }
   }
 
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
-      super(Tracing.newBuilder().spanReporter(Reporter.NOOP).build());
+      super(Tracing.newBuilder()
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
     }
   }
 
   public static class Traced128 extends ForwardingTracingFilter {
     public Traced128() {
-      super(Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build());
+      super(Tracing.newBuilder()
+          .traceId128Bit(true)
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
     }
   }
 
@@ -83,7 +92,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public TracedAWS() {
       super(Tracing.newBuilder()
           .propagationFactory(AWSPropagation.FACTORY)
-          .spanReporter(Reporter.NOOP)
+          .spanReporter(AsyncReporter.create(new NoopSender()))
           .build());
     }
   }
