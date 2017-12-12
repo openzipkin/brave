@@ -27,6 +27,10 @@ final class NoopSender extends Sender {
     return encoding().listSizeInBytes(encodedSpans);
   }
 
+  @Override public int messageSizeInBytes(int encodedSizeInBytes) {
+    return encoding().listSizeInBytes(encodedSizeInBytes);
+  }
+
   @Override public Call<Void> sendSpans(List<byte[]> encodedSpans) {
     messageEncoder.encode(encodedSpans);
     return Call.create(null);

@@ -11,7 +11,7 @@ import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
-public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
+public class TracingFactoryBean extends AbstractFactoryBean {
 
   String localServiceName;
   Endpoint localEndpoint;
@@ -37,8 +37,8 @@ public class TracingFactoryBean extends AbstractFactoryBean<Tracing> {
     return builder.build();
   }
 
-  @Override protected void destroyInstance(Tracing instance) throws Exception {
-    instance.close();
+  @Override protected void destroyInstance(Object instance) throws Exception {
+    ((Tracing) instance).close();
   }
 
   @Override public Class<? extends Tracing> getObjectType() {

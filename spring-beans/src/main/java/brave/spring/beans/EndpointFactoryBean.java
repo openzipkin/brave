@@ -4,7 +4,7 @@ import org.springframework.beans.factory.FactoryBean;
 import zipkin2.Endpoint;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
-public class EndpointFactoryBean implements FactoryBean<Endpoint> {
+public class EndpointFactoryBean implements FactoryBean {
 
   String serviceName;
   String ip;
