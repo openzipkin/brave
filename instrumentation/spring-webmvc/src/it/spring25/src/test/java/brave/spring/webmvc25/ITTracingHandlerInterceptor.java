@@ -1,0 +1,84 @@
+package brave.spring.webmvc25;
+
+import brave.Tracer;
+import brave.http.HttpTracing;
+import brave.http.ITServletContainer;
+import brave.spring.webmvc.TracingHandlerInterceptor;
+import java.io.IOException;
+import javax.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.StaticWebApplicationContext;
+import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter;
+import org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping;
+
+import static org.springframework.web.servlet.DispatcherServlet.HANDLER_ADAPTER_BEAN_NAME;
+import static org.springframework.web.servlet.DispatcherServlet.HANDLER_MAPPING_BEAN_NAME;
+
+public class ITTracingHandlerInterceptor extends ITServletContainer {
+
+  @Controller
+  public static class TestController {
+    final Tracer tracer;
+
+    @Autowired public TestController(HttpTracing httpTracing) {
+      this.tracer = httpTracing.tracing().tracer();
+    }
+
+    @RequestMapping(value = "/foo")
+    public void foo(HttpServletResponse response) throws IOException {
+      response.getWriter().write("foo");
+    }
+
+    @RequestMapping(value = "/badrequest")
+    public void badrequest(HttpServletResponse response) throws IOException {
+      response.sendError(400);
+      response.flushBuffer();
+    }
+
+    @RequestMapping(value = "/child")
+    public void child() {
+      tracer.nextSpan().name("child").start().finish();
+    }
+
+    @RequestMapping(value = "/exception")
+    public void disconnect() throws IOException {
+      throw new IOException();
+    }
+  }
+
+  @Override public void init(ServletContextHandler handler) {
+    StaticWebApplicationContext wac = new StaticWebApplicationContext();
+    wac.getBeanFactory()
+        .registerSingleton("testController", new TestController(httpTracing)); // the test resource
+
+    DefaultAnnotationHandlerMapping mapping = new DefaultAnnotationHandlerMapping();
+    mapping.setInterceptors(new Object[] {TracingHandlerInterceptor.create(httpTracing)});
+    mapping.setApplicationContext(wac);
+
+    wac.getBeanFactory().registerSingleton(HANDLER_MAPPING_BEAN_NAME, mapping);
+    wac.getBeanFactory()
+        .registerSingleton(HANDLER_ADAPTER_BEAN_NAME, new AnnotationMethodHandlerAdapter());
+
+    handler.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, wac);
+    handler.addServlet(new ServletHolder(new DispatcherServlet() {
+      {
+        wac.refresh();
+        setDetectAllHandlerMappings(false);
+        setDetectAllHandlerAdapters(false);
+        setPublishEvents(false);
+      }
+
+      @Override protected WebApplicationContext initWebApplicationContext() throws BeansException {
+        onRefresh(wac);
+        return wac;
+      }
+    }), "/*");
+  }
+}
