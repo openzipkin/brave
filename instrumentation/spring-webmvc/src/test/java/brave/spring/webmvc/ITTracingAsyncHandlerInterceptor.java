@@ -16,13 +16,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.DispatcherServlet;
-import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-public class ITTracingHandlerInterceptor extends ITServletContainer {
+public class ITTracingAsyncHandlerInterceptor extends ITServletContainer {
 
   @Controller static class TestController {
     final Tracer tracer;
@@ -68,12 +68,12 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
   @Configuration
   @EnableWebMvc
   static class TracingConfig extends WebMvcConfigurerAdapter {
-    @Bean HandlerInterceptor tracingInterceptor(HttpTracing httpTracing) {
-      return TracingHandlerInterceptor.create(httpTracing);
+    @Bean AsyncHandlerInterceptor tracingInterceptor(HttpTracing httpTracing) {
+      return TracingAsyncHandlerInterceptor.create(httpTracing);
     }
 
     @Autowired
-    private HandlerInterceptor tracingInterceptor;
+    private AsyncHandlerInterceptor tracingInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

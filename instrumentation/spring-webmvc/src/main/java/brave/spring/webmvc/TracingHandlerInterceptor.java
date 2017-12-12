@@ -14,13 +14,14 @@ import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 /**
  * Tracing interceptor for Spring Web MVC, which can be used as both an {@link
  * AsyncHandlerInterceptor} or a normal {@link HandlerInterceptor}.
  */
-public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
+public final class TracingHandlerInterceptor implements HandlerInterceptor {
   static final Propagation.Getter<HttpServletRequest, String> GETTER =
       new Propagation.Getter<HttpServletRequest, String>() {
         @Override public String get(HttpServletRequest carrier, String key) {
@@ -32,11 +33,11 @@ public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
         }
       };
 
-  public static AsyncHandlerInterceptor create(Tracing tracing) {
+  public static HandlerInterceptor create(Tracing tracing) {
     return new TracingHandlerInterceptor(HttpTracing.create(tracing));
   }
 
-  public static AsyncHandlerInterceptor create(HttpTracing httpTracing) {
+  public static HandlerInterceptor create(HttpTracing httpTracing) {
     return new TracingHandlerInterceptor(httpTracing);
   }
 
@@ -59,6 +60,11 @@ public final class TracingHandlerInterceptor extends HandlerInterceptorAdapter {
     Span span = handler.handleReceive(extractor, request);
     request.setAttribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     return true;
+  }
+
+  @Override
+  public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+      ModelAndView modelAndView) throws Exception {
   }
 
   @Override
