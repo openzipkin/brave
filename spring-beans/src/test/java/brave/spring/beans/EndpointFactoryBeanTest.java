@@ -21,9 +21,8 @@ public class EndpointFactoryBeanTest {
         + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Endpoint.class))
+    assertThat(context.getBean("localEndpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder().serviceName("brave-webmvc-example").build());
   }
 
@@ -34,9 +33,8 @@ public class EndpointFactoryBeanTest {
         + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Endpoint.class))
+    assertThat(context.getBean("localEndpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -50,10 +48,9 @@ public class EndpointFactoryBeanTest {
         + "  <property name=\"ip\" value=\"localhost\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
     try {
-      context.getBean(Endpoint.class);
+      context.getBean("localEndpoint", Endpoint.class);
       failBecauseExceptionWasNotThrown(BeanCreationException.class);
     } catch (BeanCreationException e) {
       assertThat(e)
@@ -69,9 +66,8 @@ public class EndpointFactoryBeanTest {
         + "  <property name=\"port\" value=\"8080\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Endpoint.class))
+    assertThat(context.getBean("localEndpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")

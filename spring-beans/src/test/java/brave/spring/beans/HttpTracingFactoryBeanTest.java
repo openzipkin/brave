@@ -31,9 +31,8 @@ public class HttpTracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(HttpTracing.class))
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
         .extracting("tracing")
         .containsExactly(TRACING);
   }
@@ -49,9 +48,8 @@ public class HttpTracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(HttpTracing.class))
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
         .extracting("clientParser")
         .containsExactly(CLIENT_PARSER);
   }
@@ -67,9 +65,8 @@ public class HttpTracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(HttpTracing.class))
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
         .extracting("serverParser")
         .containsExactly(SERVER_PARSER);
   }
@@ -85,9 +82,8 @@ public class HttpTracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(HttpTracing.class))
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
         .extracting("clientSampler")
         .containsExactly(HttpSampler.NEVER_SAMPLE);
   }
@@ -103,9 +99,8 @@ public class HttpTracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(HttpTracing.class))
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
         .extracting("serverSampler")
         .containsExactly(HttpSampler.NEVER_SAMPLE);
   }

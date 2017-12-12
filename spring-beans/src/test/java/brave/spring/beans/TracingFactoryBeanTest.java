@@ -27,7 +27,7 @@ public class TracingFactoryBeanTest {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\"/>\n"
     );
-    context.refresh();
+    context.getBean("tracing", Tracing.class);
 
     assertThat(Tracing.current()).isNotNull();
 
@@ -44,9 +44,8 @@ public class TracingFactoryBeanTest {
         + "  <property name=\"localServiceName\" value=\"brave-webmvc-example\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.recorder.spanMap.localEndpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
@@ -64,9 +63,8 @@ public class TracingFactoryBeanTest {
         + "  <property name=\"localEndpoint\" ref=\"localEndpoint\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.recorder.spanMap.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
@@ -82,9 +80,8 @@ public class TracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.recorder.reporter")
         .containsExactly(Reporter.CONSOLE);
   }
@@ -97,9 +94,8 @@ public class TracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.clock")
         .containsExactly(CLOCK);
   }
@@ -112,9 +108,8 @@ public class TracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.sampler")
         .containsExactly(Sampler.NEVER_SAMPLE);
   }
@@ -127,9 +122,8 @@ public class TracingFactoryBeanTest {
         + "  </property>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.currentTraceContext")
         .allMatch(o -> o instanceof StrictCurrentTraceContext);
   }
@@ -151,9 +145,8 @@ public class TracingFactoryBeanTest {
         + "  <property name=\"propagationFactory\" ref=\"propagationFactory\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class).propagation())
+    assertThat(context.getBean("tracing", Tracing.class).propagation())
         .isInstanceOf(ExtraFieldPropagation.class)
         .extracting("nameToKey")
         .allSatisfy(m -> assertThat((Map) m)
@@ -166,9 +159,8 @@ public class TracingFactoryBeanTest {
         + "  <property name=\"traceId128Bit\" value=\"true\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.traceId128Bit")
         .containsExactly(true);
   }
@@ -179,9 +171,8 @@ public class TracingFactoryBeanTest {
         + "  <property name=\"supportsJoin\" value=\"true\"/>\n"
         + "</bean>"
     );
-    context.refresh();
 
-    assertThat(context.getBean(Tracing.class))
+    assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.supportsJoin")
         .containsExactly(true);
   }

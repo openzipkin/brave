@@ -28,7 +28,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.AsyncReporter;
-import zipkin2.reporter.Reporter;
 
 import static javax.servlet.DispatcherType.REQUEST;
 

@@ -4,15 +4,14 @@ tracing with only XML
 
 ## Configuration
 Bean Factories exist for the following types:
-* AsyncReporterFactoryBean - for configuring how often spans are sent to Zipkin
 * EndpointFactoryBean - for configuring the service name, IP etc representing this host
 * TracingFactoryBean - wires most together, like reporter and log integration
 * HttpTracingFactoryBean - for http tagging and sampling policy
 
 Here are some example beans using the factories in this module:
 ```xml
-  <bean id="sender" class="zipkin.reporter2.okhttp3.OkHttpSender" factory-method="create">
-    <constructor-arg type="java.lang.String" value="http://localhost:9411/api/v2/spans"/>
+  <bean id="sender" class="zipkin2.reporter.beans.OkHttpSenderFactoryBean">
+    <property name="endpoint" value="http://localhost:9411/api/v2/spans"/>
   </bean>
 
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
