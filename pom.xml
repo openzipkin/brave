@@ -659,13 +659,9 @@
           <installAtEnd>true</installAtEnd>
         </configuration>
       </plugin>
-      <!-- Uploads occur as a last step -->
       <plugin>
         <artifactId>maven-deploy-plugin</artifactId>
         <version>${maven-deploy-plugin.version}</version>
-        <configuration>
-          <deployAtEnd>true</deployAtEnd>
-        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
