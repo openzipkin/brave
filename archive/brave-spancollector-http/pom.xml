@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.zipkin.brave</groupId>
         <artifactId>brave-parent</artifactId>
-        <version>4.11.1-SNAPSHOT</version>
+        <version>4.12.0</version>
     </parent>
 
     <artifactId>brave-spancollector-http</artifactId>
