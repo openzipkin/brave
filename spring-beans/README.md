@@ -17,8 +17,7 @@ Here are some example beans using the factories in this module:
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="localServiceName" value="brave-webmvc-example"/>
     <property name="spanReporter">
-      <bean class="brave.spring.beans.AsyncReporterFactoryBean">
-        <property name="encoder" value="JSON_V2"/>
+      <bean class="zipkin2.reporter.beans.AsyncReporterFactoryBean">
         <property name="sender" ref="sender"/>
         <!-- wait up to half a second for any in-flight spans on close -->
         <property name="closeTimeout" value="500"/>
