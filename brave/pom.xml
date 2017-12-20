@@ -113,31 +113,29 @@
   </dependencies>
   <build>
     <plugins>
-      <!-- Need to block import of shaded packages in bnd.bnd as maven bundle plugin analyzes the unshaded jar -->
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
-        <!-- Travis cannot resolve 3.3.0-->
-        <version>3.2.0</version>
-        <configuration>
-          <obrRepository>NONE</obrRepository>
-          <instructions>
-            <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
-            <_include>-bnd.bnd</_include>
-          </instructions>
-        </configuration>
-        <executions>
-          <execution>
-            <phase>process-classes</phase>
-            <goals>
-              <goal>manifest</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-invoker-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <configuration>
+              <archive>
+                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+              </archive>
+            </configuration>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

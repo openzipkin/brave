@@ -1,8 +1,8 @@
 package com.github.kristofa.brave.scribe;
 
+import com.twitter.zipkin.gen.scribe.Client;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -10,10 +10,6 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-
-import com.twitter.zipkin.gen.scribe.Client;
-
-import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
 /**
  * {@link ThriftClientProvider} for ScribeSpanCollector.
@@ -38,7 +34,10 @@ class ScribeClientProvider implements ThriftClientProvider<Client> {
      * @param timeout Socket time out in milliseconds.
      */
     public ScribeClientProvider(final String host, final int port, final int timeout) {
-        this.host = checkNotBlank(host, "Null or empty host");
+        if (host == null || host.isEmpty()) {
+            throw new IllegalArgumentException("host == null or empty");
+        }
+        this.host = host;
         this.port = port;
         this.timeout = timeout;
     }

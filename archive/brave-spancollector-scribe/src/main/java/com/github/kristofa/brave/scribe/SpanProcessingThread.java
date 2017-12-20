@@ -18,7 +18,6 @@ import com.twitter.zipkin.gen.LogEntry;
 import com.twitter.zipkin.gen.Span;
 import com.twitter.zipkin.gen.scribe.Client;
 
-import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static java.lang.String.format;
 
 /**
@@ -57,9 +56,12 @@ class SpanProcessingThread implements Callable<Integer> {
     public SpanProcessingThread(final BlockingQueue<Span> queue, final ScribeClientProvider clientProvider,
         final int maxBatchSize, SpanCollectorMetricsHandler metricsHandler) {
         if (maxBatchSize <= 0) throw new IllegalArgumentException("maxBatchSize must be positive");
-        this.queue = checkNotNull(queue, "Null queue");
-        this.clientProvider = checkNotNull(clientProvider, "Null clientProvider");
-        this.metricsHandler = checkNotNull(metricsHandler, "Null metricsHandler");
+        if (queue == null) throw new NullPointerException("queue == null");
+        this.queue = queue;
+        if (clientProvider == null) throw new NullPointerException("clientProvider == null");
+        this.clientProvider = clientProvider;
+        if (metricsHandler == null) throw new NullPointerException("metricsHandler == null");
+        this.metricsHandler = metricsHandler;
         protocolFactory = new TBinaryProtocol.Factory();
         this.maxBatchSize = maxBatchSize;
         logEntries = new ArrayList<LogEntry>(maxBatchSize);
