@@ -2,6 +2,7 @@ package brave.kafka.clients;
 
 import brave.Tracing;
 import com.google.common.base.Charsets;
+import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -9,10 +10,10 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.junit.After;
-import zipkin.internal.Util;
 import zipkin2.Span;
 
 abstract class BaseTracingTest {
+  static final Charset UTF_8 = Charset.forName("UTF-8");
   static String TRACE_ID = "463ac35c9f6413ad";
   static String PARENT_ID = "463ac35c9f6413ab";
   static String SPAN_ID = "48485a3953bb6124";
@@ -35,10 +36,10 @@ abstract class BaseTracingTest {
 
   static <K, V> void addB3Headers(ConsumerRecord<K, V> record) {
     record.headers()
-        .add("X-B3-TraceId", TRACE_ID.getBytes(Util.UTF_8))
-        .add("X-B3-ParentSpanId", PARENT_ID.getBytes(Util.UTF_8))
-        .add("X-B3-SpanId", SPAN_ID.getBytes(Util.UTF_8))
-        .add("X-B3-Sampled", SAMPLED.getBytes(Util.UTF_8));
+        .add("X-B3-TraceId", TRACE_ID.getBytes(UTF_8))
+        .add("X-B3-ParentSpanId", PARENT_ID.getBytes(UTF_8))
+        .add("X-B3-SpanId", SPAN_ID.getBytes(UTF_8))
+        .add("X-B3-Sampled", SAMPLED.getBytes(UTF_8));
   }
 
   static Set<Map.Entry<String, String>> lastHeaders(Headers headers) {

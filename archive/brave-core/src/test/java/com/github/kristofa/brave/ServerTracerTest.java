@@ -1,13 +1,12 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.DefaultSpanCodec;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Constants;
+import zipkin2.Span.Kind;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
@@ -17,10 +16,14 @@ public class ServerTracerTest {
   private static final long START_TIME_MICROSECONDS = System.currentTimeMillis() * 1000;
   private static final long TRACE_ID = 1;
   private static final SpanId CONTEXT =
-      SpanId.builder().sampled(true).traceId(TRACE_ID).spanId(2).parentId(3L).build();
-  private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
-  static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
-  private static final zipkin.Span BASE_SPAN = DefaultSpanCodec.toZipkin(Brave.toSpan(CONTEXT));
+      SpanId.builder().sampled(true).traceId(TRACE_ID).parentId(2L).spanId(3).build();
+  private static final Endpoint ENDPOINT = Endpoint.create("service", 127 << 24 | 1);
+  static final zipkin2.Endpoint ZIPKIN_ENDPOINT = zipkin2.Endpoint.newBuilder()
+      .serviceName("service").ip("127.0.0.1").build();
+  private static final zipkin2.Span BASE_SPAN = zipkin2.Span.newBuilder()
+      .traceId(String.format("%016x", TRACE_ID))
+      .parentId(String.format("%016x", 2))
+      .id(String.format("%016x", 3)).build();
   private static final String SPAN_NAME = "span name";
 
   long timestamp = START_TIME_MICROSECONDS;
@@ -29,7 +32,7 @@ public class ServerTracerTest {
   private Span span = Brave.toSpan(CONTEXT);
   ServerSpan serverSpan = new AutoValue_ServerSpan(CONTEXT, span, true);
 
-  List<zipkin.Span> spans = new ArrayList<>();
+  List<zipkin2.Span> spans = new ArrayList<>();
   Brave brave = newBrave(true);
   Recorder recorder = brave.serverTracer().recorder();
 
@@ -41,7 +44,7 @@ public class ServerTracerTest {
   Brave newBrave(boolean supportsJoin) {
     return new Brave.Builder(ENDPOINT)
         .clock(clock)
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .supportsJoin(false)
         .build();
   }
@@ -57,7 +60,7 @@ public class ServerTracerTest {
     brave.serverTracer().setStateCurrentTrace(CONTEXT, SPAN_NAME);
 
     recorder.flush(brave.serverSpanThreadBinder().get());
-    assertThat(spans.get(0).name).isEqualTo(SPAN_NAME);
+    assertThat(spans.get(0).name()).isEqualTo(SPAN_NAME);
   }
 
   @Test
@@ -68,7 +71,7 @@ public class ServerTracerTest {
     brave.serverTracer().setStateCurrentTrace(CONTEXT, SPAN_NAME);
 
     recorder.flush(brave.serverSpanThreadBinder().get());
-    assertThat(spans.get(0).parentId).isEqualTo(CONTEXT.spanId);
+    assertThat(spans.get(0).parentId()).isEqualTo(BASE_SPAN.id());
   }
 
   @Test
@@ -92,7 +95,7 @@ public class ServerTracerTest {
     brave.serverTracer().setStateUnknown(SPAN_NAME);
 
     recorder.flush(brave.serverSpanThreadBinder().get());
-    assertThat(spans.get(0).name).isEqualTo(SPAN_NAME);
+    assertThat(spans.get(0).name()).isEqualTo(SPAN_NAME);
   }
 
   @Test
@@ -126,11 +129,12 @@ public class ServerTracerTest {
     brave.serverTracer().setServerReceived();
 
     recorder.flush(span);
-    assertThat(spans.get(0).annotations).containsExactly(
-        zipkin.Annotation.create(START_TIME_MICROSECONDS,
-            Constants.SERVER_RECV,
-            ZIPKIN_ENDPOINT
-        )
+
+    assertThat(spans.get(0)).isEqualTo(
+        BASE_SPAN.toBuilder()
+            .kind(Kind.SERVER)
+            .localEndpoint(ZIPKIN_ENDPOINT)
+            .timestamp(START_TIME_MICROSECONDS).build()
     );
   }
 
@@ -141,11 +145,9 @@ public class ServerTracerTest {
         .ipv4(127 << 24 | 1).port(9).serviceName("foobar").build());
 
     recorder.flush(span);
-    assertThat(spans.get(0).binaryAnnotations).containsExactly(
-        zipkin.BinaryAnnotation.address(
-            Constants.CLIENT_ADDR,
-            zipkin.Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9).build()
-        )
+
+    assertThat(spans.get(0).remoteEndpoint()).isEqualTo(
+        zipkin2.Endpoint.newBuilder().serviceName("foobar").ip("127.0.0.1").port(9).build()
     );
   }
 
@@ -157,7 +159,7 @@ public class ServerTracerTest {
         .setServerReceived(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
     recorder.flush(span);
-    assertThat(spans.get(0).binaryAnnotations.get(0).endpoint.serviceName)
+    assertThat(spans.get(0).remoteServiceName())
         .isEqualTo("unknown");
   }
 
@@ -171,18 +173,18 @@ public class ServerTracerTest {
 
   @Test
   public void setServerSend() {
-    recorder.start(span, 100L);
+    recorder.start(span, START_TIME_MICROSECONDS);
     brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
+
+    timestamp = START_TIME_MICROSECONDS + 100;
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).timestamp).isEqualTo(100L);
-    assertThat(spans.get(0).duration).isEqualTo(START_TIME_MICROSECONDS - 100L);
-    assertThat(spans.get(0).annotations).contains(
-        zipkin.Annotation.create(START_TIME_MICROSECONDS,
-            Constants.SERVER_SEND,
-            ZIPKIN_ENDPOINT
-        )
+    assertThat(spans.get(0)).isEqualTo(
+        BASE_SPAN.toBuilder()
+            .kind(Kind.SERVER)
+            .localEndpoint(ZIPKIN_ENDPOINT)
+            .timestamp(START_TIME_MICROSECONDS).duration(100L).build()
     );
   }
 
@@ -195,7 +197,7 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).duration).isEqualTo(500L);
+    assertThat(spans.get(0).duration()).isEqualTo(500L);
   }
 
   /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
@@ -208,7 +210,7 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).duration).isEqualTo(1L);
+    assertThat(spans.get(0).duration()).isEqualTo(1L);
   }
 
   @Test
@@ -220,6 +222,6 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).duration).isNull();
+    assertThat(spans.get(0).duration()).isNull();
   }
 }

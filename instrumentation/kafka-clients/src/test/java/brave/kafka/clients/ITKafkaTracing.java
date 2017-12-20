@@ -31,7 +31,6 @@ import zipkin2.Span;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
-import static zipkin.internal.Util.lowerHexToUnsignedLong;
 
 public class ITKafkaTracing {
 
@@ -197,7 +196,7 @@ public class ITKafkaTracing {
         String result = getter.get(carrier, key);
         if (result == null) return TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
         return TraceContextOrSamplingFlags.create(TraceIdContext.newBuilder()
-            .traceId(lowerHexToUnsignedLong(result))
+            .traceId(HexCodec.lowerHexToUnsignedLong(result))
             .build());
       };
     }

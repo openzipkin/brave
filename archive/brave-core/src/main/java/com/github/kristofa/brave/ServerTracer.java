@@ -1,12 +1,13 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Random;
 import zipkin.Constants;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
 
@@ -65,15 +66,36 @@ public abstract class ServerTracer extends AnnotationSubmitter {
             return this;
         }
 
-        public final Builder reporter(Reporter<zipkin.Span> reporter) {
+        public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
+            if (reporter == null) throw new NullPointerException("spanReporter == null");
             this.reporter = reporter;
             return this;
         }
 
-        /** @deprecated use {@link #reporter(Reporter)} */
+        /** @deprecated use {@link #spanReporter(Reporter)} */
+        @Deprecated
+        public Builder reporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
+            if (reporter == null) throw new NullPointerException("spanReporter == null");
+            if (reporter == zipkin.reporter.Reporter.NOOP) {
+                this.reporter = Reporter.NOOP;
+                return this;
+            }
+            this.reporter = new Reporter<zipkin2.Span>() {
+                @Override public void report(zipkin2.Span span) {
+                    reporter.report(V2SpanConverter.toSpan(span));
+                }
+
+                @Override public String toString() {
+                    return reporter.toString();
+                }
+            };
+            return this;
+        }
+
+        /** @deprecated use {@link #spanReporter(Reporter)} */
         @Deprecated
         public final Builder spanCollector(SpanCollector spanCollector) {
-            return reporter(new SpanCollectorReporterAdapter(spanCollector));
+            return spanReporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
         public final Builder clock(Clock clock) {

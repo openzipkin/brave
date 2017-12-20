@@ -17,12 +17,13 @@ import org.junit.rules.ExpectedException;
 import zipkin.BinaryAnnotation;
 import zipkin.Constants;
 import zipkin.Endpoint;
-import zipkin.Span;
+import zipkin2.Span;
 import zipkin.TraceKeys;
-import zipkin.storage.InMemoryStorage;
+import zipkin2.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.groups.Tuple.tuple;
 
 public abstract class ITHttpServer {
@@ -31,7 +32,7 @@ public abstract class ITHttpServer {
   public OkHttpClient client = new OkHttpClient();
 
   Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   protected Brave brave;
 
@@ -69,9 +70,9 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans()).allSatisfy(s -> {
-      assertThat(IdConversion.convertToString(s.traceId)).isEqualTo(traceId);
-      assertThat(IdConversion.convertToString(s.parentId)).isEqualTo(parentId);
-      assertThat(IdConversion.convertToString(s.id)).isEqualTo(spanId);
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.parentId()).isEqualTo(parentId);
+      assertThat(s.id()).isEqualTo(spanId);
     });
   }
 
@@ -123,10 +124,10 @@ public abstract class ITHttpServer {
     Span child = trace.get(0);
     Span parent = trace.get(1);
 
-    assertThat(parent.traceId).isEqualTo(child.traceId);
-    assertThat(parent.id).isEqualTo(child.parentId);
-    assertThat(parent.timestamp).isLessThan(child.timestamp);
-    assertThat(parent.duration).isGreaterThan(child.duration);
+    assertThat(parent.traceId()).isEqualTo(child.traceId());
+    assertThat(parent.id()).isEqualTo(child.parentId());
+    assertThat(parent.timestamp()).isLessThan(child.timestamp());
+    assertThat(parent.duration()).isGreaterThan(child.duration());
   }
 
   @Test
@@ -139,9 +140,8 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
-        .contains(Constants.CLIENT_ADDR);
+        .flatExtracting(Span::remoteEndpoint)
+        .isNotEmpty();
   }
 
   @Test
@@ -156,9 +156,8 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key, b -> b.endpoint.ipv4)
-        .contains(tuple(Constants.CLIENT_ADDR, 1 << 24 | 2 << 16 | 3 << 8 | 4));
+        .extracting(s -> s.remoteEndpoint().ipv4())
+        .contains("1.2.3.4");
   }
 
   @Test
@@ -171,9 +170,8 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("sr", "ss");
+        .extracting(Span::kind)
+        .containsOnly(Span.Kind.SERVER);
   }
 
   @Test
@@ -186,7 +184,7 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get");
   }
 
@@ -201,7 +199,7 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly(path);
   }
 
@@ -216,8 +214,8 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .contains(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "404", local));
+        .flatExtracting(s -> s.tags().entrySet())
+        .contains(entry(TraceKeys.HTTP_STATUS_CODE, "404"));
   }
 
   @Test
@@ -257,8 +255,7 @@ public abstract class ITHttpServer {
     reportsSpanOnTransportException(path);
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
+        .flatExtracting(s -> s.tags().keySet())
         .contains(Constants.ERROR);
   }
 
@@ -272,10 +269,8 @@ public abstract class ITHttpServer {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value, "UTF-8"))
-        .containsExactly(url(path).toString());
+        .flatExtracting(s -> s.tags().entrySet())
+        .contains(entry(TraceKeys.HTTP_URL, url(path).toString()));
   }
 
   Brave.Builder braveBuilder(Sampler sampler) {
@@ -286,12 +281,12 @@ public abstract class ITHttpServer {
         .serviceName(local.serviceName)
         .build();
     return new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
+        .spanReporter(s -> storage.spanConsumer().accept(asList(s)))
         .traceSampler(sampler);
   }
 
   List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
+    List<List<Span>> result = storage.spanStore().getTraces();
     if (result.isEmpty()) return Collections.emptyList();
     assertThat(result).hasSize(1);
     return result.get(0);

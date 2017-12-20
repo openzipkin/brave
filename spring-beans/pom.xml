@@ -32,6 +32,12 @@
       <artifactId>zipkin-reporter-spring-beans</artifactId>
       <version>${zipkin-reporter2.version}</version>
     </dependency>
+    <!-- to compile against Span.remoteEndpoint(zipkin.Span) -->
+    <dependency>
+      <groupId>io.zipkin.java</groupId>
+      <artifactId>zipkin</artifactId>
+      <optional>true</optional>
+    </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-beans</artifactId>

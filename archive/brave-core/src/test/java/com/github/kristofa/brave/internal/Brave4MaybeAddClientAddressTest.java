@@ -8,8 +8,7 @@ import zipkin.reporter.Reporter;
 
 public class Brave4MaybeAddClientAddressTest extends MaybeAddClientAddressTest {
   public Brave4MaybeAddClientAddressTest() {
-    brave = TracerAdapter.newBrave(
-        Tracing.newBuilder().reporter((Reporter<Span>) spans::add).build().tracer());
+    brave = TracerAdapter.newBrave(Tracing.newBuilder().spanReporter(spans::add).build().tracer());
   }
 
   @After public void close(){

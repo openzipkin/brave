@@ -1,6 +1,5 @@
 package com.github.kristofa.brave.jersey;
 
-import com.github.kristofa.brave.internal.Util;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;
@@ -11,12 +10,13 @@ import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
 import java.util.List;
+import java.util.Map;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
 import zipkin.TraceKeys;
-import zipkin.storage.QueryRequest;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,21 +67,23 @@ public class ITBraveJersey extends JerseyTest {
     // hit the server
     webResource.path("test").get(String.class);
 
-    List<List<zipkin.Span>> traces = TraceFilters.INSTANCE.storage.spanStore()
-        .getTraces(QueryRequest.builder().build());
+    List<List<zipkin2.Span>> traces = TraceFilters.INSTANCE.storage.spanStore().getTraces();
     assertThat(traces).hasSize(1);
-    assertThat(traces.get(0))
-        .withFailMessage("Expected client and server to share ids: " + traces.get(0))
-        .hasSize(1);
+    List<Span> spans = traces.get(0);
 
-    zipkin.Span clientServerSpan = traces.get(0).get(0);
-    assertThat(clientServerSpan.annotations).extracting(a -> a.value)
-        .containsExactly("cs", "sr", "ss", "cr");
+    assertThat(spans.get(0).id())
+        .withFailMessage("Expected client and server to share ids: " + spans)
+        .isEqualTo(spans.get(1).id());
+
+    assertThat(spans)
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.SERVER, Span.Kind.CLIENT);
 
     // Currently one side logs the full url where the other logs only the path
-    assertThat(clientServerSpan.binaryAnnotations)
-        .filteredOn(ba -> ba.key.equals(TraceKeys.HTTP_URL))
-        .extracting(ba -> new String(ba.value, Util.UTF_8))
+    assertThat(spans)
+        .flatExtracting(s -> s.tags().entrySet())
+        .filteredOn(e -> e.getKey().equals(TraceKeys.HTTP_URL))
+        .extracting(Map.Entry::getValue)
         .allSatisfy(url -> assertThat(url.endsWith("/test")));
   }
 }

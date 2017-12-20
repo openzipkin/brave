@@ -21,8 +21,8 @@ final class MutableSpan {
         .traceId(context.traceIdString())
         .parentId(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null)
         .id(HexCodec.toLowerHex(context.spanId()))
-        .debug(context.debug())
-        .shared(context.shared())
+        .debug(context.debug() ? true : null)
+        .shared(context.shared() ? true : null)
         .localEndpoint(localEndpoint);
     finished = false;
   }

@@ -32,7 +32,7 @@ public class AnnotationSubmitterTest {
         Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9999).build();
     private Span span = Brave.toSpan(SpanId.builder().spanId(1).build());
     private AnnotationSubmitter annotationSubmitter;
-    private List<zipkin.Span> spans = new ArrayList<>();
+    private List<zipkin2.Span> spans = new ArrayList<>();
 
     @Before
     public void setup() {
@@ -114,8 +114,8 @@ public class AnnotationSubmitterTest {
         annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
         assertThat(spans).allSatisfy(
             span -> {
-                assertThat(span.timestamp).isNull();
-                assertThat(span.duration).isNull();
+                assertThat(span.timestamp()).isNull();
+                assertThat(span.duration()).isNull();
             }
         );
     }
@@ -126,7 +126,7 @@ public class AnnotationSubmitterTest {
 
         annotationSubmitter.submitStartAnnotation(Constants.SERVER_RECV);
         annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
-        assertThat(spans).extracting(s -> s.duration)
+        assertThat(spans).extracting(zipkin2.Span::duration)
             .containsExactly(1L);
     }
 
@@ -138,7 +138,7 @@ public class AnnotationSubmitterTest {
 
         annotationSubmitter.submitStartAnnotation(Constants.SERVER_RECV);
         annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
-        assertThat(spans).extracting(s -> s.duration)
+        assertThat(spans).extracting(zipkin2.Span::duration)
             .containsExactly(1L);
     }
 

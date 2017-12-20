@@ -17,10 +17,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
-/**
- * Tracing interceptor for Spring Web MVC, which can be used as both an {@link
- * AsyncHandlerInterceptor} or a normal {@link HandlerInterceptor}.
- */
+/** Tracing interceptor for Spring Web MVC {@link HandlerInterceptor}. */
 public final class TracingHandlerInterceptor implements HandlerInterceptor {
   static final Propagation.Getter<HttpServletRequest, String> GETTER =
       new Propagation.Getter<HttpServletRequest, String>() {

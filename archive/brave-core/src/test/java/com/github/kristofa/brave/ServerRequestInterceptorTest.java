@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -19,11 +20,12 @@ public class ServerRequestInterceptorTest {
     private final static long SPAN_ID = 43435;
     private final static long PARENT_SPAN_ID = 44334435;
     private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
-    static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
+    static final zipkin2.Endpoint ZIPKIN_ENDPOINT = zipkin2.Endpoint.newBuilder()
+        .serviceName("service").port(80).build();
     private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(zipkin.TraceKeys.HTTP_URL, "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
 
-    List<zipkin.Span> spans = new ArrayList<>();
+    List<zipkin2.Span> spans = new ArrayList<>();
     Brave brave = newBrave();
     Recorder recorder = brave.serverTracer().recorder();
     ServerRequestInterceptor interceptor = new ServerRequestInterceptor(brave.serverTracer());
@@ -36,7 +38,7 @@ public class ServerRequestInterceptorTest {
     }
 
     Brave newBrave() {
-        return new Brave.Builder(ENDPOINT).reporter(spans::add).build();
+        return new Brave.Builder(ENDPOINT).spanReporter(spans::add).build();
     }
 
     @Test
@@ -60,7 +62,7 @@ public class ServerRequestInterceptorTest {
         assertThat(brave.serverTracer().currentSpan().sampled())
             .isTrue();
 
-        assertThat(spans.get(0).name)
+        assertThat(spans.get(0).name())
             .isEqualTo(SPAN_NAME.toLowerCase());
     }
 
@@ -75,17 +77,17 @@ public class ServerRequestInterceptorTest {
         interceptor.handle(adapter);
         recorder.flush(brave.serverTracer().currentSpan().get());
 
-        zipkin.Span span = spans.get(0);
-        assertThat(span.traceId)
-            .isEqualTo(TRACE_ID);
-        assertThat(span.id)
-            .isEqualTo(SPAN_ID);
-        assertThat(span.parentId)
-            .isEqualTo(PARENT_SPAN_ID);
-        assertThat(span.annotations)
-            .extracting(a -> a.value).containsExactly("sr");
-        assertThat(span.binaryAnnotations)
-            .extracting(a -> a.key).containsExactly(ANNOTATION2.getKey(), ANNOTATION1.getKey());
+        zipkin2.Span span = spans.get(0);
+        assertThat(span.traceId())
+            .isEqualTo(String.format("%016x", TRACE_ID));
+        assertThat(span.id())
+            .isEqualTo(String.format("%016x", SPAN_ID));
+        assertThat(span.parentId())
+            .isEqualTo(String.format("%016x", PARENT_SPAN_ID));
+        assertThat(span.kind())
+            .isEqualTo(Span.Kind.SERVER);
+        assertThat(span.tags())
+            .containsOnlyKeys(ANNOTATION2.getKey(), ANNOTATION1.getKey());
     }
 
     @Test
@@ -101,8 +103,9 @@ public class ServerRequestInterceptorTest {
         interceptor.handle(adapter);
         recorder.flush(brave.serverTracer().currentSpan().get());
 
-        // don't log timestamp when span is client-originated
-        assertThat(spans.get(0).timestamp).isNull();
+        // shared when span is client-originated
+        assertThat(spans.get(0).shared()).isTrue();
+        assertThat(spans.get(0).timestamp()).isNotNull();
     }
 
     @Test
@@ -120,7 +123,7 @@ public class ServerRequestInterceptorTest {
             brave.clock().currentTimeMicroseconds());
 
         // We originated the trace, so we should set the timestamp
-        assertThat(spans.get(0).timestamp).isNotNull();
+        assertThat(spans.get(0).timestamp()).isNotNull();
     }
 
     @Test

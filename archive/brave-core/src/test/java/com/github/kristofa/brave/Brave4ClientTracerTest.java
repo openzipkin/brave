@@ -11,7 +11,7 @@ public class Brave4ClientTracerTest extends ClientTracerTest {
         .clock(new AnnotationSubmitter.DefaultClock()::currentTimeMicroseconds)
         .localEndpoint(ZIPKIN_ENDPOINT)
         .clock(clock::currentTimeMicroseconds)
-        .reporter((Reporter<Span>) spans::add).build().tracer());
+        .spanReporter(spans::add).build().tracer());
   }
 
   @After public void close(){
