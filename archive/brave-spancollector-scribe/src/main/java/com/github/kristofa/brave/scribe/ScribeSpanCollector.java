@@ -1,5 +1,9 @@
 package com.github.kristofa.brave.scribe;
 
+import com.github.kristofa.brave.SpanCollector;
+import com.github.kristofa.brave.SpanCollectorMetricsHandler;
+import com.twitter.zipkin.gen.BinaryAnnotation;
+import com.twitter.zipkin.gen.Span;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,17 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.github.kristofa.brave.SpanCollectorMetricsHandler;
-import com.github.kristofa.brave.SpanCollector;
-
 import org.apache.thrift.TException;
-
-import com.twitter.zipkin.gen.BinaryAnnotation;
-import com.twitter.zipkin.gen.Span;
-
-import static com.github.kristofa.brave.internal.Util.checkNotBlank;
-import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
  * Sends spans to Scribe or any compatible service. This includes
@@ -69,8 +63,10 @@ public class ScribeSpanCollector implements SpanCollector, Closeable {
      */
     public ScribeSpanCollector(final String host, final int port,
                                final ScribeSpanCollectorParams params) {
-        checkNotBlank(host, "Null or empty host");
-        checkNotNull(params, "Null params");
+        if (host == null || host.isEmpty()) {
+            throw new IllegalArgumentException("host == null or empty");
+        }
+        if (params == null) throw new NullPointerException("params == null");
 
         metricsHandler = params.getMetricsHandler();
         spanQueue = new ArrayBlockingQueue<Span>(params.getQueueSize());

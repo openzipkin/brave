@@ -1,12 +1,14 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
   <modelVersion>4.0.0</modelVersion>
   <parent>
-  	<groupId>io.zipkin.brave</groupId>
+    <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
     <version>4.13.1-SNAPSHOT</version>
-  </parent>   
-  
+  </parent>
+
   <artifactId>brave-spancollector-scribe</artifactId>
   <packaging>jar</packaging>
 
@@ -16,7 +18,7 @@
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
   </properties>
- 
+
   <dependencies>
     <dependency>
         <groupId>${project.groupId}</groupId>
@@ -38,4 +40,28 @@
          <artifactId>libthrift</artifactId>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <configuration>
+              <archive>
+                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+              </archive>
+            </configuration>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

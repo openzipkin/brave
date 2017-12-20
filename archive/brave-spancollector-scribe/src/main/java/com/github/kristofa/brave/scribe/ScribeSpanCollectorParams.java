@@ -3,8 +3,6 @@ package com.github.kristofa.brave.scribe;
 import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
 import com.github.kristofa.brave.SpanCollectorMetricsHandler;
 
-import static com.github.kristofa.brave.internal.Util.checkNotNull;
-
 /**
  * Optional parameters for {@link ScribeSpanCollector}.
  * <p/>
@@ -150,6 +148,7 @@ public class ScribeSpanCollectorParams {
     }
 
     public void setMetricsHandler(SpanCollectorMetricsHandler metricsHandler) {
-        this.metricsHandler = checkNotNull(metricsHandler, "Null metricsHandler");
+        if (metricsHandler == null) throw new NullPointerException("metricsHandler == null");
+        this.metricsHandler = metricsHandler;
     }
 }
