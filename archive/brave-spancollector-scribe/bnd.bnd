@@ -1,3 +1,2 @@
 Import-Package: \
-  !com.github.kristofa.brave.internal*,\
   *
