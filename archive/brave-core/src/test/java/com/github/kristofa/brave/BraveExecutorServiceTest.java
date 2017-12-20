@@ -10,7 +10,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.junit.Test;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +20,7 @@ public class BraveExecutorServiceTest {
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   // Ensures things don't accidentally work due to inheritable thread locals!
   Brave brave = new Brave.Builder(new TestServerClientAndLocalSpanStateCompilation())
-      .reporter(Reporter.NOOP)
+      .spanReporter(Reporter.NOOP)
       .traceSampler(Sampler.ALWAYS_SAMPLE).build();
   BlockingQueue<Span> spanQueue = new LinkedBlockingQueue();
   Supplier<Span> currentServerSpan =

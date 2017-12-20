@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -19,14 +20,15 @@ public class LocalTracerTest {
     private static final String COMPONENT_NAME = "componentname";
     private static final String OPERATION_NAME = "operationname";
     private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
-    static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
+    static final zipkin2.Endpoint ZIPKIN_ENDPOINT = zipkin2.Endpoint.newBuilder()
+        .serviceName("service").port(80).build();
 
     long timestamp = START_TIME_MICROSECONDS;
     AnnotationSubmitter.Clock clock = () -> timestamp;
 
     private Span span = Brave.toSpan(SpanId.builder().spanId(TRACE_ID).sampled(true).build());
 
-    List<zipkin.Span> spans = new ArrayList<>();
+    List<zipkin2.Span> spans = new ArrayList<>();
     Brave brave = newBrave();
     Recorder recorder = brave.localTracer().recorder();
 
@@ -36,11 +38,11 @@ public class LocalTracerTest {
     }
 
     Brave newBrave() {
-        return new Brave.Builder(ENDPOINT).clock(clock).reporter(spans::add).build();
+        return new Brave.Builder(ENDPOINT).clock(clock).spanReporter(spans::add).build();
     }
 
     Brave newBrave(ServerClientAndLocalSpanState state) {
-        return new Brave.Builder(state).clock(clock).reporter(spans::add).build();
+        return new Brave.Builder(state).clock(clock).spanReporter(spans::add).build();
     }
 
     /**
@@ -67,11 +69,11 @@ public class LocalTracerTest {
         assertThat(spans).isEmpty(); // doesn't flush on start
         recorder.flush(brave.localSpanThreadBinder().get());
 
-        zipkin.Span started = spans.get(0);
-        assertThat(started.timestamp).isEqualTo(START_TIME_MICROSECONDS);
-        assertThat(started.name).isEqualTo(OPERATION_NAME);
-        assertThat(started.binaryAnnotations).containsExactly(
-            zipkin.BinaryAnnotation.create("lc", COMPONENT_NAME, ZIPKIN_ENDPOINT)
+        zipkin2.Span started = spans.get(0);
+        assertThat(started.timestamp()).isEqualTo(START_TIME_MICROSECONDS);
+        assertThat(started.name()).isEqualTo(OPERATION_NAME);
+        assertThat(started.tags()).containsOnly(
+            entry("lc", COMPONENT_NAME)
         );
     }
 
@@ -92,7 +94,7 @@ public class LocalTracerTest {
         brave.localTracer().startNewSpan(COMPONENT_NAME, OPERATION_NAME, 1000L);
 
         recorder.flush(brave.localSpanThreadBinder().get());
-        assertThat(spans.get(0).timestamp).isEqualTo(1000L);
+        assertThat(spans.get(0).timestamp()).isEqualTo(1000L);
     }
 
     @Test
@@ -120,7 +122,7 @@ public class LocalTracerTest {
 
         brave.localTracer().finishSpan();
 
-        assertThat(spans.get(0).duration).isEqualTo(500L);
+        assertThat(spans.get(0).duration()).isEqualTo(500L);
     }
 
     /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
@@ -133,7 +135,7 @@ public class LocalTracerTest {
 
         brave.localTracer().finishSpan();
 
-        assertThat(spans.get(0).duration).isEqualTo(1L);
+        assertThat(spans.get(0).duration()).isEqualTo(1L);
     }
 
     @Test

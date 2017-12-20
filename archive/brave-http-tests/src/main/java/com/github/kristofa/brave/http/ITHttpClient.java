@@ -18,23 +18,23 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
 import zipkin.Endpoint;
-import zipkin.Span;
 import zipkin.TraceKeys;
 import zipkin.internal.Util;
-import zipkin.storage.InMemoryStorage;
+import zipkin2.Span;
+import zipkin2.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public abstract class ITHttpClient<C> {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
 
   Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
-  InMemoryStorage storage = new InMemoryStorage();
+  InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   protected Brave brave;
   C client;
@@ -195,9 +195,8 @@ public abstract class ITHttpClient<C> {
     get(client, "/foo");
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.annotations)
-        .extracting(a -> a.value)
-        .containsExactly("cs", "cr");
+        .extracting(Span::kind)
+        .containsOnly(Span.Kind.CLIENT);
   }
 
   @Test
@@ -206,7 +205,7 @@ public abstract class ITHttpClient<C> {
     get(client, "/foo");
 
     assertThat(collectedSpans())
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("get");
   }
 
@@ -219,7 +218,7 @@ public abstract class ITHttpClient<C> {
     get(client, "/foo");
 
     assertThat(collectedSpans())
-        .extracting(s -> s.name)
+        .extracting(Span::name)
         .containsExactly("/foo");
   }
 
@@ -234,8 +233,8 @@ public abstract class ITHttpClient<C> {
     }
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .contains(BinaryAnnotation.create(TraceKeys.HTTP_STATUS_CODE, "404", local));
+        .flatExtracting(s -> s.tags().entrySet())
+        .contains(entry(TraceKeys.HTTP_STATUS_CODE, "404"));
   }
 
   @Test
@@ -256,8 +255,7 @@ public abstract class ITHttpClient<C> {
     reportsSpanOnTransportException();
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .extracting(b -> b.key)
+        .flatExtracting(s -> s.tags().keySet())
         .contains(Constants.ERROR);
   }
 
@@ -269,10 +267,8 @@ public abstract class ITHttpClient<C> {
     get(client, path);
 
     assertThat(collectedSpans())
-        .flatExtracting(s -> s.binaryAnnotations)
-        .filteredOn(b -> b.key.equals(TraceKeys.HTTP_URL))
-        .extracting(b -> new String(b.value, Util.UTF_8))
-        .containsExactly(server.url(path).toString());
+        .flatExtracting(s -> s.tags().entrySet())
+        .contains(entry(TraceKeys.HTTP_URL, server.url(path).toString()));
   }
 
   Brave.Builder braveBuilder(Sampler sampler) {
@@ -283,12 +279,12 @@ public abstract class ITHttpClient<C> {
         .serviceName(local.serviceName)
         .build();
     return new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
-        .reporter(s -> storage.spanConsumer().accept(asList(s)))
+        .spanReporter(s -> storage.spanConsumer().accept(asList(s)))
         .traceSampler(sampler);
   }
 
   List<Span> collectedSpans() {
-    List<List<Span>> result = storage.spanStore().getRawTraces();
+    List<List<Span>> result = storage.spanStore().getTraces();
     assertThat(result).hasSize(1);
     return result.get(0);
   }

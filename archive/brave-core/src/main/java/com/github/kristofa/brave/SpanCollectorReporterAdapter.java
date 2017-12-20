@@ -1,12 +1,13 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.DefaultSpanCodec;
+import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.twitter.zipkin.gen.Span;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
-final class SpanCollectorReporterAdapter implements SpanCollector, Reporter<zipkin.Span> {
+final class SpanCollectorReporterAdapter implements SpanCollector, Reporter<zipkin2.Span> {
 
   final SpanCollector delegate;
 
@@ -14,9 +15,9 @@ final class SpanCollectorReporterAdapter implements SpanCollector, Reporter<zipk
     this.delegate = checkNotNull(delegate, "span collector");
   }
 
-  @Override public void report(zipkin.Span span) {
+  @Override public void report(zipkin2.Span span) {
     checkNotNull(span, "Null span");
-    collect(DefaultSpanCodec.fromZipkin(span));
+    collect(DefaultSpanCodec.fromZipkin(V2SpanConverter.toSpan(span)));
   }
 
   @Override

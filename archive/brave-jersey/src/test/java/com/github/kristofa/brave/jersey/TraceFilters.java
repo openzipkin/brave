@@ -7,12 +7,12 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import java.util.Collections;
-import zipkin.storage.InMemoryStorage;
+import zipkin2.storage.InMemoryStorage;
 
 public enum TraceFilters {
   INSTANCE;
 
-  final InMemoryStorage storage = new InMemoryStorage();
+  final InMemoryStorage storage = InMemoryStorage.newBuilder().build();
   final ServletTraceFilter server;
   final JerseyClientTraceFilter client;
 
@@ -20,7 +20,7 @@ public enum TraceFilters {
     Injector injector = Guice.createInjector(new AbstractModule() {
       @Override protected void configure() {
         bind(Brave.class).toInstance(new Brave.Builder("brave-jersey")
-                .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build());
+                .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build());
         bind(SpanNameProvider.class).to(DefaultSpanNameProvider.class);
       }
     });

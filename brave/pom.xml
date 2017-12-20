@@ -20,8 +20,13 @@
 
   <dependencies>
     <dependency>
+      <groupId>io.zipkin.zipkin2</groupId>
+      <artifactId>zipkin</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.zipkin.java</groupId>
       <artifactId>zipkin</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter</groupId>
@@ -117,6 +122,7 @@
         <configuration>
           <obrRepository>NONE</obrRepository>
           <instructions>
+            <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
             <_include>-bnd.bnd</_include>
           </instructions>
         </configuration>
@@ -126,47 +132,6 @@
             <goals>
               <goal>manifest</goal>
             </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- Repackage internal zipkin classes -->
-      <plugin>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <minimizeJar>true</minimizeJar>
-              <createDependencyReducedPom>false</createDependencyReducedPom>
-              <relocations>
-                <relocation>
-                  <pattern>zipkin.internal</pattern>
-                  <shadedPattern>brave.internal.zipkin</shadedPattern>
-                </relocation>
-              </relocations>
-              <artifactSet>
-                <includes>
-                  <include>io.zipkin.java:zipkin</include>
-                </includes>
-              </artifactSet>
-              <filters>
-                <filter>
-                  <!-- Shade references to internal classes -->
-                  <artifact>io.zipkin.java:zipkin</artifact>
-                  <includes>
-                    <include>zipkin/internal/V2SpanConverter*.class</include>
-                    <!-- TODO: V2 currently indirectly references Util -->
-                    <include>zipkin/internal/Util.class</include>
-                  </includes>
-                  <excludes>
-                    <exclude>*</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-            </configuration>
           </execution>
         </executions>
       </plugin>

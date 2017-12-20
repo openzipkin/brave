@@ -21,13 +21,13 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Span;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MaybeAddClientAddressTest {
   protected List<Span> spans = new ArrayList<>();
-  protected Brave brave = new Brave.Builder().reporter(spans::add).build();
+  protected Brave brave = new Brave.Builder().spanReporter(spans::add).build();
 
   @Before
   public void clearState() {
@@ -85,7 +85,7 @@ public class MaybeAddClientAddressTest {
     brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(spans.get(0).binaryAnnotations).isEmpty();
+    assertThat(spans.get(0).remoteEndpoint()).isNull();
   }
 
   @Test
@@ -107,7 +107,7 @@ public class MaybeAddClientAddressTest {
     brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(spans.get(0).binaryAnnotations).isEmpty();
+    assertThat(spans.get(0).remoteEndpoint()).isNull();
   }
 
   @Test
@@ -129,7 +129,7 @@ public class MaybeAddClientAddressTest {
     brave.serverTracer().setServerSend();
 
     // shouldn't add to span
-    assertThat(spans.get(0).binaryAnnotations).isEmpty();
+    assertThat(spans.get(0).remoteEndpoint()).isNull();
   }
 
   @Test
@@ -150,8 +150,8 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
-        .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
+    assertThat(spans.get(0).remoteEndpoint().ipv4())
+        .isEqualTo("1.2.3.4");
   }
 
   // don't clutter the UI with bad client service names. we can revisit this topic later.
@@ -173,8 +173,7 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.serviceName)
-        .containsExactly("");
+    assertThat(spans.get(0).remoteServiceName()).isNull();
   }
 
   @Test
@@ -195,8 +194,8 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.port)
-        .containsExactly((short) 8080);
+    assertThat(spans.get(0).remoteEndpoint().port())
+        .isEqualTo(8080);
   }
 
   @Test
@@ -216,8 +215,8 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.port)
-        .containsNull();
+    assertThat(spans.get(0).remoteEndpoint().port())
+        .isNull();
   }
 
   @Test
@@ -240,10 +239,10 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
-        .containsExactly(0);
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
-        .containsExactly(ipv6);
+    assertThat(spans.get(0).remoteEndpoint().ipv6())
+        .isEqualTo("2001:db8::c001");
+    assertThat(spans.get(0).remoteEndpoint().port())
+        .isNull();
   }
 
   @Test
@@ -264,10 +263,10 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
-        .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
-        .containsNull();
+    assertThat(spans.get(0).remoteEndpoint().ipv4())
+        .isEqualTo("1.2.3.4");
+    assertThat(spans.get(0).remoteEndpoint().ipv6())
+        .isNull();
   }
 
   @Test
@@ -288,10 +287,10 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
-        .containsExactly(1 << 24 | 2 << 16 | 3 << 8 | 4);
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
-        .containsNull();
+    assertThat(spans.get(0).remoteEndpoint().ipv4())
+        .isEqualTo("1.2.3.4");
+    assertThat(spans.get(0).remoteEndpoint().ipv6())
+        .isNull();
   }
 
   /** This ensures we don't mistake IPv6 localhost for a mapped IPv4 0.0.0.1 */
@@ -313,11 +312,9 @@ public class MaybeAddClientAddressTest {
     function.accept(new Object());
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv4)
-        .containsExactly(0);
-    byte[] ipv6_localhost = new byte[16];
-    ipv6_localhost[15]= 1;
-    assertThat(spans.get(0).binaryAnnotations).extracting(b -> b.endpoint.ipv6)
-        .containsExactly(ipv6_localhost);
+    assertThat(spans.get(0).remoteEndpoint().ipv6())
+        .isEqualTo("::1");
+    assertThat(spans.get(0).remoteEndpoint().ipv4())
+        .isNull();
   }
 }

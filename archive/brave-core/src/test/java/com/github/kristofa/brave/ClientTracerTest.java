@@ -1,13 +1,12 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.DefaultSpanCodec;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.Constants;
+import zipkin2.Span.Kind;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -21,17 +20,19 @@ public class ClientTracerTest {
   private static final long TRACE_ID = 105;
   private static final SpanId PARENT_CONTEXT =
       SpanId.builder().traceId(TRACE_ID).spanId(103).build();
-  private static final Endpoint ENDPOINT = Endpoint.create("service", 80);
-  static final zipkin.Endpoint ZIPKIN_ENDPOINT = zipkin.Endpoint.create("service", 80);
-  private static final zipkin.Span BASE_SPAN =
-      DefaultSpanCodec.toZipkin(Brave.toSpan(SpanId.builder().spanId(TRACE_ID).build()));
+  private static final Endpoint ENDPOINT = Endpoint.create("service", 127 << 24 | 1);
+  static final zipkin2.Endpoint ZIPKIN_ENDPOINT = zipkin2.Endpoint.newBuilder()
+      .serviceName("service").ip("127.0.0.1").build();
+  private static final zipkin2.Span BASE_SPAN = zipkin2.Span.newBuilder()
+      .traceId(String.format("%016x", TRACE_ID))
+      .id(String.format("%016x", TRACE_ID)).build();
 
   long timestamp = START_TIME_MICROSECONDS;
   AnnotationSubmitter.Clock clock = () -> timestamp;
 
   private Span span = Brave.toSpan(SpanId.builder().spanId(TRACE_ID).sampled(true).build());
 
-  List<zipkin.Span> spans = new ArrayList<>();
+  List<zipkin2.Span> spans = new ArrayList<>();
   Brave brave = newBrave();
   Recorder recorder = brave.clientTracer().recorder();
 
@@ -41,7 +42,7 @@ public class ClientTracerTest {
   }
 
   Brave newBrave() {
-    return new Brave.Builder(ENDPOINT).clock(clock).reporter(spans::add).build();
+    return new Brave.Builder(ENDPOINT).clock(clock).spanReporter(spans::add).build();
   }
 
   @Test
@@ -67,11 +68,12 @@ public class ClientTracerTest {
     brave.clientTracer().setClientSent();
 
     recorder.flush(brave.clientSpanThreadBinder().get());
-    assertThat(spans.get(0).annotations).containsExactly(
-        zipkin.Annotation.create(START_TIME_MICROSECONDS,
-            Constants.CLIENT_SEND,
-            ZIPKIN_ENDPOINT
-        )
+
+    assertThat(spans.get(0)).isEqualToComparingFieldByField(
+        BASE_SPAN.toBuilder()
+            .kind(Kind.CLIENT)
+            .localEndpoint(ZIPKIN_ENDPOINT)
+            .timestamp(START_TIME_MICROSECONDS).build()
     );
   }
 
@@ -82,11 +84,8 @@ public class ClientTracerTest {
         .ipv4(127 << 24 | 1).port(9).serviceName("foobar").build());
 
     recorder.flush(span);
-    assertThat(spans.get(0).binaryAnnotations).containsExactly(
-        zipkin.BinaryAnnotation.address(
-            Constants.SERVER_ADDR,
-            zipkin.Endpoint.builder().serviceName("foobar").ipv4(127 << 24 | 1).port(9).build()
-        )
+    assertThat(spans.get(0).remoteEndpoint()).isEqualTo(
+        zipkin2.Endpoint.newBuilder().serviceName("foobar").ip("127.0.0.1").port(9).build()
     );
   }
 
@@ -98,7 +97,7 @@ public class ClientTracerTest {
         .setClientSent(1 << 24 | 2 << 16 | 3 << 8 | 4, 9999, null);
 
     recorder.flush(span);
-    assertThat(spans.get(0).binaryAnnotations.get(0).endpoint.serviceName)
+    assertThat(spans.get(0).remoteServiceName())
         .isEqualTo("unknown");
   }
 
@@ -147,7 +146,7 @@ public class ClientTracerTest {
     brave.clientTracer().startNewSpan(REQUEST_NAME);
 
     recorder.flush(brave.clientSpanThreadBinder().get());
-    assertThat(spans.get(0).name).isEqualTo(REQUEST_NAME);
+    assertThat(spans.get(0).name()).isEqualTo(REQUEST_NAME);
   }
 
   @Test
@@ -167,12 +166,11 @@ public class ClientTracerTest {
 
     brave.clientTracer().setClientReceived();
 
-    assertThat(spans.get(0).duration).isEqualTo(100L);
-    assertThat(spans.get(0).annotations).contains(
-        zipkin.Annotation.create(START_TIME_MICROSECONDS + 100,
-            Constants.CLIENT_RECV,
-            ZIPKIN_ENDPOINT
-        )
+    assertThat(spans.get(0)).isEqualToComparingFieldByField(
+        BASE_SPAN.toBuilder()
+            .kind(Kind.CLIENT)
+            .localEndpoint(ZIPKIN_ENDPOINT)
+            .timestamp(START_TIME_MICROSECONDS).duration(100L).build()
     );
   }
 
@@ -185,7 +183,7 @@ public class ClientTracerTest {
 
     brave.clientTracer().setClientReceived();
 
-    assertThat(spans.get(0).duration).isEqualTo(500L);
+    assertThat(spans.get(0).duration()).isEqualTo(500L);
   }
 
   /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
@@ -198,6 +196,6 @@ public class ClientTracerTest {
 
     brave.clientTracer().setClientReceived();
 
-    assertThat(spans.get(0).duration).isEqualTo(1L);
+    assertThat(spans.get(0).duration()).isEqualTo(1L);
   }
 }

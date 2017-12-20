@@ -4,14 +4,14 @@ import com.github.kristofa.brave.example.TestServerClientAndLocalSpanStateCompil
 import com.twitter.zipkin.gen.Span;
 import java.util.function.Supplier;
 import org.junit.Test;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class BraveRunnableTest {
 
   Brave brave = new Brave.Builder(new TestServerClientAndLocalSpanStateCompilation())
-      .reporter(Reporter.NOOP)
+      .spanReporter(Reporter.NOOP)
       .traceSampler(Sampler.ALWAYS_SAMPLE).build();
 
   Supplier<Span> currentServerSpan =

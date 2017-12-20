@@ -6,6 +6,7 @@ import com.github.kristofa.brave.internal.Internal;
 import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.Util;
+import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.UnknownHostException;
@@ -13,9 +14,9 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import zipkin.Constants;
-import zipkin.reporter.AsyncReporter;
-import zipkin.reporter.Reporter;
-import zipkin.reporter.Sender;
+import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.Reporter;
+import zipkin2.reporter.Sender;
 
 import static com.github.kristofa.brave.InetAddressUtilities.getLocalHostLANAddress;
 import static com.github.kristofa.brave.InetAddressUtilities.toInt;
@@ -54,7 +55,7 @@ public class Brave {
         private Clock clock;
         private Recorder recorder;
         private SpanFactory spanFactory;
-        private Reporter<zipkin.Span> reporter;
+        private Reporter<zipkin2.Span> reporter;
 
         /**
          * Builder which initializes with serviceName = "unknown".
@@ -142,15 +143,35 @@ public class Brave {
          * <p>For example, here's how to batch send spans via http:
          *
          * <pre>{@code
-         * spanReporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v1/spans"));
+         * spanReporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v2/spans"));
          * braveBuilder.spanReporter(spanReporter);
          * }</pre>
          *
          * <p>See https://github.com/openzipkin/zipkin-reporter-java
          */
-        public Builder reporter(Reporter<zipkin.Span> reporter) {
+        public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
             if (reporter == null) throw new NullPointerException("spanReporter == null");
             this.reporter = reporter;
+            return this;
+        }
+
+        /** @deprecated use {@link #spanReporter(Reporter)} */
+        @Deprecated
+        public Builder reporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
+            if (reporter == null) throw new NullPointerException("spanReporter == null");
+            if (reporter == zipkin.reporter.Reporter.NOOP) {
+                this.reporter = Reporter.NOOP;
+                return this;
+            }
+            this.reporter = new Reporter<zipkin2.Span>() {
+                @Override public void report(zipkin2.Span span) {
+                    reporter.report(V2SpanConverter.toSpan(span));
+                }
+
+                @Override public String toString() {
+                    return reporter.toString();
+                }
+            };
             return this;
         }
 
@@ -167,11 +188,11 @@ public class Brave {
         }
 
         /**
-         * @deprecated use {@link #reporter(Reporter)}
+         * @deprecated use {@link #spanReporter(Reporter)}
          */
         @Deprecated
         public Builder spanCollector(SpanCollector spanCollector) {
-            return reporter(new SpanCollectorReporterAdapter(spanCollector));
+            return spanReporter(new SpanCollectorReporterAdapter(spanCollector));
         }
 
         public Builder clock(Clock clock) {
@@ -208,11 +229,28 @@ public class Brave {
                 recorder = new AutoValue_Recorder_Default(localEndpoint, clock, reporter);
             } else if (recorder == null) {
                 recorder =
-                    new AutoValue_Recorder_Default(localEndpoint, clock, new LoggingReporter());
+                    new AutoValue_Recorder_Default(localEndpoint, clock, LoggingReporter.INSTANCE);
             }
             return new Brave(this);
         }
 
+    }
+
+    // copy/pasted from brave v4 api to avoid internal dep
+    enum LoggingReporter implements Reporter<zipkin2.Span> {
+        INSTANCE;
+
+        final Logger logger = Logger.getLogger(Brave.class.getName());
+
+        @Override public void report(zipkin2.Span span) {
+            if (!logger.isLoggable(Level.INFO)) return;
+            if (span == null) throw new NullPointerException("span == null");
+            logger.info(span.toString());
+        }
+
+        @Override public String toString() {
+            return "LoggingReporter{name=" + logger.getName() + "}";
+        }
     }
 
     /**

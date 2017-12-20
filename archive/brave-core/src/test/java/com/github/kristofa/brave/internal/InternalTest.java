@@ -20,8 +20,8 @@ public class InternalTest {
   SpanId context = SpanId.builder().spanId(1L).build();
   Span span = InternalSpan.instance.toSpan(context);
 
-  List<zipkin.Span> spans = new ArrayList<>();
-  Brave brave = new Brave.Builder().reporter(spans::add).build();
+  List<zipkin2.Span> spans = new ArrayList<>();
+  Brave brave = new Brave.Builder().spanReporter(spans::add).build();
 
   @Before
   public void setup() {
@@ -37,8 +37,8 @@ public class InternalTest {
 
     brave.serverTracer().setServerSend(); // flush
 
-    assertThat(spans.get(0).binaryAnnotations).containsExactly(
-        zipkin.BinaryAnnotation.address("ca", zipkin.Endpoint.create("foo", 127 << 24 | 1))
+    assertThat(spans.get(0).remoteEndpoint()).isEqualTo(
+        zipkin2.Endpoint.newBuilder().serviceName("foo").ip("127.0.0.1").build()
     );
   }
 }

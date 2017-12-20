@@ -2,13 +2,15 @@ package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Nullable;
+import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import java.util.List;
 import zipkin.Constants;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 
@@ -39,7 +41,7 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
 
     abstract AnnotationSubmitter.Clock clock();
 
-    abstract Reporter<zipkin.Span> reporter();
+    abstract Reporter<zipkin2.Span> reporter();
 
     @Override public long currentTimeMicroseconds() {
       return clock().currentTimeMicroseconds();
@@ -109,7 +111,10 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
           }
         }
       }
-      reporter().report(toZipkin(span));
+      List<zipkin2.Span> toReport = V2SpanConverter.fromSpan(toZipkin(span));
+      for (int i = 0, length = toReport.size(); i < length; i++) {
+        reporter().report(toReport.get(i));
+      }
     }
   }
 }

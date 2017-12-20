@@ -1,6 +1,5 @@
 package zipkin.internal;
 
-import com.github.kristofa.brave.IdConversion;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -8,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Logger;
-import zipkin.Span;
+import zipkin2.Span;
 import zipkin2.internal.Node;
 
 import static java.util.Arrays.asList;
@@ -21,24 +20,26 @@ public class TraceUtil {
     // we want to return spans in their original order
     Map<Span, Span> map = new LinkedHashMap<>();
 
-    long traceId = 1L, id = 1L;
-    Node.TreeBuilder<Span> treeBuilder = new Node.TreeBuilder<>(logger, Util.toLowerHex(traceId));
+    long id = 1L;
+    String traceId = Util.toLowerHex(id);
+    Node.TreeBuilder<Span> treeBuilder = new Node.TreeBuilder<>(logger, traceId);
     for (Span span : trace) {
       map.put(span, span);
-      treeBuilder.addNode(span.parentId != null ? Util.toLowerHex(span.parentId) : null,
-          Util.toLowerHex(span.id), span);
+      treeBuilder.addNode(span.parentId(), span.id(), span);
     }
 
     // traverse the tree breadth-first, and replace the ids with incrementing ones
     for (Iterator<Node<Span>> iter = treeBuilder.build().traverse(); iter.hasNext(); id++) {
+      String stringId = Util.toLowerHex(id);
       Node<Span> next = iter.next();
       if (next.parent() == null) {
-        Span root = next.value().toBuilder().traceId(traceId).id(id).build();
+        Span root = next.value().toBuilder().traceId(traceId).id(stringId).build();
         map.replace(next.value(), root);
         next.value(root);
       } else {
         Span parent = next.parent().value();
-        Span child = next.value().toBuilder().traceId(traceId).parentId(parent.id).id(id).build();
+        Span child =
+            next.value().toBuilder().traceId(traceId).parentId(parent.id()).id(stringId).build();
         map.replace(next.value(), child);
         next.value(child);
       }
@@ -52,10 +53,7 @@ public class TraceUtil {
     List<Span> washed = washIds(unwashed);
     Map<String, String> idMapping = new LinkedHashMap<>();
     for (int i = 0; i < unwashed.size(); i++) {
-      idMapping.put(
-          IdConversion.convertToString(unwashed.get(i).id),
-          IdConversion.convertToString(washed.get(i).id)
-      );
+      idMapping.put(unwashed.get(i).id(), washed.get(i).id());
     }
 
     Map<String, List<String>> result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

@@ -2,7 +2,7 @@ package com.github.kristofa.brave;
 
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import zipkin.reporter.Reporter;
+import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 

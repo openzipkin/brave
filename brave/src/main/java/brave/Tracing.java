@@ -178,7 +178,7 @@ public abstract class Tracing implements Closeable {
       }
       this.reporter = new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
-          reporter.report(zipkin.internal.V2SpanConverter.toSpan(span));
+          reporter.report(brave.internal.V2SpanConverter.toSpan(span));
         }
 
         @Override public String toString() {

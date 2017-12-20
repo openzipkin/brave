@@ -1,18 +1,12 @@
 package com.github.kristofa.brave.grpc;
 
-import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
-
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.LocalTracer;
 import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.ThreadLocalServerClientAndLocalSpanState;
 import com.github.kristofa.brave.internal.InternalSpan;
-import com.github.kristofa.brave.internal.Util;
 import com.google.common.util.concurrent.ListenableFuture;
-
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
@@ -24,21 +18,22 @@ import io.grpc.examples.helloworld.GreeterGrpc.GreeterBlockingStub;
 import io.grpc.examples.helloworld.GreeterGrpc.GreeterFutureStub;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
-
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin2.Span.Kind;
+import zipkin2.storage.InMemoryStorage;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import zipkin.Constants;
-import zipkin.Span;
-import zipkin.storage.InMemoryStorage;
-import zipkin.storage.QueryRequest;
+import static com.github.kristofa.brave.grpc.GrpcKeys.GRPC_STATUS_CODE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class BraveGrpcInterceptorsTest {
     static {
@@ -51,10 +46,10 @@ public class BraveGrpcInterceptorsTest {
 
     Server server;
     ManagedChannel channel;
-    InMemoryStorage storage = new InMemoryStorage();
+    InMemoryStorage storage = InMemoryStorage.newBuilder().build();
     Brave brave = new Brave.Builder()
         .traceSampler(new ExplicitSampler())
-        .reporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build();
+        .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s))).build();
     boolean enableSampling;
 
     @Before
@@ -81,9 +76,10 @@ public class BraveGrpcInterceptorsTest {
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
 
         // TODO: only validate client side as for some reason this flakes in travis on server side
-        zipkin.Span clientSpan = validateOnlyOneSpan();
-        assertThat(clientSpan.annotations).extracting(a -> a.value)
-            .contains("cs", "cr"); // not contains exactly
+        List<zipkin2.Span> clientServerSpan = spans();
+        assertThat(clientServerSpan)
+            .flatExtracting(zipkin2.Span::kind)
+            .contains(Kind.CLIENT); // not contains exactly
     }
 
     @Test
@@ -92,7 +88,11 @@ public class BraveGrpcInterceptorsTest {
         ListenableFuture<HelloReply> helloReplyListenableFuture = futureStub.sayHello(HELLO_REQUEST);
         HelloReply reply = helloReplyListenableFuture.get();
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
-        assertClientServerSpan();
+
+        List<zipkin2.Span> clientServerSpan = spans();
+        assertThat(clientServerSpan)
+            .flatExtracting(zipkin2.Span::kind)
+            .containsOnly(Kind.SERVER, Kind.CLIENT);
     }
 
     @Test
@@ -104,16 +104,13 @@ public class BraveGrpcInterceptorsTest {
             helloReplyListenableFuture.get();
             failBecauseExceptionWasNotThrown(ExecutionException.class);
         } catch (ExecutionException expected) {
-            List<List<zipkin.Span>> traces = storage.spanStore()
-                .getTraces(QueryRequest.builder().build());
+            List<List<zipkin2.Span>> traces = storage.spanStore().getTraces();
             assertThat(traces).hasSize(1);
-            List<zipkin.Span> spans = traces.get(0);
+            List<zipkin2.Span> spans = traces.get(0);
             assertThat(spans.size()).isEqualTo(1);
 
-            assertThat(spans.get(0).binaryAnnotations)
-                .filteredOn(ba -> ba.key.equals(GRPC_STATUS_CODE))
-                .extracting(ba -> new String(ba.value, Util.UTF_8))
-                .containsExactly(Status.UNAVAILABLE.getCode().name());
+            assertThat(spans.get(0).tags().entrySet())
+                .contains(entry(GRPC_STATUS_CODE, Status.UNAVAILABLE.getCode().name()));
         }
     }
 
@@ -126,10 +123,10 @@ public class BraveGrpcInterceptorsTest {
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
 
-        Span clientServerSpan = validateOnlyOneSpan();
-        assertThat(clientServerSpan.traceIdHigh).isEqualTo(spanId.traceIdHigh);
-        assertThat(clientServerSpan.traceId).isEqualTo(spanId.traceId);
-        assertThat(clientServerSpan.parentId).isEqualTo(spanId.spanId);
+        for (zipkin2.Span span : spans()) {
+            assertThat(span.traceId()).isEqualTo(String.format("%016x", spanId.traceId));
+            assertThat(span.parentId()).isEqualTo(String.format("%016x", spanId.spanId));
+        }
     }
 
     /**
@@ -143,7 +140,7 @@ public class BraveGrpcInterceptorsTest {
         HelloReply reply = stub.sayHello(HELLO_REQUEST);
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
 
-        assertThat(storage.spanStore().getRawTraces()).isEmpty();
+        assertThat(storage.spanStore().getTraces()).isEmpty();
     }
 
     @Test
@@ -157,10 +154,11 @@ public class BraveGrpcInterceptorsTest {
         assertThat(reply.getMessage()).isEqualTo("Hello brave");
 
         //Verify that the 128-bit trace id and span id were propagated to the server
-        zipkin.Span clientServerSpan = validateOnlyOneSpan();
-        assertThat(clientServerSpan.traceIdHigh).isEqualTo(spanId.traceIdHigh);
-        assertThat(clientServerSpan.traceId).isEqualTo(spanId.traceId);
-        assertThat(clientServerSpan.parentId).isEqualTo(spanId.spanId);
+        for (zipkin2.Span span : spans()) {
+            assertThat(span.traceId())
+                .isEqualTo(String.format("%016x%016x", spanId.traceIdHigh, spanId.traceId));
+            assertThat(span.parentId()).isEqualTo(String.format("%016x", spanId.spanId));
+        }
     }
 
     /**
@@ -168,27 +166,25 @@ public class BraveGrpcInterceptorsTest {
      * server and the client.
      */
     void assertClientServerSpan() throws Exception {
-        zipkin.Span clientServerSpan = validateOnlyOneSpan();
+        List<zipkin2.Span> clientServerSpan = spans();
+        assertThat(clientServerSpan)
+            .flatExtracting(zipkin2.Span::kind)
+            .containsOnly(Kind.SERVER, Kind.CLIENT);
 
-        assertThat(clientServerSpan.annotations).extracting(a -> a.value)
-            .containsExactly("cs", "sr", "ss", "cr");
-
-        //Server spans should have the client address binary annotation
-        assertThat(clientServerSpan.binaryAnnotations)
-            .filteredOn(ba -> ba.key.equals(Constants.CLIENT_ADDR))
-            .extracting(b -> b.endpoint.port)
-            .doesNotContainNull(); // if we got a port, we also got an ipv4 or ipv6
+        assertThat(clientServerSpan)
+            .filteredOn(s -> s.kind() == Kind.SERVER)
+            .flatExtracting(zipkin2.Span::remoteEndpoint)
+            .doesNotContainNull();
     }
 
-    zipkin.Span validateOnlyOneSpan() throws InterruptedException {
-        List<List<Span>> traces = storage.spanStore()
-            .getTraces(QueryRequest.builder().build());
+    List<zipkin2.Span> spans() throws InterruptedException {
+        List<List<zipkin2.Span>> traces = storage.spanStore().getTraces();
         assertThat(traces).hasSize(1);
         assertThat(traces.get(0))
             .withFailMessage("Expected client and server to share ids: " + traces.get(0))
-            .hasSize(1);
+            .hasSize(2);
 
-        return traces.get(0).get(0);
+        return traces.get(0);
     }
 
     @After

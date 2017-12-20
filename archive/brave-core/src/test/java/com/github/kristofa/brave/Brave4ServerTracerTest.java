@@ -8,7 +8,7 @@ public class Brave4ServerTracerTest extends ServerTracerTest {
     return TracerAdapter.newBrave(Tracing.newBuilder()
         .clock(clock::currentTimeMicroseconds)
         .localEndpoint(ZIPKIN_ENDPOINT)
-        .reporter(spans::add)
+        .spanReporter(spans::add)
         .supportsJoin(supportsJoin)
         .build().tracer());
   }
