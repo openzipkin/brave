@@ -629,7 +629,7 @@ Brave 4 was designed to live alongside Brave 3. Using `TracerAdapter`,
 you can navigate between apis, buying you time to update as appropriate.
 
 Concepts are explained below, and there's an elaborate example of interop
-[here](../brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
+[here](../archive/brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
 
 ### Creating a Brave 3 instance
 If your code uses Brave 3 apis, all you need to do is use `TracerAdapter`
