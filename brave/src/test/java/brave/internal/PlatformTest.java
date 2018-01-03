@@ -1,6 +1,5 @@
 package brave.internal;
 
-import brave.Clock;
 import com.google.common.collect.Sets;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -41,7 +40,7 @@ public class PlatformTest {
   }
 
   @Test public void clock_hasNiceToString_jre9() {
-    Platform platform = Platform.Jre9.buildIfSupported(true);
+    Platform platform = new AutoValue_Platform_Jre9(true);
 
     assertThat(platform.clock())
         .hasToString("Clock.systemUTC().instant()");
