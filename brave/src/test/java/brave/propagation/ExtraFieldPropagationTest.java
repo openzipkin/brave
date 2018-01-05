@@ -6,13 +6,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
-import static brave.propagation.Propagation.Factory.B3;
 import static brave.propagation.Propagation.KeyFactory.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ExtraFieldPropagationTest {
-  Propagation.Factory factory =
-      ExtraFieldPropagation.newFactory(B3, "x-vcap-request-id", "x-amzn-trace-id");
+  Propagation.Factory factory = ExtraFieldPropagation.newFactory(
+      B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
+  );
   Map<String, String> carrier = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector = factory.create(STRING).injector(Map::put);
   TraceContext.Extractor<Map<String, String>> extractor =

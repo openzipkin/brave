@@ -21,6 +21,8 @@ public interface Propagation<K> {
   Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
 
   abstract class Factory {
+    /** @deprecated use {@link B3Propagation#FACTORY} to avoid initialization race condition */
+    @Deprecated
     public static final Factory B3 = B3Propagation.FACTORY;
 
     /**
