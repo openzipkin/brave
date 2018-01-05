@@ -3,6 +3,7 @@ package brave;
 import brave.internal.Internal;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -112,7 +113,7 @@ public abstract class Tracing implements Closeable {
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false;
     boolean supportsJoin = true;
-    Propagation.Factory propagationFactory = Propagation.Factory.B3;
+    Propagation.Factory propagationFactory = B3Propagation.FACTORY;
 
     /**
      * Controls the name of the service being traced, while still using a default site-local IP.
@@ -218,7 +219,7 @@ public abstract class Tracing implements Closeable {
 
     /**
      * Controls how trace contexts are injected or extracted from remote requests, such as from http
-     * headers. Defaults to {@link Propagation.Factory#B3}
+     * headers. Defaults to {@link B3Propagation#FACTORY}
      */
     public Builder propagationFactory(Propagation.Factory propagationFactory) {
       if (propagationFactory == null) throw new NullPointerException("propagationFactory == null");

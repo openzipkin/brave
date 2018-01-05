@@ -1,9 +1,9 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -43,7 +43,7 @@ public abstract class ITHttp {
           }
           spans.add(s);
         })
-        .propagationFactory(ExtraFieldPropagation.newFactory(Propagation.Factory.B3, "user-id"))
+        .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
         .currentTraceContext(currentTraceContext)
         .sampler(sampler);
   }

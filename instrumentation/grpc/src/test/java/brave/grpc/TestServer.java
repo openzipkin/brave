@@ -1,6 +1,6 @@
 package brave.grpc;
 
-import brave.propagation.Propagation;
+import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
@@ -18,7 +18,7 @@ class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
   BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
   TraceContext.Extractor<Metadata> extractor =
-      Propagation.Factory.B3.create(AsciiMetadataKeyFactory.INSTANCE).extractor(Metadata::get);
+      B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE).extractor(Metadata::get);
 
   Server server = ServerBuilder.forPort(PickUnusedPort.get())
       .addService(ServerInterceptors.intercept(new GreeterImpl(null), new ServerInterceptor() {

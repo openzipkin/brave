@@ -1,6 +1,7 @@
 package brave.propagation.aws;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -60,7 +61,7 @@ public class AWSPropagationTest {
   }
 
   TraceContext contextWithPassThrough() {
-    extractor = ExtraFieldPropagation.newFactory(Propagation.Factory.B3, "x-amzn-trace-id")
+    extractor = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-amzn-trace-id")
         .create(Propagation.KeyFactory.STRING).extractor(Map::get);
 
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
