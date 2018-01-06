@@ -1,7 +1,6 @@
 package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.InheritableServerClientAndLocalSpanState;
 import com.github.kristofa.brave.Sampler;
 import java.util.Collections;
@@ -14,7 +13,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.BinaryAnnotation;
 import zipkin.Constants;
 import zipkin.Endpoint;
 import zipkin2.Span;
@@ -24,7 +22,6 @@ import zipkin2.storage.InMemoryStorage;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.groups.Tuple.tuple;
 
 public abstract class ITHttpServer {
 

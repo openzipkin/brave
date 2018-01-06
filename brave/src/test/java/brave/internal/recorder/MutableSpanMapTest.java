@@ -1,11 +1,9 @@
 package brave.internal.recorder;
 
-import brave.Clock;
 import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
-import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
