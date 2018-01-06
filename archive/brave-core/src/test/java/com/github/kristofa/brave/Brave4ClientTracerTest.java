@@ -2,8 +2,6 @@ package com.github.kristofa.brave;
 
 import brave.Tracing;
 import org.junit.After;
-import zipkin.Span;
-import zipkin.reporter.Reporter;
 
 public class Brave4ClientTracerTest extends ClientTracerTest {
   @Override Brave newBrave() {

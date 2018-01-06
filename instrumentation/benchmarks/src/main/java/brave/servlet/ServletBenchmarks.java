@@ -1,6 +1,5 @@
 package brave.servlet;
 
-import brave.EndToEndBenchmarks;
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.aws.AWSPropagation;

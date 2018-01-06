@@ -14,7 +14,6 @@ import com.twitter.finagle.tracing.TraceId;
 import com.twitter.io.Buf;
 import com.twitter.util.Local;
 import java.lang.reflect.Field;
-import org.junit.After;
 import org.junit.Test;
 import scala.Option;
 import scala.Some;
