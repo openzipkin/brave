@@ -15,7 +15,6 @@ import org.springframework.web.client.RestTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
-
   ClientHttpRequestInterceptor interceptor;
 
   ClientHttpRequestFactory configureClient(ClientHttpRequestInterceptor interceptor) {
@@ -30,12 +29,11 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) {
+  @Override protected void closeClient(ClientHttpRequestFactory client) throws Exception {
     ((HttpComponentsClientHttpRequestFactory) client).destroy();
   }
 
-  @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery)
-      throws Exception {
+  @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {
     RestTemplate restTemplate = new RestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForObject(url(pathIncludingQuery), String.class);

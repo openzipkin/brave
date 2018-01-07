@@ -7,9 +7,9 @@ import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
 
-public class TracingClientHttpRequestInterceptorAutowireTest {
+public class TracingAsyncClientHttpRequestInterceptorAutowireTest {
 
   @Configuration static class HttpTracingConfiguration {
     @Bean HttpTracing httpTracing() {
@@ -20,10 +20,10 @@ public class TracingClientHttpRequestInterceptorAutowireTest {
   @Test public void autowiredWithBeanConfig() {
     AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
     ctx.register(HttpTracingConfiguration.class);
-    ctx.register(TracingClientHttpRequestInterceptor.class);
+    ctx.register(TracingAsyncClientHttpRequestInterceptor.class);
     ctx.refresh();
 
-    ctx.getBean(ClientHttpRequestInterceptor.class);
+    ctx.getBean(AsyncClientHttpRequestInterceptor.class);
   }
 
   @After public void close() {
