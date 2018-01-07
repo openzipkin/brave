@@ -24,7 +24,16 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
+      <version>${spring4.version}</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- needed for AsyncClientHttpRequestInterceptor -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
+      <version>${spring4.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -42,5 +51,19 @@
       <artifactId>httpclient</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpasyncclient</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-invoker-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 </project>

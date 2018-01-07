@@ -5,7 +5,6 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.internal.HexCodec;
 import brave.sampler.Sampler;
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -30,7 +29,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
   /** Make sure the client you return has retries disabled. */
   protected abstract C newClient(int port);
 
-  protected abstract void closeClient(C client) throws IOException;
+  protected abstract void closeClient(C client) throws Exception;
 
   protected abstract void get(C client, String pathIncludingQuery) throws Exception;
 
@@ -38,7 +37,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   protected abstract void getAsync(C client, String pathIncludingQuery) throws Exception;
 
-  @Override @After public void close() throws IOException {
+  @Override @After public void close() throws Exception {
     closeClient(client);
     super.close();
   }
@@ -200,7 +199,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     try {
       get(client, "/foo");
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // some clients think 400 is an error
     }
 

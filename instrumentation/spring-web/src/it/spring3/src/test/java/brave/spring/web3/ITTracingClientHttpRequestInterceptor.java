@@ -1,6 +1,7 @@
-package brave.spring.web;
+package brave.spring.web3;
 
 import brave.http.ITHttpClient;
+import brave.spring.web.TracingClientHttpRequestInterceptor;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
