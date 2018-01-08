@@ -190,6 +190,23 @@ public class TracerTest {
         .isEqualTo(notYetSampled.toBuilder().sampled(true).build());
   }
 
+  @Test public void newChild_ensuresSampling() {
+    TraceContext notYetSampled =
+        tracer.newTrace().context().toBuilder().sampled(null).build();
+
+    assertThat(tracer.newChild(notYetSampled).context().sampled())
+        .isTrue();
+  }
+
+  @Test public void nextSpan_ensuresSampling_whenCreatingNewChild() {
+    TraceContext notYetSampled =
+        tracer.newTrace().context().toBuilder().sampled(null).build();
+
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(notYetSampled);
+    assertThat(tracer.nextSpan(extracted).context().sampled())
+        .isTrue();
+  }
+
   @Test public void toSpan() {
     TraceContext context = tracer.newTrace().context();
 
