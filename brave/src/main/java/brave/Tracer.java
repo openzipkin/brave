@@ -203,8 +203,8 @@ public final class Tracer {
   }
 
   /**
-   * Explicitly creates a child within an existing. The result will be have its parent ID set to the
-   * input's span ID.
+   * Explicitly creates a child within an existing trace. The result will be have its parent ID set
+   * to the input's span ID. If a sampling decision has not yet been made, one will happen here.
    *
    * <p>To implicitly create a new trace, or a span within an existing one, use {@link
    * #nextSpan()}.
@@ -217,7 +217,8 @@ public final class Tracer {
   /**
    * This creates a new span based on parameters extracted from an incoming request. This will
    * always result in a new span. If no trace identifiers were extracted, a span will be created
-   * based on the implicit context in the same manner as {@link #nextSpan()}.
+   * based on the implicit context in the same manner as {@link #nextSpan()}. If a sampling decision
+   * has not yet been made, one will happen here.
    *
    * <p>Ex.
    * <pre>{@code
@@ -249,10 +250,13 @@ public final class Tracer {
     }
     long nextId = Platform.get().randomLong();
     if (parent != null) {
+      Boolean sampled = parent.sampled();
+      if (sampled == null) sampled = sampler.isSampled(parent.traceId());
       return toSpan(parent.toBuilder() // copies "extra" from the parent
           .spanId(nextId)
           .parentId(parent.spanId())
           .shared(false)
+          .sampled(sampled)
           .build());
     }
     TraceIdContext traceIdContext = extracted.traceIdContext();
@@ -294,7 +298,7 @@ public final class Tracer {
   /** Converts the context as-is to a Span object */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    if (noop.get() == false && Boolean.TRUE.equals(context.sampled())) {
+    if (!noop.get() && Boolean.TRUE.equals(context.sampled())) {
       return RealSpan.create(context, recorder);
     }
     return NoopSpan.create(context);
