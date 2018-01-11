@@ -2,9 +2,12 @@ package brave.propagation;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * This type allows you to place a span in scope in one method and access it in another without
@@ -89,9 +92,31 @@ public abstract class ThreadLocalSpan {
     return new AutoValue_ThreadLocalSpan(tracer);
   }
 
-  final ThreadLocal<Tracer.SpanInScope> currentSpanInScope = new ThreadLocal<>();
+  /**
+   * This keeps track of a stack with a normal array dequeue. Redundant stacking of the same span is
+   * not possible because there is no api to place an arbitrary span in scope using this api.
+   */
+  final ThreadLocal<Deque<SpanAndScope>> currentSpanInScope =
+      new ThreadLocal<Deque<SpanAndScope>>() {
+        @Override protected Deque<SpanAndScope> initialValue() {
+          return new ArrayDeque<>();
+        }
+      };
 
   abstract Tracer tracer();
+
+  /**
+   * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link #CURRENT_TRACER}
+   * and tracing isn't available.
+   */
+  @Nullable public Span next(TraceContextOrSamplingFlags extracted) {
+    Tracer tracer = tracer();
+    if (tracer == null) return null;
+    Span next = tracer.nextSpan(extracted);
+    SpanAndScope spanAndScope = SpanAndScope.create(next, tracer.withSpanInScope(next));
+    currentSpanInScope.get().addFirst(spanAndScope);
+    return next;
+  }
 
   /**
    * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
@@ -101,22 +126,42 @@ public abstract class ThreadLocalSpan {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan();
-    currentSpanInScope.set(tracer.withSpanInScope(next));
+    SpanAndScope spanAndScope = SpanAndScope.create(next, tracer.withSpanInScope(next));
+    currentSpanInScope.get().addFirst(spanAndScope);
     return next;
   }
 
-  /** Returns the span set in scope via {@link #next()} or null if there was none. */
+  /**
+   * Returns the span set in scope via {@link #next()} or null if there was none.
+   *
+   * <p>When assertions are on, this will throw an assertion error if the span returned was not the
+   * one currently in context. This could happen if someone called {@link Tracer#withSpanInScope(Span)}
+   * or {@link CurrentTraceContext#newScope(TraceContext)} outside a try/finally block.
+   */
   @Nullable public Span remove() {
     Tracer tracer = tracer();
-    Span span = tracer != null ? tracer.currentSpan() : null;
-    Tracer.SpanInScope scope = currentSpanInScope.get();
-    if (scope != null) {
-      scope.close();
-      currentSpanInScope.remove();
-    }
-    return span;
+    Span currentSpan = tracer != null ? tracer.currentSpan() : null;
+    SpanAndScope scope = currentSpanInScope.get().pollFirst();
+    if (scope == null) return currentSpan;
+
+    scope.scope().close();
+    assert scope.span().equals(currentSpan) :
+        "Misalignment: scoped span " + scope.span() + " !=  current span " + currentSpan;
+    return currentSpan;
   }
 
   ThreadLocalSpan() {
+  }
+
+  /** Allows state checks when nesting spans */
+  @AutoValue
+  static abstract class SpanAndScope {
+    static SpanAndScope create(Span span, SpanInScope scope) {
+      return new AutoValue_ThreadLocalSpan_SpanAndScope(span, scope);
+    }
+
+    abstract Span span();
+
+    abstract SpanInScope scope();
   }
 }
