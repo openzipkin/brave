@@ -40,7 +40,7 @@ public final class TracingHandlerInterceptor implements HandlerInterceptor {
   final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<HttpServletRequest> extractor;
 
-  @Autowired TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
+  TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
