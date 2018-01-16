@@ -163,7 +163,7 @@ public abstract class TraceContext extends SamplingFlags {
 
     abstract List<Object> extra();
 
-    public abstract TraceContext autoBuild();
+    abstract TraceContext autoBuild();
 
     public final TraceContext build() {
       // make sure the extra data is immutable and unmodifiable
