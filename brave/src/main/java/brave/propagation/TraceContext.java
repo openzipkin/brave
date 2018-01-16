@@ -1,6 +1,7 @@
 package brave.propagation;
 
 import brave.internal.Nullable;
+import brave.internal.correlation.CorrelationFields;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -121,7 +122,7 @@ public final class TraceContext extends SamplingFlags {
    * Returns a list of additional data propagated through this trace.
    *
    * <p>The contents are intentionally opaque, deferring to {@linkplain Propagation} to define. An
-   * example implementation could be storing a class containing a correlation value, which is
+   * example implementation could be storing a class containing propagation-format specific data,
    * extracted from incoming requests and injected as-is onto outgoing requests.
    *
    * <p>Implementations are responsible for scoping any data stored here. This can be performed when
@@ -129,6 +130,11 @@ public final class TraceContext extends SamplingFlags {
    */
   public List<Object> extra() {
     return extra;
+  }
+
+  /** Returns a potentially no-op handler for {@link CorrelationFields correlation fields}. */
+  public CorrelationFields correlationFields() {
+    return correlationFields;
   }
 
   public Builder toBuilder() {
@@ -167,6 +173,7 @@ public final class TraceContext extends SamplingFlags {
 
   public static final class Builder extends InternalBuilder {
     List<Object> extra = Collections.emptyList();
+    CorrelationFields correlationFields = CorrelationFields.NOOP;
 
     Builder(TraceContext context) { // no external implementations
       traceIdHigh = context.traceIdHigh;
@@ -175,6 +182,7 @@ public final class TraceContext extends SamplingFlags {
       spanId = context.spanId;
       flags = context.flags;
       extra = context.extra;
+      correlationFields = context.correlationFields;
     }
 
     /** @see TraceContext#traceIdHigh() */
@@ -242,6 +250,12 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
+    /** @see TraceContext#correlationFields() */
+    public Builder correlationFields(CorrelationFields correlationFields) {
+      this.correlationFields = correlationFields;
+      return this;
+    }
+
     public final TraceContext build() {
       String missing = "";
       if (traceId == 0L) missing += " traceId";
@@ -256,6 +270,7 @@ public final class TraceContext extends SamplingFlags {
 
   final long traceIdHigh, traceId, parentId, spanId;
   final List<Object> extra;
+  final CorrelationFields correlationFields;
 
   TraceContext(Builder builder) { // no external implementations
     super(builder.flags);
@@ -264,6 +279,7 @@ public final class TraceContext extends SamplingFlags {
     parentId = builder.parentId;
     spanId = builder.spanId;
     extra = builder.extra;
+    correlationFields = builder.correlationFields;
   }
 
 

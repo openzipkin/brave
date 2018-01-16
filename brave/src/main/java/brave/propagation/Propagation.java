@@ -87,6 +87,10 @@ public interface Propagation<K> {
    * <p>For example, if the carrier is a single-use or immutable request object, you don't need to
    * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
    * successive calls should clear these fields first.
+   *
+   * <p>Important: the names of keys should be treated opaquely as they may be prefixed, or have
+   * values that contain multiple entries. For example, the {@code x-amzn-trace-id} header includes
+   * both trace identifiers and arbitrary fields in one propagation field.
    */
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata

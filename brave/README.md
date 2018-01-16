@@ -893,3 +893,68 @@ Propagating a trace context instead of a span is a right fit for several reasons
 ### Public namespace
 Brave 4's public namespace is more defensive that the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).
+
+### CorrelationFields Api
+
+The CorrelationFields functionality is similar to OpenTracing (OT) Baggage, and
+dissimilar to Census tags. This is a legacy preference, allowing Sleuth users
+(which has a baggage api similar to OT) to transition to Brave. This design
+implies string based correlation fields are stored in a span or a trace context
+for read-back, whereas census tags are immutable scoped variables. OT, Census
+and Brave all decouple thread scoping, header injection and extraction from the
+apis that mutate propagated fields.
+
+Here's an example of using OpenTracing baggage:
+```java
+// mutate the span's baggage adding the method
+span.setBaggageItem("method", fullMethodName);
+
+// set the span in scope
+try (Scope scope = tracer.scopeManager().activate(span, false)) {
+  // If downstream code call tracer.activeSpan(), they'll see the above span.
+  // It can then read span.getBaggageItem("method")
+  //               or span.context().baggageItems()
+}
+// Repeating the same block might have different results as downstream code
+// or other threads can overwrite the key name "method".
+```
+
+Here's an example of using Census tagging:
+```java
+// Tags are encouraged to be constants
+static final TagKey RPC_METHOD = TagKey.create("method");
+...
+
+// make a copy of the parent tag context, with the method tag
+TagContext withMethod = tagger.toBuilder(parentCtx)
+                              .put(RPC_METHOD, TagValue.create(fullMethodName)).build();
+
+// set the tag context in scope
+try (Scope scope = tagger.withTagContext(withMethod)) {
+  // If downstream code call tagger.getCurrentTagContext(), they'll see the above tags.
+  // However, as of v0.10, TagContext.getIterator() is hidden, so only census impls can read them!
+}
+// Repeating the same block has the exact same result as tag contexts are immutable.
+```
+
+The OT-centric design has a few implications, notably shared mutable state:
+
+* String keys and values are easy to use, but don't imply up-front validation.
+  * Census tags are types, encouraging prevalidation and use as constants.
+* Sharing mutable data across threads can lead to inconsistent reads of fields.
+  * For example, child threads affect the same state their parent reads.
+  * Immutable tag contexts eliminate this
+* A tracer api is more complex than a tagger api, and has an ordering concern.
+  * To contribute tags, you need to have tracing start before metrics.
+  * library compatibility is a higher liability with larger apis
+
+The following are some areas where `CorrelationFields` mitigates some of this:
+
+* `CorrelationFields` is a separate api, limiting the api surface area
+  * `CurrentCorrelationFields` can obviate explicitly exposing tracer code.
+* `CorrelationFields.NOOP` is default
+  * Users who don't use or want correlation fields are burdened less.
+* `CorrelationFields` is addressable via the `TraceContext`.
+  * `TraceContext` is a lighter object than `Span`, with no heavy references.
+* Brave's api allows pre-allocation of `TraceContext` instances.
+  * This means you can attach correlation fields prior to starting a span.

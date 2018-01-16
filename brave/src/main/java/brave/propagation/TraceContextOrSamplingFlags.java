@@ -2,6 +2,8 @@ package brave.propagation;
 
 import brave.Tracer;
 import brave.internal.Nullable;
+import brave.internal.correlation.CorrelationFields;
+import brave.internal.correlation.RealCorrelationFields;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +37,7 @@ public final class TraceContextOrSamplingFlags {
   public static final TraceContextOrSamplingFlags EMPTY =
       TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
 
-  public static Builder newBuilder(){
+  public static Builder newBuilder() {
     return new Builder();
   }
 
@@ -48,15 +50,38 @@ public final class TraceContextOrSamplingFlags {
     switch (type) {
       case 1:
         return new TraceContextOrSamplingFlags(type, ((TraceContext) value).toBuilder()
-            .sampled(sampled).build(), extra);
+            .sampled(sampled).build(), correlationFields, extra);
       case 2:
         return new TraceContextOrSamplingFlags(type, ((TraceIdContext) value).toBuilder()
-            .sampled(sampled).build(), extra);
+            .sampled(sampled).build(), correlationFields, extra);
       case 3:
         return new TraceContextOrSamplingFlags(type, new SamplingFlags.Builder()
-            .sampled(sampled).debug(value.debug()).build(), extra);
+            .sampled(sampled).debug(value.debug()).build(), correlationFields, extra);
     }
     throw new AssertionError("programming error");
+  }
+
+  /** calling this returns an instance where {@link #correlationFields()} are not noop */
+  public TraceContextOrSamplingFlags withRealCorrelationFields() {
+    CorrelationFields currentCorrelationFields = correlationFields();
+    if (!currentCorrelationFields.isNoop()) return this;
+    if (type == 1) {
+      return new TraceContextOrSamplingFlags(
+          type,
+          ((TraceContext) value).toBuilder()
+              .correlationFields(RealCorrelationFields.create())
+              .build(),
+          correlationFields,
+          extra
+      );
+    }
+
+    return new TraceContextOrSamplingFlags(
+        type,
+        value,
+        RealCorrelationFields.create(),
+        extra
+    );
   }
 
   @Nullable public TraceContext context() {
@@ -80,10 +105,16 @@ public final class TraceContextOrSamplingFlags {
     return extra;
   }
 
+  /** Returns a possibly no-op correlation fields instance */
+  public final CorrelationFields correlationFields() {
+    return type == 1 ? context().correlationFields() : correlationFields;
+  }
+
   public final Builder toBuilder() {
     Builder result = new Builder();
     result.type = type;
     result.value = value;
+    result.correlationFields = correlationFields;
     result.extra = extra;
     return result;
   }
@@ -94,33 +125,42 @@ public final class TraceContextOrSamplingFlags {
   }
 
   public static TraceContextOrSamplingFlags create(TraceContext context) {
-    return new TraceContextOrSamplingFlags(1, context, Collections.emptyList());
+    return new Builder().context(context).build();
   }
 
   public static TraceContextOrSamplingFlags create(TraceIdContext traceIdContext) {
-    return new TraceContextOrSamplingFlags(2, traceIdContext, Collections.emptyList());
+    return new Builder().traceIdContext(traceIdContext).build();
   }
 
   public static TraceContextOrSamplingFlags create(SamplingFlags flags) {
-    return new TraceContextOrSamplingFlags(3, flags, Collections.emptyList());
+    return new Builder().samplingFlags(flags).build();
   }
 
   final int type;
   final SamplingFlags value;
   final List<Object> extra;
+  final CorrelationFields correlationFields;
 
-  TraceContextOrSamplingFlags(int type, SamplingFlags value, List<Object> extra) {
+  TraceContextOrSamplingFlags(
+      int type,
+      SamplingFlags value,
+      CorrelationFields correlationFields,
+      List<Object> extra
+  ) {
     if (value == null) throw new NullPointerException("value == null");
+    if (correlationFields == null) throw new NullPointerException("correlationFields == null");
     if (extra == null) throw new NullPointerException("extra == null");
     this.type = type;
     this.value = value;
     this.extra = ensureImmutable(extra);
+    this.correlationFields = correlationFields;
   }
 
   public static final class Builder {
     int type;
     SamplingFlags value;
     List<Object> extra = Collections.emptyList();
+    CorrelationFields correlationFields = CorrelationFields.NOOP;
 
     /** @see TraceContextOrSamplingFlags#context() */
     public final Builder context(TraceContext context) {
@@ -167,21 +207,38 @@ public final class TraceContextOrSamplingFlags {
       return this;
     }
 
+    public final Builder correlationFields(CorrelationFields correlationFields) {
+      if (correlationFields == null) throw new NullPointerException("correlationFields == null");
+      this.correlationFields = correlationFields; // sharing a copy in case it is immutable
+      return this;
+    }
+
     /** Returns an immutable result from the values currently in the builder */
     public final TraceContextOrSamplingFlags build() {
-      if (!extra.isEmpty() && type == 1) { // move extra to the trace context
+      if (type == 1 /* trace context */) {
         TraceContext context = (TraceContext) value;
-        if (context.extra().isEmpty()) {
-          context = context.toBuilder().extra(extra).build();
-          return new TraceContextOrSamplingFlags(type, context, Collections.emptyList());
+        TraceContext.Builder maybeBuilder = null;
+        if (!extra.isEmpty()) {
+          // make a copy in case in case this builder is reused
+          ArrayList<Object> copy = new ArrayList<>(extra);
+          copy.addAll(context.extra());
+          // below intentionally uses non-validating autoBuild to avoid making a redundant copy
+          maybeBuilder = context.toBuilder().extra(Collections.unmodifiableList(copy));
         }
-        ArrayList<Object> copy = new ArrayList<>(extra);
-        copy.addAll(context.extra());
-        context = context.toBuilder().extra(copy).build();
-        return new TraceContextOrSamplingFlags(type, context, Collections.emptyList());
+        TraceContextOrSamplingFlags result = new TraceContextOrSamplingFlags(
+            type,
+            (maybeBuilder == null) ? context : maybeBuilder.build(),
+            CorrelationFields.NOOP,
+            Collections.emptyList()
+        );
+        // if we have correlation fields, copy them to the result in case this builder is reused
+        if (correlationFields.isEmpty()) return result;
+        result = result.withRealCorrelationFields();
+        result.correlationFields().setAll(correlationFields);
+        return result;
       }
       // make sure the extra data is immutable and unmodifiable
-      return new TraceContextOrSamplingFlags(type, value, extra);
+      return new TraceContextOrSamplingFlags(type, value, correlationFields, extra);
     }
 
     Builder() { // no external implementations
@@ -192,19 +249,22 @@ public final class TraceContextOrSamplingFlags {
     if (o == this) return true;
     if (!(o instanceof TraceContextOrSamplingFlags)) return false;
     TraceContextOrSamplingFlags that = (TraceContextOrSamplingFlags) o;
-    return (this.type == that.type)
-        && (this.value.equals(that.value))
-        && (this.extra.equals(that.extra));
+    return (type == that.type)
+        && (value.equals(that.value))
+        && (extra.equals(that.extra))
+        && (correlationFields.equals(that.correlationFields));
   }
 
   @Override public int hashCode() {
     int h = 1;
     h *= 1000003;
-    h ^= this.type;
+    h ^= type;
     h *= 1000003;
-    h ^= this.value.hashCode();
+    h ^= value.hashCode();
     h *= 1000003;
-    h ^= this.extra.hashCode();
+    h ^= extra.hashCode();
+    h *= 1000003;
+    h ^= correlationFields.hashCode();
     return h;
   }
 }
