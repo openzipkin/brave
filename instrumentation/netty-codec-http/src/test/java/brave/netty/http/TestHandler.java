@@ -1,6 +1,7 @@
 package brave.netty.http;
 
 import brave.http.HttpTracing;
+import brave.propagation.ExtraFieldPropagation;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,6 +14,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import java.io.IOException;
 
+import static brave.http.ITHttp.EXTRA_KEY;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONNECTION;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
@@ -40,6 +42,8 @@ class TestHandler extends ChannelInboundHandlerAdapter {
       HttpResponseStatus status = OK;
       if (uri.startsWith("/foo")) {
         content = "bar";
+      } else if (uri.startsWith("/extra")) {
+        content = ExtraFieldPropagation.current(EXTRA_KEY);
       } else if (uri.startsWith("/child")) {
         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
         content = "happy";
@@ -73,6 +77,7 @@ class TestHandler extends ChannelInboundHandlerAdapter {
       response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
     } else {
       response = new DefaultFullHttpResponse(HTTP_1_1, OK);
+      response.headers().set(CONTENT_LENGTH, 0);
     }
     response.setStatus(responseStatus);
 
@@ -86,6 +91,6 @@ class TestHandler extends ChannelInboundHandlerAdapter {
 
   @Override public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     ctx.fireExceptionCaught(cause);
-    writeResponse(ctx, INTERNAL_SERVER_ERROR, null);
+    writeResponse(ctx, INTERNAL_SERVER_ERROR, "");
   }
 }

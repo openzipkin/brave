@@ -34,6 +34,13 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   }
 
+  static class ExtraServlet extends HttpServlet {
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+        throws IOException {
+      resp.getWriter().print(ExtraFieldPropagation.current(EXTRA_KEY));
+     }
+  }
+
   static class ChildServlet extends HttpServlet {
     final Tracer tracer;
 
@@ -54,15 +61,16 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   }
 
+  // copies the header to the response
   Filter userFilter = new Filter() {
-    @Override public void init(FilterConfig filterConfig) throws ServletException {
+    @Override public void init(FilterConfig filterConfig) {
     }
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
         throws IOException, ServletException {
-      String userId = ExtraFieldPropagation.current("user-id");
-      ((HttpServletResponse) response).setHeader("user-id", userId);
+      String extra = ExtraFieldPropagation.current(EXTRA_KEY);
+      ((HttpServletResponse) response).setHeader(EXTRA_KEY, extra);
       chain.doFilter(request, response);
     }
 
@@ -74,10 +82,10 @@ public abstract class ITServlet25Container extends ITServletContainer {
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
-        .header("user-id", "abcdefg").build();
+        .header(EXTRA_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      assertThat(response.header("user-id"))
+      assertThat(response.header(EXTRA_KEY))
           .isEqualTo("abcdefg");
     }
   }
@@ -86,6 +94,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
   public void init(ServletContextHandler handler) {
     // add servlets for the test resource
     handler.addServlet(new ServletHolder(new StatusServlet(200)), "/foo");
+    handler.addServlet(new ServletHolder(new ExtraServlet()), "/extra");
     handler.addServlet(new ServletHolder(new StatusServlet(400)), "/badrequest");
     handler.addServlet(new ServletHolder(new ChildServlet(httpTracing)), "/child");
     handler.addServlet(new ServletHolder(new ExceptionServlet()), "/exception");

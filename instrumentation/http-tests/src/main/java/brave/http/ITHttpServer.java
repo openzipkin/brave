@@ -1,12 +1,16 @@
 package brave.http;
 
 import brave.SpanCustomizer;
+import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import java.io.IOException;
 import java.util.Map;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
+import okhttp3.internal.http.HttpHeaders;
+import okio.Buffer;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,6 +56,49 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
+  public void readsExtra_newTrace() throws Exception {
+    readsExtra(new Request.Builder());
+  }
+
+  @Test
+  public void readsExtra_unsampled() throws Exception {
+    readsExtra(new Request.Builder()
+        .header("X-B3-Sampled", "0"));
+
+    assertThat(spans).isEmpty();
+  }
+
+  @Test
+  public void readsExtra_existingTrace() throws Exception {
+    String traceId = "463ac35c9f6413ad";
+
+    readsExtra(new Request.Builder()
+        .header("X-B3-TraceId", traceId)
+        .header("X-B3-SpanId", traceId));
+
+    assertThat(spans).allSatisfy(s -> {
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.id()).isEqualTo(traceId);
+    });
+  }
+
+  /**
+   * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using
+   * {@link ExtraFieldPropagation#current(String)}.
+   */
+  void readsExtra(Request.Builder builder) throws IOException {
+    Request request = builder.url(url("/extra"))
+        // this is the pre-configured key we can pass through
+        .header(EXTRA_KEY, "joey").build();
+
+    Response response = get(request);
+    assertThat(response.isSuccessful()).isTrue();
+    // if we can read the response header, the server must have been able to copy it
+    assertThat(response.body().source().readUtf8())
+        .isEqualTo("joey");
+  }
+
+  @Test
   public void samplingDisabled() throws Exception {
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     init();
@@ -61,7 +108,6 @@ public abstract class ITHttpServer extends ITHttp {
     assertThat(spans)
         .isEmpty();
   }
-
 
   @Test public void customSampler() throws Exception {
     String path = "/foo";
@@ -227,7 +273,16 @@ public abstract class ITHttpServer extends ITHttp {
       if (response.code() == 404) {
         throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
       }
-      return response;
+      if (!HttpHeaders.hasBody(response)) return response;
+
+      // buffer response so tests can read it. Otherwise the finally block will drop it
+      ResponseBody toReturn;
+      try (ResponseBody body = response.body()) {
+        Buffer buffer = new Buffer();
+        body.source().readAll(buffer);
+        toReturn = ResponseBody.create(body.contentType(), body.contentLength(), buffer);
+      }
+      return response.newBuilder().body(toReturn).build();
     }
   }
 

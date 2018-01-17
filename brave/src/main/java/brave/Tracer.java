@@ -48,6 +48,7 @@ import zipkin2.reporter.Reporter;
  * @see Propagation
  */
 public final class Tracer {
+
   /** @deprecated Please use {@link Tracing#newBuilder()} */
   @Deprecated public static Builder newBuilder() {
     return new Builder();
@@ -127,24 +128,24 @@ public final class Tracer {
   }
 
   final Clock clock;
+  final Propagation.Factory propagationFactory;
   final Reporter<zipkin2.Span> reporter; // for toString
   final Recorder recorder;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
-  final boolean traceId128Bit;
+  final boolean traceId128Bit, supportsJoin;
   final AtomicBoolean noop;
-  final boolean supportsJoin;
 
   Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop) {
     this.noop = noop;
-    this.supportsJoin = builder.supportsJoin && builder.propagationFactory.supportsJoin();
+    this.propagationFactory = builder.propagationFactory;
+    this.supportsJoin = builder.supportsJoin && propagationFactory.supportsJoin();
     this.clock = clock;
     this.reporter = builder.reporter;
     this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
-    this.traceId128Bit =
-        builder.traceId128Bit || builder.propagationFactory.requires128BitTraceId();
+    this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();
   }
 
   /** @deprecated use {@link Tracing#clock()} */
@@ -298,10 +299,11 @@ public final class Tracer {
   /** Converts the context as-is to a Span object */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    if (!noop.get() && Boolean.TRUE.equals(context.sampled())) {
-      return RealSpan.create(context, recorder);
+    TraceContext decorated = propagationFactory.decorate(context);
+    if (!noop.get() && Boolean.TRUE.equals(decorated.sampled())) {
+      return RealSpan.create(decorated, recorder);
     }
-    return NoopSpan.create(context);
+    return NoopSpan.create(decorated);
   }
 
   TraceContext newRootContext(SamplingFlags samplingFlags, List<Object> extra) {

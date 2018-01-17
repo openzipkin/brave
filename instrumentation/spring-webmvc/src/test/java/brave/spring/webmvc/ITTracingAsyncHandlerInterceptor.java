@@ -3,6 +3,7 @@ package brave.spring.webmvc;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.http.ITServletContainer;
+import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -32,12 +33,17 @@ public class ITTracingAsyncHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/foo")
-    public ResponseEntity<Void> foo() throws IOException {
+    public ResponseEntity<Void> foo() {
       return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/extra")
+    public ResponseEntity<String> extra() {
+      return new ResponseEntity<>(ExtraFieldPropagation.current(EXTRA_KEY), HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/badrequest")
-    public ResponseEntity<Void> badrequest() throws IOException {
+    public ResponseEntity<Void> badrequest() {
       return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
@@ -48,7 +54,7 @@ public class ITTracingAsyncHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/async")
-    public Callable<ResponseEntity<Void>> async() throws IOException {
+    public Callable<ResponseEntity<Void>> async() {
       return () -> new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -58,7 +64,7 @@ public class ITTracingAsyncHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/exceptionAsync")
-    public Callable<ResponseEntity<Void>> disconnectAsync() throws IOException {
+    public Callable<ResponseEntity<Void>> disconnectAsync() {
       return () -> {
         throw new IOException();
       };

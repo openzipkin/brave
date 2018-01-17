@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public abstract class ITHttp {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
+  public static String EXTRA_KEY = "user-id";
 
   protected ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
@@ -42,7 +43,7 @@ public abstract class ITHttp {
           }
           spans.add(s);
         })
-        .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
+        .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_KEY))
         .currentTraceContext(currentTraceContext)
         .sampler(sampler);
   }

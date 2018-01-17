@@ -100,6 +100,9 @@ public abstract class TraceContext extends SamplingFlags {
    * <p>The contents are intentionally opaque, deferring to {@linkplain Propagation} to define. An
    * example implementation could be storing a class containing a correlation value, which is
    * extracted from incoming requests and injected as-is onto outgoing requests.
+   *
+   * <p>Implementations are responsible for scoping any data stored here. This can be performed when
+   * {@link Propagation.Factory#decorate(TraceContext)} is called.
    */
   public abstract List<Object> extra();
 
