@@ -2,6 +2,8 @@ package brave;
 
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
@@ -9,6 +11,7 @@ import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -24,7 +27,6 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.AsyncReporter;
@@ -45,6 +47,8 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
       if (req.getRequestURI().endsWith("/api")) {
         resp.getWriter().println(new Date().toString());
       } else {
+        // noop if extra field propagation is not configured
+        ExtraFieldPropagation.set("country-code", "FO");
         Request request = new Request.Builder().url(new HttpUrl.Builder()
             .scheme("http")
             .host("127.0.0.1")
@@ -78,6 +82,19 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class TracedExtra extends ForwardingTracingFilter {
+    public TracedExtra() {
+      super(Tracing.newBuilder()
+          .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+              .addField("x-vcap-request-id")
+              .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+              .build()
+          )
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
+    }
+  }
+
   public static class Traced128 extends ForwardingTracingFilter {
     public Traced128() {
       super(Tracing.newBuilder()
@@ -103,6 +120,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("Traced", Traced.class))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
         .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
+        .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
+        .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
+        .addFilterUrlMapping("TracedExtra", "/tracedextra/api", REQUEST)
         .addFilter(new FilterInfo("Traced128", Traced128.class))
         .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
         .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
@@ -117,7 +137,12 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   }
 
   // Convenience main entry-point
-  public static void main(String[] args) throws RunnerException {
+  public static void main(String[] args) throws Exception {
+    EndToEndBenchmarks bm = new EndToEndBenchmarks();
+    bm.init();
+    bm.tracedExtraServer_get();
+    bm.tracedExtraServer_get_request_id();
+    bm.close();
     Options opt = new OptionsBuilder()
         .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*")
         .build();

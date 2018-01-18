@@ -43,7 +43,7 @@ class TestHandler extends ChannelInboundHandlerAdapter {
       if (uri.startsWith("/foo")) {
         content = "bar";
       } else if (uri.startsWith("/extra")) {
-        content = ExtraFieldPropagation.current(EXTRA_KEY);
+        content = ExtraFieldPropagation.get(EXTRA_KEY);
       } else if (uri.startsWith("/child")) {
         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
         content = "happy";

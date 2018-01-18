@@ -3,6 +3,8 @@ package brave.features.opentracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import io.opentracing.ScopeManager;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
@@ -29,6 +31,14 @@ final class BraveTracer implements Tracer {
     propagationKeys = tracing.propagation().keys();
     injector = tracing.propagation().injector(TextMap::put);
     extractor = tracing.propagation().extractor(TextMapView::get);
+  }
+
+  @Override public ScopeManager scopeManager() {
+    return null; // out-of-scope for a simple example
+  }
+
+  @Override public Span activeSpan() {
+    return null; // out-of-scope for a simple example
   }
 
   @Override public BraveSpanBuilder buildSpan(String operationName) {

@@ -129,41 +129,41 @@ public class ExtraFieldPropagationTest {
 
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
-      assertThat(ExtraFieldPropagation.current("x-amzn-trace-id"))
+      assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
           .isEqualTo(awsTraceId);
     }
   }
 
   @Test public void current_get_null_if_no_current_context() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
-      assertThat(ExtraFieldPropagation.current("x-amzn-trace-id"))
+      assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
           .isNull();
     }
   }
 
   @Test public void current_get_null_if_nothing_current() {
-    assertThat(ExtraFieldPropagation.current("x-amzn-trace-id"))
+    assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
         .isNull();
   }
 
   @Test public void current_set() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
-      ExtraFieldPropagation.current("x-amzn-trace-id", awsTraceId);
+      ExtraFieldPropagation.set("x-amzn-trace-id", awsTraceId);
 
-      assertThat(ExtraFieldPropagation.current("x-amzn-trace-id"))
+      assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
           .isEqualTo(awsTraceId);
     }
   }
 
   @Test public void current_set_noop_if_no_current_context() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
-      ExtraFieldPropagation.current("x-amzn-trace-id", awsTraceId); // doesn't throw
+      ExtraFieldPropagation.set("x-amzn-trace-id", awsTraceId); // doesn't throw
     }
   }
 
   @Test public void current_set_noop_if_nothing_current() {
-    ExtraFieldPropagation.current("x-amzn-trace-id", awsTraceId); // doesn't throw
+    ExtraFieldPropagation.set("x-amzn-trace-id", awsTraceId); // doesn't throw
   }
 
   @Test public void toString_extra() {
@@ -289,6 +289,55 @@ public class ExtraFieldPropagationTest {
         (ExtraFieldPropagation.Extra) extracted.context().extra().get(0);
     assertThat(extra.values)
         .containsExactly(uuid, "FO");
+  }
+
+  @Test public void getAll() {
+    context = extractWithAmazonTraceId();
+
+    assertThat(ExtraFieldPropagation.getAll(context))
+        .hasSize(1)
+        .containsEntry("x-amzn-trace-id", awsTraceId);
+  }
+
+  @Test public void getAll_two() {
+    injector.inject(context, carrier);
+    carrier.put("x-amzn-trace-id", awsTraceId);
+    carrier.put("x-vcap-request-id", uuid);
+
+    context = extractor.extract(carrier).context();
+
+    assertThat(ExtraFieldPropagation.getAll(context))
+        .hasSize(2)
+        .containsEntry("x-amzn-trace-id", awsTraceId)
+        .containsEntry("x-vcap-request-id", uuid);
+  }
+
+  @Test public void getAll_empty_if_not_extraField() {
+    assertThat(ExtraFieldPropagation.getAll(context))
+        .isEmpty();
+  }
+
+  @Test public void current_getAll() {
+    context = extractWithAmazonTraceId();
+
+    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
+         CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
+      assertThat(ExtraFieldPropagation.getAll())
+          .hasSize(1)
+          .containsEntry("x-amzn-trace-id", awsTraceId);
+    }
+  }
+
+  @Test public void current_getAll_empty_if_no_current_context() {
+    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
+      assertThat(ExtraFieldPropagation.getAll())
+          .isEmpty();
+    }
+  }
+
+  @Test public void current_getAll_empty_if_nothing_current() {
+    assertThat(ExtraFieldPropagation.getAll())
+        .isEmpty();
   }
 
   TraceContext extractWithAmazonTraceId() {

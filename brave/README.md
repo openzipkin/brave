@@ -336,7 +336,7 @@ tracingBuilder.propagationFactory(
 );
 
 // later, you can tag that request ID or use it in log correlation
-requestId = ExtraFieldPropagation.current("x-vcap-request-id");
+requestId = ExtraFieldPropagation.get("x-vcap-request-id");
 ```
 
 You may also need to propagate a trace context you aren't using. For example, you may be in an
@@ -347,6 +347,33 @@ correctly, pass-through its tracing header like so.
 tracingBuilder.propagationFactory(
   ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-amzn-trace-id")
 );
+```
+
+#### Prefixed fields
+You can also prefix fields, if they follow a common pattern. For example, the following will
+propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
+on the wire as "x-baggage-country-code" and "x-baggage-user-id" respectively.
+
+Setup your tracing instance with allowed fields:
+```java
+tracingBuilder.propagationFactory(
+  ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                       .addField("x-vcap-request-id")
+                       .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+                       .build()
+);
+```
+
+Later, you can call below to affect the country code of the current trace context
+```java
+ExtraFieldPropagation.set("country-code", "FO");
+String countryCode = ExtraFieldPropagation.get("country-code");
+```
+
+Or, if you have a reference to a trace context, use it explicitly
+```java
+ExtraFieldPropagation.set(span.context(), "country-code", "FO");
+String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
 ```
 
 ### Extracting a propagated context

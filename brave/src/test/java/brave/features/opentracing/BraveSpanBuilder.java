@@ -1,11 +1,12 @@
 package brave.features.opentracing;
 
 import brave.Span;
+import brave.Tracer.SpanInScope;
 import brave.propagation.TraceContext;
 import io.opentracing.References;
+import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,6 +39,10 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
     return this;
   }
 
+  @Override public Tracer.SpanBuilder ignoreActiveSpan() {
+    return this; // out-of-scope for a simple example
+  }
+
   @Override public BraveSpanBuilder withTag(String key, String value) {
     tags.put(key, value);
     return this;
@@ -56,8 +61,23 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
     return this;
   }
 
-  @Override public Iterable<Map.Entry<String, String>> baggageItems() {
-    return Collections.emptySet();
+  @Override public Scope startActive(boolean finishOnClose) {
+    BraveSpan span = startManual();
+    SpanInScope delegate = tracer.withSpanInScope(span.delegate);
+    return new Scope() {
+      @Override public void close() {
+        if (finishOnClose) span.finish();
+        delegate.close();
+      }
+
+      @Override public io.opentracing.Span span() {
+        return span;
+      }
+    };
+  }
+
+  @Override public BraveSpan startManual() {
+    return start();
   }
 
   @Override public BraveSpan start() {

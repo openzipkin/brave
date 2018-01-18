@@ -39,7 +39,7 @@ public class ITTracingAsyncHandlerInterceptor extends ITServletContainer {
 
     @RequestMapping(value = "/extra")
     public ResponseEntity<String> extra() {
-      return new ResponseEntity<>(ExtraFieldPropagation.current(EXTRA_KEY), HttpStatus.OK);
+      return new ResponseEntity<>(ExtraFieldPropagation.get(EXTRA_KEY), HttpStatus.OK);
     }
 
     @RequestMapping(value = "/badrequest")
