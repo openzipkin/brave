@@ -1,32 +1,38 @@
 package brave.propagation;
 
 import brave.Tracing;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.junit.Before;
 import org.junit.Test;
 
 import static brave.propagation.Propagation.KeyFactory.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ExtraFieldPropagationTest {
-  Propagation.Factory factory = ExtraFieldPropagation.newFactory(
-      B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
-  );
-  Map<String, String> carrier = new LinkedHashMap<>();
-  TraceContext.Injector<Map<String, String>> injector = factory.create(STRING).injector(Map::put);
-  TraceContext.Extractor<Map<String, String>> extractor =
-      factory.create(STRING).extractor(Map::get);
-
   String awsTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   String uuid = "f4308d05-2228-4468-80f6-92a8377ba193";
+  Propagation.Factory factory = ExtraFieldPropagation.newFactory(
+      B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
+  );
 
-  TraceContext context = factory.decorate(TraceContext.newBuilder()
-      .traceId(1L)
-      .spanId(2L)
-      .sampled(true)
-      .build());
+  Map<String, String> carrier = new LinkedHashMap<>();
+  TraceContext.Injector<Map<String, String>> injector;
+  TraceContext.Extractor<Map<String, String>> extractor;
+  TraceContext context;
+
+  @Before public void initialize() {
+    injector = factory.create(STRING).injector(Map::put);
+    extractor = factory.create(STRING).extractor(Map::get);
+    context = factory.decorate(TraceContext.newBuilder()
+        .traceId(1L)
+        .spanId(2L)
+        .sampled(true)
+        .build());
+  }
 
   @Test public void contextsAreIndependent() {
     try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
@@ -86,7 +92,7 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.Factory factory =
         (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
             "X-FOO");
-    assertThat(factory.validNames)
+    assertThat(factory.fieldNames)
         .containsExactly("x-foo");
   }
 
@@ -94,7 +100,7 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.Factory factory =
         (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
             " x-foo  ");
-    assertThat(factory.validNames)
+    assertThat(factory.fieldNames)
         .containsExactly("x-foo");
   }
 
@@ -161,8 +167,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void toString_extra() {
-    String[] validNames = {"x-vcap-request-id"};
-    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(validNames);
+    String[] fieldNames = {"x-vcap-request-id"};
+    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(fieldNames);
     extra.set(0, uuid);
 
     assertThat(extra)
@@ -170,8 +176,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void toString_two() {
-    String[] validNames = {"x-amzn-trace-id", "x-vcap-request-id"};
-    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(validNames);
+    String[] fieldNames = {"x-amzn-trace-id", "x-vcap-request-id"};
+    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(fieldNames);
     extra.set(0, awsTraceId);
     extra.set(1, uuid);
 
@@ -201,6 +207,24 @@ public class ExtraFieldPropagationTest {
         .containsEntry("x-vcap-request-id", uuid);
   }
 
+  @Test public void inject_prefixed() {
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+        .addField("x-vcap-request-id")
+        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .build();
+    initialize();
+
+    ExtraFieldPropagation.Extra extra = ExtraFieldPropagation.findExtra(context.extra());
+    extra.set(0, uuid);
+    extra.set(1, "FO");
+
+    injector.inject(context, carrier);
+
+    assertThat(carrier)
+        .containsEntry("baggage-country-code", "FO")
+        .containsEntry("x-vcap-request-id", uuid);
+  }
+
   /** it is illegal to mix naming configuration in the same span */
   @Test(expected = IllegalStateException.class)
   public void mixed_names_unsupported() {
@@ -212,7 +236,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void extract_extra() {
-    Propagation.B3_STRING.<Map<String, String>>injector(Map::put).inject(context, carrier);
+    injector.inject(context, carrier);
     carrier.put("x-amzn-trace-id", awsTraceId);
 
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
@@ -228,7 +252,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void extract_two() {
-    Propagation.B3_STRING.<Map<String, String>>injector(Map::put).inject(context, carrier);
+    injector.inject(context, carrier);
     carrier.put("x-amzn-trace-id", awsTraceId);
     carrier.put("x-vcap-request-id", uuid);
 
@@ -244,8 +268,31 @@ public class ExtraFieldPropagationTest {
         .containsExactly(uuid, awsTraceId);
   }
 
+  @Test public void extract_prefixed() {
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+        .addField("x-vcap-request-id")
+        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .build();
+    initialize();
+
+    injector.inject(context, carrier);
+    carrier.put("baggage-country-code", "FO");
+    carrier.put("x-vcap-request-id", uuid);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
+        .isEqualTo(context);
+    assertThat(extracted.context().extra())
+        .hasSize(1);
+
+    ExtraFieldPropagation.Extra extra =
+        (ExtraFieldPropagation.Extra) extracted.context().extra().get(0);
+    assertThat(extra.values)
+        .containsExactly(uuid, "FO");
+  }
+
   TraceContext extractWithAmazonTraceId() {
-    Propagation.B3_STRING.<Map<String, String>>injector(Map::put).inject(context, carrier);
+    injector.inject(context, carrier);
     carrier.put("x-amzn-trace-id", awsTraceId);
     return extractor.extract(carrier).context();
   }
