@@ -1,8 +1,8 @@
 package brave.features.opentracing;
 
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import io.opentracing.SpanContext;
-import java.util.Collections;
 import java.util.Map;
 
 final class BraveSpanContext implements SpanContext {
@@ -23,6 +23,6 @@ final class BraveSpanContext implements SpanContext {
   }
 
   @Override public Iterable<Map.Entry<String, String>> baggageItems() {
-    return Collections.EMPTY_SET;
+    return ExtraFieldPropagation.getAll(context).entrySet();
   }
 }

@@ -1,5 +1,6 @@
 package brave.features.opentracing;
 
+import brave.propagation.ExtraFieldPropagation;
 import io.opentracing.SpanContext;
 import java.util.Map;
 
@@ -32,10 +33,6 @@ final class BraveSpan implements io.opentracing.Span {
 
   @Override public void finish(long finishMicros) {
     delegate.finish(finishMicros);
-  }
-
-  @Override public void close() {
-    finish();
   }
 
   @Override public io.opentracing.Span setTag(String key, String value) {
@@ -74,24 +71,16 @@ final class BraveSpan implements io.opentracing.Span {
   }
 
   @Override public io.opentracing.Span setBaggageItem(String key, String value) {
+    ExtraFieldPropagation.set(delegate.context(), key, value);
     return this;
   }
 
   @Override public String getBaggageItem(String key) {
-    return null;
+    return ExtraFieldPropagation.get(delegate.context(), key);
   }
 
   @Override public io.opentracing.Span setOperationName(String operationName) {
     delegate.name(operationName);
     return this;
-  }
-
-  @Override public io.opentracing.Span log(String eventName, Object ignored) {
-    return log(eventName);
-  }
-
-  @Override
-  public io.opentracing.Span log(long timestampMicroseconds, String eventName, Object ignored) {
-    return log(timestampMicroseconds, eventName);
   }
 }
