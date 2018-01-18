@@ -47,11 +47,20 @@ import java.util.Map;
  * on the wire as "x-baggage-country-code" and "x-baggage-user-id" respectively.
  *
  * <pre>{@code
+ * // Setup your tracing instance with allowed fields
  * tracingBuilder.propagationFactory(
  *   ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
  *                        .addField("x-vcap-request-id")
  *                        .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
  * );
+ *
+ * // Later, you can call below to affect the country code.
+ * ExtraFieldPropagation.current("country-code", "FO");
+ * String countryCode = ExtraFieldPropagation.current("country-code");
+ *
+ * // Or, if you have a reference to a trace context, use it explicitly
+ * ExtraFieldPropagation.set(span.context(), "country-code", "FO");
+ * String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
  * }</pre>
  */
 public final class ExtraFieldPropagation<K> implements Propagation<K> {
