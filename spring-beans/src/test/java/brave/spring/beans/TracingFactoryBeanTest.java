@@ -5,7 +5,6 @@ import brave.Tracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
-import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
@@ -148,9 +147,9 @@ public class TracingFactoryBeanTest {
 
     assertThat(context.getBean("tracing", Tracing.class).propagation())
         .isInstanceOf(ExtraFieldPropagation.class)
-        .extracting("nameToKey")
-        .allSatisfy(m -> assertThat((Map) m)
-            .containsOnlyKeys("x-vcap-request-id", "x-amzn-trace-id"));
+        .extracting("validNames")
+        .allSatisfy(m -> assertThat((String[]) m)
+            .containsExactly("x-vcap-request-id", "x-amzn-trace-id"));
   }
 
   @Test public void traceId128Bit() {
