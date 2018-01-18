@@ -45,7 +45,7 @@ public class ITTracingFeature_Container extends ITServletContainer {
     @GET
     @Path("extra")
     public Response extra() {
-      return Response.ok(ExtraFieldPropagation.current(EXTRA_KEY)).build();
+      return Response.ok(ExtraFieldPropagation.get(EXTRA_KEY)).build();
     }
 
     @GET

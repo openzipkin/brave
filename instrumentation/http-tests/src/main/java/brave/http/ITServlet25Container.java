@@ -37,7 +37,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
   static class ExtraServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws IOException {
-      resp.getWriter().print(ExtraFieldPropagation.current(EXTRA_KEY));
+      resp.getWriter().print(ExtraFieldPropagation.get(EXTRA_KEY));
      }
   }
 
@@ -69,7 +69,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
         throws IOException, ServletException {
-      String extra = ExtraFieldPropagation.current(EXTRA_KEY);
+      String extra = ExtraFieldPropagation.get(EXTRA_KEY);
       ((HttpServletResponse) response).setHeader(EXTRA_KEY, extra);
       chain.doFilter(request, response);
     }

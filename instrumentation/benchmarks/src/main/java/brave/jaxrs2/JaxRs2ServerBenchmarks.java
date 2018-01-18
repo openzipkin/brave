@@ -2,6 +2,8 @@ package brave.jaxrs2;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.Undertow;
@@ -31,6 +33,8 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
   @Path("")
   public static class Resource {
     @GET @Produces("text/plain; charset=UTF-8") public String get() {
+      // noop if not configured
+      ExtraFieldPropagation.set("country-code", "FO");
       return "hello world";
     }
   }
@@ -56,6 +60,20 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
           Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
+      )));
+    }
+  }
+
+  @ApplicationPath("/tracedextra")
+  public static class TracedExtraApp extends Application {
+    @Override public Set<Object> getSingletons() {
+      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
+          Tracing.newBuilder()
+              .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                  .addField("x-vcap-request-id")
+                  .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+                  .build()
+              ).build()
       )));
     }
   }
@@ -88,6 +106,7 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
         .deploy(App.class)
         .deploy(Unsampled.class)
         .deploy(TracedApp.class)
+        .deploy(TracedExtraApp.class)
         .deploy(Traced128App.class)
         .deploy(TracedAWSApp.class)
         .start(Undertow.builder().addHttpListener(8888, "127.0.0.1"));

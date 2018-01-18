@@ -84,7 +84,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   /**
    * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using
-   * {@link ExtraFieldPropagation#current(String)}.
+   * {@link ExtraFieldPropagation#get(String)}.
    */
   void readsExtra(Request.Builder builder) throws IOException {
     Request request = builder.url(url("/extra"))

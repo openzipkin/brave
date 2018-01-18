@@ -26,10 +26,10 @@ import java.util.Map;
  * );
  *
  * // later, you can tag that request ID or use it in log correlation
- * requestId = ExtraFieldPropagation.current("x-vcap-request-id");
+ * requestId = ExtraFieldPropagation.get("x-vcap-request-id");
  *
  * // You can also set or override the value similarly, which might be needed if a new request
- * ExtraFieldPropagation.current("x-country-code", "FO");
+ * ExtraFieldPropagation.get("x-country-code", "FO");
  * }</pre>
  *
  * <p>You may also need to propagate a trace context you aren't using. For example, you may be in an
@@ -52,11 +52,12 @@ import java.util.Map;
  *   ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
  *                        .addField("x-vcap-request-id")
  *                        .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+ *                        .build()
  * );
  *
  * // Later, you can call below to affect the country code of the current trace context
- * ExtraFieldPropagation.current("country-code", "FO");
- * String countryCode = ExtraFieldPropagation.current("country-code");
+ * ExtraFieldPropagation.set("country-code", "FO");
+ * String countryCode = ExtraFieldPropagation.get("country-code");
  *
  * // Or, if you have a reference to a trace context, use it explicitly
  * ExtraFieldPropagation.set(span.context(), "country-code", "FO");
@@ -146,16 +147,56 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
   }
 
-  /** Returns the value of the field with the specified key or null if not available */
+  /** Synonym for {@link #get(String)} */
   @Nullable public static String current(String name) {
+    return get(name);
+  }
+
+  /**
+   * Returns the value of the field with the specified key or null if not available.
+   *
+   * <p>Prefer {@link #get(TraceContext, String)} if you have a reference to a span.
+   */
+  @Nullable public static String get(String name) {
     TraceContext context = currentTraceContext();
     return context != null ? get(context, name) : null;
   }
 
-  /** Sets the current value of the field with the specified key */
-  @Nullable public static void current(String name, String value) {
+  /**
+   * Sets the current value of the field with the specified key.
+   *
+   * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
+   */
+   public static void set(String name, String value) {
     TraceContext context = currentTraceContext();
     if (context != null) set(context, name, value);
+  }
+
+  /**
+   * Returns a mapping of fields in the current trace context, or empty if there are none.
+   *
+   * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
+   */
+  public static Map<String, String> getAll() {
+    TraceContext context = currentTraceContext();
+    if (context == null) return Collections.emptyMap();
+    return getAll(context);
+  }
+
+  /** Returns a mapping of fields in the given trace context, or empty if there are none. */
+  public static Map<String, String> getAll(TraceContext context) {
+    if (context == null) throw new NullPointerException("context == null");
+    Extra extra = findExtra(context.extra());
+    if (extra == null) return Collections.emptyMap();
+    String[] elements = extra.values;
+    if (elements == null) return Collections.emptyMap();
+
+    Map<String, String> result = new LinkedHashMap<>();
+    for (int i = 0, length = elements.length; i<length; i++) {
+      String value = elements[i];
+      if (value != null) result.put(extra.fieldNames[i], value);
+    }
+    return result;
   }
 
   @Nullable static TraceContext currentTraceContext() {
@@ -173,8 +214,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return index != -1 ? extra.get(index) : null;
   }
 
-  /** Returns the value of the field with the specified key or null if not available */
-  @Nullable public static void set(TraceContext context, String name, String value) {
+  /** Sets the value of the field with the specified key */
+  public static void set(TraceContext context, String name, String value) {
     if (context == null) throw new NullPointerException("context == null");
     if (name == null) throw new NullPointerException("name == null");
     if (value == null) throw new NullPointerException("value == null");

@@ -2,10 +2,13 @@ package brave.sparkjava;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
+import java.util.Arrays;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -54,6 +57,27 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class TracedExtra implements SparkApplication {
+    SparkTracing sparkTracing = SparkTracing.create(
+        Tracing.newBuilder()
+            .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                .addField("x-vcap-request-id")
+                .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+                .build()
+            ).spanReporter(Reporter.NOOP).build()
+    );
+
+    @Override
+    public void init() {
+      Spark.before(sparkTracing.before());
+      Spark.get("/tracedextra", (Request request, Response response) -> {
+        ExtraFieldPropagation.set("country-code", "FO");
+        return "hello world";
+      });
+      Spark.afterAfter(sparkTracing.afterAfter());
+    }
+  }
+
   public static class Traced128 implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
         Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
@@ -94,6 +118,9 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("Traced", SparkFilter.class)
             .addInitParam("applicationClass", Traced.class.getName()))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
+        .addFilter(new FilterInfo("TracedExtra", SparkFilter.class)
+            .addInitParam("applicationClass", TracedExtra.class.getName()))
+        .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
         .addFilter(new FilterInfo("Traced128", SparkFilter.class)
         .addInitParam("applicationClass", Traced128.class.getName()))
         .addFilterUrlMapping("Traced128", "/traced128", REQUEST)

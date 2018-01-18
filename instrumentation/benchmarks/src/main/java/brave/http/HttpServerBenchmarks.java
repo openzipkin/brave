@@ -83,6 +83,17 @@ public abstract class HttpServerBenchmarks {
     get("/traced");
   }
 
+  @Benchmark public void tracedExtraServer_get() throws Exception {
+    get("/tracedextra");
+  }
+
+  @Benchmark public void tracedExtraServer_get_request_id() throws Exception {
+    client.newCall(new Request.Builder().url(baseUrl() + "/tracedextra")
+        .header("x-vcap-request-id", "216a2aea45d08fc9")
+        .build())
+        .execute().body().close();
+  }
+
   @Benchmark public void tracedServer_get_resumeTrace() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/traced")
         .header("X-B3-TraceId", "216a2aea45d08fc9")
@@ -105,11 +116,11 @@ public abstract class HttpServerBenchmarks {
         .execute().body().close();
   }
 
-  @Benchmark public void tracedawsServer_get() throws Exception {
+  @Benchmark public void tracedAwsServer_get() throws Exception {
     get("/tracedaws");
   }
 
-  @Benchmark public void tracedawsServer_get_resumeTrace() throws Exception {
+  @Benchmark public void tracedAwsServer_get_resumeTrace() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/tracedaws")
         .header("X-Amzn-Trace-Id",
             "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1")

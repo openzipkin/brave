@@ -2,6 +2,8 @@ package brave.netty.http;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -20,6 +22,7 @@ import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.AttributeKey;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.runner.Runner;
@@ -44,6 +47,14 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
         Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
     ).serverHandler();
     final ChannelDuplexHandler traced = NettyHttpTracing.create(
+        Tracing.newBuilder()
+            .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                .addField("x-vcap-request-id")
+                .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+                .build()
+            ).build()
+    ).serverHandler();
+    final ChannelDuplexHandler tracedExtra = NettyHttpTracing.create(
         Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
     ).serverHandler();
     final ChannelDuplexHandler traced128 = NettyHttpTracing.create(
@@ -68,6 +79,10 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       } else if ("/traced".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced.channelRead(ctx, msg);
+      } else if ("/tracedextra".equals(uri)) {
+        ctx.channel().attr(URI_ATTRIBUTE).set(uri);
+        ExtraFieldPropagation.set("country-code", "FO");
+        tracedExtra.channelRead(ctx, msg);
       } else if ("/traced128".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced128.channelRead(ctx, msg);
