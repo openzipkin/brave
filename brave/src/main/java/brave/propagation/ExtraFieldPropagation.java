@@ -54,7 +54,7 @@ import java.util.Map;
  *                        .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
  * );
  *
- * // Later, you can call below to affect the country code.
+ * // Later, you can call below to affect the country code of the current trace context
  * ExtraFieldPropagation.current("country-code", "FO");
  * String countryCode = ExtraFieldPropagation.current("country-code");
  *
