@@ -1,6 +1,7 @@
 package brave.sparkjava;
 
 import brave.http.ITHttpServer;
+import brave.propagation.ExtraFieldPropagation;
 import org.junit.After;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -29,6 +30,7 @@ public class ITSparkTracing extends ITHttpServer {
     Spark.afterAfter(spark.afterAfter());
 
     Spark.get("/foo", (req, res) -> "bar");
+    Spark.get("/extra", (req, res) -> ExtraFieldPropagation.current(EXTRA_KEY));
     Spark.get("/badrequest", (req, res) -> {
       res.status(400);
       return res;

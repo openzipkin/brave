@@ -46,6 +46,22 @@ public interface Propagation<K> {
     }
 
     public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
+
+    /**
+     * Decorates the input such that it can propagate extra data, such as a timestamp or a carrier
+     * for extra fields.
+     *
+     * <p>Implementations should be idempotent, returning the same instance where needed.
+     * Implementations are responsible for data scoping, if relevant. For example, if only global
+     * configuration is present, it could suffice to simply ensure that data is present. If data
+     * is span-scoped, an implementation might compare the context to its last span ID, copying on
+     * write or otherwise to ensure writes to one context don't affect another.
+     *
+     * @see TraceContext#extra()
+     */
+    public TraceContext decorate(TraceContext context) {
+      return context;
+    }
   }
 
   /** Creates keys for use in propagated contexts */

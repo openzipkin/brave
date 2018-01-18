@@ -3,6 +3,7 @@ package brave.spring.webmvc;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.http.ITServletContainer;
+import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -34,6 +35,11 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
     @RequestMapping(value = "/foo")
     public ResponseEntity<Void> foo() throws IOException {
       return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/extra")
+    public ResponseEntity<String> extra() throws IOException {
+      return new ResponseEntity<>(ExtraFieldPropagation.current(EXTRA_KEY), HttpStatus.OK);
     }
 
     @RequestMapping(value = "/badrequest")
