@@ -352,7 +352,7 @@ tracingBuilder.propagationFactory(
 #### Prefixed fields
 You can also prefix fields, if they follow a common pattern. For example, the following will
 propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
-on the wire as "x-baggage-country-code" and "x-baggage-user-id" respectively.
+on the wire as "baggage-country-code" and "baggage-user-id" respectively.
 
 Setup your tracing instance with allowed fields:
 ```java
