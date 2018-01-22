@@ -61,6 +61,7 @@
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.13.RELEASE</spring4.version>
     <spring.version>3.2.18.RELEASE</spring.version>
+    <spring-amqp.version>1.7.5.RELEASE</spring-amqp.version>
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
