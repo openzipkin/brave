@@ -51,11 +51,20 @@ public abstract class Tracing implements Closeable {
    */
   abstract public CurrentTraceContext currentTraceContext();
 
+  /** @deprecated use {@link #clock(TraceContext)} */
+  @Deprecated abstract public Clock clock();
+
   /**
    * This exposes the microsecond clock used by operations such as {@link Span#finish()}. This is
-   * helpful when you want to time things manually.
+   * helpful when you want to time things manually. Notably, this clock will be coherent for all
+   * child spans in this trace (that use this tracing component). For example, NTP or system clock
+   * changes will not affect the result.
+   *
+   * @param context references a potentially unstarted span you'd like a clock correlated with
    */
-  abstract public Clock clock();
+  public final Clock clock(TraceContext context) {
+    return tracer().recorder.clock(context);
+  }
 
   // volatile for visibility on get. writes guarded by Tracing.class
   static volatile Tracing current = null;
@@ -189,7 +198,15 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
-    /** See {@link Tracing#clock()} */
+    /**
+     * Assigns microsecond-resolution timestamp source for operations like {@link Span#start()}.
+     * Defaults to JRE-specific platform time.
+     *
+     * <p>Note: timestamps are read once per trace, then {@link System#nanoTime() ticks} thereafter.
+     * This ensures there's no clock skew problems inside a single trace.
+     *
+     * See {@link Tracing#clock(TraceContext)}
+     */
     public Builder clock(Clock clock) {
       if (clock == null) throw new NullPointerException("clock == null");
       this.clock = clock;

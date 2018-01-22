@@ -148,7 +148,7 @@ public final class Tracer {
     this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();
   }
 
-  /** @deprecated use {@link Tracing#clock()} */
+  /** @deprecated use {@link #clock(TraceContext)} */
   @Deprecated public Clock clock() {
     return clock;
   }

@@ -13,6 +13,7 @@ import zipkin2.reporter.Reporter;
 /** Dispatches mutations on a span to a shared object per trace/span id. */
 public final class Recorder {
   final MutableSpanMap spanMap;
+  final Clock clock;
   final Reporter<zipkin2.Span> reporter;
   final AtomicBoolean noop;
 
@@ -23,6 +24,7 @@ public final class Recorder {
       AtomicBoolean noop
   ) {
     this.spanMap = new MutableSpanMap(localEndpoint, clock, reporter, noop);
+    this.clock = clock;
     this.reporter = reporter;
     this.noop = noop;
   }
@@ -36,6 +38,12 @@ public final class Recorder {
     MutableSpan span = spanMap.get(context);
     if (span == null) return null;
     return span.timestamp == 0 ? null : span.timestamp;
+  }
+
+  /** Returns a clock that ensures timestamp consistency across the trace */
+  public Clock clock(TraceContext context) {
+    if (noop.get()) return clock;
+    return spanMap.getOrCreate(context).clock;
   }
 
   /** @see brave.Span#start() */
