@@ -163,7 +163,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   /**
-   * Sets the current value of the field with the specified key.
+   * Sets the current value of the field with the specified key, or drops if not a configured field.
    *
    * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
    */
@@ -214,7 +214,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return index != -1 ? extra.get(index) : null;
   }
 
-  /** Sets the value of the field with the specified key */
+  /** Sets the value of the field with the specified key, or drops if not a configured field */
   public static void set(TraceContext context, String name, String value) {
     if (context == null) throw new NullPointerException("context == null");
     if (name == null) throw new NullPointerException("name == null");
@@ -222,6 +222,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     Extra extra = findExtra(context.extra());
     if (extra == null) return;
     int index = extra.indexOf(name.toLowerCase(Locale.ROOT));
+    if (index == -1) return;
     extra.set(index, value);
   }
 
@@ -367,6 +368,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       synchronized (this) {
         elements = values;
       }
+
+      if (elements == null) return "ExtraFieldPropagation{}";
 
       Map<String, String> contents = new LinkedHashMap<>();
       for (int i = 0, length = fieldNames.length; i < length; i++) {
