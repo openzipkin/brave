@@ -26,4 +26,19 @@ public class TraceIdContextTest {
     assertThat(context.toBuilder().traceIdHigh(222L).build().toString())
         .isEqualTo("00000000000000de000000000000014d");
   }
+
+  @Test public void canUsePrimitiveOverloads() {
+    TraceIdContext primitives = context.toBuilder()
+        .sampled(true)
+        .debug(true)
+        .build();
+
+    TraceIdContext objects =  context.toBuilder()
+        .sampled(Boolean.TRUE)
+        .debug(Boolean.TRUE)
+        .build();
+
+    assertThat(primitives)
+        .isEqualToComparingFieldByField(objects);
+  }
 }

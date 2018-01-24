@@ -75,4 +75,18 @@ public abstract class SamplingFlags {
 
   SamplingFlags() {
   }
+
+  static final int FLAG_SAMPLED = 1 << 1;
+  static final int FLAG_SAMPLED_SET = 1 << 2;
+  static final int FLAG_DEBUG = 1 << 3;
+
+  static Boolean sampled(int flags) {
+    return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
+        ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
+        : null;
+  }
+
+  static boolean debug(int flags) {
+    return (flags & FLAG_DEBUG) == FLAG_DEBUG;
+  }
 }

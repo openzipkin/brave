@@ -17,9 +17,10 @@ final class MutableSpan {
   // to reduce GC churn. This would involve calling span.clear and resetting the fields below.
   MutableSpan(Clock clock, TraceContext context, Endpoint localEndpoint) {
     this.clock = clock;
+    long parentId = context.parentIdAsLong();
     this.span = zipkin2.Span.newBuilder()
         .traceId(context.traceIdString())
-        .parentId(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null)
+        .parentId(parentId != 0L ? HexCodec.toLowerHex(parentId) : null)
         .id(HexCodec.toLowerHex(context.spanId()))
         .debug(context.debug() ? true : null)
         .localEndpoint(localEndpoint);

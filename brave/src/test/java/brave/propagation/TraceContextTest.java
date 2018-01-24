@@ -8,9 +8,10 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextTest {
+  TraceContext base = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
 
   @Test public void compareUnequalIds() {
-    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(0L).build();
+    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
 
     assertThat(context)
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build());
@@ -70,5 +71,35 @@ public class TraceContextTest {
     List<Object> list = Collections.emptyList();
     assertThat(TraceContext.ensureImmutable(list))
         .isSameAs(list);
+  }
+
+  @Test public void canUsePrimitiveOverloads() {
+    TraceContext primitives = base.toBuilder()
+        .parentId(1L)
+        .sampled(true)
+        .debug(true)
+        .build();
+
+    TraceContext objects =  base.toBuilder()
+        .parentId(Long.valueOf(1L))
+        .sampled(Boolean.TRUE)
+        .debug(Boolean.TRUE)
+        .build();
+
+    assertThat(primitives)
+        .isEqualToComparingFieldByField(objects);
+  }
+
+  @Test public void nullToZero() {
+    TraceContext nulls = base.toBuilder()
+        .parentId(null)
+        .build();
+
+    TraceContext zeros =  base.toBuilder()
+        .parentId(0L)
+        .build();
+
+    assertThat(nulls)
+        .isEqualToComparingFieldByField(zeros);
   }
 }

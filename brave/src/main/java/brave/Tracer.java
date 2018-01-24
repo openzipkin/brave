@@ -248,7 +248,7 @@ public final class Tracer {
       // fall through, with an implicit parent, not an extracted one
       parent = appendExtra(implicitParent, extracted.extra());
     }
-    long nextId = Platform.get().randomLong();
+    long nextId = nextId();
     if (parent != null) {
       Boolean sampled = parent.sampled();
       if (sampled == null) sampled = sampler.isSampled(parent.traceId());
@@ -305,7 +305,7 @@ public final class Tracer {
   }
 
   TraceContext newRootContext(SamplingFlags samplingFlags, List<Object> extra) {
-    long nextId = Platform.get().randomLong();
+    long nextId = nextId();
     Boolean sampled = samplingFlags.sampled();
     if (sampled == null) sampled = sampler.isSampled(nextId);
     return TraceContext.newBuilder()
@@ -314,6 +314,15 @@ public final class Tracer {
         .spanId(nextId)
         .debug(samplingFlags.debug())
         .extra(extra).build();
+  }
+
+  /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */
+  long nextId() {
+    long nextId = Platform.get().randomLong();
+    while (nextId == 0L) {
+      nextId = Platform.get().randomLong();
+    }
+    return nextId;
   }
 
   /**

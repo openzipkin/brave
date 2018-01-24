@@ -52,7 +52,13 @@ abstract class SpanFactory {
     abstract Sampler sampler();
 
     @Override Span nextSpan(@Nullable SpanId maybeParent) {
+
+      // Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent
       long newSpanId = randomGenerator().nextLong();
+      while (newSpanId == 0L) {
+        newSpanId = randomGenerator().nextLong();
+      }
+
       if (maybeParent == null) { // new trace
         return Brave.toSpan(SpanId.builder()
             .traceIdHigh(traceId128Bit() ? nextTraceIdHigh(randomGenerator()) : 0L)

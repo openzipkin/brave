@@ -37,8 +37,8 @@ public final class ThreadContextCurrentTraceContext extends CurrentTraceContext 
 
     if (currentSpan != null) {
       ThreadContext.put("traceId", currentSpan.traceIdString());
-      replace("parentId",
-          currentSpan.parentId() != null ? HexCodec.toLowerHex(currentSpan.parentId()) : null);
+      long parentId = currentSpan.parentIdAsLong();
+      replace("parentId", parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
       ThreadContext.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
     } else {
       ThreadContext.remove("traceId");

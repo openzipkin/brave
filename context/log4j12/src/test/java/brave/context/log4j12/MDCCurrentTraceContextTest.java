@@ -30,8 +30,9 @@ public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
     if (context != null) {
       assertThat(MDC.get("traceId"))
           .isEqualTo(context.traceIdString());
+      long parentId = context.parentIdAsLong();
       assertThat(MDC.get("parentId"))
-          .isEqualTo(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null);
+          .isEqualTo(parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
       assertThat(MDC.get("spanId"))
           .isEqualTo(HexCodec.toLowerHex(context.spanId()));
     } else {
