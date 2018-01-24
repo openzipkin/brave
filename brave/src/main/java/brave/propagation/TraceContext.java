@@ -61,7 +61,7 @@ public abstract class TraceContext extends SamplingFlags {
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_TraceContext.Builder().traceIdHigh(0L).debug(false).shared(false)
+    return new AutoValue_TraceContext.Builder().traceIdHigh(0L).debug(false)
         .extra(Collections.emptyList());
   }
 
@@ -84,15 +84,10 @@ public abstract class TraceContext extends SamplingFlags {
    */
   public abstract long spanId();
 
-  /**
-   * True if we are contributing to a span started by another tracer (ex on a different host).
-   * Defaults to false.
-   *
-   * <p>When an RPC trace is client-originated, it will be sampled and the same span ID is used for
-   * the server side. However, the server shouldn't set span.timestamp or duration since it didn't
-   * start the span.
-   */
-  public abstract boolean shared();
+  /** @deprecated it is unnecessary overhead to propagate this property */
+  @Deprecated public final boolean shared() {
+    return false; // shared is set internally on Tracer.join
+  }
 
   /**
    * Returns a list of additional data propagated through this trace.
@@ -158,8 +153,11 @@ public abstract class TraceContext extends SamplingFlags {
     /** @see TraceContext#debug() */
     public abstract Builder debug(boolean debug);
 
-    /** @see TraceContext#shared() */
-    public abstract Builder shared(boolean shared);
+    /** @deprecated it is unnecessary overhead to propagate this property */
+    @Deprecated public final Builder shared(boolean shared) {
+      // this is not a propagated property, rather set internal to Tracer.join
+      return this;
+    }
 
     /** @see TraceContext#extra() */
     public abstract Builder extra(List<Object> extra);

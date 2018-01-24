@@ -102,7 +102,7 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
       // rather let the client do that. Worst case we were propagated an unreported ID and
       // Zipkin backfills timestamp and duration.
       synchronized (span) {
-        if (InternalSpan.instance.context(span).shared) {
+        if (span.isShared()) {
           for (int i = 0, length = span.getAnnotations().size(); i < length; i++) {
             if (span.getAnnotations().get(i).value.equals(Constants.SERVER_RECV)) {
               span.setTimestamp(null);

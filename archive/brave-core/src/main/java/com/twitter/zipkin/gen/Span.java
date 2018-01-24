@@ -61,6 +61,7 @@ public class Span implements Serializable {
   private List<Annotation> annotations = Collections.emptyList(); // required
   private List<BinaryAnnotation> binary_annotations = Collections.emptyList(); // required
   private Boolean debug; // optional
+  private Boolean shared; // optional
   private Long timestamp; // optional
   private Long duration; // optional
 
@@ -289,6 +290,15 @@ public class Span implements Serializable {
     return this;
   }
 
+  public boolean isShared() {
+    return this.shared != null && this.shared;
+  }
+
+  public Span setShared() {
+    this.shared = true;
+    return this;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
@@ -303,7 +313,8 @@ public class Span implements Serializable {
         && equal(this.duration, that.duration)
         && equal(this.annotations, that.annotations)
         && equal(this.binary_annotations, that.binary_annotations)
-        && equal(this.debug, that.debug);
+        && equal(this.debug, that.debug)
+        && equal(this.shared, that.shared);
   }
 
   @Override
@@ -329,6 +340,8 @@ public class Span implements Serializable {
     h ^= (binary_annotations == null) ? 0 : binary_annotations.hashCode();
     h *= 1000003;
     h ^= (debug == null) ? 0 : debug.hashCode();
+    h *= 1000003;
+    h ^= (shared == null) ? 0 : shared.hashCode();
     return h;
   }
 

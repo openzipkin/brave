@@ -1,11 +1,13 @@
 package brave.http;
 
-import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.HexCodec;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServerHandlerTest {
+  List<zipkin2.Span> spans = new ArrayList<>();
   Tracer tracer;
   @Mock HttpSampler sampler;
   @Mock HttpServerAdapter<Object, Object> adapter;
@@ -34,8 +37,9 @@ public class HttpServerHandlerTest {
   HttpServerHandler<Object, Object> handler;
 
   @Before public void init() {
-    HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().build())
-        .serverSampler(sampler).build();
+    HttpTracing httpTracing = HttpTracing.newBuilder(
+        Tracing.newBuilder().spanReporter(spans::add).build()
+    ).serverSampler(sampler).build();
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, adapter);
 
@@ -54,14 +58,16 @@ public class HttpServerHandlerTest {
     // request sampler abstains (trace ID sampler will say true)
     when(sampler.trySample(adapter, request)).thenReturn(null);
 
-    Span newSpan = handler.handleReceive(extractor, request);
-    assertThat(newSpan.isNoop()).isFalse();
-    assertThat(newSpan.context().shared()).isFalse();
+    handler.handleReceive(extractor, request).finish();
+
+    // If sampling was false, no span would be reported
+    assertThat(spans.get(0).shared()).isNull();
   }
 
   @Test public void handleReceive_reusesTraceId() {
-    HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
-        .supportsJoin(false).build());
+    HttpTracing httpTracing = HttpTracing.create(
+        Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build()
+    );
 
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, adapter);
@@ -70,9 +76,13 @@ public class HttpServerHandlerTest {
     when(extractor.extract(request))
         .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
-    assertThat(handler.handleReceive(extractor, request).context())
-        .extracting(TraceContext::traceId, TraceContext::parentId, TraceContext::shared)
-        .containsOnly(incomingContext.traceId(), incomingContext.spanId(), false);
+    handler.handleReceive(extractor, request).finish();
+
+    assertThat(spans.get(0).shared()).isNull();
+    assertThat(spans.get(0).traceId())
+        .isEqualTo(incomingContext.traceIdString());
+    assertThat(spans.get(0).parentId())
+        .isEqualTo(HexCodec.toLowerHex(incomingContext.spanId()));
   }
 
   @Test public void handleReceive_reusesSpanIds() {
@@ -80,8 +90,13 @@ public class HttpServerHandlerTest {
     when(extractor.extract(request))
         .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
-    assertThat(handler.handleReceive(extractor, request).context())
-        .isEqualTo(incomingContext.toBuilder().shared(true).build());
+    handler.handleReceive(extractor, request).finish();
+
+    assertThat(spans.get(0).shared()).isTrue();
+    assertThat(spans.get(0).traceId())
+        .isEqualTo(incomingContext.traceIdString());
+    assertThat(spans.get(0).id())
+        .isEqualTo(HexCodec.toLowerHex(incomingContext.spanId()));
   }
 
   @Test public void handleReceive_honorsSamplingFlags() {

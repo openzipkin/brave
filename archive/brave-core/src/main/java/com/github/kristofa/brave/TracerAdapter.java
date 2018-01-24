@@ -90,8 +90,7 @@ public final class TracerAdapter {
         .parentId(spanId.nullableParentId())
         .spanId(spanId.spanId)
         .debug(spanId.debug())
-        .sampled(spanId.sampled())
-        .shared(spanId.shared).build();
+        .sampled(spanId.sampled()).build();
   }
 
   public static Span toSpan(TraceContext context) {
@@ -192,7 +191,6 @@ public final class TracerAdapter {
         .parentId(context.parentId())
         .spanId(context.spanId())
         .debug(context.debug())
-        .sampled(context.sampled())
-        .shared(context.shared()).build();
+        .sampled(context.sampled()).build();
   }
 }
