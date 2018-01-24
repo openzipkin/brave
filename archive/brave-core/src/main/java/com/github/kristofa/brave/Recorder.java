@@ -1,7 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.InternalSpan;
-import com.github.kristofa.brave.internal.Nullable;
 import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Annotation;
@@ -20,8 +18,6 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
 
   /** Used for local spans spans */
   abstract void start(Span span, long timestamp);
-
-  @Nullable abstract Long timestamp(Span span);
 
   abstract void annotate(Span span, long timestamp, String value);
 
@@ -56,12 +52,6 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
     @Override void start(Span span, long timestamp) {
       synchronized (span) {
         span.setTimestamp(timestamp);
-      }
-    }
-
-    @Override Long timestamp(Span span) {
-      synchronized (span) {
-        return span.getTimestamp();
       }
     }
 

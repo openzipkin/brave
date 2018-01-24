@@ -3,7 +3,6 @@ package brave.internal.recorder;
 import brave.Clock;
 import brave.Span;
 import brave.Tracer;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,17 +27,6 @@ public final class Recorder {
     this.clock = clock;
     this.reporter = reporter;
     this.noop = noop;
-  }
-
-  /**
-   * Hook needed for Brave 3's LocalTracer.finish(duration)
-   *
-   * @see Span#start()
-   */
-  @Nullable public Long timestamp(TraceContext context) {
-    MutableSpan span = spanMap.get(context);
-    if (span == null) return null;
-    return span.timestamp == 0 ? null : span.timestamp;
   }
 
   /** Returns a clock that ensures timestamp consistency across the trace */

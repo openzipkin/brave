@@ -64,9 +64,10 @@ public class TracerAdapterTest {
     span.annotate(2L, "pump fake");
     span.finish(3L);
 
-    checkLocalSpanReportedToZipkin(
+    zipkin2.Span s = checkLocalSpanReportedToZipkin(
         span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
     );
+    assertThat(s.duration()).isEqualTo(2L);
   }
 
   @Test public void startWithCurrentLocalSpanAndFinishWithTracer() {
@@ -81,12 +82,13 @@ public class TracerAdapterTest {
     span.annotate(2L, "pump fake");
     span.finish(3L);
 
-    checkLocalSpanReportedToZipkin(
+    zipkin2.Span s = checkLocalSpanReportedToZipkin(
         span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
     );
+    assertThat(s.duration()).isEqualTo(2L);
   }
 
-  @Test public void startWithTracerAndFinishWithLocalTracer() {
+  @Test public void startWithTracerAndFinishWithLocalTracer_doesntSupportDuration() {
     brave.Span brave4Span = brave4.newTrace().name("encode")
         .tag(Constants.LOCAL_COMPONENT, "codec")
         .start(1L);
@@ -100,9 +102,14 @@ public class TracerAdapterTest {
     brave3.localTracer().submitAnnotation("pump fake", 2L);
     brave3.localTracer().finishSpan(2L /* duration */);
 
-    checkLocalSpanReportedToZipkin(
+    zipkin2.Span s = checkLocalSpanReportedToZipkin(
         brave4Span.context(), brave3.localSpanThreadBinder().getCurrentLocalSpan()
     );
+
+    // starting a local span with one api and finishing with another is arbitrary.
+    // adding infrastructure to readback timestamps isn't worth it, as it exposes
+    // internal apis
+    assertThat(s.duration()).isNull();
   }
 
   @Test public void startWithClientTracerAndFinishWithTracer() {
@@ -199,7 +206,7 @@ public class TracerAdapterTest {
     assertThat(context.sampled()).isEqualTo(spanId.sampled()).isTrue();
   }
 
-  void checkLocalSpanReportedToZipkin(TraceContext context, Span span) {
+  zipkin2.Span checkLocalSpanReportedToZipkin(TraceContext context, Span span) {
     assertSpansReported(context, span);
     assertThat(spans).first().satisfies(s -> {
           assertThat(s.name()).isEqualTo("encode");
@@ -208,9 +215,9 @@ public class TracerAdapterTest {
               .containsExactly(Annotation.create(2L, "pump fake"));
           assertThat(s.tags())
               .containsExactly(entry(Constants.LOCAL_COMPONENT, "codec"));
-          assertThat(s.duration()).isEqualTo(2L);
         }
     );
+    return spans.get(0);
   }
 
   void checkClientSpanReportedToZipkin(TraceContext context, Span span) {
