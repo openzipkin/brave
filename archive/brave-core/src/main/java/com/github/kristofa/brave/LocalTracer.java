@@ -148,7 +148,11 @@ public abstract class LocalTracer extends AnnotationSubmitter {
         Span span = currentSpan().get();
         if (span == null) return;
 
-        Long timestamp = recorder().timestamp(span);
+        final Long timestamp;
+        synchronized (span) {
+            timestamp = span.getTimestamp();
+        }
+
         if (timestamp == null) {
             recorder().flush(span);
         } else {

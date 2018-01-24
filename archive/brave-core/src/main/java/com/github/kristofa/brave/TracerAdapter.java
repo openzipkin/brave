@@ -2,7 +2,6 @@ package com.github.kristofa.brave;
 
 import brave.Clock;
 import brave.Tracer;
-import brave.internal.Internal;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import com.github.kristofa.brave.internal.InternalSpan;
@@ -130,12 +129,10 @@ public final class TracerAdapter {
     }
 
     @Override void start(Span span, long timestamp) {
+      synchronized (span) { // make visible to old api
+        span.setTimestamp(timestamp);
+      }
       brave4(span).start(timestamp);
-    }
-
-    @Override Long timestamp(Span span) {
-      TraceContext context = toTraceContext(InternalSpan.instance.context(span));
-      return Internal.instance.timestamp(tracer, context);
     }
 
     @Override void annotate(Span span, long timestamp, String value) {

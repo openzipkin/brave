@@ -1,6 +1,5 @@
 package brave;
 
-import brave.internal.Internal;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.B3Propagation;
@@ -282,14 +281,6 @@ public abstract class Tracing implements Closeable {
 
     Builder() {
     }
-  }
-
-  static {
-    Internal.instance = new Internal() {
-      @Override public Long timestamp(Tracer tracer, TraceContext context) {
-        return tracer.recorder.timestamp(context);
-      }
-    };
   }
 
   static final class Default extends Tracing {
