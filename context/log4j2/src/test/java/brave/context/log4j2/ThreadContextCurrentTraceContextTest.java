@@ -19,8 +19,9 @@ public class ThreadContextCurrentTraceContextTest extends CurrentTraceContextTes
     if (context != null) {
       assertThat(ThreadContext.get("traceId"))
           .isEqualTo(context.traceIdString());
+      long parentId = context.parentIdAsLong();
       assertThat(ThreadContext.get("parentId"))
-          .isEqualTo(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null);
+          .isEqualTo(parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
       assertThat(ThreadContext.get("spanId"))
           .isEqualTo(HexCodec.toLowerHex(context.spanId()));
     } else {

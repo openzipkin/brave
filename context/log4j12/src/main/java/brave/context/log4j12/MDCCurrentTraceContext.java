@@ -41,8 +41,8 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
 
     if (currentSpan != null) {
       MDC.put("traceId", currentSpan.traceIdString());
-      replace("parentId",
-          currentSpan.parentId() != null ? HexCodec.toLowerHex(currentSpan.parentId()) : null);
+      long parentId = currentSpan.parentIdAsLong();
+      replace("parentId", parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
       MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
     } else {
       MDC.remove("traceId");

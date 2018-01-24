@@ -140,7 +140,7 @@ public class FinagleContextInteropTest {
   static TraceId toTraceId(TraceContext context) {
     return new TraceId(
         Option.apply(SpanId.apply(context.traceId())),
-        Option.apply(context.parentId() == null ? null : SpanId.apply(context.parentId())),
+        Option.apply(context.parentIdAsLong() == 0L ? null : SpanId.apply(context.parentIdAsLong())),
         SpanId.apply(context.spanId()),
         Option.apply(context.sampled()),
         Flags$.MODULE$.apply(context.debug() ? 1 : 0)

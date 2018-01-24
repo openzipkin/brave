@@ -71,8 +71,8 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
 
   /** Trace contexts are equal only on trace ID and span ID. try to get the parent's clock */
   @Nullable Clock maybeClockFromParent(TraceContext context) {
-    Long parentId = context.parentId();
-    if (parentId == null) return null;
+    long parentId = context.parentIdAsLong();
+    if (parentId == 0L) return null;
     MutableSpan parent = delegate.get(new LookupKey(context.toBuilder().spanId(parentId).build()));
     return parent != null ? parent.clock : null;
   }

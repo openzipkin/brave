@@ -1,7 +1,6 @@
 package brave.propagation;
 
 import brave.internal.Nullable;
-import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,9 +16,8 @@ import static brave.internal.HexCodec.writeHexLong;
  * port of {@code com.twitter.finagle.tracing.TraceId}. Unlike these mentioned, this type does not
  * expose a single binary representation. That's because propagation forms can now vary.
  */
-@AutoValue
 //@Immutable
-public abstract class TraceContext extends SamplingFlags {
+public final class TraceContext extends SamplingFlags {
 
   /**
    * Used to send the trace context downstream. For example, as http headers.
@@ -61,28 +59,55 @@ public abstract class TraceContext extends SamplingFlags {
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_TraceContext.Builder().traceIdHigh(0L).debug(false)
-        .extra(Collections.emptyList());
+    return new Builder();
   }
 
   /** When non-zero, the trace containing this span uses 128-bit trace identifiers. */
-  public abstract long traceIdHigh();
+  public long traceIdHigh() {
+    return traceIdHigh;
+  }
 
   /** Unique 8-byte identifier for a trace, set on all spans within it. */
-  public abstract long traceId();
+  public long traceId() {
+    return traceId;
+  }
 
-  /** The parent's {@link #spanId} or null if this the root span in a trace. */
-  @Nullable public abstract Long parentId();
+  /**
+   * The parent's {@link #spanId} or null if this the root span in a trace.
+   *
+   * @see #parentIdAsLong()
+   */
+  @Nullable public final Long parentId() {
+    return parentId != 0 ? parentId : null;
+  }
 
-  // override as auto-value can't currently read the super-class's nullable annotation.
-  @Override @Nullable public abstract Boolean sampled();
+  /**
+   * Like {@link #parentId()} except returns a primitive where zero implies absent.
+   *
+   * <p>Using this method will avoid allocation, so is encouraged when copying data.
+   */
+  public long parentIdAsLong() {
+    return parentId;
+  }
+
+  /** {@inheritDoc} */
+  @Override @Nullable public Boolean sampled() {
+    return sampled(flags);
+  }
+
+  /** {@inheritDoc} */
+  @Override public boolean debug() {
+    return debug(flags);
+  }
 
   /**
    * Unique 8-byte identifier of this span within a trace.
    *
    * <p>A span is uniquely identified in storage by ({@linkplain #traceId}, {@linkplain #spanId}).
    */
-  public abstract long spanId();
+  public long spanId() {
+    return spanId;
+  }
 
   /** @deprecated it is unnecessary overhead to propagate this property */
   @Deprecated public final boolean shared() {
@@ -99,84 +124,152 @@ public abstract class TraceContext extends SamplingFlags {
    * <p>Implementations are responsible for scoping any data stored here. This can be performed when
    * {@link Propagation.Factory#decorate(TraceContext)} is called.
    */
-  public abstract List<Object> extra();
+  public List<Object> extra() {
+    return extra;
+  }
 
-  public abstract Builder toBuilder();
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
 
   /** Returns the hex representation of the span's trace ID */
   public String traceIdString() {
-    if (traceIdHigh() != 0) {
+    if (traceIdHigh != 0) {
       char[] result = new char[32];
-      writeHexLong(result, 0, traceIdHigh());
-      writeHexLong(result, 16, traceId());
+      writeHexLong(result, 0, traceIdHigh);
+      writeHexLong(result, 16, traceId);
       return new String(result);
     }
     char[] result = new char[16];
-    writeHexLong(result, 0, traceId());
+    writeHexLong(result, 0, traceId);
     return new String(result);
   }
 
   /** Returns {@code $traceId/$spanId} */
   @Override
   public String toString() {
-    boolean traceHi = traceIdHigh() != 0;
+    boolean traceHi = traceIdHigh != 0;
     char[] result = new char[((traceHi ? 3 : 2) * 16) + 1]; // 2 ids and the delimiter
     int pos = 0;
     if (traceHi) {
-      writeHexLong(result, pos, traceIdHigh());
+      writeHexLong(result, pos, traceIdHigh);
       pos += 16;
     }
-    writeHexLong(result, pos, traceId());
+    writeHexLong(result, pos, traceId);
     pos += 16;
     result[pos++] = '/';
-    writeHexLong(result, pos, spanId());
+    writeHexLong(result, pos, spanId);
     return new String(result);
   }
 
-  @AutoValue.Builder
-  public static abstract class Builder {
+  public static final class Builder {
+    long traceIdHigh, traceId, parentId, spanId;
+    int flags = 0; // bit field for sampled and debug
+    List<Object> extra = Collections.emptyList();
+
+    Builder(TraceContext context) { // no external implementations
+      traceIdHigh = context.traceIdHigh;
+      traceId = context.traceId;
+      parentId = context.parentId;
+      spanId = context.spanId;
+      flags = context.flags;
+      extra = context.extra;
+    }
+
     /** @see TraceContext#traceIdHigh() */
-    public abstract Builder traceIdHigh(long traceIdHigh);
+    public Builder traceIdHigh(long traceIdHigh) {
+      this.traceIdHigh = traceIdHigh;
+      return this;
+    }
 
     /** @see TraceContext#traceId() */
-    public abstract Builder traceId(long traceId);
+    public Builder traceId(long traceId) {
+      this.traceId = traceId;
+      return this;
+    }
 
-    /** @see TraceContext#parentId */
-    public abstract Builder parentId(@Nullable Long parentId);
+    /** @see TraceContext#parentIdAsLong() */
+    public Builder parentId(long parentId) {
+      this.parentId = parentId;
+      return this;
+    }
 
-    /** @see TraceContext#spanId */
-    public abstract Builder spanId(long spanId);
+    /** @see TraceContext#parentId() */
+    public Builder parentId(@Nullable Long parentId) {
+      if (parentId == null) parentId = 0L;
+      this.parentId = parentId;
+      return this;
+    }
 
-    /** @see TraceContext#sampled */
-    public abstract Builder sampled(@Nullable Boolean nullableSampled);
+    /** @see TraceContext#spanId() */
+    public Builder spanId(long spanId) {
+      this.spanId = spanId;
+      return this;
+    }
+
+    /** @see TraceContext#sampled() */
+    public Builder sampled(boolean sampled) {
+      flags |= FLAG_SAMPLED_SET;
+      if (sampled) {
+        flags |= FLAG_SAMPLED;
+      } else {
+        flags &= ~FLAG_SAMPLED;
+      }
+      return this;
+    }
+
+    /** @see TraceContext#sampled() */
+    public Builder sampled(@Nullable Boolean sampled) {
+      if (sampled != null) return sampled((boolean) sampled);
+      flags &= ~FLAG_SAMPLED_SET;
+      return this;
+    }
 
     /** @see TraceContext#debug() */
-    public abstract Builder debug(boolean debug);
+    public Builder debug(boolean debug) {
+      if (debug) {
+        flags |= FLAG_DEBUG;
+      } else {
+        flags &= ~FLAG_DEBUG;
+      }
+      return this;
+    }
 
     /** @deprecated it is unnecessary overhead to propagate this property */
-    @Deprecated public final Builder shared(boolean shared) {
+    @Deprecated public Builder shared(boolean shared) {
       // this is not a propagated property, rather set internal to Tracer.join
       return this;
     }
 
     /** @see TraceContext#extra() */
-    public abstract Builder extra(List<Object> extra);
-
-    abstract List<Object> extra();
-
-    abstract TraceContext autoBuild();
-
-    public final TraceContext build() {
-      // make sure the extra data is immutable and unmodifiable
-      return extra(ensureImmutable(extra())).autoBuild();
+    public Builder extra(List<Object> extra) {
+      this.extra = ensureImmutable(extra);
+      return this;
     }
 
-    @Nullable abstract Boolean sampled();
-
-    abstract boolean debug();
+    public final TraceContext build() {
+      String missing = "";
+      if (traceId == 0L) missing += " traceId";
+      if (spanId == 0L) missing += " spanId";
+      if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
+      return new TraceContext(this);
+    }
 
     Builder() { // no external implementations
     }
+  }
+
+  final long traceIdHigh, traceId, parentId, spanId;
+  final int flags; // bit field for sampled and debug
+  final List<Object> extra;
+
+  TraceContext(Builder builder) { // no external implementations
+    traceIdHigh = builder.traceIdHigh;
+    traceId = builder.traceId;
+    parentId = builder.parentId;
+    spanId = builder.spanId;
+    flags = builder.flags;
+    extra = builder.extra;
   }
 
   /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
@@ -184,14 +277,13 @@ public abstract class TraceContext extends SamplingFlags {
     if (o == this) return true;
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;
-    return (this.traceIdHigh() == that.traceIdHigh())
-        && (this.traceId() == that.traceId())
-        && (this.spanId() == that.spanId());
+    return (traceIdHigh == that.traceIdHigh)
+        && (traceId == that.traceId)
+        && (spanId == that.spanId);
   }
 
   /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
   @Override public int hashCode() {
-    long traceIdHigh = traceIdHigh(), traceId = traceId(), spanId = spanId();
     int h = 1;
     h *= 1000003;
     h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
@@ -200,9 +292,6 @@ public abstract class TraceContext extends SamplingFlags {
     h *= 1000003;
     h ^= (int) ((spanId >>> 32) ^ spanId);
     return h;
-  }
-
-  TraceContext() { // no external implementations
   }
 
   static List<Object> ensureImmutable(List<Object> extra) {
