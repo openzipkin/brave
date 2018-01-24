@@ -12,7 +12,7 @@
   <description>
   Java implementation of Dapper (http://research.google.com/pubs/pub36356.html) compatible with Zipkin (https://github.com/twitter/zipkin/).
   </description>
-  <url>https://github.com/kristofa/brave</url>
+  <url>https://github.com/openzipkin/brave</url>
 
   <organization>
     <name>OpenZipkin</name>
@@ -106,28 +106,6 @@
     <module>instrumentation</module>
     <module>propagation</module>
     <module>spring-beans</module>
-    <module>archive/brave-core</module>
-    <module>archive/brave-http</module>
-    <module>archive/brave-http-tests</module>
-    <module>archive/brave-core-spring</module>
-    <module>archive/brave-resteasy-spring</module>
-    <module>archive/brave-resteasy3-spring</module>
-    <module>archive/brave-spancollector-http</module>
-    <module>archive/brave-spancollector-scribe</module>
-    <module>archive/brave-spancollector-kafka</module>
-    <module>archive/brave-spancollector-local</module>
-    <module>archive/brave-sampler-zookeeper</module>
-    <module>archive/brave-jersey</module>
-    <module>archive/brave-jaxrs2</module>
-    <module>archive/brave-grpc</module>
-    <module>archive/brave-apache-http-interceptors</module>
-    <module>archive/brave-spring-web-servlet-interceptor</module>
-    <module>archive/brave-spring-resttemplate-interceptors</module>
-    <module>archive/brave-mysql</module>
-    <module>archive/brave-web-servlet-filter</module>
-    <module>archive/brave-okhttp</module>
-    <module>archive/brave-p6spy</module>
-    <module>archive/brave-sparkjava</module>
   </modules>
 
   <distributionManagement>
@@ -165,27 +143,12 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>brave-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>brave-tests</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave-http</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-web-servlet-filter</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>brave-jaxrs2</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
