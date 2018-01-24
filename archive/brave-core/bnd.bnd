@@ -1,9 +1,0 @@
-Import-Package: \
-  !zipkin.internal,\
-  !zipkin2.internal*,\
-  !brave.internal*,\
-  *
-Export-Package: \
-	com.twitter.zipkin.gen,\
-	com.github.kristofa.brave,\
-	com.github.kristofa.brave.internal;braveinternal=true;mandatory:=braveinternal

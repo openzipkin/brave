@@ -656,7 +656,10 @@ Brave 4 was designed to live alongside Brave 3. Using `TracerAdapter`,
 you can navigate between apis, buying you time to update as appropriate.
 
 Concepts are explained below, and there's an elaborate example of interop
-[here](../archive/brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
+[here](https://github.com/openzipkin/brave/blob/4.13.4/archive/brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
+
+Note: The last version of Brave 3 types is `io.zipkin.brave:brave-core:4.13.4`
+`TracerAdapter` also should work with later versions of `io.zipkin.brave:brave`
 
 ### Creating a Brave 3 instance
 If your code uses Brave 3 apis, all you need to do is use `TracerAdapter`
