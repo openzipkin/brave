@@ -196,7 +196,7 @@ public final class Tracer {
     // If the sampled flag was left unset, we need to make the decision here
     if (context.sampled() == null) { // then the caller didn't contribute data
       context = context.toBuilder().sampled(sampler.isSampled(context.traceId())).build();
-    } else { // we are contributing to the same span ID
+    } else if (context.sampled()) { // we are recording and contributing to the same span ID
       recorder.setShared(context);
     }
     return toSpan(context);
