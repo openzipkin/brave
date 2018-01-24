@@ -64,7 +64,6 @@ abstract class SpanFactory {
       return Brave.toSpan(maybeParent.toBuilder()
           .parentId(maybeParent.spanId)
           .spanId(newSpanId)
-          .shared(false)
           .build());
     }
 
@@ -74,11 +73,10 @@ abstract class SpanFactory {
       if (context.sampled() == null) {
         return Brave.toSpan(context.toBuilder()
             .sampled(sampler().isSampled(context.traceId))
-            .shared(false)
             .build());
       } else if (context.sampled()) {
         // We know an instrumented caller initiated the trace if they sampled it
-        return Brave.toSpan(context.toBuilder().shared(true).build());
+        return Brave.toSpan(context).setShared();
       } else {
         return Brave.toSpan(context);
       }

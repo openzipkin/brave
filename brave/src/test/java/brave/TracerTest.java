@@ -1,8 +1,10 @@
 package brave;
 
+import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
@@ -18,15 +20,19 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracerTest {
+  List<zipkin2.Span> spans = new ArrayList<>();
+
   Tracer tracer = Tracing.newBuilder()
       .spanReporter(new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
+          spans.add(span);
         }
 
         @Override public String toString() {
           return "MyReporter{}";
         }
       })
+      .currentTraceContext(new StrictCurrentTraceContext())
       .localEndpoint(Endpoint.newBuilder().serviceName("my-service").build())
       .build().tracer();
 
@@ -111,9 +117,6 @@ public class TracerTest {
   }
 
   @Test public void newTrace_debug_flag() {
-    List<zipkin2.Span> spans = new ArrayList<>();
-    tracer = Tracing.newBuilder().spanReporter(spans::add).build().tracer();
-
     Span root = tracer.newTrace(SamplingFlags.DEBUG).start();
     root.finish();
 
@@ -137,25 +140,24 @@ public class TracerTest {
   @Test public void join_setsShared() {
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    assertThat(tracer.joinSpan(fromIncomingRequest).context())
-        .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+    tracer.joinSpan(fromIncomingRequest).start().finish();
+    assertThat(spans.get(0).shared())
+        .isTrue();
   }
 
   @Test public void join_createsChildWhenUnsupported() {
-    List<zipkin2.Span> spans = new ArrayList<>();
     tracer = Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build().tracer();
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
-    assertThat(shouldBeChild.shared())
-        .isFalse();
-    assertThat(shouldBeChild.parentId())
-        .isEqualTo(fromIncomingRequest.spanId());
+    tracer.joinSpan(fromIncomingRequest).start().finish();
+    assertThat(spans.get(0).shared())
+        .isNull();
+    assertThat(spans.get(0).parentId())
+        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
   }
 
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
-    List<zipkin2.Span> spans = new ArrayList<>();
     tracer = Tracing.newBuilder()
         .propagationFactory(new Propagation.Factory() {
           @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
@@ -166,11 +168,11 @@ public class TracerTest {
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
-    assertThat(shouldBeChild.shared())
-        .isFalse();
-    assertThat(shouldBeChild.parentId())
-        .isEqualTo(fromIncomingRequest.spanId());
+    tracer.joinSpan(fromIncomingRequest).start().finish();
+    assertThat(spans.get(0).shared())
+        .isNull();
+    assertThat(spans.get(0).parentId())
+        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
   }
 
   @Test public void join_noop() {
@@ -246,10 +248,10 @@ public class TracerTest {
 
   /** A child span is not sharing a span ID with its parent by definition */
   @Test public void newChild_isntShared() {
-    TraceContext parent = tracer.newTrace().context();
+    tracer.newTrace().start().finish();
 
-    assertThat(tracer.newChild(parent).context().shared())
-        .isFalse();
+    assertThat(spans.get(0).shared())
+        .isNull();
   }
 
   @Test public void newChild_noop() {

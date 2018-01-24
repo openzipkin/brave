@@ -63,7 +63,6 @@ public final class SpanId {
     this.parentId = builder.nullableParentId != null ? builder.nullableParentId : this.traceId;
     this.spanId = builder.spanId;
     this.flags = builder.flags;
-    this.shared = builder.shared;
   }
 
   /** Deserializes this from a big-endian byte array */
@@ -184,15 +183,8 @@ public final class SpanId {
   /** Raw flags encoded in {@link #bytes()} */
   public final long flags;
 
-  /**
-   * True if we are contributing to a span started by another tracer (ex on a different host).
-   * Defaults to false.
-   *
-   * <p>When an RPC trace is client-originated, it will be sampled and the same span ID is used for
-   * the server side. However, the server shouldn't set span.timestamp or duration since it didn't
-   * start the span.
-   */
-  public final boolean shared;
+  /** @deprecated it is unnecessary overhead to propagate this property */
+  @Deprecated public final boolean shared = false;
 
   /** Serializes this into a big-endian byte array */
   public byte[] bytes() {
@@ -294,7 +286,7 @@ public final class SpanId {
       this.nullableParentId = source.nullableParentId();
       this.spanId = source.spanId;
       this.flags = source.flags;
-      this.shared = source.shared;
+      this.shared = false;
     }
 
     /** @see SpanId#traceIdHigh */
@@ -346,9 +338,8 @@ public final class SpanId {
       return this;
     }
 
-    /** @see SpanId#shared */
-    public Builder shared(boolean shared) {
-      this.shared = shared;
+    /** @deprecated it is unnecessary overhead to propagate this property */
+    @Deprecated public Builder shared(boolean shared) {
       return this;
     }
 

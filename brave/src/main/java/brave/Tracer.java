@@ -194,13 +194,12 @@ public final class Tracer {
     if (!supportsJoin) return newChild(context);
     // If we are joining a trace, we are sharing IDs with the caller
     // If the sampled flag was left unset, we need to make the decision here
-    TraceContext.Builder builder = context.toBuilder();
-    if (context.sampled() == null) {
-      builder.sampled(sampler.isSampled(context.traceId()));
-    } else {
-      builder.shared(true);
+    if (context.sampled() == null) { // then the caller didn't contribute data
+      context = context.toBuilder().sampled(sampler.isSampled(context.traceId())).build();
+    } else { // we are contributing to the same span ID
+      recorder.setShared(context);
     }
-    return toSpan(builder.build());
+    return toSpan(context);
   }
 
   /**
@@ -256,7 +255,6 @@ public final class Tracer {
       return toSpan(parent.toBuilder() // copies "extra" from the parent
           .spanId(nextId)
           .parentId(parent.spanId())
-          .shared(false)
           .sampled(sampled)
           .build());
     }

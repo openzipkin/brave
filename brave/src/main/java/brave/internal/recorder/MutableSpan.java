@@ -22,13 +22,17 @@ final class MutableSpan {
         .parentId(context.parentId() != null ? HexCodec.toLowerHex(context.parentId()) : null)
         .id(HexCodec.toLowerHex(context.spanId()))
         .debug(context.debug() ? true : null)
-        .shared(context.shared() ? true : null)
         .localEndpoint(localEndpoint);
     finished = false;
   }
 
   MutableSpan start() {
     return start(clock.currentTimeMicroseconds());
+  }
+
+  synchronized MutableSpan setShared() {
+    span.shared(true);
+    return this;
   }
 
   synchronized MutableSpan start(long timestamp) {
