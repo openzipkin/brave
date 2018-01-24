@@ -146,6 +146,18 @@ public class ExtraFieldPropagationTest {
         .isNull();
   }
 
+  @Test public void set_ignoresUnconfiguredField() {
+    ExtraFieldPropagation.set(context, "balloon-color", "red");
+
+    assertThat(context.extra().get(0))
+        .hasToString("ExtraFieldPropagation{}");
+  }
+
+  @Test public void get_ignoresUnconfiguredField() {
+    assertThat(ExtraFieldPropagation.get("balloon-color"))
+        .isNull();
+  }
+
   @Test public void current_set() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
