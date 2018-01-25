@@ -311,6 +311,27 @@ public class ExtraFieldPropagationTest {
         .containsEntry("x-amzn-trace-id", awsTraceId);
   }
 
+  @Test public void getAll_extracted() {
+    injector.inject(context, carrier);
+    carrier.put("x-amzn-trace-id", awsTraceId);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+
+    assertThat(ExtraFieldPropagation.getAll(extracted))
+        .hasSize(1)
+        .containsEntry("x-amzn-trace-id", awsTraceId);
+  }
+
+  @Test public void getAll_extractedWithContext() {
+    carrier.put("x-amzn-trace-id", awsTraceId);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+
+    assertThat(ExtraFieldPropagation.getAll(extracted))
+        .hasSize(1)
+        .containsEntry("x-amzn-trace-id", awsTraceId);
+  }
+
   @Test public void getAll_two() {
     injector.inject(context, carrier);
     carrier.put("x-amzn-trace-id", awsTraceId);
