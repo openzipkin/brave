@@ -123,12 +123,11 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertThat(spans).allSatisfy(s -> {
-      assertThat(s.traceId()).isEqualTo(traceId);
-      assertThat(s.parentId()).isEqualTo(parentId);
-      assertThat(s.id()).isEqualTo(spanId);
-      assertThat(s.shared()).isTrue();
-    });
+    Span s = tryTakeSpan();
+    assertThat(s.traceId()).isEqualTo(traceId);
+    assertThat(s.parentId()).isEqualTo(parentId);
+    assertThat(s.id()).isEqualTo(spanId);
+    assertThat(s.shared()).isTrue();
   }
 
   @Test public void createsChildWhenJoinDisabled() throws Exception {
@@ -149,6 +148,7 @@ public class ITTracingServerInterceptor {
             headers.put(Key.of("X-B3-TraceId", ASCII_STRING_MARSHALLER), traceId);
             headers.put(Key.of("X-B3-ParentSpanId", ASCII_STRING_MARSHALLER), parentId);
             headers.put(Key.of("X-B3-SpanId", ASCII_STRING_MARSHALLER), spanId);
+            headers.put(Key.of("X-B3-Sampled", ASCII_STRING_MARSHALLER), "1");
             super.start(responseListener, headers);
           }
         };
@@ -157,12 +157,11 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertThat(spans).allSatisfy(s -> {
-      assertThat(s.traceId()).isEqualTo(traceId);
-      assertThat(s.parentId()).isEqualTo(spanId);
-      assertThat(s.id()).isNotEqualTo(spanId);
-      assertThat(s.shared()).isFalse();
-    });
+    Span s = tryTakeSpan();
+    assertThat(s.traceId()).isEqualTo(traceId);
+    assertThat(s.parentId()).isEqualTo(spanId);
+    assertThat(s.id()).isNotEqualTo(spanId);
+    assertThat(s.shared()).isNull();
   }
 
   @Test public void samplingDisabled() throws Exception {
@@ -171,8 +170,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans)
-        .isEmpty();
+    assertThat(spans).isEmpty();
   }
 
   /**
@@ -206,17 +204,15 @@ public class ITTracingServerInterceptor {
   @Test public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.SERVER);
+    assertThat(tryTakeSpan().kind())
+        .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("helloworld.greeter/sayhello");
+    assertThat(tryTakeSpan().name())
+        .isEqualTo("helloworld.greeter/sayhello");
   }
 
   @Test public void addsErrorTagOnException() throws Exception {
@@ -225,7 +221,7 @@ public class ITTracingServerInterceptor {
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+      assertThat(tryTakeSpan().tags()).containsExactly(
           entry("error", "UNKNOWN"),
           entry("grpc.status_code", "UNKNOWN")
       );
@@ -258,8 +254,9 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans.getFirst().name()).isEqualTo("unary");
-    assertThat(spans).flatExtracting(s -> s.tags().keySet()).containsExactlyInAnyOrder(
+    Span span = tryTakeSpan();
+    assertThat(span.name()).isEqualTo("unary");
+    assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
         "grpc.message_received", "grpc.message_sent",
         "grpc.message_received.visible", "grpc.message_sent.visible"
     );
@@ -278,9 +275,8 @@ public class ITTracingServerInterceptor {
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
         .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).hasSize(10);
-    assertThat(spans).hasSize(1);
     // all response messages are tagged to the same span
-    assertThat(spans.getFirst().tags()).hasSize(10);
+    assertThat(tryTakeSpan().tags()).hasSize(10);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
@@ -289,5 +285,14 @@ public class ITTracingServerInterceptor {
         .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
+  }
+
+  // Flake detection logic. If the test fails after the retry it might not be a timing issue.
+  Span tryTakeSpan() throws InterruptedException {
+    if (spans.isEmpty()) {
+      testLogger.warn("delayed getting a span; retrying");
+      Thread.sleep(100);
+    }
+    return spans.poll();
   }
 }
