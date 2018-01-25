@@ -183,20 +183,16 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return getAll(context);
   }
 
-  /** Returns a mapping of fields in the given trace context, or empty if there are none. */
+  /** Returns a mapping of any fields in the extraction result. */
+  public static Map<String, String> getAll(TraceContextOrSamplingFlags extracted) {
+    if (extracted == null) throw new NullPointerException("extracted == null");
+    return extracted.context() != null ? getAll(extracted.context()) : getAll(extracted.extra());
+  }
+
+  /** Returns a mapping of any fields in the trace context. */
   public static Map<String, String> getAll(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    Extra extra = findExtra(context.extra());
-    if (extra == null) return Collections.emptyMap();
-    String[] elements = extra.values;
-    if (elements == null) return Collections.emptyMap();
-
-    Map<String, String> result = new LinkedHashMap<>();
-    for (int i = 0, length = elements.length; i<length; i++) {
-      String value = elements[i];
-      if (value != null) result.put(extra.fieldNames[i], value);
-    }
-    return result;
+    return getAll(context.extra());
   }
 
   @Nullable static TraceContext currentTraceContext() {
@@ -460,6 +456,20 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       name = name.trim();
       if (name.isEmpty()) throw new IllegalArgumentException("names[" + i + "] is empty");
       result[i] = name.toLowerCase(Locale.ROOT);
+    }
+    return result;
+  }
+
+  static Map<String, String> getAll(List<Object> extraList) {
+    Extra extra = findExtra(extraList);
+    if (extra == null) return Collections.emptyMap();
+    String[] elements = extra.values;
+    if (elements == null) return Collections.emptyMap();
+
+    Map<String, String> result = new LinkedHashMap<>();
+    for (int i = 0, length = elements.length; i<length; i++) {
+      String value = elements[i];
+      if (value != null) result.put(extra.fieldNames[i], value);
     }
     return result;
   }
