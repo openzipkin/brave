@@ -33,7 +33,7 @@ public class TracerTest {
         }
       })
       .currentTraceContext(new StrictCurrentTraceContext())
-      .localEndpoint(Endpoint.newBuilder().serviceName("my-service").build())
+      .endpoint(Endpoint.newBuilder().serviceName("my-service").build())
       .build().tracer();
 
   @After public void close() {
@@ -56,24 +56,23 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.localEndpoint.serviceName")
+    assertThat(tracer).extracting("recorder.spanMap.endpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.localEndpoint.serviceName")
+    assertThat(tracer).extracting("recorder.spanMap.endpoint.serviceName")
         .containsExactly("unknown");
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
-    Endpoint localEndpoint = Endpoint.newBuilder().serviceName("my-bar").build();
-    tracer = Tracing.newBuilder().localServiceName("my-foo")
-        .localEndpoint(localEndpoint).build().tracer();
+    Endpoint endpoint = Endpoint.newBuilder().serviceName("my-bar").build();
+    tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.localEndpoint")
-        .containsExactly(localEndpoint);
+    assertThat(tracer).extracting("recorder.spanMap.endpoint")
+        .containsExactly(endpoint);
   }
 
   @Test public void clock() {

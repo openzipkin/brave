@@ -26,7 +26,7 @@ public abstract class Platform {
 
   private static final Platform PLATFORM = findPlatform();
 
-  volatile Endpoint localEndpoint;
+  volatile Endpoint endpoint;
 
   /** Ensure we don't raise a {@linkplain ClassNotFoundException} calling deprecated methods */
   public abstract boolean zipkinV1Present();
@@ -49,19 +49,19 @@ public abstract class Platform {
     }
   }
 
-  public Endpoint localEndpoint() {
+  public Endpoint endpoint() {
     // uses synchronized variant of double-checked locking as getting the endpoint can be expensive
-    if (localEndpoint == null) {
+    if (endpoint == null) {
       synchronized (this) {
-        if (localEndpoint == null) {
-          localEndpoint = produceLocalEndpoint();
+        if (endpoint == null) {
+          endpoint = produceEndpoint();
         }
       }
     }
-    return localEndpoint;
+    return endpoint;
   }
 
-  Endpoint produceLocalEndpoint() {
+  Endpoint produceEndpoint() {
     Endpoint.Builder builder = Endpoint.newBuilder().serviceName("unknown");
     try {
       Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();

@@ -26,18 +26,17 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest({MutableSpanMap.class, MutableSpan.class})
 public class MutableSpanMapTest {
-  Endpoint localEndpoint = Platform.get().localEndpoint();
+  Endpoint endpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
-  MutableSpanMap map =
-      new MutableSpanMap(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
+  MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0L, spans::add, new AtomicBoolean(false));
 
   @After public void close() {
     Tracing.current().close();
   }
 
   @Test
-  public void getOrCreate_lazyCreatesASpan() throws Exception {
+  public void getOrCreate_lazyCreatesASpan() {
     MutableSpan span = map.getOrCreate(context);
 
     assertThat(span).isNotNull();
@@ -45,7 +44,7 @@ public class MutableSpanMapTest {
 
   /** Ensure we use the same clock for traces that started in-process */
   @Test
-  public void getOrCreate_reusesClockFromParent() throws Exception {
+  public void getOrCreate_reusesClockFromParent() {
     TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
     TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
@@ -71,13 +70,13 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void getOrCreate_cachesReference() throws Exception {
+  public void getOrCreate_cachesReference() {
     MutableSpan span = map.getOrCreate(context);
     assertThat(map.getOrCreate(context)).isSameAs(span);
   }
 
   @Test
-  public void getOrCreate_resolvesHashCodeCollisions() throws Exception {
+  public void getOrCreate_resolvesHashCodeCollisions() {
     // intentionally clash on hashCode, but not equals
     TraceContext context1 = context.toBuilder().spanId(1).build();
     TraceContext context2 = context.toBuilder().spanId(-2L).build();
@@ -90,7 +89,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void remove_clearsReference() throws Exception {
+  public void remove_clearsReference() {
     map.getOrCreate(context);
     map.remove(context);
 
@@ -99,7 +98,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void remove_doesntReport() throws Exception {
+  public void remove_doesntReport() {
     map.getOrCreate(context);
     map.remove(context);
 
@@ -107,13 +106,13 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void remove_okWhenDoesntExist() throws Exception {
+  public void remove_okWhenDoesntExist() {
     MutableSpan span = map.remove(context);
     assertThat(span).isNull();
   }
 
   @Test
-  public void remove_resolvesHashCodeCollisions() throws Exception {
+  public void remove_resolvesHashCodeCollisions() {
     // intentionally clash on hashCode, but not equals
     TraceContext context1 = context.toBuilder().spanId(1).build();
     TraceContext context2 = context.toBuilder().spanId(-2L).build();
@@ -133,7 +132,7 @@ public class MutableSpanMapTest {
 
   /** mainly ensures internals aren't dodgy on null */
   @Test
-  public void remove_whenSomeReferencesAreCleared() throws Exception {
+  public void remove_whenSomeReferencesAreCleared() {
     map.getOrCreate(context);
     pretendGCHappened();
     map.remove(context);
@@ -144,7 +143,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void getOrCreate_whenSomeReferencesAreCleared() throws Exception {
+  public void getOrCreate_whenSomeReferencesAreCleared() {
     map.getOrCreate(context);
     pretendGCHappened();
     map.getOrCreate(context);
@@ -160,7 +159,7 @@ public class MutableSpanMapTest {
    * <p>This is a customized version of https://github.com/raphw/weak-lock-free/blob/master/src/test/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMapTest.java
    */
   @Test
-  public void reportOrphanedSpans_afterGC() throws Exception {
+  public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
     map.getOrCreate(context1);
     TraceContext context2 = context.toBuilder().spanId(2).build();
@@ -190,7 +189,7 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void noop_afterGC() throws Exception {
+  public void noop_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
     map.getOrCreate(context1);
     TraceContext context2 = context.toBuilder().spanId(2).build();
@@ -222,8 +221,8 @@ public class MutableSpanMapTest {
 
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
-  public void reportOrphanedSpans_whenReporterDies() throws Exception {
-    MutableSpanMap map = new MutableSpanMap(localEndpoint, () -> 0, span ->
+  public void reportOrphanedSpans_whenReporterDies() {
+    MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0, span ->
     {
       throw new RuntimeException("die!");
     }, new AtomicBoolean(true));
@@ -248,7 +247,7 @@ public class MutableSpanMapTest {
 
   /** Debugging should show what the spans are, as well any references pending clear. */
   @Test
-  public void toString_saysWhatReferentsAre() throws Exception {
+  public void toString_saysWhatReferentsAre() {
     assertThat(map.toString())
         .isEqualTo("MutableSpanMap[]");
 
@@ -287,8 +286,13 @@ public class MutableSpanMapTest {
     ((MutableSpanMap.RealKey) map.delegate.keySet().iterator().next()).clear();
   }
 
-  static void blockOnGC() throws InterruptedException {
+  static void blockOnGC() {
     System.gc();
-    Thread.sleep(200L);
+    try {
+      Thread.sleep(200L);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
   }
 }

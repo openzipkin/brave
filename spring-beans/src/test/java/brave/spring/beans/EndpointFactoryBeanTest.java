@@ -17,24 +17,24 @@ public class EndpointFactoryBeanTest {
 
   @Test public void serviceName() {
     context = new XmlBeans(""
-        + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+        + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
         + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
         + "</bean>"
     );
 
-    assertThat(context.getBean("localEndpoint", Endpoint.class))
+    assertThat(context.getBean("endpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder().serviceName("brave-webmvc-example").build());
   }
 
   @Test public void ip() {
     context = new XmlBeans(""
-        + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+        + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
         + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
         + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
         + "</bean>"
     );
 
-    assertThat(context.getBean("localEndpoint", Endpoint.class))
+    assertThat(context.getBean("endpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -43,14 +43,14 @@ public class EndpointFactoryBeanTest {
 
   @Test public void ip_malformed() {
     context = new XmlBeans(""
-        + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+        + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
         + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
         + "  <property name=\"ip\" value=\"localhost\"/>\n"
         + "</bean>"
     );
 
     try {
-      context.getBean("localEndpoint", Endpoint.class);
+      context.getBean("endpoint", Endpoint.class);
       failBecauseExceptionWasNotThrown(BeanCreationException.class);
     } catch (BeanCreationException e) {
       assertThat(e)
@@ -60,14 +60,14 @@ public class EndpointFactoryBeanTest {
 
   @Test public void port() {
     context = new XmlBeans(""
-        + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+        + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
         + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
         + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
         + "  <property name=\"port\" value=\"8080\"/>\n"
         + "</bean>"
     );
 
-    assertThat(context.getBean("localEndpoint", Endpoint.class))
+    assertThat(context.getBean("endpoint", Endpoint.class))
         .isEqualTo(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
