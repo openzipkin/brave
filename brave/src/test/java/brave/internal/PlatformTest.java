@@ -31,7 +31,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PrepareForTest({Platform.class, NetworkInterface.class})
 public class PlatformTest {
   Endpoint unknownEndpoint = Endpoint.newBuilder().serviceName("unknown").build();
-  Platform platform = Platform.Jre7.buildIfSupported(true);
+  Platform platform = Platform.Jre7.buildIfSupported();
 
   @Test public void clock_hasNiceToString_jre7() {
     assertThat(platform.clock())
@@ -39,7 +39,7 @@ public class PlatformTest {
   }
 
   @Test public void clock_hasNiceToString_jre9() {
-    Platform platform = new Platform.Jre9(true);
+    Platform platform = new Platform.Jre9();
 
     assertThat(platform.clock())
         .hasToString("Clock.systemUTC().instant()");
@@ -56,7 +56,7 @@ public class PlatformTest {
     when(System.currentTimeMillis())
         .thenReturn(1465510280_000L); // Thursday, June 9, 2016 10:11:20 PM
 
-    long traceIdHigh = Platform.Jre7.buildIfSupported(true).nextTraceIdHigh();
+    long traceIdHigh = Platform.Jre7.buildIfSupported().nextTraceIdHigh();
 
     assertThat(HexCodec.toLowerHex(traceIdHigh)).startsWith("5759e988");
   }
@@ -69,15 +69,6 @@ public class PlatformTest {
 
     assertThat(HexCodec.toLowerHex(traceIdHigh))
         .isEqualTo("5759e988ffffffff");
-  }
-
-  @Test public void zipkinV1Absent() throws ClassNotFoundException {
-    mockStatic(Class.class);
-    when(Class.forName(zipkin.Endpoint.class.getName()))
-        .thenThrow(ClassNotFoundException.class);
-
-    assertThat(Platform.findPlatform().zipkinV1Present())
-        .isFalse();
   }
 
   @Test public void localEndpoint_lazySet() {

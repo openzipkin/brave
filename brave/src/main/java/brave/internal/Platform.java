@@ -27,9 +27,6 @@ public abstract class Platform {
 
   volatile Endpoint endpoint;
 
-  /** Ensure we don't raise a {@linkplain ClassNotFoundException} calling deprecated methods */
-  public abstract boolean zipkinV1Present();
-
   public Reporter<zipkin2.Span> reporter() {
     return LoggingReporter.INSTANCE;
   }
@@ -91,25 +88,16 @@ public abstract class Platform {
 
   /** Attempt to match the host runtime to a capable Platform implementation. */
   static Platform findPlatform() {
-    // Find Zipkin v1 methods
-    boolean zipkinV1Present;
-    try {
-      Class.forName("zipkin.Endpoint");
-      zipkinV1Present = true;
-    } catch (ClassNotFoundException e) {
-      zipkinV1Present = false;
-    }
-
-    Platform jre9 = Jre9.buildIfSupported(zipkinV1Present);
+    Platform jre9 = Jre9.buildIfSupported();
 
     if (jre9 != null) return jre9;
 
-    Platform jre7 = Jre7.buildIfSupported(zipkinV1Present);
+    Platform jre7 = Jre7.buildIfSupported();
 
     if (jre7 != null) return jre7;
 
     // compatible with JRE 6
-    return new Jre6(zipkinV1Present);
+    return new Jre6();
   }
 
   /**
@@ -144,12 +132,12 @@ public abstract class Platform {
 
   static class Jre9 extends Jre7 {
 
-    static Jre9 buildIfSupported(boolean zipkinV1Present) {
+    static Jre9 buildIfSupported() {
       // Find JRE 9 new methods
       try {
         Class zoneId = Class.forName("java.time.ZoneId");
         Class.forName("java.time.Clock").getMethod("tickMillis", zoneId);
-        return new Jre9(zipkinV1Present);
+        return new Jre9();
       } catch (ClassNotFoundException e) {
         // pre JRE 8
       } catch (NoSuchMethodException e) {
@@ -172,30 +160,22 @@ public abstract class Platform {
       };
     }
 
-    Jre9(boolean zipkinV1Present) {
-      super(zipkinV1Present);
-    }
-
     @Override public String toString() {
-      return "Jre9{zipkinV1Present=" + zipkinV1Present + "}";
+      return "Jre9{}";
     }
   }
 
   static class Jre7 extends Platform {
 
-    static Jre7 buildIfSupported(boolean zipkinV1Present) {
+    static Jre7 buildIfSupported() {
       // Find JRE 7 new methods
       try {
         Class.forName("java.util.concurrent.ThreadLocalRandom");
-        return new Jre7(zipkinV1Present);
+        return new Jre7();
       } catch (ClassNotFoundException e) {
         // pre JRE 7
       }
       return null;
-    }
-
-    @Override public boolean zipkinV1Present() {
-      return zipkinV1Present;
     }
 
     @IgnoreJRERequirement @Override public long randomLong() {
@@ -206,14 +186,8 @@ public abstract class Platform {
       return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current().nextInt());
     }
 
-    final boolean zipkinV1Present;
-
-    Jre7(boolean zipkinV1Present) {
-      this.zipkinV1Present = zipkinV1Present;
-    }
-
     @Override public String toString() {
-      return "Jre7{zipkinV1Present=" + zipkinV1Present + "}";
+      return "Jre7{}";
     }
   }
 
@@ -225,10 +199,6 @@ public abstract class Platform {
 
   static class Jre6 extends Platform {
 
-    @Override public boolean zipkinV1Present() {
-      return zipkinV1Present;
-    }
-
     @Override public long randomLong() {
       return prng.nextLong();
     }
@@ -237,16 +207,14 @@ public abstract class Platform {
       return nextTraceIdHigh(prng.nextInt());
     }
 
-    final boolean zipkinV1Present;
     final Random prng;
 
-    Jre6(boolean zipkinV1Present) {
-      this.zipkinV1Present = zipkinV1Present;
+    Jre6() {
       this.prng = new Random(System.nanoTime());
     }
 
     @Override public String toString() {
-      return "Jre6{zipkinV1Present=" + zipkinV1Present + "}";
+      return "Jre6{}";
     }
   }
 }

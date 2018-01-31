@@ -7,10 +7,4 @@ public abstract class HttpClientAdapter<Req, Resp> extends HttpAdapter<Req, Resp
   public boolean parseServerAddress(Req req, Endpoint.Builder builder) {
     return false;
   }
-
-  /** @deprecated please use {@link #parseServerAddress(Object, zipkin2.Endpoint.Builder)}*/
-  @Deprecated
-  public boolean parseServerAddress(Req req, zipkin.Endpoint.Builder builder) {
-    return false;
-  }
 }
