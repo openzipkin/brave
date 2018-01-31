@@ -7,7 +7,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.Callable;
@@ -40,7 +39,7 @@ public class PlatformTest {
   }
 
   @Test public void clock_hasNiceToString_jre9() {
-    Platform platform = new AutoValue_Platform_Jre9(true);
+    Platform platform = new Platform.Jre9(true);
 
     assertThat(platform.clock())
         .hasToString("Clock.systemUTC().instant()");
@@ -65,10 +64,8 @@ public class PlatformTest {
   @Test public void randomLong_whenRandomIsMostNegative() {
     mockStatic(System.class);
     when(System.currentTimeMillis()).thenReturn(1465510280_000L);
-    Random prng = mock(Random.class);
-    when(prng.nextInt()).thenReturn(0xffffffff);
 
-    long traceIdHigh = Platform.nextTraceIdHigh(prng);
+    long traceIdHigh = Platform.nextTraceIdHigh(0xffffffff);
 
     assertThat(HexCodec.toLowerHex(traceIdHigh))
         .isEqualTo("5759e988ffffffff");

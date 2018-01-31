@@ -3,7 +3,6 @@ package brave.internal;
 import brave.Clock;
 import brave.Tracer;
 import brave.Tracing;
-import com.google.auto.value.AutoValue;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.security.SecureRandom;
@@ -110,7 +109,7 @@ public abstract class Platform {
     if (jre7 != null) return jre7;
 
     // compatible with JRE 6
-    return Jre6.build(zipkinV1Present);
+    return new Jre6(zipkinV1Present);
   }
 
   /**
@@ -143,15 +142,14 @@ public abstract class Platform {
     };
   }
 
-  @AutoValue
-  static abstract class Jre9 extends Platform {
+  static class Jre9 extends Jre7 {
 
     static Jre9 buildIfSupported(boolean zipkinV1Present) {
       // Find JRE 9 new methods
       try {
         Class zoneId = Class.forName("java.time.ZoneId");
         Class.forName("java.time.Clock").getMethod("tickMillis", zoneId);
-        return new AutoValue_Platform_Jre9(zipkinV1Present);
+        return new Jre9(zipkinV1Present);
       } catch (ClassNotFoundException e) {
         // pre JRE 8
       } catch (NoSuchMethodException e) {
@@ -160,8 +158,7 @@ public abstract class Platform {
       return null;
     }
 
-    @IgnoreJRERequirement
-    @Override public Clock clock() {
+    @IgnoreJRERequirement @Override public Clock clock() {
       return new Clock() {
         // we could use jdk.internal.misc.VM to do this more efficiently, but it is internal
         @Override public long currentTimeMicroseconds() {
@@ -175,63 +172,81 @@ public abstract class Platform {
       };
     }
 
-    @IgnoreJRERequirement
-    @Override public long randomLong() {
-      return java.util.concurrent.ThreadLocalRandom.current().nextLong();
+    Jre9(boolean zipkinV1Present) {
+      super(zipkinV1Present);
     }
 
-    @IgnoreJRERequirement
-    @Override public long nextTraceIdHigh() {
-      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current());
+    @Override public String toString() {
+      return "Jre9{zipkinV1Present=" + zipkinV1Present + "}";
     }
   }
 
-  @AutoValue
-  static abstract class Jre7 extends Platform {
+  static class Jre7 extends Platform {
 
     static Jre7 buildIfSupported(boolean zipkinV1Present) {
       // Find JRE 7 new methods
       try {
         Class.forName("java.util.concurrent.ThreadLocalRandom");
-        return new AutoValue_Platform_Jre7(zipkinV1Present);
+        return new Jre7(zipkinV1Present);
       } catch (ClassNotFoundException e) {
         // pre JRE 7
       }
       return null;
     }
 
-    @IgnoreJRERequirement
-    @Override public long randomLong() {
+    @Override public boolean zipkinV1Present() {
+      return zipkinV1Present;
+    }
+
+    @IgnoreJRERequirement @Override public long randomLong() {
       return java.util.concurrent.ThreadLocalRandom.current().nextLong();
     }
 
-    @IgnoreJRERequirement
-    @Override public long nextTraceIdHigh() {
-      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current());
+    @IgnoreJRERequirement @Override public long nextTraceIdHigh() {
+      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current().nextInt());
+    }
+
+    final boolean zipkinV1Present;
+
+    Jre7(boolean zipkinV1Present) {
+      this.zipkinV1Present = zipkinV1Present;
+    }
+
+    @Override public String toString() {
+      return "Jre7{zipkinV1Present=" + zipkinV1Present + "}";
     }
   }
 
-  static long nextTraceIdHigh(Random prng) {
+  static long nextTraceIdHigh(int random) {
     long epochSeconds = System.currentTimeMillis() / 1000;
-    int random = prng.nextInt();
     return (epochSeconds & 0xffffffffL) << 32
         | (random & 0xffffffffL);
   }
 
-  @AutoValue
-  static abstract class Jre6 extends Platform {
-    abstract Random prng();
+  static class Jre6 extends Platform {
 
-    static Jre6 build(boolean zipkinV1Present) {
-      return new AutoValue_Platform_Jre6(zipkinV1Present, new Random(System.nanoTime()));
+    @Override public boolean zipkinV1Present() {
+      return zipkinV1Present;
     }
 
     @Override public long randomLong() {
-      return prng().nextLong();
+      return prng.nextLong();
     }
 
     @Override public long nextTraceIdHigh() {
-      return nextTraceIdHigh(prng());
+      return nextTraceIdHigh(prng.nextInt());
+    }
+
+    final boolean zipkinV1Present;
+    final Random prng;
+
+    Jre6(boolean zipkinV1Present) {
+      this.zipkinV1Present = zipkinV1Present;
+      this.prng = new Random(System.nanoTime());
+    }
+
+    @Override public String toString() {
+      return "Jre6{zipkinV1Present=" + zipkinV1Present + "}";
     }
   }
 }
