@@ -12,10 +12,4 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
     String xForwardedFor = requestHeader(req, "X-Forwarded-For");
     return xForwardedFor != null && builder.parseIp(xForwardedFor);
   }
-
-  /** @deprecated Please use {@link #parseClientAddress(Object, Endpoint.Builder)} */
-  @Deprecated
-  public boolean parseClientAddress(Req req, zipkin.Endpoint.Builder builder) {
-    return false;
-  }
 }

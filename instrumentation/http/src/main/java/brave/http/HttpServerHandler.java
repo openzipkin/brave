@@ -80,18 +80,9 @@ public final class HttpServerHandler<Req, Resp> {
       ws.close();
     }
 
-    boolean parsedEndpoint = false;
-    if (Platform.get().zipkinV1Present()) {
-      zipkin.Endpoint.Builder deprecatedEndpoint = zipkin.Endpoint.builder().serviceName("");
-      if ((parsedEndpoint = adapter.parseClientAddress(request, deprecatedEndpoint))) {
-        span.remoteEndpoint(deprecatedEndpoint.build());
-      }
-    }
-    if (!parsedEndpoint) {
-      Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
-      if (adapter.parseClientAddress(request, remoteEndpoint)) {
-        span.remoteEndpoint(remoteEndpoint.build());
-      }
+    Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
+    if (adapter.parseClientAddress(request, remoteEndpoint)) {
+      span.remoteEndpoint(remoteEndpoint.build());
     }
     return span.start();
   }
