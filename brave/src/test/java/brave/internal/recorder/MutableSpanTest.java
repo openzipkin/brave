@@ -15,7 +15,7 @@ import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MutableSpanTest {
-  Endpoint localEndpoint = Platform.get().localEndpoint();
+  Endpoint localEndpoint = Platform.get().endpoint();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
 
   @After public void close() {

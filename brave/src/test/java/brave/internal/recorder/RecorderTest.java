@@ -14,7 +14,7 @@ import zipkin2.Endpoint;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecorderTest {
-  Endpoint localEndpoint = Platform.get().localEndpoint();
+  Endpoint localEndpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
   Recorder recorder = new Recorder(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));

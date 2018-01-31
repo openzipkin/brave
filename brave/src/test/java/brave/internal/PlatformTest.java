@@ -84,22 +84,22 @@ public class PlatformTest {
   }
 
   @Test public void localEndpoint_lazySet() {
-    assertThat(platform.localEndpoint).isNull(); // sanity check setup
+    assertThat(platform.endpoint).isNull(); // sanity check setup
 
-    assertThat(platform.localEndpoint())
+    assertThat(platform.endpoint())
         .isNotNull();
   }
 
   @Test public void localEndpoint_sameInstance() {
-    assertThat(platform.localEndpoint())
-        .isSameAs(platform.localEndpoint());
+    assertThat(platform.endpoint())
+        .isSameAs(platform.endpoint());
   }
 
   @Test public void produceLocalEndpoint_exceptionReadingNics() throws Exception {
     mockStatic(NetworkInterface.class);
     when(NetworkInterface.getNetworkInterfaces()).thenThrow(SocketException.class);
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint);
   }
 
@@ -110,13 +110,13 @@ public class PlatformTest {
     when(NetworkInterface.getNetworkInterfaces())
         .thenReturn(null);
 
-    assertThat(platform.localEndpoint())
+    assertThat(platform.endpoint())
         .isEqualTo(unknownEndpoint);
 
     when(NetworkInterface.getNetworkInterfaces())
         .thenReturn(new Vector<NetworkInterface>().elements());
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint);
   }
 
@@ -124,14 +124,14 @@ public class PlatformTest {
   @Test public void produceLocalEndpoint_noAddresses() throws Exception {
     nicWithAddress(null);
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint);
   }
 
   @Test public void produceLocalEndpoint_siteLocal_ipv4() throws Exception {
     nicWithAddress(InetAddress.getByAddress("local", new byte[] {(byte) 192, (byte) 168, 0, 1}));
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint.toBuilder().ip("192.168.0.1").build());
   }
 
@@ -139,21 +139,21 @@ public class PlatformTest {
     InetAddress ipv6 = Inet6Address.getByName("fec0:db8::c001");
     nicWithAddress(ipv6);
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint.toBuilder().ip(ipv6).build());
   }
 
   @Test public void produceLocalEndpoint_notSiteLocal_ipv4() throws Exception {
     nicWithAddress(InetAddress.getByAddress("external", new byte[] {1, 2, 3, 4}));
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint);
   }
 
   @Test public void produceLocalEndpoint_notSiteLocal_ipv6() throws Exception {
     nicWithAddress(Inet6Address.getByName("2001:db8::c001"));
 
-    assertThat(platform.produceLocalEndpoint())
+    assertThat(platform.produceEndpoint())
         .isEqualTo(unknownEndpoint);
   }
 
@@ -167,7 +167,7 @@ public class PlatformTest {
     // create all the tasks up front so that they are executed with no delay
     List<Callable<Endpoint>> tasks = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      tasks.add(() -> platform.localEndpoint());
+      tasks.add(() -> platform.endpoint());
     }
 
     ExecutorService executor = Executors.newFixedThreadPool(tasks.size());

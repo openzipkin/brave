@@ -64,18 +64,22 @@ public class Tracer {
       return this;
     }
 
-    /**
-     * @deprecated use {@link #localEndpoint(Endpoint)}, possibly with {@link
-     * zipkin.Endpoint#toV2()}
-     */
+    /** @deprecated use {@link #endpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()} */
     @Deprecated
     public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
-      return localEndpoint(localEndpoint.toV2());
+      return endpoint(localEndpoint.toV2());
     }
 
-    /** @see Tracing.Builder#localEndpoint(Endpoint) */
+    /** @deprecated use {@link #endpoint(Endpoint)} */
+    @Deprecated
     public Builder localEndpoint(Endpoint localEndpoint) {
-      delegate.localEndpoint(localEndpoint);
+      delegate.endpoint(localEndpoint);
+      return this;
+    }
+
+    /** @see Tracing.Builder#endpoint(Endpoint) */
+    public Builder endpoint(Endpoint endpoint) {
+      delegate.endpoint(endpoint);
       return this;
     }
 
