@@ -30,18 +30,18 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
 
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, MutableSpan> delegate = new ConcurrentHashMap<>(64);
-  final Endpoint localEndpoint;
+  final Endpoint endpoint;
   final Clock clock;
   final Reporter<zipkin2.Span> reporter;
   final AtomicBoolean noop;
 
   MutableSpanMap(
-      Endpoint localEndpoint,
+      Endpoint endpoint,
       Clock clock,
       Reporter<zipkin2.Span> reporter,
       AtomicBoolean noop
   ) {
-    this.localEndpoint = localEndpoint;
+    this.endpoint = endpoint;
     this.clock = clock;
     this.reporter = reporter;
     this.noop = noop;
@@ -63,7 +63,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
     }
 
-    MutableSpan newSpan = new MutableSpan(clock, context, localEndpoint);
+    MutableSpan newSpan = new MutableSpan(clock, context, endpoint);
     MutableSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
     return newSpan;

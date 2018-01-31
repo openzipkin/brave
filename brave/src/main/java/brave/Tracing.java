@@ -114,7 +114,7 @@ public abstract class Tracing implements Closeable {
 
   public static final class Builder {
     String localServiceName;
-    Endpoint localEndpoint;
+    Endpoint endpoint;
     Reporter<zipkin2.Span> reporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
@@ -125,7 +125,7 @@ public abstract class Tracing implements Closeable {
 
     /**
      * Controls the name of the service being traced, while still using a default site-local IP.
-     * This is an alternative to {@link #localEndpoint(Endpoint)}.
+     * This is an alternative to {@link #endpoint(Endpoint)}.
      *
      * @param localServiceName name of the service being traced. Defaults to "unknown".
      */
@@ -135,22 +135,29 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
-    /**
-     * @deprecated use {@link #localEndpoint(Endpoint)}, possibly with {@link
-     * zipkin.Endpoint#toV2()}
-     */
+    /** @deprecated use {@link #endpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()} */
     @Deprecated
     public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
       if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
-      return localEndpoint(localEndpoint.toV2());
+      return endpoint(localEndpoint.toV2());
+    }
+
+    /** @deprecated use {@link #endpoint(Endpoint)} which compiles without io.zipkin.java:zipkin */
+    // compiling a call to an overloaded method requires all types on the classpath.
+    @Deprecated
+    public Builder localEndpoint(Endpoint localEndpoint) {
+      return endpoint(localEndpoint);
     }
 
     /**
-     * @param localEndpoint Endpoint of the local service being traced. Defaults to site local.
+     * Sets the {@link zipkin2.Span#localEndpoint Endpoint of the local service} being traced.
+     * Defaults to a site local IP.
+     *
+     * <p>Use {@link #localServiceName} when only effecting the service name.
      */
-    public Builder localEndpoint(Endpoint localEndpoint) {
-      if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
-      this.localEndpoint = localEndpoint;
+    public Builder endpoint(Endpoint endpoint) {
+      if (endpoint == null) throw new NullPointerException("endpoint == null");
+      this.endpoint = endpoint;
       return this;
     }
 
@@ -269,10 +276,10 @@ public abstract class Tracing implements Closeable {
 
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
-      if (localEndpoint == null) {
-        localEndpoint = Platform.get().localEndpoint();
+      if (endpoint == null) {
+        endpoint = Platform.get().endpoint();
         if (localServiceName != null) {
-          localEndpoint = localEndpoint.toBuilder().serviceName(localServiceName).build();
+          endpoint = endpoint.toBuilder().serviceName(localServiceName).build();
         }
       }
       if (reporter == null) reporter = Platform.get().reporter();

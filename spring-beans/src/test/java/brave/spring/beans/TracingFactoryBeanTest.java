@@ -45,7 +45,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.spanMap.localEndpoint")
+        .extracting("tracer.recorder.spanMap.endpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
   }
@@ -64,7 +64,28 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.spanMap.localEndpoint")
+        .extracting("tracer.recorder.spanMap.endpoint")
+        .containsExactly(Endpoint.newBuilder()
+            .serviceName("brave-webmvc-example")
+            .ip("1.2.3.4")
+            .port(8080).build());
+  }
+
+  @Test public void endpoint() {
+    context = new XmlBeans(""
+        + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+        + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
+        + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
+        + "  <property name=\"port\" value=\"8080\"/>\n"
+        + "</bean>"
+        , ""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"endpoint\" ref=\"endpoint\"/>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.recorder.spanMap.endpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")

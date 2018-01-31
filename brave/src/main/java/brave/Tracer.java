@@ -64,18 +64,22 @@ public final class Tracer {
       return this;
     }
 
-    /**
-     * @deprecated use {@link #localEndpoint(Endpoint)}, possibly with {@link
-     * zipkin.Endpoint#toV2()}
-     */
+    /** @deprecated use {@link #endpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()} */
     @Deprecated
     public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
-      return localEndpoint(localEndpoint.toV2());
+      return endpoint(localEndpoint.toV2());
     }
 
-    /** @see Tracing.Builder#localEndpoint(Endpoint) */
+    /** @deprecated use {@link #endpoint(Endpoint)} */
+    @Deprecated
     public Builder localEndpoint(Endpoint localEndpoint) {
-      delegate.localEndpoint(localEndpoint);
+      delegate.endpoint(localEndpoint);
+      return this;
+    }
+
+    /** @see Tracing.Builder#endpoint(Endpoint) */
+    public Builder endpoint(Endpoint endpoint) {
+      delegate.endpoint(endpoint);
       return this;
     }
 
@@ -142,7 +146,7 @@ public final class Tracer {
     this.supportsJoin = builder.supportsJoin && propagationFactory.supportsJoin();
     this.clock = clock;
     this.reporter = builder.reporter;
-    this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
+    this.recorder = new Recorder(builder.endpoint, clock, builder.reporter, this.noop);
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();

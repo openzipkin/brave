@@ -14,7 +14,7 @@ import zipkin2.reporter.Reporter;
 public class TracingFactoryBean extends AbstractFactoryBean {
 
   String localServiceName;
-  Endpoint localEndpoint;
+  Endpoint localEndpoint, endpoint;
   Reporter<Span> spanReporter;
   Clock clock;
   Sampler sampler;
@@ -26,7 +26,8 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   @Override protected Tracing createInstance() throws Exception {
     Tracing.Builder builder = Tracing.newBuilder();
     if (localServiceName != null) builder.localServiceName(localServiceName);
-    if (localEndpoint != null) builder.localEndpoint(localEndpoint);
+    if (localEndpoint != null) builder.endpoint(localEndpoint);
+    if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
@@ -55,6 +56,10 @@ public class TracingFactoryBean extends AbstractFactoryBean {
 
   public void setLocalEndpoint(Endpoint localEndpoint) {
     this.localEndpoint = localEndpoint;
+  }
+
+  public void setEndpoint(Endpoint endpoint) {
+    this.endpoint = endpoint;
   }
 
   public void setSpanReporter(Reporter<Span> spanReporter) {
