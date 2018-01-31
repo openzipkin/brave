@@ -35,7 +35,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class PlatformBenchmarks {
-  static final Platform jre6 = Platform.Jre6.build(false);
+  static final Platform jre6 = new Platform.Jre6(false);
   static final Platform jre7 = Platform.Jre7.buildIfSupported(false);
   static final Platform jre9 = Platform.Jre9.buildIfSupported(false);
   static final Clock jre7Clock = jre7.clock();
