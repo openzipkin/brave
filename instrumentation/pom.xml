@@ -38,7 +38,6 @@
     <module>kafka-clients</module>
     <module>netty-codec-http</module>
     <module>vertx-web</module>
-    <module>spring-rabbit</module>
   </modules>
 
   <!-- ${project.groupId}:brave version is set in the root pom.
