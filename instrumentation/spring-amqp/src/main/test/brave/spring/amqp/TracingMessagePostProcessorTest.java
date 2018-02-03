@@ -1,18 +1,16 @@
-package brave.spring.rabbit;
+package brave.spring.amqp;
 
 import brave.Tracing;
 import brave.sampler.Sampler;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageBuilder;
-import org.springframework.amqp.core.MessageProperties;
-import zipkin2.Span;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

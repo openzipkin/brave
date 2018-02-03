@@ -32,6 +32,7 @@ public class TracingMessagePostProcessor implements MessagePostProcessor {
 
     final Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).start();
     injector.inject(span.context(), message.getMessageProperties());
+    span.finish();
     return message;
   }
 }

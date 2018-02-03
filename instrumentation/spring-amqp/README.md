@@ -1,7 +1,7 @@
-# brave-instrumentation-spring-rabbit
+# brave-instrumentation-spring-amqp
 
 ## Tracing for Spring Rabbit
-This module provides instrumentation for spring-rabbit based services.
+This module provides instrumentation for spring-amqp based services. Currently, the only broker supported by spring-amqp is RabbitMQ.
 
 ## Configuration
 
@@ -14,11 +14,10 @@ To configure tracing for rabbit message producers,
 ensure `Tracing` is in the Spring context, then create `TracingMessagePostProcessor` bean. 
 Wire this bean as a BeforePublishPostProcessor on the RabbitTemplate that you wish to trace. 
 
-TODO something about publisher confirms/returns perhaps
 
 ### Message Consumer
 Tracing is supported for spring-rabbit @RabbitListener based services.
 To configure tracing for rabbit listeners, use SimpleRabbitListenerContainerFactory's setAdviceChain 
-to set a TracingRabbitListenerAdvice
+to specify a TracingRabbitListenerAdvice.
 
 

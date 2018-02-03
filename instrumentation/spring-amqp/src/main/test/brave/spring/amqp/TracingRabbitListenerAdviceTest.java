@@ -1,19 +1,15 @@
-package brave.spring.rabbit;
+package brave.spring.amqp;
 
 import brave.Tracing;
 import brave.sampler.Sampler;
+import java.util.ArrayList;
+import java.util.List;
 import org.aopalliance.intercept.MethodInvocation;
-import org.assertj.core.api.AssertionsForInterfaceTypes;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import zipkin2.Span;
-
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
