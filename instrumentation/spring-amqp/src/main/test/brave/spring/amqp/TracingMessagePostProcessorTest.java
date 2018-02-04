@@ -16,35 +16,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
 
-    private List<Span> reportedSpans = new ArrayList<>();
-    private TracingMessagePostProcessor tracingMessagePostProcessor;
+  private List<Span> reportedSpans = new ArrayList<>();
+  private TracingMessagePostProcessor tracingMessagePostProcessor;
 
-    @Before
-    public void setupTracing() {
-        reportedSpans.clear();
-        Tracing tracing = Tracing.newBuilder()
-                .sampler(Sampler.ALWAYS_SAMPLE)
-                .spanReporter(reportedSpans::add)
-                .build();
-        tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing);
-    }
+  @Before
+  public void setupTracing() {
+    reportedSpans.clear();
+    Tracing tracing = Tracing.newBuilder()
+        .sampler(Sampler.ALWAYS_SAMPLE)
+        .spanReporter(reportedSpans::add)
+        .build();
+    tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing);
+  }
 
-    @Test
-    public void should_add_b3_headers_to_message() throws Exception {
-        Message message = MessageBuilder.withBody(new byte[]{}).build();
-        Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
+  @Test
+  public void should_add_b3_headers_to_message() throws Exception {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
+    Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
-        List<String> expectedHeaders = Arrays.asList("X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
-        Set<String> headerKeys = postProcessMessage.getMessageProperties().getHeaders().keySet();
+    List<String> expectedHeaders = Arrays.asList("X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+    Set<String> headerKeys = postProcessMessage.getMessageProperties().getHeaders().keySet();
 
-        assertThat(headerKeys).containsAll(expectedHeaders);
-    }
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
 
-    @Test
-    public void should_report_span() throws Exception {
-        Message message = MessageBuilder.withBody(new byte[]{}).build();
-        tracingMessagePostProcessor.postProcessMessage(message);
+  @Test
+  public void should_report_span() throws Exception {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
+    tracingMessagePostProcessor.postProcessMessage(message);
 
-        assertThat(reportedSpans).hasSize(1);
-    }
+    assertThat(reportedSpans).hasSize(1);
+  }
 }

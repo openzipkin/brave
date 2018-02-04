@@ -17,37 +17,35 @@ import static org.mockito.Mockito.when;
 
 public class TracingRabbitListenerAdviceTest {
 
-    private List<Span> reportedSpans = new ArrayList<>();
-    private TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
+  private List<Span> reportedSpans = new ArrayList<>();
+  private TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
 
-    @Before
-    public void setupTracing() {
-        reportedSpans.clear();
-        Tracing tracing = Tracing.newBuilder()
-                .sampler(Sampler.ALWAYS_SAMPLE)
-                .spanReporter(reportedSpans::add)
-                .build();
-        tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing);
-    }
+  @Before
+  public void setupTracing() {
+    reportedSpans.clear();
+    Tracing tracing = Tracing.newBuilder()
+        .sampler(Sampler.ALWAYS_SAMPLE)
+        .spanReporter(reportedSpans::add)
+        .build();
+    tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing);
+  }
 
-    @Test
-    public void starts_new_trace_if_none_exists() throws Throwable {
-        Message message = MessageBuilder.withBody(new byte[]{}).build();
+  @Test
+  public void starts_new_trace_if_none_exists() throws Throwable {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
 
-        MethodInvocation methodInvocation = mock(MethodInvocation.class);
+    MethodInvocation methodInvocation = mock(MethodInvocation.class);
 
-        when(methodInvocation.getArguments()).thenReturn(new Object[]{
-                null, // AMQPChannel - doesn't matter
-                message
-        });
-        when(methodInvocation.proceed()).thenReturn("doesn't matter");
+    when(methodInvocation.getArguments()).thenReturn(new Object[] {
+        null, // AMQPChannel - doesn't matter
+        message
+    });
+    when(methodInvocation.proceed()).thenReturn("doesn't matter");
 
-        tracingRabbitListenerAdvice.invoke(methodInvocation);
+    tracingRabbitListenerAdvice.invoke(methodInvocation);
 
-        assertThat(reportedSpans)
-                .extracting(Span::kind)
-                .containsExactly(Span.Kind.CONSUMER);
-    }
-
-
+    assertThat(reportedSpans)
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.CONSUMER);
+  }
 }
