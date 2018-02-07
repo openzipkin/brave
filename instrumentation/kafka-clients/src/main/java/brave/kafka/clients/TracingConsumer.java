@@ -19,6 +19,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
@@ -105,6 +106,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   @Override public void subscribe(Pattern pattern, ConsumerRebalanceListener callback) {
     delegate.subscribe(pattern, callback);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 1.0
+  public void subscribe(Pattern pattern) {
+    delegate.subscribe(pattern, new NoOpConsumerRebalanceListener());
   }
 
   @Override public void unsubscribe() {
