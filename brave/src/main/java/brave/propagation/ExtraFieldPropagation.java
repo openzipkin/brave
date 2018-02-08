@@ -167,7 +167,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
    *
    * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
    */
-   public static void set(String name, String value) {
+  public static void set(String name, String value) {
     TraceContext context = currentTraceContext();
     if (context != null) set(context, name, value);
   }
@@ -252,32 +252,55 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
     @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegate.decorate(context);
-      int extraIndex = indexOfExtra(result.extra());
-      if (extraIndex != -1) {
-        Extra extra = (Extra) result.extra().get(extraIndex);
-        if (!Arrays.equals(extra.fieldNames, fieldNames)) {
-          throw new IllegalStateException(
-              String.format("Mixed name configuration unsupported: found %s, expected %s",
-                  Arrays.asList(extra.fieldNames), Arrays.asList(fieldNames))
-          );
-        }
 
-        // If this extra is unassociated (due to remote extraction),
-        // or it is the same span ID, re-use the instance.
-        if (extra.tryAssociate(context)) return context;
+      // If there's an implicit context while extracting only extra fields, we will have two extras!
+      List<Object> extras = result.extra();
+      int thisExtraIndex = -1, parentExtraIndex = -1;
+      for (int i = 0, length = extras.size(); i < length; i++) {
+        if (extras.get(i) instanceof Extra) {
+          Extra extra = (Extra) result.extra().get(i);
+          if (!Arrays.equals(extra.fieldNames, fieldNames)) {
+            throw new IllegalStateException(
+                String.format("Mixed name configuration unsupported: found %s, expected %s",
+                    Arrays.toString(extra.fieldNames), Arrays.toString(fieldNames))
+            );
+          }
+          // If this extra is unassociated (due to remote extraction),
+          // or it is the same span ID, re-use the instance.
+          if (extra.tryAssociate(context)) {
+            thisExtraIndex = i;
+          } else {
+            parentExtraIndex = i;
+          }
+        }
       }
-      // otherwise, we are creating a new instance of
+
+      if (thisExtraIndex != -1 && parentExtraIndex == -1) return context;
+
+      // otherwise, we are creating a new instance
       List<Object> copyOfExtra = new ArrayList<>(result.extra());
       Extra extra;
-      if (extraIndex != -1) {
-        extra = ((Extra) copyOfExtra.get(extraIndex)).clone();
-        copyOfExtra.set(extraIndex, extra);
-      } else {
+      if (thisExtraIndex == -1 && parentExtraIndex != -1) { // clone then parent (for copy-on-write)
+        extra = ((Extra) copyOfExtra.get(parentExtraIndex)).clone();
+        copyOfExtra.set(parentExtraIndex, extra);
+      } else if (thisExtraIndex != -1 && parentExtraIndex != -1) { // merge with the parent
+        extra = ((Extra) copyOfExtra.get(thisExtraIndex));
+        Extra parent = (Extra) copyOfExtra.remove(parentExtraIndex); // ensures only one extra
+        if (parent.values != null) { // then values were added to our parent
+          for (int i = 0; i < parent.values.length; i++) {
+            if (parent.values[i] != null && extra.get(i) == null) { // extracted wins vs parent
+              extra.set(i, parent.values[i]);
+            }
+          }
+        }
+      } else { // no fields were extracted and the parent also had no fields. create a new copy
         extra = new Extra(fieldNames);
         copyOfExtra.add(extra);
       }
-      extra.context = context;
-      return result.toBuilder().extra(Collections.unmodifiableList(copyOfExtra)).build();
+      TraceContext resultContext =
+          result.toBuilder().extra(Collections.unmodifiableList(copyOfExtra)).build();
+      extra.context = resultContext; // associate this with the new context
+      return resultContext;
     }
   }
 
@@ -467,7 +490,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (elements == null) return Collections.emptyMap();
 
     Map<String, String> result = new LinkedHashMap<>();
-    for (int i = 0, length = elements.length; i<length; i++) {
+    for (int i = 0, length = elements.length; i < length; i++) {
       String value = elements[i];
       if (value != null) result.put(extra.fieldNames[i], value);
     }
