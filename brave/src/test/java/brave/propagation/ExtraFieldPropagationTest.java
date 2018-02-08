@@ -1,5 +1,7 @@
 package brave.propagation;
 
+import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
 import java.util.Arrays;
 import java.util.Collections;
@@ -88,6 +90,74 @@ public class ExtraFieldPropagationTest {
     }
   }
 
+  /**
+   * This scenario is possible, albeit rare. {@code tracer.nextSpan(extracted} } is called when
+   * there is an implicit parent. For example, you have a trace in progress when extracting trace
+   * state from an incoming message. Another example is where there is a span in scope due to a leak
+   * such as from using {@link CurrentTraceContext.Default#inheritable()}.
+   *
+   * <p>When we are only extracting extra fields, the state should merge as opposed to creating
+   * duplicate copies of {@link ExtraFieldPropagation.Extra}.
+   */
+  @Test public void nextSpanMergesExtraWithImplicitParent_hasFields() {
+    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
+      ExtraFieldPropagation.set(context, "x-vcap-request-id", "foo");
+      Span span = tracing.tracer().toSpan(context);
+
+      try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+        carrier.put("x-amzn-trace-id", awsTraceId);
+        carrier.put("x-vcap-request-id", "bar"); // extracted should win!
+        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
+
+        assertThat(context1.extra()) // merged
+            .hasSize(1);
+        ExtraFieldPropagation.Extra extra = ((ExtraFieldPropagation.Extra) context1.extra().get(0));
+        assertThat(extra.values)
+            .containsExactly("bar", awsTraceId);
+        assertThat(extra.context)
+            .isSameAs(context1);
+      }
+    }
+  }
+
+  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitExtraFields() {
+    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
+      Span span = tracing.tracer().toSpan(context);
+
+      try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+        carrier.put("x-amzn-trace-id", awsTraceId);
+        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
+
+        assertThat(context1.extra()) // merged
+            .hasSize(1);
+        ExtraFieldPropagation.Extra extra = ((ExtraFieldPropagation.Extra) context1.extra().get(0));
+        assertThat(extra.values)
+            .containsExactly(null, awsTraceId);
+        assertThat(extra.context)
+            .isSameAs(context1);
+      }
+    }
+  }
+
+  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedExtraFields() {
+    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
+      ExtraFieldPropagation.set(context, "x-vcap-request-id", "foo");
+      Span span = tracing.tracer().toSpan(context);
+
+      try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
+
+        assertThat(context1.extra()) // merged
+            .hasSize(1);
+        ExtraFieldPropagation.Extra extra = ((ExtraFieldPropagation.Extra) context1.extra().get(0));
+        assertThat(extra.values)
+            .containsExactly("foo", null);
+        assertThat(extra.context)
+            .isSameAs(context1);
+      }
+    }
+  }
+
   @Test public void downcasesNames() {
     ExtraFieldPropagation.Factory factory =
         (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
@@ -165,6 +235,20 @@ public class ExtraFieldPropagationTest {
 
       assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
           .isEqualTo(awsTraceId);
+    }
+  }
+
+  @Test public void toSpan_selfLinksContext() {
+    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
+      ExtraFieldPropagation.set(context, "x-amzn-trace-id", awsTraceId);
+
+      Span span = t.tracer().toSpan(context);
+
+      ExtraFieldPropagation.Extra extra =
+          (ExtraFieldPropagation.Extra) span.context().extra().get(0);
+
+      assertThat(extra.context)
+          .isSameAs(span.context());
     }
   }
 
