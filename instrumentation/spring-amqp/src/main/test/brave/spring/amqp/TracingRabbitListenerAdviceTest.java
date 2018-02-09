@@ -72,7 +72,7 @@ public class TracingRabbitListenerAdviceTest {
   @Test
   public void reports_span_if_consume_fails() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
-    onMessageConsumeFailed(message);
+    onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
@@ -82,6 +82,21 @@ public class TracingRabbitListenerAdviceTest {
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
         .contains("expected exception");
+  }
+
+  @Test
+  public void reports_span_if_consume_fails_with_no_message() throws Throwable {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
+    onMessageConsumeFailed(message, new RuntimeException());
+
+    assertThat(reportedSpans)
+        .extracting(Span::kind)
+        .containsExactly(Span.Kind.CONSUMER);
+
+    assertThat(reportedSpans)
+        .extracting(Span::tags)
+        .extracting(tags -> tags.get("error"))
+        .contains("RuntimeException");
   }
 
   private void onMessageConsumed(Message message) throws Throwable {
@@ -94,12 +109,12 @@ public class TracingRabbitListenerAdviceTest {
     tracingRabbitListenerAdvice.invoke(methodInvocation);
   }
 
-  private void onMessageConsumeFailed(Message message) throws Throwable {
+  private void onMessageConsumeFailed(Message message, Throwable throwable) throws Throwable {
     when(methodInvocation.getArguments()).thenReturn(new Object[] {
         null, // AMQPChannel - doesn't matter
         message
     });
-    when(methodInvocation.proceed()).thenThrow(new RuntimeException("expected exception"));
+    when(methodInvocation.proceed()).thenThrow(throwable);
 
     try {
       tracingRabbitListenerAdvice.invoke(methodInvocation);

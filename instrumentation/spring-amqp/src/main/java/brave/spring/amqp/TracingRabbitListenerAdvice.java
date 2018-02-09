@@ -15,12 +15,13 @@ import brave.propagation.TraceContextOrSamplingFlags;
 
 public class TracingRabbitListenerAdvice implements MethodInterceptor {
 
-  private static final Propagation.Getter<MessageProperties, String> GETTER = new Propagation.Getter<MessageProperties, String>() {
+  private static final Propagation.Getter<MessageProperties, String> GETTER =
+      new Propagation.Getter<MessageProperties, String>() {
 
-    @Override public String get(MessageProperties carrier, String key) {
-      return (String) carrier.getHeaders().get(key);
-    }
-  };
+        @Override public String get(MessageProperties carrier, String key) {
+          return (String) carrier.getHeaders().get(key);
+        }
+      };
 
   private final Extractor<MessageProperties> extractor;
   private final Tracer tracer;
@@ -38,10 +39,16 @@ public class TracingRabbitListenerAdvice implements MethodInterceptor {
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
-      span.tag("error", t.getMessage());
+      tagErrorSpan(span, t);
       throw t;
     } finally {
       span.finish();
     }
+  }
+
+  private void tagErrorSpan(Span span, Throwable t) {
+    String errorMessage = t.getMessage();
+    if (errorMessage == null) errorMessage = t.getClass().getSimpleName();
+    span.tag("error", errorMessage);
   }
 }
