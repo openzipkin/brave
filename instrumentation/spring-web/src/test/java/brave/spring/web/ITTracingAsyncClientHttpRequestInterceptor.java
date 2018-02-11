@@ -1,12 +1,12 @@
 package brave.spring.web;
 
-import brave.http.ITHttpClient;
+import brave.http.ITHttpAsyncClient;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.ExecutionException;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
@@ -18,7 +18,7 @@ import org.springframework.web.client.AsyncRestTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingAsyncClientHttpRequestInterceptor
-    extends ITHttpClient<AsyncClientHttpRequestFactory> {
+    extends ITHttpAsyncClient<AsyncClientHttpRequestFactory> {
   AsyncClientHttpRequestInterceptor interceptor;
 
   AsyncClientHttpRequestFactory configureClient(AsyncClientHttpRequestInterceptor interceptor) {
@@ -42,25 +42,15 @@ public class ITTracingAsyncClientHttpRequestInterceptor
       throws Exception {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
-    try {
-      restTemplate.getForEntity(url(pathIncludingQuery), String.class).get();
-    } finally {
-      // TODO: understand why we need sleeps. maybe there's an executor we can change to same thread
-      Thread.sleep(100);
-    }
+    restTemplate.getForEntity(url(pathIncludingQuery), String.class).get();
   }
 
   @Override protected void post(AsyncClientHttpRequestFactory client, String uri, String content)
       throws Exception {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
-    try {
-      restTemplate.postForEntity(url(uri), RequestEntity.post(URI.create(url(uri))).body(content),
-          String.class).get();
-    } finally {
-      // TODO: understand why we need sleeps. maybe there's an executor we can change to same thread
-      Thread.sleep(100);
-    }
+    restTemplate.postForEntity(url(uri), RequestEntity.post(URI.create(url(uri))).body(content),
+        String.class).get();
   }
 
   @Override protected void getAsync(AsyncClientHttpRequestFactory client, String uri) {
@@ -83,15 +73,15 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    takeSpan();
   }
 
-  @Override @Test(expected = ExecutionException.class)
-  public void redirect() throws Exception { // blind to the implementation of redirects
-    super.redirect();
+  @Override @Ignore("blind to the implementation of redirects")
+  public void redirect() {
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void reportsServerAddress() throws Exception { // doesn't know the remote address
-    super.reportsServerAddress();
+  @Override @Ignore("doesn't know the remote address")
+  public void reportsServerAddress() {
   }
 }

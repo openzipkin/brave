@@ -13,7 +13,9 @@ import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -37,8 +39,12 @@ public class ITKafkaTracing {
   String TEST_KEY = "foo";
   String TEST_VALUE = "bar";
 
-  ConcurrentLinkedDeque<Span> consumerSpans = new ConcurrentLinkedDeque<>();
-  ConcurrentLinkedDeque<Span> producerSpans = new ConcurrentLinkedDeque<>();
+  /**
+   * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
+   * like consumer operations, happen on the main thread.
+   */
+  BlockingQueue<Span> consumerSpans = new LinkedBlockingQueue<>();
+  BlockingQueue<Span> producerSpans = new LinkedBlockingQueue<>();
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
       .spanReporter(consumerSpans::add)
@@ -55,8 +61,18 @@ public class ITKafkaTracing {
   Producer<String, String> producer;
   Consumer<String, String> consumer;
 
+  // See brave.http.ITHttp for rationale on polling after tests complete
+  @After public void checkConsumedAllSpans() throws Exception {
+    assertThat(producerSpans.poll(100, TimeUnit.MILLISECONDS))
+        .withFailMessage("Producer spans remaining in queue. Check for redundant reporting")
+        .isNull();
+    assertThat(consumerSpans.poll(100, TimeUnit.MILLISECONDS))
+        .withFailMessage("Consumer spans remaining in queue. Check for redundant reporting")
+        .isNull();
+  }
+
   @After
-  public void close() throws Exception {
+  public void close() {
     if (producer != null) producer.close();
     if (consumer != null) consumer.close();
     Tracing current = Tracing.current();
@@ -73,22 +89,20 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    assertThat(producerSpans).hasSize(1);
-    assertThat(consumerSpans).hasSize(1);
+    Span producerSpan = producerSpans.take();
+    Span consumerSpan = consumerSpans.take();
 
-    assertThat(consumerSpans.getFirst().traceId())
-        .isEqualTo(producerSpans.getFirst().traceId());
+    assertThat(consumerSpan.traceId())
+        .isEqualTo(producerSpan.traceId());
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span joined = consumerTracing.joinSpan(record);
-      joined.annotate("foo");
-      joined.flush();
+      joined.abandon();
 
       // Re-using this span happens "after" it is completed, which will make the UI look strange
       // Instead, use nextSpan to create a span representing message processing.
-      assertThat(consumerSpans)
-          .filteredOn(s -> s.id().equals(HexCodec.toLowerHex(joined.context().spanId())))
-          .hasSize(2);
+      assertThat(consumerSpan.id())
+          .isEqualTo(HexCodec.toLowerHex(joined.context().spanId()));
     }
   }
 
@@ -106,22 +120,22 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(2);
-    assertThat(producerSpans).hasSize(2);
-    assertThat(consumerSpans).hasSize(2);
+    Span producerSpan1 = producerSpans.take(), producerSpan2 = producerSpans.take();
+    Span consumerSpan1 = consumerSpans.take(), consumerSpan2 = consumerSpans.take();
 
     // Check to see the trace is continued between the producer and the consumer
     // we don't know the order the spans will come in. Correlate with the tag instead.
-    String firstTopic = producerSpans.getFirst().tags().get(KAFKA_TOPIC_TAG);
-    if (firstTopic.equals(consumerSpans.getFirst().tags().get(KAFKA_TOPIC_TAG))) {
-      assertThat(producerSpans.getFirst().traceId())
-          .isEqualTo(consumerSpans.getFirst().traceId());
-      assertThat(producerSpans.getLast().traceId())
-          .isEqualTo(consumerSpans.getLast().traceId());
+    String firstTopic = producerSpan1.tags().get(KAFKA_TOPIC_TAG);
+    if (firstTopic.equals(consumerSpan1.tags().get(KAFKA_TOPIC_TAG))) {
+      assertThat(producerSpan1.traceId())
+          .isEqualTo(consumerSpan1.traceId());
+      assertThat(producerSpan2.traceId())
+          .isEqualTo(consumerSpan2.traceId());
     } else {
-      assertThat(producerSpans.getFirst().traceId())
-          .isEqualTo(consumerSpans.getLast().traceId());
-      assertThat(producerSpans.getLast().traceId())
-          .isEqualTo(consumerSpans.getFirst().traceId());
+      assertThat(producerSpan1.traceId())
+          .isEqualTo(consumerSpan2.traceId());
+      assertThat(producerSpan2.traceId())
+          .isEqualTo(consumerSpan1.traceId());
     }
   }
 
@@ -141,8 +155,9 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(10);
-    assertThat(producerSpans).isEmpty(); // not traced
-    assertThat(consumerSpans).hasSize(2); // one per topic!
+    consumerSpans.take();
+    consumerSpans.take();
+    // producerSpans empty as not traced
   }
 
   @Test
@@ -155,14 +170,14 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    assertThat(producerSpans).hasSize(1);
-    assertThat(consumerSpans).hasSize(1);
+    Span producerSpan = producerSpans.take();
+    Span consumerSpan = consumerSpans.take();
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span processor = consumerTracing.nextSpan(record);
 
-      Span consumerSpan = consumerSpans.stream()
-          .filter(s -> s.tags().get(KAFKA_TOPIC_TAG).equals(record.topic())).findAny().get();
+      assertThat(consumerSpan.tags())
+          .containsEntry(KAFKA_TOPIC_TAG, record.topic());
 
       assertThat(processor.context().traceIdString()).isEqualTo(consumerSpan.traceId());
       assertThat(HexCodec.toLowerHex(processor.context().parentId())).isEqualTo(consumerSpan.id());
@@ -170,9 +185,9 @@ public class ITKafkaTracing {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      assertThat(consumerSpans)
-          .extracting(Span::id)
-          .containsOnly(HexCodec.toLowerHex(processor.context().spanId()), consumerSpan.id());
+      Span processorSpan = consumerSpans.take();
+      assertThat(processorSpan.id())
+          .isNotEqualTo(consumerSpan.id());
     }
   }
 
@@ -231,16 +246,15 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    assertThat(producerSpans).hasSize(1);
-    assertThat(consumerSpans).hasSize(1);
+    Span producerSpan = producerSpans.take();
+    Span consumerSpan = consumerSpans.take();
 
-    assertThat(consumerSpans.getFirst().traceId())
-        .isEqualTo(producerSpans.getFirst().traceId());
+    assertThat(producerSpan.traceId())
+        .isEqualTo(consumerSpan.traceId());
 
     for (ConsumerRecord<String, String> record : records) {
       TraceContext forProcessor = consumerTracing.nextSpan(record).context();
 
-      Span consumerSpan = consumerSpans.getLast();
       assertThat(forProcessor.traceIdString()).isEqualTo(consumerSpan.traceId());
     }
   }

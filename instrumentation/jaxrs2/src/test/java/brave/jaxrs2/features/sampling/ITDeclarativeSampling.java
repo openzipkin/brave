@@ -7,7 +7,8 @@ import brave.http.HttpTracing;
 import brave.http.ServletContainer;
 import brave.jaxrs2.TracingBootstrap;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import okhttp3.OkHttpClient;
@@ -24,7 +25,8 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITDeclarativeSampling extends ServletContainer {
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  /** Spans are reported on a server thread, but we read them on the main thread */
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
   OkHttpClient client = new OkHttpClient();
   HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder()
       .spanReporter(spans::add)
@@ -69,13 +71,13 @@ public class ITDeclarativeSampling extends ServletContainer {
     assertThat(spans).isEmpty();
 
     get("/foo");
-    assertThat(spans).isNotEmpty();
+    spans.take();
   }
 
   @Test
   public void lackOfAnnotationFallsback() throws Exception {
     get("/baz");
-    assertThat(spans).isNotEmpty();
+    spans.take();
   }
 
   @Override public void init(ServletContextHandler handler) {

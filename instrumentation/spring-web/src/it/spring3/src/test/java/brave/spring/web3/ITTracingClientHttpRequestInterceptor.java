@@ -46,10 +46,6 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Override protected void getAsync(ClientHttpRequestFactory client, String uri) {
-    throw new AssumptionViolatedException("TODO: async rest template has its own interceptor");
-  }
-
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
     server.enqueue(new MockResponse());
 
@@ -64,6 +60,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    takeSpan();
   }
 
   @Override @Test(expected = AssertionError.class)

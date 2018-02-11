@@ -55,15 +55,19 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
 
     Span span = nextSpan(extractor.extract(request.headers()), request).kind(Span.Kind.SERVER);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
+    SpanInScope spanInScope = tracer.withSpanInScope(span);
+    ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).set(spanInScope);
 
     // Place the span in scope so that downstream code can read trace IDs
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try {
       if (!span.isNoop()) {
         parser.request(adapter, request, span);
         maybeParseClientAddress(ctx.channel(), request, span);
         span.start();
       }
       ctx.fireChannelRead(msg);
+    } finally {
+      spanInScope.close();
     }
   }
 
@@ -99,11 +103,16 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       return;
     }
 
-    // Place the span in scope so that downstream code can read trace IDs
     HttpResponse response = (HttpResponse) msg;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+
+    // Guard re-scoping the same span
+    SpanInScope spanInScope = ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).get();
+    if (spanInScope == null) spanInScope = tracer.withSpanInScope(span);
+    try {
       ctx.write(msg, prm);
       parser.response(adapter, response, null, span);
+    } finally {
+      spanInScope.close(); // clear scope before reporting
       span.finish();
     }
   }

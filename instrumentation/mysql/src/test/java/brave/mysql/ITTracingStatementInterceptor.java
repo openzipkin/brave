@@ -9,7 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,7 +22,8 @@ import static org.junit.Assume.assumeTrue;
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
 
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  /** JDBC is synchronous and we aren't using thread pools: everything happens on the main thread */
+  ArrayList<Span> spans = new ArrayList<>();
 
   Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   Connection connection;

@@ -1,33 +1,117 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
-import org.junit.rules.ExpectedException;
+import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * This is the base class for http-based integration tests. It has a few features to ensure tests
+ * cover common instrumentation bugs. Most of this optimizes for instrumentation occurring on a
+ * different thread than main (which does the assertions).
+ *
+ * <p><pre><ul>
+ *   <li>{@link StrictCurrentTraceContext} double-checks threads don't leak contexts</li>
+ *   <li>Span reporting double-checks the span was de-scoped on finish, to prevent leaks</li>
+ *   <li>Spans report into a concurrent blocking queue to prevent assertions race conditions</li>
+ *   <li>After tests complete, the queue is strictly checked to catch redundant span reporting</li>
+ * </ul></pre>
+ *
+ * <p>As a blocking queue is used, {@link #takeSpan take a span} to perform assertions on it.
+ *
+ * <pre>{@code
+ * Span span = takeSpan();
+ * assertThat(span.traceId()).isEqualTo(traceId);
+ * }</pre>
+ *
+ * <em>All spans reported must be taken before the test completes!</em>
+ *
+ * <h3>Debugging test failures</h3>
+ *
+ * <p>If a test hangs, likely {@link BlockingQueue#take()} is being called when a span wasn't
+ * reported. An exception or bug could cause this (for example, the error handling route not
+ * calling {@link brave.Span#finish()}).
+ *
+ * <p>If a test fails on {@link After}, it can mean that your test created a span, but didn't {@link BlockingQueue#take()}
+ * it off the queue. If you are testing something that creates a span, you may not want to verify
+ * each one. In this case, at least take them similar to below:
+ *
+ * <p><pre>{@code
+ * for (int i = 0; i < 10; i++) takeSpan(); // we expected 10 spans
+ * }</pre>
+ *
+ * <h3>This code looks hard.. why are we using a concurrent queue? My http client is easy</h3>
+ *
+ * <p>Some http client instrumentation are fully synchronous (everything on the main thread).
+ * Testing such instrumentation could be easier, ex reporting into a list. Some other race-detecting
+ * features may feel overkill in this case.
+ *
+ * <p>Consider though, this is a base class for all http instrumentation: servers (always report off
+ * main thread) and asynchronous clients (often report off main). Also, even blocking clients can
+ * execute their "on headers received" hook on a separate thread! Even if the http client you are
+ * working on does everything on the same thread, a small change could invalidate that assumption.
+ * If something written to work on one thread is suddenly working on two threads, tests can fail
+ * "randomly", perhaps not until an unrelated change to JRE. When tests fail, they also make it
+ * impossible to release new code until we disable the test or fix it. Bugs or race conditions
+ * instrumentation can be very time consuming to solve. For example, they can appear as "flakes" in
+ * CI servers such as Travis, which can be near impossible to debug.
+ *
+ * <p>Bottom-line is that we accept that strict tests are harder up front, and not necessary for a
+ * few types of blocking client instrumentation. However, the majority of http instrumentation have
+ * to concern themselves with multi-threaded behavior and if we always do, the chances of builds
+ * breaking are less.
+ */
 public abstract class ITHttp {
-  @Rule public ExpectedException thrown = ExpectedException.none();
-  @Rule public MockWebServer server = new MockWebServer();
-  public static String EXTRA_KEY = "user-id";
+  public static final String EXTRA_KEY = "user-id";
+  static final String CONTEXT_LEAK = "context.leak";
 
-  protected ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  @Rule public MockWebServer server = new MockWebServer();
+
+  /**
+   * When testing servers or asynchronous clients, spans are reported on a worker thread. In order
+   * to read them on the main thread, we use a concurrent queue. As some implementations report
+   * after a response is sent, we use a blocking queue to prevent race conditions in tests.
+   */
+  private BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+
+  /** Call this to block until a span was reported */
+  protected Span takeSpan() throws InterruptedException {
+    Span result = spans.take();
+    assertThat(result.annotations())
+        .extracting(Annotation::value)
+        .doesNotContain(CONTEXT_LEAK);
+    return result;
+  }
 
   protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
   protected HttpTracing httpTracing;
 
+  /**
+   * On close, we check that all spans have been verified by the test. This ensures bad behavior
+   * such as duplicate reporting doesn't occur. The impact is that every span must at least be
+   * {@link BlockingQueue#poll() polled} before the end of each method.
+   *
+   * <p>This also closes the current instance of tracing, to prevent it from being accidentally
+   * visible to other test classes which call {@link Tracing#current()}.
+   */
   @After public void close() throws Exception {
+    assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
+        .withFailMessage("Span remaining in queue. Check for exception or redundant reporting")
+        .isNull();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
@@ -37,22 +121,22 @@ public abstract class ITHttp {
         .spanReporter(s -> {
           // make sure the context was cleared prior to finish.. no leaks!
           TraceContext current = httpTracing.tracing().currentTraceContext().get();
+          boolean contextLeak = false;
           if (current != null) {
-            assertThat(current.spanId())
-                .isNotEqualTo(s.id());
+            // add annotation in addition to throwing, in case we are off the main thread
+            if (HexCodec.toLowerHex(current.spanId()).equals(s.id())) {
+              s = s.toBuilder().addAnnotation(s.timestampAsLong(), CONTEXT_LEAK).build();
+              contextLeak = true;
+            }
           }
           spans.add(s);
+          // throw so that we can see the path to the code that leaked the context
+          if (contextLeak) {
+            throw new AssertionError(CONTEXT_LEAK + " on " + Thread.currentThread().getName());
+          }
         })
         .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_KEY))
         .currentTraceContext(currentTraceContext)
         .sampler(sampler);
-  }
-
-  void assertReportedTagsInclude(String key, String... values) {
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .filteredOn(e -> e.getKey().equals(key))
-        .extracting(Map.Entry::getValue)
-        .containsExactly(values);
   }
 }

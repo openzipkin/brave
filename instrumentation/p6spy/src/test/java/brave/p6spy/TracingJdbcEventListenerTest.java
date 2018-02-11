@@ -9,7 +9,7 @@ import com.p6spy.engine.common.StatementInformation;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.ArrayList;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -119,7 +119,7 @@ public class TracingJdbcEventListenerTest {
   }
 
   @Test public void nullSqlWontNPE() throws SQLException {
-    ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
+    ArrayList<zipkin2.Span> spans = new ArrayList<>();
     try (Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build()) {
 
       when(statementInformation.getSql()).thenReturn(null);
@@ -137,8 +137,7 @@ public class TracingJdbcEventListenerTest {
   }
 
   @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
-    ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
-    Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
+    Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, new ArrayList<>()).build();
     Span span = tracing.tracer().nextSpan().start();
     try (SpanInScope spanInScope = tracing.tracer().withSpanInScope(span)) {
       TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);

@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.AssumptionViolatedException;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -45,10 +45,6 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Override protected void getAsync(ClientHttpRequestFactory client, String uri) {
-    throw new AssumptionViolatedException("TODO: async rest template has its own interceptor");
-  }
-
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
     server.enqueue(new MockResponse());
 
@@ -63,15 +59,15 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    takeSpan();
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void redirect() throws Exception { // blind to the implementation of redirects
-    super.redirect();
+  @Override @Ignore("blind to the implementation of redirects")
+  public void redirect() {
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void reportsServerAddress() throws Exception { // doesn't know the remote address
-    super.reportsServerAddress();
+  @Override @Ignore("doesn't know the remote address")
+  public void reportsServerAddress() {
   }
 }

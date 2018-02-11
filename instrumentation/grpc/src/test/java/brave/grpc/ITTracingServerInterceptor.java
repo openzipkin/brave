@@ -29,7 +29,8 @@ import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.logging.log4j.LogManager;
@@ -53,7 +54,8 @@ public class ITTracingServerInterceptor {
 
   @Rule public ExpectedException thrown = ExpectedException.none();
 
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   GrpcTracing grpcTracing;
   Server server;
@@ -95,6 +97,10 @@ public class ITTracingServerInterceptor {
       server.shutdown();
       server.awaitTermination();
     }
+    // From brave.http.ITHttp.close
+    assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
+        .withFailMessage("Span remaining in queue. Check for exception or redundant reporting")
+        .isNull();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
@@ -123,11 +129,11 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span s = tryTakeSpan();
-    assertThat(s.traceId()).isEqualTo(traceId);
-    assertThat(s.parentId()).isEqualTo(parentId);
-    assertThat(s.id()).isEqualTo(spanId);
-    assertThat(s.shared()).isTrue();
+    Span span = spans.take();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.parentId()).isEqualTo(parentId);
+    assertThat(span.id()).isEqualTo(spanId);
+    assertThat(span.shared()).isTrue();
   }
 
   @Test public void createsChildWhenJoinDisabled() throws Exception {
@@ -157,11 +163,11 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span s = tryTakeSpan();
-    assertThat(s.traceId()).isEqualTo(traceId);
-    assertThat(s.parentId()).isEqualTo(spanId);
-    assertThat(s.id()).isNotEqualTo(spanId);
-    assertThat(s.shared()).isNull();
+    Span span = spans.take();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.parentId()).isEqualTo(spanId);
+    assertThat(span.id()).isNotEqualTo(spanId);
+    assertThat(span.shared()).isNull();
   }
 
   @Test public void samplingDisabled() throws Exception {
@@ -170,7 +176,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans).isEmpty();
+    // @After will check that nothing is reported
   }
 
   /**
@@ -194,24 +200,30 @@ public class ITTracingServerInterceptor {
 
     assertThat(fromUserInterceptor.get())
         .isNotNull();
+
+    spans.take();
   }
 
   @Test public void currentSpanVisibleToImpl() throws Exception {
     assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
         .isNotEmpty();
+
+    spans.take();
   }
 
   @Test public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(tryTakeSpan().kind())
+    Span span = spans.take();
+    assertThat(span.kind())
         .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(tryTakeSpan().name())
+    Span span = spans.take();
+    assertThat(span.name())
         .isEqualTo("helloworld.greeter/sayhello");
   }
 
@@ -221,7 +233,8 @@ public class ITTracingServerInterceptor {
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      assertThat(tryTakeSpan().tags()).containsExactly(
+      Span span = spans.take();
+      assertThat(span.tags()).containsExactly(
           entry("error", "UNKNOWN"),
           entry("grpc.status_code", "UNKNOWN")
       );
@@ -254,7 +267,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = tryTakeSpan();
+    Span span = spans.take();
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
         "grpc.message_received", "grpc.message_sent",
@@ -276,7 +289,8 @@ public class ITTracingServerInterceptor {
         .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).hasSize(10);
     // all response messages are tagged to the same span
-    assertThat(tryTakeSpan().tags()).hasSize(10);
+    Span span = spans.take();
+    assertThat(span.tags()).hasSize(10);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
@@ -285,14 +299,5 @@ public class ITTracingServerInterceptor {
         .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
-  }
-
-  // Flake detection logic. If the test fails after the retry it might not be a timing issue.
-  Span tryTakeSpan() throws InterruptedException {
-    if (spans.isEmpty()) {
-      testLogger.warn("delayed getting a span; retrying");
-      Thread.sleep(100);
-    }
-    return spans.poll();
   }
 }

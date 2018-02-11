@@ -9,7 +9,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,7 +27,8 @@ public class ITTracingP6Factory {
     DerbyUtils.disableLog();
   }
 
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  /** JDBC is synchronous and we aren't using thread pools: everything happens on the main thread */
+  ArrayList<Span> spans = new ArrayList<>();
 
   Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
   Connection connection;
@@ -103,7 +104,7 @@ public class ITTracingP6Factory {
     }
   }
 
-  static Tracing.Builder tracingBuilder(Sampler sampler, ConcurrentLinkedDeque<Span> spans) {
+  static Tracing.Builder tracingBuilder(Sampler sampler, ArrayList<Span> spans) {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
         .currentTraceContext(new StrictCurrentTraceContext())

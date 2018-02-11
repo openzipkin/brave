@@ -93,9 +93,9 @@ public class ITTracingFeature_Container extends ITServletContainer {
 
     get("/foo");
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("foo");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("foo");
   }
 
   @Override public void init(ServletContextHandler handler) {

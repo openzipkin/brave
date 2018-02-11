@@ -1,6 +1,6 @@
 package brave.httpasyncclient;
 
-import brave.http.ITHttpClient;
+import brave.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
 import okhttp3.mockwebserver.MockResponse;
@@ -15,7 +15,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpAsyncClient> {
+public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
 
   @Override protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result = TracingHttpAsyncClientBuilder.create(httpTracing).build();
@@ -60,5 +60,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpClient<CloseableHttpA
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    takeSpan();
   }
 }
