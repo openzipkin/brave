@@ -40,6 +40,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -97,13 +100,23 @@ public class ITTracingServerInterceptor {
       server.shutdown();
       server.awaitTermination();
     }
-    // From brave.http.ITHttp.close
-    assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-        .withFailMessage("Span remaining in queue. Check for exception or redundant reporting")
-        .isNull();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
+
+  // See brave.http.ITHttp for rationale on polling after tests complete
+  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
+    // only check success path to avoid masking assertion errors or exceptions
+    @Override protected void succeeded(Description description) {
+      try {
+        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
+            .withFailMessage("Span remaining in queue. Check for redundant reporting")
+            .isNull();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  };
 
   @Test public void usesExistingTraceId() throws Exception {
     final String traceId = "463ac35c9f6413ad";

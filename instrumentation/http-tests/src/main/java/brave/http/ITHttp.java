@@ -14,6 +14,9 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
@@ -101,20 +104,31 @@ public abstract class ITHttp {
   protected HttpTracing httpTracing;
 
   /**
-   * On close, we check that all spans have been verified by the test. This ensures bad behavior
-   * such as duplicate reporting doesn't occur. The impact is that every span must at least be
-   * {@link BlockingQueue#poll() polled} before the end of each method.
-   *
-   * <p>This also closes the current instance of tracing, to prevent it from being accidentally
+   * This closes the current instance of tracing, to prevent it from being accidentally
    * visible to other test classes which call {@link Tracing#current()}.
    */
   @After public void close() throws Exception {
-    assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-        .withFailMessage("Span remaining in queue. Check for exception or redundant reporting")
-        .isNull();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
+
+  /**
+   * On close, we check that all spans have been verified by the test. This ensures bad behavior
+   * such as duplicate reporting doesn't occur. The impact is that every span must at least be
+   * {@link #takeSpan()} taken} before the end of each method.
+   */
+  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
+    // only check success path to avoid masking assertion errors or exceptions
+    @Override protected void succeeded(Description description) {
+      try {
+        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
+            .withFailMessage("Span remaining in queue. Check for redundant reporting")
+            .isNull();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  };
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()

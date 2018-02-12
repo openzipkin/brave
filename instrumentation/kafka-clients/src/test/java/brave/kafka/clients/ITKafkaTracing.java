@@ -29,6 +29,9 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
@@ -62,14 +65,21 @@ public class ITKafkaTracing {
   Consumer<String, String> consumer;
 
   // See brave.http.ITHttp for rationale on polling after tests complete
-  @After public void checkConsumedAllSpans() throws Exception {
-    assertThat(producerSpans.poll(100, TimeUnit.MILLISECONDS))
-        .withFailMessage("Producer spans remaining in queue. Check for redundant reporting")
-        .isNull();
-    assertThat(consumerSpans.poll(100, TimeUnit.MILLISECONDS))
-        .withFailMessage("Consumer spans remaining in queue. Check for redundant reporting")
-        .isNull();
-  }
+  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
+    // only check success path to avoid masking assertion errors or exceptions
+    @Override protected void succeeded(Description description) {
+      try {
+        assertThat(producerSpans.poll(100, TimeUnit.MILLISECONDS))
+            .withFailMessage("Producer span remaining in queue. Check for redundant reporting")
+            .isNull();
+        assertThat(consumerSpans.poll(100, TimeUnit.MILLISECONDS))
+            .withFailMessage("Consumer span remaining in queue. Check for redundant reporting")
+            .isNull();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  };
 
   @After
   public void close() {
