@@ -86,7 +86,7 @@ public abstract class ITHttp {
    * to read them on the main thread, we use a concurrent queue. As some implementations report
    * after a response is sent, we use a blocking queue to prevent race conditions in tests.
    */
-  private BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   /** Call this to block until a span was reported */
   protected Span takeSpan() throws InterruptedException {
