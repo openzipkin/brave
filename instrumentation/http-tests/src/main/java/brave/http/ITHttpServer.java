@@ -3,7 +3,6 @@ package brave.http;
 import brave.SpanCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
-import java.io.IOException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -262,13 +261,14 @@ public abstract class ITHttpServer extends ITHttp {
         .containsEntry("http.path", "/foo");
   }
 
-  protected Response get(String path) throws IOException {
+  protected Response get(String path) throws Exception {
     return get(new Request.Builder().url(url(path)).build());
   }
 
-  protected Response get(Request request) throws IOException {
+  protected Response get(Request request) throws Exception {
     try (Response response = client.newCall(request).execute()) {
       if (response.code() == 404) {
+        takeSpan();
         throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
       }
       if (!HttpHeaders.hasBody(response)) return response;
