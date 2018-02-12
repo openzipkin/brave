@@ -3,6 +3,8 @@ package brave.http;
 import brave.Tracer;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
+import java.util.EnumSet;
+import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -38,7 +40,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws IOException {
       resp.getWriter().print(ExtraFieldPropagation.get(EXTRA_KEY));
-     }
+    }
   }
 
   static class ChildServlet extends HttpServlet {
@@ -102,12 +104,14 @@ public abstract class ITServlet25Container extends ITServletContainer {
     handler.addServlet(new ServletHolder(new ExceptionServlet()), "/exception");
 
     // add the trace filter
-    addFilter(handler, newTracingFilter());
-    // add a user filter
-    addFilter(handler, userFilter);
+    handler.getServletContext()
+        .addFilter("tracingFilter", newTracingFilter())
+        .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+
+    handler.getServletContext()
+        .addFilter("userFilter", userFilter)
+        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
   }
 
   protected abstract Filter newTracingFilter();
-
-  protected abstract void addFilter(ServletContextHandler handler, Filter filter);
 }

@@ -3,6 +3,7 @@ package brave.http;
 import brave.SpanCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
+import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -268,7 +269,8 @@ public abstract class ITHttpServer extends ITHttp {
   protected Response get(Request request) throws Exception {
     try (Response response = client.newCall(request).execute()) {
       if (response.code() == 404) {
-        takeSpan();
+        // TODO: jetty isn't registering the tracing filter for all paths!
+        spans.poll(100, TimeUnit.MILLISECONDS);
         throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
       }
       if (!HttpHeaders.hasBody(response)) return response;
