@@ -1,6 +1,6 @@
 package brave.okhttp3;
 
-import brave.http.ITHttpClient;
+import brave.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -12,7 +12,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class ITTracingInterceptor extends ITHttpClient<Call.Factory> {
+public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
 
   @Override protected Call.Factory newClient(int port) {
     return new OkHttpClient.Builder()
@@ -44,8 +44,7 @@ public class ITTracingInterceptor extends ITHttpClient<Call.Factory> {
         .execute();
   }
 
-  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery)
-      throws Exception {
+  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
         .enqueue(new Callback() {
           @Override public void onFailure(Call call, IOException e) {

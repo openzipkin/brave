@@ -7,7 +7,7 @@ import brave.internal.HexCodec;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
 import brave.sampler.Sampler;
-import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
@@ -37,8 +37,6 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   protected abstract void post(C client, String pathIncludingQuery, String body) throws Exception;
 
-  protected abstract void getAsync(C client, String pathIncludingQuery) throws Exception;
-
   @Override @After public void close() throws Exception {
     closeClient(client);
     super.close();
@@ -52,6 +50,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeaders().toMultimap())
         .containsKeys("x-b3-traceId", "x-b3-spanId")
         .containsEntry("x-b3-sampled", asList("1"));
+
+    takeSpan();
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
@@ -70,6 +70,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .isEqualTo(parent.context().traceIdString());
     assertThat(request.getHeader("x-b3-parentspanid"))
         .isEqualTo(HexCodec.toLowerHex(parent.context().spanId()));
+
+    assertThat(Arrays.asList(takeSpan(), takeSpan()))
+        .extracting(Span::kind)
+        .containsOnly(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -86,6 +90,11 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     assertThat(server.takeRequest().getHeader(EXTRA_KEY))
         .isEqualTo("joey");
+
+    // we report one local and one client span
+    assertThat(Arrays.asList(takeSpan(), takeSpan()))
+        .extracting(Span::kind)
+        .containsOnly(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
@@ -102,37 +111,6 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     assertThat(server.takeRequest().getHeader(EXTRA_KEY))
         .isEqualTo("joey");
-  }
-
-  /**
-   * This tests that the parent is determined at the time the request was made, not when the request
-   * was executed.
-   */
-  @Test public void usesParentFromInvocationTime() throws Exception {
-    Tracer tracer = httpTracing.tracing().tracer();
-    server.enqueue(new MockResponse().setBodyDelay(1, TimeUnit.SECONDS));
-    server.enqueue(new MockResponse());
-
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
-      getAsync(client, "/foo");
-      getAsync(client, "/foo");
-    } finally {
-      parent.finish();
-    }
-
-    brave.Span otherSpan = tracer.newTrace().name("test2").start();
-    try (SpanInScope ws = tracer.withSpanInScope(otherSpan)) {
-      for (int i = 0; i < 2; i++) {
-        RecordedRequest request = server.takeRequest();
-        assertThat(request.getHeader("x-b3-traceId"))
-            .isEqualTo(parent.context().traceIdString());
-        assertThat(request.getHeader("x-b3-parentspanid"))
-            .isEqualTo(HexCodec.toLowerHex(parent.context().spanId()));
-      }
-    } finally {
-      otherSpan.finish();
-    }
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -170,9 +148,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.CLIENT);
+    Span span = takeSpan();
+    assertThat(span.kind())
+        .isEqualTo(Span.Kind.CLIENT);
   }
 
   @Test
@@ -180,9 +158,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(spans)
-        .extracting(Span::remoteEndpoint)
-        .containsExactly(Endpoint.newBuilder()
+    Span span = takeSpan();
+    assertThat(span.remoteEndpoint())
+        .isEqualTo(Endpoint.newBuilder()
             .ip("127.0.0.1")
             .port(server.getPort()).build()
         );
@@ -192,9 +170,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("get");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("get");
   }
 
   @Test public void supportsPortableCustomization() throws Exception {
@@ -217,16 +195,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("get /foo");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("get /foo");
 
-    assertThat(spans)
-        .extracting(Span::remoteServiceName)
-        .containsExactly("remote-service");
+    assertThat(span.remoteServiceName())
+        .isEqualTo("remote-service");
 
-    assertReportedTagsInclude("http.url", url(uri));
-    assertReportedTagsInclude("context.visible", "true");
+    assertThat(span.tags())
+        .containsEntry("http.url", url(uri))
+        .containsEntry("context.visible", "true");
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
@@ -238,8 +216,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // some clients think 400 is an error
     }
 
-    assertReportedTagsInclude("http.status_code", "400");
-    assertReportedTagsInclude("error", "400");
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.status_code", "400")
+        .containsEntry("error", "400");
   }
 
   @Test public void redirect() throws Exception {
@@ -249,7 +229,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
     brave.Span parent = tracer.newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       get(client, "/foo");
     } catch (RuntimeException e) {
       // some think 404 is an exception
@@ -257,7 +237,12 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    assertReportedTagsInclude("http.path", "/foo", "/bar");
+    Span client1 = takeSpan();
+    Span client2 = takeSpan();
+    assertThat(Arrays.asList(client1.tags().get("http.path"), client2.tags().get("http.path")))
+        .contains("/foo", "/bar");
+
+    assertThat(takeSpan().kind()).isNull(); // local
   }
 
   @Test public void post() throws Exception {
@@ -270,12 +255,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(server.takeRequest().getBody().readUtf8())
         .isEqualTo(body);
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("post");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("post");
   }
 
   @Test public void reportsSpanOnTransportException() throws Exception {
+    checkReportsSpanOnTransportException();
+  }
+
+  Span checkReportsSpanOnTransportException() throws InterruptedException {
     server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
 
     try {
@@ -284,15 +273,13 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // ok, but the span should include an error!
     }
 
-    assertThat(spans).hasSize(1);
+    return takeSpan();
   }
 
   @Test public void addsErrorTagOnTransportException() throws Exception {
-    reportsSpanOnTransportException();
-
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().keySet())
-        .contains("error");
+    Span span = checkReportsSpanOnTransportException();
+    assertThat(span.tags())
+        .containsKey("error");
   }
 
   @Test public void httpPathTagExcludesQueryParams() throws Exception {
@@ -301,7 +288,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, path);
 
-    assertReportedTagsInclude("http.path", "/foo");
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.path", "/foo");
   }
 
   protected String url(String pathIncludingQuery) {

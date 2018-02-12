@@ -1,5 +1,8 @@
 package brave.vertx.web;
 
+import brave.SpanCustomizer;
+import brave.http.HttpAdapter;
+import brave.http.HttpServerParser;
 import brave.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
 import io.vertx.core.Handler;
@@ -13,9 +16,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 public class ITVertxWebTracing extends ITHttpServer {
   Vertx vertx;
@@ -36,6 +39,9 @@ public class ITVertxWebTracing extends ITHttpServer {
     router.route("/reroute").handler(ctx -> {
       ctx.reroute("/foo");
     });
+    router.route("/rerouteAsync").handler(ctx -> {
+      ctx.reroute("/async");
+    });
     router.route("/extra").handler(ctx -> {
       ctx.response().end(ExtraFieldPropagation.get(EXTRA_KEY));
     });
@@ -52,7 +58,6 @@ public class ITVertxWebTracing extends ITHttpServer {
     router.route("/exceptionAsync").handler(ctx -> {
       ctx.request().endHandler(v -> ctx.fail(new Exception()));
     });
-
 
     Handler<RoutingContext> routingContextHandler =
         VertxWebTracing.create(httpTracing).routingContextHandler();
@@ -75,12 +80,29 @@ public class ITVertxWebTracing extends ITHttpServer {
 
   // makes sure we don't accidentally rewrite the incoming http path
   @Test public void handlesReroute() throws Exception {
-    get("/reroute");
+    handlesReroute("/reroute");
+  }
 
-    assertThat(spans)
-        .hasSize(1)
-        .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry("http.path", "/reroute"));
+  @Test public void handlesRerouteAsync() throws Exception {
+    handlesReroute("/rerouteAsync");
+  }
+
+  void handlesReroute(String path) throws Exception {
+    httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
+      @Override
+      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+        super.request(adapter, req, customizer);
+        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+      }
+    }).build();
+    init();
+
+    get(path);
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.path", path)
+        .containsEntry("http.url", url(path));
   }
 
   @Override

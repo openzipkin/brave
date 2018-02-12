@@ -88,6 +88,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
       assertThat(response.header(EXTRA_KEY))
           .isEqualTo("abcdefg");
     }
+
+    takeSpan();
   }
 
   @Override

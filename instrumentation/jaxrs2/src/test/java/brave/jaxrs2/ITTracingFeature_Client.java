@@ -1,7 +1,6 @@
 package brave.jaxrs2;
 
-import brave.http.ITHttpClient;
-import java.io.IOException;
+import brave.http.ITHttpAsyncClient;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -11,11 +10,12 @@ import javax.ws.rs.client.Entity;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingFeature_Client extends ITHttpClient<Client> {
+public class ITTracingFeature_Client extends ITHttpAsyncClient<Client> {
 
   ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -27,17 +27,16 @@ public class ITTracingFeature_Client extends ITHttpClient<Client> {
         .build();
   }
 
-  @Override protected void closeClient(Client client) throws IOException {
+  @Override protected void closeClient(Client client) {
     client.close();
     executor.shutdown();
   }
 
-  @Override protected void get(Client client, String pathIncludingQuery) throws IOException {
+  @Override protected void get(Client client, String pathIncludingQuery) {
     client.target(url(pathIncludingQuery)).request().buildGet().invoke().close();
   }
 
-  @Override protected void post(Client client, String pathIncludingQuery, String body)
-      throws Exception {
+  @Override protected void post(Client client, String pathIncludingQuery, String body) {
     client.target(url(pathIncludingQuery)).request()
         .buildPost(Entity.text(body))
         .invoke().close();
@@ -64,25 +63,23 @@ public class ITTracingFeature_Client extends ITHttpClient<Client> {
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    takeSpan();
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void redirect() throws Exception { // blind to the implementation of redirects
-    super.redirect();
+  @Override @Ignore("blind to the implementation of redirects")
+  public void redirect() {
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void reportsServerAddress() throws Exception { // doesn't know the remote address
-    super.reportsServerAddress();
+  @Override @Ignore("doesn't know the remote address")
+  public void reportsServerAddress() {
   }
 
-  @Override @Test(expected = AssertionError.class) // doesn't yet close a span on exception
-  public void reportsSpanOnTransportException() throws Exception {
-    super.reportsSpanOnTransportException();
+  @Override @Ignore("doesn't yet close a span on exception")
+  public void reportsSpanOnTransportException() {
   }
 
-  @Override @Test(expected = AssertionError.class) // doesn't yet close a span on exception
-  public void addsErrorTagOnTransportException() throws Exception {
-    super.addsErrorTagOnTransportException();
+  @Override @Ignore("doesn't yet close a span on exception")
+  public void addsErrorTagOnTransportException() {
   }
 }

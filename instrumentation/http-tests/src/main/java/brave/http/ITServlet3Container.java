@@ -13,8 +13,6 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 public abstract class ITServlet3Container extends ITServlet25Container {
   static ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -32,13 +30,13 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   @Test public void forward() throws Exception {
     get("/forward");
 
-    assertThat(spans).hasSize(1);
+    takeSpan();
   }
 
   @Test public void forwardAsync() throws Exception {
     get("/forwardAsync");
 
-    assertThat(spans).hasSize(1);
+    takeSpan();
   }
 
   static class ForwardServlet extends HttpServlet {

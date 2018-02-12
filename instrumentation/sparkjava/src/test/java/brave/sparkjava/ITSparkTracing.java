@@ -3,19 +3,21 @@ package brave.sparkjava;
 import brave.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
 import org.junit.After;
-import org.junit.ComparisonFailure;
-import org.junit.Test;
+import org.junit.Ignore;
 import spark.Spark;
 
 public class ITSparkTracing extends ITHttpServer {
 
-  /**
-   * Async tests are ignored until https://github.com/perwendel/spark/issues/208
-   */
-  @Override
-  @Test(expected = ComparisonFailure.class)
-  public void async() throws Exception {
-    super.async();
+  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
+  public void async() {
+  }
+
+  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
+  public void addsErrorTagOnException_async() {
+  }
+
+  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
+  public void reportsSpanOnException_async() {
   }
 
   @Override protected void init() throws Exception {

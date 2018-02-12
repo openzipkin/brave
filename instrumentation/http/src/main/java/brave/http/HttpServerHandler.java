@@ -4,7 +4,6 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
-import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import zipkin2.Endpoint;
@@ -34,7 +33,12 @@ public final class HttpServerHandler<Req, Resp> {
 
   public static <Req, Resp> HttpServerHandler create(HttpTracing httpTracing,
       HttpServerAdapter<Req, Resp> adapter) {
-    return new HttpServerHandler<>(httpTracing, adapter);
+    return new HttpServerHandler<>(
+        httpTracing.tracing().tracer(),
+        httpTracing.serverSampler(),
+        httpTracing.serverParser(),
+        adapter
+    );
   }
 
   final Tracer tracer;
@@ -42,10 +46,15 @@ public final class HttpServerHandler<Req, Resp> {
   final HttpServerParser parser;
   final HttpServerAdapter<Req, Resp> adapter;
 
-  HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
-    this.tracer = httpTracing.tracing().tracer();
-    this.sampler = httpTracing.serverSampler();
-    this.parser = httpTracing.serverParser();
+  HttpServerHandler(
+      Tracer tracer,
+      HttpSampler sampler,
+      HttpServerParser parser,
+      HttpServerAdapter<Req, Resp> adapter
+  ) {
+    this.tracer = tracer;
+    this.sampler = sampler;
+    this.parser = parser;
     this.adapter = adapter;
   }
 
@@ -63,6 +72,8 @@ public final class HttpServerHandler<Req, Resp> {
    * Like {@link #handleReceive(TraceContext.Extractor, Object)}, except for when the carrier of
    * trace data is not the same as the request.
    *
+   * <p>Request data is parsed before the span is started.
+   *
    * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
@@ -71,7 +82,13 @@ public final class HttpServerHandler<Req, Resp> {
 
     // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.SERVER);
+    parseRequest(request, span);
 
+    return span.start();
+  }
+
+  void parseRequest(Req request, Span span) {
+    if (span.isNoop()) return;
     // Ensure user-code can read the current trace context
     Tracer.SpanInScope ws = tracer.withSpanInScope(span);
     try {
@@ -84,7 +101,6 @@ public final class HttpServerHandler<Req, Resp> {
     if (adapter.parseClientAddress(request, remoteEndpoint)) {
       span.remoteEndpoint(remoteEndpoint.build());
     }
-    return span.start();
   }
 
   /** Creates a potentially noop span representing this request */

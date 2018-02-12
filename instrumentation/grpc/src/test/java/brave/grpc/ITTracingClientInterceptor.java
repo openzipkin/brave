@@ -24,10 +24,12 @@ import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,7 +47,11 @@ import static org.junit.Assume.assumeTrue;
 public class ITTracingClientInterceptor {
   Logger testLogger = LogManager.getLogger();
 
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
+  /**
+   * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
+   * like those using blocking clients, happen on the main thread.
+   */
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   GrpcTracing tracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
   Tracer tracer = tracing.tracing().tracer();
@@ -60,6 +66,10 @@ public class ITTracingClientInterceptor {
   @After public void close() throws Exception {
     closeClient(client);
     server.stop();
+    // From brave.http.ITHttp.close
+    assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
+        .withFailMessage("Span remaining in queue. Check for exception or redundant reporting")
+        .isNull();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
@@ -86,6 +96,8 @@ public class ITTracingClientInterceptor {
     TraceContext context = server.takeRequest().context();
     assertThat(context.parentId()).isNull();
     assertThat(context.sampled()).isTrue();
+
+    spans.take();
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
@@ -101,6 +113,11 @@ public class ITTracingClientInterceptor {
         .isEqualTo(parent.context().traceId());
     assertThat(context.parentId())
         .isEqualTo(parent.context().spanId());
+
+    // we report one local and one client span
+    assertThat(Arrays.asList(spans.take(), spans.take()))
+        .extracting(Span::kind)
+        .containsOnly(null, Span.Kind.CLIENT);
   }
 
   /**
@@ -131,6 +148,11 @@ public class ITTracingClientInterceptor {
     } finally {
       otherSpan.finish();
     }
+
+    // Check we reported 2 local spans and 2 client spans
+    assertThat(Arrays.asList(spans.take(), spans.take(), spans.take(), spans.take()))
+        .extracting(Span::kind)
+        .containsOnly(null, Span.Kind.CLIENT);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -143,25 +165,39 @@ public class ITTracingClientInterceptor {
 
     TraceContextOrSamplingFlags extracted = server.takeRequest();
     assertThat(extracted.sampled()).isFalse();
+
+    // @After will check that nothing is reported
   }
 
   @Test public void reportsClientKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.CLIENT);
+    Span span = spans.take();
+    assertThat(span.kind())
+        .isEqualTo(Span.Kind.CLIENT);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("helloworld.greeter/sayhello");
+    Span span = spans.take();
+    assertThat(span.name())
+        .isEqualTo("helloworld.greeter/sayhello");
   }
 
-  @Test public void reportsSpanOnTransportException() throws Exception {
+  @Test public void onTransportException_reportsSpan() throws Exception {
+    spanFromTransportException();
+  }
+
+  @Test public void onTransportException_addsErrorTag() throws Exception {
+    Span span = spanFromTransportException();
+    assertThat(span.tags()).containsExactly(
+        entry("error", "UNAVAILABLE"),
+        entry("grpc.status_code", "UNAVAILABLE")
+    );
+  }
+
+  Span spanFromTransportException() throws InterruptedException {
     server.stop();
 
     try {
@@ -170,10 +206,7 @@ public class ITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
-        entry("error", "UNAVAILABLE"),
-        entry("grpc.status_code", "UNAVAILABLE")
-    );
+    return spans.take();
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
@@ -183,18 +216,10 @@ public class ITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+    Span span = spans.take();
+    assertThat(span.tags()).containsExactly(
         entry("error", "UNIMPLEMENTED"),
         entry("grpc.status_code", "UNIMPLEMENTED")
-    );
-  }
-
-  @Test public void addsErrorTag_onTransportException() throws Exception {
-    reportsSpanOnTransportException();
-
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
-        entry("error", "UNAVAILABLE"),
-        entry("grpc.status_code", "UNAVAILABLE")
     );
   }
 
@@ -204,9 +229,8 @@ public class ITTracingClientInterceptor {
     ListenableFuture<HelloReply> resp = GreeterGrpc.newFutureStub(client).sayHello(HELLO_REQUEST);
     assumeTrue("lost race on cancel", resp.cancel(true));
 
-    close(); // blocks until the cancel finished
-
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet()).containsExactly(
+    Span span = spans.take();
+    assertThat(span.tags()).containsExactly(
         entry("error", "CANCELLED"),
         entry("grpc.status_code", "CANCELLED")
     );
@@ -244,6 +268,8 @@ public class ITTracingClientInterceptor {
 
     assertThat(scopes)
         .containsKeys("before", "start");
+
+    spans.take();
   }
 
   @Test public void clientParserTest() throws Exception {
@@ -272,8 +298,9 @@ public class ITTracingClientInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spans.getFirst().name()).isEqualTo("unary");
-    assertThat(spans).flatExtracting(s -> s.tags().keySet()).containsExactlyInAnyOrder(
+    Span span = spans.take();
+    assertThat(span.name()).isEqualTo("unary");
+    assertThat(span.tags()).containsKeys(
         "grpc.message_received", "grpc.message_sent",
         "grpc.message_received.visible", "grpc.message_sent.visible"
     );
@@ -294,14 +321,15 @@ public class ITTracingClientInterceptor {
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
         .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
     assertThat(replies).hasSize(10);
-    assertThat(spans).hasSize(1);
+
+    Span span = spans.take();
     // all response messages are tagged to the same span
-    assertThat(spans.getFirst().tags()).hasSize(10);
+    assertThat(span.tags()).hasSize(10);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter((zipkin2.reporter.Reporter<zipkin2.Span>) spans::add)
+        .spanReporter(spans::add)
         .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);

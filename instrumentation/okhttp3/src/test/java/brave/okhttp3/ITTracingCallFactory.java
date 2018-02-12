@@ -1,8 +1,9 @@
 package brave.okhttp3;
 
 import brave.Tracer;
-import brave.http.ITHttpClient;
+import brave.http.ITHttpAsyncClient;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -14,10 +15,11 @@ import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingCallFactory extends ITHttpClient<Call.Factory> {
+public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
 
   @Override protected Call.Factory newClient(int port) {
     return TracingCallFactory.create(httpTracing, new OkHttpClient.Builder()
@@ -28,7 +30,7 @@ public class ITTracingCallFactory extends ITHttpClient<Call.Factory> {
     );
   }
 
-  @Override protected void closeClient(Call.Factory client) throws IOException {
+  @Override protected void closeClient(Call.Factory client) {
     ((TracingCallFactory) client).ok.dispatcher().executorService().shutdownNow();
   }
 
@@ -45,15 +47,14 @@ public class ITTracingCallFactory extends ITHttpClient<Call.Factory> {
         .execute();
   }
 
-  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery)
-      throws Exception {
+  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
         .enqueue(new Callback() {
           @Override public void onFailure(Call call, IOException e) {
             e.printStackTrace();
           }
 
-          @Override public void onResponse(Call call, Response response) throws IOException {
+          @Override public void onResponse(Call call, Response response) {
           }
         });
   }
@@ -79,5 +80,10 @@ public class ITTracingCallFactory extends ITHttpClient<Call.Factory> {
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
+
+    // we report one local and one client span
+    assertThat(Arrays.asList(takeSpan(), takeSpan()))
+        .extracting(Span::kind)
+        .containsOnly(null, Span.Kind.CLIENT);
   }
 }

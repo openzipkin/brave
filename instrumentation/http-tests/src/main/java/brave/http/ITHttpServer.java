@@ -4,7 +4,6 @@ import brave.SpanCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import java.io.IOException;
-import java.util.Map;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -22,8 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
 
-  @Before
-  public void setup() throws Exception {
+  @Before public void setup() throws Exception {
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
@@ -48,16 +46,17 @@ public abstract class ITHttpServer extends ITHttp {
         .header("X-B3-Sampled", "1")
         .build());
 
-    assertThat(spans).allSatisfy(s -> {
-      assertThat(s.traceId()).isEqualTo(traceId);
-      assertThat(s.parentId()).isEqualTo(parentId);
-      assertThat(s.id()).isEqualTo(spanId);
-    });
+    Span span = takeSpan();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.parentId()).isEqualTo(parentId);
+    assertThat(span.id()).isEqualTo(spanId);
   }
 
   @Test
   public void readsExtra_newTrace() throws Exception {
     readsExtra(new Request.Builder());
+
+    takeSpan();
   }
 
   @Test
@@ -65,7 +64,7 @@ public abstract class ITHttpServer extends ITHttp {
     readsExtra(new Request.Builder()
         .header("X-B3-Sampled", "0"));
 
-    assertThat(spans).isEmpty();
+    // @After will check that nothing is reported
   }
 
   @Test
@@ -76,17 +75,16 @@ public abstract class ITHttpServer extends ITHttp {
         .header("X-B3-TraceId", traceId)
         .header("X-B3-SpanId", traceId));
 
-    assertThat(spans).allSatisfy(s -> {
-      assertThat(s.traceId()).isEqualTo(traceId);
-      assertThat(s.id()).isEqualTo(traceId);
-    });
+    Span span = takeSpan();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.id()).isEqualTo(traceId);
   }
 
   /**
    * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using
    * {@link ExtraFieldPropagation#get(String)}.
    */
-  void readsExtra(Request.Builder builder) throws IOException {
+  void readsExtra(Request.Builder builder) throws Exception {
     Request request = builder.url(url("/extra"))
         // this is the pre-configured key we can pass through
         .header(EXTRA_KEY, "joey").build();
@@ -105,8 +103,7 @@ public abstract class ITHttpServer extends ITHttp {
 
     get("/foo");
 
-    assertThat(spans)
-        .isEmpty();
+    // @After will check that nothing is reported
   }
 
   @Test public void customSampler() throws Exception {
@@ -122,8 +119,7 @@ public abstract class ITHttpServer extends ITHttp {
       assertThat(response.isSuccessful()).isTrue();
     }
 
-    assertThat(spans)
-        .isEmpty();
+    // @After will check that nothing is reported
   }
 
   /**
@@ -133,7 +129,7 @@ public abstract class ITHttpServer extends ITHttp {
   public void async() throws Exception {
     get("/async");
 
-    assertThat(spans).hasSize(1);
+    takeSpan();
   }
 
   /**
@@ -146,10 +142,8 @@ public abstract class ITHttpServer extends ITHttp {
   public void createsChildSpan() throws Exception {
     get("/child");
 
-    assertThat(spans).hasSize(2);
-
-    Span child = spans.pop();
-    Span parent = spans.pop();
+    Span child = takeSpan();
+    Span parent = takeSpan();
 
     assertThat(parent.traceId()).isEqualTo(child.traceId());
     assertThat(parent.id()).isEqualTo(child.parentId());
@@ -161,9 +155,9 @@ public abstract class ITHttpServer extends ITHttp {
   public void reportsClientAddress() throws Exception {
     get("/foo");
 
-    assertThat(spans)
-        .flatExtracting(Span::remoteEndpoint)
-        .doesNotContainNull();
+    Span span = takeSpan();
+    assertThat(span.remoteEndpoint())
+        .isNotNull();
   }
 
   @Test
@@ -172,8 +166,8 @@ public abstract class ITHttpServer extends ITHttp {
         .header("X-Forwarded-For", "1.2.3.4")
         .build());
 
-    assertThat(spans)
-        .extracting(Span::remoteEndpoint)
+    Span span = takeSpan();
+    assertThat(span.remoteEndpoint())
         .extracting(Endpoint::ipv4)
         .contains("1.2.3.4");
   }
@@ -182,18 +176,18 @@ public abstract class ITHttpServer extends ITHttp {
   public void reportsServerKindToZipkin() throws Exception {
     get("/foo");
 
-    assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.SERVER);
+    Span span = takeSpan();
+    assertThat(span.kind())
+        .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test
   public void defaultSpanNameIsMethodName() throws Exception {
     get("/foo");
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("get");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("get");
   }
 
   @Test
@@ -211,12 +205,12 @@ public abstract class ITHttpServer extends ITHttp {
     String uri = "/foo?z=2&yAA=1";
     get(uri);
 
-    assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("get /foo");
-
-    assertReportedTagsInclude("http.url", url(uri));
-    assertReportedTagsInclude("context.visible", "true");
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("get /foo");
+    assertThat(span.tags())
+        .containsEntry("http.url", url(uri))
+        .containsEntry("context.visible", "true");
   }
 
   @Test
@@ -227,8 +221,10 @@ public abstract class ITHttpServer extends ITHttp {
       // some servers think 400 is an error
     }
 
-    assertReportedTagsInclude("http.status_code", "400");
-    assertReportedTagsInclude("error", "400");
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.status_code", "400")
+        .containsEntry("error", "400");
   }
 
   @Test
@@ -241,10 +237,10 @@ public abstract class ITHttpServer extends ITHttp {
     reportsSpanOnException("/exceptionAsync");
   }
 
-  private void reportsSpanOnException(String path) throws IOException {
+  Span reportsSpanOnException(String path) throws Exception {
     get(path);
 
-    assertThat(spans).hasSize(1);
+    return takeSpan();
   }
 
   @Test
@@ -261,7 +257,9 @@ public abstract class ITHttpServer extends ITHttp {
   public void httpPathTagExcludesQueryParams() throws Exception {
     get("/foo?z=2&yAA=1");
 
-    assertReportedTagsInclude("http.path", "/foo");
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.path", "/foo");
   }
 
   protected Response get(String path) throws IOException {
@@ -286,16 +284,9 @@ public abstract class ITHttpServer extends ITHttp {
     }
   }
 
-  private void addsErrorTagOnException(String path) throws IOException {
-    reportsSpanOnException(path);
-    try {
-      Thread.sleep(1000L);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .extracting(Map.Entry::getKey)
-        .contains("error");
+  private void addsErrorTagOnException(String path) throws Exception {
+    Span span = reportsSpanOnException(path);
+    assertThat(span.tags())
+        .containsKey("error");
   }
 }
