@@ -264,7 +264,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     checkReportsSpanOnTransportException();
   }
 
-  Span checkReportsSpanOnTransportException() throws InterruptedException {
+  protected Span checkReportsSpanOnTransportException() throws InterruptedException {
     server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
 
     try {

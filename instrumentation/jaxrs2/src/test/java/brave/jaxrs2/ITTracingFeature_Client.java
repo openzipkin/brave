@@ -10,8 +10,10 @@ import javax.ws.rs.client.Entity;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
+import org.junit.AssumptionViolatedException;
 import org.junit.Ignore;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,11 +77,7 @@ public class ITTracingFeature_Client extends ITHttpAsyncClient<Client> {
   public void reportsServerAddress() {
   }
 
-  @Override @Ignore("doesn't yet close a span on exception")
-  public void reportsSpanOnTransportException() {
-  }
-
-  @Override @Ignore("doesn't yet close a span on exception")
-  public void addsErrorTagOnTransportException() {
+  @Override protected Span checkReportsSpanOnTransportException() throws InterruptedException {
+    throw new AssumptionViolatedException("doesn't yet close a span on exception");
   }
 }

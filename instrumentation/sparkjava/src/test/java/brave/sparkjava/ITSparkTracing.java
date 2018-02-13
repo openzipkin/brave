@@ -2,22 +2,16 @@ package brave.sparkjava;
 
 import brave.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
+import okhttp3.Response;
 import org.junit.After;
-import org.junit.Ignore;
+import org.junit.AssumptionViolatedException;
 import spark.Spark;
 
 public class ITSparkTracing extends ITHttpServer {
 
-  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
-  public void async() {
-  }
-
-  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
-  public void addsErrorTagOnException_async() {
-  }
-
-  @Override @Ignore("ignored until https://github.com/perwendel/spark/issues/208")
-  public void reportsSpanOnException_async() {
+  @Override protected Response get(String path) throws Exception {
+    if (path.toLowerCase().indexOf("async") == -1) return super.get(path);
+    throw new AssumptionViolatedException("ignored until https://github.com/perwendel/spark/issues/208");
   }
 
   @Override protected void init() throws Exception {
