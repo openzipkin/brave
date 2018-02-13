@@ -88,7 +88,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  final class RemoveScope implements HttpRequestInterceptor {
+  static final class RemoveScope implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
       Scope scope = (Scope) context.getAttribute(Scope.class.getName());
       if (scope == null) return;

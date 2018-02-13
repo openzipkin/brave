@@ -103,7 +103,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     brave.Span parent = tracer.newTrace(SamplingFlags.NOT_SAMPLED).name("test").start();
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
-      ExtraFieldPropagation.set(EXTRA_KEY, "joey");
+      ExtraFieldPropagation.set(parent.context(), EXTRA_KEY, "joey");
       get(client, "/foo");
     } finally {
       parent.finish();
