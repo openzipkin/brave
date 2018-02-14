@@ -9,7 +9,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>brave-instrumentation-spring-amqp</artifactId>
-	<name>Brave Instrumentation: Spring AMQP Listener and Template</name>
+	<name>Brave Instrumentation: Spring AMQP (RabbitMQ)</name>
 
 	<properties>
 		<main.basedir>${project.basedir}/../..</main.basedir>
@@ -21,9 +21,10 @@
 		<dependency>
 			<groupId>org.springframework.amqp</groupId>
 			<artifactId>spring-amqp</artifactId>
-			<version>${spring-amqp.version}</version>
+			<version>1.7.5.RELEASE</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- spring-aop is required for the consumer side instrumentation point -->
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-aop</artifactId>
