@@ -23,10 +23,16 @@ public final class TracingFeature implements Feature {
     this.httpTracing = httpTracing;
   }
 
-  // TODO: figure out how to deal with when the client or server impl is also traced
+  // TODO: figure out how to deal with when the client or server impl is traced upstream
+  // See https://github.com/openzipkin/brave/issues/396
   @Override public boolean configure(FeatureContext context) {
-    context.register(new TracingClientFilter(httpTracing));
-    context.register(new TracingContainerFilter(httpTracing));
+    switch (context.getConfiguration().getRuntimeType()) {
+      case CLIENT:
+        context.register(new TracingClientFilter(httpTracing));
+        break;
+      case SERVER:
+        context.register(new TracingContainerFilter(httpTracing));
+    }
     return true;
   }
 }
