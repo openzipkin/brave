@@ -116,6 +116,12 @@
 
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-jersey-server</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-netty-codec-http</artifactId>
       <version>${project.version}</version>
     </dependency>
