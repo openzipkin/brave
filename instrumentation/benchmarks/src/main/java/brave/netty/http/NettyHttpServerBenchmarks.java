@@ -52,7 +52,9 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
                 .addField("x-vcap-request-id")
                 .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
                 .build()
-            ).build()
+            )
+            .spanReporter(Reporter.NOOP)
+            .build()
     ).serverHandler();
     final ChannelDuplexHandler tracedExtra = NettyHttpTracing.create(
         Tracing.newBuilder().spanReporter(Reporter.NOOP).build()

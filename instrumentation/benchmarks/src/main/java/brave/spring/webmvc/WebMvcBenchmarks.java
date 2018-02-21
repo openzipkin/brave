@@ -73,7 +73,9 @@ public class WebMvcBenchmarks extends HttpServerBenchmarks {
                   .addField("x-vcap-request-id")
                   .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
                   .build()
-              ).build()
+              )
+              .spanReporter(Reporter.NOOP)
+              .build()
       )).addPathPatterns("/tracedextra");
       registry.addInterceptor(TracingHandlerInterceptor.create(
           Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()

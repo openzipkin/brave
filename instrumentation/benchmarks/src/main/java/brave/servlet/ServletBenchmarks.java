@@ -61,7 +61,9 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
               .addField("x-vcap-request-id")
               .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
               .build()
-          ).build()));
+          )
+          .spanReporter(Reporter.NOOP)
+          .build()));
     }
   }
 
