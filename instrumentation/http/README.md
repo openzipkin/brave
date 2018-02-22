@@ -11,6 +11,7 @@ instructions on what to put into http spans, and sampling policy.
 By default, the following are added to both http client and server spans:
 * Span.name as the http method in lowercase: ex "get"
 * Tags/binary annotations:
+  * "http.method", eg "GET"
   * "http.path", which does not include query parameters.
   * "http.status_code" when the status us not success.
   * "error", when there is an exception or status is >=400
@@ -20,15 +21,14 @@ Naming and tags are configurable in a library-agnostic way. For example,
 the same `HttpTracing` component configures OkHttp or Apache HttpClient
 identically.
 
-For example, to change the span and tag naming policy for clients, you
-can do something like this:
+For example, to change the tagging policy for clients, you can do
+something like this:
 
 ```java
 httpTracing = httpTracing.toBuilder()
     .clientParser(new HttpClientParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
         customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
       }
     })
@@ -38,8 +38,8 @@ apache = TracingHttpClientBuilder.create(httpTracing.clientOf("s3"));
 okhttp = TracingCallFactory.create(httpTracing.clientOf("sqs"), new OkHttpClient());
 ```
 
-If you just want to control span naming policy, override `spanName` in
-your client or server parser.
+If you just want to control span naming policy based on the request,
+override `spanName` in your client or server parser.
 
 Ex:
 ```java
@@ -49,6 +49,9 @@ overrideSpanName = new HttpClientParser() {
   }
 };
 ```
+
+Note that span name can be overwritten any time, for example, when
+parsing the response.
 
 ## Sampling Policy
 The default sampling policy is to use the default (trace ID) sampler for

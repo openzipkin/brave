@@ -23,14 +23,16 @@ public class HttpParserTest {
     when(adapter.method(request)).thenReturn("GET");
 
     assertThat(parser.spanName(adapter, request))
-        .isEqualTo("GET");
+        .isEqualTo("GET"); // note: in practice this will become lowercase
   }
 
-  @Test public void request_addsPath() {
+  @Test public void request_addsMethodAndPath() {
+    when(adapter.method(request)).thenReturn("GET");
     when(adapter.path(request)).thenReturn("/foo");
 
     parser.request(adapter, request, customizer);
 
+    verify(customizer).tag("http.method", "GET");
     verify(customizer).tag("http.path", "/foo");
   }
 
@@ -47,6 +49,15 @@ public class HttpParserTest {
 
     verify(customizer).tag("http.status_code", "400");
     verify(customizer).tag("error", "400");
+  }
+
+  @Test public void response_statusZeroIsNotAnError() {
+    when(adapter.statusCodeAsInt(response)).thenReturn(0);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer, never()).tag("http.status_code", "0");
+    verify(customizer, never()).tag("error", "0");
   }
 
   @Test public void response_tagsErrorFromException() {
