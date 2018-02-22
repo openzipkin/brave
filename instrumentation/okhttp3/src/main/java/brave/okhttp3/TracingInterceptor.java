@@ -98,6 +98,10 @@ public final class TracingInterceptor implements Interceptor {
     }
 
     @Override public Integer statusCode(Response response) {
+      return statusCodeAsInt(response);
+    }
+
+    @Override public int statusCodeAsInt(Response response) {
       return response.code();
     }
   }

@@ -76,6 +76,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     }
 
     @Override public Integer statusCode(ContainerResponse response) {
+      return statusCodeAsInt(response);
+    }
+
+    @Override public int statusCodeAsInt(ContainerResponse response) {
       return response.getStatus();
     }
 

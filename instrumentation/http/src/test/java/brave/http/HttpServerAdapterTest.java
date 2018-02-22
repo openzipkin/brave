@@ -16,15 +16,24 @@ import static org.mockito.Mockito.when;
 public class HttpServerAdapterTest {
   @Mock HttpServerAdapter<Object, Object> adapter;
   Object request = new Object();
+  Object response = new Object();
 
   @Before public void callRealMethod() {
     when(adapter.parseClientAddress(eq(request), isA(Endpoint.Builder.class))).thenCallRealMethod();
     when(adapter.path(request)).thenCallRealMethod();
+    when(adapter.statusCodeAsInt(response)).thenCallRealMethod();
   }
 
   @Test public void path_doesntCrashOnNullUrl() {
     assertThat(adapter.path(request))
         .isNull();
+  }
+
+  @Test public void statusCodeAsInt_callsStatusCodeByDefault() {
+    when(adapter.statusCode(response)).thenReturn(400);
+
+    assertThat(adapter.statusCodeAsInt(response))
+        .isEqualTo(400);
   }
 
   @Test public void path_derivedFromUrl() {

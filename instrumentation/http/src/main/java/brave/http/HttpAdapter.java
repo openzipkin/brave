@@ -41,8 +41,20 @@ public abstract class HttpAdapter<Req, Resp> {
    * The HTTP status code or null if unreadable.
    *
    * <p>Conventionally associated with the key "http.status_code"
+   *
+   * @see #statusCodeAsInt(Object)
    */
   @Nullable public abstract Integer statusCode(Resp response);
+
+  /**
+   * Like {@link #statusCode(Object)} except returns a primitive where zero implies absent.
+   *
+   * <p>Using this method usually avoids allocation, so is encouraged when parsing data.
+   */
+  public int statusCodeAsInt(Resp response) {
+    Integer maybeStatus = statusCode(response);
+    return maybeStatus != null ? maybeStatus : 0;
+  }
 
   HttpAdapter() {
   }
