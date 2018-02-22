@@ -3,6 +3,7 @@ package brave.jaxrs2;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
+import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.Propagation.Setter;
@@ -29,7 +30,17 @@ import static javax.ws.rs.RuntimeType.CLIENT;
 @Provider
 @ConstrainedTo(CLIENT)
 @Priority(0) // to make the span in scope visible to other filters
-final class TracingClientFilter implements ClientRequestFilter, ClientResponseFilter {
+// Public to allow this to be used in conjunction with jersey-server instrumentation, without also
+// registering TracingContainerFilter (which would lead to redundant spans).
+public final class TracingClientFilter implements ClientRequestFilter, ClientResponseFilter {
+  public static TracingClientFilter create(Tracing tracing) {
+    return new TracingClientFilter(HttpTracing.create(tracing));
+  }
+
+  public static TracingClientFilter create(HttpTracing httpTracing) {
+    return new TracingClientFilter(httpTracing);
+  }
+
   static final Setter<MultivaluedMap<String, Object>, String> SETTER =
       new Setter<MultivaluedMap<String, Object>, String>() {
         @Override
