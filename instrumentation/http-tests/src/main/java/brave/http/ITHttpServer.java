@@ -3,6 +3,10 @@ package brave.http;
 import brave.SpanCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -182,12 +186,14 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
-  public void defaultSpanNameIsMethodName() throws Exception {
+  public void defaultSpanNameIsMethodNameOrRoute() throws Exception {
     get("/foo");
 
     Span span = takeSpan();
-    assertThat(span.name())
-        .isEqualTo("get");
+    if (!span.name().equals("get")) {
+      assertThat(span.name())
+          .isEqualTo("/foo");
+    }
   }
 
   @Test
@@ -195,7 +201,6 @@ public abstract class ITHttpServer extends ITHttp {
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
         customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
         customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
       }
@@ -206,11 +211,99 @@ public abstract class ITHttpServer extends ITHttp {
     get(uri);
 
     Span span = takeSpan();
-    assertThat(span.name())
-        .isEqualTo("get /foo");
     assertThat(span.tags())
         .containsEntry("http.url", url(uri))
         .containsEntry("context.visible", "true");
+  }
+
+  /**
+   * The "/items/{itemId}" endpoint should return the itemId in the response body, which proves
+   * templating worked (including that it ignores query parameters). Note the route format is
+   * framework specific, ex "/items/:itemId" in vert.x
+   */
+  @Test
+  public void httpRoute() throws Exception {
+    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
+    init();
+
+    routeRequestsMatchPrefix("/items");
+  }
+
+  /**
+   * The "/nested/items/{itemId}" endpoint should be implemented by two route expressions:
+   * A path prefix: "/nested" and then a relative expression "/items/{itemId}"
+   */
+  @Test
+  public void httpRoute_nested() throws Exception {
+    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
+    init();
+
+    routeRequestsMatchPrefix("/nested/items");
+  }
+
+  private void routeRequestsMatchPrefix(String prefix) throws Exception {
+    // Reading the route parameter from the response ensures the test endpoint is correct
+    assertThat(get(prefix + "/1?foo").body().string())
+        .isEqualTo("1");
+    assertThat(get(prefix + "/2?bar").body().string())
+        .isEqualTo("2");
+
+    Span span1 = takeSpan(), span2 = takeSpan();
+
+    // verify that the path and url reflect the initial request (not a route expression)
+    assertThat(span1.tags())
+        .containsEntry("http.method", "GET")
+        .containsEntry("http.path", prefix + "/1")
+        .containsEntry("http.url", url(prefix + "/1?foo"));
+    assertThat(span2.tags())
+        .containsEntry("http.method", "GET")
+        .containsEntry("http.path", prefix + "/2")
+        .containsEntry("http.url", url(prefix + "/2?bar"));
+
+    // We don't know the exact format of the http route as it is framework specific
+    // However, we know that it should match both requests and include the common part of the path
+    Set<String> routes = new LinkedHashSet<>(Arrays.asList(span1.name(), span2.name()));
+    assertThat(routes).hasSize(1);
+    assertThat(routes.iterator().next())
+        .startsWith(prefix)
+        .doesNotEndWith("/") // no trailing slashes
+        .doesNotContain("//"); // no duplicate slashes
+  }
+
+  final HttpServerParser nameIsRoutePlusUrl = new HttpServerParser() {
+    @Override
+    public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+      super.request(adapter, req, customizer);
+      customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+    }
+
+    @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
+        SpanCustomizer customizer) {
+      super.response(adapter, res, error, customizer);
+      String route = adapter.route(res);
+      if (route != null) customizer.name(route);
+    }
+  };
+
+  /** If http route is supported, then it should return empty when there's no route found */
+  @Test public void notFound() throws Exception {
+    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
+    init();
+
+    assertThat(maybeGet("/foo/bark").code())
+        .isEqualTo(404);
+
+    Span span = takeSpan();
+
+    // verify normal tags
+    assertThat(span.tags())
+        .containsEntry("http.path", "/foo/bark")
+        .containsEntry("http.status_code", "404");
+
+    // If route is supported, the name should be empty (zipkin2.Span.name coerces empty to null)
+    // If there's a bug in route parsing, a path expression will end up as the span name
+    String name = span.name();
+    if (name != null) assertThat(name).isEqualTo("get");
   }
 
   @Test
@@ -267,12 +360,23 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   protected Response get(Request request) throws Exception {
+    Response response = maybeGet(request);
+    if (response.code() == 404) {
+      // TODO: jetty isn't registering the tracing filter for all paths!
+      spans.poll(100, TimeUnit.MILLISECONDS);
+      throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
+    }
+    return response;
+  }
+
+  /** like {@link #get(String)} except doesn't throw unsupported on not found */
+  Response maybeGet(String path) throws IOException {
+    return maybeGet(new Request.Builder().url(url(path)).build());
+  }
+
+  /** like {@link #get(Request)} except doesn't throw unsupported on not found */
+  Response maybeGet(Request request) throws IOException {
     try (Response response = client.newCall(request).execute()) {
-      if (response.code() == 404) {
-        // TODO: jetty isn't registering the tracing filter for all paths!
-        spans.poll(100, TimeUnit.MILLISECONDS);
-        throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
-      }
       if (!HttpHeaders.hasBody(response)) return response;
 
       // buffer response so tests can read it. Otherwise the finally block will drop it

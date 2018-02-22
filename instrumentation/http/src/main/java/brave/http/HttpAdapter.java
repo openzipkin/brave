@@ -38,6 +38,22 @@ public abstract class HttpAdapter<Req, Resp> {
   @Nullable public abstract String requestHeader(Req request, String name);
 
   /**
+   * Returns an expression such as "/items/:itemId" representing an application endpoint,
+   * conventionally associated with the tag key "http.route". If no route matched, "" (empty string)
+   * is returned. Null indicates this instrumentation doesn't understand http routes.
+   *
+   * <p>Eventhough the route is associated with the request, not the response, this is present
+   * on the response object. The reasons is that many server implementations process the request
+   * before they can identify the route route.
+   */
+  // BRAVE5: It isn't possible for a user to easily consume HttpServerAdapter, which is why this
+  // method, while generally about the server, is pushed up to the HttpAdapter. The signatures for
+  // sampling and parsing could be changed to make it more convenient.
+  @Nullable public String route(Resp response) {
+    return null;
+  }
+
+  /**
    * The HTTP status code or null if unreadable.
    *
    * <p>Conventionally associated with the key "http.status_code"

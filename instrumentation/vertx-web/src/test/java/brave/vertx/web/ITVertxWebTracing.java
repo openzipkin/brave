@@ -19,6 +19,7 @@ import org.junit.Test;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITVertxWebTracing extends ITHttpServer {
   Vertx vertx;
@@ -55,6 +56,14 @@ public class ITVertxWebTracing extends ITHttpServer {
     router.route("/exception").handler(ctx -> {
       ctx.fail(new Exception());
     });
+    router.route("/items/:itemId").handler(ctx -> {
+      ctx.response().end(ctx.request().getParam("itemId"));
+    });
+    Router subrouter = Router.router(vertx);
+    subrouter.route("/items/:itemId").handler(ctx -> {
+      ctx.response().end(ctx.request().getParam("itemId"));
+    });
+    router.mountSubRouter("/nested", subrouter);
     router.route("/exceptionAsync").handler(ctx -> {
       ctx.request().endHandler(v -> ctx.fail(new Exception()));
     });
@@ -85,6 +94,18 @@ public class ITVertxWebTracing extends ITHttpServer {
 
   @Test public void handlesRerouteAsync() throws Exception {
     handlesReroute("/rerouteAsync");
+  }
+
+  @Override @Test public void httpRoute_nested() throws Exception {
+    // Can't currently fully resolve the route template of a sub-router
+    // We get "/nested" not "/nested/items/:itemId
+    // https://groups.google.com/forum/?fromgroups#!topic/vertx/FtF2yVr5ZF8
+    try {
+      super.httpRoute_nested();
+      failBecauseExceptionWasNotThrown(AssertionError.class);
+    } catch (AssertionError e) {
+      assertThat(e.getMessage().contains("nested"));
+    }
   }
 
   void handlesReroute(String path) throws Exception {

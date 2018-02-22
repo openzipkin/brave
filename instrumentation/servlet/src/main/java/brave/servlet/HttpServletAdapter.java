@@ -7,8 +7,7 @@ import zipkin2.Endpoint;
 
 /** This can also parse the remote IP of the client. */
 // public for others like sparkjava to use
-public final class HttpServletAdapter
-    extends HttpServerAdapter<HttpServletRequest, HttpServletResponse> {
+public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, HttpServletResponse> {
   final ServletRuntime servlet = ServletRuntime.get();
 
   /**

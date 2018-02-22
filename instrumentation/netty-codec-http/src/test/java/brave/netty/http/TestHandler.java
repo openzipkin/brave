@@ -40,18 +40,18 @@ class TestHandler extends ChannelInboundHandlerAdapter {
       String uri = req.uri();
       String content = null;
       HttpResponseStatus status = OK;
-      if (uri.startsWith("/foo")) {
+      if (uri.equals("/foo")) {
         content = "bar";
-      } else if (uri.startsWith("/extra")) {
+      } else if (uri.equals("/extra")) {
         content = ExtraFieldPropagation.get(EXTRA_KEY);
-      } else if (uri.startsWith("/child")) {
+      } else if (uri.equals("/child")) {
         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
         content = "happy";
-      } else if (uri.startsWith("/exception")) {
+      } else if (uri.equals("/exception")) {
         throw new IOException("exception");
-      } else if (uri.startsWith("/async")) {
+      } else if (uri.equals("/async")) {
         content = "async";
-      } else if (uri.startsWith("/badrequest")) {
+      } else if (uri.equals("/badrequest")) {
         status = BAD_REQUEST;
       } else {
         status = NOT_FOUND;
