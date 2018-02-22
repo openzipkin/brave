@@ -42,6 +42,10 @@ final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequestWrapper,
   }
 
   @Override public Integer statusCode(HttpResponse response) {
+    return statusCodeAsInt(response);
+  }
+
+  @Override public int statusCodeAsInt(HttpResponse response) {
     return response.getStatusLine().getStatusCode();
   }
 }

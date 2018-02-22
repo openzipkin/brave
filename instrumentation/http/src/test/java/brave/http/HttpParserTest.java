@@ -41,7 +41,7 @@ public class HttpParserTest {
   }
 
   @Test public void response_tagsStatusAndErrorOnResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+    when(adapter.statusCodeAsInt(response)).thenReturn(400);
 
     parser.response(adapter, response, null, customizer);
 
@@ -56,7 +56,7 @@ public class HttpParserTest {
   }
 
   @Test public void response_tagsErrorPrefersExceptionVsResponseCode() {
-    when(adapter.statusCode(response)).thenReturn(400);
+    when(adapter.statusCodeAsInt(response)).thenReturn(400);
 
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
@@ -64,7 +64,7 @@ public class HttpParserTest {
   }
 
   @Test public void response_tagsErrorOnExceptionEvenIfStatusOk() {
-    when(adapter.statusCode(response)).thenReturn(200);
+    when(adapter.statusCodeAsInt(response)).thenReturn(200);
 
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
 

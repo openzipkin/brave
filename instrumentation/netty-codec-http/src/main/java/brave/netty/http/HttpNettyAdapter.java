@@ -21,6 +21,10 @@ final class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse
   }
 
   @Override public Integer statusCode(HttpResponse response) {
+    return statusCodeAsInt(response);
+  }
+
+  @Override public int statusCodeAsInt(HttpResponse response) {
     return response.status().code();
   }
 }

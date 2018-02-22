@@ -56,6 +56,10 @@ final class TracingDispatcher extends Dispatcher {
     }
 
     @Override public Integer statusCode(MockResponse response) {
+      return statusCodeAsInt(response);
+    }
+
+    @Override public int statusCodeAsInt(MockResponse response) {
       return Integer.parseInt(response.getStatus().split(" ")[1]);
     }
   }

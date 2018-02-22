@@ -39,6 +39,10 @@ public final class ContainerAdapter
   }
 
   @Override public Integer statusCode(ContainerResponseContext response) {
+    return statusCodeAsInt(response);
+  }
+
+  @Override public int statusCodeAsInt(ContainerResponseContext response) {
     return response.getStatus();
   }
 

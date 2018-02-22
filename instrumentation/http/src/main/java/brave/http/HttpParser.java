@@ -40,11 +40,14 @@ public class HttpParser {
   // If this were not an abstraction, we'd use separate hooks for response and error.
   public <Resp> void response(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
       @Nullable Throwable error, SpanCustomizer customizer) {
-    Integer httpStatus = res != null ? adapter.statusCode(res) : null;
-    if (httpStatus != null && (httpStatus < 200 || httpStatus > 299)) {
-      customizer.tag("http.status_code", String.valueOf(httpStatus));
+    int statusCode = 0;
+    if (res != null) {
+      statusCode = adapter.statusCodeAsInt(res);
+      if (statusCode != 0 && (statusCode < 200 || statusCode > 299)) {
+        customizer.tag("http.status_code", String.valueOf(statusCode));
+      }
     }
-    error(httpStatus, error, customizer);
+    error(statusCode, error, customizer);
   }
 
   /**
@@ -55,6 +58,8 @@ public class HttpParser {
    *
    * <p>Conventionally associated with the tag key "error"
    */
+  // BRAVE5: httpStatus is a Integer, not a int. We can't change this api as users expect this to be
+  // called by default. Unfortunately, this implies boxing until we can change it.
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
       SpanCustomizer customizer) {
     String message = null;

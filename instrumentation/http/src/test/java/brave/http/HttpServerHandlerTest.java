@@ -147,7 +147,7 @@ public class HttpServerHandlerTest {
   }
 
   @Test public void handleSend_finishedEvenIfAdapterThrows() {
-    when(adapter.statusCode(response)).thenThrow(new RuntimeException());
+    when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
 
     try {
       handler.handleSend(response, null, span);

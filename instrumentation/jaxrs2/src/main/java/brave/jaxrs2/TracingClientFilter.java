@@ -87,6 +87,10 @@ final class TracingClientFilter implements ClientRequestFilter, ClientResponseFi
     }
 
     @Override public Integer statusCode(ClientResponseContext response) {
+      return statusCodeAsInt(response);
+    }
+
+    @Override public int statusCodeAsInt(ClientResponseContext response) {
       return response.getStatus();
     }
   }

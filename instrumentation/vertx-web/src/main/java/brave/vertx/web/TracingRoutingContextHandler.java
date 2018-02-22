@@ -102,6 +102,10 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
 
     @Override public Integer statusCode(HttpServerResponse response) {
+      return statusCodeAsInt(response);
+    }
+
+    @Override public int statusCodeAsInt(HttpServerResponse response) {
       return response.getStatusCode();
     }
 

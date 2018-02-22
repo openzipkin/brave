@@ -120,7 +120,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleReceive_finishedEvenIfAdapterThrows() {
-    when(adapter.statusCode(response)).thenThrow(new RuntimeException());
+    when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
 
     try {
       handler.handleReceive(response, null, span);
