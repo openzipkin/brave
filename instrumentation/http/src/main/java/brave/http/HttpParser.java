@@ -6,15 +6,22 @@ import brave.internal.Nullable;
 public class HttpParser {
   /**
    * Override to change what data from the http request are parsed into the span representing it. By
-   * default, this sets the span name to the http method and tags "http.path"
+   * default, this sets the span name to the http method and tags "http.method" and "http.path".
    *
    * <p>If you only want to change the span name, you can override {@link #spanName(HttpAdapter,
    * Object)} instead.
    *
    * @see #spanName(HttpAdapter, Object)
    */
+  // Eventhough the default span name is the method, we have no way of knowing that a user hasn't
+  // overwritten the name to something else. If that occurs during response parsing, it is too late
+  // to go back and get the http method. Adding http method by default ensures span naming doesn't
+  // prevent basic HTTP info from being visible. A cost of this is another tag, but it is small with
+  // very limited cardinality. Moreover, users who care strictly about size can override this.
   public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
     customizer.name(spanName(adapter, req));
+    String method = adapter.method(req);
+    if (method != null) customizer.tag("http.method", method);
     String path = adapter.path(req);
     if (path != null) customizer.tag("http.path", path);
   }
@@ -66,7 +73,7 @@ public class HttpParser {
     if (error != null) {
       message = error.getMessage();
       if (message == null) message = error.getClass().getSimpleName();
-    } else if (httpStatus != null) {
+    } else if (httpStatus != null && httpStatus != 0) {
       message = httpStatus < 200 || httpStatus > 399 ? String.valueOf(httpStatus) : null;
     }
     if (message != null) customizer.tag("error", message);
