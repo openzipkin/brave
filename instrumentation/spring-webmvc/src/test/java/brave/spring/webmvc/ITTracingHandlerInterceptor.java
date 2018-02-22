@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.junit.AssumptionViolatedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
@@ -24,6 +26,10 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 public class ITTracingHandlerInterceptor extends ITServletContainer {
+
+  @Override public void notFound(){
+    throw new AssumptionViolatedException("TODO: add MVC handling for not found");
+  }
 
   @Controller static class TestController {
     final Tracer tracer;
@@ -68,6 +74,20 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
       return () -> {
         throw new IOException();
       };
+    }
+
+    @RequestMapping(value = "/items/{itemId}")
+    public ResponseEntity<String> items(@PathVariable String itemId) {
+      return new ResponseEntity<String>(itemId, HttpStatus.OK);
+    }
+
+    @Controller
+    @RequestMapping(value = "/nested")
+    static class NestedController {
+      @RequestMapping(value = "/items/{itemId}")
+      public ResponseEntity<String> items(@PathVariable String itemId) {
+        return new ResponseEntity<String>(itemId, HttpStatus.OK);
+      }
     }
   }
 

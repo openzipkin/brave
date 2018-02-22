@@ -97,6 +97,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
   @Override
   public void init(ServletContextHandler handler) {
     // add servlets for the test resource
+    handler.addServlet(new ServletHolder(new StatusServlet(404)), "/*");
     handler.addServlet(new ServletHolder(new StatusServlet(200)), "/foo");
     handler.addServlet(new ServletHolder(new ExtraServlet()), "/extra");
     handler.addServlet(new ServletHolder(new StatusServlet(400)), "/badrequest");
