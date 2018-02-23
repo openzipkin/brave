@@ -66,8 +66,8 @@
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.1.4.Final</resteasy.version>
-    <zipkin.version>2.4.6</zipkin.version>
-    <zipkin-reporter2.version>2.3.2</zipkin-reporter2.version>
+    <zipkin.version>2.5.0</zipkin.version>
+    <zipkin-reporter2.version>2.3.3</zipkin-reporter2.version>
     <zipkin-reporter.version>1.1.2</zipkin-reporter.version>
     <finagle.version>18.1.0</finagle.version>
     <log4j.version>2.10.0</log4j.version>
