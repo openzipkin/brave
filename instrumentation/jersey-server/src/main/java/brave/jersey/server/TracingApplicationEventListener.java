@@ -79,6 +79,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       return request.getHeaderString(name);
     }
 
+    @Override public String methodFromResponse(ContainerResponse response) {
+      return response.getRequestContext().getMethod();
+    }
+
     /**
      * This returns the matched template as defined by a base URL and path expressions.
      *

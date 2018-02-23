@@ -37,11 +37,12 @@ public class HttpParser {
    *
    * <p>By default, this tags "http.status_code" when it is not 2xx. If there's an exception or the
    * status code is neither 2xx nor 3xx, it tags "error". This also overrides the span name based on
-   * the {@link HttpAdapter#route(Object)} where possible.
+   * the {@link HttpAdapter#methodFromResponse(Object)} and {@link HttpAdapter#route(Object)} where
+   * possible (ex "get /users/:userId").
    *
-   * <p>If routing is supported, but didn't match due to 404, the span name will be "not_found". If
-   * it didn't match due to redirect, the span name will be "redirected". If routing is not
-   * supported, the span name is left alone.
+   * <p>If routing is supported, and a GET didn't match due to 404, the span name will be
+   * "get not_found". If it didn't match due to redirect, the span name will be "get redirected".
+   * If routing is not supported, the span name is left alone.
    *
    * <p>If you only want to change how exceptions are parsed, override {@link #error(Integer,
    * Throwable, SpanCustomizer)} instead.
@@ -57,7 +58,7 @@ public class HttpParser {
     int statusCode = 0;
     if (res != null) {
       statusCode = adapter.statusCodeAsInt(res);
-      String nameFromRoute = spanNameFromRoute(adapter.route(res), statusCode);
+      String nameFromRoute = spanNameFromRoute(adapter, res, statusCode);
       if (nameFromRoute != null) customizer.name(nameFromRoute);
       if (statusCode != 0 && (statusCode < 200 || statusCode > 299)) {
         customizer.tag("http.status_code", String.valueOf(statusCode));
@@ -66,11 +67,14 @@ public class HttpParser {
     error(statusCode, error, customizer);
   }
 
-  static String spanNameFromRoute(String route, int statusCode) {
+  static <Resp> String spanNameFromRoute(HttpAdapter<?, Resp> adapter, Resp res, int statusCode) {
+    String method = adapter.methodFromResponse(res);
+    if (method == null) return null; // don't undo a valid name elsewhere
+    String route = adapter.route(res);
     if (route == null) return null; // don't undo a valid name elsewhere
-    if (!"".equals(route)) return route;
-    if (statusCode / 100 == 3) return "redirected";
-    if (statusCode == 404) return "not_found";
+    if (!"".equals(route)) return method + " " + route;
+    if (statusCode / 100 == 3) return method + " redirected";
+    if (statusCode == 404) return method + " not_found";
     return null; // unexpected
   }
 

@@ -9,6 +9,7 @@ import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
@@ -34,6 +35,12 @@ public class ITTracingFeature_Container extends ITServletContainer {
 
     TestResource(HttpTracing httpTracing) {
       this.tracer = httpTracing.tracing().tracer();
+    }
+
+    @OPTIONS
+    @Path("")
+    public Response root() {
+      return Response.ok().build();
     }
 
     @GET

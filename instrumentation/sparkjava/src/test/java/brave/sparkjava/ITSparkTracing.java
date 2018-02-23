@@ -25,6 +25,7 @@ public class ITSparkTracing extends ITHttpServer {
     );
     Spark.afterAfter(spark.afterAfter());
 
+    Spark.options("/", (req, res) -> "");
     Spark.get("/foo", (req, res) -> "bar");
     Spark.get("/extra", (req, res) -> ExtraFieldPropagation.get(EXTRA_KEY));
     Spark.get("/badrequest", (req, res) -> {

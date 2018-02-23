@@ -17,8 +17,8 @@ By default, the following are added to both http client and server spans:
   * "error", when there is an exception or status is >=400
 * Remote IP and port information
 
-A route based span name looks like "/users/{userId}", "not_found" or
-"redirected". There's a longer section on Http Route later in this doc.
+A route based name looks like "delete /users/{userId}", "post not_found"
+or "get redirected". There's a longer section on Http Route later.
 
 Naming and tags are configurable in a library-agnostic way. For example,
 the same `HttpTracing` component configures OkHttp or Apache HttpClient

@@ -192,7 +192,7 @@ public abstract class ITHttpServer extends ITHttp {
     Span span = takeSpan();
     if (!span.name().equals("get")) {
       assertThat(span.name())
-          .isEqualTo("/foo");
+          .isEqualTo("get /foo");
     }
   }
 
@@ -223,10 +223,10 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void httpRoute() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
+    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
     init();
 
-    routeRequestsMatchPrefix("/items");
+    routeBasedRequestNameIncludesPathPrefix("/items");
   }
 
   /**
@@ -235,13 +235,13 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void httpRoute_nested() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
+    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
     init();
 
-    routeRequestsMatchPrefix("/nested/items");
+    routeBasedRequestNameIncludesPathPrefix("/nested/items");
   }
 
-  private void routeRequestsMatchPrefix(String prefix) throws Exception {
+  private void routeBasedRequestNameIncludesPathPrefix(String prefix) throws Exception {
     // Reading the route parameter from the response ensures the test endpoint is correct
     assertThat(get(prefix + "/1?foo").body().string())
         .isEqualTo("1");
@@ -262,48 +262,65 @@ public abstract class ITHttpServer extends ITHttp {
 
     // We don't know the exact format of the http route as it is framework specific
     // However, we know that it should match both requests and include the common part of the path
-    Set<String> routes = new LinkedHashSet<>(Arrays.asList(span1.name(), span2.name()));
-    assertThat(routes).hasSize(1);
-    assertThat(routes.iterator().next())
-        .startsWith(prefix)
+    Set<String> routeBasedNames = new LinkedHashSet<>(Arrays.asList(span1.name(), span2.name()));
+    assertThat(routeBasedNames).hasSize(1);
+    assertThat(routeBasedNames.iterator().next())
+        .startsWith("get " + prefix)
         .doesNotEndWith("/") // no trailing slashes
         .doesNotContain("//"); // no duplicate slashes
   }
 
-  final HttpServerParser nameIsRoutePlusUrl = new HttpServerParser() {
+  final HttpServerParser addHttpUrlTag = new HttpServerParser() {
     @Override
     public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
       super.request(adapter, req, customizer);
       customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
     }
-
-    @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-        SpanCustomizer customizer) {
-      super.response(adapter, res, error, customizer);
-      String route = adapter.route(res);
-      if (route != null) customizer.name(route);
-    }
   };
 
-  /** If http route is supported, then it should return empty when there's no route found */
+  /** If http route is supported, then the span name should include it */
   @Test public void notFound() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(nameIsRoutePlusUrl).build();
-    init();
-
-    assertThat(maybeGet("/foo/bark").code())
+    assertThat(call("GET", "/foo/bark").code())
         .isEqualTo(404);
 
     Span span = takeSpan();
 
     // verify normal tags
     assertThat(span.tags())
+        .hasSize(4)
+        .containsEntry("http.method", "GET")
         .containsEntry("http.path", "/foo/bark")
-        .containsEntry("http.status_code", "404");
+        .containsEntry("http.status_code", "404")
+        .containsKey("error"); // as 404 is an error
 
-    // If route is supported, the name should be empty (zipkin2.Span.name coerces empty to null)
-    // If there's a bug in route parsing, a path expression will end up as the span name
+    // Either the span name is the method, or it is a route expression
     String name = span.name();
-    if (name != null) assertThat(name).isEqualTo("get");
+    if (name != null && !"get".equals(name)) {
+      assertThat(name).isEqualTo("get not_found");
+    }
+  }
+
+  /**
+   * This tests both that a root path ends up as "/" (slash) not "" (empty), as well that less
+   * typical OPTIONS methods can be traced.
+   */
+  @Test public void options() throws Exception {
+    assertThat(call("OPTIONS", "/").isSuccessful())
+        .isTrue();
+
+    Span span = takeSpan();
+
+    // verify normal tags
+    assertThat(span.tags())
+        .hasSize(2)
+        .containsEntry("http.method", "OPTIONS")
+        .containsEntry("http.path", "/");
+
+    // Either the span name is the method, or it is a route expression
+    String name = span.name();
+    if (name != null && !"options".equals(name)) {
+      assertThat(name).isEqualTo("options /");
+    }
   }
 
   @Test
@@ -360,7 +377,7 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   protected Response get(Request request) throws Exception {
-    Response response = maybeGet(request);
+    Response response = call(request);
     if (response.code() == 404) {
       // TODO: jetty isn't registering the tracing filter for all paths!
       spans.poll(100, TimeUnit.MILLISECONDS);
@@ -370,12 +387,12 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   /** like {@link #get(String)} except doesn't throw unsupported on not found */
-  Response maybeGet(String path) throws IOException {
-    return maybeGet(new Request.Builder().url(url(path)).build());
+  Response call(String method, String path) throws IOException {
+    return call(new Request.Builder().method(method, null).url(url(path)).build());
   }
 
   /** like {@link #get(Request)} except doesn't throw unsupported on not found */
-  Response maybeGet(Request request) throws IOException {
+  Response call(Request request) throws IOException {
     try (Response response = client.newCall(request).execute()) {
       if (!HttpHeaders.hasBody(response)) return response;
 

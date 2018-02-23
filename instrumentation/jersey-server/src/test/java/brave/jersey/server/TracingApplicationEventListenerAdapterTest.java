@@ -22,6 +22,14 @@ public class TracingApplicationEventListenerAdapterTest {
   @Mock ContainerRequest request;
   @Mock ContainerResponse response;
 
+  @Test public void methodFromResponse() {
+    when(response.getRequestContext()).thenReturn(request);
+    when(request.getMethod()).thenReturn("GET");
+
+    assertThat(adapter.methodFromResponse(response))
+        .isEqualTo("GET");
+  }
+
   @Test public void path_prefixesSlashWhenMissing() {
     when(request.getPath(false)).thenReturn("bar");
 

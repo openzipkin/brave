@@ -6,6 +6,7 @@ import brave.http.ITServletContainer;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.container.AsyncResponse;
@@ -45,6 +46,12 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
 
     TestResource(HttpTracing httpTracing) {
       this.tracer = httpTracing.tracing().tracer();
+    }
+
+    @OPTIONS
+    @Path("")
+    public Response root() {
+      return Response.ok().build();
     }
 
     @GET
