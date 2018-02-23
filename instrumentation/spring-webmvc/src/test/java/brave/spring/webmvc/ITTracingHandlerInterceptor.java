@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -38,18 +39,23 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
       this.tracer = httpTracing.tracing().tracer();
     }
 
+    @RequestMapping(method = RequestMethod.OPTIONS, value = "/")
+    public ResponseEntity<Void> root() {
+      return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/foo")
-    public ResponseEntity<Void> foo() throws IOException {
+    public ResponseEntity<Void> foo() {
       return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @RequestMapping(value = "/extra")
-    public ResponseEntity<String> extra() throws IOException {
+    public ResponseEntity<String> extra() {
       return new ResponseEntity<>(ExtraFieldPropagation.get(EXTRA_KEY), HttpStatus.OK);
     }
 
     @RequestMapping(value = "/badrequest")
-    public ResponseEntity<Void> badrequest() throws IOException {
+    public ResponseEntity<Void> badrequest() {
       return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
@@ -60,7 +66,7 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/async")
-    public Callable<ResponseEntity<Void>> async() throws IOException {
+    public Callable<ResponseEntity<Void>> async() {
       return () -> new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -70,7 +76,7 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/exceptionAsync")
-    public Callable<ResponseEntity<Void>> disconnectAsync() throws IOException {
+    public Callable<ResponseEntity<Void>> disconnectAsync() {
       return () -> {
         throw new IOException();
       };
@@ -120,6 +126,8 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
 
     appContext.register(TestController.class); // the test resource
     appContext.register(TracingConfig.class); // generic tracing setup
-    handler.addServlet(new ServletHolder(new DispatcherServlet(appContext)), "/*");
+    DispatcherServlet servlet = new DispatcherServlet(appContext);
+    servlet.setDispatchOptionsRequest(true);
+    handler.addServlet(new ServletHolder(servlet), "/*");
   }
 }

@@ -47,14 +47,14 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   };
 
   final Tracer tracer;
-  final ThreadLocal<String> currentTemplate;
+  final ThreadLocal<Route> currentRoute;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> serverHandler;
   final TraceContext.Extractor<HttpServerRequest> extractor;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    currentTemplate = new ThreadLocal<>();
-    serverHandler = HttpServerHandler.create(httpTracing, new Adapter(currentTemplate));
+    currentRoute = new ThreadLocal<>();
+    serverHandler = HttpServerHandler.create(httpTracing, new Adapter(currentRoute));
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
@@ -93,29 +93,38 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!context.request().isEnded()) return;
-      String template = context.currentRoute().getPath();
-      if (template == null) { // skip thread-local overhead if there's no attribute
-        serverHandler.handleSend(context.response(), context.failure(), span);
-        return;
-      }
+      Route route = new Route(context.request().rawMethod(), context.currentRoute().getPath());
       try {
-        currentTemplate.set(template);
+        currentRoute.set(route);
         serverHandler.handleSend(context.response(), context.failure(), span);
       } finally {
-        currentTemplate.remove();
+        currentRoute.remove();
       }
     }
   }
 
-  static final class Adapter extends HttpServerAdapter<HttpServerRequest, HttpServerResponse> {
-    final ThreadLocal<String> currentTemplate;
+  static final class Route {
+    final String method, path;
 
-    Adapter(ThreadLocal<String> currentTemplate) {
-      this.currentTemplate = currentTemplate;
+    Route(String method, String path) {
+      this.method = method;
+      this.path = path;
+    }
+
+    @Override public String toString() {
+      return "Route{method=" + method + ", path=" + path + "}";
+    }
+  }
+
+  static final class Adapter extends HttpServerAdapter<HttpServerRequest, HttpServerResponse> {
+    final ThreadLocal<Route> currentRoute;
+
+    Adapter(ThreadLocal<Route> currentRoute) {
+      this.currentRoute = currentRoute;
     }
 
     @Override public String method(HttpServerRequest request) {
-      return request.method().name();
+      return request.rawMethod();
     }
 
     @Override public String path(HttpServerRequest request) {
@@ -130,8 +139,12 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return request.headers().get(name);
     }
 
+    @Override public String methodFromResponse(HttpServerResponse response) {
+      return currentRoute.get().method;
+    }
+
     @Override public String route(HttpServerResponse response) {
-      String result = currentTemplate.get();
+      String result = currentRoute.get().path;
       return result != null ? result : "";
     }
 

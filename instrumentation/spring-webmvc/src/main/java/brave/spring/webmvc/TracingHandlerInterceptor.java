@@ -46,16 +46,7 @@ public final class TracingHandlerInterceptor implements HandlerInterceptor {
 
   @Autowired TracingHandlerInterceptor(HttpTracing httpTracing) { // internal
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter() {
-      @Override public String route(HttpServletResponse response) {
-        return response instanceof HttpServletResponseWithTemplate
-            ? ((HttpServletResponseWithTemplate) response).template : null;
-      }
-
-      @Override public String toString() {
-        return "WebMVCAdapter{}";
-      }
-    });
+    handler = HttpServerHandler.create(httpTracing, new Adapter());
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
@@ -82,18 +73,31 @@ public final class TracingHandlerInterceptor implements HandlerInterceptor {
     if (span == null) return;
     ((SpanInScope) request.getAttribute(SpanInScope.class.getName())).close();
     Object template = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
-    if (template != null) {
-      response = new HttpServletResponseWithTemplate(response, template.toString());
-    }
-    handler.handleSend(response, ex, span);
+    handler.handleSend(new DecoratedHttpServletResponse(response, request.getMethod(), template),
+        ex, span);
   }
 
-  static class HttpServletResponseWithTemplate extends HttpServletResponseWrapper {
-    final String template;
+  static class DecoratedHttpServletResponse extends HttpServletResponseWrapper {
+    final String method, template;
 
-    HttpServletResponseWithTemplate(HttpServletResponse response, String template) {
+    DecoratedHttpServletResponse(HttpServletResponse response, String method, Object template) {
       super(response);
-      this.template = template;
+      this.method = method;
+      this.template = template != null ? template.toString() : "";
+    }
+  }
+
+  static final class Adapter extends HttpServletAdapter {
+    @Override public String methodFromResponse(HttpServletResponse response) {
+      return ((DecoratedHttpServletResponse) response).method;
+    }
+
+    @Override public String route(HttpServletResponse response) {
+      return ((DecoratedHttpServletResponse) response).template;
+    }
+
+    @Override public String toString() {
+      return "WebMVCAdapter{}";
     }
   }
 }

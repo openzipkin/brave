@@ -17,6 +17,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * "/objects/abcd-ff"
    *
    * <p>Conventionally associated with the key "http.path"
+   * @see #route(Object)
    */
   @Nullable public String path(Req request) {
     String url = url(request);
@@ -36,6 +37,16 @@ public abstract class HttpAdapter<Req, Resp> {
    * Returns one value corresponding to the specified header, or null.
    */
   @Nullable public abstract String requestHeader(Req request, String name);
+
+  /**
+   * Like {@link #method(Object)} except used in response parsing.
+   *
+   * <p>Notably, this is used to create a route-based span name.
+   */
+  // FromResponse suffix is needed as you can't compile methods that only differ on generic params
+  @Nullable public String methodFromResponse(Resp resp) {
+    return null;
+  }
 
   /**
    * Returns an expression such as "/items/:itemId" representing an application endpoint,

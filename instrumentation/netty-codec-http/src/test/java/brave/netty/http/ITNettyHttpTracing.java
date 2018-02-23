@@ -46,7 +46,7 @@ public class ITNettyHttpTracing extends ITHttpServer {
     return "http://127.0.0.1:" + port + path;
   }
 
-  @After public void stop() throws Exception {
+  @After public void stop() {
     if (bossGroup != null) bossGroup.shutdownGracefully();
     if (workerGroup != null) workerGroup.shutdownGracefully();
   }

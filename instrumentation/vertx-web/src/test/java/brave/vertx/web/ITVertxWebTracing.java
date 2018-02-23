@@ -8,6 +8,7 @@ import brave.propagation.ExtraFieldPropagation;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
@@ -31,6 +32,9 @@ public class ITVertxWebTracing extends ITHttpServer {
     vertx = Vertx.vertx(new VertxOptions());
 
     Router router = Router.router(vertx);
+    router.route(HttpMethod.OPTIONS, "/").handler(ctx -> {
+      ctx.response().end("bar");
+    });
     router.route("/foo").handler(ctx -> {
       ctx.response().end("bar");
     });

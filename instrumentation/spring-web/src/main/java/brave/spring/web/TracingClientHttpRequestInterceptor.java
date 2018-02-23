@@ -72,7 +72,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
 
     @Override public String requestHeader(HttpRequest request, String name) {
       Object result = request.getHeaders().getFirst(name);
-      return result != null ? result.toString() : null;
+      return result != null ? result.toString() : "";
     }
 
     @Override public Integer statusCode(ClientHttpResponse response) {

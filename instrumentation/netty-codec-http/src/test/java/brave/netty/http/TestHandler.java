@@ -9,6 +9,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
@@ -37,21 +38,23 @@ class TestHandler extends ChannelInboundHandlerAdapter {
   @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws IOException {
     if (msg instanceof HttpRequest) {
       req = (HttpRequest) msg;
-      String uri = req.uri();
+      String path = req.uri();
+      int queryIndex = path.indexOf('?');
+      if (queryIndex != -1) path = path.substring(0, queryIndex);
       String content = null;
       HttpResponseStatus status = OK;
-      if (uri.equals("/foo")) {
+      if (path.equals("/") && req.method().equals(HttpMethod.OPTIONS)) {
+        content = null;
+      } else if (path.equals("/foo")) {
         content = "bar";
-      } else if (uri.equals("/extra")) {
+      } else if (path.equals("/extra")) {
         content = ExtraFieldPropagation.get(EXTRA_KEY);
-      } else if (uri.equals("/child")) {
+      } else if (path.equals("/child")) {
         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
         content = "happy";
-      } else if (uri.equals("/exception")) {
+      } else if (path.equals("/exception")) {
         throw new IOException("exception");
-      } else if (uri.equals("/async")) {
-        content = "async";
-      } else if (uri.equals("/badrequest")) {
+      } else if (path.equals("/badrequest")) {
         status = BAD_REQUEST;
       } else {
         status = NOT_FOUND;

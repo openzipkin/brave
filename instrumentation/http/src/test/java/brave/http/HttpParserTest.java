@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,5 +81,45 @@ public class HttpParserTest {
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
     verify(customizer).tag("error", "drat");
+  }
+
+  @Test public void routeBasedName() {
+    when(adapter.methodFromResponse(response)).thenReturn("GET");
+    when(adapter.route(response)).thenReturn("/users/:userId");
+    when(adapter.statusCodeAsInt(response)).thenReturn(200);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer).name("GET /users/:userId"); // zipkin will implicitly lowercase this
+  }
+
+  @Test public void routeBasedName_redirect() {
+    when(adapter.methodFromResponse(response)).thenReturn("GET");
+    when(adapter.route(response)).thenReturn("");
+    when(adapter.statusCodeAsInt(response)).thenReturn(307);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer).name("GET redirected"); // zipkin will implicitly lowercase this
+  }
+
+  @Test public void routeBasedName_notFound() {
+    when(adapter.methodFromResponse(response)).thenReturn("DELETE");
+    when(adapter.route(response)).thenReturn("");
+    when(adapter.statusCodeAsInt(response)).thenReturn(404);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer).name("DELETE not_found"); // zipkin will implicitly lowercase this
+  }
+
+  @Test public void routeBasedName_skipsOnMissingData() {
+    when(adapter.methodFromResponse(response)).thenReturn("DELETE");
+    when(adapter.route(response)).thenReturn(null); // missing!
+    when(adapter.statusCodeAsInt(response)).thenReturn(404);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer, never()).name(any(String.class));
   }
 }
