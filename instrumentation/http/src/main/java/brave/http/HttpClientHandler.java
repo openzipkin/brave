@@ -33,7 +33,7 @@ import zipkin2.Endpoint;
  */
 public final class HttpClientHandler<Req, Resp> {
 
-  public static <Req, Resp> HttpClientHandler create(HttpTracing httpTracing,
+  public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
       HttpClientAdapter<Req, Resp> adapter) {
     return new HttpClientHandler<>(httpTracing, adapter);
   }

@@ -31,7 +31,7 @@ import zipkin2.Endpoint;
  */
 public final class HttpServerHandler<Req, Resp> {
 
-  public static <Req, Resp> HttpServerHandler create(HttpTracing httpTracing,
+  public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
       HttpServerAdapter<Req, Resp> adapter) {
     return new HttpServerHandler<>(
         httpTracing.tracing().tracer(),
