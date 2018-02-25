@@ -1,4 +1,4 @@
-# brave-instrumentation-dubbo-grpc
+# brave-instrumentation-dubbo-rpc
 This is a tracing filter for RPC providers and consumers in [Dubbo](http://dubbo.io/books/dubbo-dev-book-en/impls/filter.html)
 
 When used on a consumer, `TracingFilter` adds trace state as attachments
