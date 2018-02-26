@@ -10,15 +10,25 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Injector;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
+/**
+ * MessagePostProcessor to be used with the {@link RabbitTemplate#setBeforePublishPostProcessors(MessagePostProcessor...)
+ * RabbitTemplate's before publish post processors}, adding tracing functionality that creates a
+ * {@link Span.Kind#PRODUCER} span.
+ *
+ * To integrate, instantiate this class and set on a {@link RabbitTemplate#setBeforePublishPostProcessors(MessagePostProcessor...)}
+ *
+ */
 public class TracingMessagePostProcessor implements MessagePostProcessor {
 
-  private static final Propagation.Setter<MessageProperties, String> SETTER = new Propagation.Setter<MessageProperties, String>() {
+  private static final Propagation.Setter<MessageProperties, String> SETTER =
+      new Propagation.Setter<MessageProperties, String>() {
 
-    @Override public void put(MessageProperties carrier, String key, String value) {
-      carrier.setHeader(key, value);
-    }
-  };
+        @Override public void put(MessageProperties carrier, String key, String value) {
+          carrier.setHeader(key, value);
+        }
+      };
 
   private final Injector<MessageProperties> injector;
   private final Tracer tracer;

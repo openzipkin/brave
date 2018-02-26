@@ -25,6 +25,13 @@
 			<version>${spring-amqp.version}</version>
 			<scope>compile</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.amqp</groupId>
+			<artifactId>spring-rabbit</artifactId>
+			<version>${spring-amqp.version}</version>
+			<scope>compile</scope>
+		</dependency>
+
 		<!-- spring-aop is required for the consumer side instrumentation point -->
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -42,12 +49,6 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 			<version>${spring4.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.amqp</groupId>
-			<artifactId>spring-rabbit</artifactId>
-			<version>${spring-amqp.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

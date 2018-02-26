@@ -40,7 +40,7 @@ public class ITSpringAmqpTracing {
 
   @ClassRule public static BrokerRunning brokerRunning = BrokerRunning.isRunning();
 
-  @Test public void propagates_trace_info_from_producer() throws Exception {
+  @Test public void propagates_trace_info_across_amqp_from_producer() throws Exception {
     AnnotationConfigApplicationContext producerContext = producerSpringContext();
     AnnotationConfigApplicationContext consumerContext = consumerSpringContext();
 
