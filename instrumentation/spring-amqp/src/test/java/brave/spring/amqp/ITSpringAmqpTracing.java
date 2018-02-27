@@ -61,7 +61,7 @@ public class ITSpringAmqpTracing {
   }
 
   private AnnotationConfigApplicationContext producerSpringContext() {
-    return createContext(CommonRabbitConfig.class, TracingProducerConfig.class);
+    return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
   }
 
   private AnnotationConfigApplicationContext createContext(Class... configurationClasses) {
@@ -72,12 +72,12 @@ public class ITSpringAmqpTracing {
   }
 
   private AnnotationConfigApplicationContext consumerSpringContext() {
-    return createContext(CommonRabbitConfig.class, TracingConsumerConfig.class);
+    return createContext(CommonRabbitConfig.class, RabbitConsumerConfig.class);
   }
 
   private void produceMessage(AnnotationConfigApplicationContext producerContext) {
-    TracingRabbitProducer tracingRabbitProducer = producerContext.getBean(TracingRabbitProducer.class);
-    tracingRabbitProducer.send();
+    HelloWorldRabbitProducer rabbitProducer = producerContext.getBean(HelloWorldRabbitProducer.class);
+    rabbitProducer.send();
   }
 
   private void awaitMessageConsumed(AnnotationConfigApplicationContext consumerContext)
@@ -115,7 +115,7 @@ public class ITSpringAmqpTracing {
   }
 
   @Configuration
-  public static class TracingProducerConfig {
+  public static class RabbitProducerConfig {
     @Bean
     public Tracing tracing(Reporter<Span> reporter) {
       return Tracing.newBuilder()
@@ -149,14 +149,14 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public TracingRabbitProducer tracingRabbitProducer(RabbitTemplate rabbitTemplate) {
-      return new TracingRabbitProducer(rabbitTemplate);
+    public HelloWorldRabbitProducer tracingRabbitProducer(RabbitTemplate rabbitTemplate) {
+      return new HelloWorldRabbitProducer(rabbitTemplate);
     }
   }
 
   @EnableRabbit
   @Configuration
-  public static class TracingConsumerConfig {
+  public static class RabbitConsumerConfig {
     @Bean
     public Tracing tracing(List<Span> spans) {
       return Tracing.newBuilder()
@@ -186,8 +186,8 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public TracingRabbitConsumer tracingRabbitConsumer(CountDownLatch countDownLatch) {
-      return new TracingRabbitConsumer(countDownLatch);
+    public HelloWorldRabbitConsumer helloWorldRabbitConsumer(CountDownLatch countDownLatch) {
+      return new HelloWorldRabbitConsumer(countDownLatch);
     }
 
     @Bean CountDownLatch messageReceivedLatch() {
@@ -195,10 +195,10 @@ public class ITSpringAmqpTracing {
     }
   }
 
-  private static class TracingRabbitProducer {
+  private static class HelloWorldRabbitProducer {
     private final RabbitTemplate rabbitTemplate;
 
-    TracingRabbitProducer(RabbitTemplate rabbitTemplate) {
+    HelloWorldRabbitProducer(RabbitTemplate rabbitTemplate) {
       this.rabbitTemplate = rabbitTemplate;
     }
 
@@ -207,10 +207,10 @@ public class ITSpringAmqpTracing {
     }
   }
 
-  private static class TracingRabbitConsumer {
+  private static class HelloWorldRabbitConsumer {
     private final CountDownLatch countDownLatch;
 
-    TracingRabbitConsumer(CountDownLatch countDownLatch) {
+    HelloWorldRabbitConsumer(CountDownLatch countDownLatch) {
       this.countDownLatch = countDownLatch;
     }
 
