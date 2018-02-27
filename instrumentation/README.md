@@ -39,7 +39,7 @@ worry about conflicts.
 You can use our Maven instrumentation BOM (Bill of Materials) for this:
 
 Ex. in your dependencies section, import the BOM like this:
-```
+```xml
   <dependencyManagement>
     <dependencies>
       <dependency>
