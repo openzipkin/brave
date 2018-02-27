@@ -1,0 +1,126 @@
+package brave.dubbo.rpc;
+
+import brave.sampler.Sampler;
+import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
+import com.alibaba.dubbo.config.ApplicationConfig;
+import com.alibaba.dubbo.config.ReferenceConfig;
+import com.alibaba.dubbo.rpc.RpcContext;
+import org.junit.Before;
+import org.junit.Test;
+import zipkin2.Span;
+
+import static brave.sampler.Sampler.NEVER_SAMPLE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+
+public class ITTracingFilter_Consumer extends ITTracingFilter {
+
+  @Before public void setup() {
+    server.service.setFilter("tracing");
+    server.service.setRef((method, parameterTypes, args) -> {
+      JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
+      if (arg.getProperty("value").equals("bad")) {
+        throw new IllegalArgumentException();
+      }
+      String value = tracing != null && tracing.currentTraceContext().get() != null
+          ? tracing.currentTraceContext().get().traceIdString()
+          : "";
+      arg.setProperty("value", value);
+      return args[0];
+    });
+    server.start();
+
+    ReferenceConfig<GreeterService> ref = new ReferenceConfig<>();
+    ref.setApplication(new ApplicationConfig("bean-consumer"));
+    ref.setInterface(GreeterService.class);
+    ref.setUrl("dubbo://127.0.0.1:" + server.port() + "?scope=remote&generic=bean");
+    client = ref;
+
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+  }
+
+  @Test public void usesExistingTraceId() throws Exception {
+    final String traceId = "463ac35c9f6413ad";
+    final String parentId = traceId;
+    final String spanId = "48485a3953bb6124";
+
+    RpcContext.getContext().getAttachments().put("X-B3-TraceId", traceId);
+    RpcContext.getContext().getAttachments().put("X-B3-ParentSpanId", parentId);
+    RpcContext.getContext().getAttachments().put("X-B3-SpanId", spanId);
+    RpcContext.getContext().getAttachments().put("X-B3-Sampled", "1");
+
+    client.get().sayHello("jorge");
+
+    Span span = spans.take();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.parentId()).isEqualTo(parentId);
+    assertThat(span.id()).isEqualTo(spanId);
+    assertThat(span.shared()).isTrue();
+  }
+
+  @Test public void createsChildWhenJoinDisabled() throws Exception {
+    setTracing(tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build());
+
+    final String traceId = "463ac35c9f6413ad";
+    final String parentId = traceId;
+    final String spanId = "48485a3953bb6124";
+
+    RpcContext.getContext().getAttachments().put("X-B3-TraceId", traceId);
+    RpcContext.getContext().getAttachments().put("X-B3-ParentSpanId", parentId);
+    RpcContext.getContext().getAttachments().put("X-B3-SpanId", spanId);
+    RpcContext.getContext().getAttachments().put("X-B3-Sampled", "1");
+
+    client.get().sayHello("jorge");
+
+    Span span = spans.take();
+    assertThat(span.traceId()).isEqualTo(traceId);
+    assertThat(span.parentId()).isEqualTo(spanId);
+    assertThat(span.id()).isNotEqualTo(spanId);
+    assertThat(span.shared()).isNull();
+  }
+
+  @Test public void samplingDisabled() throws Exception {
+    setTracing(tracingBuilder(NEVER_SAMPLE).build());
+
+    client.get().sayHello("jorge");
+
+    // @After will check that nothing is reported
+  }
+
+  @Test public void currentSpanVisibleToImpl() throws Exception {
+    assertThat(client.get().sayHello("jorge"))
+        .isNotEmpty();
+
+    spans.take();
+  }
+
+  @Test public void reportsServerKindToZipkin() throws Exception {
+    client.get().sayHello("jorge");
+
+    Span span = spans.take();
+    assertThat(span.kind())
+        .isEqualTo(Span.Kind.SERVER);
+  }
+
+  @Test public void defaultSpanNameIsMethodName() throws Exception {
+    client.get().sayHello("jorge");
+
+    Span span = spans.take();
+    assertThat(span.name())
+        .isEqualTo("genericservice/sayhello");
+  }
+
+  @Test public void addsErrorTagOnException() throws Exception {
+    try {
+      client.get().sayHello("bad");
+
+      failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+    } catch (IllegalArgumentException e) {
+      Span span = spans.take();
+      assertThat(span.tags()).containsExactly(
+          entry("error", "IllegalArgumentException")
+      );
+    }
+  }
+}
