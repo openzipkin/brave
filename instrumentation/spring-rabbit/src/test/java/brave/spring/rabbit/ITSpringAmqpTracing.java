@@ -25,6 +25,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.junit.BrokerRunning;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,8 +42,8 @@ public class ITSpringAmqpTracing {
   @ClassRule public static BrokerRunning brokerRunning = BrokerRunning.isRunning();
 
   @Test public void propagates_trace_info_across_amqp_from_producer() throws Exception {
-    AnnotationConfigApplicationContext producerContext = producerSpringContext();
-    AnnotationConfigApplicationContext consumerContext = consumerSpringContext();
+    ApplicationContext producerContext = producerSpringContext();
+    ApplicationContext consumerContext = consumerSpringContext();
 
     produceMessage(producerContext);
     awaitMessageConsumed(consumerContext);
@@ -60,7 +61,7 @@ public class ITSpringAmqpTracing {
         .containsExactly(tuple(producerSpanId, producerSpanId));
   }
 
-  private AnnotationConfigApplicationContext producerSpringContext() {
+  private ApplicationContext producerSpringContext() {
     return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
   }
 
@@ -71,17 +72,17 @@ public class ITSpringAmqpTracing {
     return producerContext;
   }
 
-  private AnnotationConfigApplicationContext consumerSpringContext() {
+  private ApplicationContext consumerSpringContext() {
     return createContext(CommonRabbitConfig.class, RabbitConsumerConfig.class);
   }
 
-  private void produceMessage(AnnotationConfigApplicationContext producerContext) {
+  private void produceMessage(ApplicationContext producerContext) {
     HelloWorldRabbitProducer rabbitProducer =
         producerContext.getBean(HelloWorldRabbitProducer.class);
     rabbitProducer.send();
   }
 
-  private void awaitMessageConsumed(AnnotationConfigApplicationContext consumerContext)
+  private void awaitMessageConsumed(ApplicationContext consumerContext)
       throws InterruptedException {
     CountDownLatch messageReceivedLatch = consumerContext.getBean(CountDownLatch.class);
     messageReceivedLatch.await();
