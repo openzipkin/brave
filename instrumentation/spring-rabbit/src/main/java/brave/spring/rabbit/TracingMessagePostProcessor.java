@@ -20,7 +20,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
  * To integrate, instantiate this class and set on a {@link RabbitTemplate#setBeforePublishPostProcessors(MessagePostProcessor...)}
  *
  */
-public class TracingMessagePostProcessor implements MessagePostProcessor {
+class TracingMessagePostProcessor implements MessagePostProcessor {
 
   private static final Propagation.Setter<MessageProperties, String> SETTER =
       new Propagation.Setter<MessageProperties, String>() {
@@ -33,7 +33,7 @@ public class TracingMessagePostProcessor implements MessagePostProcessor {
   private final Injector<MessageProperties> injector;
   private final Tracer tracer;
 
-  public TracingMessagePostProcessor(Tracing tracing) {
+  TracingMessagePostProcessor(Tracing tracing) {
     this.injector = tracing.propagation().injector(SETTER);
     this.tracer = tracing.tracer();
   }

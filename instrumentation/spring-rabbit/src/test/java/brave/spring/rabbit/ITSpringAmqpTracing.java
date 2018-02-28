@@ -76,7 +76,8 @@ public class ITSpringAmqpTracing {
   }
 
   private void produceMessage(AnnotationConfigApplicationContext producerContext) {
-    HelloWorldRabbitProducer rabbitProducer = producerContext.getBean(HelloWorldRabbitProducer.class);
+    HelloWorldRabbitProducer rabbitProducer =
+        producerContext.getBean(HelloWorldRabbitProducer.class);
     rabbitProducer.send();
   }
 
@@ -126,16 +127,8 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public TracingMessagePostProcessor tracingMessagePostProcessor(Tracing tracing) {
-      return new TracingMessagePostProcessor(tracing);
-    }
-
-    @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, TracingMessagePostProcessor tracingMessagePostProcessor) {
-      RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-      rabbitTemplate.setBeforePublishPostProcessors(tracingMessagePostProcessor);
-      rabbitTemplate.setExchange("test-exchange");
-      return rabbitTemplate;
+    public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
+      return SpringRabbitTracing.create(tracing);
     }
 
     @Bean
@@ -146,6 +139,13 @@ public class ITSpringAmqpTracing {
     @Bean
     public List<Span> producerSpans() {
       return new ArrayList<>();
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, SpringRabbitTracing springRabbitTracing) {
+      RabbitTemplate rabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
+      rabbitTemplate.setExchange("test-exchange");
+      return rabbitTemplate;
     }
 
     @Bean
@@ -167,22 +167,19 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
+    public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
+      return SpringRabbitTracing.create(tracing);
+    }
+
+    @Bean
     public List<Span> consumerSpans() {
       return new ArrayList<>();
     }
 
     @Bean
-    public TracingRabbitListenerAdvice tracingRabbitListenerAdvice(Tracing tracing) {
-      return new TracingRabbitListenerAdvice(tracing);
-    }
-
-    @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-        ConnectionFactory connectionFactory, Advice tracingRabbitListenerAdvice) {
-      SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-      factory.setConnectionFactory(connectionFactory);
-      factory.setAdviceChain(tracingRabbitListenerAdvice);
-      return factory;
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing) {
+      return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
     }
 
     @Bean

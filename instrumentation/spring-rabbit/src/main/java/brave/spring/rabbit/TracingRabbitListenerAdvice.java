@@ -22,7 +22,7 @@ import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
  * brave's instrumentation points is implemented using a delegating wrapper approach, this extension
  * point was ideal as it covers both programmatic and @RabbitListener annotation driven amqp consumers.
  */
-public class TracingRabbitListenerAdvice implements MethodInterceptor {
+class TracingRabbitListenerAdvice implements MethodInterceptor {
 
   private static final Propagation.Getter<MessageProperties, String> GETTER =
       new Propagation.Getter<MessageProperties, String>() {
@@ -34,7 +34,7 @@ public class TracingRabbitListenerAdvice implements MethodInterceptor {
   private final Extractor<MessageProperties> extractor;
   private final Tracer tracer;
 
-  public TracingRabbitListenerAdvice(Tracing tracing) {
+  TracingRabbitListenerAdvice(Tracing tracing) {
     this.extractor = tracing.propagation().extractor(GETTER);
     this.tracer = tracing.tracer();
   }
