@@ -1,4 +1,4 @@
-# brave-instrumentation-spring-amqp
+# brave-instrumentation-spring-rabbit
 
 ## Tracing for Spring AMQP (RabbitMQ)
 This module provides instrumentation for spring-amqp based services. Currently, the only broker supported by spring-amqp is RabbitMQ.

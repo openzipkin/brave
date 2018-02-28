@@ -1,4 +1,4 @@
-package brave.spring.amqp;
+package brave.spring.rabbit;
 
 import brave.Tracing;
 import brave.sampler.Sampler;
