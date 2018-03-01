@@ -31,6 +31,44 @@ Here are other tools we provide for configuring or testing instrumentation:
 
 ## Configuration
 
+### Version alignments
+When using multiple instrumentation packages, you'll want to align
+versions in one place. This allows you to more safely upgrade, with less
+worry about conflicts.
+
+You can use our Maven instrumentation BOM (Bill of Materials) for this:
+
+Ex. in your dependencies section, import the BOM like this:
+```xml
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.zipkin.brave</groupId>
+        <artifactId>brave-instrumentation-bom</artifactId>
+        <version>${brave.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+```
+
+Now, you can leave off the version when choosing any supported
+instrumentation. Also any indirect use will have versions aligned:
+```xml
+<dependency>
+  <groupId>io.zipkin.brave</groupId>
+  <artifactId>brave-instrumentation-okhttp3</artifactId>
+</dependency>
+```
+
+A great example of this in practice is using a newer version of Brave
+than what's packaged in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth). However, you should take
+care not to accidentally use an earlier version. If you hard-assign a
+version of Brave and also use an umbrella project like Sleuth, always
+double check that your Brave version is valid (equal to or later) when
+updating the version of the umbrella project.
+
 ### Log integration
 You may want to put trace IDs into your log files, or change thread local
 behavior. Look at our [context libraries](../context/), for integration with
