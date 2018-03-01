@@ -5,7 +5,7 @@ import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import org.aopalliance.aop.Advice;
+import org.assertj.core.groups.Tuple;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,6 +34,8 @@ import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static zipkin2.Span.Kind.CONSUMER;
+import static zipkin2.Span.Kind.SERVER;
 
 public class ITSpringAmqpTracing {
 
@@ -52,20 +54,24 @@ public class ITSpringAmqpTracing {
     List<Span> consumerSpans = (List<Span>) consumerContext.getBean("consumerSpans");
 
     assertThat(producerSpans).hasSize(1);
-    assertThat(consumerSpans).hasSize(1);
+    assertThat(consumerSpans).hasSize(2);
 
-    String producerSpanId = producerSpans.get(0).traceId();
+    String originatingTraceId = producerSpans.get(0).traceId();
+    String consumerSpanId = consumerSpans.get(0).id();
 
     assertThat(consumerSpans)
-        .extracting("parentId", "traceId")
-        .containsExactly(tuple(producerSpanId, producerSpanId));
+        .extracting(Span::kind, Span::traceId, Span::parentId)
+        .containsExactly(
+            tuple(CONSUMER, originatingTraceId, originatingTraceId),
+            tuple(SERVER, originatingTraceId, consumerSpanId)
+        );
   }
 
   private ApplicationContext producerSpringContext() {
     return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
   }
 
-  private AnnotationConfigApplicationContext createContext(Class... configurationClasses) {
+  private ApplicationContext createContext(Class... configurationClasses) {
     AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
     producerContext.register(configurationClasses);
     producerContext.refresh();
@@ -143,7 +149,8 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, SpringRabbitTracing springRabbitTracing) {
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing) {
       RabbitTemplate rabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
       rabbitTemplate.setExchange("test-exchange");
       return rabbitTemplate;
@@ -178,7 +185,8 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory,
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+        ConnectionFactory connectionFactory,
         SpringRabbitTracing springRabbitTracing) {
       return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
     }

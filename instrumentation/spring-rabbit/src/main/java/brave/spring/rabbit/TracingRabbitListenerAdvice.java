@@ -13,14 +13,22 @@ import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+
+import static brave.Span.Kind.CONSUMER;
+import static brave.Span.Kind.SERVER;
 
 /**
  * TracingRabbitListenerAdvice is an AOP advice to be used with the {@link
  * SimpleMessageListenerContainer#setAdviceChain(Advice...) SimpleMessageListenerContainer} in order
  * to add tracing functionality to a spring-amqp managed message consumer. While a majority of
  * brave's instrumentation points is implemented using a delegating wrapper approach, this extension
- * point was ideal as it covers both programmatic and @RabbitListener annotation driven amqp consumers.
+ * point was ideal as it covers both programmatic and {@link RabbitListener} annotation driven amqp
+ * consumers.
+ *
+ * The spans are modelled as a zero duration CONSUMER span to represent the consuming the message
+ * from the rabbit broker, and a child SERVER span representing the processing of the messsage.
  */
 class TracingRabbitListenerAdvice implements MethodInterceptor {
 
@@ -40,17 +48,20 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
   }
 
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-
     final Message message = (Message) methodInvocation.getArguments()[1];
     final TraceContextOrSamplingFlags extracted = extractor.extract(message.getMessageProperties());
-    final Span span = tracer.nextSpan(extracted).kind(Span.Kind.CONSUMER).start();
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+
+    final Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).start();
+    consumerSpan.finish();
+
+    final Span serverSpan = tracer.newChild(consumerSpan.context()).kind(SERVER).start();
+    try (SpanInScope ws = tracer.withSpanInScope(serverSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
-      tagErrorSpan(span, t);
+      tagErrorSpan(serverSpan, t);
       throw t;
     } finally {
-      span.finish();
+      serverSpan.finish();
     }
   }
 
