@@ -15,7 +15,7 @@ public final class SpringRabbitTracing {
   private final TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
 
   public static SpringRabbitTracing create(Tracing tracing) {
-    if (tracing == null) throw new IllegalArgumentException("tracing must not be null");
+    if (tracing == null) throw new NullPointerException("tracing == null");
     return new SpringRabbitTracing(tracing);
   }
 

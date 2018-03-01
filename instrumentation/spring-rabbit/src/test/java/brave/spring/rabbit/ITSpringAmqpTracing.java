@@ -4,8 +4,8 @@ import brave.Tracing;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import org.assertj.core.groups.Tuple;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -16,6 +16,8 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -65,6 +67,20 @@ public class ITSpringAmqpTracing {
             tuple(CONSUMER, originatingTraceId, originatingTraceId),
             tuple(SERVER, originatingTraceId, consumerSpanId)
         );
+  }
+
+  @Test public void clears_message_headers_after_propagation() throws Exception {
+    ApplicationContext producerContext = producerSpringContext();
+    ApplicationContext consumerContext = consumerSpringContext();
+
+    produceMessage(producerContext);
+    awaitMessageConsumed(consumerContext);
+
+    HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+
+    Message capturedMessage = consumer.capturedMessage;
+    Map<String, Object> headers = capturedMessage.getMessageProperties().getHeaders();
+    assertThat(headers.keySet()).containsExactly("not-zipkin-header");
   }
 
   private ApplicationContext producerSpringContext() {
@@ -209,12 +225,17 @@ public class ITSpringAmqpTracing {
     }
 
     void send() {
-      rabbitTemplate.convertAndSend("hello world".getBytes());
+      byte[] messageBody = "hello world".getBytes();
+      MessageProperties properties = new MessageProperties();
+      properties.setHeader("not-zipkin-header", "fakeValue");
+      Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
+      rabbitTemplate.send(message);
     }
   }
 
   private static class HelloWorldRabbitConsumer {
     private final CountDownLatch countDownLatch;
+    private Message capturedMessage;
 
     HelloWorldRabbitConsumer(CountDownLatch countDownLatch) {
       this.countDownLatch = countDownLatch;
@@ -222,6 +243,7 @@ public class ITSpringAmqpTracing {
 
     @RabbitListener(queues = "test-queue")
     public void receive(Message message) {
+      this.capturedMessage = message;
       this.countDownLatch.countDown();
     }
   }

@@ -1,11 +1,5 @@
 package brave.spring.rabbit;
 
-import org.aopalliance.aop.Advice;
-import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageProperties;
-
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
@@ -13,6 +7,12 @@ import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Map;
+import org.aopalliance.aop.Advice;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
@@ -41,15 +41,17 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
       };
   private final Extractor<MessageProperties> extractor;
   private final Tracer tracer;
+  private final Tracing tracing;
 
   TracingRabbitListenerAdvice(Tracing tracing) {
     this.extractor = tracing.propagation().extractor(GETTER);
     this.tracer = tracing.tracer();
+    this.tracing = tracing;
   }
 
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     final Message message = (Message) methodInvocation.getArguments()[1];
-    final TraceContextOrSamplingFlags extracted = extractor.extract(message.getMessageProperties());
+    final TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
 
     final Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).start();
     consumerSpan.finish();
@@ -63,6 +65,14 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
     } finally {
       serverSpan.finish();
     }
+  }
+
+  private TraceContextOrSamplingFlags extractTraceContextAndRemoveHeaders(Message message) {
+    final MessageProperties messageProperties = message.getMessageProperties();
+    final TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
+    final Map<String, Object> headers = messageProperties.getHeaders();
+    tracing.propagation().keys().forEach(headers::remove);
+    return extracted;
   }
 
   private void tagErrorSpan(Span span, Throwable t) {
