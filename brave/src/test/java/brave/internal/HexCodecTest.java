@@ -19,8 +19,13 @@ public class HexCodecTest {
   @Test
   public void lowerHexToUnsignedLongTest() {
     assertThat(lowerHexToUnsignedLong("ffffffffffffffff")).isEqualTo(-1);
-    assertThat(lowerHexToUnsignedLong("0")).isEqualTo(0);
     assertThat(lowerHexToUnsignedLong(Long.toHexString(Long.MAX_VALUE))).isEqualTo(Long.MAX_VALUE);
+
+    try {
+      lowerHexToUnsignedLong("0"); // invalid
+      failBecauseExceptionWasNotThrown(NumberFormatException.class);
+    } catch (NumberFormatException e) {
+    }
 
     try {
       lowerHexToUnsignedLong("fffffffffffffffffffffffffffffffff"); // too long

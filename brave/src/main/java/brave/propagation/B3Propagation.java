@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static brave.internal.HexCodec.toLowerHex;
 
 /**
@@ -114,36 +113,30 @@ public final class B3Propagation<K> implements Propagation<K> {
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
-
-      String traceId = getter.get(carrier, propagation.traceIdKey);
-      String sampled = getter.get(carrier, propagation.sampledKey);
-      String debug = getter.get(carrier, propagation.debugKey);
-      if (traceId == null && sampled == null && debug == null) {
-        return TraceContextOrSamplingFlags.EMPTY;
-      }
-
+      // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
+      String sampled = getter.get(carrier, propagation.sampledKey);
       Boolean sampledV = sampled != null
           ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
           : null;
-      boolean debugV = "1".equals(debug);
+      boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
 
-      String spanId = getter.get(carrier, propagation.spanIdKey);
-      if (spanId == null) { // return early if there's no span ID
+      String traceIdString = getter.get(carrier, propagation.traceIdKey);
+      // It is ok to go without a trace ID, if sampling or debug is set
+      if (traceIdString == null) {
         return TraceContextOrSamplingFlags.create(
-            debugV ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
+            debug ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
         );
       }
 
-      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampledV).debug(debugV);
-      result.traceIdHigh(
-          traceId.length() == 32 ? lowerHexToUnsignedLong(traceId, 0) : 0
-      );
-      result.traceId(lowerHexToUnsignedLong(traceId));
-      result.spanId(lowerHexToUnsignedLong(spanId));
-      String parentSpanIdString = getter.get(carrier, propagation.parentSpanIdKey);
-      if (parentSpanIdString != null) result.parentId(lowerHexToUnsignedLong(parentSpanIdString));
-      return TraceContextOrSamplingFlags.create(result.build());
+      // Try to parse the trace IDs into the context
+      TraceContext.Builder result = TraceContext.newBuilder();
+      if (result.parseTraceId(traceIdString, propagation.traceIdKey)
+          && result.parseSpanId(getter, carrier, propagation.spanIdKey)
+          && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
+        return TraceContextOrSamplingFlags.create(result.sampled(sampledV).debug(debug).build());
+      }
+      return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
     }
   }
 }

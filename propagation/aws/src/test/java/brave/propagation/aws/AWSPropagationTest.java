@@ -35,12 +35,12 @@ public class AWSPropagationTest {
       .extra(AWSPropagation.DEFAULT_EXTRA)
       .build();
 
-  @Test public void traceId() throws Exception {
+  @Test public void traceId() {
     assertThat(AWSPropagation.traceId(sampledContext))
         .isEqualTo("1-67891233-abcdef012345678912345678");
   }
 
-  @Test public void traceIdWhenPassThrough() throws Exception {
+  @Test public void traceIdWhenPassThrough() {
     carrier.put("x-amzn-trace-id", "Robot=Hello;Self=1-582113d1-1e48b74b3603af8479078ed6;  " +
         "Root=1-58211399-36d228ad5d99923122bbe354;  " +
         "TotalTimeSoFar=112ms;CalledFrom=Foo");
@@ -51,7 +51,7 @@ public class AWSPropagationTest {
         .isEqualTo("1-58211399-36d228ad5d99923122bbe354");
   }
 
-  @Test public void traceIdWhenPassThrough_nullOnTruncated() throws Exception {
+  @Test public void traceIdWhenPassThrough_nullOnTruncated() {
     carrier.put("x-amzn-trace-id", "Root=1-58211399-36d228ad5d99923122bbe3");
 
     TraceContext context = contextWithPassThrough();
@@ -81,13 +81,13 @@ public class AWSPropagationTest {
         .build();
   }
 
-  @Test public void traceId_null_if_not_aws() throws Exception {
+  @Test public void traceId_null_if_not_aws() {
     TraceContext notAWS = sampledContext.toBuilder().extra(Collections.emptyList()).build();
     assertThat(AWSPropagation.traceId(notAWS))
         .isNull();
   }
 
-  @Test public void currentTraceId() throws Exception {
+  @Test public void currentTraceId() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(AWSPropagation.FACTORY).build();
          CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(sampledContext)) {
       assertThat(AWSPropagation.currentTraceId())
@@ -95,32 +95,32 @@ public class AWSPropagationTest {
     }
   }
 
-  @Test public void currentTraceId_null_if_no_current_context() throws Exception {
+  @Test public void currentTraceId_null_if_no_current_context() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(AWSPropagation.FACTORY).build()) {
       assertThat(AWSPropagation.currentTraceId())
           .isNull();
     }
   }
 
-  @Test public void currentTraceId_null_if_nothing_current() throws Exception {
+  @Test public void currentTraceId_null_if_nothing_current() {
     assertThat(AWSPropagation.currentTraceId())
         .isNull();
   }
 
-  @Test public void inject() throws Exception {
+  @Test public void inject() {
     injector.inject(sampledContext, carrier);
 
     assertThat(carrier).containsEntry("x-amzn-trace-id", sampledTraceId);
   }
 
-  @Test public void extract() throws Exception {
+  @Test public void extract() {
     carrier.put("x-amzn-trace-id", sampledTraceId);
 
     assertThat(extractor.extract(carrier).context())
         .isEqualTo(sampledContext);
   }
 
-  @Test public void extract_containsMarker() throws Exception {
+  @Test public void extract_containsMarker() {
     carrier.put("x-amzn-trace-id", sampledTraceId);
 
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
@@ -129,18 +129,18 @@ public class AWSPropagationTest {
   }
 
   /** If invoked extract, a 128-bit trace ID will be created, compatible with AWS format */
-  @Test public void extract_fail_containsMarker() throws Exception {
+  @Test public void extract_fail_containsMarker() {
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
     assertThat(extracted.extra())
         .containsExactly(AWSPropagation.MARKER);
   }
 
-  @Test public void extract_static() throws Exception {
+  @Test public void extract_static() {
     assertThat(AWSPropagation.extract(sampledTraceId).context())
         .isEqualTo(sampledContext);
   }
 
-  @Test public void extractDifferentOrder() throws Exception {
+  @Test public void extractDifferentOrder() {
     carrier.put("x-amzn-trace-id",
         "Sampled=1;Parent=463ac35c9f6413ad;Root=1-67891233-abcdef012345678912345678");
 
@@ -148,7 +148,7 @@ public class AWSPropagationTest {
         .isEqualTo(sampledContext);
   }
 
-  @Test public void extract_noParent() throws Exception {
+  @Test public void extract_noParent() {
     carrier.put("x-amzn-trace-id", "Root=1-5759e988-bd862e3fe1be46a994272793;Sampled=1");
 
     assertThat(extractor.extract(carrier).traceIdContext())
@@ -159,14 +159,14 @@ public class AWSPropagationTest {
             .build());
   }
 
-  @Test public void extract_noSamplingDecision() throws Exception {
+  @Test public void extract_noSamplingDecision() {
     carrier.put("x-amzn-trace-id", sampledTraceId.replace("Sampled=1", "Sampled=?"));
 
     assertThat(extractor.extract(carrier).context())
         .isEqualTo(sampledContext.toBuilder().sampled(null).build());
   }
 
-  @Test public void extract_sampledFalse() throws Exception {
+  @Test public void extract_sampledFalse() {
     carrier.put("x-amzn-trace-id", sampledTraceId.replace("Sampled=1", "Sampled=0"));
 
     assertThat(extractor.extract(carrier).context())
@@ -175,7 +175,7 @@ public class AWSPropagationTest {
 
   /** Shows we skip whitespace and extra fields like self or custom ones */
   // https://aws.amazon.com/blogs/aws/application-performance-percentiles-and-request-tracing-for-aws-application-load-balancer/
-  @Test public void extract_skipsSelfField() throws Exception {
+  @Test public void extract_skipsSelfField() {
     // TODO: check with AWS if it is valid to have arbitrary fields in front of standard ones.
     // we currently permit them
     carrier.put("x-amzn-trace-id", "Robot=Hello;Self=1-582113d1-1e48b74b3603af8479078ed6;  " +
@@ -193,7 +193,7 @@ public class AWSPropagationTest {
         .contains(new StringBuilder(";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo"));
   }
 
-  @Test public void toString_fields() throws Exception {
+  @Test public void toString_fields() {
     AWSPropagation.Extra extra = new AWSPropagation.Extra();
     extra.fields = ";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo";
 
@@ -201,14 +201,14 @@ public class AWSPropagationTest {
         .hasToString("AWSPropagation{fields=" + extra.fields + "}");
   }
 
-  @Test public void toString_none() throws Exception {
+  @Test public void toString_none() {
     AWSPropagation.Extra extra = new AWSPropagation.Extra();
 
     assertThat(extra)
         .hasToString("AWSPropagation{}");
   }
 
-  @Test public void injectExtraStuff() throws Exception {
+  @Test public void injectExtraStuff() {
     AWSPropagation.Extra extra = new AWSPropagation.Extra();
     extra.fields = ";Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo";
     TraceContext extraContext = sampledContext.toBuilder().extra(Arrays.asList(extra)).build();
@@ -219,36 +219,51 @@ public class AWSPropagationTest {
             "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1;Robot=Hello;TotalTimeSoFar=112ms;CalledFrom=Foo");
   }
 
-  @Test public void extract_skipsLaterVersion() throws Exception {
+  @Test public void extract_skipsLaterVersion() {
     carrier.put("x-amzn-trace-id", "Root=2-58211399-36d228ad5d99923122bbe354");
 
     assertThat(extractor.extract(carrier).samplingFlags())
         .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extract_skipsTruncatedId() throws Exception {
+  @Test public void extract_skipsTruncatedId() {
     carrier.put("x-amzn-trace-id", "Root=1-58211399-36d228ad5d99923122bbe35");
 
     assertThat(extractor.extract(carrier).samplingFlags())
         .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extract_skips_leadingEquals() throws Exception {
+  @Test public void extract_skips_leadingEquals() {
     carrier.put("x-amzn-trace-id", "=Root=1-58211399-36d228ad5d99923122bbe354");
 
     assertThat(extractor.extract(carrier).samplingFlags())
         .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extract_skips_doubleEquals() throws Exception {
+  @Test public void extract_skips_doubleEquals() {
     carrier.put("x-amzn-trace-id", "Root==1-58211399-36d228ad5d99923122bbe354");
 
     assertThat(extractor.extract(carrier).samplingFlags())
         .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extract_skips_noEquals() throws Exception {
+  @Test public void extract_skips_noEquals() {
     carrier.put("x-amzn-trace-id", "1-58211399-36d228ad5d99923122bbe354");
+
+    assertThat(extractor.extract(carrier).samplingFlags())
+        .isEqualTo(SamplingFlags.EMPTY);
+  }
+
+  @Test public void extract_skips_malformed() {
+    carrier.put("x-amzn-trace-id",
+        "Sampled=-;Parent=463ac35%Af6413ad;Root=1-??-abc!#%0123456789123456");
+
+    assertThat(extractor.extract(carrier).samplingFlags())
+        .isEqualTo(SamplingFlags.EMPTY);
+  }
+
+  @Test public void extract_skips_really_malformed() {
+    carrier.put("x-amzn-trace-id", "holy 💩");
 
     assertThat(extractor.extract(carrier).samplingFlags())
         .isEqualTo(SamplingFlags.EMPTY);
