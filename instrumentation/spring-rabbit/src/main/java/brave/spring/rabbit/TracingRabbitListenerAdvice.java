@@ -7,6 +7,7 @@ import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import com.rabbitmq.client.Channel;
 import java.util.Map;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -49,6 +50,9 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
     this.tracing = tracing;
   }
 
+  /**
+   * advice for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel, Message)}
+   */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     final Message message = (Message) methodInvocation.getArguments()[1];
     final TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
