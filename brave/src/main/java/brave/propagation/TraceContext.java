@@ -4,7 +4,9 @@ import brave.internal.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
 
 /**
@@ -18,6 +20,7 @@ import static brave.internal.HexCodec.writeHexLong;
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
+  static final Logger LOG = Logger.getLogger(TraceContext.class.getName());
 
   /**
    * Used to send the trace context downstream. For example, as http headers.
@@ -162,9 +165,7 @@ public final class TraceContext extends SamplingFlags {
     return new String(result);
   }
 
-  public static final class Builder {
-    long traceIdHigh, traceId, parentId, spanId;
-    int flags = 0; // bit field for sampled and debug
+  public static final class Builder extends InternalBuilder {
     List<Object> extra = Collections.emptyList();
 
     Builder(TraceContext context) { // no external implementations
@@ -208,30 +209,20 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** @see TraceContext#sampled() */
-    public Builder sampled(boolean sampled) {
-      flags |= FLAG_SAMPLED_SET;
-      if (sampled) {
-        flags |= FLAG_SAMPLED;
-      } else {
-        flags &= ~FLAG_SAMPLED;
-      }
+    @Override public Builder sampled(boolean sampled) {
+      super.sampled(sampled);
       return this;
     }
 
     /** @see TraceContext#sampled() */
-    public Builder sampled(@Nullable Boolean sampled) {
-      if (sampled != null) return sampled((boolean) sampled);
-      flags &= ~FLAG_SAMPLED_SET;
+    @Override public Builder sampled(@Nullable Boolean sampled) {
+      super.sampled(sampled);
       return this;
     }
 
     /** @see TraceContext#debug() */
-    public Builder debug(boolean debug) {
-      if (debug) {
-        flags |= FLAG_DEBUG;
-      } else {
-        flags &= ~FLAG_DEBUG;
-      }
+    @Override public Builder debug(boolean debug) {
+      super.debug(debug);
       return this;
     }
 
@@ -292,6 +283,45 @@ public final class TraceContext extends SamplingFlags {
     h *= 1000003;
     h ^= (int) ((spanId >>> 32) ^ spanId);
     return h;
+  }
+
+  // parseXXX methods package protected until we figure out if this is reusable enough to expose
+  static class InternalBuilder extends TraceIdContext.InternalBuilder {
+    long parentId, spanId;
+
+    /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
+    final <C, K> boolean parseParentId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String parentIdString = getter.get(carrier, key);
+      if (parentIdString == null) return true; // absent parent is ok
+      int length = parentIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      parentId = lenientLowerHexToUnsignedLong(parentIdString, 0, length);
+      if (parentId == 0) {
+        maybeLogNotLowerHex(key, parentIdString);
+        return false;
+      }
+      return true;
+    }
+
+    /** Parses the span id from the input string. Returns true if the ID is valid. */
+    final <C, K> boolean parseSpanId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String spanIdString = getter.get(carrier, key);
+      if (isNull(key, spanIdString)) return false;
+      int length = spanIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
+      if (spanId == 0) {
+        maybeLogNotLowerHex(key, spanIdString);
+        return false;
+      }
+      return true;
+    }
+
+    @Override Logger logger() {
+      return LOG;
+    }
   }
 
   static List<Object> ensureImmutable(List<Object> extra) {
