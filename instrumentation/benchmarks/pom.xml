@@ -21,7 +21,7 @@
     <dependencies>
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>brave-instrumentation-bom</artifactId>
+        <artifactId>brave-bom</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
         <scope>import</scope>

@@ -2,15 +2,17 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>io.zipkin.brave</groupId>
-    <artifactId>brave-parent</artifactId>
+    <artifactId>brave-pom-parent</artifactId>
     <version>4.16.3-SNAPSHOT</version>
+    <relativePath>../brave-parent</relativePath>
   </parent>
 
-  <artifactId>brave-instrumentation-bom</artifactId>
-  <name>Brave Instrumentation BOM</name>
-  <description>Bill Of Materials POM for all Brave instrumentation artifacts</description>
+  <artifactId>brave-bom</artifactId>
+  <name>Brave BOM</name>
+  <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
 
   <properties>
@@ -19,6 +21,26 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-context-log4j2</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-context-log4j12</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-context-slf4j</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
@@ -32,6 +54,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-http</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-http-tests</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -107,6 +134,16 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-vertx-web</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-propagation-aws</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-spring-beans</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>

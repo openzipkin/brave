@@ -32,7 +32,46 @@ behavior. Look at our [context libraries](context/), for integration with
 tools such as SLF4J.
 
 ## Artifacts
+All artifacts publish to the group ID "io.zipkin.brave". We use a common
+release version for all components.
 ### Library Releases
 Releases are uploaded to [Bintray](https://bintray.com/openzipkin/maven/brave) and synchronized to [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
 ### Library Snapshots
 Snapshots are uploaded to [JFrog](http://oss.jfrog.org/artifactory/oss-snapshot-local) after commits to master.
+### Version alignments
+When using multiple brave components, you'll want to align versions in
+one place. This allows you to more safely upgrade, with less worry about
+conflicts.
+
+You can use our Maven instrumentation BOM (Bill of Materials) for this:
+
+Ex. in your dependencies section, import the BOM like this:
+```xml
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.zipkin.brave</groupId>
+        <artifactId>brave-bom</artifactId>
+        <version>${brave.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+```
+
+Now, you can leave off the version when choosing any supported
+instrumentation. Also any indirect use will have versions aligned:
+```xml
+<dependency>
+  <groupId>io.zipkin.brave</groupId>
+  <artifactId>brave-instrumentation-okhttp3</artifactId>
+</dependency>
+```
+
+A great example of this in practice is using a newer version of Brave
+than what's packaged in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth). However, you should take
+care not to accidentally use an earlier version. If you hard-assign a
+version of Brave and also use an umbrella project like Sleuth, always
+double check that your Brave version is valid (equal to or later) when
+updating the version of the umbrella project.

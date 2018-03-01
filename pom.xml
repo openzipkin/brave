@@ -104,6 +104,8 @@
 
   <modules>
     <module>brave</module>
+    <module>brave-bom</module>
+    <module>brave-parent</module>
     <module>brave-tests</module>
     <module>context</module>
     <module>instrumentation</module>
@@ -128,7 +130,7 @@
   </issueManagement>
 
   <dependencyManagement>
-  	<dependencies>
+    <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>brave</artifactId>
@@ -313,7 +315,7 @@
             <artifactId>javax.ws.rs-api</artifactId>
             <version>2.0.1</version>
         </dependency>
-  	</dependencies>
+    </dependencies>
   </dependencyManagement>
 
   <dependencies>
