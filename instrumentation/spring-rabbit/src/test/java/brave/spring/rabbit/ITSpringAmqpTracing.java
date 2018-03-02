@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,6 +37,7 @@ import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.groups.Tuple.tuple;
 import static zipkin2.Span.Kind.CONSUMER;
 import static zipkin2.Span.Kind.SERVER;
@@ -45,23 +48,27 @@ public class ITSpringAmqpTracing {
 
   @ClassRule public static BrokerRunning brokerRunning = BrokerRunning.isRunning();
 
+  private static ITSpringAmqpTracingTestFixture testFixture;
+
+  @BeforeClass public static void setupTestFixture() {
+    testFixture = new ITSpringAmqpTracingTestFixture();
+  }
+
+  @Before public void reset() {
+    testFixture.reset();
+  }
+
   @Test public void propagates_trace_info_across_amqp_from_producer() throws Exception {
-    ApplicationContext producerContext = producerSpringContext();
-    ApplicationContext consumerContext = consumerSpringContext();
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
 
-    produceMessage(producerContext);
-    awaitMessageConsumed(consumerContext);
+    assertThat(testFixture.producerSpans).hasSize(1);
+    assertThat(testFixture.consumerSpans).hasSize(2);
 
-    List<Span> producerSpans = (List<Span>) producerContext.getBean("producerSpans");
-    List<Span> consumerSpans = (List<Span>) consumerContext.getBean("consumerSpans");
+    String originatingTraceId = testFixture.producerSpans.get(0).traceId();
+    String consumerSpanId = testFixture.consumerSpans.get(0).id();
 
-    assertThat(producerSpans).hasSize(1);
-    assertThat(consumerSpans).hasSize(2);
-
-    String originatingTraceId = producerSpans.get(0).traceId();
-    String consumerSpanId = consumerSpans.get(0).id();
-
-    assertThat(consumerSpans)
+    assertThat(testFixture.consumerSpans)
         .extracting(Span::kind, Span::traceId, Span::parentId)
         .containsExactly(
             tuple(CONSUMER, originatingTraceId, originatingTraceId),
@@ -70,44 +77,30 @@ public class ITSpringAmqpTracing {
   }
 
   @Test public void clears_message_headers_after_propagation() throws Exception {
-    ApplicationContext producerContext = producerSpringContext();
-    ApplicationContext consumerContext = consumerSpringContext();
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
 
-    produceMessage(producerContext);
-    awaitMessageConsumed(consumerContext);
-
-    HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
-
-    Message capturedMessage = consumer.capturedMessage;
+    Message capturedMessage = testFixture.capturedMessage();
     Map<String, Object> headers = capturedMessage.getMessageProperties().getHeaders();
     assertThat(headers.keySet()).containsExactly("not-zipkin-header");
   }
 
-  private ApplicationContext producerSpringContext() {
-    return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
-  }
+  @Test public void tags_spans_with_exchange_and_routing_key() throws Exception {
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
 
-  private ApplicationContext createContext(Class... configurationClasses) {
-    AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
-    producerContext.register(configurationClasses);
-    producerContext.refresh();
-    return producerContext;
-  }
+    assertThat(testFixture.consumerSpans).hasSize(2);
 
-  private ApplicationContext consumerSpringContext() {
-    return createContext(CommonRabbitConfig.class, RabbitConsumerConfig.class);
-  }
-
-  private void produceMessage(ApplicationContext producerContext) {
-    HelloWorldRabbitProducer rabbitProducer =
-        producerContext.getBean(HelloWorldRabbitProducer.class);
-    rabbitProducer.send();
-  }
-
-  private void awaitMessageConsumed(ApplicationContext consumerContext)
-      throws InterruptedException {
-    CountDownLatch messageReceivedLatch = consumerContext.getBean(CountDownLatch.class);
-    messageReceivedLatch.await();
+    assertThat(testFixture.consumerSpans)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("rabbit.exchange", "test-exchange"),
+            entry("rabbit.routing.key", "test.binding"),
+            entry("rabbit.queue", "test-queue"),
+            entry("rabbit.exchange", "test-exchange"),
+            entry("rabbit.routing.key", "test.binding"),
+            entry("rabbit.queue", "test-queue")
+        );
   }
 
   @Configuration
@@ -119,7 +112,7 @@ public class ITSpringAmqpTracing {
 
     @Bean
     public Exchange exchange() {
-      return ExchangeBuilder.fanoutExchange("test-exchange").build();
+      return ExchangeBuilder.topicExchange("test-exchange").durable(true).build();
     }
 
     @Bean
@@ -208,12 +201,8 @@ public class ITSpringAmqpTracing {
     }
 
     @Bean
-    public HelloWorldRabbitConsumer helloWorldRabbitConsumer(CountDownLatch countDownLatch) {
-      return new HelloWorldRabbitConsumer(countDownLatch);
-    }
-
-    @Bean CountDownLatch messageReceivedLatch() {
-      return new CountDownLatch(1);
+    public HelloWorldRabbitConsumer helloWorldRabbitConsumer() {
+      return new HelloWorldRabbitConsumer();
     }
   }
 
@@ -229,22 +218,85 @@ public class ITSpringAmqpTracing {
       MessageProperties properties = new MessageProperties();
       properties.setHeader("not-zipkin-header", "fakeValue");
       Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
-      rabbitTemplate.send(message);
+      rabbitTemplate.send("test.binding", message);
     }
   }
 
   private static class HelloWorldRabbitConsumer {
-    private final CountDownLatch countDownLatch;
+    private CountDownLatch countDownLatch;
     private Message capturedMessage;
 
-    HelloWorldRabbitConsumer(CountDownLatch countDownLatch) {
-      this.countDownLatch = countDownLatch;
+    HelloWorldRabbitConsumer() {
+      this.countDownLatch = new CountDownLatch(1);
     }
 
     @RabbitListener(queues = "test-queue")
     public void receive(Message message) {
       this.capturedMessage = message;
       this.countDownLatch.countDown();
+    }
+
+    public void reset() {
+      this.countDownLatch = new CountDownLatch(1);
+      this.capturedMessage = null;
+    }
+
+    public CountDownLatch getCountDownLatch() {
+      return countDownLatch;
+    }
+  }
+
+  private static class ITSpringAmqpTracingTestFixture {
+
+    private ApplicationContext producerContext;
+    private ApplicationContext consumerContext;
+    private List<Span> producerSpans;
+    private List<Span> consumerSpans;
+
+    ITSpringAmqpTracingTestFixture() {
+      producerContext = producerSpringContext();
+      consumerContext = consumerSpringContext();
+      producerSpans = (List<Span>) producerContext.getBean("producerSpans");
+      consumerSpans = (List<Span>) consumerContext.getBean("consumerSpans");
+    }
+
+    private void reset() {
+      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      consumer.reset();
+      producerSpans.clear();
+      consumerSpans.clear();
+    }
+
+    private ApplicationContext producerSpringContext() {
+      return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
+    }
+
+    private ApplicationContext createContext(Class... configurationClasses) {
+      AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
+      producerContext.register(configurationClasses);
+      producerContext.refresh();
+      return producerContext;
+    }
+
+    private ApplicationContext consumerSpringContext() {
+      return createContext(CommonRabbitConfig.class, RabbitConsumerConfig.class);
+    }
+
+    private void produceMessage() {
+      HelloWorldRabbitProducer rabbitProducer =
+          producerContext.getBean(HelloWorldRabbitProducer.class);
+      rabbitProducer.send();
+    }
+
+    private void awaitMessageConsumed()
+        throws InterruptedException {
+      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      consumer.getCountDownLatch().await();
+    }
+
+    private Message capturedMessage() {
+      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      return consumer.capturedMessage;
     }
   }
 }

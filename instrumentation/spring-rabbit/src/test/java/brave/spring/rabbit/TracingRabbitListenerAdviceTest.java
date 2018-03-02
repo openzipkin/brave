@@ -16,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static zipkin2.Span.Kind.CONSUMER;
+import static zipkin2.Span.Kind.SERVER;
 
 public class TracingRabbitListenerAdviceTest {
 
@@ -38,7 +40,6 @@ public class TracingRabbitListenerAdviceTest {
     tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing);
 
     methodInvocation = mock(MethodInvocation.class);
-
   }
 
   @Test
@@ -48,7 +49,7 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(Span.Kind.CONSUMER);
+        .containsExactly(CONSUMER, SERVER);
   }
 
   @Test
@@ -65,8 +66,9 @@ public class TracingRabbitListenerAdviceTest {
     onMessageConsumed(message);
 
     assertThat(reportedSpans)
+        .filteredOn(span -> span.kind() == CONSUMER)
         .extracting(Span::parentId)
-        .containsExactly(SPAN_ID);
+        .contains(SPAN_ID);
   }
 
   @Test
@@ -76,9 +78,10 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(Span.Kind.CONSUMER);
+        .containsExactly(CONSUMER, SERVER);
 
     assertThat(reportedSpans)
+        .filteredOn(span -> span.kind() == SERVER)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
         .contains("expected exception");
@@ -91,9 +94,10 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(Span.Kind.CONSUMER);
+        .containsExactly(CONSUMER, SERVER);
 
     assertThat(reportedSpans)
+        .filteredOn(span -> span.kind() == SERVER)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
         .contains("RuntimeException");

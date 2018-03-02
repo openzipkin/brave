@@ -40,6 +40,10 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
           return (String) carrier.getHeaders().get(key);
         }
       };
+  private static final String RABBIT_EXCHANGE = "rabbit.exchange";
+  private static final String RABBIT_ROUTING_KEY = "rabbit.routing.key";
+  private static final String RABBIT_QUEUE = "rabbit.queue";
+
   private final Extractor<MessageProperties> extractor;
   private final Tracer tracer;
   private final Tracing tracing;
@@ -51,16 +55,18 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
   }
 
   /**
-   * advice for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel, Message)}
+   * MethodInterceptor for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel, Message)}
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     final Message message = (Message) methodInvocation.getArguments()[1];
     final TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
 
     final Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).start();
+    tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
     consumerSpan.finish();
 
     final Span serverSpan = tracer.newChild(consumerSpan.context()).kind(SERVER).start();
+    tagReceivedMessageProperties(serverSpan, message.getMessageProperties());
     try (SpanInScope ws = tracer.withSpanInScope(serverSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
@@ -75,8 +81,20 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
     final MessageProperties messageProperties = message.getMessageProperties();
     final TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
     final Map<String, Object> headers = messageProperties.getHeaders();
-    tracing.propagation().keys().forEach(headers::remove);
+    for (String key : tracing.propagation().keys()) {
+      headers.remove(key);
+    }
     return extracted;
+  }
+
+  private void tagReceivedMessageProperties(Span span, MessageProperties messageProperties) {
+    tag(span, RABBIT_EXCHANGE, messageProperties.getReceivedExchange());
+    tag(span, RABBIT_ROUTING_KEY, messageProperties.getReceivedRoutingKey());
+    tag(span, RABBIT_QUEUE, messageProperties.getConsumerQueue());
+  }
+
+  private void tag(Span span, String tag, String value) {
+    if (value != null) span.tag(tag, value);
   }
 
   private void tagErrorSpan(Span span, Throwable t) {
