@@ -104,6 +104,7 @@
 
   <modules>
     <module>brave</module>
+    <module>brave-bom</module>
     <module>brave-parent</module>
     <module>brave-tests</module>
     <module>context</module>
