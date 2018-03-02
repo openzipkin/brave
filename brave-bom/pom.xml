@@ -121,6 +121,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-spring-rabbit</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-spring-web</artifactId>
         <version>${project.version}</version>
       </dependency>
