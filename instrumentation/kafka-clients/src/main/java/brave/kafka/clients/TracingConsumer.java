@@ -62,7 +62,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           Span consumerSpanForTopic = consumerSpansForTopic.get(topic);
           if (consumerSpanForTopic == null) {
             consumerSpansForTopic.put(topic,
-                consumerSpanForTopic = tracing.tracer().nextSpan(extracted)
+                consumerSpanForTopic = tracing.tracer().nextSpan(extracted).name("poll")
                     .kind(Span.Kind.CONSUMER)
                     .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
                     .start());
@@ -70,7 +70,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           // no need to remove propagation headers as we failed to extract anything
           injector.inject(consumerSpanForTopic.context(), record.headers());
         } else { // we extracted request-scoped data, so cannot share a consumer span.
-          Span span = tracing.tracer().nextSpan(extracted).kind(Span.Kind.CONSUMER)
+          Span span = tracing.tracer().nextSpan(extracted).name("poll").kind(Span.Kind.CONSUMER)
               .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
               .start();
           span.finish();  // span won't be shared by other records

@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -17,7 +18,7 @@ public class TracingProducerTest  extends BaseTracingTest {
   Producer<Object, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
 
   @Test
-  public void should_add_b3_headers_to_records() throws Exception {
+  public void should_add_b3_headers_to_records() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<String> headerKeys = mockProducer.history().stream()
@@ -32,14 +33,24 @@ public class TracingProducerTest  extends BaseTracingTest {
   }
 
   @Test
-  public void should_call_wrapped_producer() throws Exception {
+  public void should_call_wrapped_producer() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     assertThat(mockProducer.history()).hasSize(1);
   }
 
   @Test
-  public void send_should_tag_topic_and_key() throws Exception {
+  public void send_should_set_name() {
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    mockProducer.completeNext();
+
+    assertThat(spans)
+        .flatExtracting(Span::name)
+        .containsOnly("send");
+  }
+
+  @Test
+  public void send_should_tag_topic_and_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
@@ -49,7 +60,7 @@ public class TracingProducerTest  extends BaseTracingTest {
   }
 
   @Test
-  public void send_shouldnt_tag_null_key() throws Exception {
+  public void send_shouldnt_tag_null_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, null, TEST_VALUE));
     mockProducer.completeNext();
 
@@ -59,7 +70,7 @@ public class TracingProducerTest  extends BaseTracingTest {
   }
 
   @Test
-  public void send_shouldnt_tag_binary_key() throws Exception {
+  public void send_shouldnt_tag_binary_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
