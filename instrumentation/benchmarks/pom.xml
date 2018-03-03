@@ -17,18 +17,7 @@
     <spring.version>${spring4.version}</spring.version>
   </properties>
 
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>brave-bom</artifactId>
-        <version>${project.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
+  <!-- can't import brave-bom due to build-support/go-offline.sh -->
   <dependencies>
     <dependency>
       <groupId>org.openjdk.jmh</groupId>
@@ -51,15 +40,18 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-httpclient</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-httpasyncclient</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
@@ -69,6 +61,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-spring-web</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -78,6 +71,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-okhttp3</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
@@ -87,6 +81,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-jaxrs2</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>net.ltgt.jaxrs</groupId>
@@ -97,11 +92,13 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-servlet</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-spring-webmvc</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -111,6 +108,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-sparkjava</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.sparkjava</groupId>
@@ -121,6 +119,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-jersey-server</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.containers</groupId>
@@ -131,6 +130,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-netty-codec-http</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
@@ -166,6 +166,7 @@
     <dependency>
       <groupId>io.zipkin.brave</groupId>
       <artifactId>brave-propagation-aws</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
