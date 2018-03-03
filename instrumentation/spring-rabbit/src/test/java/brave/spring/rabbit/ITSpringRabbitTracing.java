@@ -95,7 +95,7 @@ public class ITSpringRabbitTracing {
         .flatExtracting(s -> s.tags().entrySet())
         .containsOnly(
             entry("rabbit.exchange", "test-exchange"),
-            entry("rabbit.routing.key", "test.binding"),
+            entry("rabbit.routing_key", "test.binding"),
             entry("rabbit.queue", "test-queue")
         );
 
@@ -105,7 +105,8 @@ public class ITSpringRabbitTracing {
         .isEmpty();
   }
 
-  @Test public void rabbit_listener_method_name_used_as_span_name() throws Exception {
+  // We will revisit this eventually, but these names mostly match the method names
+  @Test public void method_names_as_span_names() throws Exception {
     testFixture.produceMessage();
     testFixture.awaitMessageConsumed();
 
@@ -113,7 +114,7 @@ public class ITSpringRabbitTracing {
 
     assertThat(testFixture.consumerSpans)
         .extracting(Span::name)
-        .containsExactly("test-queue", "on-message");
+        .containsExactly("next-message", "on-message");
   }
 
   @Configuration

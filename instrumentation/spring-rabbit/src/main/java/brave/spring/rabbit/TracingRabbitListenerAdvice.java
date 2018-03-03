@@ -4,6 +4,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -16,8 +17,12 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import zipkin2.Endpoint;
 
 import static brave.Span.Kind.CONSUMER;
+import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
+import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_QUEUE;
+import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_ROUTING_KEY;
 
 /**
  * TracingRabbitListenerAdvice is an AOP advice to be used with the {@link
@@ -42,19 +47,16 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     }
   };
 
-  static final String
-      RABBIT_EXCHANGE = "rabbit.exchange",
-      RABBIT_ROUTING_KEY = "rabbit.routing.key",
-      RABBIT_QUEUE = "rabbit.queue";
-
   final Extractor<MessageProperties> extractor;
   final Tracer tracer;
   final Tracing tracing;
+  @Nullable final String remoteServiceName;
 
-  TracingRabbitListenerAdvice(Tracing tracing) {
+  TracingRabbitListenerAdvice(Tracing tracing, @Nullable String remoteServiceName) {
     this.extractor = tracing.propagation().extractor(GETTER);
     this.tracer = tracing.tracer();
     this.tracing = tracing;
+    this.remoteServiceName = remoteServiceName;
   }
 
   /**
@@ -64,11 +66,15 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     Message message = (Message) methodInvocation.getArguments()[1];
     TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
 
-    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).start();
-    tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
-    String consumerQueue = message.getMessageProperties().getConsumerQueue();
-    if (consumerQueue != null) consumerSpan.name(consumerQueue);
-    consumerSpan.finish();
+    // named for BlockingQueueConsumer.nextMessage, which we can't currently see
+    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("next-message").start();
+    if (!consumerSpan.isNoop()) {
+      tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
+      if (remoteServiceName != null) {
+        consumerSpan.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
+      }
+      consumerSpan.finish();
+    }
 
     Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message").start();
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
@@ -82,9 +88,9 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
   }
 
   TraceContextOrSamplingFlags extractTraceContextAndRemoveHeaders(Message message) {
-    final MessageProperties messageProperties = message.getMessageProperties();
-    final TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
-    final Map<String, Object> headers = messageProperties.getHeaders();
+    MessageProperties messageProperties = message.getMessageProperties();
+    TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
+    Map<String, Object> headers = messageProperties.getHeaders();
     for (String key : tracing.propagation().keys()) {
       headers.remove(key);
     }
@@ -92,12 +98,12 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
   }
 
   void tagReceivedMessageProperties(Span span, MessageProperties messageProperties) {
-    tag(span, RABBIT_EXCHANGE, messageProperties.getReceivedExchange());
-    tag(span, RABBIT_ROUTING_KEY, messageProperties.getReceivedRoutingKey());
-    tag(span, RABBIT_QUEUE, messageProperties.getConsumerQueue());
+    maybeTag(span, RABBIT_EXCHANGE, messageProperties.getReceivedExchange());
+    maybeTag(span, RABBIT_ROUTING_KEY, messageProperties.getReceivedRoutingKey());
+    maybeTag(span, RABBIT_QUEUE, messageProperties.getConsumerQueue());
   }
 
-  void tag(Span span, String tag, String value) {
+  static void maybeTag(Span span, String tag, String value) {
     if (value != null) span.tag(tag, value);
   }
 
