@@ -1,7 +1,7 @@
 package brave.grpc;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import io.grpc.Metadata;
 import java.util.Collections;
 

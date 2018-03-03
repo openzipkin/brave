@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.test.propagation.CurrentTraceContextTest;
 import org.junit.Before;
 import org.junit.Test;
 

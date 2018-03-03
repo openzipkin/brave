@@ -1,4 +1,4 @@
-package brave.http;
+package brave.test.http;
 
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.junit.After;

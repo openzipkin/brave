@@ -1,7 +1,7 @@
 package brave.okhttp3;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import okhttp3.Request;
 
 import static brave.okhttp3.TracingInterceptor.SETTER;

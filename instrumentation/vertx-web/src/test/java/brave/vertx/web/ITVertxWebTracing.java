@@ -3,7 +3,7 @@ package brave.vertx.web;
 import brave.SpanCustomizer;
 import brave.http.HttpAdapter;
 import brave.http.HttpServerParser;
-import brave.http.ITHttpServer;
+import brave.test.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;

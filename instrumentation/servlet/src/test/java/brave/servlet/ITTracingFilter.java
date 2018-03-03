@@ -1,6 +1,6 @@
 package brave.servlet;
 
-import brave.http.ITServlet3Container;
+import brave.test.http.ITServlet3Container;
 import javax.servlet.Filter;
 
 public class ITTracingFilter extends ITServlet3Container {

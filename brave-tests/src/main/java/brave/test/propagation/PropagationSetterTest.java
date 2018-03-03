@@ -1,5 +1,6 @@
-package brave.propagation;
+package brave.test.propagation;
 
+import brave.propagation.Propagation;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

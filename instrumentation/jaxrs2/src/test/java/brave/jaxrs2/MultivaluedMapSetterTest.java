@@ -1,7 +1,7 @@
 package brave.jaxrs2;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import javax.ws.rs.core.AbstractMultivaluedMap;

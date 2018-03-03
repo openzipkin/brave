@@ -1,4 +1,4 @@
-package brave.http;
+package brave.test.http;
 
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;

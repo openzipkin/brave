@@ -1,6 +1,8 @@
-package brave.propagation;
+package brave.test.propagation;
 
 import brave.internal.Nullable;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -17,8 +19,8 @@ public abstract class CurrentTraceContextTest {
   protected abstract CurrentTraceContext newCurrentTraceContext();
 
   protected final CurrentTraceContext currentTraceContext;
-  final TraceContext context;
-  final TraceContext context2;
+  protected final TraceContext context;
+  protected final TraceContext context2;
 
   protected CurrentTraceContextTest() {
     currentTraceContext = newCurrentTraceContext();

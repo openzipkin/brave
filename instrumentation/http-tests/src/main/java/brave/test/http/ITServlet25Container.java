@@ -1,6 +1,7 @@
-package brave.http;
+package brave.test.http;
 
 import brave.Tracer;
+import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.util.EnumSet;

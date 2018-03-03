@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.test.propagation.CurrentTraceContextTest;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

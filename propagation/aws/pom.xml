@@ -15,4 +15,19 @@
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
   </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>brave.propagation.aws</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

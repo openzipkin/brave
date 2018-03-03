@@ -2,8 +2,8 @@ package brave.spring.webmvc25;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.http.ITServletContainer;
 import brave.spring.webmvc.TracingHandlerInterceptor;
+import brave.test.http.ITServletContainer;
 import java.io.IOException;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.servlet.ServletContextHandler;

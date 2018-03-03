@@ -1,6 +1,6 @@
 package brave.netty.http;
 
-import brave.http.ITHttpServer;
+import brave.test.http.ITHttpServer;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;

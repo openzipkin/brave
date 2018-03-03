@@ -1,6 +1,7 @@
-package brave.http;
+package brave.test.http;
 
 import brave.Tracing;
+import brave.http.HttpTracing;
 import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;

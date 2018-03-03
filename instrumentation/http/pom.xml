@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
@@ -9,6 +11,12 @@
 
   <artifactId>brave-instrumentation-http</artifactId>
   <name>Brave Instrumentation: Http Adapters</name>
+
+  <properties>
+    <main.basedir>${project.basedir}/../..</main.basedir>
+    <main.java.version>1.6</main.java.version>
+    <main.signature.artifact>java16</main.signature.artifact>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -29,9 +37,18 @@
     </dependency>
   </dependencies>
 
-  <properties>
-    <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.6</main.java.version>
-    <main.signature.artifact>java16</main.signature.artifact>
-  </properties>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>brave.http</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

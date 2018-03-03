@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.test.propagation.PropagationSetterTest;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLConnection;

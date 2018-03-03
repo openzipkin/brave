@@ -1,4 +1,4 @@
-package brave.http;
+package brave.test.http;
 
 import brave.Tracer;
 import brave.Tracer.SpanInScope;

@@ -1,7 +1,7 @@
 package brave.httpclient;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.http.client.methods.HttpRequestWrapper;
