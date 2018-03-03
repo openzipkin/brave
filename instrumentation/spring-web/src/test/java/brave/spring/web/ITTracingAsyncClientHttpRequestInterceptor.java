@@ -1,6 +1,6 @@
 package brave.spring.web;
 
-import brave.http.ITHttpAsyncClient;
+import brave.test.http.ITHttpAsyncClient;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;

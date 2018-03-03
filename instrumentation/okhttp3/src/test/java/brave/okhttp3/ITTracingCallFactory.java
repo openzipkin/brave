@@ -1,7 +1,7 @@
 package brave.okhttp3;
 
 import brave.Tracer;
-import brave.http.ITHttpAsyncClient;
+import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;

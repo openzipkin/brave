@@ -2,7 +2,7 @@ package brave.spring.webmvc;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.http.ITServletContainer;
+import brave.test.http.ITServletContainer;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.util.concurrent.Callable;

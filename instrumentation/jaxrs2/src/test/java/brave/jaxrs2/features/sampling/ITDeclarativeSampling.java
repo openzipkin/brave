@@ -4,7 +4,7 @@ import brave.Tracing;
 import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
 import brave.http.HttpTracing;
-import brave.http.ServletContainer;
+import brave.test.http.ServletContainer;
 import brave.jaxrs2.TracingBootstrap;
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;

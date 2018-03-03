@@ -1,6 +1,6 @@
 package brave.spring.web;
 
-import brave.http.ITHttpClient;
+import brave.test.http.ITHttpClient;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;

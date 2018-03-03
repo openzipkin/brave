@@ -4,7 +4,7 @@ import brave.Tracer;
 import brave.http.HttpAdapter;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
-import brave.http.ITServletContainer;
+import brave.test.http.ITServletContainer;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
 import java.lang.reflect.Method;

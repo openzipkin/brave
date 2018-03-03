@@ -1,6 +1,10 @@
-package brave.http;
+package brave.test.http;
 
 import brave.SpanCustomizer;
+import brave.http.HttpAdapter;
+import brave.http.HttpRuleSampler;
+import brave.http.HttpServerParser;
+import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import java.io.IOException;

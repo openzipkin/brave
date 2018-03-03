@@ -1,7 +1,11 @@
-package brave.propagation;
+package brave.test.propagation;
 
 import brave.internal.HexCodec;
 import brave.internal.Nullable;
+import brave.propagation.Propagation;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
@@ -10,18 +14,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class PropagationTest<K> {
 
-  abstract Propagation<K> propagation();
+  protected abstract Propagation<K> propagation();
 
-  abstract void inject(Map<K, String> map, @Nullable String traceId, @Nullable String parentId,
-      @Nullable String spanId, @Nullable Boolean sampled, @Nullable Boolean debug);
+  protected abstract void inject(Map<K, String> map, @Nullable String traceId,
+      @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
+      @Nullable Boolean debug);
 
   /**
    * There's currently no standard API to just inject sampling flags, as IDs are intended to be
    * propagated.
    */
-  abstract void inject(Map<K, String> carrier, SamplingFlags samplingFlags);
+  protected abstract void inject(Map<K, String> carrier, SamplingFlags samplingFlags);
 
-  Map<K, String> map = new LinkedHashMap<>();
+  protected Map<K, String> map = new LinkedHashMap<>();
   MapEntry<K> mapEntry = new MapEntry<>();
 
   TraceContext rootSpan = TraceContext.newBuilder()
@@ -112,9 +117,11 @@ public abstract class PropagationTest<K> {
     assertThat(map).isEqualTo(injected);
   }
 
-  static class MapEntry<K> implements
+  protected static class MapEntry<K> implements
       Propagation.Getter<Map<K, String>, K>,
       Propagation.Setter<Map<K, String>, K> {
+    public MapEntry(){
+    }
 
     @Override public void put(Map<K, String> carrier, K key, String value) {
       carrier.put(key, value);

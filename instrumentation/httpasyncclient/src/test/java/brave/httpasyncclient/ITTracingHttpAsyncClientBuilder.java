@@ -1,6 +1,6 @@
 package brave.httpasyncclient;
 
-import brave.http.ITHttpAsyncClient;
+import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
 import okhttp3.mockwebserver.MockResponse;

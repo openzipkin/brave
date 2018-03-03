@@ -1,6 +1,6 @@
 package brave.sparkjava;
 
-import brave.http.ITHttpServer;
+import brave.test.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
 import okhttp3.Response;
 import org.junit.After;

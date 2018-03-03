@@ -1,7 +1,7 @@
 package brave.kafka.clients;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.kafka.common.header.Headers;

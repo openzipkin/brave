@@ -1,7 +1,7 @@
 package brave.spring.web;
 
 import brave.propagation.Propagation;
-import brave.propagation.PropagationSetterTest;
+import brave.test.propagation.PropagationSetterTest;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.http.HttpHeaders;

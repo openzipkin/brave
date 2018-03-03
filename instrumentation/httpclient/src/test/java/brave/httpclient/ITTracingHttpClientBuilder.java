@@ -1,6 +1,6 @@
 package brave.httpclient;
 
-import brave.http.ITHttpClient;
+import brave.test.http.ITHttpClient;
 import java.io.IOException;
 import java.net.URI;
 import okhttp3.mockwebserver.MockResponse;
