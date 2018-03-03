@@ -27,8 +27,6 @@ public final class SpringRabbitTracing {
 
   /**
    * Creates an instrumented rabbit template.
-   * @param connectionFactory
-   * @return
    */
   public RabbitTemplate newRabbitTemplate(ConnectionFactory connectionFactory) {
     RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
@@ -38,8 +36,6 @@ public final class SpringRabbitTracing {
 
   /**
    * Creates an instrumented SimpleRabbitListenerContainerFactory to be used to consume rabbit messages.
-   * @param connectionFactory
-   * @return
    */
   public SimpleRabbitListenerContainerFactory newSimpleMessageListenerContainerFactory(ConnectionFactory connectionFactory) {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();

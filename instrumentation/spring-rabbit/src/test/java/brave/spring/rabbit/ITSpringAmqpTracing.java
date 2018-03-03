@@ -72,7 +72,7 @@ public class ITSpringAmqpTracing {
         .extracting(Span::kind, Span::traceId, Span::parentId)
         .containsExactly(
             tuple(CONSUMER, originatingTraceId, originatingTraceId),
-            tuple(SERVER, originatingTraceId, consumerSpanId)
+            tuple(null, originatingTraceId, consumerSpanId)
         );
   }
 
@@ -92,15 +92,18 @@ public class ITSpringAmqpTracing {
     assertThat(testFixture.consumerSpans).hasSize(2);
 
     assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() == CONSUMER)
         .flatExtracting(s -> s.tags().entrySet())
         .containsOnly(
             entry("rabbit.exchange", "test-exchange"),
             entry("rabbit.routing.key", "test.binding"),
-            entry("rabbit.queue", "test-queue"),
-            entry("rabbit.exchange", "test-exchange"),
-            entry("rabbit.routing.key", "test.binding"),
             entry("rabbit.queue", "test-queue")
         );
+
+    assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() != CONSUMER)
+        .flatExtracting(s -> s.tags().entrySet())
+        .isEmpty();
   }
 
   @Configuration

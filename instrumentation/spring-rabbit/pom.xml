@@ -15,21 +15,15 @@
 		<main.basedir>${project.basedir}/../..</main.basedir>
 		<main.java.version>1.6</main.java.version>
 		<main.signature.artifact>java16</main.signature.artifact>
-		<spring-amqp.version>1.7.5.RELEASE</spring-amqp.version>
+		<spring-rabbit.version>1.7.6.RELEASE</spring-rabbit.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.amqp</groupId>
-			<artifactId>spring-amqp</artifactId>
-			<version>${spring-amqp.version}</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.amqp</groupId>
 			<artifactId>spring-rabbit</artifactId>
-			<version>${spring-amqp.version}</version>
-			<scope>compile</scope>
+			<version>${spring-rabbit.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<!-- spring-aop is required for the consumer side instrumentation point -->
@@ -37,7 +31,7 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-aop</artifactId>
 			<version>${spring4.version}</version>
-			<scope>compile</scope>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
@@ -54,7 +48,7 @@
 		<dependency>
 			<groupId>org.springframework.amqp</groupId>
 			<artifactId>spring-rabbit-junit</artifactId>
-			<version>${spring-amqp.version}</version>
+			<version>${spring-rabbit.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

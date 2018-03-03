@@ -49,7 +49,7 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(CONSUMER, SERVER);
+        .containsExactly(CONSUMER, null);
   }
 
   @Test
@@ -78,10 +78,10 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(CONSUMER, SERVER);
+        .containsExactly(CONSUMER, null);
 
     assertThat(reportedSpans)
-        .filteredOn(span -> span.kind() == SERVER)
+        .filteredOn(span -> span.kind() == null)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
         .contains("expected exception");
@@ -94,10 +94,10 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(reportedSpans)
         .extracting(Span::kind)
-        .containsExactly(CONSUMER, SERVER);
+        .containsExactly(CONSUMER, null);
 
     assertThat(reportedSpans)
-        .filteredOn(span -> span.kind() == SERVER)
+        .filteredOn(span -> span.kind() == null)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
         .contains("RuntimeException");
