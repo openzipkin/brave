@@ -17,21 +17,19 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static zipkin2.Span.Kind.CONSUMER;
-import static zipkin2.Span.Kind.SERVER;
 
 public class TracingRabbitListenerAdviceTest {
 
-  private static String TRACE_ID = "463ac35c9f6413ad";
-  private static String PARENT_ID = "463ac35c9f6413ab";
-  private static String SPAN_ID = "48485a3953bb6124";
-  private static String SAMPLED = "1";
+  static String TRACE_ID = "463ac35c9f6413ad";
+  static String PARENT_ID = "463ac35c9f6413ab";
+  static String SPAN_ID = "48485a3953bb6124";
+  static String SAMPLED = "1";
 
-  private List<Span> reportedSpans = new ArrayList<>();
-  private TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
-  private MethodInvocation methodInvocation;
+  List<Span> reportedSpans = new ArrayList<>();
+  TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
+  MethodInvocation methodInvocation;
 
-  @Before
-  public void setupTracing() {
+  @Before public void setupTracing() {
     reportedSpans.clear();
     Tracing tracing = Tracing.newBuilder()
         .sampler(Sampler.ALWAYS_SAMPLE)
@@ -42,8 +40,7 @@ public class TracingRabbitListenerAdviceTest {
     methodInvocation = mock(MethodInvocation.class);
   }
 
-  @Test
-  public void starts_new_trace_if_none_exists() throws Throwable {
+  @Test public void starts_new_trace_if_none_exists() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumed(message);
 
@@ -52,8 +49,7 @@ public class TracingRabbitListenerAdviceTest {
         .containsExactly(CONSUMER, null);
   }
 
-  @Test
-  public void continues_parent_trace() throws Throwable {
+  @Test public void continues_parent_trace() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("X-B3-TraceId", TRACE_ID);
     props.setHeader("X-B3-SpanId", SPAN_ID);
@@ -71,8 +67,7 @@ public class TracingRabbitListenerAdviceTest {
         .contains(SPAN_ID);
   }
 
-  @Test
-  public void reports_span_if_consume_fails() throws Throwable {
+  @Test public void reports_span_if_consume_fails() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
@@ -87,8 +82,7 @@ public class TracingRabbitListenerAdviceTest {
         .contains("expected exception");
   }
 
-  @Test
-  public void reports_span_if_consume_fails_with_no_message() throws Throwable {
+  @Test public void reports_span_if_consume_fails_with_no_message() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumeFailed(message, new RuntimeException());
 
@@ -103,7 +97,7 @@ public class TracingRabbitListenerAdviceTest {
         .contains("RuntimeException");
   }
 
-  private void onMessageConsumed(Message message) throws Throwable {
+  void onMessageConsumed(Message message) throws Throwable {
     when(methodInvocation.getArguments()).thenReturn(new Object[] {
         null, // AMQPChannel - doesn't matter
         message
@@ -113,7 +107,7 @@ public class TracingRabbitListenerAdviceTest {
     tracingRabbitListenerAdvice.invoke(methodInvocation);
   }
 
-  private void onMessageConsumeFailed(Message message, Throwable throwable) throws Throwable {
+  void onMessageConsumeFailed(Message message, Throwable throwable) throws Throwable {
     when(methodInvocation.getArguments()).thenReturn(new Object[] {
         null, // AMQPChannel - doesn't matter
         message
@@ -124,7 +118,6 @@ public class TracingRabbitListenerAdviceTest {
       tracingRabbitListenerAdvice.invoke(methodInvocation);
       fail("should have thrown exception");
     } catch (RuntimeException ex) {
-
     }
   }
 }

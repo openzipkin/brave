@@ -166,7 +166,6 @@
     <dependency>
       <groupId>io.zipkin.brave</groupId>
       <artifactId>brave-propagation-aws</artifactId>
-      <version>${project.version}</version>
     </dependency>
   </dependencies>
 

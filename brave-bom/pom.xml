@@ -1,24 +1,81 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>io.zipkin.brave</groupId>
-    <artifactId>brave-pom-parent</artifactId>
-    <version>4.17.1-SNAPSHOT</version>
-    <relativePath>../brave-parent</relativePath>
-  </parent>
-
+  <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
+  <version>4.17.1-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
+  <url>https://github.com/openzipkin/brave</url>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
+
+    <!-- use the same values in ../pom.xml -->
+    <zipkin.version>2.5.1</zipkin.version>
+    <zipkin-reporter.version>2.4.1</zipkin-reporter.version>
   </properties>
+
+  <organization>
+    <name>OpenZipkin</name>
+    <url>http://zipkin.io/</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <url>https://github.com/openzipkin/brave</url>
+    <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
+    <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <!-- Developer section is needed for Maven Central, but doesn't need to include each person -->
+  <developers>
+    <developer>
+      <id>openzipkin</id>
+      <name>OpenZipkin Gitter</name>
+      <url>https://gitter.im/openzipkin/zipkin</url>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <repository>
+      <id>bintray</id>
+      <url>https://api.bintray.com/maven/openzipkin/maven/brave/;publish=1</url>
+    </repository>
+    <snapshotRepository>
+      <id>jfrog-snapshots</id>
+      <url>http://oss.jfrog.org/artifactory/oss-snapshot-local</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <issueManagement>
+    <system>Github</system>
+    <url>https://github.com/openzipkin/brave/issues</url>
+  </issueManagement>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.zipkin.reporter2</groupId>
+        <artifactId>zipkin-reporter-bom</artifactId>
+        <version>${zipkin-reporter.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin</artifactId>
+        <version>${zipkin.version}</version>
+      </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave</artifactId>

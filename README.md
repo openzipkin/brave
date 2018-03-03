@@ -69,9 +69,10 @@ instrumentation. Also any indirect use will have versions aligned:
 </dependency>
 ```
 
-A great example of this in practice is using a newer version of Brave
-than what's packaged in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth). However, you should take
-care not to accidentally use an earlier version. If you hard-assign a
-version of Brave and also use an umbrella project like Sleuth, always
-double check that your Brave version is valid (equal to or later) when
-updating the version of the umbrella project.
+With the above in place, you can use the properties `brave-version`,
+`zipkin-reporter.version` or `zipkin.version` to override dependency
+versions coherently. This is most commonly to test a new feature or fix.
+
+Note: If you override a version, always double check that your version
+is valid (equal to or later) than what you are updating. This will avoid
+class conflicts.

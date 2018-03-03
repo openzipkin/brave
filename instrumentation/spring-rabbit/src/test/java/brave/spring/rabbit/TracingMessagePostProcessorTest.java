@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
 
-  private List<Span> reportedSpans = new ArrayList<>();
-  private TracingMessagePostProcessor tracingMessagePostProcessor;
+  List<Span> reportedSpans = new ArrayList<>();
+  TracingMessagePostProcessor tracingMessagePostProcessor;
 
   @Before
   public void setupTracing() {

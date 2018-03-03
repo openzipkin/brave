@@ -8,9 +8,8 @@
 
   <artifactId>brave</artifactId>
   <packaging>jar</packaging>
-
-  <name>brave</name>
-  <description>Brave</description>
+  <name>Brave</name>
+  <description>Brave: Core Libary</description>
 
   <properties>
     <main.basedir>${project.basedir}/..</main.basedir>
@@ -31,13 +30,13 @@
     <dependency>
       <groupId>io.zipkin.reporter</groupId>
       <artifactId>zipkin-reporter</artifactId>
-      <version>${zipkin-reporter.version}</version>
+      <version>1.1.2</version>
       <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-reporter</artifactId>
-      <version>${zipkin-reporter2.version}</version>
+      <version>${zipkin-reporter.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jvnet</groupId>
