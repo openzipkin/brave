@@ -40,9 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.groups.Tuple.tuple;
 import static zipkin2.Span.Kind.CONSUMER;
-import static zipkin2.Span.Kind.SERVER;
 
-public class ITSpringAmqpTracing {
+public class ITSpringRabbitTracing {
 
   @Rule public TestName testName = new TestName();
 
