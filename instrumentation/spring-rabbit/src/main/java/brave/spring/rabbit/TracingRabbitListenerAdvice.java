@@ -63,9 +63,11 @@ class TracingRabbitListenerAdvice implements MethodInterceptor {
 
     final Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).start();
     tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
+    String consumerQueue = message.getMessageProperties().getConsumerQueue();
+    if (consumerQueue != null) consumerSpan.name(consumerQueue);
     consumerSpan.finish();
 
-    final Span listenerSpan = tracer.newChild(consumerSpan.context()).start();
+    final Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message").start();
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {

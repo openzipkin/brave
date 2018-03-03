@@ -106,6 +106,17 @@ public class ITSpringAmqpTracing {
         .isEmpty();
   }
 
+  @Test public void rabbit_listener_method_name_used_as_span_name() throws Exception {
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
+
+    assertThat(testFixture.consumerSpans).hasSize(2);
+
+    assertThat(testFixture.consumerSpans)
+        .extracting(Span::name)
+        .containsExactly("test-queue", "on-message");
+  }
+
   @Configuration
   public static class CommonRabbitConfig {
     @Bean
@@ -234,7 +245,7 @@ public class ITSpringAmqpTracing {
     }
 
     @RabbitListener(queues = "test-queue")
-    public void receive(Message message) {
+    public void testReceiveRabbit(Message message) {
       this.capturedMessage = message;
       this.countDownLatch.countDown();
     }
