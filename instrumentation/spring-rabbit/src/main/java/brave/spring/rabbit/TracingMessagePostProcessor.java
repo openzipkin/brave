@@ -3,12 +3,14 @@ package brave.spring.rabbit;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext.Injector;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import zipkin2.Endpoint;
 
 /**
  * MessagePostProcessor to be used with the {@link RabbitTemplate#setBeforePublishPostProcessors
@@ -29,14 +31,21 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
 
   final Injector<MessageProperties> injector;
   final Tracer tracer;
+  @Nullable final String remoteServiceName;
 
-  TracingMessagePostProcessor(Tracing tracing) {
+  TracingMessagePostProcessor(Tracing tracing, @Nullable String remoteServiceName) {
     this.injector = tracing.propagation().injector(SETTER);
     this.tracer = tracing.tracer();
+    this.remoteServiceName = remoteServiceName;
   }
 
   @Override public Message postProcessMessage(Message message) {
-    Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).start();
+    Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).name("publish").start();
+    if (!span.isNoop()) {
+      if (remoteServiceName != null) {
+        span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
+      }
+    }
     injector.inject(span.context(), message.getMessageProperties());
     span.finish();
     return message;

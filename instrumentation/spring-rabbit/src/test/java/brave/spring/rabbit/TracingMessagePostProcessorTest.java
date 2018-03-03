@@ -19,18 +19,16 @@ public class TracingMessagePostProcessorTest {
   List<Span> reportedSpans = new ArrayList<>();
   TracingMessagePostProcessor tracingMessagePostProcessor;
 
-  @Before
-  public void setupTracing() {
+  @Before public void setupTracing() {
     reportedSpans.clear();
     Tracing tracing = Tracing.newBuilder()
         .sampler(Sampler.ALWAYS_SAMPLE)
         .spanReporter(reportedSpans::add)
         .build();
-    tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing);
+    tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing, "my-exchange");
   }
 
-  @Test
-  public void should_add_b3_headers_to_message() throws Exception {
+  @Test public void should_add_b3_headers_to_message() {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
@@ -40,11 +38,18 @@ public class TracingMessagePostProcessorTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
-  @Test
-  public void should_report_span() throws Exception {
+  @Test public void should_report_span() {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     tracingMessagePostProcessor.postProcessMessage(message);
 
     assertThat(reportedSpans).hasSize(1);
+  }
+
+  @Test public void should_set_remote_service() {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
+    tracingMessagePostProcessor.postProcessMessage(message);
+
+    assertThat(reportedSpans.get(0).remoteServiceName())
+        .isEqualTo("my-exchange");
   }
 }

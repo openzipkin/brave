@@ -16,7 +16,9 @@ public Tracing tracing() {
 
 @Bean
 public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
-  return SpringRabbitTracing.create(tracing);
+  return SpringRabbitTracing.newBuilder(tracing)
+                            .remoteServiceName("my-mq-service")
+                            .build();
 }
 ```
 

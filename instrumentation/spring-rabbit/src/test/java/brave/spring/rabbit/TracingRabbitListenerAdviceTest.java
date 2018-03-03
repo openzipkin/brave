@@ -35,7 +35,7 @@ public class TracingRabbitListenerAdviceTest {
         .sampler(Sampler.ALWAYS_SAMPLE)
         .spanReporter(reportedSpans::add)
         .build();
-    tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing);
+    tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, "my-service");
 
     methodInvocation = mock(MethodInvocation.class);
   }
@@ -47,6 +47,15 @@ public class TracingRabbitListenerAdviceTest {
     assertThat(reportedSpans)
         .extracting(Span::kind)
         .containsExactly(CONSUMER, null);
+  }
+
+  @Test public void consumer_has_service_name() throws Throwable {
+    Message message = MessageBuilder.withBody(new byte[] {}).build();
+    onMessageConsumed(message);
+
+    assertThat(reportedSpans)
+        .extracting(Span::remoteServiceName)
+        .containsExactly("my-service", null);
   }
 
   @Test public void continues_parent_trace() throws Throwable {
