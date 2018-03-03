@@ -37,6 +37,11 @@ public class TracingConsumerTest extends BaseTracingTest {
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
+    // name is correct
+    assertThat(spans)
+        .extracting(Span::name)
+        .containsExactly("poll");
+
     // kind is correct
     assertThat(spans)
         .extracting(Span::kind)
