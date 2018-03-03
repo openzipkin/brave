@@ -32,6 +32,7 @@
     <module>p6spy</module>
     <module>servlet</module>
     <module>sparkjava</module>
+    <module>spring-rabbit</module>
     <module>spring-web</module>
     <module>spring-webmvc</module>
     <module>kafka-clients</module>
