@@ -1,6 +1,14 @@
 package brave.spring.rabbit;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 import brave.Tracing;
+import org.aopalliance.aop.Advice;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -60,6 +68,36 @@ public final class SpringRabbitTracing {
     return rabbitTemplate;
   }
 
+  /** Instruments an existing rabbit template. */
+  public RabbitTemplate fromRabbitTemplate(RabbitTemplate rabbitTemplate) {
+    try {
+      MessagePostProcessor[] processorsArray = currentProcessorsWithTracing(
+              rabbitTemplate);
+      rabbitTemplate.setBeforePublishPostProcessors(processorsArray);
+      return rabbitTemplate;
+    }
+    catch (NoSuchFieldException | IllegalAccessException e) {
+      return rabbitTemplate;
+    }
+  }
+
+  private MessagePostProcessor[] currentProcessorsWithTracing(
+          RabbitTemplate rabbitTemplate)
+          throws NoSuchFieldException, IllegalAccessException {
+    Field field = RabbitTemplate.class
+            .getDeclaredField("beforePublishPostProcessors");
+    Collection<MessagePostProcessor> processors =
+            (Collection<MessagePostProcessor>) field.get(rabbitTemplate);
+    List<MessagePostProcessor> newProcessors = new ArrayList<>();
+    if (!processors.contains(tracingMessagePostProcessor)) {
+      newProcessors.add(tracingMessagePostProcessor);
+    }
+    if (processors != null) {
+      newProcessors.addAll(processors);
+    }
+    return newProcessors.toArray(new MessagePostProcessor[] {});
+  }
+
   /**
    * Creates an instrumented SimpleRabbitListenerContainerFactory to be used to consume rabbit
    * messages.
@@ -70,5 +108,29 @@ public final class SpringRabbitTracing {
     factory.setConnectionFactory(connectionFactory);
     factory.setAdviceChain(tracingRabbitListenerAdvice);
     return factory;
+  }
+
+  /**
+   * Creates an instrumented SimpleRabbitListenerContainerFactory to be used to consume rabbit
+   * messages.
+   */
+  public SimpleRabbitListenerContainerFactory fromSimpleMessageListenerContainerFactory(
+          SimpleRabbitListenerContainerFactory factory) {
+    Advice[] modifiedAdviceChain = chainListWithTracing(
+            factory.getAdviceChain());
+    factory.setAdviceChain(modifiedAdviceChain);
+    return factory;
+  }
+
+  private Advice[] chainListWithTracing(Advice[] chain) {
+    List<Advice> currentChain = Arrays.asList(chain);
+    List<Advice> chainList = new ArrayList<>();
+    if (!currentChain.contains(tracingRabbitListenerAdvice)) {
+      chainList.add(tracingRabbitListenerAdvice);
+    }
+    if (chain != null) {
+      chainList.addAll(Arrays.asList(chain));
+    }
+    return chainList.toArray(new Advice[] {});
   }
 }

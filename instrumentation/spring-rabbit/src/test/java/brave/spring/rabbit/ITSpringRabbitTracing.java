@@ -26,9 +26,11 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.connection.SimpleRoutingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.junit.BrokerRunning;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -86,6 +88,27 @@ public class ITSpringRabbitTracing {
 
   @Test public void tags_spans_with_exchange_and_routing_key() throws Exception {
     testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
+
+    assertThat(testFixture.consumerSpans).hasSize(2);
+
+    assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() == CONSUMER)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("rabbit.exchange", "test-exchange"),
+            entry("rabbit.routing_key", "test.binding"),
+            entry("rabbit.queue", "test-queue")
+        );
+
+    assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() != CONSUMER)
+        .flatExtracting(s -> s.tags().entrySet())
+        .isEmpty();
+  }
+
+  @Test public void tags_spans_with_exchange_and_routing_key_from_default() throws Exception {
+    testFixture.produceMessageFromDefault();
     testFixture.awaitMessageConsumed();
 
     assertThat(testFixture.consumerSpans).hasSize(2);
@@ -180,7 +203,22 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public HelloWorldRabbitProducer tracingRabbitProducer(RabbitTemplate rabbitTemplate) {
+    public RabbitTemplate defaultRabbitTemplate(ConnectionFactory connectionFactory,
+            SpringRabbitTracing springRabbitTracing) {
+      RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+      rabbitTemplate.setExchange("test-exchange");
+      return springRabbitTracing.fromRabbitTemplate(rabbitTemplate);
+    }
+
+    @Bean
+    public HelloWorldRabbitProducer tracingRabbitProducer(
+            @Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
+      return new HelloWorldRabbitProducer(rabbitTemplate);
+    }
+
+    @Bean
+    public HelloWorldRabbitProducer tracingRabbitProducerFromDefault(
+            @Qualifier("defaultRabbitTemplate") RabbitTemplate rabbitTemplate) {
       return new HelloWorldRabbitProducer(rabbitTemplate);
     }
   }
@@ -211,7 +249,10 @@ public class ITSpringRabbitTracing {
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
         ConnectionFactory connectionFactory,
         SpringRabbitTracing springRabbitTracing) {
-      return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
+      SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory =
+              new SimpleRabbitListenerContainerFactory();
+      simpleRabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
+      return springRabbitTracing.fromSimpleMessageListenerContainerFactory(simpleRabbitListenerContainerFactory);
     }
 
     @Bean
@@ -298,7 +339,13 @@ public class ITSpringRabbitTracing {
 
     private void produceMessage() {
       HelloWorldRabbitProducer rabbitProducer =
-          producerContext.getBean(HelloWorldRabbitProducer.class);
+          producerContext.getBean("tracingRabbitProducer", HelloWorldRabbitProducer.class);
+      rabbitProducer.send();
+    }
+
+    private void produceMessageFromDefault() {
+      HelloWorldRabbitProducer rabbitProducer =
+          producerContext.getBean("tracingRabbitProducerFromDefault", HelloWorldRabbitProducer.class);
       rabbitProducer.send();
     }
 
