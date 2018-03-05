@@ -50,7 +50,8 @@ for this ListenerContainerFactory, ensure that they are appended to the adviceCh
 @Bean
 public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
     ConnectionFactory connectionFactory,
-    SpringRabbitTracing springRabbitTracing) {
+    SpringRabbitTracing springRabbitTracing
+) {
   return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
 }
 ```
