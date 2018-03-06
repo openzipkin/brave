@@ -26,7 +26,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.connection.SimpleRoutingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.junit.BrokerRunning;
@@ -207,7 +206,7 @@ public class ITSpringRabbitTracing {
             SpringRabbitTracing springRabbitTracing) {
       RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
       rabbitTemplate.setExchange("test-exchange");
-      return springRabbitTracing.fromRabbitTemplate(rabbitTemplate);
+      return springRabbitTracing.decorateRabbitTemplate(rabbitTemplate);
     }
 
     @Bean
@@ -252,7 +251,7 @@ public class ITSpringRabbitTracing {
       SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory =
               new SimpleRabbitListenerContainerFactory();
       simpleRabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
-      return springRabbitTracing.fromSimpleMessageListenerContainerFactory(simpleRabbitListenerContainerFactory);
+      return springRabbitTracing.decorateSimpleMessageListenerContainerFactory(simpleRabbitListenerContainerFactory);
     }
 
     @Bean

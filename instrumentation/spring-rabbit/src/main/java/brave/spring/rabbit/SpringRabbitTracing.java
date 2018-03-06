@@ -69,7 +69,7 @@ public final class SpringRabbitTracing {
   }
 
   /** Instruments an existing rabbit template. */
-  public RabbitTemplate fromRabbitTemplate(RabbitTemplate rabbitTemplate) {
+  public RabbitTemplate decorateRabbitTemplate(RabbitTemplate rabbitTemplate) {
     try {
       MessagePostProcessor[] processorsArray = currentProcessorsWithTracing(
               rabbitTemplate);
@@ -89,13 +89,22 @@ public final class SpringRabbitTracing {
     Collection<MessagePostProcessor> processors =
             (Collection<MessagePostProcessor>) field.get(rabbitTemplate);
     List<MessagePostProcessor> newProcessors = new ArrayList<>();
-    if (!processors.contains(tracingMessagePostProcessor)) {
+    if (!hasTracedProcessor(processors)) {
       newProcessors.add(tracingMessagePostProcessor);
     }
     if (processors != null) {
       newProcessors.addAll(processors);
     }
     return newProcessors.toArray(new MessagePostProcessor[] {});
+  }
+
+  private boolean hasTracedProcessor(Collection<MessagePostProcessor> processors) {
+    for (MessagePostProcessor processor : processors) {
+      if (processor instanceof TracingMessagePostProcessor) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -111,10 +120,9 @@ public final class SpringRabbitTracing {
   }
 
   /**
-   * Creates an instrumented SimpleRabbitListenerContainerFactory to be used to consume rabbit
-   * messages.
+   * Instruments an existing SimpleRabbitListenerContainerFactory
    */
-  public SimpleRabbitListenerContainerFactory fromSimpleMessageListenerContainerFactory(
+  public SimpleRabbitListenerContainerFactory decorateSimpleMessageListenerContainerFactory(
           SimpleRabbitListenerContainerFactory factory) {
     Advice[] modifiedAdviceChain = chainListWithTracing(
             factory.getAdviceChain());
@@ -123,14 +131,26 @@ public final class SpringRabbitTracing {
   }
 
   private Advice[] chainListWithTracing(Advice[] chain) {
+    if (chain == null) {
+      return chain;
+    }
     List<Advice> currentChain = Arrays.asList(chain);
     List<Advice> chainList = new ArrayList<>();
-    if (!currentChain.contains(tracingRabbitListenerAdvice)) {
+    if (!hasTracedListenerAdvice(currentChain)) {
       chainList.add(tracingRabbitListenerAdvice);
     }
     if (chain != null) {
-      chainList.addAll(Arrays.asList(chain));
+      chainList.addAll(currentChain);
     }
     return chainList.toArray(new Advice[] {});
+  }
+
+  private boolean hasTracedListenerAdvice(List<Advice> currentChain) {
+    for (Advice advice : currentChain) {
+      if (advice instanceof TracingRabbitListenerAdvice) {
+        return true;
+      }
+    }
+    return false;
   }
 }
