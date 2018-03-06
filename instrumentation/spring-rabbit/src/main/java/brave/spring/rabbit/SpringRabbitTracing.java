@@ -95,7 +95,7 @@ public final class SpringRabbitTracing {
     if (processors != null) {
       newProcessors.addAll(processors);
     }
-    return newProcessors.toArray(new MessagePostProcessor[] {});
+    return newProcessors.toArray(new MessagePostProcessor[0]);
   }
 
   private boolean hasTracedProcessor(Collection<MessagePostProcessor> processors) {
@@ -132,17 +132,15 @@ public final class SpringRabbitTracing {
 
   private Advice[] chainListWithTracing(Advice[] chain) {
     if (chain == null) {
-      return chain;
+      return new Advice[] { tracingRabbitListenerAdvice };
     }
     List<Advice> currentChain = Arrays.asList(chain);
     List<Advice> chainList = new ArrayList<>();
     if (!hasTracedListenerAdvice(currentChain)) {
       chainList.add(tracingRabbitListenerAdvice);
     }
-    if (chain != null) {
-      chainList.addAll(currentChain);
-    }
-    return chainList.toArray(new Advice[] {});
+    chainList.addAll(currentChain);
+    return chainList.toArray(new Advice[0]);
   }
 
   private boolean hasTracedListenerAdvice(List<Advice> currentChain) {
