@@ -194,31 +194,37 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing) {
-      RabbitTemplate rabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
-      rabbitTemplate.setExchange("test-exchange");
-      return rabbitTemplate;
+    public RabbitTemplate newRabbitTemplate(
+        ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing
+    ) {
+      RabbitTemplate newRabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
+      newRabbitTemplate.setExchange("test-exchange");
+      return newRabbitTemplate;
     }
 
     @Bean
-    public RabbitTemplate defaultRabbitTemplate(ConnectionFactory connectionFactory,
-            SpringRabbitTracing springRabbitTracing) {
-      RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-      rabbitTemplate.setExchange("test-exchange");
-      return springRabbitTracing.decorateRabbitTemplate(rabbitTemplate);
+    public RabbitTemplate decorateRabbitTemplate(
+        ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing
+    ) {
+      RabbitTemplate newRabbitTemplate = new RabbitTemplate(connectionFactory);
+      newRabbitTemplate.setExchange("test-exchange");
+      return springRabbitTracing.decorateRabbitTemplate(newRabbitTemplate);
     }
 
     @Bean
-    public HelloWorldRabbitProducer tracingRabbitProducer(
-            @Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
-      return new HelloWorldRabbitProducer(rabbitTemplate);
+    public HelloWorldProducer tracingRabbitProducer_new(
+        @Qualifier("newRabbitTemplate") RabbitTemplate newRabbitTemplate
+    ) {
+      return new HelloWorldProducer(newRabbitTemplate);
     }
 
     @Bean
-    public HelloWorldRabbitProducer tracingRabbitProducerFromDefault(
-            @Qualifier("defaultRabbitTemplate") RabbitTemplate rabbitTemplate) {
-      return new HelloWorldRabbitProducer(rabbitTemplate);
+    public HelloWorldProducer tracingRabbitProducer_decorate(
+        @Qualifier("decorateRabbitTemplate") RabbitTemplate newRabbitTemplate
+    ) {
+      return new HelloWorldProducer(newRabbitTemplate);
     }
   }
 
@@ -247,24 +253,27 @@ public class ITSpringRabbitTracing {
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
         ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing) {
+        SpringRabbitTracing springRabbitTracing
+    ) {
       SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory =
-              new SimpleRabbitListenerContainerFactory();
+          new SimpleRabbitListenerContainerFactory();
       simpleRabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
-      return springRabbitTracing.decorateSimpleMessageListenerContainerFactory(simpleRabbitListenerContainerFactory);
+      return springRabbitTracing.decorateSimpleRabbitListenerContainerFactory(
+          simpleRabbitListenerContainerFactory
+      );
     }
 
     @Bean
-    public HelloWorldRabbitConsumer helloWorldRabbitConsumer() {
-      return new HelloWorldRabbitConsumer();
+    public HelloWorldConsumer helloWorldRabbitConsumer() {
+      return new HelloWorldConsumer();
     }
   }
 
-  private static class HelloWorldRabbitProducer {
-    private final RabbitTemplate rabbitTemplate;
+  private static class HelloWorldProducer {
+    private final RabbitTemplate newRabbitTemplate;
 
-    HelloWorldRabbitProducer(RabbitTemplate rabbitTemplate) {
-      this.rabbitTemplate = rabbitTemplate;
+    HelloWorldProducer(RabbitTemplate newRabbitTemplate) {
+      this.newRabbitTemplate = newRabbitTemplate;
     }
 
     void send() {
@@ -272,15 +281,15 @@ public class ITSpringRabbitTracing {
       MessageProperties properties = new MessageProperties();
       properties.setHeader("not-zipkin-header", "fakeValue");
       Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
-      rabbitTemplate.send("test.binding", message);
+      newRabbitTemplate.send("test.binding", message);
     }
   }
 
-  private static class HelloWorldRabbitConsumer {
+  private static class HelloWorldConsumer {
     private CountDownLatch countDownLatch;
     private Message capturedMessage;
 
-    HelloWorldRabbitConsumer() {
+    HelloWorldConsumer() {
       this.countDownLatch = new CountDownLatch(1);
     }
 
@@ -315,7 +324,7 @@ public class ITSpringRabbitTracing {
     }
 
     private void reset() {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.reset();
       producerSpans.clear();
       consumerSpans.clear();
@@ -337,25 +346,24 @@ public class ITSpringRabbitTracing {
     }
 
     private void produceMessage() {
-      HelloWorldRabbitProducer rabbitProducer =
-          producerContext.getBean("tracingRabbitProducer", HelloWorldRabbitProducer.class);
+      HelloWorldProducer rabbitProducer =
+          producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
     private void produceMessageFromDefault() {
-      HelloWorldRabbitProducer rabbitProducer =
-          producerContext.getBean("tracingRabbitProducerFromDefault", HelloWorldRabbitProducer.class);
+      HelloWorldProducer rabbitProducer =
+          producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
-    private void awaitMessageConsumed()
-        throws InterruptedException {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+    private void awaitMessageConsumed() throws InterruptedException {
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.getCountDownLatch().await();
     }
 
     private Message capturedMessage() {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       return consumer.capturedMessage;
     }
   }
