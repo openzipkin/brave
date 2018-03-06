@@ -37,6 +37,8 @@ public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
 }
 ```
 
+You can also use `SpringRabbitTracing.decorateRabbitTemplate()` to add
+tracing to an existing template.
 
 ### Message Consumer
 Tracing is supported for spring-rabbit `@RabbitListener` based services.
@@ -52,8 +54,10 @@ public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
     ConnectionFactory connectionFactory,
     SpringRabbitTracing springRabbitTracing
 ) {
-  return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
+  return springRabbitTracing.newSimpleRabbitListenerContainerFactory(connectionFactory);
 }
 ```
 
+You can also use `SpringRabbitTracing.decorateSimpleRabbitListenerContainerFactory()`
+to add tracing to an existing factory.
 

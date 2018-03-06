@@ -29,6 +29,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.junit.BrokerRunning;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -86,6 +87,27 @@ public class ITSpringRabbitTracing {
 
   @Test public void tags_spans_with_exchange_and_routing_key() throws Exception {
     testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
+
+    assertThat(testFixture.consumerSpans).hasSize(2);
+
+    assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() == CONSUMER)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("rabbit.exchange", "test-exchange"),
+            entry("rabbit.routing_key", "test.binding"),
+            entry("rabbit.queue", "test-queue")
+        );
+
+    assertThat(testFixture.consumerSpans)
+        .filteredOn(s -> s.kind() != CONSUMER)
+        .flatExtracting(s -> s.tags().entrySet())
+        .isEmpty();
+  }
+
+  @Test public void tags_spans_with_exchange_and_routing_key_from_default() throws Exception {
+    testFixture.produceMessageFromDefault();
     testFixture.awaitMessageConsumed();
 
     assertThat(testFixture.consumerSpans).hasSize(2);
@@ -172,16 +194,37 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing) {
-      RabbitTemplate rabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
-      rabbitTemplate.setExchange("test-exchange");
-      return rabbitTemplate;
+    public RabbitTemplate newRabbitTemplate(
+        ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing
+    ) {
+      RabbitTemplate newRabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
+      newRabbitTemplate.setExchange("test-exchange");
+      return newRabbitTemplate;
     }
 
     @Bean
-    public HelloWorldRabbitProducer tracingRabbitProducer(RabbitTemplate rabbitTemplate) {
-      return new HelloWorldRabbitProducer(rabbitTemplate);
+    public RabbitTemplate decorateRabbitTemplate(
+        ConnectionFactory connectionFactory,
+        SpringRabbitTracing springRabbitTracing
+    ) {
+      RabbitTemplate newRabbitTemplate = new RabbitTemplate(connectionFactory);
+      newRabbitTemplate.setExchange("test-exchange");
+      return springRabbitTracing.decorateRabbitTemplate(newRabbitTemplate);
+    }
+
+    @Bean
+    public HelloWorldProducer tracingRabbitProducer_new(
+        @Qualifier("newRabbitTemplate") RabbitTemplate newRabbitTemplate
+    ) {
+      return new HelloWorldProducer(newRabbitTemplate);
+    }
+
+    @Bean
+    public HelloWorldProducer tracingRabbitProducer_decorate(
+        @Qualifier("decorateRabbitTemplate") RabbitTemplate newRabbitTemplate
+    ) {
+      return new HelloWorldProducer(newRabbitTemplate);
     }
   }
 
@@ -210,21 +253,27 @@ public class ITSpringRabbitTracing {
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
         ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing) {
-      return springRabbitTracing.newSimpleMessageListenerContainerFactory(connectionFactory);
+        SpringRabbitTracing springRabbitTracing
+    ) {
+      SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory =
+          new SimpleRabbitListenerContainerFactory();
+      simpleRabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
+      return springRabbitTracing.decorateSimpleRabbitListenerContainerFactory(
+          simpleRabbitListenerContainerFactory
+      );
     }
 
     @Bean
-    public HelloWorldRabbitConsumer helloWorldRabbitConsumer() {
-      return new HelloWorldRabbitConsumer();
+    public HelloWorldConsumer helloWorldRabbitConsumer() {
+      return new HelloWorldConsumer();
     }
   }
 
-  private static class HelloWorldRabbitProducer {
-    private final RabbitTemplate rabbitTemplate;
+  private static class HelloWorldProducer {
+    private final RabbitTemplate newRabbitTemplate;
 
-    HelloWorldRabbitProducer(RabbitTemplate rabbitTemplate) {
-      this.rabbitTemplate = rabbitTemplate;
+    HelloWorldProducer(RabbitTemplate newRabbitTemplate) {
+      this.newRabbitTemplate = newRabbitTemplate;
     }
 
     void send() {
@@ -232,15 +281,15 @@ public class ITSpringRabbitTracing {
       MessageProperties properties = new MessageProperties();
       properties.setHeader("not-zipkin-header", "fakeValue");
       Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
-      rabbitTemplate.send("test.binding", message);
+      newRabbitTemplate.send("test.binding", message);
     }
   }
 
-  private static class HelloWorldRabbitConsumer {
+  private static class HelloWorldConsumer {
     private CountDownLatch countDownLatch;
     private Message capturedMessage;
 
-    HelloWorldRabbitConsumer() {
+    HelloWorldConsumer() {
       this.countDownLatch = new CountDownLatch(1);
     }
 
@@ -275,7 +324,7 @@ public class ITSpringRabbitTracing {
     }
 
     private void reset() {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.reset();
       producerSpans.clear();
       consumerSpans.clear();
@@ -297,19 +346,24 @@ public class ITSpringRabbitTracing {
     }
 
     private void produceMessage() {
-      HelloWorldRabbitProducer rabbitProducer =
-          producerContext.getBean(HelloWorldRabbitProducer.class);
+      HelloWorldProducer rabbitProducer =
+          producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
-    private void awaitMessageConsumed()
-        throws InterruptedException {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+    private void produceMessageFromDefault() {
+      HelloWorldProducer rabbitProducer =
+          producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
+      rabbitProducer.send();
+    }
+
+    private void awaitMessageConsumed() throws InterruptedException {
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.getCountDownLatch().await();
     }
 
     private Message capturedMessage() {
-      HelloWorldRabbitConsumer consumer = consumerContext.getBean(HelloWorldRabbitConsumer.class);
+      HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       return consumer.capturedMessage;
     }
   }
