@@ -11,6 +11,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.extension.Activate;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
+import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
 import com.alibaba.dubbo.rpc.Filter;
 import com.alibaba.dubbo.rpc.Invocation;
@@ -34,7 +35,11 @@ public final class TracingFilter implements Filter {
   TraceContext.Extractor<Map<String, String>> extractor;
   TraceContext.Injector<Map<String, String>> injector;
 
-  /** {@link ExtensionLoader} supplies the tracing implementation, for example by Spring. */
+  /**
+   * {@link ExtensionLoader} supplies the tracing implementation which must be named "tracing". For
+   * example, if using the {@link SpringExtensionFactory}, only a bean named "tracing" will be
+   * injected.
+   */
   public void setTracing(Tracing tracing) {
     tracer = tracing.tracer();
     extractor = tracing.propagation().extractor(GETTER);
