@@ -45,7 +45,7 @@ If you need to connect to an older version of the Zipkin api, you can use the fo
 Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-reporter-java#legacy-encoding) for more.
 
 ```java
-sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans")
+sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender)
                         .build(SpanBytesEncoder.JSON_V1);
 ```
@@ -67,7 +67,7 @@ the correct spot in the tree representing the distributed operation.
 
 When tracing local code, just run it inside a span.
 ```java
-Span span = tracer.newTrace().name("encode").start();
+Span span = tracer.nextSpan().name("encode").start();
 try {
   doSomethingExpensive();
 } finally {
@@ -75,9 +75,9 @@ try {
 }
 ```
 
-In the above example, the span is the root of the trace. In many cases,
-you will be a part of an existing trace. When this is the case, call
-`newChild` instead of `newTrace`
+In the above example, the span will be either a new root span or the
+next child in an existing trace. How this works is [described later](#current-span).
+If you need to be more explicit, call `newChild` or `newTrace` instead.
 
 ```java
 Span span = tracer.newChild(root.context()).name("encode").start();
@@ -146,23 +146,28 @@ before rolling your own RPC instrumentation!
 RPC tracing is often done automatically by interceptors. Under the scenes,
 they add tags and events that relate to their role in an RPC operation.
 
+Note: this is intentionally not an HTTP example, as we have [a special layer](../instrumentation/http)
+for that.
+
 Here's an example of a client span:
 ```java
 // before you send a request, add metadata that describes the operation
-span = tracer.newTrace().name("get").type(CLIENT);
-span.tag("clnt/finagle.version", "6.36.0");
-span.tag(TraceKeys.HTTP_PATH, "/api");
-span.remoteEndpoint(Endpoint.builder()
+span = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
+span.tag("myrpc.version", "1.0.0");
+span.remoteEndpoint(Endpoint.newBuilder()
     .serviceName("backend")
-    .ipv4(127 << 24 | 1)
-    .port(8080).build());
+    .ip("172.3.4.1")
+    .port(8108).build());
+
+// Add the trace context to the request, so it can be propagated in-band
+tracing.propagation().injector(Request::addHeader)
+                     .inject(span.context(), request);
 
 // when the request is scheduled, start the span
 span.start();
 
-// if you have callbacks for when data is on the wire, note those events
-span.annotate(Constants.WIRE_SEND);
-span.annotate(Constants.WIRE_RECV);
+// if there is an error, tag the span
+span.tag("error", error.getCode());
 
 // when the response is complete, finish the span
 span.finish();
@@ -178,7 +183,8 @@ which indicates the response was received. In one-way tracing, you use
 Here's how a client might model a one-way operation
 ```java
 // start a new span representing a client request
-oneWaySend = tracer.newSpan(parent).kind(Span.Kind.CLIENT);
+oneWaySend = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
+--snip--
 
 // Add the trace context to the request, so it can be propagated in-band
 tracing.propagation().injector(Request::addHeader)
@@ -224,7 +230,7 @@ data is made at the first operation in a trace, and that decision is
 propagated downstream.
 
 By default, there's a global sampler that applies a single rate to all
-traced operations. `Tracer.Builder.sampler` is how you indicate this,
+traced operations. `Tracing.Builder.sampler` is how you indicate this,
 and it defaults to trace every request.
 
 ### Declarative sampling
@@ -240,9 +246,18 @@ DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRat
 
 @Around("@annotation(traced)")
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-  Span span = tracing.tracer().newTrace(sampler.sample(traced))...
-  try {
+  Span span;
+  if (tracer.currentSpan() != null) {
+    span = tracer.nextSpan();
+  } else { // start a new trace, sampling accordingly
+    span = tracer.newTrace(sampler.sample(traced));
+  }
+
+  try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
     return pjp.proceed();
+  } catch (RuntimeException | Error e) {
+    span.tag("error", e.getMessage());
+    throw e;
   } finally {
     span.finish();
   }
@@ -475,7 +490,7 @@ needed to support the current span. It also exposes utilities which you
 can use to decorate executors.
 
 ```java
-CurrentTraceContext currentTraceContext = new CurrentTraceContext.Default();
+CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.create();
 tracing = Tracing.newBuilder()
                  .currentTraceContext(currentTraceContext)
                  ...
@@ -734,7 +749,7 @@ have very large traffic volume, persist traces forever, or are re-using
 externally generated 128-bit IDs.
 
 If you want Brave to generate 128-bit trace identifiers when starting new
-root spans, set `Tracer.Builder.traceId128Bit(true)`
+root spans, set `Tracing.Builder.traceId128Bit(true)`
 
 When 128-bit trace ids are propagated, they will be twice as long as
 before. For example, the `X-B3-TraceId` header will hold a 32-character
@@ -776,12 +791,12 @@ through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
 
 ### Current Tracer Api
-The first design work of `Tracer.current()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
+The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
 which was itself influenced by Finagle's implicit Tracer api. This feature
 is noted as edge-case, when other means to get a reference to a trace are
 impossible. The only instrumentation that needed this was JDBC.
 
-Returning a possibly null reference from `Tracer.current()` implies:
+Returning a possibly null reference from `Tracing.currentTracer()` implies:
 * Users never cache the reference returned (noted in javadocs)
 * Less code and type constraints on Tracer vs a lazy forwarding delegate
 * Less documentation as we don't have to explain what a Noop tracer does
