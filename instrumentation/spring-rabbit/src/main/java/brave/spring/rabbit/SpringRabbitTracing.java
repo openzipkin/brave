@@ -32,13 +32,16 @@ public final class SpringRabbitTracing {
 
   public static final class Builder {
     final Tracing tracing;
-    String remoteServiceName;
+    String remoteServiceName = "rabbitmq";
 
     Builder(Tracing tracing) {
       this.tracing = tracing;
     }
 
-    /** The remote service name that describes the broker in the dependency graph. No default */
+    /**
+     * The remote service name that describes the broker in the dependency graph. Defaults to
+     * "rabbitmq"
+     */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
       return this;

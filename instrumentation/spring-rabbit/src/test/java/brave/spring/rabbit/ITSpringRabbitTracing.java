@@ -34,7 +34,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import zipkin2.DependencyLink;
 import zipkin2.Span;
+import zipkin2.internal.DependencyLinker;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -104,6 +106,21 @@ public class ITSpringRabbitTracing {
         .filteredOn(s -> s.kind() != CONSUMER)
         .flatExtracting(s -> s.tags().entrySet())
         .isEmpty();
+  }
+
+  @Test public void creates_dependency_links() throws Exception {
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
+
+    List<Span> allSpans = new ArrayList<>();
+    allSpans.addAll(testFixture.consumerSpans);
+    allSpans.addAll(testFixture.producerSpans);
+
+    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
+    assertThat(links).extracting("parent", "child").containsExactly(
+        tuple("spring-amqp-producer", "rabbitmq"),
+        tuple("rabbitmq", "spring-amqp-consumer")
+    );
   }
 
   @Test public void tags_spans_with_exchange_and_routing_key_from_default() throws Exception {

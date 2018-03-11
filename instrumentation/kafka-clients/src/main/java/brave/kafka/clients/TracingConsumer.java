@@ -2,6 +2,7 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -25,6 +26,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
+import zipkin2.Endpoint;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
@@ -36,12 +38,14 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final Injector<Headers> injector;
   final Extractor<Headers> extractor;
   final Consumer<K, V> delegate;
+  @Nullable final String remoteServiceName;
 
-  TracingConsumer(Tracing tracing, Consumer<K, V> delegate) {
+  TracingConsumer(Tracing tracing, Consumer<K, V> delegate, @Nullable String remoteServiceName) {
     this.delegate = delegate;
     this.tracing = tracing;
     this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
     this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
+    this.remoteServiceName = remoteServiceName;
   }
 
   /** This */
@@ -70,17 +74,26 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           // no need to remove propagation headers as we failed to extract anything
           injector.inject(consumerSpanForTopic.context(), record.headers());
         } else { // we extracted request-scoped data, so cannot share a consumer span.
-          Span span = tracing.tracer().nextSpan(extracted).name("poll").kind(Span.Kind.CONSUMER)
-              .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
-              .start();
-          span.finish();  // span won't be shared by other records
+          Span span = tracing.tracer().nextSpan(extracted);
+          if (!span.isNoop()) {
+            span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
+            if (remoteServiceName != null) {
+              span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
+            }
+            span.start().finish(); // span won't be shared by other records
+          }
           // remove prior propagation headers from the record
           tracing.propagation().keys().forEach(key -> record.headers().remove(key));
           injector.inject(span.context(), record.headers());
         }
       }
     }
-    consumerSpansForTopic.values().forEach(Span::finish);
+    consumerSpansForTopic.values().forEach(span -> {
+      if (remoteServiceName != null) {
+        span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
+      }
+      span.finish();
+    });
     return records;
   }
 

@@ -20,6 +20,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
+import zipkin2.Endpoint;
 
 import static brave.kafka.clients.KafkaTracing.finish;
 
@@ -28,11 +29,13 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   final Tracing tracing;
   final TraceContext.Injector<Headers> injector;
   final Producer<K, V> delegate;
+  @Nullable final String remoteServiceName;
 
-  TracingProducer(Tracing tracing, Producer<K, V> delegate) {
+  TracingProducer(Tracing tracing, Producer<K, V> delegate, @Nullable String remoteServiceName) {
     this.delegate = delegate;
     this.tracing = tracing;
     this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
+    this.remoteServiceName = remoteServiceName;
   }
 
   @Override public void initTransactions() {
@@ -68,6 +71,9 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     if (!span.isNoop()) {
       if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
+      }
+      if (remoteServiceName != null) {
+        span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
       }
       span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).name("send").kind(Kind.PRODUCER).start();
     }

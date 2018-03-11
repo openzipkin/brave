@@ -14,16 +14,44 @@ import org.apache.kafka.common.header.Headers;
 public final class KafkaTracing {
 
   public static KafkaTracing create(Tracing tracing) {
-    return new KafkaTracing(tracing);
+    return new Builder(tracing).build();
+  }
+
+  public static Builder newBuilder(Tracing tracing) {
+    return new Builder(tracing);
+  }
+
+  public static final class Builder {
+    final Tracing tracing;
+    String remoteServiceName = "kafka";
+
+    Builder(Tracing tracing) {
+      if (tracing == null) throw new NullPointerException("tracing == null");
+      this.tracing = tracing;
+    }
+
+    /**
+     * The remote service name that describes the broker in the dependency graph. Defaults to
+     * "kafka"
+     */
+    public Builder remoteServiceName(String remoteServiceName) {
+      this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    public KafkaTracing build() {
+      return new KafkaTracing(this);
+    }
   }
 
   private final Tracing tracing;
   private final TraceContext.Extractor<Headers> extractor;
+  private final String remoteServiceName;
 
-  KafkaTracing(Tracing tracing) { // hidden constructor
-    if (tracing == null) throw new NullPointerException("tracing == null");
-    this.tracing = tracing;
+  KafkaTracing(Builder builder) { // hidden constructor
+    this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
+    this.remoteServiceName = builder.remoteServiceName;
   }
 
   /**
@@ -32,12 +60,12 @@ public final class KafkaTracing {
    * #nextSpan(ConsumerRecord)}.
    */
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
-    return new TracingConsumer<>(tracing, consumer);
+    return new TracingConsumer<>(tracing, consumer, remoteServiceName);
   }
 
   /** Starts and propagates {@link Span.Kind#PRODUCER} span for each message sent. */
   public <K, V> Producer<K, V> producer(Producer<K, V> producer) {
-    return new TracingProducer<>(tracing, producer);
+    return new TracingProducer<>(tracing, producer, remoteServiceName);
   }
 
   /**
