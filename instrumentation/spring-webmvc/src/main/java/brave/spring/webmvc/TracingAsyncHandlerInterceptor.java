@@ -10,9 +10,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 /**
- * Tracing interceptor for Spring Web MVC, which can be used as both an {@link
- * AsyncHandlerInterceptor} or a normal {@link HandlerInterceptor}.
+ * @deprecated Use this instead of {@link SpanCustomizingAsyncHandlerInterceptor} with the servlet
+ * filter {@link brave.servlet.TracingFilter}.
  */
+@Deprecated
 public final class TracingAsyncHandlerInterceptor extends HandlerInterceptorAdapter {
   public static AsyncHandlerInterceptor create(Tracing tracing) {
     return new TracingAsyncHandlerInterceptor(HttpTracing.create(tracing));

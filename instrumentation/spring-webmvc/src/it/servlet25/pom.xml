@@ -70,6 +70,17 @@
     <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
     <plugins>
       <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>@maven-compiler-plugin.version@</version>
+        <configuration>
+          <includes>
+            <include>**/ITTracingHandlerInterceptor*.java</include>
+            <include>**/BaseITSpanCustomizingHandlerInterceptor*.java</include>
+            <include>**/TestController*.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>@maven-failsafe-plugin.version@</version>
         <configuration>
