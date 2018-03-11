@@ -4,8 +4,6 @@ import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import java.io.IOException;
-import java.util.EnumSet;
-import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -20,6 +18,7 @@ import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,6 +63,27 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   }
 
+  Filter delegate;
+
+  class DelegatingFilter implements Filter {
+
+    @Override public void init(FilterConfig filterConfig) throws ServletException {
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+      if (delegate == null) {
+        chain.doFilter(request, response);
+      } else {
+        delegate.doFilter(request, response, chain);
+      }
+    }
+
+    @Override public void destroy() {
+    }
+  }
+
   // copies the header to the response
   Filter userFilter = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
@@ -82,6 +102,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
   };
 
   @Test public void currentSpanVisibleToOtherFilters() throws Exception {
+    delegate = userFilter;
+
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
@@ -95,6 +117,65 @@ public abstract class ITServlet25Container extends ITServletContainer {
     takeSpan();
   }
 
+  // Shows how a framework can layer on "http.route" logic
+  Filter customHttpRoute = new Filter() {
+    @Override public void init(FilterConfig filterConfig) {
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+      request.setAttribute("http.route", ((HttpServletRequest) request).getRequestURI());
+      chain.doFilter(request, response);
+    }
+
+    @Override public void destroy() {
+    }
+  };
+
+  /**
+   * Shows that by adding the request attribute "http.route" a layered framework can influence
+   * any derived from the route, including the span name.
+   */
+  @Test public void canSetCustomRoute() throws Exception {
+    delegate = customHttpRoute;
+
+    get("/foo");
+
+    Span span = takeSpan();
+    assertThat(span.name())
+        .isEqualTo("get /foo");
+  }
+
+  Filter customHook = new Filter() {
+    @Override public void init(FilterConfig filterConfig) {
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+      ((brave.Span) request.getAttribute("brave.Span")).tag("foo", "bar");
+      chain.doFilter(request, response);
+    }
+
+    @Override public void destroy() {
+    }
+  };
+
+  /**
+   * Shows that a framework can directly use the "brave.Span" rather than relying on the
+   * current span.
+   */
+  @Test public void canUseSpanAttribute() throws Exception {
+    delegate = customHook;
+
+    get("/foo");
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("foo", "bar");
+  }
+
   @Override
   public void init(ServletContextHandler handler) {
     // add servlets for the test resource
@@ -106,14 +187,13 @@ public abstract class ITServlet25Container extends ITServletContainer {
     handler.addServlet(new ServletHolder(new ExceptionServlet()), "/exception");
 
     // add the trace filter
-    handler.getServletContext()
-        .addFilter("tracingFilter", newTracingFilter())
-        .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-
-    handler.getServletContext()
-        .addFilter("userFilter", userFilter)
-        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+    addFilter(handler, newTracingFilter());
+    // add a holder for test filters
+    addFilter(handler, new DelegatingFilter());
   }
 
   protected abstract Filter newTracingFilter();
+
+  // abstract because filter registration types were not introduced until servlet 3.0
+  protected abstract void addFilter(ServletContextHandler handler, Filter filter);
 }

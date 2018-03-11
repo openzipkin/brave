@@ -316,7 +316,6 @@ public abstract class ITHttpServer extends ITHttp {
 
     // verify normal tags
     assertThat(span.tags())
-        .hasSize(2)
         .containsEntry("http.method", "OPTIONS")
         .containsEntry("http.path", "/");
 
