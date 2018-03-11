@@ -9,7 +9,7 @@ Here's a brief overview of what's packaged here:
 * [grpc](grpc/README.md) - Tracing client and server interceptors for [grpc](github.com/grpc/grpc-java)
 * [httpasyncclient](httpasyncclient/README.md) - Tracing decorator for [Apache HttpClient](https://hc.apache.org/httpcomponents-asyncclient-dev/) 4.0+
 * [httpclient](httpclient/README.md) - Tracing decorator for [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.4.x/index.html) 4.3+
-* [jaxrs2](jaxrs2/README.md) - Tracing filters and a feature to automatically configure them
+* [jaxrs2](jaxrs2/README.md) - Client tracing filter and span customizing resource filter for JAX-RS 2.x
 * [jersey-server](jersey-server/README.md) - Tracing and span customizing application event listeners for [Jersey Server](https://jersey.github.io/documentation/latest/monitoring_tracing.html#d0e16007).
 * [kafka-clients](kafka-clients/README.md) - Tracing decorators for Kafka 0.11+ producers and consumers.
 * [mysql](mysql/README.md) - Tracing MySQL statement interceptor

@@ -19,21 +19,53 @@ public class InjectionTest {
     }
   });
 
-  @After public void close(){
+  @After public void close() {
     Tracing.current().close();
   }
 
-  @Test public void tracingClientFilter() throws Exception {
+  @Test public void tracingClientFilter() {
     assertThat(injector.getInstance(TracingClientFilter.class))
         .isNotNull();
   }
 
-  @Test public void tracingContainerFilter() throws Exception {
-    assertThat(injector.getInstance(TracingContainerFilter.class))
-        .isNotNull();
+  @Test public void spanCustomizingContainerFilter() {
+    SpanCustomizingContainerFilter filter =
+        injector.getInstance(SpanCustomizingContainerFilter.class);
+
+    assertThat(filter.parser.getClass())
+        .isSameAs(ContainerParser.class);
   }
 
-  @Test public void tracingFeature() throws Exception {
+  @Test public void spanCustomizingContainerFilter_resource() {
+    SpanCustomizingContainerFilter filter = injector.createChildInjector(new AbstractModule() {
+      @Override protected void configure() {
+        bind(ContainerParser.class).toInstance(ContainerParser.NOOP);
+      }
+    }).getInstance(SpanCustomizingContainerFilter.class);
+
+    assertThat(filter.parser)
+        .isSameAs(ContainerParser.NOOP);
+  }
+
+  @Test public void tracingContainerFilter() {
+    TracingContainerFilter filter = injector.getInstance(TracingContainerFilter.class);
+
+    assertThat(filter.parser.getClass())
+        .isSameAs(ContainerParser.class);
+  }
+
+  @Test public void tracingContainerFilter_resource() {
+    TracingContainerFilter filter = injector.createChildInjector(new AbstractModule() {
+      @Override protected void configure() {
+        bind(ContainerParser.class).toInstance(ContainerParser.NOOP);
+      }
+    }).getInstance(TracingContainerFilter.class);
+
+    assertThat(filter.parser)
+        .isSameAs(ContainerParser.NOOP);
+  }
+
+  @Test public void tracingFeature() {
     assertThat(injector.getInstance(TracingFeature.class))
         .isNotNull();
   }

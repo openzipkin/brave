@@ -7,6 +7,12 @@ import javax.ws.rs.core.Feature;
 import javax.ws.rs.core.FeatureContext;
 import javax.ws.rs.ext.Provider;
 
+/**
+ * @deprecated because the container filter is unreliable with regards to errors.
+ * Integrate {@code brave.jersey.server.TracingApplicationEventListener} if using Jersey, or the
+ * normal {@code brave.servlet.TracingFilter} with {@link SpanCustomizingContainerFilter} if not.
+ */
+@Deprecated
 @Provider
 public final class TracingFeature implements Feature {
   public static Feature create(Tracing tracing) {
@@ -31,7 +37,7 @@ public final class TracingFeature implements Feature {
         context.register(new TracingClientFilter(httpTracing));
         break;
       case SERVER:
-        context.register(new TracingContainerFilter(httpTracing));
+        context.register(new TracingContainerFilter(httpTracing, new ContainerParser()));
     }
     return true;
   }
