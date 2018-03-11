@@ -23,10 +23,16 @@ import javax.ws.rs.ext.Provider;
 
 import static javax.ws.rs.RuntimeType.SERVER;
 
-// Currently not using PreMatching because we are attempting to detect if the method is async or not
+/**
+ * @deprecated because the container filter is unreliable with regards to errors.
+ * Integrate {@code brave.jersey.server.TracingApplicationEventListener} if using Jersey, or the
+ * normal {@code brave.servlet.TracingFilter} with {@link SpanCustomizingContainerFilter} if not.
+ */
+@Deprecated
 @Provider
 @Priority(0) // to make the span in scope visible to other filters
 @ConstrainedTo(SERVER)
+// Currently not using PreMatching because we are attempting to detect if the method is async or not
 final class TracingContainerFilter implements ContainerRequestFilter, ContainerResponseFilter {
   static final Getter<ContainerRequestContext, String> GETTER =
       new Getter<ContainerRequestContext, String>() {
@@ -43,11 +49,13 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
   final Tracer tracer;
   final HttpServerHandler<ContainerRequestContext, ContainerResponseContext> handler;
   final TraceContext.Extractor<ContainerRequestContext> extractor;
+  final ContainerParser parser;
 
-  @Inject TracingContainerFilter(HttpTracing httpTracing) {
+  @Inject TracingContainerFilter(HttpTracing httpTracing, ContainerParser parser) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new ContainerAdapter());
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    this.parser = parser;
   }
 
   /**
@@ -59,6 +67,7 @@ final class TracingContainerFilter implements ContainerRequestFilter, ContainerR
   @Override public void filter(ContainerRequestContext request) {
     if (resourceInfo != null) request.setProperty(ResourceInfo.class.getName(), resourceInfo);
     Span span = handler.handleReceive(extractor, request);
+    if (resourceInfo != null) parser.resourceInfo(resourceInfo, span);
     request.removeProperty(ResourceInfo.class.getName());
     if (shouldPutSpanInScope(resourceInfo)) {
       request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));

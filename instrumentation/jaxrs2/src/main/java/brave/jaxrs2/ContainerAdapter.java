@@ -46,16 +46,22 @@ public final class ContainerAdapter
     return response.getStatus();
   }
 
+  /** @deprecated use {@link ContainerParser} instead */
+  @Deprecated
   @Nullable public final <Req> Method resourceMethod(Req request) {
     ResourceInfo resourceInfo = resourceInfo(request);
     return resourceInfo != null ? resourceInfo.getResourceMethod() : null;
   }
 
+  /** @deprecated use {@link ContainerParser} instead */
+  @Deprecated
   @Nullable public final <Req> Class<?> resourceClass(Req request) {
     ResourceInfo resourceInfo = resourceInfo(request);
     return resourceInfo != null ? resourceInfo.getResourceClass() : null;
   }
 
+  /** @deprecated use {@link ContainerParser} instead */
+  @Deprecated
   @Nullable public final <Req> ResourceInfo resourceInfo(Req request) {
     if (!(request instanceof ContainerRequestContext)) return null;
     return (ResourceInfo) ((ContainerRequestContext) request).getProperty(

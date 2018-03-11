@@ -25,12 +25,13 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class TracingContainerFilterTest {
   Tracing tracing = Tracing.newBuilder().build();
-  TracingContainerFilter filter = new TracingContainerFilter(HttpTracing.create(tracing));
+  TracingContainerFilter filter =
+      new TracingContainerFilter(HttpTracing.create(tracing), ContainerParser.NOOP);
   @Mock ContainerRequestContext context;
   @Mock UriInfo uriInfo;
   @Mock ResourceInfo resourceInfo;
 
-  @After public void close(){
+  @After public void close() {
     Tracing.current().close();
   }
 
