@@ -5,7 +5,14 @@ Add decorators for Kafka producer and consumer to enable tracing.
 * `TracingConsumer` completes a consumer span on `poll`, resuming a trace in headers if present.
 
 ## Setup
-To use the producer simply wrap it like this : 
+First, setup the generic Kafka component like this:
+```java
+kafkaTracing = KafkaTracing.newBuilder(tracing)
+                           .remoteServiceName("my-broker")
+                           .build();
+```
+
+To use the producer simply wrap it like this :
 ```java
 Producer<K, V> stringProducer = new KafkaProducer<>(settings);
 TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);

@@ -32,10 +32,13 @@ import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import zipkin2.DependencyLink;
 import zipkin2.Span;
+import zipkin2.internal.DependencyLinker;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 public class ITKafkaTracing {
 
@@ -50,9 +53,11 @@ public class ITKafkaTracing {
   BlockingQueue<Span> producerSpans = new LinkedBlockingQueue<>();
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
+      .localServiceName("consumer")
       .spanReporter(consumerSpans::add)
       .build());
   KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
+      .localServiceName("producer")
       .spanReporter(producerSpans::add)
       .build());
 
@@ -168,6 +173,26 @@ public class ITKafkaTracing {
     consumerSpans.take();
     consumerSpans.take();
     // producerSpans empty as not traced
+  }
+
+  @Test
+  public void creates_dependency_links() throws Exception {
+    producer = createTracingProducer();
+    consumer = createTracingConsumer();
+
+    producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
+
+    consumer.poll(10000);
+
+    List<Span> allSpans = new ArrayList<>();
+    allSpans.add(consumerSpans.take());
+    allSpans.add(producerSpans.take());
+
+    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
+    assertThat(links).extracting("parent", "child").containsExactly(
+        tuple("producer", "kafka"),
+        tuple("kafka", "consumer")
+    );
   }
 
   @Test
