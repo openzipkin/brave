@@ -5,7 +5,10 @@ reports Zipkin how long each request takes, along with relevant tags
 like the http url.
 
 ## Configuration
-To enable tracing, you need to add the `TracingFilter`.
+To enable tracing, you need to add the `TracingFilter`. If using Spring,
+we provide a [built-in delegate](../spring-webmvc) to configure it.
+Otherwise, use a different framework or look at one of the manually
+configured examples below.
 
 ### Servlet 3+
 When configuring, make sure this is set for all paths, all dispatcher

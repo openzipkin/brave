@@ -21,7 +21,7 @@ Here's a brief overview of what's packaged here:
 * [sparkjava](sparkjava/README.md) - Tracing filters and exception handlers for [SparkJava](http://sparkjava.com/)
 * [spring-rabbit](spring-rabbit/README.md) - Tracing MessagePostProcessor and ListenerAdvice for [Spring Rabbit](https://spring.io/guides/gs/messaging-rabbitmq/)
 * [spring-web](spring-web/README.md) - Tracing interceptor for [Spring RestTemplate](https://spring.io/guides/gs/consuming-rest/)
-* [spring-webmvc](spring-webmvc/README.md) - Tracing interceptor for [Spring WebMVC](https://docs.spring.io/spring/docs/current/spring-framework-reference/html/mvc.html)
+* [spring-webmvc](spring-webmvc/README.md) - Tracing filter and span customizing interceptors for [Spring WebMVC](https://docs.spring.io/spring/docs/current/spring-framework-reference/html/mvc.html)
 * [vertx-web](vertx-web/README.md) - Tracing routing context handler for [Vert.x Web](http://vertx.io/docs/vertx-web/js/)
 
 Here are other tools we provide for configuring or testing instrumentation:
