@@ -1,6 +1,7 @@
 package brave.servlet;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
@@ -64,8 +65,11 @@ public final class TracingFilter implements Filter {
     request.setAttribute("TracingFilter", "true");
 
     Span span = handler.handleReceive(extractor, httpRequest);
-    // add the span to the request context for cheaper access by customizers
-    request.setAttribute(Span.class.getName(), span);
+
+    // Add attributes for explicit access to customization or span context
+    request.setAttribute(SpanCustomizer.class.getName(), span);
+    request.setAttribute(TraceContext.class.getName(), span.context());
+
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       chain.doFilter(httpRequest, httpResponse); // any downstream filters see Tracer.currentSpan
