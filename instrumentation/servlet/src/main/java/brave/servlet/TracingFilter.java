@@ -28,6 +28,7 @@ public final class TracingFilter implements Filter {
           return "HttpServletRequest::getHeader";
         }
       };
+  static final HttpServletAdapter ADAPTER = new HttpServletAdapter();
 
   public static Filter create(Tracing tracing) {
     return new TracingFilter(HttpTracing.create(tracing));
@@ -44,7 +45,7 @@ public final class TracingFilter implements Filter {
 
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
+    handler = HttpServerHandler.create(httpTracing, ADAPTER);
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
 
@@ -63,6 +64,8 @@ public final class TracingFilter implements Filter {
     request.setAttribute("TracingFilter", "true");
 
     Span span = handler.handleReceive(extractor, httpRequest);
+    // add the span to the request context for cheaper access by customizers
+    request.setAttribute(Span.class.getName(), span);
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       chain.doFilter(httpRequest, httpResponse); // any downstream filters see Tracer.currentSpan
@@ -73,7 +76,7 @@ public final class TracingFilter implements Filter {
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, span);
       } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(httpResponse, error, span);
+        handler.handleSend(ADAPTER.adaptResponse(httpRequest, httpResponse), error, span);
       }
     }
   }

@@ -90,7 +90,7 @@ public abstract class ITHttp {
    * to read them on the main thread, we use a concurrent queue. As some implementations report
    * after a response is sent, we use a blocking queue to prevent race conditions in tests.
    */
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  protected BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   /** Call this to block until a span was reported */
   protected Span takeSpan() throws InterruptedException {
@@ -131,7 +131,7 @@ public abstract class ITHttp {
     }
   };
 
-  Tracing.Builder tracingBuilder(Sampler sampler) {
+  protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
         .spanReporter(s -> {
           // make sure the context was cleared prior to finish.. no leaks!

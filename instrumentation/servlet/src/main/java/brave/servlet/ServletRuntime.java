@@ -17,6 +17,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import zipkin2.Call;
 
+import static brave.servlet.TracingFilter.ADAPTER;
+
 /**
  * Access to servlet version-specific features
  *
@@ -88,20 +90,20 @@ abstract class ServletRuntime {
 
       @Override public void onComplete(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
+        handler.handleSend(adaptResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onTimeout(AsyncEvent e) {
         if (complete) return;
         span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-        handler.handleSend((HttpServletResponse) e.getSuppliedResponse(), null, span);
+        handler.handleSend(adaptResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onError(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(null, e.getThrowable(), span);
+        handler.handleSend(adaptResponse(e), e.getThrowable(), span);
         complete = true;
       }
 
@@ -114,6 +116,11 @@ abstract class ServletRuntime {
       @Override public String toString() {
         return "TracingAsyncListener{" + span.context() + "}";
       }
+    }
+
+    static HttpServletResponse adaptResponse(AsyncEvent e) {
+      return ADAPTER.adaptResponse((HttpServletRequest) e.getSuppliedRequest(),
+          (HttpServletResponse) e.getSuppliedResponse());
     }
   }
 
@@ -141,6 +148,11 @@ abstract class ServletRuntime {
      * routine servlet runtimes, do, for example {@code org.eclipse.jetty.server.Response}
      */
     @Override @Nullable Integer status(HttpServletResponse response) {
+      // unwrap if we've decorated the response
+      if (response instanceof HttpServletAdapter.DecoratedHttpServletResponse) {
+        HttpServletResponseWrapper decorated = ((HttpServletResponseWrapper) response);
+        response = (HttpServletResponse) decorated.getResponse();
+      }
       if (response instanceof Servlet25ServerResponseAdapter) {
         // servlet 2.5 doesn't have get status
         return ((Servlet25ServerResponseAdapter) response).getStatusInServlet25();
