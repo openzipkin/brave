@@ -3,6 +3,7 @@ package brave.test.http;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.TraceContext;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -117,6 +118,40 @@ public abstract class ITServlet25Container extends ITServletContainer {
     takeSpan();
   }
 
+  // copies the header to the response
+  Filter traceContextFilter = new Filter() {
+    @Override public void init(FilterConfig filterConfig) {
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+      TraceContext context = (TraceContext) request.getAttribute("brave.propagation.TraceContext");
+      String extra = ExtraFieldPropagation.get(context, EXTRA_KEY);
+      ((HttpServletResponse) response).setHeader(EXTRA_KEY, extra);
+      chain.doFilter(request, response);
+    }
+
+    @Override public void destroy() {
+    }
+  };
+
+  @Test public void traceContextVisibleToOtherFilters() throws Exception {
+    delegate = traceContextFilter;
+
+    String path = "/foo";
+
+    Request request = new Request.Builder().url(url(path))
+        .header(EXTRA_KEY, "abcdefg").build();
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+      assertThat(response.header(EXTRA_KEY))
+          .isEqualTo("abcdefg");
+    }
+
+    takeSpan();
+  }
+
   // Shows how a framework can layer on "http.route" logic
   Filter customHttpRoute = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
@@ -154,7 +189,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
         throws IOException, ServletException {
-      ((brave.Span) request.getAttribute("brave.Span")).tag("foo", "bar");
+      ((brave.SpanCustomizer) request.getAttribute("brave.SpanCustomizer")).tag("foo", "bar");
       chain.doFilter(request, response);
     }
 

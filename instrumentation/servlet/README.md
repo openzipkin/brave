@@ -86,3 +86,21 @@ public class DelegatingTracingFilter implements Filter {
   }
 }
 ```
+
+## Collaborating with `TracingFilter`
+
+`TracingFilter` sets the servlet attributes so that you can access span
+data without relying on implicit context:
+* `brave.SpanCustomizer` - add tags or rename the span without a tracer
+* `brave.propagation.TraceContext` - shows trace IDs and any extra data
+
+Ex: The following
+```java
+SpanCustomizer customizer = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
+if (customizer != null) customizer.tag("platform", "XX");
+```
+
+`TracingFilter` also looks for the attribute "http.route". When present,
+this is available to normal parsing, for example a route-base span name.
+This feature allows frameworks like spring-webmvc to contribute
+controller information with less code duplication.
