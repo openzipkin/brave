@@ -1,6 +1,9 @@
 package brave.jersey.server;
 
+import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
+import java.util.EnumSet;
+import javax.servlet.DispatcherType;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -11,7 +14,7 @@ import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingApplicationEventListener extends ITServletContainer {
+public class ITSpanCustomizingApplicationEventListener extends ITServletContainer {
 
   @Override @Test public void reportsClientAddress() {
     throw new AssumptionViolatedException("TODO!");
@@ -36,7 +39,12 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   @Override public void init(ServletContextHandler handler) {
     ResourceConfig config = new ResourceConfig();
     config.register(new TestResource(httpTracing));
-    config.register(TracingApplicationEventListener.create(httpTracing));
+    config.register(SpanCustomizingApplicationEventListener.create());
     handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
+
+    // isMatchAfter=true is required for async tests to pass!
+    handler.getServletContext()
+        .addFilter("tracingFilter", TracingFilter.create(httpTracing))
+        .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 }
