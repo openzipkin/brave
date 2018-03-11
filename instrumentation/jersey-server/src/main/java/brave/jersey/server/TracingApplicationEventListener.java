@@ -7,12 +7,10 @@ import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
-import java.util.List;
 import javax.inject.Inject;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
-import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.glassfish.jersey.server.internal.routing.RoutingContext;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
@@ -21,8 +19,14 @@ import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 import org.glassfish.jersey.uri.UriTemplate;
 
+import static brave.jersey.server.SpanCustomizingApplicationEventListener.route;
+
 @Provider
 public final class TracingApplicationEventListener implements ApplicationEventListener {
+  public static ApplicationEventListener create(HttpTracing httpTracing) {
+    return new TracingApplicationEventListener(httpTracing, new EventParser());
+  }
+
   static final Getter<ContainerRequest, String> GETTER = new Getter<ContainerRequest, String>() {
     @Override public String get(ContainerRequest carrier, String key) {
       return carrier.getHeaderString(key);
@@ -36,15 +40,13 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   final Tracer tracer;
   final HttpServerHandler<ContainerRequest, ContainerResponse> serverHandler;
   final TraceContext.Extractor<ContainerRequest> extractor;
+  final EventParser parser;
 
-  @Inject TracingApplicationEventListener(HttpTracing httpTracing) {
+  @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
     tracer = httpTracing.tracing().tracer();
     serverHandler = HttpServerHandler.create(httpTracing, new Adapter());
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
-  }
-
-  public static ApplicationEventListener create(HttpTracing httpTracing) {
-    return new TracingApplicationEventListener(httpTracing);
+    this.parser = parser;
   }
 
   @Override public void onEvent(ApplicationEvent event) {
@@ -91,30 +93,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
      * This code skips redundant slashes from either source caused by Path("/") or Path("").
      */
     @Override public String route(ContainerResponse response) {
-      ExtendedUriInfo uriInfo = response.getRequestContext().getUriInfo();
-      List<UriTemplate> templates = uriInfo.getMatchedTemplates();
-      int templateCount = templates.size();
-      if (templateCount == 0) return "";
-      assert templateCount % 2 == 0 : "expected matched templates to be resource/method pairs";
-      StringBuilder builder = null; // don't allocate unless you need it!
-      String basePath = uriInfo.getBaseUri().getPath();
-      String result = null;
-      if (!"/".equals(basePath)) { // skip empty base paths
-        result = basePath;
-      }
-      for (int i = templateCount - 1; i >= 0; i--) {
-        String template = templates.get(i).getTemplate();
-        if ("/".equals(template)) continue; // skip allocation
-        if (builder != null) {
-          builder.append(template);
-        } else if (result != null) {
-          builder = new StringBuilder(result).append(template);
-          result = null;
-        } else {
-          result = template;
-        }
-      }
-      return result != null ? result : builder != null ? builder.toString() : "";
+      return (String) response.getRequestContext().getProperty("http.route");
     }
 
     @Override public Integer statusCode(ContainerResponse response) {
@@ -147,6 +126,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     @Override public void onEvent(RequestEvent event) {
       // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
       switch (event.getType()) {
+        case REQUEST_MATCHED:
+          event.getContainerRequest().setProperty("http.route", route(event.getContainerRequest()));
+          parser.requestMatched(event, span);
+          break;
         case REQUEST_FILTERED:
           if (spanInScope == null) break;
           // Jersey-specific @ManagedAsync stays on the request thread until REQUEST_FILTERED
