@@ -40,6 +40,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -256,7 +257,6 @@ public class ITTracingClientInterceptor {
    * <p>Also notice that we are only making the current context available in the request side.
    */
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
-    Map<String, String> scopes = new ConcurrentHashMap<>();
     closeClient(client);
 
     client = newClient(
@@ -264,12 +264,12 @@ public class ITTracingClientInterceptor {
           @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
               MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
             testLogger.info("in span!");
-            scopes.put("before", tracer.currentSpan().context().traceIdString());
+            tracer.currentSpanCustomizer().annotate("before");
             return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
                 next.newCall(method, callOptions)) {
               @Override
               public void start(Listener<RespT> responseListener, Metadata headers) {
-                scopes.put("start", tracer.currentSpan().context().traceIdString());
+                tracer.currentSpanCustomizer().annotate("start");
                 super.start(responseListener, headers);
               }
             };
@@ -280,10 +280,9 @@ public class ITTracingClientInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(scopes)
-        .containsKeys("before", "start");
-
-    spans.take();
+    assertThat(spans.take().annotations())
+        .extracting(Annotation::value)
+        .containsOnly("before", "start");
   }
 
   @Test public void clientParserTest() throws Exception {

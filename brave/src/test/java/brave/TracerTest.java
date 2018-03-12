@@ -270,6 +270,11 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void currentSpanCustomizer_defaultsToNoop() {
+    assertThat(tracer.currentSpanCustomizer())
+        .isSameAs(NoopSpanCustomizer.INSTANCE);
+  }
+
   @Test public void currentSpan_defaultsToNull() {
     assertThat(tracer.currentSpan()).isNull();
   }
@@ -378,6 +383,9 @@ public class TracerTest {
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(current)) {
       assertThat(tracer.currentSpan())
           .isEqualTo(current);
+      assertThat(tracer.currentSpanCustomizer())
+          .isNotEqualTo(current)
+          .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
     }
 
     // context was cleared
@@ -441,6 +449,8 @@ public class TracerTest {
       try (Tracer.SpanInScope clearScope = tracer.withSpanInScope(null)) {
         assertThat(tracer.currentSpan())
             .isNull();
+        assertThat(tracer.currentSpanCustomizer())
+            .isEqualTo(NoopSpanCustomizer.INSTANCE);
       }
 
       // old parent reverted

@@ -26,6 +26,10 @@ public class RealSpanTest {
     assertThat(span.context().spanId()).isNotZero();
   }
 
+  @Test public void hasRealCustomizer() {
+    assertThat(span.customizer()).isInstanceOf(RealSpanCustomizer.class);
+  }
+
   @Test public void start() {
     span.start();
     span.flush();

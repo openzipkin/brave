@@ -61,7 +61,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     // Place the span in scope so that downstream code can read trace IDs
     try {
       if (!span.isNoop()) {
-        parser.request(adapter, request, span);
+        parser.request(adapter, request, span.customizer());
         maybeParseClientAddress(ctx.channel(), request, span);
         span.start();
       }
@@ -110,7 +110,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     if (spanInScope == null) spanInScope = tracer.withSpanInScope(span);
     try {
       ctx.write(msg, prm);
-      parser.response(adapter, response, null, span);
+      parser.response(adapter, response, null, span.customizer());
     } finally {
       spanInScope.close(); // clear scope before reporting
       span.finish();

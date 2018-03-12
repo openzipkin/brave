@@ -22,8 +22,8 @@ import static javax.ws.rs.RuntimeType.CLIENT;
 
 /**
  * This filter is set at highest priority which means it executes before other filters. The impact
- * is that other filters can see the span created here via {@link Tracer#currentSpan()}. Another
- * impact is that the span will not see modifications to the request made by downstream filters.
+ * is other filters can modify the span created here via {@link Tracer#currentSpanCustomizer()}.
+ * Another impact is the span will not see modifications to the request made by downstream filters.
  */
 // If tags for the request are added on response, they might include changes made by other filters..
 // However, the response callback isn't invoked on error, so this choice could be worse.

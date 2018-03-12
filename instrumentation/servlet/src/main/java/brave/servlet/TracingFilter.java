@@ -67,12 +67,13 @@ public final class TracingFilter implements Filter {
     Span span = handler.handleReceive(extractor, httpRequest);
 
     // Add attributes for explicit access to customization or span context
-    request.setAttribute(SpanCustomizer.class.getName(), span);
+    request.setAttribute(SpanCustomizer.class.getName(), span.customizer());
     request.setAttribute(TraceContext.class.getName(), span.context());
 
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      chain.doFilter(httpRequest, httpResponse); // any downstream filters see Tracer.currentSpan
+      // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
+      chain.doFilter(httpRequest, httpResponse);
     } catch (IOException | ServletException | RuntimeException | Error e) {
       error = e;
       throw e;

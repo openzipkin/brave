@@ -48,7 +48,6 @@ import zipkin2.reporter.Reporter;
  * @see Propagation
  */
 public final class Tracer {
-
   /** @deprecated Please use {@link Tracing#newBuilder()} */
   @Deprecated public static Builder newBuilder() {
     return new Builder();
@@ -331,7 +330,8 @@ public final class Tracer {
 
   /**
    * Makes the given span the "current span" and returns an object that exits that scope on close.
-   * The span provided will be returned by {@link #currentSpan()} until the return value is closed.
+   * Calls to {@link #currentSpan()} and {@link #currentSpanCustomizer()} will affect this span
+   * until the return value is closed.
    *
    * <p>The most convenient way to use this method is via the try-with-resources idiom.
    *
@@ -344,8 +344,7 @@ public final class Tracer {
    *   span.finish();
    * }
    *
-   * // An unrelated framework interceptor can now lookup the correct parent for an outbound
-   * request
+   * // An unrelated framework interceptor can now lookup the correct parent for outbound requests
    * Span parent = tracer.currentSpan()
    * Span span = tracer.nextSpan().name("outbound").start(); // parent is implicitly looked up
    * try (SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -366,7 +365,25 @@ public final class Tracer {
     return new SpanInScope(currentTraceContext.newScope(span != null ? span.context() : null));
   }
 
-  /** Returns the current span in scope or null if there isn't one. */
+  /**
+   * Returns a customizer for current span in scope or noop if there isn't one.
+   *
+   * <p>Unlike {@link CurrentSpanCustomizer}, this represents a single span. Accordingly, this
+   * reference should not be saved as a field. That said, it is more efficient to save this result
+   * as a method-local variable vs repeated calls to {@link #currentSpanCustomizer()}.
+   */
+  public SpanCustomizer currentSpanCustomizer() {
+    TraceContext currentContext = currentTraceContext.get();
+    return currentContext != null
+        ? RealSpanCustomizer.create(currentContext, recorder) : NoopSpanCustomizer.INSTANCE;
+  }
+
+  /**
+   * Returns the current span in scope or null if there isn't one.
+   *
+   * <p>When entering user code, prefer {@link #currentSpanCustomizer()} as it is a stable type and
+   * will never return null.
+   */
   @Nullable public Span currentSpan() {
     TraceContext currentContext = currentTraceContext.get();
     return currentContext != null ? toSpan(currentContext) : null;

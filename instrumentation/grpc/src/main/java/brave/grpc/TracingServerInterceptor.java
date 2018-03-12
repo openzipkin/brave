@@ -39,13 +39,13 @@ final class TracingServerInterceptor implements ServerInterceptor {
         : tracer.nextSpan(extracted);
 
     span.kind(Span.Kind.SERVER);
-    parser.onStart(call, headers, span);
+    parser.onStart(call, headers, span.customizer());
     // startCall invokes user interceptors, so we place the span in scope here
     ServerCall.Listener<ReqT> result;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       result = next.startCall(new TracingServerCall<>(span, call, parser), headers);
     } catch (RuntimeException | Error e) {
-      parser.onError(e, span);
+      parser.onError(e, span.customizer());
       span.finish();
       throw e;
     }
@@ -73,15 +73,15 @@ final class TracingServerInterceptor implements ServerInterceptor {
     @Override
     public void sendMessage(RespT message) {
       super.sendMessage(message);
-      parser.onMessageSent(message, span);
+      parser.onMessageSent(message, span.customizer());
     }
 
     @Override public void close(Status status, Metadata trailers) {
       try {
         super.close(status, trailers);
-        parser.onClose(status, trailers, span);
+        parser.onClose(status, trailers, span.customizer());
       } catch (RuntimeException | Error e) {
-        parser.onError(e, span);
+        parser.onError(e, span.customizer());
         throw e;
       } finally {
         span.finish();
@@ -105,7 +105,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     @Override public void onMessage(ReqT message) {
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-        parser.onMessageReceived(message, span);
+        parser.onMessageReceived(message, span.customizer());
         delegate().onMessage(message);
       }
     }

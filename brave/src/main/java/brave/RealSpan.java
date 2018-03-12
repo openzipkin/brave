@@ -12,7 +12,7 @@ abstract class RealSpan extends Span {
   abstract Recorder recorder();
 
   static RealSpan create(TraceContext context, Recorder recorder) {
-    return new AutoValue_RealSpan(context, recorder);
+    return new AutoValue_RealSpan(context, RealSpanCustomizer.create(context, recorder), recorder);
   }
 
   @Override public boolean isNoop() {

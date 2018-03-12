@@ -17,7 +17,8 @@ import zipkin2.Endpoint;
  * Span span = handler.handleReceive(extractor, request);
  * Throwable error = null;
  * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
- *   response = invoke(request); // any downstream code can see Tracer.currentSpan
+ *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
+ *   response = invoke(request);
  * } catch (RuntimeException | Error e) {
  *   error = e;
  *   throw e;
@@ -92,7 +93,7 @@ public final class HttpServerHandler<Req, Resp> {
     // Ensure user-code can read the current trace context
     Tracer.SpanInScope ws = tracer.withSpanInScope(span);
     try {
-      parser.request(adapter, request, span);
+      parser.request(adapter, request, span.customizer());
     } finally {
       ws.close();
     }
@@ -127,7 +128,7 @@ public final class HttpServerHandler<Req, Resp> {
     // Ensure user-code can read the current trace context
     Tracer.SpanInScope ws = tracer.withSpanInScope(span);
     try {
-      parser.response(adapter, response, error, span);
+      parser.response(adapter, response, error, span.customizer());
     } finally {
       ws.close();
       span.finish();
