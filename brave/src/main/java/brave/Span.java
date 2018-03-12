@@ -20,6 +20,8 @@ import zipkin2.Endpoint;
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
 // can simply call start when they are ready.
+// BRAVE5: do not inherit SpanCustomizer, rather just return it. This will prevent accidentally
+// leaking lifecycle methods
 public abstract class Span implements SpanCustomizer {
   public enum Kind {
     CLIENT,
