@@ -13,11 +13,7 @@ public abstract class ServletContainer {
   /** recreates the server so that it uses the supplied trace configuration */
   public final void init() {
     stop();
-    SocketConnector connector = new SocketConnector();
-    connector.setMaxIdleTime(1000 * 60 * 60);
-    connector.setPort(port);
-    server = new Server();
-    server.setConnectors(new Connector[] {connector});
+    server = newServer(port);
 
     ServletContextHandler context = new ServletContextHandler();
     context.setContextPath("/");
@@ -27,10 +23,23 @@ public abstract class ServletContainer {
 
     try {
       server.start();
-      port = server.getConnectors()[0].getLocalPort();
+      port = getLocalPort(server);
     } catch (Exception e) {
       throw new IllegalStateException("Failed to start server.", e);
     }
+  }
+
+  protected int getLocalPort(Server server) {
+    return server.getConnectors()[0].getLocalPort();
+  }
+
+  protected Server newServer(int port) {
+    Server result = new Server();
+    SocketConnector connector = new SocketConnector();
+    connector.setMaxIdleTime(1000 * 60 * 60);
+    connector.setPort(port);
+    result.setConnectors(new Connector[] {connector});
+    return result;
   }
 
   public final String url(String path) {

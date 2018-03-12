@@ -13,10 +13,12 @@ import brave.propagation.SamplingFlags;
 import brave.sampler.Sampler;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
@@ -25,6 +27,8 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpClient<C> extends ITHttp {
+  @Rule public MockWebServer server = new MockWebServer();
+
   protected C client;
 
   @Before public void setup() {
