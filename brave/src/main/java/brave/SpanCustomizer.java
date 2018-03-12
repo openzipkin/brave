@@ -9,6 +9,16 @@ import zipkin.TraceKeys;
  *
  * <p>This type is safer to expose directly to users than {@link Span}, as it has no hooks that
  * can affect the span lifecycle.
+ *
+ * <p>While unnecessary when tagging constants, guard potentially expensive operations on the
+ * {@link NoopSpanCustomizer} type.
+ *
+ * <p>Ex.
+ * <pre>{@code
+ * if (!(customizer instanceof NoopSpanCustomizer)) {
+ *   customizer.tag("summary", computeSummary());
+ * }
+ * }</pre>
  */
 // Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
 // major version bump

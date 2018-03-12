@@ -1,7 +1,11 @@
 package brave;
 
+/**
+ * Performs no operations as the span represented by this is not sampled to report to the tracing
+ * system.
+ */
 // Preferred to a constant NOOP in SpanCustomizer as the latter ends up in a hierachy including Span
-enum NoopSpanCustomizer implements SpanCustomizer {
+public enum NoopSpanCustomizer implements SpanCustomizer {
   INSTANCE;
 
   @Override public SpanCustomizer name(String name) {
