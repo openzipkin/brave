@@ -69,7 +69,7 @@ public abstract class Tracing implements Closeable {
   static volatile Tracing current = null;
 
   /**
-   * Returns the most recently created tracer iff its component hasn't been closed. null otherwise.
+   * Returns the most recently created tracer if its component hasn't been closed. null otherwise.
    *
    * <p>This object should not be cached.
    */
