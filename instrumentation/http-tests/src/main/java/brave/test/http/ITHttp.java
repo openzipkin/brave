@@ -12,7 +12,6 @@ import brave.sampler.Sampler;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -82,8 +81,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 public abstract class ITHttp {
   public static final String EXTRA_KEY = "user-id";
   static final String CONTEXT_LEAK = "context.leak";
-
-  @Rule public MockWebServer server = new MockWebServer();
 
   /**
    * When testing servers or asynchronous clients, spans are reported on a worker thread. In order

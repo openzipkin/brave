@@ -17,3 +17,11 @@ Spark.afterAfter(sparkTracing.afterAfter());
 // any routes you add are now traced, such as the below
 Spark.get("/foo", (req, res) -> "bar");
 ```
+
+## Non-embedded mode
+SparkJava can run with embedded Jetty or as a [Servlet Filter](http://sparkjava.com/documentation#other-web-server).
+Servlet filter deployment allows you to run SparkJava in a war file, or
+anything that provides a servlet layer (such as Spring Boot). When using
+the filter approach, use our [TracingFilter](../servlet), not
+`SparkTracing` types.
+

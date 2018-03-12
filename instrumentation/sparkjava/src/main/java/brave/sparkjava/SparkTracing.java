@@ -14,6 +14,9 @@ import spark.Filter;
 import spark.Request;
 
 public final class SparkTracing {
+  // TODO: when https://github.com/perwendel/spark/issues/959 is resolved, add "http.route"
+  static final HttpServletAdapter ADAPTER = new HttpServletAdapter();
+
   public static SparkTracing create(Tracing tracing) {
     return new SparkTracing(HttpTracing.create(tracing));
   }
@@ -28,7 +31,7 @@ public final class SparkTracing {
 
   SparkTracing(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter());
+    handler = HttpServerHandler.create(httpTracing, ADAPTER);
     extractor = httpTracing.tracing().propagation().extractor(Request::headers);
   }
 
@@ -44,7 +47,7 @@ public final class SparkTracing {
       Span span = tracer.currentSpan();
       if (span == null) return;
       ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
-      handler.handleSend(response.raw(), null, span);
+      handler.handleSend(ADAPTER.adaptResponse(request.raw(), response.raw()), null, span);
     };
   }
 
@@ -53,7 +56,7 @@ public final class SparkTracing {
       Span span = tracer.currentSpan();
       if (span != null) {
         ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
-        handler.handleSend(null, exception, span);
+        handler.handleSend(ADAPTER.adaptResponse(request.raw(), response.raw()), exception, span);
       }
       delegate.handle(exception, request, response);
     };

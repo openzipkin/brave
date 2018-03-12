@@ -5,14 +5,19 @@ import org.junit.After;
 
 /** Starts a jetty server which runs a servlet container */
 public abstract class ITServletContainer extends ITHttpServer {
-  ServletContainer container = new ServletContainer() {
-    @Override public void init(ServletContextHandler handler) {
-      ITServletContainer.this.init(handler);
-    }
-  };
+  ServletContainer container;
+
+  protected ServletContainer newServletContainer() {
+    return new ServletContainer() {
+      @Override public void init(ServletContextHandler handler) {
+        ITServletContainer.this.init(handler);
+      }
+    };
+  }
 
   /** recreates the server so that it uses the supplied trace configuration */
   @Override protected final void init() {
+    container = newServletContainer();
     container.init();
   }
 
