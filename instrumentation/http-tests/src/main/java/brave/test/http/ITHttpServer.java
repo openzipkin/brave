@@ -207,6 +207,14 @@ public abstract class ITHttpServer extends ITHttp {
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
         customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
         customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
+        customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
+      }
+
+      @Override
+      public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
+          SpanCustomizer customizer) {
+        super.response(adapter, res, error, customizer);
+        customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
       }
     }).build();
     init();
@@ -217,7 +225,9 @@ public abstract class ITHttpServer extends ITHttp {
     Span span = takeSpan();
     assertThat(span.tags())
         .containsEntry("http.url", url(uri))
-        .containsEntry("context.visible", "true");
+        .containsEntry("context.visible", "true")
+        .containsEntry("request_customizer.is_span", "false")
+        .containsEntry("response_customizer.is_span", "false");
   }
 
   /**

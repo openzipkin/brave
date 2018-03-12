@@ -14,7 +14,7 @@ import okhttp3.Response;
 
 /**
  * This internally adds an interceptor which ensures whatever current span exists is available via
- * {@link Tracer#currentSpan()}
+ * {@link Tracer#currentSpanCustomizer()} and {@link Tracer#currentSpan()}
  */
 // NOTE: this is not an interceptor because the current span can get lost when there's a backlog.
 // This will be completely different after https://github.com/square/okhttp/issues/270

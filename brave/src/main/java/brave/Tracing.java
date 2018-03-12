@@ -230,9 +230,9 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Responsible for implementing {@link Tracer#currentSpan()} and {@link
-     * Tracer#withSpanInScope(Span)}. By default a simple thread-local is used. Override to support
-     * other mechanisms or to synchronize with other mechanisms such as SLF4J's MDC.
+     * Responsible for implementing {@link Tracer#currentSpanCustomizer()}, {@link Tracer#currentSpan()}
+     * and {@link Tracer#withSpanInScope(Span)}. By default a simple thread-local is used. Override
+     * to support other mechanisms or to synchronize with other mechanisms such as SLF4J's MDC.
      */
     public Builder currentTraceContext(CurrentTraceContext currentTraceContext) {
       if (currentTraceContext == null) throw new NullPointerException("currentTraceContext == null");

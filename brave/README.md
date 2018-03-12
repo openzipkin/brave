@@ -478,9 +478,16 @@ noot cache the result. Instead, look them up each time you need them.
 ## Current Span
 
 Brave supports a "current span" concept which represents the in-flight
-operation. `Tracer.currentSpan()` can be used to add custom tags to a
-span and `Tracer.nextSpan()` can be used to create a child of whatever
-is in-flight.
+operation.
+
+`Tracer.currentSpanCustomizer()` never returns null and `SpanCustomizer`
+is generally a safe object to expose to third-party code to add tags.
+
+`Tracer.currentSpan()` should be reserved for framework code that cannot
+reference the span explicitly which to close or abandon an operation.
+
+`Tracer.nextSpan()` uses the "current span" to determine a parent. This
+creates a child of whatever is in-flight.
 
 ### Setting a span in scope via custom executors
 
@@ -504,8 +511,8 @@ c.setExecutorService(currentTraceContext.executorService(realExecutorService));
 
 When writing new instrumentation, it is important to place a span you
 created in scope as the current span. Not only does this allow users to
-access it with `Tracer.currentSpan()`, but it also allows customizations
-like SLF4J MDC to see the current trace IDs.
+access it with `Tracer.currentSpanCustomizer()`, but it also allows
+customizations like SLF4J MDC to see the current trace IDs.
 
 `Tracer.withSpanInScope(Span)` facilitates this and is most conveniently
 employed via the try-with-resources idiom. Whenever external code might
@@ -549,7 +556,8 @@ class MyFilter extends Filter {
     // Assume you have code to start the span and add relevant tags...
 
     // We now set the span in scope so that any code between here and
-    // the end of the request can see it with Tracer.currentSpan()
+    // the end of the request can modify it with Tracer.currentSpan()
+    // or Tracer.currentSpanCustomizer()
     SpanInScope spanInScope = tracer.withSpanInScope(span);
 
     // We don't want to leak the scope, so we place it somewhere we can

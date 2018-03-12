@@ -1,6 +1,7 @@
 package brave.kafka.clients;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
@@ -82,7 +83,7 @@ public final class KafkaTracing {
       return tracing.tracer().toSpan(extracted.context()); // avoid creating an unnecessary child
     }
     Span result = tracing.tracer().nextSpan(extracted);
-    if (!result.isNoop()) addTags(record, result);
+    if (!result.isNoop()) addTags(record, result.customizer());
     return result;
   }
 
@@ -103,7 +104,7 @@ public final class KafkaTracing {
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */
-  static void addTags(ConsumerRecord<?, ?> record, Span result) {
+  static void addTags(ConsumerRecord<?, ?> record, SpanCustomizer result) {
     if (record.key() instanceof String && !"".equals(record.key())) {
       result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
     }

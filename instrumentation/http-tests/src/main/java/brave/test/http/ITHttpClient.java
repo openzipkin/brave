@@ -195,6 +195,14 @@ public abstract class ITHttpClient<C> extends ITHttp {
             customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
             customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
             customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
+            customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
+          }
+
+          @Override
+          public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
+              SpanCustomizer customizer) {
+            super.response(adapter, res, error, customizer);
+            customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
           }
         })
         .build().clientOf("remote-service");
@@ -212,7 +220,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     assertThat(span.tags())
         .containsEntry("http.url", url(uri))
-        .containsEntry("context.visible", "true");
+        .containsEntry("context.visible", "true")
+        .containsEntry("request_customizer.is_span", "false")
+        .containsEntry("response_customizer.is_span", "false");
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {

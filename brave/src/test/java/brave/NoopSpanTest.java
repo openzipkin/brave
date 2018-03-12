@@ -31,6 +31,10 @@ public class NoopSpanTest {
     assertThat(span.context().spanId()).isNotZero();
   }
 
+  @Test public void hasNoopCustomizer() {
+    assertThat(span.customizer()).isSameAs(NoopSpanCustomizer.INSTANCE);
+  }
+
   @Test public void doesNothing() {
     // Since our clock and spanReporter throw, we know this is doing nothing
     span.start();

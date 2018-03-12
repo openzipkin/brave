@@ -20,37 +20,21 @@ public final class CurrentSpanCustomizer implements SpanCustomizer {
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer name(String name) {
-    Span currentSpan = tracer.currentSpan();
-    if (currentSpan != null) {
-      currentSpan.name(name);
-    }
-    return this;
+    return tracer.currentSpanCustomizer().name(name);
   }
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer tag(String key, String value) {
-    Span currentSpan = tracer.currentSpan();
-    if (currentSpan != null) {
-      currentSpan.tag(key, value);
-    }
-    return this;
+    return tracer.currentSpanCustomizer().tag(key, value);
   }
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer annotate(String value) {
-    Span currentSpan = tracer.currentSpan();
-    if (currentSpan != null) {
-      currentSpan.annotate(value);
-    }
-    return this;
+    return tracer.currentSpanCustomizer().annotate(value);
   }
 
   /** {@inheritDoc} */
   @Override public SpanCustomizer annotate(long timestamp, String value) {
-    Span currentSpan = tracer.currentSpan();
-    if (currentSpan != null) {
-      currentSpan.annotate(timestamp, value);
-    }
-    return this;
+    return tracer.currentSpanCustomizer().annotate(timestamp, value);
   }
 }

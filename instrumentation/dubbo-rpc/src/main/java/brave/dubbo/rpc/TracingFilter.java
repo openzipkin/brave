@@ -83,7 +83,7 @@ public final class TracingFilter implements Filter {
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       Result result = invoker.invoke(invocation);
       if (result.hasException()) {
-        onError(result.getException(), span);
+        onError(result.getException(), span.customizer());
       }
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
@@ -93,7 +93,7 @@ public final class TracingFilter implements Filter {
       }
       return result;
     } catch (Error | RuntimeException e) {
-      onError(e, span);
+      onError(e, span.customizer());
       throw e;
     } finally {
       if (isOneway) {

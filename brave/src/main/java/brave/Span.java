@@ -54,6 +54,9 @@ public abstract class Span implements SpanCustomizer {
 
   public abstract TraceContext context();
 
+  /** Returns a customizer appropriate for the current span. Prefer this when invoking user code */
+  public abstract SpanCustomizer customizer();
+
   /**
    * Starts the span with an implicit timestamp.
    *

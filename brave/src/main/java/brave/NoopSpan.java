@@ -11,6 +11,10 @@ abstract class NoopSpan extends Span {
     return new AutoValue_NoopSpan(context);
   }
 
+  @Override public SpanCustomizer customizer() {
+    return NoopSpanCustomizer.INSTANCE;
+  }
+
   @Override public boolean isNoop() {
     return true;
   }
