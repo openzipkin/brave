@@ -12,6 +12,7 @@ import zipkin.TraceKeys;
  */
 // Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
 // major version bump
+// BRAVE5: add isNoop to avoid instanceof checks
 public interface SpanCustomizer {
   /**
    * Sets the string name for the logical operation this span represents.
