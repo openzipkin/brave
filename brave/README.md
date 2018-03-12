@@ -484,7 +484,7 @@ operation.
 is generally a safe object to expose to third-party code to add tags.
 
 `Tracer.currentSpan()` should be reserved for framework code that cannot
-reference the span explicitly which to close or abandon an operation.
+reference the span it wants to finish, flush or abandon explicitly.
 
 `Tracer.nextSpan()` uses the "current span" to determine a parent. This
 creates a child of whatever is in-flight.
