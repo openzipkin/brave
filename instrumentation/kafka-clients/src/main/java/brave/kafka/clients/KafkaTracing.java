@@ -78,7 +78,7 @@ public final class KafkaTracing {
    */
   @Deprecated
   public Span joinSpan(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record);
     if (extracted.context() != null) {
       return tracing.tracer().toSpan(extracted.context()); // avoid creating an unnecessary child
     }
@@ -95,12 +95,21 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record);
     Span result = tracing.tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(record, result);
     }
     return result;
+  }
+
+  TraceContextOrSamplingFlags extractAndClearHeaders(ConsumerRecord<?, ?> record) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+    // clear propagation headers if we were able to extract a span
+    if (extracted != TraceContextOrSamplingFlags.EMPTY) {
+      tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+    }
+    return extracted;
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */
