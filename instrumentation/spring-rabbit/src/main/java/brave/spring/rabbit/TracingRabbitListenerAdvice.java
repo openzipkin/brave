@@ -67,16 +67,19 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
-    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("next-message").start();
+    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("next-message");
+    Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message");
+
     if (!consumerSpan.isNoop()) {
+      consumerSpan.start();
       tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
       if (remoteServiceName != null) {
         consumerSpan.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
       }
       consumerSpan.finish();
+      listenerSpan.start();
     }
 
-    Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message").start();
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
