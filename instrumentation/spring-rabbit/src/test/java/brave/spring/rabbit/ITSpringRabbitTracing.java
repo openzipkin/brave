@@ -108,6 +108,19 @@ public class ITSpringRabbitTracing {
         .isEmpty();
   }
 
+  /** Technical implementation of clock sharing might imply a race. This ensures happens-after */
+  @Test public void listenerSpanHappensAfterConsumerSpan() throws Exception {
+    testFixture.produceMessage();
+    testFixture.awaitMessageConsumed();
+
+    Span span1 = testFixture.consumerSpans.get(0), span2 = testFixture.consumerSpans.get(1);
+    Span consumerSpan = span1.kind() == Span.Kind.CONSUMER ? span1 : span2;
+    Span listenerSpan = consumerSpan == span1 ? span2 : span1;
+
+    assertThat(consumerSpan.timestampAsLong() + consumerSpan.durationAsLong())
+        .isLessThanOrEqualTo(listenerSpan.timestampAsLong());
+  }
+
   @Test public void creates_dependency_links() throws Exception {
     testFixture.produceMessage();
     testFixture.awaitMessageConsumed();
