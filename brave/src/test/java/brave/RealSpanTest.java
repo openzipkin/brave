@@ -54,7 +54,7 @@ public class RealSpanTest {
 
     assertThat(spans).hasSize(1).first()
         .extracting(zipkin2.Span::duration)
-        .isNotNull();
+        .doesNotContainNull();
   }
 
   @Test public void finish_timestamp() {
