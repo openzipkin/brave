@@ -59,8 +59,8 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.5.1</zipkin.version>
-    <zipkin-reporter.version>2.4.1</zipkin-reporter.version>
+    <zipkin.version>2.6.1</zipkin.version>
+    <zipkin-reporter.version>2.5.0</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.13.RELEASE</spring4.version>
