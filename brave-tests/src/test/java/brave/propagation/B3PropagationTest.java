@@ -72,4 +72,16 @@ public class B3PropagationTest extends PropagationTest<String> {
     assertThat(result)
         .isEqualTo(SamplingFlags.EMPTY);
   }
+
+  @Test public void extractTraceContext_debug_with_ids() {
+    MapEntry mapEntry = new MapEntry();
+    map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
+    map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
+    map.put("X-B3-Flags", "1"); // accidentally missing sampled flag
+
+    TraceContext result = propagation().extractor(mapEntry).extract(map).context();
+
+    assertThat(result.sampled())
+        .isTrue();
+  }
 }

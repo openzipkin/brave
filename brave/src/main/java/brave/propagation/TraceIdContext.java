@@ -224,9 +224,12 @@ public final class TraceIdContext extends SamplingFlags {
       return this;
     }
 
+    /** Ensures sampled is set when debug is */
     InternalBuilder debug(boolean debug) {
       if (debug) {
         flags |= FLAG_DEBUG;
+        flags |= FLAG_SAMPLED_SET;
+        flags |= FLAG_SAMPLED;
       } else {
         flags &= ~FLAG_DEBUG;
       }
