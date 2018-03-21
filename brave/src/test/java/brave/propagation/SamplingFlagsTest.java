@@ -19,9 +19,8 @@ public class SamplingFlagsTest {
   }
 
   @Test public void debugImpliesSampled() {
-    SamplingFlags flags = new SamplingFlags.Builder().debug(true).build();
+    SamplingFlags flags = new SamplingFlags.SamplingFlagsImpl(null, true);
 
-    assertThat(flags).isSameAs(SamplingFlags.DEBUG);
     assertThat(flags.sampled()).isTrue();
     assertThat(flags.debug()).isTrue();
   }
@@ -40,5 +39,13 @@ public class SamplingFlagsTest {
     assertThat(flags).isSameAs(SamplingFlags.NOT_SAMPLED);
     assertThat(flags.sampled()).isFalse();
     assertThat(flags.debug()).isFalse();
+  }
+
+  @Test public void sampledFlags() {
+    assertThat(SamplingFlags.sampled(0)).isNull();
+    assertThat(SamplingFlags.sampled(SamplingFlags.FLAG_SAMPLED)).isNull();
+    assertThat(SamplingFlags.sampled(SamplingFlags.FLAG_SAMPLED_SET)).isFalse();
+    assertThat(SamplingFlags.sampled(SamplingFlags.FLAG_SAMPLED | SamplingFlags.FLAG_SAMPLED_SET)).isTrue();
+    assertThat(SamplingFlags.sampled(SamplingFlags.FLAG_DEBUG)).isTrue();
   }
 }
