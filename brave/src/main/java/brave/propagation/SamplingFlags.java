@@ -61,7 +61,7 @@ public abstract class SamplingFlags {
     }
 
     @Override public Boolean sampled() {
-      return sampled;
+      return debug ? Boolean.TRUE : sampled;
     }
 
     @Override public boolean debug() {
@@ -81,6 +81,10 @@ public abstract class SamplingFlags {
   static final int FLAG_DEBUG = 1 << 3;
 
   static Boolean sampled(int flags) {
+
+    // FLAG_DEBUG implies sampled
+    if ((flags & FLAG_DEBUG) == FLAG_DEBUG) return true;
+
     return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
         ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
         : null;
