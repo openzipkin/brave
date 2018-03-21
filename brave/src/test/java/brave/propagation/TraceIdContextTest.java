@@ -32,6 +32,20 @@ public class TraceIdContextTest {
         .isEqualTo("00000000000000de000000000000014d");
   }
 
+  @Test public void debugImpliesSampled() {
+    TraceIdContext primitives = context.toBuilder()
+        .debug(true)
+        .build();
+
+    TraceIdContext objects = context.toBuilder()
+        .sampled(Boolean.TRUE)
+        .debug(Boolean.TRUE)
+        .build();
+
+    assertThat(primitives)
+        .isEqualToComparingFieldByField(objects);
+  }
+
   @Test public void canUsePrimitiveOverloads() {
     TraceIdContext primitives = context.toBuilder()
         .sampled(true)
