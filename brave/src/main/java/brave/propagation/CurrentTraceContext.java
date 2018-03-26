@@ -163,6 +163,11 @@ public abstract class CurrentTraceContext {
   }
 
   /** Wraps the input so that it executes with the same context as now. */
+  // TODO: here and elsewhere consider a volatile reference. When the invocation context equals an
+  // existing wrapped context, it isn't necessarily the same as fields in context.extra may be
+  // different and equals does not consider extra. For example, if a new propagation field has been
+  // added, this should be considered. Doing so via a reference swap could be a lot cheaper than
+  // re-wrapping and achieve the same goal.
   public Runnable wrap(Runnable task) {
     final TraceContext invocationContext = get();
     class CurrentTraceContextRunnable implements Runnable {
