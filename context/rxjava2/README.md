@@ -1,0 +1,30 @@
+# brave-context-rxjava2
+`CurrentTraceContextcontextTracking` prevents traces from breaking
+during RxJava operations by scoping them with trace context.
+
+The design of this library borrows heavily from https://github.com/akaita/RxJava2Debug and https://github.com/akarnokd/RxJava2Extensions
+
+To set this up, create `CurrentTraceContextcontextTracking` using the
+current trace context provided by your `Tracing` component.
+
+```java
+contextTracking = CurrentTraceContextcontextTracking.create(
+  tracing.currentTraceContext()
+);
+```
+
+After your application-specific changes to `RxJavaPlugins`, enable trace
+context tracking like so:
+
+```java
+contextTracking.enable();
+```
+
+Or, if you want to be able to restore any preceding hooks, enable like
+this:
+```java
+SavedHooks hooks = contextTracking.enableAndChain();
+
+// then, later you can restore like this
+hooks.restore();
+```
