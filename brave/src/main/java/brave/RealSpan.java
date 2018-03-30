@@ -10,9 +10,10 @@ import zipkin2.Endpoint;
 abstract class RealSpan extends Span {
 
   abstract Recorder recorder();
+  abstract ErrorHandler errorHandler();
 
-  static RealSpan create(TraceContext context, Recorder recorder) {
-    return new AutoValue_RealSpan(context, RealSpanCustomizer.create(context, recorder), recorder);
+  static RealSpan create(TraceContext context, Recorder recorder, ErrorHandler errorHandler) {
+    return new AutoValue_RealSpan(context, RealSpanCustomizer.create(context, recorder), recorder, errorHandler);
   }
 
   @Override public boolean isNoop() {
@@ -51,6 +52,12 @@ abstract class RealSpan extends Span {
 
   @Override public Span tag(String key, String value) {
     recorder().tag(context(), key, value);
+    return this;
+  }
+
+  @Override
+  public Span error(Throwable throwable) {
+    errorHandler().handleError(customizer(), throwable);
     return this;
   }
 

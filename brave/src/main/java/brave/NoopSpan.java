@@ -51,6 +51,10 @@ abstract class NoopSpan extends Span {
     return this;
   }
 
+  @Override public Span error(Throwable throwable) {
+    return this;
+  }
+
   @Override public void finish() {
   }
 

@@ -99,6 +99,9 @@ public abstract class Span implements SpanCustomizer {
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
 
+  /** Hands errors off to the configured ErrorHandler */
+  public abstract Span error(Throwable throwable);
+
   /**
    * @deprecated use {@link #remoteEndpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()}
    */
