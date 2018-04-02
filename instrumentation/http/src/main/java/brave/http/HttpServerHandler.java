@@ -30,33 +30,25 @@ import zipkin2.Endpoint;
  * @param <Req> the native http request type of the server.
  * @param <Resp> the native http response type of the server.
  */
-public final class HttpServerHandler<Req, Resp> {
+public final class HttpServerHandler<Req, Resp>
+    extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
 
   public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
       HttpServerAdapter<Req, Resp> adapter) {
-    return new HttpServerHandler<>(
-        httpTracing.tracing().tracer(),
-        httpTracing.serverSampler(),
-        httpTracing.serverParser(),
-        adapter
-    );
+    return new HttpServerHandler<>(httpTracing, adapter);
   }
 
   final Tracer tracer;
   final HttpSampler sampler;
-  final HttpServerParser parser;
-  final HttpServerAdapter<Req, Resp> adapter;
 
-  HttpServerHandler(
-      Tracer tracer,
-      HttpSampler sampler,
-      HttpServerParser parser,
-      HttpServerAdapter<Req, Resp> adapter
-  ) {
-    this.tracer = tracer;
-    this.sampler = sampler;
-    this.parser = parser;
-    this.adapter = adapter;
+  HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
+    super(
+        httpTracing.tracing().currentTraceContext(),
+        adapter,
+        httpTracing.serverParser()
+    );
+    this.tracer = httpTracing.tracing().tracer();
+    this.sampler = httpTracing.serverSampler();
   }
 
   /**
@@ -79,29 +71,12 @@ public final class HttpServerHandler<Req, Resp> {
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
     Span span = nextSpan(extractor.extract(carrier), request);
-    if (span.isNoop()) return span;
-
-    // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.SERVER);
-    parseRequest(request, span);
-
-    return span.start();
+    return handleStart(request, span);
   }
 
-  void parseRequest(Req request, Span span) {
-    if (span.isNoop()) return;
-    // Ensure user-code can read the current trace context
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
-    try {
-      parser.request(adapter, request, span.customizer());
-    } finally {
-      ws.close();
-    }
-
-    Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
-    if (adapter.parseClientAddress(request, remoteEndpoint)) {
-      span.remoteEndpoint(remoteEndpoint.build());
-    }
+  @Override boolean parseRemoteEndpoint(Req request, Endpoint.Builder remoteEndpoint) {
+    return adapter.parseClientAddress(request, remoteEndpoint);
   }
 
   /** Creates a potentially noop span representing this request */
@@ -123,15 +98,6 @@ public final class HttpServerHandler<Req, Resp> {
    * @see HttpServerParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (span.isNoop()) return;
-
-    // Ensure user-code can read the current trace context
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
-    try {
-      parser.response(adapter, response, error, span.customizer());
-    } finally {
-      ws.close();
-      span.finish();
-    }
+    handleFinish(response, error, span);
   }
 }

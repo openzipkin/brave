@@ -4,7 +4,6 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
@@ -32,7 +31,8 @@ import zipkin2.Endpoint;
  * @param <Resp> the native http response type of the client.
  * @since 4.3
  */
-public final class HttpClientHandler<Req, Resp> {
+public final class HttpClientHandler<Req, Resp>
+    extends HttpHandler<Req, Resp, HttpClientAdapter<Req, Resp>> {
 
   public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
       HttpClientAdapter<Req, Resp> adapter) {
@@ -41,20 +41,19 @@ public final class HttpClientHandler<Req, Resp> {
 
   final Tracer tracer;
   final HttpSampler sampler;
-  final CurrentTraceContext currentTraceContext;
-  final HttpClientParser parser;
-  final HttpClientAdapter<Req, Resp> adapter;
   final String serverName;
   final boolean serverNameSet;
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
+    super(
+        httpTracing.tracing().currentTraceContext(),
+        adapter,
+        httpTracing.clientParser()
+    );
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.clientSampler();
-    this.currentTraceContext = httpTracing.tracing().currentTraceContext();
-    this.parser = httpTracing.clientParser();
     this.serverName = httpTracing.serverName();
     this.serverNameSet = !serverName.equals("");
-    this.adapter = adapter;
   }
 
   /**
@@ -96,24 +95,13 @@ public final class HttpClientHandler<Req, Resp> {
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
-    if (span.isNoop()) return span;
-
-    // all of the parsing here occur before a timestamp is recorded on the span
     span.kind(Span.Kind.CLIENT);
+    return handleStart(request, span);
+  }
 
-    // Ensure user-code can read the current trace context
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
-    try {
-      parser.request(adapter, request, span.customizer());
-    } finally {
-      ws.close();
-    }
-
-    Endpoint.Builder remoteEndpoint = Endpoint.newBuilder().serviceName(serverName);
-    if (adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet) {
-      span.remoteEndpoint(remoteEndpoint.build());
-    }
-    return span.start();
+  @Override boolean parseRemoteEndpoint(Req request, Endpoint.Builder remoteEndpoint) {
+    remoteEndpoint.serviceName(serverName);
+    return adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet;
   }
 
   /**
@@ -141,13 +129,6 @@ public final class HttpClientHandler<Req, Resp> {
    * @see HttpClientParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (span.isNoop()) return;
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
-    try {
-      parser.response(adapter, response, error, span.customizer());
-    } finally {
-      ws.close();
-      span.finish();
-    }
+    handleFinish(response, error, span);
   }
 }

@@ -14,8 +14,6 @@ import org.mockito.runners.MockitoJUnitRunner;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,9 +24,7 @@ public class HttpClientHandlerTest {
   @Mock HttpSampler sampler;
   @Mock HttpClientAdapter<Object, Object> adapter;
   @Mock TraceContext.Injector<Object> injector;
-  @Mock brave.Span span;
   Object request = new Object();
-  Object response = new Object();
   HttpClientHandler<Object, Object> handler;
 
   @Before public void init() {
@@ -101,32 +97,5 @@ public class HttpClientHandlerTest {
     assertThat(spans)
         .extracting(Span::remoteServiceName)
         .isEmpty();
-  }
-
-  @Test public void handleReceive_nothingOnNoop_success() {
-    when(span.isNoop()).thenReturn(true);
-
-    handler.handleReceive(response, null, span);
-
-    verify(span, never()).finish();
-  }
-
-  @Test public void handleReceive_nothingOnNoop_error() {
-    when(span.isNoop()).thenReturn(true);
-
-    handler.handleReceive(null, new RuntimeException("drat"), span);
-
-    verify(span, never()).finish();
-  }
-
-  @Test public void handleReceive_finishedEvenIfAdapterThrows() {
-    when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
-
-    try {
-      handler.handleReceive(response, null, span);
-      failBecauseExceptionWasNotThrown(RuntimeException.class);
-    } catch (RuntimeException e) {
-      verify(span).finish();
-    }
   }
 }
