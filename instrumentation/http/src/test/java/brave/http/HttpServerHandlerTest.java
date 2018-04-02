@@ -17,11 +17,8 @@ import org.mockito.runners.MockitoJUnitRunner;
 import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -31,9 +28,7 @@ public class HttpServerHandlerTest {
   @Mock HttpSampler sampler;
   @Mock HttpServerAdapter<Object, Object> adapter;
   @Mock TraceContext.Extractor<Object> extractor;
-  @Mock brave.Span span;
   Object request = new Object();
-  Object response = new Object();
   HttpServerHandler<Object, Object> handler;
 
   @Before public void init() {
@@ -128,32 +123,5 @@ public class HttpServerHandlerTest {
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
         .isTrue();
-  }
-
-  @Test public void handleSend_nothingOnNoop_success() {
-    when(span.isNoop()).thenReturn(true);
-
-    handler.handleSend(response, null, span);
-
-    verify(span, never()).finish();
-  }
-
-  @Test public void handleSend_nothingOnNoop_error() {
-    when(span.isNoop()).thenReturn(true);
-
-    handler.handleSend(null, new RuntimeException("drat"), span);
-
-    verify(span, never()).finish();
-  }
-
-  @Test public void handleSend_finishedEvenIfAdapterThrows() {
-    when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
-
-    try {
-      handler.handleSend(response, null, span);
-      failBecauseExceptionWasNotThrown(RuntimeException.class);
-    } catch (RuntimeException e) {
-      verify(span).finish();
-    }
   }
 }
