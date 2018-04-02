@@ -15,10 +15,11 @@ public final class VertxWebTracing {
     return new VertxWebTracing(httpTracing);
   }
 
-  final Handler<RoutingContext> routingContextHandler;
+  final HttpTracing httpTracing;
 
   VertxWebTracing(HttpTracing httpTracing) {
-    routingContextHandler = new TracingRoutingContextHandler(httpTracing);
+    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
+    this.httpTracing = httpTracing;
   }
 
   /**
@@ -34,6 +35,6 @@ public final class VertxWebTracing {
    * }</pre>
    */
   public Handler<RoutingContext> routingContextHandler() {
-    return routingContextHandler;
+    return new TracingRoutingContextHandler(httpTracing);
   }
 }
