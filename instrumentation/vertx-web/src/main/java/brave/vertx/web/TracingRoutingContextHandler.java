@@ -12,6 +12,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
+import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Endpoint;
 
 /**
@@ -71,10 +72,6 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     Span span = serverHandler.handleReceive(extractor, context.request());
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
-
-    // When a route ends a request directly, this will finish the span
-    context.request().endHandler(handler);
-    // When a route overwrites the above endHandler, this will finish the span
     context.addHeadersEndHandler(handler);
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -85,6 +82,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   class TracingHandler implements Handler<Void> {
     final RoutingContext context;
     final Span span;
+    final AtomicBoolean finished = new AtomicBoolean();
 
     TracingHandler(RoutingContext context, Span span) {
       this.context = context;
@@ -92,7 +90,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
 
     @Override public void handle(Void aVoid) {
-      if (!context.request().isEnded()) return;
+      if (!finished.compareAndSet(false, true)) return;
       Route route = new Route(context.request().rawMethod(), context.currentRoute().getPath());
       try {
         currentRoute.set(route);
