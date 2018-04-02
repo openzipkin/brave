@@ -7,8 +7,8 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-vertx-web</artifactId>
-  <name>Brave Instrumentation: Vert.x Web</name>
+  <artifactId>brave-instrumentation-vertx-web-client</artifactId>
+  <name>Brave Instrumentation: Vert.x Web Client</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
@@ -23,7 +23,7 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-web</artifactId>
+      <artifactId>vertx-web-client</artifactId>
       <version>${vertx.version}</version>
       <scope>provided</scope>
     </dependency>
@@ -47,7 +47,7 @@
         <configuration>
           <archive>
             <manifestEntries>
-              <Automatic-Module-Name>brave.vertx.web</Automatic-Module-Name>
+              <Automatic-Module-Name>brave.vertx.web.client</Automatic-Module-Name>
             </manifestEntries>
           </archive>
         </configuration>
