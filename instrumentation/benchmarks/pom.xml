@@ -170,7 +170,7 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-context-slf4j</artifactId>
+      <artifactId>brave-context-log4j2</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

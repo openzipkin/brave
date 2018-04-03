@@ -13,7 +13,7 @@
  */
 package brave.propagation;
 
-import brave.context.slf4j.MDCCurrentTraceContext;
+import brave.context.log4j2.ThreadContextCurrentTraceContext;
 import brave.internal.HexCodec;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -27,7 +27,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
@@ -39,7 +38,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Thread)
 public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext base = CurrentTraceContext.Default.create();
-  static final CurrentTraceContext slf4j = MDCCurrentTraceContext.create(base);
+  static final CurrentTraceContext log4j2 = ThreadContextCurrentTraceContext.create(base);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
@@ -52,10 +51,10 @@ public class CurrentTraceContextBenchmarks {
       .spanId(HexCodec.lowerHexToUnsignedLong("e64ac35c9f641ea3"))
       .build();
 
-  final CurrentTraceContext.Scope slf4jScope = slf4j.newScope(context);
+  final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
 
   @TearDown public void closeScope() {
-    slf4jScope.close();
+    log4j2Scope.close();
   }
 
   @Benchmark public void newScope_default() {
@@ -63,8 +62,8 @@ public class CurrentTraceContextBenchmarks {
     }
   }
 
-  @Benchmark public void newScope_slf4j() {
-    try (CurrentTraceContext.Scope ws = slf4j.newScope(contextWithParent)) {
+  @Benchmark public void newScope_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.newScope(contextWithParent)) {
     }
   }
 
@@ -73,8 +72,8 @@ public class CurrentTraceContextBenchmarks {
     }
   }
 
-  @Benchmark public void newScope_redundant_slf4j() {
-    try (CurrentTraceContext.Scope ws = slf4j.newScope(context)) {
+  @Benchmark public void newScope_redundant_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.newScope(context)) {
     }
   }
 
@@ -83,13 +82,13 @@ public class CurrentTraceContextBenchmarks {
     }
   }
 
-  @Benchmark public void newScope_clear_slf4j() {
-    try (CurrentTraceContext.Scope ws = slf4j.newScope(null)) {
+  @Benchmark public void newScope_clear_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.newScope(null)) {
     }
   }
 
   // Convenience main entry-point
-  public static void main(String[] args) throws RunnerException {
+  public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
         .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName())
         .build();
