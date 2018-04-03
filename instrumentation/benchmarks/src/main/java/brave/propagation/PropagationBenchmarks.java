@@ -11,15 +11,11 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.propagation;
 
-import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
+import brave.internal.HexCodec;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.aws.AWSPropagation;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -151,7 +147,6 @@ public class PropagationBenchmarks {
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
-    new PropagationBenchmarks().extract_aws();
     Options opt = new OptionsBuilder()
         .include(".*" + PropagationBenchmarks.class.getSimpleName())
         .build();
