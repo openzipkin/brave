@@ -164,8 +164,13 @@
       <version>${resteasy.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.zipkin.brave</groupId>
+      <groupId>${project.groupId}</groupId>
       <artifactId>brave-propagation-aws</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-context-log4j2</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
