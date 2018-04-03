@@ -78,10 +78,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
 
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
-      Span span;
-      try (Scope scope = currentTraceContext.newScope(parent)) {
-        span = handler.handleSend(injector, request, HttpRequestWrapper.wrap(request, host));
-      }
+      Span span = handler.handleSend(injector, request, HttpRequestWrapper.wrap(request, host));
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));

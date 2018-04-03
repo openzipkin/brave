@@ -4,6 +4,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import okhttp3.Call;
@@ -57,7 +58,8 @@ public final class TracingCallFactory implements Call.Factory {
     }
 
     @Override public Response intercept(Chain chain) throws IOException {
-      try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(previous)) {
+      // using maybeScope as when there's no backlog situation the span may already be in scope
+      try (Scope ws = currentTraceContext.maybeScope(previous)) {
         return chain.proceed(chain.request());
       }
     }

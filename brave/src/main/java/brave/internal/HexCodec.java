@@ -1,5 +1,7 @@
 package brave.internal;
 
+import brave.propagation.TraceContext;
+
 // code originally imported from zipkin.Util
 public final class HexCodec {
 
@@ -62,6 +64,26 @@ public final class HexCodec {
     return new String(result);
   }
 
+  public static boolean lowerHexEqualsUnsignedLong(CharSequence lowerHex, long unsigned) {
+    if (lowerHex == null || lowerHex.length() != 16) return false;
+    return lowerHexEqualsUnsignedLong(lowerHex, 0, unsigned);
+  }
+
+  public static boolean lowerHexEqualsTraceId(CharSequence lowerHex, TraceContext context) {
+    if (lowerHex == null) return false;
+    int length = lowerHex.length();
+    long high = context.traceIdHigh(), low = context.traceId();
+
+    int pos = 0;
+    if (length == 32) {
+      if (!lowerHexEqualsUnsignedLong(lowerHex, pos, high)) return false;
+      pos += 16;
+    } else if (length != 16 || high != 0L) {
+      return false;
+    }
+    return lowerHexEqualsUnsignedLong(lowerHex, pos, low);
+  }
+
   /** Inspired by {@code okio.Buffer.writeLong} */
   public static String toLowerHex(long v) {
     char[] data = new char[16];
@@ -87,6 +109,22 @@ public final class HexCodec {
   public static void writeHexByte(char[] data, int pos, byte b) {
     data[pos + 0] = HEX_DIGITS[(b >> 4) & 0xf];
     data[pos + 1] = HEX_DIGITS[b & 0xf];
+  }
+
+  static boolean lowerHexEqualsUnsignedLong(CharSequence data, int pos, long v) {
+    if (!hexEqualsByte(data, pos + 0, (byte) ((v >>> 56L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 2, (byte) ((v >>> 48L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 4, (byte) ((v >>> 40L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 6, (byte) ((v >>> 32L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 8, (byte) ((v >>> 24L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 10, (byte) ((v >>> 16L) & 0xff))) return false;
+    if (!hexEqualsByte(data, pos + 12, (byte) ((v >>> 8L) & 0xff))) return false;
+    return hexEqualsByte(data, pos + 14, (byte) (v & 0xff));
+  }
+
+  static boolean hexEqualsByte(CharSequence data, int pos, byte b) {
+    return data.charAt(pos + 0) == HEX_DIGITS[(b >> 4) & 0xf] &&
+        data.charAt(pos + 1) == HEX_DIGITS[b & 0xf];
   }
 
   HexCodec() {

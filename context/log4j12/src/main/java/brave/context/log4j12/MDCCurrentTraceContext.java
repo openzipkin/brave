@@ -6,6 +6,9 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import org.apache.log4j.MDC;
 
+import static brave.internal.HexCodec.lowerHexEqualsTraceId;
+import static brave.internal.HexCodec.lowerHexEqualsUnsignedLong;
+
 /**
  * Adds {@linkplain MDC} properties "traceId", "parentId" and "spanId" when a {@link brave.Tracer#currentSpan()
  * span is current}. These can be used in log correlation.
@@ -28,24 +31,36 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
     this.delegate = delegate;
   }
 
-  @Override
-  public TraceContext get() {
+  @Override public TraceContext get() {
     return delegate.get();
   }
 
-  @Override
-  public Scope newScope(@Nullable TraceContext currentSpan) {
-    final Object previousTraceId = MDC.get("traceId");
-    final Object previousParentId = MDC.get("parentId");
-    final Object previousSpanId = MDC.get("spanId");
+  @Override public Scope newScope(@Nullable TraceContext currentSpan) {
+    return newScope(currentSpan, getIfString("traceId"), getIfString("spanId"));
+  }
 
+  @Override public Scope maybeScope(@Nullable TraceContext currentSpan) {
+    String previousTraceId = getIfString("traceId");
+    String previousSpanId = getIfString("spanId");
+    if (currentSpan == null) {
+      if (previousTraceId == null) return Scope.NOOP;
+      return newScope(null, previousTraceId, previousSpanId);
+    }
+    if (lowerHexEqualsTraceId(previousTraceId, currentSpan)
+        && lowerHexEqualsUnsignedLong(previousSpanId, currentSpan.spanId())) {
+      return Scope.NOOP;
+    }
+    return newScope(currentSpan, previousTraceId, previousSpanId);
+  }
+
+  // all input parameters are nullable
+  Scope newScope(TraceContext currentSpan, String previousTraceId, String previousSpanId) {
+    String previousParentId = getIfString("parentId");
     if (currentSpan != null) {
-      MDC.put("traceId", currentSpan.traceIdString());
-      long parentId = currentSpan.parentIdAsLong();
-      replace("parentId", parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
-      MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+      maybeReplaceTraceContext(currentSpan, previousTraceId, previousParentId, previousSpanId);
     } else {
       MDC.remove("traceId");
+      MDC.remove("parentId");
       MDC.remove("spanId");
     }
 
@@ -59,6 +74,32 @@ public final class MDCCurrentTraceContext extends CurrentTraceContext {
       }
     }
     return new MDCCurrentTraceContextScope();
+  }
+
+  void maybeReplaceTraceContext(
+      TraceContext currentSpan,
+      String previousTraceId,
+      @Nullable String previousParentId,
+      String previousSpanId
+  ) {
+    boolean sameTraceId = lowerHexEqualsTraceId(previousTraceId, currentSpan);
+    if (!sameTraceId) MDC.put("traceId", currentSpan.traceIdString());
+
+    long parentId = currentSpan.parentIdAsLong();
+    if (parentId == 0L) {
+      MDC.remove("parentId");
+    } else {
+      boolean sameParentId = lowerHexEqualsUnsignedLong(previousParentId, parentId);
+      if (!sameParentId) MDC.put("parentId", HexCodec.toLowerHex(parentId));
+    }
+
+    boolean sameSpanId = lowerHexEqualsUnsignedLong(previousSpanId, currentSpan.spanId());
+    if (!sameSpanId) MDC.put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+  }
+
+  static String getIfString(String key) {
+    Object result = MDC.get(key);
+    return result instanceof String ? (String) result : null;
   }
 
   static void replace(String key, @Nullable Object value) {

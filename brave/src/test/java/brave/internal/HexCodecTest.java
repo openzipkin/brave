@@ -1,7 +1,10 @@
 package brave.internal;
 
+import brave.propagation.TraceContext;
 import org.junit.Test;
 
+import static brave.internal.HexCodec.lowerHexEqualsTraceId;
+import static brave.internal.HexCodec.lowerHexEqualsUnsignedLong;
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static brave.internal.HexCodec.toLowerHex;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,5 +75,48 @@ public class HexCodecTest {
   @Test public void toLowerHex_whenHigh_32Chars() {
     assertThat(toLowerHex(1234L, 5678L))
         .hasToString("00000000000004d2000000000000162e");
+  }
+
+  @Test public void lowerHexEqualsUnsignedLong_minValue() {
+    assertThat(lowerHexEqualsUnsignedLong("7fffffffffffffff", Long.MAX_VALUE))
+        .isTrue();
+  }
+
+  @Test public void lowerHexEqualsUnsignedLong_midValue() {
+    assertThat(lowerHexEqualsUnsignedLong("00000000cafebabe", 3405691582L))
+        .isTrue();
+  }
+
+  @Test public void lowerHexEqualsUnsignedLong_whenNotHigh_16Chars() {
+    TraceContext context = TraceContext.newBuilder()
+        .traceId(12345678L)
+        .spanId(1L)
+        .build();
+    assertThat(lowerHexEqualsTraceId("0000000000bc614e", context))
+        .isTrue();
+    assertThat(lowerHexEqualsTraceId("00000000000000000000000000bc614e", context))
+        .isTrue();
+  }
+
+  @Test public void lowerHexEqualsUnsignedLong_paddedTraceIdOk() {
+    TraceContext context = TraceContext.newBuilder()
+        .traceId(12345678L)
+        .spanId(1L)
+        .build();
+    assertThat(lowerHexEqualsTraceId("00000000000000000000000000bc614e", context))
+        .isTrue();
+  }
+
+  @Test public void lowerHexEqualsUnsignedLong_whenHigh_32Chars() {
+    TraceContext context = TraceContext.newBuilder()
+        .traceIdHigh(1234L)
+        .traceId(5678L)
+        .spanId(1L)
+        .build();
+
+    assertThat(lowerHexEqualsTraceId("000000000000162e", context))
+        .isFalse();
+    assertThat(lowerHexEqualsTraceId("00000000000004d2000000000000162e", context))
+        .isTrue();
   }
 }

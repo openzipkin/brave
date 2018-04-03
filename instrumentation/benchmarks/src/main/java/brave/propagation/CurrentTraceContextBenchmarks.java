@@ -87,6 +87,36 @@ public class CurrentTraceContextBenchmarks {
     }
   }
 
+  @Benchmark public void maybeScope_default() {
+    try (CurrentTraceContext.Scope ws = base.maybeScope(contextWithParent)) {
+    }
+  }
+
+  @Benchmark public void maybeScope_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(contextWithParent)) {
+    }
+  }
+
+  @Benchmark public void maybeScope_redundant_default() {
+    try (CurrentTraceContext.Scope ws = base.maybeScope(context)) {
+    }
+  }
+
+  @Benchmark public void maybeScope_redundant_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(context)) {
+    }
+  }
+
+  @Benchmark public void maybeScope_clear_default() {
+    try (CurrentTraceContext.Scope ws = base.maybeScope(null)) {
+    }
+  }
+
+  @Benchmark public void maybeScope_clear_log4j2() {
+    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(null)) {
+    }
+  }
+
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
