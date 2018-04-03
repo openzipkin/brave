@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import java.io.Closeable;
@@ -31,8 +32,54 @@ public abstract class CurrentTraceContext {
    */
   public abstract Scope newScope(@Nullable TraceContext currentSpan);
 
+  /**
+   * Like {@link #newScope(TraceContext)}, except returns {@link Scope#NOOP} if the given context is
+   * already in scope. This can reduce overhead when scoping callbacks. However, this will not apply
+   * any changes, notably in {@link TraceContext#extra()}. As such, it should be used carefully and
+   * only in conditions where redundancy is possible and the intent is primarily to facilitate
+   * {@link Tracer#currentSpan}. Most often, this is used to eliminate redundant scopes by wrappers.
+   *
+   * <p>For example, RxJava includes hooks to wrap types that represent an asynchronous functional
+   * composition. For example, {@code flowable.parallel().flatMap(Y).sequential()} Assembly hooks
+   * can ensure each stage of this operation can see the initial trace context. However, other tools
+   * can also instrument the stages, including vert.x or even agent instrumentation. When wrapping
+   * callbacks, it can reduce overhead to use {@code maybeScope} as opposed to {@code newScope}.
+   *
+   * <p>Generally speaking, this is best used for wrappers, such as executor services or lifecycle
+   * hooks, which usually have no current trace context when invoked.
+   *
+   * <h3>Implementors note</h3>
+   * <p>For those overriding this method, you must compare {@link TraceContext#traceIdHigh()},
+   * {@link TraceContext#traceId()} and {@link TraceContext#spanId()} to decide if the contexts are
+   * equivalent. Due to details of propagation, other data like parent ID are not considered in
+   * equivalence checks.
+   *
+   * @param currentSpan span to place into scope or null to clear the scope
+   * @return a new scope object or {@link Scope#NOOP} if the input is already the case
+   */
+  public Scope maybeScope(@Nullable TraceContext currentSpan) {
+    TraceContext currentScope = get();
+    if (currentSpan == null) {
+      if (currentScope == null) return Scope.NOOP;
+      return newScope(null);
+    }
+    return currentSpan.equals(currentScope) ? Scope.NOOP : newScope(currentSpan);
+  }
+
   /** A span remains in the scope it was bound to until close is called. */
   public interface Scope extends Closeable {
+    /**
+     * Returned when {@link CurrentTraceContext#maybeScope(TraceContext)} detected scope redundancy.
+     */
+    Scope NOOP = new Scope() {
+      @Override public void close() {
+      }
+
+      @Override public String toString() {
+        return "NoopScope";
+      }
+    };
+
     /** No exceptions are thrown when unbinding a span scope. */
     @Override void close();
   }
@@ -113,7 +160,7 @@ public abstract class CurrentTraceContext {
     final TraceContext invocationContext = get();
     class CurrentTraceContextCallable implements Callable<C> {
       @Override public C call() throws Exception {
-        try (Scope scope = newScope(invocationContext)) {
+        try (Scope scope = maybeScope(invocationContext)) {
           return task.call();
         }
       }
@@ -126,7 +173,7 @@ public abstract class CurrentTraceContext {
     final TraceContext invocationContext = get();
     class CurrentTraceContextRunnable implements Runnable {
       @Override public void run() {
-        try (Scope scope = newScope(invocationContext)) {
+        try (Scope scope = maybeScope(invocationContext)) {
           task.run();
         }
       }

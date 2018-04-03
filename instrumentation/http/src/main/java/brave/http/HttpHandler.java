@@ -21,7 +21,7 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
 
   Span handleStart(Req request, Span span) {
     if (span.isNoop()) return span;
-    Scope ws = maybeNewScope(span, currentTraceContext.get());
+    Scope ws = currentTraceContext.maybeScope(span.context());
     try {
       parser.request(adapter, request, span.customizer());
 
@@ -30,17 +30,11 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
         span.remoteEndpoint(remoteEndpoint.build());
       }
     } finally {
-      if (ws != null) ws.close();
+      ws.close();
     }
 
     // all of the above parsing happened before a timestamp on the span
     return span.start();
-  }
-
-  /** Starts a trace scope unless the current is the same span */
-  Scope maybeNewScope(Span span, @Nullable TraceContext currentScope) {
-    TraceContext spanContext = span.context();
-    return spanContext.equals(currentScope) ? null : currentTraceContext.newScope(spanContext);
   }
 
   /** parses the remote endpoint while the current span is in scope (for logging for example) */
@@ -48,26 +42,21 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
 
   void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
-    TraceContext currentScope = currentTraceContext.get();
     try {
-      Scope ws = maybeNewScope(span, currentScope);
+      Scope ws = currentTraceContext.maybeScope(span.context());
       try {
         parser.response(adapter, response, error, span.customizer());
       } finally {
-        if (ws != null) ws.close(); // close the scope before finishing the span
+        ws.close(); // close the scope before finishing the span
       }
     } finally {
-      if (currentScope != null) {
-        finishInNullScope(span);
-      } else {
-        span.finish();
-      }
+      finishInNullScope(span);
     }
   }
 
   /** Clears the scope to prevent remote reporters from accidentally tracing */
   void finishInNullScope(Span span) {
-    Scope ws = currentTraceContext.newScope(null);
+    Scope ws = currentTraceContext.maybeScope(null);
     try {
       span.finish();
     } finally {

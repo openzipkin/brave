@@ -2,6 +2,7 @@ package brave.test.propagation;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -10,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,13 +21,13 @@ public abstract class CurrentTraceContextTest {
   protected abstract CurrentTraceContext newCurrentTraceContext();
 
   protected final CurrentTraceContext currentTraceContext;
-  protected final TraceContext context;
-  protected final TraceContext context2;
+  protected final TraceContext context =
+      TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).build();
+  protected final TraceContext context2 =
+      context.toBuilder().parentId(context.spanId()).spanId(-2L).build();
 
   protected CurrentTraceContextTest() {
     currentTraceContext = newCurrentTraceContext();
-    context = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
-    context2 = TraceContext.newBuilder().traceId(1L).parentId(1L).spanId(2L).build();
   }
 
   protected void verifyImplicitContext(@Nullable TraceContext context) {
@@ -35,17 +37,90 @@ public abstract class CurrentTraceContextTest {
     assertThat(currentTraceContext.get()).isNull();
   }
 
-  @Test public void scope_retainsContext() {
-    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+  @Test public void newScope_retainsContext() {
+    retainsContext(currentTraceContext.newScope(context));
+  }
+
+  @Test public void maybeScope_retainsContext() {
+    retainsContext(currentTraceContext.maybeScope(context));
+  }
+
+  void retainsContext(Scope scope) {
+    try {
+      assertThat(scope).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
           .isEqualTo(context);
       verifyImplicitContext(context);
+    } finally {
+      scope.close();
     }
   }
 
-  @Test public void scope_canClearScope() {
-    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
-      try (CurrentTraceContext.Scope noScope = currentTraceContext.newScope(null)) {
+  @Test public void newScope_noticesDifferentSpanId() {
+    noticesDifferentSpanId(currentTraceContext.newScope(context));
+  }
+
+  @Test public void maybeScope_noticesDifferentSpanId() {
+    noticesDifferentSpanId(currentTraceContext.maybeScope(context));
+  }
+
+  void noticesDifferentSpanId(Scope scope) {
+    TraceContext differentSpanId = context.toBuilder().spanId(context.spanId() + 1L).build();
+    try (Scope scope2 = currentTraceContext.maybeScope(differentSpanId)) {
+      assertThat(scope).isNotEqualTo(Scope.NOOP);
+      assertThat(currentTraceContext.get())
+          .isEqualTo(differentSpanId);
+      verifyImplicitContext(differentSpanId);
+    } finally {
+      scope.close();
+    }
+  }
+
+  @Test public void newScope_noticesDifferentContext() {
+    noticesDifferentContext(currentTraceContext.newScope(context));
+  }
+
+  @Test public void maybeScope_noticesDifferentContext() {
+    noticesDifferentContext(currentTraceContext.maybeScope(context));
+  }
+
+  void noticesDifferentContext(Scope scope) {
+    try (Scope scope2 = currentTraceContext.maybeScope(context2)) {
+      assertThat(scope).isNotEqualTo(Scope.NOOP);
+      assertThat(currentTraceContext.get())
+          .isEqualTo(context2);
+      verifyImplicitContext(context2);
+    } finally {
+      scope.close();
+    }
+  }
+
+  @Test public void maybeScope_doesntDuplicateContext() {
+    try (Scope scope = currentTraceContext.newScope(context)) {
+      try (Scope scope2 = currentTraceContext.maybeScope(context)) {
+        assertThat(scope2).isEqualTo(Scope.NOOP);
+      }
+    }
+  }
+
+  @Test public void newScope_canClearScope() {
+    canClearScope(() -> currentTraceContext.newScope(null));
+  }
+
+  @Test public void maybeScope_canClearScope() {
+    canClearScope(() -> currentTraceContext.maybeScope(null));
+  }
+
+  @Test public void maybeScope_doesntDuplicateContext_onNull() {
+    try (Scope scope2 = currentTraceContext.maybeScope(null)) {
+      assertThat(scope2).isEqualTo(Scope.NOOP);
+    }
+  }
+
+  void canClearScope(Supplier<Scope> noScoper) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
+      try (Scope noScope = noScoper.get()) {
+        assertThat(scope).isNotEqualTo(Scope.NOOP);
         assertThat(currentTraceContext.get())
             .isNull();
         verifyImplicitContext(null);
@@ -65,7 +140,7 @@ public abstract class CurrentTraceContextTest {
         60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
     // submitting a job grows the pool, attaching the context to its thread
-    try (CurrentTraceContext.Scope scope = inheritableCurrentTraceContext.newScope(context)) {
+    try (Scope scope = inheritableCurrentTraceContext.newScope(context)) {
       assertThat(service.submit(() -> inheritableCurrentTraceContext.get()).get())
           .isEqualTo(context);
     }
@@ -80,7 +155,7 @@ public abstract class CurrentTraceContextTest {
   @Test public void isnt_inheritable() throws Exception {
     ExecutorService service = Executors.newCachedThreadPool();
 
-    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       assertThat(service.submit(() -> {
         verifyImplicitContext(null);
         return currentTraceContext.get();
@@ -97,26 +172,42 @@ public abstract class CurrentTraceContextTest {
     service.shutdownNow();
   }
 
+  @Test public void attachesSpanInCallable_canClear() throws Exception {
+    Callable<?> callable = currentTraceContext.wrap(() -> {
+      assertThat(currentTraceContext.get()).isNull();
+      verifyImplicitContext(null);
+      return true;
+    });
+
+    // Set another span between the time the task was made and executed.
+    try (Scope scope2 = currentTraceContext.newScope(context2)) {
+      callable.call(); // runs assertion
+      verifyImplicitContext(context2);
+    }
+  }
+
   @Test public void attachesSpanInCallable() throws Exception {
     Callable<?> callable;
-    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       callable = currentTraceContext.wrap(() -> {
         assertThat(currentTraceContext.get())
             .isEqualTo(context);
         verifyImplicitContext(context);
         return true;
       });
+
+      callable.call(); // runs assertion in the same scope
     }
 
     // Set another span between the time the task was made and executed.
-    try (CurrentTraceContext.Scope scope2 = currentTraceContext.newScope(context2)) {
+    try (Scope scope2 = currentTraceContext.newScope(context2)) {
       callable.call(); // runs assertion
       verifyImplicitContext(context2);
     }
   }
 
   @Test public void restoresSpanAfterCallable() throws Exception {
-    try (CurrentTraceContext.Scope scope0 = currentTraceContext.newScope(context)) {
+    try (Scope scope0 = currentTraceContext.newScope(context)) {
       attachesSpanInCallable();
       assertThat(currentTraceContext.get())
           .isEqualTo(context);
@@ -126,16 +217,18 @@ public abstract class CurrentTraceContextTest {
 
   @Test public void attachesSpanInRunnable() throws Exception {
     Runnable runnable;
-    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       runnable = currentTraceContext.wrap(() -> {
         assertThat(currentTraceContext.get())
             .isEqualTo(context);
         verifyImplicitContext(context);
       });
+
+      runnable.run(); // runs assertion in the same scope
     }
 
     // Set another span between the time the task was made and executed.
-    try (CurrentTraceContext.Scope scope2 = currentTraceContext.newScope(context2)) {
+    try (Scope scope2 = currentTraceContext.newScope(context2)) {
       runnable.run(); // runs assertion
       verifyImplicitContext(context2);
     }
@@ -144,7 +237,7 @@ public abstract class CurrentTraceContextTest {
   @Test public void restoresSpanAfterRunnable() throws Exception {
     TraceContext context0 = TraceContext.newBuilder().traceId(3L).spanId(3L).build();
 
-    try (CurrentTraceContext.Scope scope0 = currentTraceContext.newScope(context0)) {
+    try (Scope scope0 = currentTraceContext.newScope(context0)) {
       attachesSpanInRunnable();
       assertThat(currentTraceContext.get())
           .isEqualTo(context0);
