@@ -290,20 +290,23 @@ public class TracerTest {
   }
 
   @Test public void currentSpanCustomizer_noop_when_unsampled() {
-    Span parent = tracer.withSampler(Sampler.NEVER_SAMPLE).newTrace();
-
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.withSampler(Sampler.NEVER_SAMPLE).startScopedSpan("parent");
+    try {
       assertThat(tracer.currentSpanCustomizer())
           .isSameAs(NoopSpanCustomizer.INSTANCE);
+    } finally {
+      parent.finish();
     }
   }
 
   @Test public void currentSpanCustomizer_real_when_sampled() {
-    Span parent = tracer.newTrace();
+    ScopedSpan parent = tracer.startScopedSpan("parent");
 
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try {
       assertThat(tracer.currentSpanCustomizer())
           .isInstanceOf(RealSpanCustomizer.class);
+    } finally {
+      parent.finish();
     }
   }
 
@@ -407,6 +410,39 @@ public class TracerTest {
 
     assertThat(tracer.nextSpan(extracted).context().extra())
         .containsExactly(1L);
+  }
+
+  @Test public void startScopedSpan_isInScope() {
+    RealScopedSpan current = (RealScopedSpan) tracer.startScopedSpan("foo");
+
+    try {
+      assertThat(tracer.currentSpan().context())
+          .isEqualTo(current.context);
+      assertThat(tracer.currentSpanCustomizer())
+          .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
+    } finally {
+      current.finish();
+    }
+
+    // context was cleared
+    assertThat(tracer.currentSpan()).isNull();
+  }
+
+  @Test public void startScopedSpan_noopIsInScope() {
+    tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
+    NoopScopedSpan current = (NoopScopedSpan) tracer.startScopedSpan("foo");
+
+    try {
+      assertThat(tracer.currentSpan().context())
+          .isEqualTo(current.context);
+      assertThat(tracer.currentSpanCustomizer())
+          .isSameAs(NoopSpanCustomizer.INSTANCE);
+    } finally {
+      current.finish();
+    }
+
+    // context was cleared
+    assertThat(tracer.currentSpan()).isNull();
   }
 
   @Test public void withSpanInScope() {

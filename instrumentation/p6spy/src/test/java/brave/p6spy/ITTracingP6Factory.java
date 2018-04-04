@@ -1,6 +1,6 @@
 package brave.p6spy;
 
-import brave.Tracer.SpanInScope;
+import brave.ScopedSpan;
 import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
@@ -47,8 +47,8 @@ public class ITTracingP6Factory {
 
   @Test
   public void makesChildOfCurrentSpan() throws Exception {
-    brave.Span parent = tracing.tracer().newTrace().name("test").start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(parent)) {
+    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
+    try {
       prepareExecuteSelect(QUERY);
     } finally {
       parent.finish();

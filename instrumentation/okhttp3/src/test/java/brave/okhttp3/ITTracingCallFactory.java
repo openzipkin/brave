@@ -1,5 +1,6 @@
 package brave.okhttp3;
 
+import brave.ScopedSpan;
 import brave.Tracer;
 import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
@@ -70,8 +71,8 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
             .build()))
         .build());
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       get(client, "/foo");
     } finally {
       parent.finish();
@@ -81,7 +82,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(request.getHeader("my-id"));
 
-    // we report one local and one client span
+    // we report one in-process and one RPC client span
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);

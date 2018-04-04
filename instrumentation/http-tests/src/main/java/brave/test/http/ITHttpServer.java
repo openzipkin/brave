@@ -142,7 +142,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   /**
    * This ensures thread-state is propagated from trace interceptors to user code. The endpoint
-   * "/child" is expected to create a local span. When this works, it should be a child of the
+   * "/child" is expected to create an in-process span. When this works, it should be a child of the
    * "current span", in this case the span representing an incoming server request. When thread
    * state isn't managed properly, the child span will appear as a new trace.
    */

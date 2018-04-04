@@ -14,7 +14,6 @@ import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Endpoint;
@@ -24,7 +23,22 @@ import zipkin2.reporter.Reporter;
  * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
  * can be created to allocate latency relating to outgoing requests.
  *
- * Here's a typical example of synchronous tracing from perspective of the tracer:
+ * When tracing single-threaded code, just run it inside a scoped span:
+ * <pre>{@code
+ * // Start a new trace or a span within an existing trace representing an operation
+ * ScopedSpan span = tracer.startScopedSpan("encode");
+ * try {
+ *   // The span is in "scope" so that downstream code such as loggers can see trace IDs
+ *   return encoder.encode();
+ * } catch (RuntimeException | Error e) {
+ *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
+ *   throw e;
+ * } finally {
+ *   span.finish();
+ * }
+ * }</pre>
+ *
+ * <p>When you need more features, or finer control, use the {@linkplain Span} type:
  * <pre>{@code
  * // Start a new trace or a span within an existing trace representing an operation
  * Span span = tracer.nextSpan().name("encode").start();
@@ -39,7 +53,10 @@ import zipkin2.reporter.Reporter;
  * }
  * }</pre>
  *
+ * <p>Both of the above examples report the exact same span on finish!
+ *
  * @see Span
+ * @see ScopedSpan
  * @see Propagation
  */
 public class Tracer {
@@ -160,8 +177,8 @@ public class Tracer {
   }
 
   /**
-   * Use this to temporarily override the sampler used when starting new local traces. This can also
-   * serve advanced scenarios, such as {@link DeclarativeSampler declarative sampling}.
+   * Use this to temporarily override the sampler used when starting new traces. This also serves
+   * advanced scenarios, such as {@link DeclarativeSampler declarative sampling}.
    *
    * <p>Simple example:
    * <pre>{@code
@@ -199,7 +216,7 @@ public class Tracer {
    * #nextSpan()}.
    */
   public Span newTrace() {
-    return toSpan(newRootContext(SamplingFlags.EMPTY, Collections.emptyList()));
+    return toSpan(newContextBuilder(null, sampler).build());
   }
 
   /**
@@ -250,7 +267,7 @@ public class Tracer {
    */
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
-    return nextSpan(TraceContextOrSamplingFlags.create(parent));
+    return toSpan(newContextBuilder(parent, sampler).build());
   }
 
   /**
@@ -278,39 +295,35 @@ public class Tracer {
    * @see TraceContextOrSamplingFlags
    */
   public Span nextSpan(TraceContextOrSamplingFlags extracted) {
-    return toSpan(nextTraceContext(extracted));
-  }
-
-  TraceContext nextTraceContext(TraceContextOrSamplingFlags extracted) {
     TraceContext parent = extracted.context();
     if (extracted.samplingFlags() != null) {
       TraceContext implicitParent = currentTraceContext.get();
       if (implicitParent == null) {
-        return newRootContext(extracted.samplingFlags(), extracted.extra());
+        return toSpan(newContextBuilder(null, extracted.samplingFlags())
+            .extra(extracted.extra()).build());
       }
       // fall through, with an implicit parent, not an extracted one
       parent = appendExtra(implicitParent, extracted.extra());
     }
-    long nextId = nextId();
     if (parent != null) {
-      Boolean sampled = parent.sampled();
-      if (sampled == null) sampled = sampler.isSampled(parent.traceId());
-      return parent.toBuilder() // copies "extra" from the parent
-          .spanId(nextId)
-          .parentId(parent.spanId())
-          .sampled(sampled)
-          .build();
+      TraceContext.Builder builder;
+      if (extracted.samplingFlags() != null) {
+        builder = newContextBuilder(parent, extracted.samplingFlags());
+      } else {
+        builder = newContextBuilder(parent, sampler);
+      }
+      return toSpan(builder.build());
     }
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (extracted.traceIdContext() != null) {
       Boolean sampled = traceIdContext.sampled();
       if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
-      return TraceContext.newBuilder()
+      return toSpan(TraceContext.newBuilder()
           .sampled(sampled)
           .debug(traceIdContext.debug())
           .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
-          .spanId(nextId)
-          .extra(extracted.extra()).build();
+          .spanId(nextId())
+          .extra(extracted.extra()).build());
     }
     // TraceContextOrSamplingFlags is a union of 3 types, we've checked all three
     throw new AssertionError("should not reach here");
@@ -318,7 +331,7 @@ public class Tracer {
 
   /** @deprecated Prefer {@link #withSampler(Sampler)} */
   @Deprecated public Span newTrace(SamplingFlags samplingFlags) {
-    return toSpan(newRootContext(samplingFlags, Collections.emptyList()));
+    return toSpan(newContextBuilder(null, samplingFlags).build());
   }
 
   /** Converts the context as-is to a Span object */
@@ -329,27 +342,6 @@ public class Tracer {
       return RealSpan.create(decorated, recorder, errorParser);
     }
     return NoopSpan.create(decorated);
-  }
-
-  TraceContext newRootContext(SamplingFlags samplingFlags, List<Object> extra) {
-    long nextId = nextId();
-    Boolean sampled = samplingFlags.sampled();
-    if (sampled == null) sampled = sampler.isSampled(nextId);
-    return TraceContext.newBuilder()
-        .sampled(sampled)
-        .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
-        .spanId(nextId)
-        .debug(samplingFlags.debug())
-        .extra(extra).build();
-  }
-
-  /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */
-  long nextId() {
-    long nextId = Platform.get().randomLong();
-    while (nextId == 0L) {
-      nextId = Platform.get().randomLong();
-    }
-    return nextId;
   }
 
   /**
@@ -386,6 +378,9 @@ public class Tracer {
    * }
    * }</pre>
    *
+   * <p>When tracing in-process commands, prefer {@link #startScopedSpan(String)} which scopes by
+   * default.
+   *
    * <p>Note: While downstream code might affect the span, calling this method, and calling close on
    * the result have no effect on the input. For example, calling close on the result does not
    * finish the span. Not only is it safe to call close, you must call close to end the scope, or
@@ -421,10 +416,58 @@ public class Tracer {
     return currentContext != null ? toSpan(currentContext) : null;
   }
 
-  /** Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't. */
+  /**
+   * Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't.
+   *
+   * <p>Prefer {@link #startScopedSpan(String)} if you are tracing a synchronous function or code
+   * block.
+   */
   public Span nextSpan() {
-    TraceContext parent = currentTraceContext.get();
-    return parent == null ? newTrace() : newChild(parent);
+    return toSpan(newContextBuilder(currentTraceContext.get(), sampler).build());
+  }
+
+  /**
+   * Returns a new child span if there's a {@link #currentSpan()} or a new trace if there isn't. The
+   * result is the "current span" until {@link ScopedSpan#finish()} is called.
+   *
+   * Here's an example:
+   * <pre>{@code
+   * ScopedSpan span = tracer.startScopedSpan("encode");
+   * try {
+   *   // The span is in "scope" so that downstream code such as loggers can see trace IDs
+   *   return encoder.encode();
+   * } catch (RuntimeException | Error e) {
+   *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
+   *   throw e;
+   * } finally {
+   *   span.finish();
+   * }
+   * }</pre>
+   */
+  public ScopedSpan startScopedSpan(String name) {
+    return startScopedSpanWithParent(name, currentTraceContext.get());
+  }
+
+  /**
+   * Same as {@link #startScopedSpan(String)}, except ignores the current trace context.
+   *
+   * <p>Use this when you are creating a scoped span in a method block where the parent was created.
+   * You can also use this to force a new trace by passing null parent.
+   */
+  // this api is needed to make tools such as executors which need to carry the invocation context
+  public ScopedSpan startScopedSpanWithParent(String name, @Nullable TraceContext parent) {
+    if (name == null) throw new NullPointerException("name == null");
+    TraceContext context = propagationFactory.decorate(newContextBuilder(parent, sampler).build());
+    CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
+    ScopedSpan result;
+    if (!noop.get() && Boolean.TRUE.equals(context.sampled())) {
+      result = new RealScopedSpan(context, scope, recorder, errorParser);
+      recorder.name(context, name);
+      recorder.start(context);
+    } else {
+      result = new NoopScopedSpan(context, scope);
+    }
+    return result;
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -456,6 +499,40 @@ public class Tracer {
         + (noop.get() ? "noop=true, " : "")
         + "reporter=" + reporter
         + "}";
+  }
+
+  TraceContext.Builder newContextBuilder(@Nullable TraceContext parent, Sampler sampler) {
+    long nextId = nextId();
+    if (parent != null) {
+      Boolean sampled = parent.sampled();
+      if (sampled == null) sampled = sampler.isSampled(parent.traceId());
+      return parent.toBuilder() // copies "extra" from the parent
+          .spanId(nextId)
+          .parentId(parent.spanId())
+          .sampled(sampled);
+    }
+    return TraceContext.newBuilder()
+        .sampled(sampler.isSampled(nextId))
+        .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
+        .spanId(nextId);
+  }
+
+  TraceContext.Builder newContextBuilder(TraceContext parent, SamplingFlags samplingFlags) {
+    return newContextBuilder(parent, samplerOverride(samplingFlags)).debug(samplingFlags.debug());
+  }
+
+  Sampler samplerOverride(SamplingFlags samplingFlags) {
+    Boolean sampled = samplingFlags.sampled();
+    return sampled == null ? sampler : sampled ? Sampler.ALWAYS_SAMPLE : Sampler.NEVER_SAMPLE;
+  }
+
+  /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */
+  long nextId() {
+    long nextId = Platform.get().randomLong();
+    while (nextId == 0L) {
+      nextId = Platform.get().randomLong();
+    }
+    return nextId;
   }
 
   static TraceContext appendExtra(TraceContext context, List<Object> extra) {

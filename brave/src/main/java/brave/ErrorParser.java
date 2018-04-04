@@ -1,13 +1,19 @@
 package brave;
 
 /** This is a simplified type used for parsing errors. It only allows annotations or tags. */
-// This implementation allows a future type ScopedSpan which will not support backdated annotations
+// This implementation works with SpanCustomizer and ScopedSpan which don't share a common interface
+// yet both support tag and annotations.
 public class ErrorParser {
   /** Adds no tags to the span representing the operation in error. */
   public static final ErrorParser NOOP = new ErrorParser() {
     @Override protected void error(Throwable error, Object customizer) {
     }
   };
+
+  /** Used to parse errors on a subtype of {@linkplain ScopedSpan} */
+  public final void error(Throwable error, ScopedSpan scopedSpan) {
+    error(error, (Object) scopedSpan);
+  }
 
   /** Used to parse errors on a subtype of {@linkplain SpanCustomizer} */
   public final void error(Throwable error, SpanCustomizer customizer) {
@@ -28,6 +34,8 @@ public class ErrorParser {
   protected final void annotate(Object span, String value) {
     if (span instanceof SpanCustomizer) {
       ((SpanCustomizer) span).annotate(value);
+    } else if (span instanceof ScopedSpan) {
+      ((ScopedSpan) span).annotate(value);
     }
   }
 
@@ -35,6 +43,8 @@ public class ErrorParser {
   protected final void tag(Object span, String key, String message) {
     if (span instanceof SpanCustomizer) {
       ((SpanCustomizer) span).tag(key, message);
+    } else if (span instanceof ScopedSpan) {
+      ((ScopedSpan) span).tag(key, message);
     }
   }
 }

@@ -18,8 +18,8 @@ import java.util.Deque;
  * (like `onStart()`) and end the scope in another callback (like `onFinish()`).
  *
  * <p>Provided the library guarantees these run on the same thread, you can simply propagate the
- * result of {@link Tracer#withSpanInScope(Span)} from the starting callback to the closing one.
- * This is typically done with a request-scoped attribute.
+ * result of {@link Tracer#startScopedSpan(String)} or {@link Tracer#withSpanInScope(Span)} from the
+ * starting callback to the closing one. This is typically done with a request-scoped attribute.
  *
  * Here's an example:
  * <pre>{@code

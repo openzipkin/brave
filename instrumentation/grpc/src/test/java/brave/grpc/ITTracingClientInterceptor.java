@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.ScopedSpan;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
@@ -26,9 +27,7 @@ import io.grpc.examples.helloworld.HelloRequest;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
@@ -116,8 +115,8 @@ public class ITTracingClientInterceptor {
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     } finally {
       parent.finish();
@@ -129,7 +128,7 @@ public class ITTracingClientInterceptor {
     assertThat(context.parentId())
         .isEqualTo(parent.context().spanId());
 
-    // we report one local and one client span
+    // we report one in-process and one RPC client span
     assertThat(Arrays.asList(spans.take(), spans.take()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);
@@ -143,16 +142,16 @@ public class ITTracingClientInterceptor {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
     GreeterGrpc.GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(client);
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       futureStub.sayHello(HELLO_REQUEST);
       futureStub.sayHello(HELLO_REQUEST);
     } finally {
       parent.finish();
     }
 
-    brave.Span otherSpan = tracer.newTrace().name("test2").start();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(otherSpan)) {
+    ScopedSpan otherSpan = tracer.startScopedSpan("test2");
+    try {
       for (int i = 0; i < 2; i++) {
         TraceContext context = server.takeRequest().context();
         assertThat(context.traceId())
