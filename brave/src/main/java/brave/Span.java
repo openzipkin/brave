@@ -6,19 +6,22 @@ import zipkin2.Endpoint;
 /**
  * Used to model the latency of an operation.
  *
- * <p>For example, to trace a local function call.
+ * Here's a typical example of synchronous tracing from perspective of the span:
  * <pre>{@code
- * Span span = tracer.newTrace().name("encode").start();
- * try {
- *   doSomethingExpensive();
+ * // Note span methods chain. Explicitly start the span when ready.
+ * Span span = tracer.nextSpan().name("encode").start();
+ * // A span is not responsible for making itself current (scoped); the tracer is
+ * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+ *   return encoder.encode();
  * } catch (RuntimeException | Error e) {
- *   span.error(e);
+ *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
  *   throw e;
  * } finally {
- *   span.finish();
+ *   span.finish(); // finish - start = the duration of the operation in microseconds
  * }
  * }</pre>
- * This captures duration of {@link #start()} until {@link #finish()} is called.
+ *
+ * <p>This captures duration of {@link #start()} until {@link #finish()} is called.
  */
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it

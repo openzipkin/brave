@@ -56,12 +56,8 @@ public class GrpcParser {
     }
   }
 
-  /**
-   * This is used when there is an unexpected error present in the operation.
-   *
-   * <p>Conventionally associated with the tag key "error"
-   */
-  protected void onError(Throwable error, SpanCustomizer span) {
+  /** @deprecated please use {@link Tracing.Builder#errorParser(ErrorParser)} instead */
+  @Deprecated protected void onError(Throwable error, SpanCustomizer span) {
     errorParser().error(error, span);
   }
 }
