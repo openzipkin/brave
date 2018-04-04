@@ -67,7 +67,12 @@ public abstract class Span implements SpanCustomizer {
    */
   public abstract Span start();
 
-  /** Like {@link #start()}, except with a given timestamp in microseconds. */
+  /**
+   * Like {@link #start()}, except with a given timestamp in microseconds.
+   *
+   * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must
+   * use this, generate the timestamp using {@link Tracing#clock(TraceContext)}.
+   */
   public abstract Span start(long timestamp);
 
   /** {@inheritDoc} */
@@ -83,7 +88,12 @@ public abstract class Span implements SpanCustomizer {
   /** {@inheritDoc} */
   @Override public abstract Span annotate(String value);
 
-  /** {@inheritDoc} */
+  /**
+   * Like {@link #annotate(String)}, except with a given timestamp in microseconds.
+   *
+   * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must
+   * use this, generate the timestamp using {@link Tracing#clock(TraceContext)}.
+   */
   @Override public abstract Span annotate(long timestamp, String value);
 
   /** {@inheritDoc} */
@@ -116,6 +126,9 @@ public abstract class Span implements SpanCustomizer {
    *
    * <p>{@link zipkin.Span#duration Zipkin's span duration} is derived by subtracting the start
    * timestamp from this, and set when appropriate.
+   *
+   * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must
+   * use this, generate the timestamp using {@link Tracing#clock(TraceContext)}.
    */
   // Design note: This differs from Brave 3's LocalTracer which completes with a given duration.
   // This was changed for a few use cases.

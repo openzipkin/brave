@@ -48,6 +48,8 @@ public interface SpanCustomizer {
    */
   SpanCustomizer annotate(String value);
 
-  /** Like {@link #annotate(String)}, except with a given timestamp in microseconds. */
-  SpanCustomizer annotate(long timestamp, String value);
+  /** @deprecated use {@link #annotate(String)} as this can result in clock skew */
+  // BRAVE5: remove this: backdating ops should only be available on Span, as it isn't reasonable
+  // for those only having a reference to SpanCustomizer to have a correct clock for the trace.
+  @Deprecated SpanCustomizer annotate(long timestamp, String value);
 }
