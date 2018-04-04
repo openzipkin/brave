@@ -63,30 +63,42 @@ interest or add tags containing details or lookup keys.
 Spans have a context which includes trace identifiers that place it at
 the correct spot in the tree representing the distributed operation.
 
-### Local Tracing
+### In-process Tracing
 
-When tracing local code, just run it inside a span.
+When tracing code that never leaves your process, run it inside a scoped span.
 ```java
-// start a new trace or a span within an existing trace representing an operation
-Span span = tracer.nextSpan().name("encode").start();
-// put the span in "scope" so that downstream code such as loggers can see trace IDs
-try (SpanInScope ws = tracer.withSpanInScope(span)) {
+// Start a new trace or a span within an existing trace representing an operation
+ScopedSpan span = tracer.startScopedSpan("encode");
+try {
+  // The span is in "scope" meaning downstream code such as loggers can see trace IDs
   return encoder.encode();
 } catch (RuntimeException | Error e) {
-  span.error(e); // if you don't catch exceptions, you won't know the operation failed!
+  span.error(e); // Unless you handle exceptions, you might not know the operation failed!
   throw e;
 } finally {
-  span.finish();  // note the scope is independent of the span
+  span.finish(); // always finish the span
 }
 ```
 
+When you need more features, or finer control, use the `Span` type:
+```java
+// Start a new trace or a span within an existing trace representing an operation
+Span span = tracer.nextSpan().name("encode").start();
+// Put the span in "scope" so that downstream code such as loggers can see trace IDs
+try (SpanInScope ws = tracer.withSpanInScope(span)) {
+  return encoder.encode();
+} catch (RuntimeException | Error e) {
+  span.error(e); // Unless you handle exceptions, you might not know the operation failed!
+  throw e;
+} finally {
+  span.finish(); // note the scope is independent of the span. Always finish a span.
+}
+```
+
+Both of the above examples report the exact same span on finish!
+
 In the above example, the span will be either a new root span or the
 next child in an existing trace. How this works is [described later](#current-span).
-If you need to be more explicit, call `newChild` or `newTrace` instead.
-
-```java
-Span span = tracer.newChild(root.context()).name("encode").start();
-```
 
 ### Customizing spans
 Once you have a span, you can add tags to it, which can be used as lookup
@@ -173,7 +185,7 @@ span.tag("error", error.getCode());
 span.finish();
 ```
 
-#### One-Way tracing
+#### One-Way RPC tracing
 
 Sometimes you need to model an asynchronous operation, where there is a
 request, but no response. In normal RPC tracing, you use `span.finish()`
@@ -248,11 +260,11 @@ DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRat
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
   // When there is no trace in progress, this decides using an annotation
   Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-  Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
+  Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
 
   // This code looks the same as if there was no declarative override
-  Span span = tracer.nextSpan().name("").start();
-  try (SpanInScope ws = tracer.withSpanInScope(span)) {
+  ScopedSpan span = tracer.startScopedSpan(spanName(pjp));
+  try {
     return pjp.proceed();
   } catch (RuntimeException | Error e) {
     span.error(e);
@@ -513,16 +525,29 @@ c.setExecutorService(currentTraceContext.executorService(realExecutorService));
 ```
 
 ### Setting a span in scope manually
-
 When writing new instrumentation, it is important to place a span you
 created in scope as the current span. Not only does this allow users to
 access it with `Tracer.currentSpanCustomizer()`, but it also allows
 customizations like SLF4J MDC to see the current trace IDs.
 
-`Tracer.withSpanInScope(Span)` facilitates this and is most conveniently
-employed via the try-with-resources idiom. Whenever external code might
-be invoked (such as proceeding an interceptor or otherwise), place the
-span in scope like this.
+The easiest way to scope a span is via `Tracer.startScopedSpan(name)`:
+```java
+ScopedSpan span = tracer.startScopedSpan("encode");
+try {
+  // The span is in "scope" meaning downstream code such as loggers can see trace IDs
+  return encoder.encode();
+} catch (RuntimeException | Error e) {
+  span.error(e); // Unless you handle exceptions, you might not know the operation failed!
+  throw e;
+} finally {
+  span.finish(); // always finish the span
+}
+```
+
+If doing RPC or otherwise advanced tracing, `Tracer.withSpanInScope(Span)`
+scopes an existing span via the try-with-resources idiom. Whenever
+external code might be invoked (such as proceeding an interceptor or
+otherwise), place the span in scope like this.
 
 ```java
 try (SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -703,8 +728,8 @@ Brave brave3 = TracerAdapter.newBrave(brave4.tracer());
 
 ### Converting between types
 Those coding directly to both apis can use `TracerAdapter.toSpan` to
-navigate between span types. This is useful when working with client and
-local spans.
+navigate between span types. This is useful when working with client RPC
+and in-process (local) spans.
 
 If you have a reference to a Brave 3 Span, you can convert like this:
 ```java
@@ -791,6 +816,18 @@ is derived from OpenTracing, narrowed to more cleanly match Zipkin's
 abstraction. As a result, a bridge from Brave 4 to OpenTracing v0.20.2
 is relatively little code. It should be able to implement future
 versions of OpenTracing as well.
+
+### ScopedSpan type
+Brave 4.19 introduced `ScopedSpan` which derives influence primarily from
+[OpenCensus SpanBuilder.startScopedSpan() Api](https://github.com/census-instrumentation/opencensus-java/blob/f852100ad9b77522fabd3c0b29e78202aed3a26e/api/src/main/java/io/opencensus/trace/SpanBuilder.java#L229), a convenience type to
+start work and ensure scope is visible downstream. One main difference here is
+we assume the scoped span is used in the same thread, so mark it as such. Also,
+we reduce the size of the api to help secure users against code drift.
+
+### Error Handling
+Brave 4.19 added `ErrorParser`, internally used by `Span.error(Throwable)`. This
+design incubated in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth) prior to becoming a primary type here.
+Our care and docs around error handling in general is credit to [Nike Wingtips](https://github.com/Nike-Inc/wingtips#warning-about-error-handling-when-using-try-with-resources-to-autoclose-spans).
 
 ### Recorder architecture
 Much of Brave 4's architecture is borrowed from Finagle, whose design

@@ -1,6 +1,6 @@
 package brave.http;
 
-import brave.Tracer;
+import brave.ScopedSpan;
 import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -56,11 +56,13 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_makesAChild() {
-    brave.Span parent = httpTracing.tracing().tracer().newTrace();
-    try (Tracer.SpanInScope ws = httpTracing.tracing().tracer().withSpanInScope(parent)) {
+    ScopedSpan parent = httpTracing.tracing().tracer().startScopedSpan("test");
+    try {
       assertThat(handler.handleSend(injector, request))
           .extracting(s -> s.isNoop(), s -> s.context().parentId())
           .containsExactly(false, parent.context().spanId());
+    } finally {
+      parent.finish();
     }
   }
 

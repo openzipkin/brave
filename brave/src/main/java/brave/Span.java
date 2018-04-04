@@ -22,6 +22,8 @@ import zipkin2.Endpoint;
  * }</pre>
  *
  * <p>This captures duration of {@link #start()} until {@link #finish()} is called.
+ *
+ * <p>Note: When only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
  */
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it

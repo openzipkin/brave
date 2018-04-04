@@ -1,6 +1,6 @@
 package brave.dubbo.rpc;
 
-import brave.Tracer;
+import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
@@ -9,7 +9,6 @@ import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
 import java.util.Arrays;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,8 +41,8 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
-    brave.Span parent = tracing.tracer().newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(parent)) {
+    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
+    try {
       client.get().sayHello("jorge");
     } finally {
       parent.finish();
@@ -55,7 +54,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThat(context.parentId())
         .isEqualTo(parent.context().spanId());
 
-    // we report one local and one client span
+    // we report one in-process and one RPC client span
     assertThat(Arrays.asList(spans.take(), spans.take()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);
@@ -68,24 +67,16 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   @Test public void usesParentFromInvocationTime() throws Exception {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
 
-    brave.Span parent = tracing.tracer().newTrace().name("test").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(parent)) {
-      RpcContext.getContext().asyncCall(new Callable<String>() {
-        public String call() throws Exception {
-          return client.get().sayHello("jorge");
-        }
-      });
-      RpcContext.getContext().asyncCall(new Callable<String>() {
-        public String call() throws Exception {
-          return client.get().sayHello("romeo");
-        }
-      });
+    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
+    try {
+      RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"));
+      RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
     } finally {
       parent.finish();
     }
 
-    brave.Span otherSpan = tracing.tracer().newTrace().name("test2").start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(otherSpan)) {
+    ScopedSpan otherSpan = tracing.tracer().startScopedSpan("test2");
+    try {
       for (int i = 0; i < 2; i++) {
         TraceContext context = server.takeRequest().context();
         assertThat(context.traceId())
@@ -97,7 +88,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       otherSpan.finish();
     }
 
-    // Check we reported 2 local spans and 2 client spans
+    // Check we reported 2 in-process spans and 2 client spans
     assertThat(Arrays.asList(spans.take(), spans.take(), spans.take(), spans.take()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);

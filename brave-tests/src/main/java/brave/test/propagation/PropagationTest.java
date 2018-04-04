@@ -93,7 +93,7 @@ public abstract class PropagationTest<K> {
   }
 
   /**
-   * When the caller propagates IDs, but not a sampling decision, the local process should decide.
+   * When the caller propagates IDs, but not a sampling decision, the current process should decide.
    */
   @Test public void verifyRoundTrip_externallyProvidedIds() {
     inject(map, "0000000000000001", null, "0000000000000001", null, null);

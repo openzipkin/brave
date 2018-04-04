@@ -1,7 +1,7 @@
 package brave.p6spy;
 
+import brave.ScopedSpan;
 import brave.Span;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.sampler.Sampler;
 import com.p6spy.engine.common.ConnectionInformation;
@@ -138,11 +138,13 @@ public class TracingJdbcEventListenerTest {
 
   @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
     Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, new ArrayList<>()).build();
-    Span span = tracing.tracer().nextSpan().start();
-    try (SpanInScope spanInScope = tracing.tracer().withSpanInScope(span)) {
+    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
+    try {
       TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);
       listener.onAfterAnyExecute(statementInformation, 1, null);
       listener.onAfterAnyExecute(statementInformation, 1, null);
+    } finally {
+      parent.finish();
     }
   }
 }

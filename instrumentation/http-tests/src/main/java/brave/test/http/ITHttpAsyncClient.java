@@ -1,7 +1,7 @@
 package brave.test.http;
 
+import brave.ScopedSpan;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.internal.HexCodec;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -25,16 +25,16 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     server.enqueue(new MockResponse().setBodyDelay(300, TimeUnit.MILLISECONDS));
     server.enqueue(new MockResponse());
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       getAsync(client, "/items/1");
       getAsync(client, "/items/2");
     } finally {
       parent.finish();
     }
 
-    brave.Span otherSpan = tracer.newTrace().name("test2").start();
-    try (SpanInScope ws = tracer.withSpanInScope(otherSpan)) {
+    ScopedSpan otherSpan = tracer.startScopedSpan("test2");
+    try {
       for (int i = 0; i < 2; i++) {
         RecordedRequest request = server.takeRequest();
         assertThat(request.getHeader("x-b3-traceId"))
@@ -46,7 +46,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       otherSpan.finish();
     }
 
-    // Check we reported 2 local spans and 2 client spans
+    // Check we reported 2 in-process spans and 2 RPC client spans
     assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);

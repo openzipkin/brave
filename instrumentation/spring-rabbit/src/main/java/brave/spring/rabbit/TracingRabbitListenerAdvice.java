@@ -77,7 +77,7 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
         consumerSpan.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
       }
       consumerSpan.finish();
-      listenerSpan.start();
+      listenerSpan.start(); // not using scoped span as we want to start late
     }
 
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {

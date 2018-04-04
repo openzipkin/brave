@@ -1,7 +1,7 @@
 package brave.features.sampler;
 
+import brave.ScopedSpan;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
@@ -86,8 +86,8 @@ public class AspectJSamplerTest {
       Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
 
       // This code looks the same as if there was no declarative override
-      brave.Span span = tracer.nextSpan().name("").start();
-      try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      ScopedSpan span = tracer.startScopedSpan("");
+      try {
         return pjp.proceed();
       } catch (RuntimeException | Error e) {
         span.error(e);

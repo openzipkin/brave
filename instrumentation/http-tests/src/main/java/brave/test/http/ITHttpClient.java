@@ -1,8 +1,8 @@
 package brave.test.http;
 
+import brave.ScopedSpan;
 import brave.SpanCustomizer;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.http.HttpAdapter;
 import brave.http.HttpClientParser;
 import brave.http.HttpRuleSampler;
@@ -65,8 +65,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse());
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       get(client, "/foo");
     } finally {
       parent.finish();
@@ -87,8 +87,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse());
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       ExtraFieldPropagation.set(parent.context(), EXTRA_KEY, "joey");
       get(client, "/foo");
     } finally {
@@ -98,7 +98,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(server.takeRequest().getHeader(EXTRA_KEY))
         .isEqualTo("joey");
 
-    // we report one local and one client span
+    // we report one in-process and one RPC client span
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);
@@ -108,8 +108,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     Tracer tracer = httpTracing.tracing().tracer().withSampler(Sampler.NEVER_SAMPLE);
     server.enqueue(new MockResponse());
 
-    brave.Span parent = tracer.nextSpan().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       ExtraFieldPropagation.set(parent.context(), EXTRA_KEY, "joey");
       get(client, "/foo");
     } finally {
@@ -245,8 +245,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
         .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
-    brave.Span parent = tracer.newTrace().name("test").start();
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
       get(client, "/foo");
     } catch (RuntimeException e) {
       // some think 404 is an exception
