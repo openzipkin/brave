@@ -117,9 +117,8 @@ public class HttpParser {
       SpanCustomizer customizer) {
     if (error != null) {
       errorParser().error(error, customizer);
-    } else if (httpStatus != null && httpStatus != 0) {
-      String message = httpStatus < 200 || httpStatus > 399 ? String.valueOf(httpStatus) : null;
-      customizer.tag("error", message);
+    } else if (httpStatus != null && (httpStatus < 200 || httpStatus > 399)) {
+      customizer.tag("error", String.valueOf(httpStatus));
     }
   }
 }
