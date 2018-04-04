@@ -138,9 +138,9 @@ public final class Tracer {
   final CurrentTraceContext currentTraceContext;
   final boolean traceId128Bit, supportsJoin;
   final AtomicBoolean noop;
-  final ErrorHandler errorHandler;
+  final ErrorParser errorParser;
 
-  Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop, ErrorHandler errorHandler) {
+  Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop, ErrorParser errorParser) {
     this.noop = noop;
     this.propagationFactory = builder.propagationFactory;
     this.supportsJoin = builder.supportsJoin && propagationFactory.supportsJoin();
@@ -150,7 +150,7 @@ public final class Tracer {
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();
-    this.errorHandler = errorHandler;
+    this.errorParser = errorParser;
   }
 
   /** @deprecated use {@link Tracing#clock(TraceContext)} */
@@ -304,7 +304,7 @@ public final class Tracer {
     if (context == null) throw new NullPointerException("context == null");
     TraceContext decorated = propagationFactory.decorate(context);
     if (!noop.get() && Boolean.TRUE.equals(decorated.sampled())) {
-      return RealSpan.create(decorated, recorder, errorHandler);
+      return RealSpan.create(decorated, recorder, errorParser);
     }
     return NoopSpan.create(decorated);
   }

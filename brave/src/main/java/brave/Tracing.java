@@ -65,7 +65,7 @@ public abstract class Tracing implements Closeable {
     return tracer().recorder.clock(context);
   }
 
-  abstract public ErrorHandler errorHandler();
+  abstract public ErrorParser errorParser();
 
   // volatile for visibility on get. writes guarded by Tracing.class
   static volatile Tracing current = null;
@@ -124,7 +124,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false;
     boolean supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
-    ErrorHandler errorHandler = ErrorHandler.NOOP;
+    ErrorParser errorParser = new ErrorParser();
 
     /**
      * Controls the name of the service being traced, while still using a default site-local IP.
@@ -277,8 +277,8 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
-    public Builder errorHandler(ErrorHandler errorHandler) {
-      this.errorHandler = errorHandler;
+    public Builder errorParser(ErrorParser errorParser) {
+      this.errorParser = errorParser;
       return this;
     }
 
@@ -304,12 +304,12 @@ public abstract class Tracing implements Closeable {
     final Propagation<String> stringPropagation;
     final CurrentTraceContext currentTraceContext;
     final Clock clock;
-    final ErrorHandler errorHandler;
+    final ErrorParser errorParser;
 
     Default(Builder builder) {
       this.clock = builder.clock;
-      this.errorHandler = builder.errorHandler;
-      this.tracer = new Tracer(builder, clock, noop, errorHandler);
+      this.errorParser = builder.errorParser;
+      this.tracer = new Tracer(builder, clock, noop, errorParser);
       this.propagationFactory = builder.propagationFactory;
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
@@ -336,8 +336,8 @@ public abstract class Tracing implements Closeable {
       return clock;
     }
 
-    @Override public ErrorHandler errorHandler() {
-      return errorHandler;
+    @Override public ErrorParser errorParser() {
+      return errorParser;
     }
 
     private void maybeSetCurrent() {

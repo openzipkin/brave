@@ -2,7 +2,6 @@ package brave.dubbo.rpc;
 
 import brave.Span;
 import brave.Span.Kind;
-import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.Propagation;
@@ -83,7 +82,7 @@ public final class TracingFilter implements Filter {
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       Result result = invoker.invoke(invocation);
       if (result.hasException()) {
-        onError(result.getException(), span.customizer());
+        onError(result.getException(), span);
       }
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
@@ -93,7 +92,7 @@ public final class TracingFilter implements Filter {
       }
       return result;
     } catch (Error | RuntimeException e) {
-      onError(e, span.customizer());
+      onError(e, span);
       throw e;
     } finally {
       if (isOneway) {
@@ -104,13 +103,11 @@ public final class TracingFilter implements Filter {
     }
   }
 
-  static void onError(Throwable error, SpanCustomizer span) {
-    String message = error.getMessage();
-    if (message == null) message = error.getClass().getSimpleName();
+  static void onError(Throwable error, Span span) {
+    span.error(error);
     if (error instanceof RpcException) {
       span.tag("dubbo.error_code", Integer.toString(((RpcException) error).getCode()));
     }
-    span.tag("error", message);
   }
 
   static final Propagation.Getter<Map<String, String>, String> GETTER =

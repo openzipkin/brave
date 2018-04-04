@@ -122,9 +122,7 @@ public final class KafkaTracing {
 
   static void finish(Span span, @Nullable Throwable error) {
     if (error != null) { // an error occurred, adding error to span
-      String message = error.getMessage();
-      if (message == null) message = error.getClass().getSimpleName();
-      span.tag("error", message);
+      span.error(error);
     }
     span.finish();
   }
