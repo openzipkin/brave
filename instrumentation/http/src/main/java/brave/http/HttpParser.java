@@ -85,9 +85,8 @@ public class HttpParser {
       statusCode = adapter.statusCodeAsInt(res);
       String nameFromRoute = spanNameFromRoute(adapter, res, statusCode);
       if (nameFromRoute != null) customizer.name(nameFromRoute);
-      if (statusCode != 0 && (statusCode < 200 || statusCode > 299)) {
-        customizer.tag("http.status_code", String.valueOf(statusCode));
-      }
+      String maybeStatus = maybeStatusAsString(statusCode, 299);
+      if (maybeStatus != null) customizer.tag("http.status_code", maybeStatus);
     }
     error(statusCode, error, customizer);
   }
@@ -117,8 +116,16 @@ public class HttpParser {
       SpanCustomizer customizer) {
     if (error != null) {
       errorParser().error(error, customizer);
-    } else if (httpStatus != null && (httpStatus < 200 || httpStatus > 399)) {
-      customizer.tag("error", String.valueOf(httpStatus));
+    } else if (httpStatus != null) {
+      String maybeErrorStatus = maybeStatusAsString(httpStatus, 399);
+      if (maybeErrorStatus != null) customizer.tag("error", maybeErrorStatus);
     }
+  }
+
+  @Nullable String maybeStatusAsString(int statusCode, int upperRange) {
+    if (statusCode != 0 && (statusCode < 200 || statusCode > upperRange)) {
+      return String.valueOf(statusCode);
+    }
+    return null;
   }
 }
