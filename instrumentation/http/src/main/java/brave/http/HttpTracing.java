@@ -16,6 +16,7 @@ public abstract class HttpTracing {
     return new AutoValue_HttpTracing.Builder()
         .tracing(tracing)
         .serverName("")
+        // override to re-use any custom error parser from the tracing component
         .clientParser(new HttpClientParser() {
           @Override protected ErrorParser errorParser() {
             return errorParser;
