@@ -66,8 +66,11 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
         span.start();
       }
       ctx.fireChannelRead(msg);
-    } finally {
       spanInScope.close();
+    } catch (RuntimeException | Error e) {
+      spanInScope.close();
+      span.error(e).finish(); // the request abended, so finish the span;
+      throw e;
     }
   }
 
@@ -111,6 +114,9 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     try {
       ctx.write(msg, prm);
       parser.response(adapter, response, null, span.customizer());
+    } catch (RuntimeException | Error e) {
+      span.error(e);
+      throw e;
     } finally {
       spanInScope.close(); // clear scope before reporting
       span.finish();

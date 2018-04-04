@@ -1,9 +1,34 @@
 package brave.http;
 
+import brave.ErrorParser;
 import brave.SpanCustomizer;
+import brave.Tracing;
 import brave.internal.Nullable;
 
 public class HttpParser {
+  static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
+
+  /**
+   * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
+   *
+   * <pre>{@code
+   * class MyHttpClientParser extends HttpClientParser {
+   *   ErrorParser errorParser;
+   *
+   *   MyHttpClientParser(Tracing tracing) {
+   *     errorParser = tracing.errorParser();
+   *   }
+   *
+   *   protected ErrorParser errorParser() {
+   *     return errorParser;
+   *   }
+   * --snip--
+   * }</pre>
+   */
+  protected ErrorParser errorParser() {
+    return DEFAULT_ERROR_PARSER;
+  }
+
   /**
    * Override to change what data from the http request are parsed into the span representing it. By
    * default, this sets the span name to the http method and tags "http.method" and "http.path".
@@ -60,9 +85,8 @@ public class HttpParser {
       statusCode = adapter.statusCodeAsInt(res);
       String nameFromRoute = spanNameFromRoute(adapter, res, statusCode);
       if (nameFromRoute != null) customizer.name(nameFromRoute);
-      if (statusCode != 0 && (statusCode < 200 || statusCode > 299)) {
-        customizer.tag("http.status_code", String.valueOf(statusCode));
-      }
+      String maybeStatus = maybeStatusAsString(statusCode, 299);
+      if (maybeStatus != null) customizer.tag("http.status_code", maybeStatus);
     }
     error(statusCode, error, customizer);
   }
@@ -90,16 +114,18 @@ public class HttpParser {
   // called by default. Unfortunately, this implies boxing until we can change it.
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
       SpanCustomizer customizer) {
-    String message = null;
     if (error != null) {
-      message = error.getMessage();
-      if (message == null) message = error.getClass().getSimpleName();
-    } else if (httpStatus != null && httpStatus != 0) {
-      message = httpStatus < 200 || httpStatus > 399 ? String.valueOf(httpStatus) : null;
+      errorParser().error(error, customizer);
+    } else if (httpStatus != null) {
+      String maybeErrorStatus = maybeStatusAsString(httpStatus, 399);
+      if (maybeErrorStatus != null) customizer.tag("error", maybeErrorStatus);
     }
-    if (message != null) customizer.tag("error", message);
   }
 
-  HttpParser() {
+  @Nullable String maybeStatusAsString(int statusCode, int upperRange) {
+    if (statusCode != 0 && (statusCode < 200 || statusCode > upperRange)) {
+      return String.valueOf(statusCode);
+    }
+    return null;
   }
 }

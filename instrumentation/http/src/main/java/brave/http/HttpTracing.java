@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.ErrorParser;
 import brave.Tracing;
 import com.google.auto.value.AutoValue;
 import zipkin2.Endpoint;
@@ -11,11 +12,21 @@ public abstract class HttpTracing {
   }
 
   public static Builder newBuilder(Tracing tracing) {
+    final ErrorParser errorParser = tracing.errorParser();
     return new AutoValue_HttpTracing.Builder()
         .tracing(tracing)
         .serverName("")
-        .clientParser(new HttpClientParser())
-        .serverParser(new HttpServerParser())
+        // override to re-use any custom error parser from the tracing component
+        .clientParser(new HttpClientParser() {
+          @Override protected ErrorParser errorParser() {
+            return errorParser;
+          }
+        })
+        .serverParser(new HttpServerParser() {
+          @Override protected ErrorParser errorParser() {
+            return errorParser;
+          }
+        })
         .clientSampler(HttpSampler.TRACE_ID)
         .serverSampler(HttpSampler.TRACE_ID);
   }
@@ -40,7 +51,6 @@ public abstract class HttpTracing {
    * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
-   * @see zipkin2.Constants#SERVER_ADDR
    * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */
@@ -84,10 +94,20 @@ public abstract class HttpTracing {
     /** @see HttpTracing#tracing() */
     public abstract Builder tracing(Tracing tracing);
 
-    /** @see HttpTracing#clientParser() */
+    /**
+     * Overrides the tagging policy for http client spans.
+     *
+     * @see HttpParser#errorParser() for advice when making custom types
+     * @see HttpTracing#clientParser()
+     */
     public abstract Builder clientParser(HttpClientParser clientParser);
 
-    /** @see HttpTracing#serverParser() */
+    /**
+     * Overrides the tagging policy for http client spans.
+     *
+     * @see HttpParser#errorParser() for advice when making custom types
+     * @see HttpTracing#serverParser()
+     */
     public abstract Builder serverParser(HttpServerParser serverParser);
 
     /** @see HttpTracing#clientSampler() */

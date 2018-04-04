@@ -84,7 +84,7 @@ public class AspectJSamplerTest {
       try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
         return pjp.proceed();
       } catch (RuntimeException | Error e) {
-        span.tag("error", e.getMessage());
+        span.error(e);
         throw e;
       } finally {
         span.finish();

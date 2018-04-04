@@ -122,4 +122,20 @@ public class RealSpanTest {
 
     assertThat(spans).hasSize(1);
   }
+
+  @Test public void error() {
+    span.error(new RuntimeException("this cake is a lie"));
+    span.flush();
+
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("error", "this cake is a lie"));
+  }
+
+  @Test public void error_noMessage() {
+    span.error(new RuntimeException());
+    span.flush();
+
+    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
+        .containsExactly(entry("error", "RuntimeException"));
+  }
 }

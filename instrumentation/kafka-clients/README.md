@@ -70,9 +70,7 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
   try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // so logging can see trace ID
     return doProcess(record); // do the actual work
   } catch (RuntimeException | Error e) {
-    String message = e.getMessage();
-    if (message == null) message = e.getClass().getSimpleName();
-    span.tag("error", message); // make sure any error gets into the span before it is finished
+    span.error(e); // make sure any error gets into the span before it is finished
     throw e;
   } finally {
     span.finish(); // ensure the span representing this processing completes.

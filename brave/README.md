@@ -67,11 +67,16 @@ the correct spot in the tree representing the distributed operation.
 
 When tracing local code, just run it inside a span.
 ```java
+// start a new trace or a span within an existing trace representing an operation
 Span span = tracer.nextSpan().name("encode").start();
-try {
-  doSomethingExpensive();
+// put the span in "scope" so that downstream code such as loggers can see trace IDs
+try (SpanInScope ws = tracer.withSpanInScope(span)) {
+  return encoder.encode();
+} catch (RuntimeException | Error e) {
+  span.error(e); // if you don't catch exceptions, you won't know the operation failed!
+  throw e;
 } finally {
-  span.finish();
+  span.finish();  // note the scope is independent of the span
 }
 ```
 
@@ -81,11 +86,6 @@ If you need to be more explicit, call `newChild` or `newTrace` instead.
 
 ```java
 Span span = tracer.newChild(root.context()).name("encode").start();
-try {
-  doSomethingExpensive();
-} finally {
-  span.finish();
-}
 ```
 
 ### Customizing spans
@@ -256,7 +256,7 @@ public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwabl
   try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
     return pjp.proceed();
   } catch (RuntimeException | Error e) {
-    span.tag("error", e.getMessage());
+    span.error(e);
     throw e;
   } finally {
     span.finish();
@@ -522,6 +522,9 @@ span in scope like this.
 ```java
 try (SpanInScope ws = tracer.withSpanInScope(span)) {
   return inboundRequest.invoke();
+} catch (RuntimeException | Error e) {
+  span.error(e);
+  throw e;
 } finally { // note the scope is independent of the span
   span.finish();
 }

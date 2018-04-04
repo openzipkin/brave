@@ -83,7 +83,7 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
-      tagErrorSpan(listenerSpan, t);
+      listenerSpan.error(t);
       throw t;
     } finally {
       listenerSpan.finish();
@@ -108,11 +108,5 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
 
   static void maybeTag(Span span, String tag, String value) {
     if (value != null) span.tag(tag, value);
-  }
-
-  void tagErrorSpan(Span span, Throwable t) {
-    String errorMessage = t.getMessage();
-    if (errorMessage == null) errorMessage = t.getClass().getSimpleName();
-    span.tag("error", errorMessage);
   }
 }

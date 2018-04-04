@@ -3,7 +3,6 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -118,14 +117,5 @@ public final class KafkaTracing {
       result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
     }
     result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
-  }
-
-  static void finish(Span span, @Nullable Throwable error) {
-    if (error != null) { // an error occurred, adding error to span
-      String message = error.getMessage();
-      if (message == null) message = error.getClass().getSimpleName();
-      span.tag("error", message);
-    }
-    span.finish();
   }
 }

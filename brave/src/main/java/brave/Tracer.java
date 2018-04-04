@@ -23,24 +23,18 @@ import zipkin2.reporter.Reporter;
  * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
  * can be created to allocate latency relating to outgoing requests.
  *
- * Here's a contrived example:
+ * Here's a typical example of synchronous tracing from perspective of the tracer:
  * <pre>{@code
- * Span twoPhase = tracer.newTrace().name("twoPhase").start();
- * try {
- *   Span prepare = tracer.newChild(twoPhase.context()).name("prepare").start();
- *   try {
- *     prepare();
- *   } finally {
- *     prepare.finish();
- *   }
- *   Span commit = tracer.newChild(twoPhase.context()).name("commit").start();
- *   try {
- *     commit();
- *   } finally {
- *     commit.finish();
- *   }
+ * // "nextSpan" starts a new trace or a makes a child within an existing one.
+ * Span span = tracer.nextSpan().name("encode").start();
+ * // put the span in "scope" so that downstream code such as loggers can see trace IDs
+ * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+ *   return encoder.encode();
+ * } catch (RuntimeException | Error e) {
+ *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
+ *   throw e;
  * } finally {
- *   twoPhase.finish();
+ *   span.finish(); // note the scope is independent of the span. Always finish a span.
  * }
  * }</pre>
  *
@@ -138,8 +132,9 @@ public final class Tracer {
   final CurrentTraceContext currentTraceContext;
   final boolean traceId128Bit, supportsJoin;
   final AtomicBoolean noop;
+  final ErrorParser errorParser;
 
-  Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop) {
+  Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop, ErrorParser errorParser) {
     this.noop = noop;
     this.propagationFactory = builder.propagationFactory;
     this.supportsJoin = builder.supportsJoin && propagationFactory.supportsJoin();
@@ -149,6 +144,7 @@ public final class Tracer {
     this.sampler = builder.sampler;
     this.currentTraceContext = builder.currentTraceContext;
     this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();
+    this.errorParser = errorParser;
   }
 
   /** @deprecated use {@link Tracing#clock(TraceContext)} */
@@ -302,7 +298,7 @@ public final class Tracer {
     if (context == null) throw new NullPointerException("context == null");
     TraceContext decorated = propagationFactory.decorate(context);
     if (!noop.get() && Boolean.TRUE.equals(decorated.sampled())) {
-      return RealSpan.create(decorated, recorder);
+      return RealSpan.create(decorated, recorder, errorParser);
     }
     return NoopSpan.create(decorated);
   }
@@ -340,6 +336,10 @@ public final class Tracer {
    * // Assume a framework interceptor uses this method to set the inbound span as current
    * try (SpanInScope ws = tracer.withSpanInScope(span)) {
    *   return inboundRequest.invoke();
+   * // note: try-with-resources closes the scope *before* the catch block
+   * } catch (RuntimeException | Error e) {
+   *   span.error(e);
+   *   throw e;
    * } finally {
    *   span.finish();
    * }
@@ -349,6 +349,10 @@ public final class Tracer {
    * Span span = tracer.nextSpan().name("outbound").start(); // parent is implicitly looked up
    * try (SpanInScope ws = tracer.withSpanInScope(span)) {
    *   return outboundRequest.invoke();
+   * // note: try-with-resources closes the scope *before* the catch block
+   * } catch (RuntimeException | Error e) {
+   *   span.error(e);
+   *   throw e;
    * } finally {
    *   span.finish();
    * }

@@ -1,11 +1,35 @@
 package brave.grpc;
 
+import brave.ErrorParser;
 import brave.SpanCustomizer;
+import brave.Tracing;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
 public class GrpcParser {
+  static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
+
+  /**
+   * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
+   *
+   * <pre>{@code
+   * class MyGrpcParser extends GrpcParser {
+   *   ErrorParser errorParser;
+   *
+   *   MyGrpcParser(Tracing tracing) {
+   *     errorParser = tracing.errorParser();
+   *   }
+   *
+   *   protected ErrorParser errorParser() {
+   *     return errorParser;
+   *   }
+   * --snip--
+   * }</pre>
+   */
+  protected ErrorParser errorParser() {
+    return DEFAULT_ERROR_PARSER;
+  }
 
   /** Returns the span name of the request. Defaults to the full grpc method name. */
   protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
@@ -32,14 +56,8 @@ public class GrpcParser {
     }
   }
 
-  /**
-   * This is used when there is an unexpected error present in the operation.
-   *
-   * <p>Conventionally associated with the tag key "error"
-   */
-  protected void onError(Throwable error, SpanCustomizer span) {
-    String message = error.getMessage();
-    if (message == null) message = error.getClass().getSimpleName();
-    span.tag("error", message);
+  /** @deprecated please use {@link Tracing.Builder#errorParser(ErrorParser)} instead */
+  @Deprecated protected void onError(Throwable error, SpanCustomizer span) {
+    errorParser().error(error, span);
   }
 }
