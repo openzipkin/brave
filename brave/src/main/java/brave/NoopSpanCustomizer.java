@@ -20,7 +20,8 @@ public enum NoopSpanCustomizer implements SpanCustomizer {
     return this;
   }
 
-  @Override public SpanCustomizer annotate(long timestamp, String value) {
+  /** @deprecated use {@link #annotate(String)} as this can result in clock skew */
+  @Deprecated @Override public SpanCustomizer annotate(long timestamp, String value) {
     return this;
   }
 }

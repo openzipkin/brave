@@ -25,7 +25,8 @@ abstract class RealSpanCustomizer implements SpanCustomizer {
     return this;
   }
 
-  @Override public SpanCustomizer annotate(long timestamp, String value) {
+  /** @deprecated use {@link #annotate(String)} as this can result in clock skew */
+  @Override @Deprecated public SpanCustomizer annotate(long timestamp, String value) {
     recorder().annotate(context(), timestamp, value);
     return this;
   }
