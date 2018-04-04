@@ -17,7 +17,7 @@ public final class VertxWebTracing {
 
   final HttpTracing httpTracing;
 
-  VertxWebTracing(HttpTracing httpTracing) {
+  VertxWebTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.httpTracing = httpTracing;
   }

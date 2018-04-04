@@ -49,7 +49,7 @@ public final class KafkaTracing {
   private final TraceContext.Extractor<Headers> extractor;
   private final String remoteServiceName;
 
-  KafkaTracing(Builder builder) { // hidden constructor
+  KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
     this.remoteServiceName = builder.remoteServiceName;

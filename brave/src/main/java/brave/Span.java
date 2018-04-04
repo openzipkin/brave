@@ -156,4 +156,7 @@ public abstract class Span implements SpanCustomizer {
   // * a span should not be routinely flushed, only when it has finished, or we don't believe this
   //   tracer will finish it.
   public abstract void flush();
+
+  Span() { // intentionally hidden constructor
+  }
 }

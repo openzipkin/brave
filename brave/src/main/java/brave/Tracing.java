@@ -341,4 +341,7 @@ public abstract class Tracing implements Closeable {
       }
     }
   }
+
+  Tracing() { // intentionally hidden constructor
+  }
 }
