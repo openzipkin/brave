@@ -22,7 +22,7 @@ public final class NettyHttpTracing {
 
   final ChannelDuplexHandler serverHandler;
 
-  NettyHttpTracing(HttpTracing httpTracing) {
+  NettyHttpTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     serverHandler = new TracingHttpServerHandler(httpTracing);
   }
 

@@ -29,7 +29,7 @@ public final class SparkTracing {
   final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<Request> extractor;
 
-  SparkTracing(HttpTracing httpTracing) {
+  SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, ADAPTER);
     extractor = httpTracing.tracing().propagation().extractor(Request::headers);

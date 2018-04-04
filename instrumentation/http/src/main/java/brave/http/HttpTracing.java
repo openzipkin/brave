@@ -104,6 +104,6 @@ public abstract class HttpTracing {
     }
   }
 
-  HttpTracing() {
+  HttpTracing() { // intentionally hidden constructor
   }
 }

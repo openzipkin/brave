@@ -48,6 +48,6 @@ public abstract class GrpcTracing {
     }
   }
 
-  GrpcTracing() { // intentionally hidden
+  GrpcTracing() { // intentionally hidden constructor
   }
 }

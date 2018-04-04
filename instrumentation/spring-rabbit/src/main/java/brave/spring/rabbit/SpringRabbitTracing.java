@@ -56,7 +56,7 @@ public final class SpringRabbitTracing {
   final TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
   final Field beforePublishPostProcessorsField;
 
-  SpringRabbitTracing(Builder builder) {
+  SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
     Tracing tracing = builder.tracing;
     String remoteServiceName = builder.remoteServiceName;
     this.tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing, remoteServiceName);
