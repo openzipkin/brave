@@ -11,6 +11,9 @@ import zipkin2.Endpoint;
  * Span span = tracer.newTrace().name("encode").start();
  * try {
  *   doSomethingExpensive();
+ * } catch (RuntimeException | Error e) {
+ *   span.error(e);
+ *   throw e;
  * } finally {
  *   span.finish();
  * }
@@ -100,7 +103,9 @@ public abstract class Span implements SpanCustomizer {
   @Override public abstract Span tag(String key, String value);
 
   /** Adds tags depending on the configured {@link Tracing#errorParser() error parser} */
-  public abstract <T extends Throwable> T error(T throwable);
+  // Design note: <T extends Throwable> T error(T throwable) is tempting but this doesn't work in
+  // multi-catch. In practice, you should always at least catch RuntimeException and Error.
+  public abstract Span error(Throwable throwable);
 
   /**
    * @deprecated use {@link #remoteEndpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()}

@@ -5,8 +5,6 @@ import brave.internal.Nullable;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
-import static brave.kafka.clients.KafkaTracing.finish;
-
 /**
  * Decorator which finish producer span. Allows tracing to register the time between batching for
  * send and actual send.
@@ -22,7 +20,8 @@ final class TracingCallback implements Callback {
   }
 
   @Override public void onCompletion(RecordMetadata metadata, @Nullable Exception exception) {
-    finish(span, exception);
+    if (exception != null) span.error(exception);
+    span.finish();
     if (wrappedCallback != null) {
       wrappedCallback.onCompletion(metadata, exception);
     }

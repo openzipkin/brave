@@ -56,9 +56,9 @@ abstract class RealSpan extends Span {
     return this;
   }
 
-  @Override public <T extends Throwable> T error(T throwable) {
+  @Override public Span error(Throwable throwable) {
     errorParser().error(throwable, customizer());
-    return throwable;
+    return this;
   }
 
   @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {

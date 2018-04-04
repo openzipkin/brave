@@ -83,7 +83,8 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       return methodInvocation.proceed();
     } catch (Throwable t) {
-      throw listenerSpan.error(t);
+      listenerSpan.error(t);
+      throw t;
     } finally {
       listenerSpan.finish();
     }

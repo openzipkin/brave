@@ -22,8 +22,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import zipkin2.Endpoint;
 
-import static brave.kafka.clients.KafkaTracing.finish;
-
 final class TracingProducer<K, V> implements Producer<K, V> {
 
   final Tracing tracing;
@@ -80,7 +78,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       return delegate.send(record, new TracingCallback(span, callback));
     } catch (RuntimeException | Error e) {
-      finish(span, e);
+      span.error(e).finish(); // finish as an exception means the callback won't finish the span
       throw e;
     }
   }

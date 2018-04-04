@@ -70,6 +70,9 @@ When tracing local code, just run it inside a span.
 Span span = tracer.nextSpan().name("encode").start();
 try {
   doSomethingExpensive();
+} catch (RuntimeException | Error e) {
+  span.error(e);
+  throw e;
 } finally {
   span.finish();
 }
@@ -83,6 +86,9 @@ If you need to be more explicit, call `newChild` or `newTrace` instead.
 Span span = tracer.newChild(root.context()).name("encode").start();
 try {
   doSomethingExpensive();
+} catch (RuntimeException | Error e) {
+  span.error(e);
+  throw e;
 } finally {
   span.finish();
 }
@@ -256,7 +262,7 @@ public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwabl
   try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
     return pjp.proceed();
   } catch (RuntimeException | Error e) {
-    span.tag("error", e.getMessage());
+    span.error(e);
     throw e;
   } finally {
     span.finish();
@@ -522,6 +528,9 @@ span in scope like this.
 ```java
 try (SpanInScope ws = tracer.withSpanInScope(span)) {
   return inboundRequest.invoke();
+} catch (RuntimeException | Error e) {
+  span.error(e);
+  throw e;
 } finally { // note the scope is independent of the span
   span.finish();
 }
