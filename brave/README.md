@@ -240,6 +240,10 @@ DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRat
 
 @Around("@annotation(traced)")
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
+  // When there is no trace in progress, this decides using an annotation
+  Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
+  Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
+
   Span span = tracing.tracer().newTrace(sampler.sample(traced))...
   try {
     return pjp.proceed();
@@ -259,14 +263,20 @@ Most users will use a framework interceptor which automates this sort of
 policy. Here's how they might work internally.
 
 ```java
-Span newTrace(Request input) {
-  SamplingFlags flags = SamplingFlags.NONE;
-  if (input.url().startsWith("/experimental")) {
-    flags = SamplingFlags.SAMPLED;
-  } else if (input.url().startsWith("/static")) {
-    flags = SamplingFlags.NOT_SAMPLED;
-  }
-  return tracer.newTrace(flags);
+Sampler fallback = tracing.sampler();
+
+Span nextSpan(final Request input) {
+  Sampler requestBased = Sampler() {
+    @Override public boolean isSampled(long traceId) {
+      if (input.url().startsWith("/experimental")) {
+        return true;
+      } else if (input.url().startsWith("/static")) {
+        return false;
+      }
+      return fallback.isSampled(traceId);
+    }
+  };
+  return tracer.withSampler(requestBased).nextSpan();
 }
 ```
 

@@ -2,6 +2,7 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.recorder.Recorder;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -43,6 +44,14 @@ public abstract class Tracing implements Closeable {
 
   /** This supports edge cases like GRPC Metadata propagation which doesn't use String keys. */
   abstract public Propagation.Factory propagationFactory();
+
+  /**
+   * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether
+   * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
+   *
+   * @see Tracer#withSampler(Sampler)
+   */
+  abstract public Sampler sampler();
 
   /**
    * This supports in-process propagation, typically across thread boundaries. This includes
@@ -215,6 +224,8 @@ public abstract class Tracing implements Closeable {
     /**
      * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether
      * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
+     *
+     * @see Tracer#withSampler(Sampler) for temporary overrides
      */
     public Builder sampler(Sampler sampler) {
       if (sampler == null) throw new NullPointerException("sampler == null");
@@ -288,14 +299,26 @@ public abstract class Tracing implements Closeable {
     final Propagation.Factory propagationFactory;
     final Propagation<String> stringPropagation;
     final CurrentTraceContext currentTraceContext;
+    final Sampler sampler;
     final Clock clock;
 
     Default(Builder builder) {
       this.clock = builder.clock;
-      this.tracer = new Tracer(builder, clock, noop);
       this.propagationFactory = builder.propagationFactory;
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
+      this.sampler = builder.sampler;
+      this.tracer = new Tracer(
+          builder.clock,
+          builder.propagationFactory,
+          builder.reporter,
+          new Recorder(builder.localEndpoint, clock, builder.reporter, noop),
+          builder.sampler,
+          builder.currentTraceContext,
+          builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
+          builder.supportsJoin && propagationFactory.supportsJoin(),
+          noop
+      );
       maybeSetCurrent();
     }
 
@@ -309,6 +332,10 @@ public abstract class Tracing implements Closeable {
 
     @Override public Propagation.Factory propagationFactory() {
       return propagationFactory;
+    }
+
+    @Override public Sampler sampler() {
+      return sampler;
     }
 
     @Override public CurrentTraceContext currentTraceContext() {

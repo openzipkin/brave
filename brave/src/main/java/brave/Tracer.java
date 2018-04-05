@@ -10,6 +10,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
+import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -47,8 +48,7 @@ import zipkin2.reporter.Reporter;
  * @see Span
  * @see Propagation
  */
-public final class Tracer {
-
+public class Tracer {
   /** @deprecated Please use {@link Tracing#newBuilder()} */
   @Deprecated public static Builder newBuilder() {
     return new Builder();
@@ -136,16 +136,53 @@ public final class Tracer {
   final boolean traceId128Bit, supportsJoin;
   final AtomicBoolean noop;
 
-  Tracer(Tracing.Builder builder, Clock clock, AtomicBoolean noop) {
-    this.noop = noop;
-    this.propagationFactory = builder.propagationFactory;
-    this.supportsJoin = builder.supportsJoin && propagationFactory.supportsJoin();
+  Tracer(
+      Clock clock,
+      Propagation.Factory propagationFactory,
+      Reporter<zipkin2.Span> reporter,
+      Recorder recorder,
+      Sampler sampler,
+      CurrentTraceContext currentTraceContext,
+      boolean traceId128Bit,
+      boolean supportsJoin,
+      AtomicBoolean noop
+  ) {
     this.clock = clock;
-    this.reporter = builder.reporter;
-    this.recorder = new Recorder(builder.localEndpoint, clock, builder.reporter, this.noop);
-    this.sampler = builder.sampler;
-    this.currentTraceContext = builder.currentTraceContext;
-    this.traceId128Bit = builder.traceId128Bit || propagationFactory.requires128BitTraceId();
+    this.propagationFactory = propagationFactory;
+    this.reporter = reporter;
+    this.recorder = recorder;
+    this.sampler = sampler;
+    this.currentTraceContext = currentTraceContext;
+    this.traceId128Bit = traceId128Bit;
+    this.supportsJoin = supportsJoin;
+    this.noop = noop;
+  }
+
+  /**
+   * Use this to temporarily override the sampler used when starting new local traces. This can also
+   * serve advanced scenarios, such as {@link DeclarativeSampler declarative sampling}.
+   *
+   * <p>Simple example:
+   * <pre>{@code
+   * // Ensures new traces are always started
+   * Tracer tracer = tracing.tracer().withSampler(Sampler.ALWAYS_SAMPLE);
+   * }</pre>
+   *
+   * @see DeclarativeSampler
+   */
+  public Tracer withSampler(Sampler sampler) {
+    if (sampler == null) throw new NullPointerException("sampler == null");
+    return new Tracer(
+        clock,
+        propagationFactory,
+        reporter,
+        recorder,
+        sampler,
+        currentTraceContext,
+        traceId128Bit,
+        supportsJoin,
+        noop
+    );
   }
 
   /** @deprecated use {@link Tracing#clock(TraceContext)} */
@@ -239,11 +276,15 @@ public final class Tracer {
    * @see TraceContextOrSamplingFlags
    */
   public Span nextSpan(TraceContextOrSamplingFlags extracted) {
+    return toSpan(nextTraceContext(extracted));
+  }
+
+  TraceContext nextTraceContext(TraceContextOrSamplingFlags extracted) {
     TraceContext parent = extracted.context();
     if (extracted.samplingFlags() != null) {
       TraceContext implicitParent = currentTraceContext.get();
       if (implicitParent == null) {
-        return toSpan(newRootContext(extracted.samplingFlags(), extracted.extra()));
+        return newRootContext(extracted.samplingFlags(), extracted.extra());
       }
       // fall through, with an implicit parent, not an extracted one
       parent = appendExtra(implicitParent, extracted.extra());
@@ -252,45 +293,29 @@ public final class Tracer {
     if (parent != null) {
       Boolean sampled = parent.sampled();
       if (sampled == null) sampled = sampler.isSampled(parent.traceId());
-      return toSpan(parent.toBuilder() // copies "extra" from the parent
+      return parent.toBuilder() // copies "extra" from the parent
           .spanId(nextId)
           .parentId(parent.spanId())
           .sampled(sampled)
-          .build());
+          .build();
     }
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (extracted.traceIdContext() != null) {
       Boolean sampled = traceIdContext.sampled();
       if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
-      return toSpan(TraceContext.newBuilder()
+      return TraceContext.newBuilder()
           .sampled(sampled)
           .debug(traceIdContext.debug())
           .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
           .spanId(nextId)
-          .extra(extracted.extra()).build());
+          .extra(extracted.extra()).build();
     }
     // TraceContextOrSamplingFlags is a union of 3 types, we've checked all three
     throw new AssertionError("should not reach here");
   }
 
-  /**
-   * Like {@link #newTrace()}, but supports parameterized sampling, for example limiting on
-   * operation or url pattern.
-   *
-   * <p>For example, to sample all requests for a specific url:
-   * <pre>{@code
-   * Span newTrace(Request input) {
-   *   SamplingFlags flags = SamplingFlags.NONE;
-   *   if (input.url().startsWith("/experimental")) {
-   *     flags = SamplingFlags.SAMPLED;
-   *   } else if (input.url().startsWith("/static")) {
-   *     flags = SamplingFlags.NOT_SAMPLED;
-   *   }
-   *   return tracer.newTrace(flags);
-   * }
-   * }</pre>
-   */
-  public Span newTrace(SamplingFlags samplingFlags) {
+  /** @deprecated Prefer {@link #withSampler(Sampler)} */
+  @Deprecated public Span newTrace(SamplingFlags samplingFlags) {
     return toSpan(newRootContext(samplingFlags, Collections.emptyList()));
   }
 
