@@ -4,8 +4,8 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.sampler.Sampler;
 import zipkin2.Endpoint;
 
 /**
@@ -40,7 +40,8 @@ public final class HttpClientHandler<Req, Resp>
   }
 
   final Tracer tracer;
-  final HttpSampler sampler;
+  final Sampler sampler;
+  final HttpSampler httpSampler;
   final String serverName;
   final boolean serverNameSet;
 
@@ -51,7 +52,8 @@ public final class HttpClientHandler<Req, Resp>
         httpTracing.clientParser()
     );
     this.tracer = httpTracing.tracing().tracer();
-    this.sampler = httpTracing.clientSampler();
+    this.sampler = httpTracing.tracing().sampler();
+    this.httpSampler = httpTracing.clientSampler();
     this.serverName = httpTracing.serverName();
     this.serverNameSet = !serverName.equals("");
   }
@@ -111,13 +113,8 @@ public final class HttpClientHandler<Req, Resp>
    * @since 4.4
    */
   public Span nextSpan(Req request) {
-    TraceContext parent = currentTraceContext.get();
-    if (parent != null) return tracer.newChild(parent); // inherit the sampling decision
-
-    // If there was no parent, we are making a new trace. Try to sample the request.
-    Boolean sampled = sampler.trySample(adapter, request);
-    if (sampled == null) return tracer.newTrace(); // defer sampling decision to trace ID
-    return tracer.newTrace(sampled ? SamplingFlags.SAMPLED : SamplingFlags.NOT_SAMPLED);
+    Sampler override = httpSampler.toSampler(adapter, request, sampler);
+    return tracer.withSampler(override).nextSpan();
   }
 
   /**

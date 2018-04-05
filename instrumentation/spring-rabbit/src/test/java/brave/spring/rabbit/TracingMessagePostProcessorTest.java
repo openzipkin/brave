@@ -1,7 +1,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +21,6 @@ public class TracingMessagePostProcessorTest {
   @Before public void setupTracing() {
     reportedSpans.clear();
     Tracing tracing = Tracing.newBuilder()
-        .sampler(Sampler.ALWAYS_SAMPLE)
         .spanReporter(reportedSpans::add)
         .build();
     tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing, "my-exchange");

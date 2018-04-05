@@ -47,6 +47,61 @@ public final class DeclarativeSampler<M> {
     this.rateForMethod = rateForMethod;
   }
 
+  /**
+   * Used with {@link brave.Tracer#withSampler(Sampler)} to override the default sampling decision.
+   *
+   * <p>Ex:
+   * <pre>{@code
+   * // When there is no trace in progress, this decides using an annotation
+   * Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
+   * Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
+   *
+   * // This code looks the same as if there was no declarative override
+   * Span span = tracer.nextSpan().name(name).start();
+   * }</pre>
+   *
+   * @param method input to the sampling function
+   * @return false if there was no rate associated with the input
+   */
+  public Sampler toSampler(M method) {
+    if (method == null) throw new NullPointerException("method == null");
+    return new Sampler() {
+      @Override public boolean isSampled(long traceId) {
+        Boolean decision = sample(method).sampled();
+        return decision != null ? decision : false;
+      }
+    };
+  }
+
+  /**
+   * Like {@link #toSampler(Object)}, except allows a fallback decision, usually from
+   * {@link brave.Tracing#sampler()}, when there was no rate for an input
+   *
+   * <p>Ex:
+   * <pre>{@code
+   * // When there is no trace in progress, this decides using an annotation
+   * Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced, tracing.sampler());
+   * Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
+   *
+   * // This code looks the same as if there was no declarative override
+   * brave.Span span = tracer.nextSpan().name("").start();
+   * }</pre>
+   *
+   * @param method input to the sampling function
+   * @param fallback when there is no rate for the input, usually {@link brave.Tracing#sampler()}
+   */
+  public Sampler toSampler(M method, Sampler fallback) {
+    if (method == null) throw new NullPointerException("method == null");
+    if (fallback == null) throw new NullPointerException("fallback == null");
+    return new Sampler() {
+      @Override public boolean isSampled(long traceId) {
+        Boolean decision = sample(method).sampled();
+        if (decision == null) return fallback.isSampled(traceId);
+        return decision;
+      }
+    };
+  }
+
   public SamplingFlags sample(@Nullable M method) {
     if (method == null) return SamplingFlags.EMPTY;
     Sampler sampler = methodsToSamplers.get(method);

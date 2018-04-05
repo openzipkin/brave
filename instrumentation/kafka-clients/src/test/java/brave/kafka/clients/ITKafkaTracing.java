@@ -7,7 +7,6 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
-import brave.sampler.Sampler;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
@@ -261,7 +260,6 @@ public class ITKafkaTracing {
             return new TraceIdOnlyPropagation<>(keyFactory);
           }
         })
-        .sampler(Sampler.ALWAYS_SAMPLE)
         .build());
     producerTracing = KafkaTracing.create(Tracing.newBuilder()
         .spanReporter(producerSpans::add)
@@ -270,7 +268,6 @@ public class ITKafkaTracing {
             return new TraceIdOnlyPropagation<>(keyFactory);
           }
         })
-        .sampler(Sampler.ALWAYS_SAMPLE)
         .build());
 
     producer = createTracingProducer();

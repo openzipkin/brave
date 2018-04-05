@@ -1,6 +1,7 @@
 package brave.http;
 
 import brave.internal.Nullable;
+import brave.sampler.Sampler;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.
@@ -49,4 +50,20 @@ public abstract class HttpSampler {
    * the {@link brave.sampler.Sampler trace ID sampler}.
    */
   @Nullable public abstract <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request);
+
+  /**
+   * Used internally by {@link HttpClientHandler} to override the default sampling decision when
+   * starting a new trace for an http client request.
+   */
+  <Req> Sampler toSampler(HttpAdapter<Req, ?> adapter, Req request, Sampler delegate) {
+    if (this == TRACE_ID) return delegate;
+    if (this == NEVER_SAMPLE) return Sampler.NEVER_SAMPLE;
+    return new Sampler() {
+      @Override public boolean isSampled(long traceId) {
+        Boolean decision = trySample(adapter, request);
+        if (decision == null) return delegate.isSampled(traceId);
+        return decision;
+      }
+    };
+  }
 }

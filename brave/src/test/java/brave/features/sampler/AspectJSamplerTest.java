@@ -1,6 +1,7 @@
 package brave.features.sampler;
 
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
@@ -74,14 +75,17 @@ public class AspectJSamplerTest {
   @Component
   @Aspect
   static class TracingAspect {
-    DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRate);
+    DeclarativeSampler<Traced> declarativeSampler = DeclarativeSampler.create(Traced::sampleRate);
 
     @Around("@annotation(traced)")
     public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-      Tracer tracer = tracing.get().tracer();
-      // simplification as starts a new trace always
-      brave.Span span = tracer.newTrace(sampler.sample(traced)).name("").start();
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      // When there is no trace in progress, this overrides the decision based on the annotation
+      Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
+      Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
+
+      // This code looks the same as if there was no declarative override
+      brave.Span span = tracer.nextSpan().name("").start();
+      try (SpanInScope ws = tracer.withSpanInScope(span)) {
         return pjp.proceed();
       } catch (RuntimeException | Error e) {
         span.error(e);
