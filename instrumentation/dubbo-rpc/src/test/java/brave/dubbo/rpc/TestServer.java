@@ -1,8 +1,10 @@
 package brave.dubbo.rpc;
 
+import brave.internal.Platform;
 import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ProtocolConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
@@ -12,6 +14,7 @@ import com.alibaba.dubbo.rpc.service.GenericService;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import zipkin2.Endpoint;
 
 class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
@@ -19,11 +22,17 @@ class TestServer {
   TraceContext.Extractor<Map<String, String>> extractor =
       B3Propagation.B3_STRING.extractor(TracingFilter.GETTER);
   ServiceConfig<GenericService> service;
+  String linkLocalIp;
 
   TestServer() {
+    Endpoint local = Platform.get().endpoint();
+    linkLocalIp = local.ipv4() != null ? local.ipv4() : local.ipv6();
     service = new ServiceConfig<>();
     service.setApplication(new ApplicationConfig("bean-provider"));
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
+    // avoid dubbo's logic which might pick docker ip
+    System.setProperty(Constants.DUBBO_IP_TO_BIND, linkLocalIp);
+    System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
     service.setInterface(GreeterService.class.getName());
     service.setRef((method, parameterTypes, args) -> {
@@ -60,5 +69,9 @@ class TestServer {
 
   void enqueueDelay(long millis) {
     this.delayQueue.add(millis);
+  }
+
+  String ip() {
+    return linkLocalIp;
   }
 }
