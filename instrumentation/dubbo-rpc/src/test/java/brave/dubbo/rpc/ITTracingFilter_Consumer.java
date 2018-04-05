@@ -28,7 +28,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     client.setApplication(new ApplicationConfig("bean-consumer"));
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://127.0.0.1:" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
   }
 
   @Test public void propagatesSpan() throws Exception {

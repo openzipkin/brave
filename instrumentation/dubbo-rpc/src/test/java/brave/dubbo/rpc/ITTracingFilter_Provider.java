@@ -34,7 +34,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     ReferenceConfig<GreeterService> ref = new ReferenceConfig<>();
     ref.setApplication(new ApplicationConfig("bean-consumer"));
     ref.setInterface(GreeterService.class);
-    ref.setUrl("dubbo://127.0.0.1:" + server.port() + "?scope=remote&generic=bean");
+    ref.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
     client = ref;
 
     setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
