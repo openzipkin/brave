@@ -289,6 +289,24 @@ public class TracerTest {
         .isSameAs(NoopSpanCustomizer.INSTANCE);
   }
 
+  @Test public void currentSpanCustomizer_noop_when_unsampled() {
+    Span parent = tracer.withSampler(Sampler.NEVER_SAMPLE).newTrace();
+
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+      assertThat(tracer.currentSpanCustomizer())
+          .isSameAs(NoopSpanCustomizer.INSTANCE);
+    }
+  }
+
+  @Test public void currentSpanCustomizer_real_when_sampled() {
+    Span parent = tracer.newTrace();
+
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+      assertThat(tracer.currentSpanCustomizer())
+          .isInstanceOf(RealSpanCustomizer.class);
+    }
+  }
+
   @Test public void currentSpan_defaultsToNull() {
     assertThat(tracer.currentSpan()).isNull();
   }
@@ -400,6 +418,21 @@ public class TracerTest {
       assertThat(tracer.currentSpanCustomizer())
           .isNotEqualTo(current)
           .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
+    }
+
+    // context was cleared
+    assertThat(tracer.currentSpan()).isNull();
+  }
+
+  @Test public void withNoopSpanInScope() {
+    Span current = tracer.withSampler(Sampler.NEVER_SAMPLE).nextSpan();
+
+    try (SpanInScope ws = tracer.withSpanInScope(current)) {
+      assertThat(tracer.currentSpan())
+          .isEqualTo(current);
+      assertThat(tracer.currentSpanCustomizer())
+          .isNotEqualTo(current)
+          .isEqualTo(NoopSpanCustomizer.INSTANCE);
     }
 
     // context was cleared
