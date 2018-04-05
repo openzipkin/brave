@@ -1,7 +1,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -216,7 +215,6 @@ public class ITSpringRabbitTracing {
     public Tracing tracing(BlockingQueue<Span> producerSpans) {
       return Tracing.newBuilder()
           .localServiceName("spring-amqp-producer")
-          .sampler(Sampler.ALWAYS_SAMPLE)
           .spanReporter(producerSpans::add)
           .build();
     }
@@ -273,7 +271,6 @@ public class ITSpringRabbitTracing {
     public Tracing tracing(BlockingQueue<Span> consumerSpans) {
       return Tracing.newBuilder()
           .localServiceName("spring-amqp-consumer")
-          .sampler(Sampler.ALWAYS_SAMPLE)
           .spanReporter(consumerSpans::add)
           .build();
     }

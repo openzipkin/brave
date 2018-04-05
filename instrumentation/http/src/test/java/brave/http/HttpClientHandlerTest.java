@@ -14,6 +14,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,7 +22,7 @@ import static org.mockito.Mockito.when;
 public class HttpClientHandlerTest {
   List<Span> spans = new ArrayList<>();
   HttpTracing httpTracing;
-  @Mock HttpSampler sampler;
+  HttpSampler sampler = HttpSampler.TRACE_ID;
   @Mock HttpClientAdapter<Object, Object> adapter;
   @Mock TraceContext.Injector<Object> injector;
   Object request = new Object();
@@ -30,7 +31,11 @@ public class HttpClientHandlerTest {
   @Before public void init() {
     httpTracing = HttpTracing.newBuilder(
         Tracing.newBuilder().spanReporter(spans::add).build()
-    ).clientSampler(sampler).build();
+    ).clientSampler(new HttpSampler() {
+      @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+        return sampler.trySample(adapter, request);
+      }
+    }).build();
     handler = HttpClientHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
@@ -41,9 +46,6 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {
-    // request sampler abstains (trace ID sampler will say true)
-    when(sampler.trySample(adapter, request)).thenReturn(null);
-
     assertThat(handler.handleSend(injector, request))
         .extracting(s -> s.isNoop(), s -> s.context().parentId())
         .containsExactly(false, null);
@@ -59,6 +61,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_makesRequestBasedSamplingDecision() {
+    sampler = mock(HttpSampler.class);
     // request sampler says false eventhough trace ID sampler would have said true
     when(sampler.trySample(adapter, request)).thenReturn(false);
 
@@ -82,8 +85,6 @@ public class HttpClientHandlerTest {
   @Test public void handleSend_addsClientAddressWhenOnlyServiceName() {
     httpTracing = httpTracing.clientOf("remote-service");
 
-    // request sampler abstains (trace ID sampler will say true)
-    when(sampler.trySample(adapter, request)).thenReturn(null);
     HttpClientHandler.create(httpTracing, adapter).handleSend(injector, request).finish();
 
     assertThat(spans)
@@ -96,6 +97,6 @@ public class HttpClientHandlerTest {
 
     assertThat(spans)
         .extracting(Span::remoteServiceName)
-        .isEmpty();
+        .containsNull();
   }
 }

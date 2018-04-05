@@ -1,5 +1,6 @@
 package brave;
 
+import brave.Tracer.SpanInScope;
 import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
@@ -53,6 +54,19 @@ public class TracerTest {
         .isSameAs(sampler);
   }
 
+  @Test public void withSampler() {
+    Sampler sampler = new Sampler() {
+      @Override public boolean isSampled(long traceId) {
+        return false;
+      }
+    };
+
+    tracer = tracer.withSampler(sampler);
+
+    assertThat(tracer.sampler)
+        .isSameAs(sampler);
+  }
+
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
@@ -97,7 +111,7 @@ public class TracerTest {
   }
 
   @Test public void newTrace_unsampled_tracer() {
-    tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
+    tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
 
     assertThat(tracer.newTrace())
         .isInstanceOf(NoopSpan.class);
@@ -286,7 +300,7 @@ public class TracerTest {
   @Test public void nextSpan_extractedNothing_makesChildOfCurrent() {
     Span parent = tracer.newTrace();
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
       assertThat(nextSpan.context().parentId())
           .isEqualTo(parent.context().spanId());
@@ -303,7 +317,7 @@ public class TracerTest {
   @Test public void nextSpan_makesChildOfCurrent() {
     Span parent = tracer.newTrace();
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan().context().parentId())
           .isEqualTo(parent.context().spanId());
     }
@@ -323,7 +337,7 @@ public class TracerTest {
     TraceContextOrSamplingFlags extracted =
         TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1L).build();
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
           .containsExactly(1L);
     }
@@ -336,7 +350,7 @@ public class TracerTest {
     TraceContextOrSamplingFlags extracted =
         TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(2L).build();
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
           .containsExactly(1L, 2L);
     }
@@ -380,7 +394,7 @@ public class TracerTest {
   @Test public void withSpanInScope() {
     Span current = tracer.newTrace();
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(current)) {
+    try (SpanInScope ws = tracer.withSpanInScope(current)) {
       assertThat(tracer.currentSpan())
           .isEqualTo(current);
       assertThat(tracer.currentSpanCustomizer())
@@ -394,7 +408,7 @@ public class TracerTest {
 
   @Test public void toString_withSpanInScope() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
+    try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
           "Tracer{currentSpan=0000000000000001/000000000000000a, reporter=MyReporter{}}"
       );
@@ -428,10 +442,10 @@ public class TracerTest {
   @Test public void withSpanInScope_nested() {
     Span parent = tracer.newTrace();
 
-    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+    try (SpanInScope wsParent = tracer.withSpanInScope(parent)) {
 
       Span child = tracer.newChild(parent.context());
-      try (Tracer.SpanInScope wsChild = tracer.withSpanInScope(child)) {
+      try (SpanInScope wsChild = tracer.withSpanInScope(child)) {
         assertThat(tracer.currentSpan())
             .isEqualTo(child);
       }
@@ -445,8 +459,8 @@ public class TracerTest {
   @Test public void withSpanInScope_clear() {
     Span parent = tracer.newTrace();
 
-    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
-      try (Tracer.SpanInScope clearScope = tracer.withSpanInScope(null)) {
+    try (SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+      try (SpanInScope clearScope = tracer.withSpanInScope(null)) {
         assertThat(tracer.currentSpan())
             .isNull();
         assertThat(tracer.currentSpanCustomizer())

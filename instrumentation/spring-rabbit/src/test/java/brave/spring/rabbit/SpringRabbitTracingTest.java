@@ -1,7 +1,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -15,7 +14,6 @@ import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
   SpringRabbitTracing tracing = SpringRabbitTracing.create(Tracing.newBuilder()
-      .sampler(Sampler.ALWAYS_SAMPLE)
       .spanReporter(Reporter.NOOP)
       .build());
 

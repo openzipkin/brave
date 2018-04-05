@@ -9,7 +9,6 @@ import brave.http.HttpRuleSampler;
 import brave.http.HttpTracing;
 import brave.internal.HexCodec;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.SamplingFlags;
 import brave.sampler.Sampler;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
@@ -106,10 +105,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
-    Tracer tracer = httpTracing.tracing().tracer();
+    Tracer tracer = httpTracing.tracing().tracer().withSampler(Sampler.NEVER_SAMPLE);
     server.enqueue(new MockResponse());
 
-    brave.Span parent = tracer.newTrace(SamplingFlags.NOT_SAMPLED).name("test").start();
+    brave.Span parent = tracer.nextSpan().name("test").start();
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       ExtraFieldPropagation.set(parent.context(), EXTRA_KEY, "joey");
       get(client, "/foo");

@@ -1,7 +1,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import org.aopalliance.intercept.MethodInvocation;
@@ -32,7 +31,6 @@ public class TracingRabbitListenerAdviceTest {
   @Before public void setupTracing() {
     reportedSpans.clear();
     Tracing tracing = Tracing.newBuilder()
-        .sampler(Sampler.ALWAYS_SAMPLE)
         .spanReporter(reportedSpans::add)
         .build();
     tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, "my-service");

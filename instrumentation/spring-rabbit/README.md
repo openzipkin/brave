@@ -10,7 +10,6 @@ To use this instrumentation, first define the common tracing configuration, e.g:
 public Tracing tracing() {
   return Tracing.newBuilder()
       .localServiceName("spring-amqp-producer")
-      .sampler(Sampler.ALWAYS_SAMPLE)
       .build();
 }
 
