@@ -3,12 +3,14 @@ package brave.okhttp3;
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpTracing;
+import brave.propagation.StrictCurrentTraceContext;
 import okhttp3.Connection;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import zipkin2.reporter.Reporter;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -16,8 +18,11 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingInterceptorTest {
-  TracingInterceptor filter =
-      new TracingInterceptor(HttpTracing.create(Tracing.newBuilder().build()));
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(Reporter.NOOP)
+      .build();
+  TracingInterceptor filter = new TracingInterceptor(HttpTracing.create(tracing));
   @Mock Connection connection;
   @Mock Span span;
 
@@ -30,6 +35,6 @@ public class TracingInterceptorTest {
   }
 
   @After public void close(){
-    Tracing.current().close();
+    tracing.close();
   }
 }

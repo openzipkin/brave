@@ -2,25 +2,31 @@ package brave.jaxrs2;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
+import brave.propagation.StrictCurrentTraceContext;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.junit.After;
 import org.junit.Test;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This ensures all filters can be injected, supplied with only {@linkplain HttpTracing}. */
 public class InjectionTest {
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(Reporter.NOOP)
+      .build();
 
   Injector injector = Guice.createInjector(new AbstractModule() {
     @Override protected void configure() {
-      bind(HttpTracing.class).toInstance(HttpTracing.create(Tracing.newBuilder().build()));
+      bind(HttpTracing.class).toInstance(HttpTracing.create(tracing));
     }
   });
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Test public void tracingClientFilter() {

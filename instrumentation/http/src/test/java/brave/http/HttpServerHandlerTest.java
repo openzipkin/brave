@@ -4,6 +4,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.internal.HexCodec;
 import brave.propagation.SamplingFlags;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -33,7 +34,10 @@ public class HttpServerHandlerTest {
 
   @Before public void init() {
     HttpTracing httpTracing = HttpTracing.newBuilder(
-        Tracing.newBuilder().spanReporter(spans::add).build()
+        Tracing.newBuilder()
+            .currentTraceContext(new StrictCurrentTraceContext())
+            .spanReporter(spans::add)
+            .build()
     ).serverSampler(sampler).build();
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, adapter);
@@ -61,7 +65,11 @@ public class HttpServerHandlerTest {
 
   @Test public void handleReceive_reusesTraceId() {
     HttpTracing httpTracing = HttpTracing.create(
-        Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build()
+        Tracing.newBuilder()
+            .currentTraceContext(new StrictCurrentTraceContext())
+            .supportsJoin(false)
+            .spanReporter(spans::add)
+            .build()
     );
 
     tracer = httpTracing.tracing().tracer();

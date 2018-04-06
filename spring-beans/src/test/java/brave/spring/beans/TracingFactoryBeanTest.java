@@ -20,6 +20,8 @@ public class TracingFactoryBeanTest {
 
   @After public void close() {
     if (context != null) context.close();
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test public void autoCloses() {

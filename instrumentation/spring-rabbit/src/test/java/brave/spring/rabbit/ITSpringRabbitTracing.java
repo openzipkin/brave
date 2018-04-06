@@ -1,12 +1,14 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -55,6 +57,10 @@ public class ITSpringRabbitTracing {
 
   @BeforeClass public static void setupTestFixture() {
     testFixture = new ITSpringAmqpTracingTestFixture();
+  }
+
+  @AfterClass public static void close() {
+    Tracing.current().close();
   }
 
   @Before public void reset() {
@@ -214,6 +220,7 @@ public class ITSpringRabbitTracing {
     @Bean
     public Tracing tracing(BlockingQueue<Span> producerSpans) {
       return Tracing.newBuilder()
+          .currentTraceContext(new StrictCurrentTraceContext())
           .localServiceName("spring-amqp-producer")
           .spanReporter(producerSpans::add)
           .build();
@@ -271,6 +278,7 @@ public class ITSpringRabbitTracing {
     public Tracing tracing(BlockingQueue<Span> consumerSpans) {
       return Tracing.newBuilder()
           .localServiceName("spring-amqp-consumer")
+          .currentTraceContext(new StrictCurrentTraceContext())
           .spanReporter(consumerSpans::add)
           .build();
     }

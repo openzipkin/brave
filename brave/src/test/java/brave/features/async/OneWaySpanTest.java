@@ -2,6 +2,7 @@ package brave.features.async;
 
 import brave.Span;
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
@@ -34,10 +35,12 @@ public class OneWaySpanTest {
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing clientTracing = Tracing.newBuilder()
       .localServiceName("client")
+      .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
   Tracing serverTracing = Tracing.newBuilder()
       .localServiceName("server")
+      .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
       .build();
 
@@ -66,7 +69,8 @@ public class OneWaySpanTest {
   }
 
   @After public void close() {
-    Tracing.current().close();
+    clientTracing.close();
+    serverTracing.close();
   }
 
   @Test

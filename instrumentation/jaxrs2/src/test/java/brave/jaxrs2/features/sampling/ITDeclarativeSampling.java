@@ -4,8 +4,9 @@ import brave.Tracing;
 import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
 import brave.http.HttpTracing;
-import brave.test.http.ServletContainer;
 import brave.jaxrs2.TracingBootstrap;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.http.ServletContainer;
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -28,9 +29,11 @@ public class ITDeclarativeSampling extends ServletContainer {
   /** Spans are reported on a server thread, but we read them on the main thread */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
   OkHttpClient client = new OkHttpClient();
-  HttpTracing httpTracing = HttpTracing.newBuilder(Tracing.newBuilder()
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(spans::add)
-      .build())
+      .build();
+  HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
       .serverSampler(new Traced.Sampler(new HttpSampler() {
         @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
           return !"/foo".equals(adapter.path(request));
@@ -38,7 +41,7 @@ public class ITDeclarativeSampling extends ServletContainer {
       })).build();
 
   @After public void close(){
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Path("")

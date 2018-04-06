@@ -1,10 +1,11 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.aopalliance.intercept.MethodInvocation;
-import org.junit.Before;
+import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
@@ -24,25 +25,23 @@ public class TracingRabbitListenerAdviceTest {
   static String SPAN_ID = "48485a3953bb6124";
   static String SAMPLED = "1";
 
-  List<Span> reportedSpans = new ArrayList<>();
-  TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
-  MethodInvocation methodInvocation;
+  List<Span> spans = new ArrayList<>();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(spans::add)
+      .build();
+  TracingRabbitListenerAdvice tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, "my-service");
+  MethodInvocation methodInvocation = mock(MethodInvocation.class);
 
-  @Before public void setupTracing() {
-    reportedSpans.clear();
-    Tracing tracing = Tracing.newBuilder()
-        .spanReporter(reportedSpans::add)
-        .build();
-    tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, "my-service");
-
-    methodInvocation = mock(MethodInvocation.class);
+  @After public void close() {
+    tracing.close();
   }
 
   @Test public void starts_new_trace_if_none_exists() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumed(message);
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .extracting(Span::kind)
         .containsExactly(CONSUMER, null);
   }
@@ -51,7 +50,7 @@ public class TracingRabbitListenerAdviceTest {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumed(message);
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .extracting(Span::remoteServiceName)
         .containsExactly("my-service", null);
   }
@@ -68,7 +67,7 @@ public class TracingRabbitListenerAdviceTest {
         .build();
     onMessageConsumed(message);
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .filteredOn(span -> span.kind() == CONSUMER)
         .extracting(Span::parentId)
         .contains(SPAN_ID);
@@ -78,11 +77,11 @@ public class TracingRabbitListenerAdviceTest {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .extracting(Span::kind)
         .containsExactly(CONSUMER, null);
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .filteredOn(span -> span.kind() == null)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))
@@ -93,11 +92,11 @@ public class TracingRabbitListenerAdviceTest {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     onMessageConsumeFailed(message, new RuntimeException());
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .extracting(Span::kind)
         .containsExactly(CONSUMER, null);
 
-    assertThat(reportedSpans)
+    assertThat(spans)
         .filteredOn(span -> span.kind() == null)
         .extracting(Span::tags)
         .extracting(tags -> tags.get("error"))

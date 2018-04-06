@@ -1,10 +1,8 @@
 package brave.internal.recorder;
 
 import brave.Span.Kind;
-import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
-import org.junit.After;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;
@@ -16,11 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class MutableSpanTest {
   Endpoint localEndpoint = Platform.get().endpoint();
-  TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
-
-  @After public void close() {
-    Tracing.current().close();
-  }
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
 
   // zipkin needs one annotation or binary annotation so that the local endpoint can be read
   @Test public void addsLocalEndpoint() {
