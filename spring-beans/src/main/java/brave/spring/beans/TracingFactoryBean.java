@@ -1,6 +1,7 @@
 package brave.spring.beans;
 
 import brave.Clock;
+import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -18,6 +19,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   Reporter<Span> spanReporter;
   Clock clock;
   Sampler sampler;
+  ErrorParser errorParser;
   CurrentTraceContext currentTraceContext;
   Propagation.Factory propagationFactory;
   Boolean traceId128Bit;
@@ -29,6 +31,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (localEndpoint != null) builder.endpoint(localEndpoint);
     if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
+    if (errorParser != null) builder.errorParser(errorParser);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
     if (currentTraceContext != null) builder.currentTraceContext(currentTraceContext);
@@ -68,6 +71,10 @@ public class TracingFactoryBean extends AbstractFactoryBean {
 
   public void setClock(Clock clock) {
     this.clock = clock;
+  }
+
+  public void setErrorParser(ErrorParser errorParser) {
+    this.errorParser = errorParser;
   }
 
   public void setSampler(Sampler sampler) {
