@@ -1,6 +1,7 @@
 package brave.spring.beans;
 
 import brave.Clock;
+import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictCurrentTraceContext;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.mock;
 
 public class TracingFactoryBeanTest {
   public static Clock CLOCK = mock(Clock.class);
+  public static ErrorParser ERROR_PARSER = mock(ErrorParser.class);
 
   XmlBeans context;
 
@@ -120,6 +122,20 @@ public class TracingFactoryBeanTest {
     assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.clock")
         .containsExactly(CLOCK);
+  }
+
+  @Test public void errorParser() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"errorParser\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".ERROR_PARSER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("errorParser")
+        .containsExactly(ERROR_PARSER);
   }
 
   @Test public void sampler() {
