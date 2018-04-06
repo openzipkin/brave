@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 public class CurrentSpanCustomizerTest {
 
-  List<zipkin2.Span> spans = new ArrayList();
+  List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
       .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(spans::add)
