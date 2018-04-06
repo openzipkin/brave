@@ -4,6 +4,7 @@ import brave.Tracing;
 import brave.internal.HexCodec;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
@@ -53,10 +54,12 @@ public class ITKafkaTracing {
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
       .localServiceName("consumer")
+      .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(consumerSpans::add)
       .build());
   KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
       .localServiceName("producer")
+      .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(producerSpans::add)
       .build());
 

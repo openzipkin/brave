@@ -1,19 +1,20 @@
 package brave;
 
+import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class NoopSpanTest {
   Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
+      .currentTraceContext(new StrictCurrentTraceContext())
       .clock(() -> {
         throw new AssertionError();
       })
-      .spanReporter((Reporter<zipkin2.Span>) s -> {
+      .spanReporter(s -> {
         throw new AssertionError();
       })
       .build().tracer();

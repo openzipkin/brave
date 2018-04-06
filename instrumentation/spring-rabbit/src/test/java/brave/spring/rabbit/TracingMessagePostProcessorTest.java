@@ -1,11 +1,12 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import org.junit.Before;
+import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
@@ -14,16 +15,16 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
+  List<Span> spans = new ArrayList<>();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(spans::add)
+      .build();
+  TracingMessagePostProcessor tracingMessagePostProcessor =
+      new TracingMessagePostProcessor(tracing, "my-exchange");
 
-  List<Span> reportedSpans = new ArrayList<>();
-  TracingMessagePostProcessor tracingMessagePostProcessor;
-
-  @Before public void setupTracing() {
-    reportedSpans.clear();
-    Tracing tracing = Tracing.newBuilder()
-        .spanReporter(reportedSpans::add)
-        .build();
-    tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing, "my-exchange");
+  @After public void close() {
+    tracing.close();
   }
 
   @Test public void should_add_b3_headers_to_message() {
@@ -40,14 +41,14 @@ public class TracingMessagePostProcessorTest {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     tracingMessagePostProcessor.postProcessMessage(message);
 
-    assertThat(reportedSpans).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   @Test public void should_set_remote_service() {
     Message message = MessageBuilder.withBody(new byte[] {}).build();
     tracingMessagePostProcessor.postProcessMessage(message);
 
-    assertThat(reportedSpans.get(0).remoteServiceName())
+    assertThat(spans.get(0).remoteServiceName())
         .isEqualTo("my-exchange");
   }
 }

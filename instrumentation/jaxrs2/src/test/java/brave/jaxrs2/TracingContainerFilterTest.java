@@ -2,6 +2,7 @@ package brave.jaxrs2;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
+import brave.propagation.StrictCurrentTraceContext;
 import java.io.IOException;
 import java.net.URI;
 import javax.ws.rs.GET;
@@ -18,13 +19,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingContainerFilterTest {
-  Tracing tracing = Tracing.newBuilder().build();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(Reporter.NOOP)
+      .build();
   TracingContainerFilter filter =
       new TracingContainerFilter(HttpTracing.create(tracing), ContainerParser.NOOP);
   @Mock ContainerRequestContext context;
@@ -32,7 +37,7 @@ public class TracingContainerFilterTest {
   @Mock ResourceInfo resourceInfo;
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @GET

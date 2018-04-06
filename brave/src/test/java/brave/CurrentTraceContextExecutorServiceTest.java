@@ -27,15 +27,12 @@ public class CurrentTraceContextExecutorServiceTest {
   CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
   ExecutorService executor = currentTraceContext.executorService(wrappedExecutor);
 
-  Tracer tracer = Tracing.newBuilder().build().tracer();
-  TraceContext context = tracer.newTrace().context();
-  TraceContext context2 = tracer.newTrace().context();
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
+  TraceContext context2 = TraceContext.newBuilder().traceId(2).spanId(1).build();
 
   @After public void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
   }
 
   final TraceContext[] threadValues = new TraceContext[2];

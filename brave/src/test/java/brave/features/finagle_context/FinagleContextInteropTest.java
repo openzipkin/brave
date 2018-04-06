@@ -1,9 +1,7 @@
 package brave.features.finagle_context;
 
-import brave.Span;
-import brave.Tracer;
-import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import com.twitter.finagle.context.MarshalledContext;
 import com.twitter.finagle.tracing.Flags$;
@@ -14,6 +12,7 @@ import com.twitter.finagle.tracing.TraceId;
 import com.twitter.io.Buf;
 import com.twitter.util.Local;
 import java.lang.reflect.Field;
+import org.junit.Before;
 import org.junit.Test;
 import scala.Option;
 import scala.Some;
@@ -25,26 +24,29 @@ import static com.twitter.finagle.context.Contexts.broadcast;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FinagleContextInteropTest {
-  @Test public void finagleBraveInterop() throws Exception {
-    Tracer tracer = Tracing.newBuilder()
-        .currentTraceContext(new FinagleCurrentTraceContext()).build().tracer();
+  FinagleCurrentTraceContext currentTraceContext;
+  TraceContext parent = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
 
-    Span parent = tracer.newTrace(); // start a trace in Brave
-    try (Tracer.SpanInScope wsParent = tracer.withSpanInScope(parent)) {
+  @Before public void setup() throws NoSuchFieldException, IllegalAccessException {
+    currentTraceContext = new FinagleCurrentTraceContext();
+  }
+
+  @Test public void finagleBraveInterop() throws Exception {
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       // Inside the parent scope, trace context is consistent between finagle and brave
-      assertThat(tracer.currentSpan().context().spanId())
+      assertThat(currentTraceContext.get().spanId())
           .isEqualTo(Trace.id().spanId().self());
 
       // Clear a scope temporarily
-      try (Tracer.SpanInScope noScope = tracer.withSpanInScope(null)) {
-        assertThat(tracer.currentSpan())
+      try (Scope noScope = currentTraceContext.newScope(null)) {
+        assertThat(currentTraceContext.get())
             .isNull();
       }
 
       // Clear it temporarily in scala!
       Trace.letClear(new AbstractFunction0<Object>() {
         @Override public Object apply() {
-          assertThat(tracer.currentSpan())
+          assertThat(currentTraceContext.get())
               .isNull();
           return null;
         }
@@ -54,12 +56,12 @@ public class FinagleContextInteropTest {
       Trace.letId(Trace.nextId(), false, new AbstractFunction0<Void>() {
         @Override public Void apply() {
           // Inside the child scope, trace context is consistent between finagle and brave
-          assertThat(tracer.currentSpan().context().spanId())
+          assertThat(currentTraceContext.get().spanId())
               .isEqualTo(Trace.id().spanId().self());
 
           // The child span has the correct parent (consistent between finagle and brave)
-          assertThat(tracer.currentSpan().context().parentId())
-              .isEqualTo(parent.context().spanId())
+          assertThat(currentTraceContext.get().parentId())
+              .isEqualTo(parent.spanId())
               .isEqualTo(Trace.id().parentId().self());
 
           return null;
@@ -67,20 +69,18 @@ public class FinagleContextInteropTest {
       });
 
       // After leaving the child scope, trace context is consistent between finagle and brave
-      assertThat(tracer.currentSpan().context().spanId())
+      assertThat(currentTraceContext.get().spanId())
           .isEqualTo(Trace.id().spanId().self());
 
       // The parent span was reverted
-      assertThat(tracer.currentSpan().context().spanId())
-          .isEqualTo(parent.context().spanId())
+      assertThat(currentTraceContext.get().spanId())
+          .isEqualTo(parent.spanId())
           .isEqualTo(Trace.id().spanId().self());
     }
 
     // Outside a scope, trace context is consistent between finagle and brave
-    assertThat(tracer.currentSpan()).isNull();
+    assertThat(currentTraceContext.get()).isNull();
     assertThat(Trace.idOption().isDefined()).isFalse();
-
-    Tracing.current().close();
   }
 
   /**

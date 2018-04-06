@@ -1,13 +1,11 @@
 package brave.internal.recorder;
 
-import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
@@ -28,12 +26,8 @@ import static org.powermock.api.mockito.PowerMockito.when;
 public class MutableSpanMapTest {
   Endpoint endpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList();
-  TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
   MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0L, spans::add, new AtomicBoolean(false));
-
-  @After public void close() {
-    Tracing.current().close();
-  }
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {

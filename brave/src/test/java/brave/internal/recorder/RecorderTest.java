@@ -1,13 +1,11 @@
 package brave.internal.recorder;
 
 import brave.Span;
-import brave.Tracing;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
 
@@ -16,12 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class RecorderTest {
   Endpoint localEndpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList<>();
-  TraceContext context = Tracing.newBuilder().build().tracer().newTrace().context();
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
   Recorder recorder = new Recorder(localEndpoint, () -> 0L, spans::add, new AtomicBoolean(false));
-
-  @After public void close() {
-    Tracing.current().close();
-  }
 
   @Test public void finish_calculatesDuration() {
     recorder.start(context, 1L);

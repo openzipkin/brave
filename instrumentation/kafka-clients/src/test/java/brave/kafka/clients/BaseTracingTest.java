@@ -1,6 +1,7 @@
 package brave.kafka.clients;
 
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import com.google.common.base.Charsets;
 import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
@@ -27,7 +28,10 @@ abstract class BaseTracingTest {
       new ConsumerRecord<>(TEST_TOPIC, 0, 1L, TEST_KEY, TEST_VALUE);
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
-  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(spans::add)
+      .build();
   KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
 
   @After public void tearDown() throws Exception {

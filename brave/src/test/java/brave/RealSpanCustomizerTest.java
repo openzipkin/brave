@@ -1,5 +1,6 @@
 package brave;
 
+import brave.propagation.StrictCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -11,12 +12,15 @@ import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanCustomizerTest {
   List<zipkin2.Span> spans = new ArrayList();
-  Tracer tracer = Tracing.newBuilder().spanReporter(spans::add).build().tracer();
-  Span span = tracer.newTrace();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(new StrictCurrentTraceContext())
+      .spanReporter(spans::add)
+      .build();
+  Span span = tracing.tracer().newTrace();
   SpanCustomizer spanCustomizer = span.customizer();
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Test public void name() {
