@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-propagation-parent</artifactId>
-    <version>4.18.3-SNAPSHOT</version>
+    <version>4.19.0</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
