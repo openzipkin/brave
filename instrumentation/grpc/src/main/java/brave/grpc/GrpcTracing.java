@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.ErrorParser;
 import brave.Tracing;
 import com.google.auto.value.AutoValue;
 import io.grpc.ClientInterceptor;
@@ -12,9 +13,19 @@ public abstract class GrpcTracing {
   }
 
   public static Builder newBuilder(Tracing tracing) {
+    ErrorParser errorParser = tracing.errorParser();
     return new AutoValue_GrpcTracing.Builder().tracing(tracing)
-        .clientParser(new GrpcClientParser())
-        .serverParser(new GrpcServerParser());
+        // override to re-use any custom error parser from the tracing component
+        .clientParser(new GrpcClientParser() {
+          @Override protected ErrorParser errorParser() {
+            return errorParser;
+          }
+        })
+        .serverParser(new GrpcServerParser() {
+          @Override protected ErrorParser errorParser() {
+            return errorParser;
+          }
+        });
   }
 
   abstract Tracing tracing();

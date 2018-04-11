@@ -45,7 +45,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       result = next.startCall(new TracingServerCall<>(span, call, parser), headers);
     } catch (RuntimeException | Error e) {
-      parser.onError(e, span.customizer());
+      span.error(e);
       span.finish();
       throw e;
     }
@@ -81,7 +81,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
         super.close(status, trailers);
         parser.onClose(status, trailers, span.customizer());
       } catch (RuntimeException | Error e) {
-        parser.onError(e, span.customizer());
+        span.error(e);
         throw e;
       } finally {
         span.finish();

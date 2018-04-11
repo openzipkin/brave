@@ -87,8 +87,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
         }
       };
     } catch (RuntimeException | Error e) {
-      parser.onError(e, span.customizer());
-      span.finish();
+      span.error(e).finish();
       throw e;
     }
   }
