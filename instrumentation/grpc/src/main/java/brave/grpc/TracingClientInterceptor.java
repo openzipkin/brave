@@ -3,7 +3,7 @@ package brave.grpc;
 import brave.Span;
 import brave.Tracer;
 import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Injector;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -29,14 +29,13 @@ final class TracingClientInterceptor implements ClientInterceptor {
       };
 
   final Tracer tracer;
-  final TraceContext.Injector<Metadata> injector;
+  final Injector<Metadata> injector;
   final GrpcClientParser parser;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
-    tracer = grpcTracing.tracing().tracer();
-    injector = grpcTracing.tracing().propagationFactory()
-        .create(AsciiMetadataKeyFactory.INSTANCE).injector(SETTER);
-    parser = grpcTracing.clientParser();
+    tracer = grpcTracing.tracing.tracer();
+    injector = grpcTracing.propagation.injector(SETTER);
+    parser = grpcTracing.clientParser;
   }
 
   /**

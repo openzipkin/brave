@@ -58,7 +58,7 @@ public class ITTracingClientInterceptor {
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   GrpcTracing tracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
-  Tracer tracer = tracing.tracing().tracer();
+  Tracer tracer = tracing.tracing.tracer();
   TestServer server = new TestServer();
   ManagedChannel client;
 
@@ -289,14 +289,14 @@ public class ITTracingClientInterceptor {
     tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
-        if (tracing.tracing().currentTraceContext().get() != null) {
+        if (tracing.tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_sent.visible", "true");
         }
       }
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
         span.tag("grpc.message_received", message.toString());
-        if (tracing.tracing().currentTraceContext().get() != null) {
+        if (tracing.tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_received.visible", "true");
         }
       }
