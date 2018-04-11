@@ -60,6 +60,28 @@ overrideSpanName = new GrpcClientParser() {
 };
 ```
 
+## gRPC Propagation Format (Census interop)
+
+gRPC defines a [binary encoded propagation format](https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md) which is implemented
+by [OpenCensus](https://opencensus.io/) instrumentation. When this is
+the case, incoming requests will have two metadata keys "grpc-trace-bin"
+and "grpc-tags-bin".
+
+When enabled, this component can extract trace contexts from these
+metadata and also write the same keys on outgoing calls. This allows
+transparent interop when both census and brave report data to the same
+tracing system.
+
+To enable this feature, set `grpcPropagationFormatEnabled` which is off
+by default:
+```java
+grpcTracing = GrpcTracing.newBuilder(tracing)
+                         .grpcPropagationFormatEnabled(true).build();
+```
+
+Warning: the format of both "grpc-trace-bin" and "grpc-tags-bin" are
+version 0. As such, consider this feature experimental.
+
 ## Development
 
 If you are working on this module, then you need to run `mvn install` to first compile the protos. Once the protos are compiled, then can be found in the directories:

@@ -59,8 +59,8 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.9.0</zipkin.version>
-    <zipkin-reporter.version>2.7.0</zipkin-reporter.version>
+    <zipkin.version>2.9.3</zipkin.version>
+    <zipkin-reporter.version>2.7.3</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.13.RELEASE</spring4.version>
@@ -73,7 +73,7 @@
     <finagle.version>18.1.0</finagle.version>
     <log4j.version>2.10.0</log4j.version>
     <okhttp.version>3.9.1</okhttp.version>
-    <grpc.version>1.8.0</grpc.version>
+    <grpc.version>1.12.0</grpc.version>
     <netty.version>4.1.19.Final</netty.version>
     <sparkjava.version>2.7.1</sparkjava.version>
     <junit.version>4.12</junit.version>

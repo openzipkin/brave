@@ -204,7 +204,7 @@ public class ITTracingServerInterceptor {
       public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
           Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         testLogger.info("in span!");
-        fromUserInterceptor.set(grpcTracing.tracing().currentTraceContext().get());
+        fromUserInterceptor.set(grpcTracing.tracing.currentTraceContext().get());
         return next.startCall(call, headers);
       }
     });
@@ -259,14 +259,14 @@ public class ITTracingServerInterceptor {
     grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
-        if (grpcTracing.tracing().currentTraceContext().get() != null) {
+        if (grpcTracing.tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_sent.visible", "true");
         }
       }
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
         span.tag("grpc.message_received", message.toString());
-        if (grpcTracing.tracing().currentTraceContext().get() != null) {
+        if (grpcTracing.tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_received.visible", "true");
         }
       }

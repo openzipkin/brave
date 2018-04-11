@@ -1,4 +1,6 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
@@ -12,6 +14,7 @@
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
     <protobuf.version>3.5.1</protobuf.version>
+    <opencensus.version>0.14.0</opencensus.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.5.1</protobuf-maven-plugin.version>
   </properties>
@@ -21,11 +24,6 @@
       <groupId>io.grpc</groupId>
       <artifactId>grpc-all</artifactId>
       <version>${grpc.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.auto.value</groupId>
-      <artifactId>auto-value</artifactId>
       <scope>provided</scope>
     </dependency>
     <!-- generated code includes Generated annotations! -->
@@ -42,6 +40,18 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-context-log4j2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.opencensus</groupId>
+      <artifactId>opencensus-impl-lite</artifactId>
+      <version>${opencensus.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.opencensus</groupId>
+      <artifactId>opencensus-testing</artifactId>
+      <version>${opencensus.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -94,7 +104,8 @@
         <configuration>
           <extraArtifacts>
             <extraArtifact>io.grpc:grpc-all:1.2.0:jar</extraArtifact>
-            <extraArtifact>com.google.protobuf:protoc:3.2.0:exe:${os.detected.classifier}</extraArtifact>
+            <extraArtifact>com.google.protobuf:protoc:3.2.0:exe:${os.detected.classifier}
+            </extraArtifact>
           </extraArtifacts>
         </configuration>
       </plugin>
