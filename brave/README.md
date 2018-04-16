@@ -488,9 +488,9 @@ for JDBC connections, as they often initialize prior to the tracing
 component.
 
 The most recent tracing component instantiated is available via
-`Tracing.current()`. You there's also a shortcut to get only the tracer
+`Tracing.current()`. There's also a shortcut to get only the tracer
 via `Tracing.currentTracer()`. If you use either of these methods, do
-noot cache the result. Instead, look them up each time you need them.
+not cache the result. Instead, look them up each time you need them.
 
 ## Current Span
 
