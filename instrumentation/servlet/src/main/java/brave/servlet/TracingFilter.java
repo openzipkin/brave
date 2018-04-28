@@ -6,6 +6,8 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
@@ -40,12 +42,14 @@ public final class TracingFilter implements Filter {
   }
 
   final ServletRuntime servlet = ServletRuntime.get();
+  final CurrentTraceContext currentTraceContext;
   final Tracer tracer;
   final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<HttpServletRequest> extractor;
 
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing, ADAPTER);
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
   }
@@ -57,12 +61,17 @@ public final class TracingFilter implements Filter {
     HttpServletResponse httpResponse = servlet.httpResponse(response);
 
     // Prevent duplicate spans for the same request
-    if (request.getAttribute("TracingFilter") != null) {
-      chain.doFilter(request, response);
+    TraceContext context = (TraceContext) request.getAttribute(TraceContext.class.getName());
+    if (context != null) {
+      // A forwarded request might end up on another thread, so make sure it is scoped
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
+        chain.doFilter(request, response);
+      } finally {
+        scope.close();
+      }
       return;
     }
-
-    request.setAttribute("TracingFilter", "true");
 
     Span span = handler.handleReceive(extractor, httpRequest);
 
@@ -71,13 +80,15 @@ public final class TracingFilter implements Filter {
     request.setAttribute(TraceContext.class.getName(), span.context());
 
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    Scope scope = currentTraceContext.newScope(span.context());
+    try {
       // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
       chain.doFilter(httpRequest, httpResponse);
     } catch (IOException | ServletException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
+      scope.close();
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, span);
       } else { // we have a synchronous response, so we can finish the span
