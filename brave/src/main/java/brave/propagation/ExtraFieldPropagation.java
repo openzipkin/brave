@@ -2,6 +2,9 @@ package brave.propagation;
 
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.internal.PredefinedPropagationFields;
+import brave.internal.PropagationFields;
+import brave.internal.PropagationFieldsFactory;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
@@ -186,7 +189,11 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   /** Returns a mapping of any fields in the extraction result. */
   public static Map<String, String> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return extracted.context() != null ? getAll(extracted.context()) : getAll(extracted.extra());
+    TraceContext extractedContext = extracted.context();
+    if (extractedContext != null) {
+      return getAll(extractedContext.extra());
+    }
+    return getAll(extracted.extra());
   }
 
   /** Returns a mapping of any fields in the trace context. */
@@ -202,35 +209,25 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
   /** Returns the value of the field with the specified key or null if not available */
   @Nullable public static String get(TraceContext context, String name) {
-    if (context == null) throw new NullPointerException("context == null");
-    if (name == null) throw new NullPointerException("name == null");
-    Extra extra = findExtra(context.extra());
-    if (extra == null) return null;
-    int index = extra.indexOf(name.toLowerCase(Locale.ROOT));
-    return index != -1 ? extra.get(index) : null;
+    return PropagationFields.get(context, lowercase(name));
   }
 
   /** Sets the value of the field with the specified key, or drops if not a configured field */
   public static void set(TraceContext context, String name, String value) {
-    if (context == null) throw new NullPointerException("context == null");
-    if (name == null) throw new NullPointerException("name == null");
-    if (value == null) throw new NullPointerException("value == null");
-    Extra extra = findExtra(context.extra());
-    if (extra == null) return;
-    int index = extra.indexOf(name.toLowerCase(Locale.ROOT));
-    if (index == -1) return;
-    extra.set(index, value);
+    PropagationFields.put(context, lowercase(name), value);
   }
 
   static final class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
     final String[] fieldNames;
     final String[] keyNames;
+    final ExtraFactory extraFactory;
 
     Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames) {
       this.delegate = delegate;
       this.fieldNames = fieldNames;
       this.keyNames = keyNames;
+      this.extraFactory = new ExtraFactory(fieldNames);
     }
 
     @Override public boolean supportsJoin() {
@@ -247,70 +244,24 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       for (int i = 0; i < length; i++) {
         keys.add(keyFactory.create(keyNames[i]));
       }
-      return new ExtraFieldPropagation<>(delegate.create(keyFactory), fieldNames, keys);
+      return new ExtraFieldPropagation<>(this, keyFactory, keys);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegate.decorate(context);
-
-      // If there's an implicit context while extracting only extra fields, we will have two extras!
-      List<Object> extras = result.extra();
-      int thisExtraIndex = -1, parentExtraIndex = -1;
-      for (int i = 0, length = extras.size(); i < length; i++) {
-        if (extras.get(i) instanceof Extra) {
-          Extra extra = (Extra) result.extra().get(i);
-          if (!Arrays.equals(extra.fieldNames, fieldNames)) {
-            throw new IllegalStateException(
-                String.format("Mixed name configuration unsupported: found %s, expected %s",
-                    Arrays.toString(extra.fieldNames), Arrays.toString(fieldNames))
-            );
-          }
-          // If this extra is unassociated (due to remote extraction),
-          // or it is the same span ID, re-use the instance.
-          if (extra.tryAssociate(context)) {
-            thisExtraIndex = i;
-          } else {
-            parentExtraIndex = i;
-          }
-        }
-      }
-
-      if (thisExtraIndex != -1 && parentExtraIndex == -1) return context;
-
-      // otherwise, we are creating a new instance
-      List<Object> copyOfExtra = new ArrayList<>(result.extra());
-      Extra extra;
-      if (thisExtraIndex == -1 && parentExtraIndex != -1) { // clone then parent (for copy-on-write)
-        extra = ((Extra) copyOfExtra.get(parentExtraIndex)).clone();
-        copyOfExtra.set(parentExtraIndex, extra);
-      } else if (thisExtraIndex != -1 && parentExtraIndex != -1) { // merge with the parent
-        extra = ((Extra) copyOfExtra.get(thisExtraIndex));
-        Extra parent = (Extra) copyOfExtra.remove(parentExtraIndex); // ensures only one extra
-        if (parent.values != null) { // then values were added to our parent
-          for (int i = 0; i < parent.values.length; i++) {
-            if (parent.values[i] != null && extra.get(i) == null) { // extracted wins vs parent
-              extra.set(i, parent.values[i]);
-            }
-          }
-        }
-      } else { // no fields were extracted and the parent also had no fields. create a new copy
-        extra = new Extra(fieldNames);
-        copyOfExtra.add(extra);
-      }
-      TraceContext resultContext =
-          result.toBuilder().extra(Collections.unmodifiableList(copyOfExtra)).build();
-      extra.context = resultContext; // associate this with the new context
-      return resultContext;
+      return extraFactory.decorate(result);
     }
   }
 
   final Propagation<K> delegate;
+  final ExtraFactory extraFactory;
   final String[] fieldNames;
   final List<K> keys, allKeys;
 
-  ExtraFieldPropagation(Propagation<K> delegate, String[] fieldNames, List<K> keys) {
-    this.delegate = delegate;
-    this.fieldNames = fieldNames;
+  ExtraFieldPropagation(Factory factory, Propagation.KeyFactory<K> keyFactory, List<K> keys) {
+    this.delegate = factory.delegate.create(keyFactory);
+    this.extraFactory = factory.extraFactory;
+    this.fieldNames = factory.fieldNames;
     this.keys = keys;
     List<K> allKeys = new ArrayList<>(delegate.keys());
     allKeys.addAll(keys);
@@ -329,83 +280,6 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return new ExtraFieldExtractor<>(this, getter);
   }
 
-  /** Copy-on-write keeps propagation changes in a child context from affecting its parent */
-  static final class Extra implements Cloneable {
-    final String[] fieldNames;
-    volatile String[] values; // guarded by this, copy on write
-    TraceContext context; // guarded by this
-
-    Extra(String[] fieldNames) {
-      this.fieldNames = fieldNames;
-    }
-
-    /** Extra data are extracted before a context is created. We need to lazy set the context */
-    boolean tryAssociate(TraceContext newContext) {
-      synchronized (this) {
-        if (context == null) {
-          context = newContext;
-          return true;
-        }
-        return context.traceId() == newContext.traceId()
-            && context.spanId() == newContext.spanId();
-      }
-    }
-
-    int indexOf(String name) {
-      for (int i = 0, length = fieldNames.length; i < length; i++) {
-        if (fieldNames[i].equals(name)) return i;
-      }
-      return -1;
-    }
-
-    void set(int index, String value) {
-      synchronized (this) {
-        String[] elements = values;
-        if (elements == null) {
-          elements = new String[fieldNames.length];
-          elements[index] = value;
-        } else if (!value.equals(elements[index])) {
-          // this is the copy-on-write part
-          elements = Arrays.copyOf(elements, elements.length);
-          elements[index] = value;
-        }
-        values = elements;
-      }
-    }
-
-    String get(int index) {
-      final String result;
-      synchronized (this) {
-        String[] elements = values;
-        result = elements != null ? elements[index] : null;
-      }
-      return result;
-    }
-
-    @Override public String toString() {
-      String[] elements;
-      synchronized (this) {
-        elements = values;
-      }
-
-      if (elements == null) return "ExtraFieldPropagation{}";
-
-      Map<String, String> contents = new LinkedHashMap<>();
-      for (int i = 0, length = fieldNames.length; i < length; i++) {
-        String maybeValue = elements[i];
-        if (maybeValue == null) continue;
-        contents.put(fieldNames[i], maybeValue);
-      }
-      return "ExtraFieldPropagation" + contents;
-    }
-
-    @Override public Extra clone() {
-      Extra result = new Extra(fieldNames);
-      result.values = values;
-      return result;
-    }
-  }
-
   static final class ExtraFieldInjector<C, K> implements Injector<C> {
     final Injector<C> delegate;
     final Propagation.Setter<C, K> setter;
@@ -421,15 +295,28 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
     @Override public void inject(TraceContext traceContext, C carrier) {
       delegate.inject(traceContext, carrier);
-      int extraIndex = indexOfExtra(traceContext.extra());
-      if (extraIndex == -1) return;
-      Extra extra = (Extra) traceContext.extra().get(extraIndex);
+      List<Object> extra = traceContext.extra();
+      for (int i = 0, length = extra.size(); i < length; i++) {
+        Object next = extra.get(i);
+        if (next instanceof Extra) {
+          inject((Extra) next, carrier);
+          return;
+        }
+      }
+    }
+
+    void inject(Extra fields, C carrier) {
       for (int i = 0, length = keys.size(); i < length; i++) {
-        String maybeValue = extra.get(i);
+        String maybeValue = fields.get(i);
         if (maybeValue == null) continue;
         setter.put(carrier, keys.get(i), maybeValue);
       }
     }
+  }
+
+  static Map<String, String> getAll(List<Object> extraList) {
+    PropagationFields fields = PropagationFields.find(extraList);
+    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   static final class ExtraFieldExtractor<C, K> implements Extractor<C> {
@@ -447,26 +334,14 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
 
       // always allocate in case fields are added late
-      Extra extra = new Extra(propagation.fieldNames);
+      PredefinedPropagationFields fields = propagation.extraFactory.create();
       for (int i = 0, length = propagation.fieldNames.length; i < length; i++) {
         String maybeValue = getter.get(carrier, propagation.keys.get(i));
         if (maybeValue == null) continue;
-        extra.set(i, maybeValue);
+        fields.put(i, maybeValue);
       }
-      return result.toBuilder().addExtra(extra).build();
+      return result.toBuilder().addExtra(fields).build();
     }
-  }
-
-  static Extra findExtra(List<Object> extra) {
-    int i = indexOfExtra(extra);
-    return i != -1 ? (Extra) extra.get(i) : null;
-  }
-
-  static int indexOfExtra(List<Object> extra) {
-    for (int i = 0, length = extra.size(); i < length; i++) {
-      if (extra.get(i) instanceof Extra) return i;
-    }
-    return -1;
   }
 
   static String[] ensureLowerCase(Collection<String> names) {
@@ -483,17 +358,38 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return result;
   }
 
-  static Map<String, String> getAll(List<Object> extraList) {
-    Extra extra = findExtra(extraList);
-    if (extra == null) return Collections.emptyMap();
-    String[] elements = extra.values;
-    if (elements == null) return Collections.emptyMap();
+  static final class ExtraFactory extends PropagationFieldsFactory<Extra> {
+    final String[] fieldNames;
 
-    Map<String, String> result = new LinkedHashMap<>();
-    for (int i = 0, length = elements.length; i < length; i++) {
-      String value = elements[i];
-      if (value != null) result.put(extra.fieldNames[i], value);
+    ExtraFactory(String[] fieldNames) {
+      this.fieldNames = fieldNames;
     }
-    return result;
+
+    @Override protected Class type() {
+      return Extra.class;
+    }
+
+    @Override protected Extra create() {
+      return new Extra(fieldNames);
+    }
+
+    @Override protected Extra create(Extra parent) {
+      return new Extra(parent, fieldNames);
+    }
+  }
+
+  static final class Extra extends PredefinedPropagationFields {
+    Extra(String... fieldNames) {
+      super(fieldNames);
+    }
+
+    Extra(Extra parent, String... fieldNames) {
+      super(parent, fieldNames);
+    }
+  }
+
+  static String lowercase(String name) {
+    if (name == null) throw new NullPointerException("name == null");
+    return name.toLowerCase(Locale.ROOT);
   }
 }
