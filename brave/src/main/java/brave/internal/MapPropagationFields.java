@@ -1,0 +1,73 @@
+package brave.internal;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/** Copy-on-write keeps propagation changes in a child context from affecting its parent */
+public class MapPropagationFields extends PropagationFields {
+
+  volatile Map<String, String> values; // guarded by this, copy on write
+
+  protected MapPropagationFields() {
+  }
+
+  protected MapPropagationFields(Map<String, String> parent) {
+    this.values = Collections.unmodifiableMap(parent);
+  }
+
+  protected MapPropagationFields(MapPropagationFields parent) {
+    this.values = parent.values;
+  }
+
+  @Override public String get(String name) {
+    Map<String, String> values;
+    synchronized (this) {
+      values = this.values;
+    }
+    return values != null ? values.get(name) : null;
+  }
+
+  @Override public final void put(String name, String value) {
+    synchronized (this) {
+      Map<String, String> values = this.values;
+      if (values == null) {
+        values = new LinkedHashMap<>();
+        values.put(name, value);
+      } else if (!value.equals(values.get(name))) {
+        // this is the copy-on-write part
+        values = new LinkedHashMap<>(values);
+        values.put(name, value);
+      }
+      this.values = Collections.unmodifiableMap(values);
+    }
+  }
+
+  @Override protected final void putAllIfAbsent(PropagationFields parent) {
+    if (!(parent instanceof MapPropagationFields)) return;
+    MapPropagationFields mapParent = (MapPropagationFields) parent;
+    Map<String, String> parentValues = mapParent.values;
+    if (parentValues == null) return;
+
+    synchronized (this) {
+      if (values == null) {
+        values = parentValues;
+        return;
+      }
+    }
+
+    for (Map.Entry<String, String> entry : parentValues.entrySet()) {
+      if (values.containsKey(entry.getKey())) continue; // previous wins vs parent
+      put(entry.getKey(), entry.getValue());
+    }
+  }
+
+  @Override public final Map<String, String> toMap() {
+    Map<String, String> values;
+    synchronized (this) {
+      values = this.values;
+    }
+    if (values == null) return Collections.emptyMap();
+    return values;
+  }
+}

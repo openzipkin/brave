@@ -1,7 +1,7 @@
 package brave.propagation;
 
-import brave.ScopedSpan;
 import brave.Tracing;
+import brave.internal.PropagationFields;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -33,136 +33,6 @@ public class ExtraFieldPropagationTest {
         .spanId(2L)
         .sampled(true)
         .build());
-  }
-
-  @Test public void contextsAreIndependent() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
-
-      TraceContext context1 = tracing.tracer().nextSpan().context();
-      ExtraFieldPropagation.set(context1, "x-vcap-request-id", "foo");
-      TraceContext context2 = tracing.tracer().newChild(context1).context();
-
-      // same values when propagating down
-      assertThat(ExtraFieldPropagation.get(context1, "x-vcap-request-id"))
-          .isEqualTo(ExtraFieldPropagation.get(context2, "x-vcap-request-id"))
-          .isEqualTo("foo");
-
-      ExtraFieldPropagation.set(context1, "x-vcap-request-id", "bar");
-      ExtraFieldPropagation.set(context2, "x-vcap-request-id", "baz");
-
-      assertThat(ExtraFieldPropagation.get(context1, "x-vcap-request-id"))
-          .isEqualTo("bar");
-      assertThat(ExtraFieldPropagation.get(context2, "x-vcap-request-id"))
-          .isEqualTo("baz");
-    }
-  }
-
-  @Test public void contextIsntBrokenWithSmallChanges() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
-
-      TraceContext context1 = tracing.tracer().nextSpan().context();
-      ExtraFieldPropagation.set(context1, "x-vcap-request-id", "foo");
-
-      TraceContext context2 =
-          tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
-      ExtraFieldPropagation.Extra extra1 = (ExtraFieldPropagation.Extra) context1.extra().get(0);
-      ExtraFieldPropagation.Extra extra2 = (ExtraFieldPropagation.Extra) context2.extra().get(0);
-
-      // we have the same span ID, so we should couple our extra fields
-      assertThat(extra1).isSameAs(extra2);
-
-      // we no longer have the same span ID, so we should decouple our extra fields
-      TraceContext context3 =
-          tracing.tracer().toSpan(context1.toBuilder().spanId(1L).build()).context();
-      ExtraFieldPropagation.Extra extra3 = (ExtraFieldPropagation.Extra) context3.extra().get(0);
-
-      // we have different instances of extra
-      assertThat(extra1).isNotSameAs(extra3);
-
-      // however, the values inside are the same until a write occurs
-      assertThat(extra1.values).isSameAs(extra3.values);
-
-      // inside the span, the same change is present, but the other span has the old values
-      ExtraFieldPropagation.set(context1, "x-vcap-request-id", "1");
-      assertThat(extra1.values).isSameAs(extra2.values);
-      assertThat(extra1.values).isNotSameAs(extra3.values);
-    }
-  }
-
-  /**
-   * This scenario is possible, albeit rare. {@code tracer.nextSpan(extracted} } is called when
-   * there is an implicit parent. For example, you have a trace in progress when extracting trace
-   * state from an incoming message. Another example is where there is a span in scope due to a leak
-   * such as from using {@link CurrentTraceContext.Default#inheritable()}.
-   *
-   * <p>When we are only extracting extra fields, the state should merge as opposed to creating
-   * duplicate copies of {@link ExtraFieldPropagation.Extra}.
-   */
-  @Test public void nextSpanMergesExtraWithImplicitParent_hasFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
-      ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
-      try {
-        ExtraFieldPropagation.set(parent.context(), "x-vcap-request-id", "foo");
-
-        carrier.put("x-amzn-trace-id", awsTraceId);
-        carrier.put("x-vcap-request-id", "bar"); // extracted should win!
-        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
-
-        assertThat(context1.extra()) // merged
-            .hasSize(1);
-        ExtraFieldPropagation.Extra extra = ((ExtraFieldPropagation.Extra) context1.extra().get(0));
-        assertThat(extra.values)
-            .containsExactly("bar", awsTraceId);
-        assertThat(extra.context)
-            .isSameAs(context1);
-      } finally {
-        parent.finish();
-      }
-    }
-  }
-
-  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitExtraFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
-
-      ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
-      try {
-        carrier.put("x-amzn-trace-id", awsTraceId);
-        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
-
-        assertThat(context1.extra()) // merged
-            .hasSize(1);
-        ExtraFieldPropagation.Extra extra = ((ExtraFieldPropagation.Extra) context1.extra().get(0));
-        assertThat(extra.values)
-            .containsExactly(null, awsTraceId);
-        assertThat(extra.context)
-            .isSameAs(context1);
-      } finally {
-        parent.finish();
-      }
-    }
-  }
-
-  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedExtraFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(factory).build()) {
-
-      ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
-      try {
-        ExtraFieldPropagation.set(parent.context(), "x-vcap-request-id", "foo");
-
-        TraceContext context1 = tracing.tracer().nextSpan(extractor.extract(carrier)).context();
-
-        assertThat(context1.extra()) // merged
-            .hasSize(1);
-        ExtraFieldPropagation.Extra extra =
-            ((ExtraFieldPropagation.Extra) context1.extra().get(0));
-        assertThat(extra.values)
-            .containsExactly("foo", null);
-        assertThat(extra.context)
-            .isSameAs(context1);
-      } finally {
-        parent.finish();
-      }
-    }
   }
 
   @Test public void downcasesNames() {
@@ -223,18 +93,6 @@ public class ExtraFieldPropagationTest {
         .isNull();
   }
 
-  @Test public void set_ignoresUnconfiguredField() {
-    ExtraFieldPropagation.set(context, "balloon-color", "red");
-
-    assertThat(context.extra().get(0))
-        .hasToString("ExtraFieldPropagation{}");
-  }
-
-  @Test public void get_ignoresUnconfiguredField() {
-    assertThat(ExtraFieldPropagation.get("balloon-color"))
-        .isNull();
-  }
-
   @Test public void current_set() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
@@ -242,23 +100,6 @@ public class ExtraFieldPropagationTest {
 
       assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
           .isEqualTo(awsTraceId);
-    }
-  }
-
-  @Test public void toSpan_selfLinksContext() {
-    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
-      ScopedSpan parent = t.tracer().startScopedSpan("parent");
-      try {
-        ExtraFieldPropagation.set(parent.context(), "x-amzn-trace-id", awsTraceId);
-
-        ExtraFieldPropagation.Extra extra =
-            (ExtraFieldPropagation.Extra) parent.context().extra().get(0);
-
-        assertThat(extra.context)
-            .isSameAs(parent.context());
-      } finally {
-        parent.finish();
-      }
     }
   }
 
@@ -272,29 +113,9 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.set("x-amzn-trace-id", awsTraceId); // doesn't throw
   }
 
-  @Test public void toString_extra() {
-    String[] fieldNames = {"x-vcap-request-id"};
-    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(fieldNames);
-    extra.set(0, uuid);
-
-    assertThat(extra)
-        .hasToString("ExtraFieldPropagation{x-vcap-request-id=" + uuid + "}");
-  }
-
-  @Test public void toString_two() {
-    String[] fieldNames = {"x-amzn-trace-id", "x-vcap-request-id"};
-    ExtraFieldPropagation.Extra extra = new ExtraFieldPropagation.Extra(fieldNames);
-    extra.set(0, awsTraceId);
-    extra.set(1, uuid);
-
-    assertThat(extra).hasToString(
-        "ExtraFieldPropagation{x-amzn-trace-id=" + awsTraceId + ", x-vcap-request-id=" + uuid + "}"
-    );
-  }
-
   @Test public void inject_extra() {
-    ExtraFieldPropagation.Extra extra = ExtraFieldPropagation.findExtra(context.extra());
-    extra.set(0, uuid);
+    PropagationFields fields = PropagationFields.find(context.extra());
+    fields.put("x-vcap-request-id", uuid);
 
     injector.inject(context, carrier);
 
@@ -302,9 +123,9 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    ExtraFieldPropagation.Extra extra = ExtraFieldPropagation.findExtra(context.extra());
-    extra.set(0, uuid);
-    extra.set(1, awsTraceId);
+    PropagationFields fields = PropagationFields.find(context.extra());
+    fields.put("x-vcap-request-id", uuid);
+    fields.put("x-amzn-trace-id", awsTraceId);
 
     injector.inject(context, carrier);
 
@@ -320,25 +141,15 @@ public class ExtraFieldPropagationTest {
         .build();
     initialize();
 
-    ExtraFieldPropagation.Extra extra = ExtraFieldPropagation.findExtra(context.extra());
-    extra.set(0, uuid);
-    extra.set(1, "FO");
+    PropagationFields fields = PropagationFields.find(context.extra());
+    fields.put("x-vcap-request-id", uuid);
+    fields.put("country-code", "FO");
 
     injector.inject(context, carrier);
 
     assertThat(carrier)
         .containsEntry("baggage-country-code", "FO")
         .containsEntry("x-vcap-request-id", uuid);
-  }
-
-  /** it is illegal to mix naming configuration in the same span */
-  @Test(expected = IllegalStateException.class)
-  public void mixed_names_unsupported() {
-    Propagation.Factory otherFactory = ExtraFieldPropagation.newFactory(
-        B3Propagation.FACTORY, "foo", "bar"
-    );
-
-    otherFactory.decorate(context);
   }
 
   @Test public void extract_extra() {
@@ -351,10 +162,9 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
         .hasSize(1);
 
-    ExtraFieldPropagation.Extra extra =
-        (ExtraFieldPropagation.Extra) extracted.context().extra().get(0);
-    assertThat(extra.values)
-        .contains(awsTraceId);
+    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
+    assertThat(fields.toMap())
+        .containsEntry("x-amzn-trace-id", awsTraceId);
   }
 
   @Test public void extract_two() {
@@ -368,10 +178,10 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
         .hasSize(1);
 
-    ExtraFieldPropagation.Extra extra =
-        (ExtraFieldPropagation.Extra) extracted.context().extra().get(0);
-    assertThat(extra.values)
-        .containsExactly(uuid, awsTraceId);
+    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
+    assertThat(fields.toMap())
+        .containsEntry("x-amzn-trace-id", awsTraceId)
+        .containsEntry("x-vcap-request-id", uuid);
   }
 
   @Test public void extract_prefixed() {
@@ -391,10 +201,10 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
         .hasSize(1);
 
-    ExtraFieldPropagation.Extra extra =
-        (ExtraFieldPropagation.Extra) extracted.context().extra().get(0);
-    assertThat(extra.values)
-        .containsExactly(uuid, "FO");
+    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
+    assertThat(fields.toMap())
+        .containsEntry("country-code", "FO")
+        .containsEntry("x-vcap-request-id", uuid);
   }
 
   @Test public void getAll() {
@@ -439,31 +249,8 @@ public class ExtraFieldPropagationTest {
         .containsEntry("x-vcap-request-id", uuid);
   }
 
-  @Test public void getAll_empty_if_not_extraField() {
+  @Test public void getAll_empty_if_no_extraField() {
     assertThat(ExtraFieldPropagation.getAll(context))
-        .isEmpty();
-  }
-
-  @Test public void current_getAll() {
-    TraceContext context = extractWithAmazonTraceId();
-
-    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
-         CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
-      assertThat(ExtraFieldPropagation.getAll())
-          .hasSize(1)
-          .containsEntry("x-amzn-trace-id", awsTraceId);
-    }
-  }
-
-  @Test public void current_getAll_empty_if_no_current_context() {
-    try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build()) {
-      assertThat(ExtraFieldPropagation.getAll())
-          .isEmpty();
-    }
-  }
-
-  @Test public void current_getAll_empty_if_nothing_current() {
-    assertThat(ExtraFieldPropagation.getAll())
         .isEmpty();
   }
 
