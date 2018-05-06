@@ -350,10 +350,10 @@ injector.inject(span.context(), request);
 Here's what server-side propagation might look like
 ```java
 // configure a function that extracts the trace context from a request
-extracted = tracing.propagation().extractor(Request::getHeader);
+extractor = tracing.propagation().extractor(Request::getHeader);
 
 // when a server receives a request, it joins or starts a new trace
-span = tracer.nextSpan(extracted, request);
+span = tracer.nextSpan(extractor.extract(request));
 ```
 
 ### Propagating extra fields
