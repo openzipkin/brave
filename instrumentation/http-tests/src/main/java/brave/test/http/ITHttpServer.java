@@ -7,11 +7,6 @@ import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -23,6 +18,12 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -383,6 +384,24 @@ public abstract class ITHttpServer extends ITHttp {
     Span span = takeSpan();
     assertThat(span.tags())
         .containsEntry("http.path", "/foo");
+  }
+
+  @Test
+  public void testMethodWithPathAnnotation() throws Exception {
+    assertThat(get("/example/nested").isSuccessful()).isTrue();
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.path", "/example/nested");
+  }
+
+  @Test
+  public void testMethodWithoutPathAnnotation() throws Exception {
+    assertThat(get("/example").isSuccessful()).isTrue();
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+        .containsEntry("http.path", "/example");
   }
 
   protected Response get(String path) throws Exception {
