@@ -36,6 +36,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   @Override public void init(ServletContextHandler handler) {
     ResourceConfig config = new ResourceConfig();
     config.register(new TestResource(httpTracing));
+    config.register(new TestResourceNoPathOnMethod());
     config.register(TracingApplicationEventListener.create(httpTracing));
     handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
   }
