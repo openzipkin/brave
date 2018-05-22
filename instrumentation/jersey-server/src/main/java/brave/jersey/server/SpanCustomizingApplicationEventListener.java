@@ -70,7 +70,6 @@ public class SpanCustomizingApplicationEventListener
     List<UriTemplate> templates = uriInfo.getMatchedTemplates();
     int templateCount = templates.size();
     if (templateCount == 0) return "";
-    assert templateCount % 2 == 0 : "expected matched templates to be resource/method pairs";
     StringBuilder builder = null; // don't allocate unless you need it!
     String basePath = uriInfo.getBaseUri().getPath();
     String result = null;

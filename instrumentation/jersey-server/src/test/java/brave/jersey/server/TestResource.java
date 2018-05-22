@@ -23,8 +23,7 @@ public class TestResource {
     this.tracer = httpTracing.tracing().tracer();
   }
 
-  @OPTIONS
-  @Path("")
+  @OPTIONS // intentionally leave out the @Path annotation
   public Response root() {
     return Response.ok().build();
   }
