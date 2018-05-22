@@ -4,7 +4,6 @@ import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
 abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {

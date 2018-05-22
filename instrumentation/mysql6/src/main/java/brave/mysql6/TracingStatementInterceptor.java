@@ -26,10 +26,11 @@ public class TracingStatementInterceptor implements StatementInterceptor {
    * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
    * all callbacks happen on the same thread.
    *
-   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before tracing.
+   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before
+   * tracing.
    */
   @Override
-  public Resultset preProcess(String sql, Statement interceptedStatement) throws SQLException {
+  public <T extends Resultset> T preProcess(String sql, Statement interceptedStatement) {
     // Gets the next span (and places it in scope) so code between here and postProcess can read it
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
     if (span == null || span.isNoop()) return null;
@@ -49,12 +50,14 @@ public class TracingStatementInterceptor implements StatementInterceptor {
   private MysqlConnection connection;
 
   @Override
-  public <T extends Resultset> T postProcess(String sql, Statement interceptedStatement, T originalResultSet, int warningCount, boolean noIndexUsed, boolean noGoodIndexUsed, Exception statementException) throws SQLException {
+  public <T extends Resultset> T postProcess(String sql, Statement interceptedStatement,
+      T originalResultSet, int warningCount, boolean noIndexUsed, boolean noGoodIndexUsed,
+      Exception statementException) {
     Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
     if (span == null || span.isNoop()) return null;
 
-    if (statementException != null && statementException instanceof SQLException) {
-      span.tag("error", Integer.toString(((SQLException)statementException).getErrorCode()));
+    if (statementException instanceof SQLException) {
+      span.tag("error", Integer.toString(((SQLException) statementException).getErrorCode()));
     }
     span.finish();
 
@@ -87,17 +90,17 @@ public class TracingStatementInterceptor implements StatementInterceptor {
   }
 
   private static String getDatabaseName(MysqlConnection connection) throws SQLException {
-      if (connection instanceof JdbcConnection) {
-          return ((JdbcConnection) connection).getCatalog();
-      }
-      return "";
+    if (connection instanceof JdbcConnection) {
+      return ((JdbcConnection) connection).getCatalog();
+    }
+    return "";
   }
 
-  private static String getHost(MysqlConnection connection) throws SQLException {
-      if (connection instanceof JdbcConnection) {
-          return ((JdbcConnection) connection).getHost();
-      }
-      return "";
+  private static String getHost(MysqlConnection connection) {
+    if (connection instanceof JdbcConnection) {
+      return ((JdbcConnection) connection).getHost();
+    }
+    return "";
   }
 
   @Override
@@ -106,7 +109,8 @@ public class TracingStatementInterceptor implements StatementInterceptor {
   }
 
   @Override
-  public StatementInterceptor init(MysqlConnection mysqlConnection, Properties properties, Log log) {
+  public StatementInterceptor init(MysqlConnection mysqlConnection, Properties properties,
+      Log log) {
     TracingStatementInterceptor interceptor = new TracingStatementInterceptor();
     interceptor.connection = mysqlConnection;
     return interceptor;

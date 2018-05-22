@@ -40,14 +40,6 @@ public class RealSpanCustomizerTest {
         .containsExactly("foo");
   }
 
-  @Test public void annotate_timestamp() {
-    spanCustomizer.annotate(2, "foo");
-    span.flush();
-
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .containsExactly(Annotation.create(2L, "foo"));
-  }
-
   @Test public void tag() {
     spanCustomizer.tag("foo", "bar");
     span.flush();

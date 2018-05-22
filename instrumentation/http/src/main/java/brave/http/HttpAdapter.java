@@ -57,7 +57,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * on the response object. The reasons is that many server implementations process the request
    * before they can identify the route route.
    */
-  // BRAVE5: It isn't possible for a user to easily consume HttpServerAdapter, which is why this
+  // BRAVE6: It isn't possible for a user to easily consume HttpServerAdapter, which is why this
   // method, while generally about the server, is pushed up to the HttpAdapter. The signatures for
   // sampling and parsing could be changed to make it more convenient.
   @Nullable public String route(Resp response) {

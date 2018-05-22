@@ -16,7 +16,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
   HttpSampler clientSampler;
   HttpSampler serverSampler;
 
-  @Override public HttpTracing getObject() throws Exception {
+  @Override public HttpTracing getObject() {
     HttpTracing.Builder builder = HttpTracing.newBuilder(tracing);
     if (clientParser != null) builder.clientParser(clientParser);
     if (serverParser != null) builder.serverParser(serverParser);

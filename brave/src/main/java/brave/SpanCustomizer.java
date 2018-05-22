@@ -19,8 +19,8 @@ package brave;
  */
 // Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
 // major version bump
-// BRAVE5: add isNoop to avoid instanceof checks
-// BRAVE5: add error to support error handling
+// BRAVE6: add isNoop to avoid instanceof checks
+// BRAVE6: add error to support error handling
 public interface SpanCustomizer {
   /**
    * Sets the string name for the logical operation this span represents.
@@ -43,9 +43,4 @@ public interface SpanCustomizer {
    * @param value A short tag indicating the event, like "finagle.retry"
    */
   SpanCustomizer annotate(String value);
-
-  /** @deprecated use {@link #annotate(String)} as this can result in clock skew */
-  // BRAVE5: remove this: backdating ops should only be available on Span, as it isn't reasonable
-  // for those only having a reference to SpanCustomizer to have a correct clock for the trace.
-  @Deprecated SpanCustomizer annotate(long timestamp, String value);
 }

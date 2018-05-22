@@ -2,7 +2,6 @@ package brave.sparkjava;
 
 import brave.Tracing;
 import brave.propagation.ExtraFieldPropagation;
-import java.util.concurrent.atomic.AtomicBoolean;
 import spark.Spark;
 import spark.servlet.SparkApplication;
 

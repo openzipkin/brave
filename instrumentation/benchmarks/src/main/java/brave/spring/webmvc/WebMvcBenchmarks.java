@@ -1,20 +1,16 @@
 package brave.spring.webmvc;
 
-import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
-import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
-import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.util.ImmediateInstanceHandle;
 import java.io.IOException;
-import java.util.Arrays;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -24,7 +20,8 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import zipkin2.reporter.Reporter;
+
+import static brave.servlet.ServletBenchmarks.addFilterMappings;
 
 public class WebMvcBenchmarks extends HttpServerBenchmarks {
 
@@ -60,36 +57,16 @@ public class WebMvcBenchmarks extends HttpServerBenchmarks {
   @Configuration
   @EnableWebMvc
   static class SpringConfig extends WebMvcConfigurerAdapter {
+    @Autowired
+    private SpanCustomizingAsyncHandlerInterceptor tracingInterceptor;
+
     @Override public void addInterceptors(InterceptorRegistry registry) {
-      registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
-      )).addPathPatterns("/unsampled");
-      registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
-      )).addPathPatterns("/traced");
-      registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder()
-              .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                  .addField("x-vcap-request-id")
-                  .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-                  .build()
-              )
-              .spanReporter(Reporter.NOOP)
-              .build()
-      )).addPathPatterns("/tracedextra");
-      registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
-      )).addPathPatterns("/traced128");
-      registry.addInterceptor(TracingHandlerInterceptor.create(
-          Tracing.newBuilder()
-              .propagationFactory(AWSPropagation.FACTORY)
-              .spanReporter(Reporter.NOOP)
-              .build()
-      )).addPathPatterns("/tracedaws");
+      registry.addInterceptor(tracingInterceptor);
     }
   }
 
   @Override protected void init(DeploymentInfo servletBuilder) {
+    addFilterMappings(servletBuilder);
     AnnotationConfigWebApplicationContext appContext = new AnnotationConfigWebApplicationContext();
     appContext.register(HelloController.class);
     appContext.register(SpringConfig.class);

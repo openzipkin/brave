@@ -15,8 +15,7 @@ import static javax.ws.rs.RuntimeType.SERVER;
 /**
  * Adds application-tier data to an existing http span via {@link ContainerParser}.
  *
- * <p>Use this instead of {@link TracingContainerFilter} when you are tracing at a lower level,
- * like via {@code brave.servlet.TracingFilter}.
+ * <p>Use this when you are tracing at a lower layer with {@code brave.servlet.TracingFilter}.
  */
 // Currently not using PreMatching because we are attempting to detect if the method is async or not
 @Provider

@@ -21,10 +21,6 @@ public interface Propagation<K> {
   Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
 
   abstract class Factory {
-    /** @deprecated use {@link B3Propagation#FACTORY} to avoid initialization race condition */
-    @Deprecated
-    public static final Factory B3 = B3Propagation.FACTORY;
-
     /**
      * Does the propagation implementation support sharing client and server span IDs. For example,
      * should an RPC server span share the same identifiers extracted from an incoming request?

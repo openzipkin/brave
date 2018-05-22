@@ -1,7 +1,5 @@
 package brave.jaxrs2;
 
-import brave.CurrentSpanCustomizer;
-import brave.http.HttpTracing;
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
 import java.util.Arrays;
@@ -45,7 +43,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   @Override public void init(ServletContextHandler handler) {
     // Adds application programmatically as opposed to using web.xml
     handler.addServlet(new ServletHolder(new HttpServletDispatcher()), "/*");
-    handler.addEventListener(new TaggingBootstrap(httpTracing, new TestResource(httpTracing)));
+    handler.addEventListener(new TaggingBootstrap(new TestResource(httpTracing)));
 
     addFilter(handler, TracingFilter.create(httpTracing));
   }
@@ -56,7 +54,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
 
   static class TaggingBootstrap extends ResteasyBootstrap {
 
-    public TaggingBootstrap(HttpTracing httpTracing, Object resource) {
+    TaggingBootstrap(Object resource) {
       deployment = new ResteasyDeployment();
       deployment.setApplication(new Application() {
         @Override public Set<Object> getSingletons() {

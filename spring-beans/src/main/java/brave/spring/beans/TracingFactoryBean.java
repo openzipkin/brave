@@ -25,7 +25,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   Boolean traceId128Bit;
   Boolean supportsJoin;
 
-  @Override protected Tracing createInstance() throws Exception {
+  @Override protected Tracing createInstance() {
     Tracing.Builder builder = Tracing.newBuilder();
     if (localServiceName != null) builder.localServiceName(localServiceName);
     if (localEndpoint != null) builder.endpoint(localEndpoint);
@@ -41,7 +41,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     return builder.build();
   }
 
-  @Override protected void destroyInstance(Object instance) throws Exception {
+  @Override protected void destroyInstance(Object instance) {
     ((Tracing) instance).close();
   }
 

@@ -181,7 +181,7 @@ public final class AWSPropagation<K> implements Propagation<K> {
 
   @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
-    return new AWSExtractor(this, getter);
+    return new AWSExtractor<>(this, getter);
   }
 
   static final AWSExtractor<String, String> STRING_EXTRACTOR =

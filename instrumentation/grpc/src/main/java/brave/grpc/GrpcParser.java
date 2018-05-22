@@ -55,9 +55,4 @@ public class GrpcParser {
       span.tag("error", code);
     }
   }
-
-  /** @deprecated please use {@link Tracing.Builder#errorParser(ErrorParser)} instead */
-  @Deprecated protected void onError(Throwable error, SpanCustomizer span) {
-    errorParser().error(error, span);
-  }
 }

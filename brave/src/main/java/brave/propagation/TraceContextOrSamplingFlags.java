@@ -105,20 +105,6 @@ public final class TraceContextOrSamplingFlags {
     return new TraceContextOrSamplingFlags(3, flags, Collections.emptyList());
   }
 
-  /** @deprecated call one of the other factory methods vs allocating an exception */
-  @Deprecated
-  public static TraceContextOrSamplingFlags create(TraceContext.Builder builder) {
-    if (builder == null) throw new NullPointerException("builder == null");
-    if (builder.traceId != 0L && builder.spanId != 0L) {
-      return create(builder.build());
-    } else { // no trace IDs, but it might have sampling flags
-      SamplingFlags flags = new SamplingFlags.Builder()
-          .sampled(SamplingFlags.sampled(builder.flags))
-          .debug(SamplingFlags.debug(builder.flags)).build();
-      return create(flags);
-    }
-  }
-
   final int type;
   final SamplingFlags value;
   final List<Object> extra;

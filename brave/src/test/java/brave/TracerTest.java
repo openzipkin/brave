@@ -89,14 +89,6 @@ public class TracerTest {
         .containsExactly(endpoint);
   }
 
-  @Test public void clock() {
-    Clock clock = () -> 0L;
-    tracer = Tracing.newBuilder().clock(clock).build().tracer();
-
-    assertThat(tracer.clock())
-        .isSameAs(clock);
-  }
-
   @Test public void newTrace_isRootSpan() {
     assertThat(tracer.newTrace())
         .satisfies(s -> assertThat(s.context().parentId()).isNull())
@@ -114,38 +106,6 @@ public class TracerTest {
     tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
 
     assertThat(tracer.newTrace())
-        .isInstanceOf(NoopSpan.class);
-  }
-
-  @Test public void newTrace_sampled_flag() {
-    assertThat(tracer.newTrace(SamplingFlags.SAMPLED))
-        .isInstanceOf(RealSpan.class);
-  }
-
-  @Test public void newTrace_noop_on_sampled_flag() {
-    tracer.noop.set(true);
-
-    assertThat(tracer.newTrace(SamplingFlags.SAMPLED))
-        .isInstanceOf(NoopSpan.class);
-  }
-
-  @Test public void newTrace_debug_flag() {
-    Span root = tracer.newTrace(SamplingFlags.DEBUG).start();
-    root.finish();
-
-    assertThat(spans).extracting(zipkin2.Span::debug)
-        .containsExactly(true);
-  }
-
-  @Test public void newTrace_noop_on_debug_flag() {
-    tracer.noop.set(true);
-
-    assertThat(tracer.newTrace(SamplingFlags.DEBUG))
-        .isInstanceOf(NoopSpan.class);
-  }
-
-  @Test public void newTrace_notsampled_flag() {
-    assertThat(tracer.newTrace(SamplingFlags.NOT_SAMPLED))
         .isInstanceOf(NoopSpan.class);
   }
 

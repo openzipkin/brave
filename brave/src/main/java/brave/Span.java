@@ -28,7 +28,7 @@ import zipkin2.Endpoint;
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
 // can simply call start when they are ready.
-// BRAVE5: do not inherit SpanCustomizer, rather just return it. This will prevent accidentally
+// BRAVE6: do not inherit SpanCustomizer, rather just return it. This will prevent accidentally
 // leaking lifecycle methods
 public abstract class Span implements SpanCustomizer {
   public enum Kind {
@@ -102,7 +102,7 @@ public abstract class Span implements SpanCustomizer {
    * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must
    * use this, generate the timestamp using {@link Tracing#clock(TraceContext)}.
    */
-  @Override public abstract Span annotate(long timestamp, String value);
+  public abstract Span annotate(long timestamp, String value);
 
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
@@ -111,15 +111,6 @@ public abstract class Span implements SpanCustomizer {
   // Design note: <T extends Throwable> T error(T throwable) is tempting but this doesn't work in
   // multi-catch. In practice, you should always at least catch RuntimeException and Error.
   public abstract Span error(Throwable throwable);
-
-  /**
-   * @deprecated use {@link #remoteEndpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()}
-   */
-  @Deprecated
-  public final Span remoteEndpoint(zipkin.Endpoint endpoint) {
-    if (isNoop()) return this;
-    return remoteEndpoint(endpoint.toV2());
-  }
 
   /**
    * For a client span, this would be the server's address.
@@ -137,7 +128,7 @@ public abstract class Span implements SpanCustomizer {
   /**
    * Like {@link #finish()}, except with a given timestamp in microseconds.
    *
-   * <p>{@link zipkin.Span#duration Zipkin's span duration} is derived by subtracting the start
+   * <p>{@link zipkin2.Span#duration Zipkin's span duration} is derived by subtracting the start
    * timestamp from this, and set when appropriate.
    *
    * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must

@@ -32,9 +32,4 @@ public final class CurrentSpanCustomizer implements SpanCustomizer {
   @Override public SpanCustomizer annotate(String value) {
     return tracer.currentSpanCustomizer().annotate(value);
   }
-
-  /** @deprecated use {@link #annotate(String)} as this can result in clock skew */
-  @Deprecated @Override public SpanCustomizer annotate(long timestamp, String value) {
-    return tracer.currentSpanCustomizer().annotate(timestamp, value);
-  }
 }

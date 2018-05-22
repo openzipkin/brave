@@ -110,12 +110,6 @@ public abstract class CurrentTraceContext {
 
     final ThreadLocal<TraceContext> local;
 
-    /** @deprecated prefer {@link #create()} as it isn't inheritable, so can't leak contexts. */
-    @Deprecated
-    public Default() {
-      this(INHERITABLE);
-    }
-
     /** Uses a non-inheritable static thread local */
     public static CurrentTraceContext create() {
       return new Default(DEFAULT);

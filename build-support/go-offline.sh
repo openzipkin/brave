@@ -15,7 +15,7 @@
 
 # Due to https://issues.apache.org/jira/browse/MDEP-323 and cross-module dependencies,
 # we can't easily run mvn dependency:go-offline. This is a workaround for that.
-# It removes all dependencies on io.zipkin.java and ${project.groupId} using XSLT,
+# It removes all dependencies on io.zipkin.brave and ${project.groupId} using XSLT,
 # then runs go-offline on the resulting POMs.
 
 set -xeuo pipefail
