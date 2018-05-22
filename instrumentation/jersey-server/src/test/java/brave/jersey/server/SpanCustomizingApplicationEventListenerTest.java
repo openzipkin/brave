@@ -31,6 +31,18 @@ public class SpanCustomizingApplicationEventListenerTest {
         .isEqualTo("/items/{itemId}");
   }
 
+  @Test public void route_noPath() {
+    ExtendedUriInfo uriInfo = mock(ExtendedUriInfo.class);
+    when(request.getUriInfo()).thenReturn(uriInfo);
+    when(uriInfo.getBaseUri()).thenReturn(URI.create("/"));
+    when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
+        new PathTemplate("/eggs")
+    ));
+
+    assertThat(SpanCustomizingApplicationEventListener.route(request))
+        .isEqualTo("/eggs");
+  }
+
   /** not sure it is even possible for a template to match "/" "/".. */
   @Test public void route_invalid() {
     ExtendedUriInfo uriInfo = mock(ExtendedUriInfo.class);
