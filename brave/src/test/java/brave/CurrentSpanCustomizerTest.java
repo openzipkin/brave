@@ -69,19 +69,4 @@ public class CurrentSpanCustomizerTest {
   @Test public void annotate_when_no_current_span() {
     spanCustomizer.annotate("foo");
   }
-
-  @Test public void annotate_timestamp() {
-    span.start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
-      spanCustomizer.annotate(2, "foo");
-    }
-    span.flush();
-
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .containsExactly(Annotation.create(2L, "foo"));
-  }
-
-  @Test public void annotate_timestamp_when_no_current_span() {
-    spanCustomizer.annotate(2, "foo");
-  }
 }

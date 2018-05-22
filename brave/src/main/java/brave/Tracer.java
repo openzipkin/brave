@@ -16,7 +16,6 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -60,87 +59,6 @@ import zipkin2.reporter.Reporter;
  * @see Propagation
  */
 public class Tracer {
-  /** @deprecated Please use {@link Tracing#newBuilder()} */
-  @Deprecated public static Builder newBuilder() {
-    return new Builder();
-  }
-
-  /** @deprecated Please use {@link Tracing.Builder} */
-  @Deprecated public static final class Builder {
-    final Tracing.Builder delegate = new Tracing.Builder();
-
-    /** @see Tracing.Builder#localServiceName(String) */
-    public Builder localServiceName(String localServiceName) {
-      delegate.localServiceName(localServiceName);
-      return this;
-    }
-
-    /** @deprecated use {@link #endpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()} */
-    @Deprecated
-    public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
-      return endpoint(localEndpoint.toV2());
-    }
-
-    /** @deprecated use {@link #endpoint(Endpoint)} */
-    @Deprecated
-    public Builder localEndpoint(Endpoint localEndpoint) {
-      delegate.endpoint(localEndpoint);
-      return this;
-    }
-
-    /** @see Tracing.Builder#endpoint(Endpoint) */
-    public Builder endpoint(Endpoint endpoint) {
-      delegate.endpoint(endpoint);
-      return this;
-    }
-
-    /** @deprecated use {@link #spanReporter(Reporter)} */
-    @Deprecated
-    public Builder reporter(zipkin.reporter.Reporter<zipkin.Span> reporter) {
-      delegate.reporter(reporter);
-      return this;
-    }
-
-    /** @see Tracing.Builder#spanReporter(Reporter) */
-    public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
-      delegate.spanReporter(reporter);
-      return this;
-    }
-
-    /** @see Tracing.Builder#clock(Clock) */
-    public Builder clock(Clock clock) {
-      delegate.clock(clock);
-      return this;
-    }
-
-    /** @see Tracing.Builder#sampler(Sampler) */
-    public Builder sampler(Sampler sampler) {
-      delegate.sampler(sampler);
-      return this;
-    }
-
-    /** @see Tracing.Builder#currentTraceContext(CurrentTraceContext) */
-    public Builder currentTraceContext(CurrentTraceContext currentTraceContext) {
-      delegate.currentTraceContext(currentTraceContext);
-      return this;
-    }
-
-    /** @see Tracing.Builder#traceId128Bit(boolean) */
-    public Builder traceId128Bit(boolean traceId128Bit) {
-      delegate.traceId128Bit(traceId128Bit);
-      return this;
-    }
-
-    /** @see Tracing.Builder#supportsJoin(boolean) */
-    public Builder supportsJoin(boolean supportsJoin) {
-      delegate.supportsJoin(supportsJoin);
-      return this;
-    }
-
-    public Tracer build() {
-      return delegate.build().tracer();
-    }
-  }
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
@@ -202,11 +120,6 @@ public class Tracer {
         supportsJoin,
         noop
     );
-  }
-
-  /** @deprecated use {@link Tracing#clock(TraceContext)} */
-  @Deprecated public Clock clock() {
-    return clock;
   }
 
   /**
@@ -329,11 +242,6 @@ public class Tracer {
     throw new AssertionError("should not reach here");
   }
 
-  /** @deprecated Prefer {@link #withSampler(Sampler)} */
-  @Deprecated public Span newTrace(SamplingFlags samplingFlags) {
-    return toSpan(newContextBuilder(null, samplingFlags).build());
-  }
-
   /** Converts the context as-is to a Span object */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
@@ -397,7 +305,7 @@ public class Tracer {
    *
    * <p>Unlike {@link CurrentSpanCustomizer}, this represents a single span. Accordingly, this
    * reference should not be saved as a field. That said, it is more efficient to save this result
-   * as a method-local variable vs repeated calls to {@link #currentSpanCustomizer()}.
+   * as a method-local variable vs repeated calls.
    */
   public SpanCustomizer currentSpanCustomizer() {
     TraceContext currentContext = currentTraceContext.get();

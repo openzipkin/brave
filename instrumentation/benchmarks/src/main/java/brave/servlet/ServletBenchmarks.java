@@ -86,6 +86,13 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   }
 
   @Override protected void init(DeploymentInfo servletBuilder) {
+    addFilterMappings(servletBuilder);
+    servletBuilder.addServlets(
+        Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*")
+    );
+  }
+
+  public static void addFilterMappings(DeploymentInfo servletBuilder) {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
         .addFilter(new FilterInfo("Traced", Traced.class))
@@ -95,8 +102,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("Traced128", Traced128.class))
         .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
         .addFilter(new FilterInfo("TracedAWS", TracedAWS.class))
-        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST)
-        .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
+        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST);
   }
 
   // Convenience main entry-point

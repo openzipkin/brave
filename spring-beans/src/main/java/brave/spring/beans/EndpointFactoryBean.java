@@ -10,7 +10,7 @@ public class EndpointFactoryBean implements FactoryBean {
   String ip;
   Integer port;
 
-  @Override public Endpoint getObject() throws Exception {
+  @Override public Endpoint getObject() {
     Endpoint.Builder builder = Endpoint.newBuilder();
     if (serviceName != null) builder.serviceName(serviceName);
     if (ip != null && !builder.parseIp(ip)) {

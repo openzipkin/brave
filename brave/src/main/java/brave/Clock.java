@@ -1,8 +1,8 @@
 package brave;
 
 /**
- * Epoch microseconds used for {@link zipkin.Span#timestamp} and {@link
- * zipkin.Annotation#timestamp}.
+ * Epoch microseconds used for {@link zipkin2.Span#timestamp} and {@link
+ * zipkin2.Annotation#timestamp}.
  *
  * <p>This should use the most precise value possible. For example, {@code gettimeofday} or
  * multiplying {@link System#currentTimeMillis} by 1000.

@@ -1,7 +1,6 @@
 # brave-instrumentation-jaxrs2
 This module contains JAX-RS 2.x compatible tracing filters.
 
-The `TracingClientFilter` adds trace headers to outgoing requests.
 `SpanCustomizingContainerFilter` layers over [servlet](../servlet),
 adding resource tags to servlet-originated spans.
 

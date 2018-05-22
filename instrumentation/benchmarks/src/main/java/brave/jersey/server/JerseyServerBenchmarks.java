@@ -2,13 +2,12 @@ package brave.jersey.server;
 
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
-import brave.jaxrs2.TracingFeature;
+import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -25,6 +24,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
 
 import static io.undertow.servlet.Servlets.servlet;
+import static java.util.Arrays.asList;
 
 public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   @Path("")
@@ -46,18 +46,20 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   @ApplicationPath("/unsampled")
   public static class Unsampled extends Application {
     @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature
-          .create(
-              Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
-          )));
+      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
+          HttpTracing.create(Tracing.newBuilder()
+              .sampler(Sampler.NEVER_SAMPLE)
+              .spanReporter(Reporter.NOOP)
+              .build())
+      )));
     }
   }
 
   @ApplicationPath("/traced")
   public static class TracedApp extends Application {
     @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
+      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
+          HttpTracing.create(Tracing.newBuilder().spanReporter(Reporter.NOOP).build())
       )));
     }
   }
@@ -65,15 +67,15 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   @ApplicationPath("/tracedextra")
   public static class TracedExtraApp extends Application {
     @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder()
+      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
+          HttpTracing.create(Tracing.newBuilder()
               .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
                   .addField("x-vcap-request-id")
-                  .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+                  .addPrefixedFields("baggage-", asList("country-code", "user-id"))
                   .build()
               )
               .spanReporter(Reporter.NOOP)
-              .build()
+              .build())
       )));
     }
   }
@@ -81,8 +83,11 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   @ApplicationPath("/traced128")
   public static class Traced128App extends Application {
     @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
+      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
+          HttpTracing.create(Tracing.newBuilder()
+              .traceId128Bit(true)
+              .spanReporter(Reporter.NOOP)
+              .build())
       )));
     }
   }
@@ -90,11 +95,11 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   @ApplicationPath("/tracedaws")
   public static class TracedAWSApp extends Application {
     @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder()
+      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
+          HttpTracing.create(Tracing.newBuilder()
               .propagationFactory(AWSPropagation.FACTORY)
               .spanReporter(Reporter.NOOP)
-              .build()
+              .build())
       )));
     }
   }

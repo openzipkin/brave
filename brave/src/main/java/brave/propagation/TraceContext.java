@@ -112,11 +112,6 @@ public final class TraceContext extends SamplingFlags {
     return spanId;
   }
 
-  /** @deprecated it is unnecessary overhead to propagate this property */
-  @Deprecated public final boolean shared() {
-    return false; // shared is set internally on Tracer.join
-  }
-
   /**
    * Returns a list of additional data propagated through this trace.
    *
@@ -223,12 +218,6 @@ public final class TraceContext extends SamplingFlags {
     /** @see TraceContext#debug() */
     @Override public Builder debug(boolean debug) {
       super.debug(debug);
-      return this;
-    }
-
-    /** @deprecated it is unnecessary overhead to propagate this property */
-    @Deprecated public Builder shared(boolean shared) {
-      // this is not a propagated property, rather set internal to Tracer.join
       return this;
     }
 

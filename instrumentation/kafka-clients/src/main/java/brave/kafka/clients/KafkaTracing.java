@@ -69,24 +69,6 @@ public final class KafkaTracing {
   }
 
   /**
-   * Retrieve the span extracted from the record headers. Creates a root span if the context is not
-   * available.
-   *
-   * @deprecated this results in appending to a span already complete. Please use {@link
-   * #nextSpan(ConsumerRecord)}
-   */
-  @Deprecated
-  public Span joinSpan(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record);
-    if (extracted.context() != null) {
-      return tracing.tracer().toSpan(extracted.context()); // avoid creating an unnecessary child
-    }
-    Span result = tracing.tracer().nextSpan(extracted);
-    if (!result.isNoop()) addTags(record, result.customizer());
-    return result;
-  }
-
-  /**
    * Use this to create a span for processing the given record. Note: the result has no name and is
    * not started.
    *

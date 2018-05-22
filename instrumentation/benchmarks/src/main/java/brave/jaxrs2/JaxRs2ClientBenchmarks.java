@@ -19,7 +19,7 @@ public class JaxRs2ClientBenchmarks extends HttpClientBenchmarks<Client> {
   @Override protected Client newClient(HttpTracing httpTracing) {
     return new ResteasyClientBuilder()
         .httpEngine(new OkHttpClientEngine(ok))
-        .register(TracingFeature.create(httpTracing))
+        .register(TracingClientFilter.create(httpTracing))
         .build();
   }
 

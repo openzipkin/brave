@@ -59,9 +59,6 @@ public abstract class Tracing implements Closeable {
    */
   abstract public CurrentTraceContext currentTraceContext();
 
-  /** @deprecated use {@link #clock(TraceContext)} */
-  @Deprecated abstract public Clock clock();
-
   /**
    * This exposes the microsecond clock used by operations such as {@link Span#finish()}. This is
    * helpful when you want to time things manually. Notably, this clock will be coherent for all
@@ -147,20 +144,6 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
-    /** @deprecated use {@link #endpoint(Endpoint)}, possibly with {@link zipkin.Endpoint#toV2()} */
-    @Deprecated
-    public Builder localEndpoint(zipkin.Endpoint localEndpoint) {
-      if (localEndpoint == null) throw new NullPointerException("localEndpoint == null");
-      return endpoint(localEndpoint.toV2());
-    }
-
-    /** @deprecated use {@link #endpoint(Endpoint)} which compiles without io.zipkin.java:zipkin */
-    // compiling a call to an overloaded method requires all types on the classpath.
-    @Deprecated
-    public Builder localEndpoint(Endpoint localEndpoint) {
-      return endpoint(localEndpoint);
-    }
-
     /**
      * Sets the {@link zipkin2.Span#localEndpoint Endpoint of the local service} being traced.
      * Defaults to a site local IP.
@@ -193,26 +176,6 @@ public abstract class Tracing implements Closeable {
     public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
       if (reporter == null) throw new NullPointerException("spanReporter == null");
       this.reporter = reporter;
-      return this;
-    }
-
-    /** @deprecated use {@link #spanReporter(Reporter)} */
-    @Deprecated
-    public Builder reporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
-      if (reporter == null) throw new NullPointerException("spanReporter == null");
-      if (reporter == zipkin.reporter.Reporter.NOOP) {
-        this.reporter = Reporter.NOOP;
-        return this;
-      }
-      this.reporter = new Reporter<zipkin2.Span>() {
-        @Override public void report(zipkin2.Span span) {
-          reporter.report(brave.internal.V2SpanConverter.toSpan(span));
-        }
-
-        @Override public String toString() {
-          return reporter.toString();
-        }
-      };
       return this;
     }
 
@@ -360,10 +323,6 @@ public abstract class Tracing implements Closeable {
 
     @Override public CurrentTraceContext currentTraceContext() {
       return currentTraceContext;
-    }
-
-    @Override public Clock clock() {
-      return clock;
     }
 
     @Override public ErrorParser errorParser() {

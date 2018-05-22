@@ -91,8 +91,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
   public static final class FactoryBuilder {
     final Propagation.Factory delegate;
-    List<String> fieldNames = new ArrayList<>();
-    Map<String, String[]> prefixedNames = new LinkedHashMap<>();
+    final List<String> fieldNames = new ArrayList<>();
+    final Map<String, String[]> prefixedNames = new LinkedHashMap<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
@@ -365,7 +365,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       this.fieldNames = fieldNames;
     }
 
-    @Override protected Class type() {
+    @Override protected Class<Extra> type() {
       return Extra.class;
     }
 

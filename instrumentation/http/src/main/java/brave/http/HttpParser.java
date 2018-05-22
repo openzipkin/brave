@@ -110,7 +110,7 @@ public class HttpParser {
    *
    * <p>Conventionally associated with the tag key "error"
    */
-  // BRAVE5: httpStatus is a Integer, not a int. We can't change this api as users expect this to be
+  // BRAVE6: httpStatus is a Integer, not a int. We can't change this api as users expect this to be
   // called by default. Unfortunately, this implies boxing until we can change it.
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
       SpanCustomizer customizer) {

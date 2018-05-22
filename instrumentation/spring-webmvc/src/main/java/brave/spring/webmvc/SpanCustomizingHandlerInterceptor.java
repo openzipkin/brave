@@ -12,8 +12,7 @@ import org.springframework.web.servlet.ModelAndView;
  * Adds application-tier data to an existing http span via {@link HandlerParser}.
  * This also sets the request property "http.route" so that it can be used in naming the http span.
  *
- * <p>Use this instead of {@link TracingHandlerInterceptor} when you start traces at the servlet
- * level via {@link brave.servlet.TracingFilter}.
+ * <p>Use this when you start traces at the servlet layer via {@link brave.servlet.TracingFilter}.
  */
 public final class SpanCustomizingHandlerInterceptor implements HandlerInterceptor {
   /** Redefined from HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE added in Spring 3. */

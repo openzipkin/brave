@@ -97,33 +97,6 @@ public class ITKafkaTracing {
   }
 
   @Test
-  public void joinSpan_deprecated_because_it_writes_to_old_span() throws Exception {
-    producer = createTracingProducer();
-    consumer = createTracingConsumer();
-
-    producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
-
-    ConsumerRecords<String, String> records = consumer.poll(10000);
-
-    assertThat(records).hasSize(1);
-    Span producerSpan = producerSpans.take();
-    Span consumerSpan = consumerSpans.take();
-
-    assertThat(consumerSpan.traceId())
-        .isEqualTo(producerSpan.traceId());
-
-    for (ConsumerRecord<String, String> record : records) {
-      brave.Span joined = consumerTracing.joinSpan(record);
-      joined.abandon();
-
-      // Re-using this span happens "after" it is completed, which will make the UI look strange
-      // Instead, use nextSpan to create a span representing message processing.
-      assertThat(consumerSpan.id())
-          .isEqualTo(HexCodec.toLowerHex(joined.context().spanId()));
-    }
-  }
-
-  @Test
   public void poll_creates_one_consumer_span_per_extracted_context() throws Exception {
     String topic1 = testName.getMethodName() + "1";
     String topic2 = testName.getMethodName() + "2";

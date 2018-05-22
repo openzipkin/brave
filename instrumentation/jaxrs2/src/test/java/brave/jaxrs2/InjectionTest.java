@@ -52,27 +52,4 @@ public class InjectionTest {
     assertThat(filter.parser)
         .isSameAs(ContainerParser.NOOP);
   }
-
-  @Test public void tracingContainerFilter() {
-    TracingContainerFilter filter = injector.getInstance(TracingContainerFilter.class);
-
-    assertThat(filter.parser.getClass())
-        .isSameAs(ContainerParser.class);
-  }
-
-  @Test public void tracingContainerFilter_resource() {
-    TracingContainerFilter filter = injector.createChildInjector(new AbstractModule() {
-      @Override protected void configure() {
-        bind(ContainerParser.class).toInstance(ContainerParser.NOOP);
-      }
-    }).getInstance(TracingContainerFilter.class);
-
-    assertThat(filter.parser)
-        .isSameAs(ContainerParser.NOOP);
-  }
-
-  @Test public void tracingFeature() {
-    assertThat(injector.getInstance(TracingFeature.class))
-        .isNotNull();
-  }
 }

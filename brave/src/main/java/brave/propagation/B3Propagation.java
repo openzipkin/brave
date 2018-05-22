@@ -99,7 +99,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
-    return new B3Extractor(this, getter);
+    return new B3Extractor<>(this, getter);
   }
 
   static final class B3Extractor<C, K> implements TraceContext.Extractor<C> {

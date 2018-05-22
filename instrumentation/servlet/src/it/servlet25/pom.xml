@@ -33,16 +33,6 @@
       <artifactId>brave</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>io.zipkin.java</groupId>
-          <artifactId>zipkin</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>io.zipkin.reporter</groupId>
-          <artifactId>zipkin-reporter</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
 
     <dependency>

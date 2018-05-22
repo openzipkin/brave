@@ -10,25 +10,6 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class KafkaTracingTest extends BaseTracingTest {
-  @Test
-  public void joinSpan_should_retrieve_span_from_headers() {
-    addB3Headers(fakeRecord);
-    Span span = kafkaTracing.joinSpan(fakeRecord);
-
-    TraceContext context = span.context();
-    assertThat(HexCodec.toLowerHex(context.traceId())).isEqualTo(TRACE_ID);
-    assertThat(HexCodec.toLowerHex(context.spanId())).isEqualTo(SPAN_ID);
-    assertThat(context.sampled()).isEqualTo(true);
-  }
-
-  @Test
-  public void joinSpan_should_create_span_if_no_headers() {
-    Span span = kafkaTracing.joinSpan(fakeRecord);
-
-    TraceContext context = span.context();
-    assertThat(HexCodec.toLowerHex(context.traceId())).isNotEmpty().isNotEqualTo(TRACE_ID);
-    assertThat(HexCodec.toLowerHex(context.spanId())).isNotEmpty().isNotEqualTo(SPAN_ID);
-  }
 
   @Test
   public void nextSpan_should_use_span_from_headers_as_parent() {
@@ -94,22 +75,6 @@ public class KafkaTracingTest extends BaseTracingTest {
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
         .isEmpty();
-  }
-
-  @Test
-  public void joinSpan_should_clear_propagation_headers() {
-    addB3Headers(fakeRecord);
-
-    kafkaTracing.joinSpan(fakeRecord);
-    assertThat(fakeRecord.headers().toArray()).isEmpty();
-  }
-
-  @Test
-  public void joinSpan_should_not_clear_other_headers() {
-    fakeRecord.headers().add("foo", new byte[0]);
-
-    kafkaTracing.joinSpan(fakeRecord);
-    assertThat(fakeRecord.headers().headers("foo")).isNotEmpty();
   }
 
   @Test

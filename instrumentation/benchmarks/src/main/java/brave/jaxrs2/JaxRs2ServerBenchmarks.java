@@ -1,19 +1,12 @@
 package brave.jaxrs2;
 
-import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
-import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
-import brave.sampler.Sampler;
 import io.undertow.Undertow;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Set;
-import javax.servlet.ServletException;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -26,91 +19,53 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.Reporter;
+
+import static brave.servlet.ServletBenchmarks.addFilterMappings;
 
 public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
 
-  @Path("")
+  @Produces("text/plain; charset=UTF-8")
   public static class Resource {
-    @GET @Produces("text/plain; charset=UTF-8") public String get() {
+    @GET @Path("/nottraced")
+    public String nottraced() {
+      return "hello world";
+    }
+
+    @GET @Path("/unsampled")
+    public String unsampled() {
+      return "hello world";
+    }
+
+    @GET @Path("/traced")
+    public String traced() {
+      return "hello world";
+    }
+
+    @GET @Path("/tracedextra")
+    public String tracedextra() {
       // noop if not configured
       ExtraFieldPropagation.set("country-code", "FO");
       return "hello world";
     }
+
+    @GET @Path("/traced128")
+    public String traced128() {
+      return "hello world";
+    }
   }
 
-  @ApplicationPath("/nottraced")
+  @ApplicationPath("/")
   public static class App extends Application {
     @Override public Set<Object> getSingletons() {
       return Collections.singleton(new Resource());
     }
   }
 
-  @ApplicationPath("/unsampled")
-  public static class Unsampled extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
-      )));
-    }
-  }
-
-  @ApplicationPath("/traced")
-  public static class TracedApp extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
-      )));
-    }
-  }
-
-  @ApplicationPath("/tracedextra")
-  public static class TracedExtraApp extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder()
-              .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                  .addField("x-vcap-request-id")
-                  .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-                  .build()
-              )
-              .spanReporter(Reporter.NOOP)
-              .build()
-      )));
-    }
-  }
-
-  @ApplicationPath("/traced128")
-  public static class Traced128App extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
-      )));
-    }
-  }
-
-  @ApplicationPath("/tracedaws")
-  public static class TracedAWSApp extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(Arrays.asList(new Resource(), TracingFeature.create(
-          Tracing.newBuilder()
-              .propagationFactory(AWSPropagation.FACTORY)
-              .spanReporter(Reporter.NOOP)
-              .build()
-      )));
-    }
-  }
-
   PortExposing server;
 
-  @Override protected int initServer() throws ServletException {
+  @Override protected int initServer() {
     server = (PortExposing) new PortExposing()
         .deploy(App.class)
-        .deploy(Unsampled.class)
-        .deploy(TracedApp.class)
-        .deploy(TracedExtraApp.class)
-        .deploy(Traced128App.class)
-        .deploy(TracedAWSApp.class)
         .start(Undertow.builder().addHttpListener(8888, "127.0.0.1"));
     return server.getPort();
   }
@@ -122,6 +77,7 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
   }
 
   @Override protected void init(DeploymentInfo servletBuilder) {
+    addFilterMappings(servletBuilder);
   }
 
   @TearDown(Level.Trial) @Override public void close() throws Exception {

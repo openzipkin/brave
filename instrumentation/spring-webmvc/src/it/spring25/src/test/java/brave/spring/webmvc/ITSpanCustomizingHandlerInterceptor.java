@@ -1,11 +1,12 @@
-package brave.spring.webmvc25;
+package brave.spring.webmvc;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.spring.webmvc.TracingHandlerInterceptor;
 import brave.test.http.ITServletContainer;
 import java.io.IOException;
 import javax.servlet.http.HttpServletResponse;
+import java.util.EnumSet;
+import org.eclipse.jetty.server.DispatcherType;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AssumptionViolatedException;
@@ -22,7 +23,7 @@ import org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMa
 import static org.springframework.web.servlet.DispatcherServlet.HANDLER_ADAPTER_BEAN_NAME;
 import static org.springframework.web.servlet.DispatcherServlet.HANDLER_MAPPING_BEAN_NAME;
 
-public class ITTracingHandlerInterceptor extends ITServletContainer {
+public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
 
   @Override public void notFound(){
     throw new AssumptionViolatedException("TODO: add MVC handling for not found");
@@ -69,10 +70,13 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
   @Override public void init(ServletContextHandler handler) {
     StaticWebApplicationContext wac = new StaticWebApplicationContext();
     wac.getBeanFactory()
-        .registerSingleton("testController", new TestController(httpTracing)); // the test resource
+       .registerSingleton("httpTracing", httpTracing);
+
+    wac.getBeanFactory()
+       .registerSingleton("testController", new TestController(httpTracing)); // the test resource
 
     DefaultAnnotationHandlerMapping mapping = new DefaultAnnotationHandlerMapping();
-    mapping.setInterceptors(new Object[] {TracingHandlerInterceptor.create(httpTracing)});
+    mapping.setInterceptors(new Object[] {new SpanCustomizingHandlerInterceptor()});
     mapping.setApplicationContext(wac);
 
     wac.getBeanFactory().registerSingleton(HANDLER_MAPPING_BEAN_NAME, mapping);
@@ -93,5 +97,6 @@ public class ITTracingHandlerInterceptor extends ITServletContainer {
         return wac;
       }
     }), "/*");
+    handler.addFilter(DelegatingTracingFilter.class, "/*", EnumSet.allOf(DispatcherType.class));
   }
 }

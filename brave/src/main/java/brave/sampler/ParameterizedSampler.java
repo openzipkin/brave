@@ -17,7 +17,7 @@ import java.util.List;
  * could be a pair of http and method..
  */
 public final class ParameterizedSampler<P> {
-  public static final <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
+  public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
     if (rules == null) throw new NullPointerException("rules == null");
     return new ParameterizedSampler<>(rules);
   }

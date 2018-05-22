@@ -67,11 +67,5 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
     </dependency>
-    <!-- to compile against Span.remoteEndpoint(zipkin.Span) -->
-    <dependency>
-      <groupId>io.zipkin.java</groupId>
-      <artifactId>zipkin</artifactId>
-      <optional>true</optional>
-    </dependency>
   </dependencies>
 </project>

@@ -24,11 +24,12 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
    * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
    * all callbacks happen on the same thread.
    *
-   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before tracing.
+   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before
+   * tracing.
    */
   @Override
   public ResultSetInternalMethods preProcess(String sql, Statement interceptedStatement,
-      Connection connection) throws SQLException {
+      Connection connection) {
     // Gets the next span (and places it in scope) so code between here and postProcess can read it
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
     if (span == null || span.isNoop()) return null;
@@ -48,8 +49,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
   @Override
   public ResultSetInternalMethods postProcess(String sql, Statement interceptedStatement,
       ResultSetInternalMethods originalResultSet, Connection connection, int warningCount,
-      boolean noIndexUsed, boolean noGoodIndexUsed, SQLException statementException)
-      throws SQLException {
+      boolean noIndexUsed, boolean noGoodIndexUsed, SQLException statementException) {
     Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
     if (span == null || span.isNoop()) return null;
 
@@ -90,7 +90,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
     return true; // True means that we don't get notified about queries that other interceptors issue
   }
 
-  @Override public void init(Connection conn, Properties props) throws SQLException {
+  @Override public void init(Connection conn, Properties props) {
     // Don't care
   }
 
