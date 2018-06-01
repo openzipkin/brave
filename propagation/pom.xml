@@ -18,6 +18,7 @@
 
   <modules>
     <module>aws</module>
+    <module>brave-propagation-gcp</module>
   </modules>
 
   <dependencies>

@@ -161,7 +161,7 @@ public final class TraceIdContext extends SamplingFlags {
      * @return false if the input is null or malformed
      */
     // temporarily package protected until we figure out if this is reusable enough to expose
-    final boolean parseTraceId(String traceIdString, Object key) {
+    public final boolean parseTraceId(String traceIdString, Object key) {
       if (isNull(key, traceIdString)) return false;
       int length = traceIdString.length();
       if (invalidIdLength(key, length, 32)) return false;
