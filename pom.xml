@@ -109,7 +109,6 @@
     <module>brave-tests</module>
     <module>context</module>
     <module>instrumentation</module>
-    <module>propagation</module>
     <module>spring-beans</module>
   </modules>
 
