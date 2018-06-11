@@ -14,6 +14,7 @@ Here's a brief overview of what's packaged here:
 * [kafka-clients](kafka-clients/README.md) - Tracing decorators for Kafka 0.11+ producers and consumers.
 * [mysql](mysql/README.md) - Tracing MySQL statement interceptor
 * [mysql6](mysql6/README.md) - Tracing MySQL v6 statement interceptor
+* [mysql8](mysql8/README.md) - Tracing MySQL v8 statement interceptor
 * [netty-codec-http](netty-codec-http/README.md) - Tracing handler for [Netty](http://netty.io/) 4.x http servers
 * [okhttp3](okhttp3/README.md) - Tracing decorators for [OkHttp](https://github.com/square/okhttp) 3.x
 * [p6spy](p6spy/README.md) - Tracing event listener for [P6Spy](https://github.com/p6spy/p6spy) (a proxy for calls to your JDBC driver)
