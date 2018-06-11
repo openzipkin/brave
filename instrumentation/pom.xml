@@ -28,6 +28,7 @@
     <module>jersey-server</module>
     <module>mysql</module>
     <module>mysql6</module>
+    <module>mysql8</module>
     <module>okhttp3</module>
     <module>p6spy</module>
     <module>servlet</module>
