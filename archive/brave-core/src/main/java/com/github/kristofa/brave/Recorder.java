@@ -7,12 +7,12 @@ import com.twitter.zipkin.gen.BinaryAnnotation;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.List;
-import zipkin.Constants;
 import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 
-abstract class Recorder implements AnnotationSubmitter.Clock {
+abstract class Recorder {
+  abstract long currentTimeMicroseconds(Span span);
 
   abstract void name(Span span, String name);
 
@@ -32,51 +32,58 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
   abstract void flush(Span span);
 
   @AutoValue
-  static abstract class Default extends Recorder {
+  abstract static class Default extends Recorder {
     abstract Endpoint localEndpoint();
 
     abstract AnnotationSubmitter.Clock clock();
 
     abstract Reporter<zipkin2.Span> reporter();
 
-    @Override public long currentTimeMicroseconds() {
+    @Override
+    long currentTimeMicroseconds(Span span) {
       return clock().currentTimeMicroseconds();
     }
 
-    @Override void name(Span span, String name) {
+    @Override
+    void name(Span span, String name) {
       synchronized (span) {
         span.setName(name);
       }
     }
 
-    @Override void start(Span span, long timestamp) {
+    @Override
+    void start(Span span, long timestamp) {
       synchronized (span) {
         span.setTimestamp(timestamp);
       }
     }
 
-    @Override void annotate(Span span, long timestamp, String value) {
+    @Override
+    void annotate(Span span, long timestamp, String value) {
       Annotation annotation = Annotation.create(timestamp, value, localEndpoint());
       synchronized (span) {
         span.addToAnnotations(annotation);
       }
     }
 
-    @Override void address(Span span, String key, Endpoint endpoint) {
+    @Override
+    void address(Span span, String key, Endpoint endpoint) {
       BinaryAnnotation address = BinaryAnnotation.address(key, endpoint);
       synchronized (span) {
         span.addToBinary_annotations(address);
       }
     }
 
-    @Override void tag(Span span, String key, String value) {
+    @Override
+    void tag(Span span, String key, String value) {
       BinaryAnnotation ba = BinaryAnnotation.create(key, value, localEndpoint());
       synchronized (span) {
         span.addToBinary_annotations(ba);
       }
     }
 
-    @Override void finish(Span span, long timestamp) {
+    @Override
+    void finish(Span span, long timestamp) {
       synchronized (span) {
         Long startTimestamp = span.getTimestamp();
         if (startTimestamp != null) {
@@ -86,7 +93,8 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
       flush(span);
     }
 
-    @Override void flush(Span span) {
+    @Override
+    void flush(Span span) {
       // In the RPC span model, the client owns the timestamp and duration of the span. If we
       // were propagated an id, we can assume that we shouldn't report timestamp or duration,
       // rather let the client do that. Worst case we were propagated an unreported ID and
@@ -94,7 +102,7 @@ abstract class Recorder implements AnnotationSubmitter.Clock {
       synchronized (span) {
         if (span.isShared()) {
           for (int i = 0, length = span.getAnnotations().size(); i < length; i++) {
-            if (span.getAnnotations().get(i).value.equals(Constants.SERVER_RECV)) {
+            if (span.getAnnotations().get(i).value.equals("sr")) {
               span.setTimestamp(null);
               break;
             }

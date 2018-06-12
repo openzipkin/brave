@@ -6,7 +6,7 @@ import org.junit.After;
 
 public class Brave4MaybeAddClientAddressTest extends MaybeAddClientAddressTest {
   public Brave4MaybeAddClientAddressTest() {
-    brave = TracerAdapter.newBrave(Tracing.newBuilder().spanReporter(spans::add).build().tracer());
+    brave = TracerAdapter.newBrave(Tracing.newBuilder().spanReporter(spans::add).build());
   }
 
   @After public void close(){

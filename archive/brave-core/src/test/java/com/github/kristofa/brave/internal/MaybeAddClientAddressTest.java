@@ -246,30 +246,6 @@ public class MaybeAddClientAddressTest {
   }
 
   @Test
-  public void acceptsIpv4MappedIpV6Address() throws UnknownHostException {
-    brave.serverTracer().setStateUnknown("foo");
-    brave.serverTracer().setServerReceived();
-
-    MaybeAddClientAddress function = new MaybeAddClientAddress(brave) {
-      @Override protected byte[] parseAddressBytes(Object input) {
-        return InetAddresses.ipStringToBytes("::ffff:1.2.3.4");
-      }
-
-      @Override protected int parsePort(Object input) {
-        return -1;
-      }
-    };
-
-    function.accept(new Object());
-    brave.serverTracer().setServerSend();
-
-    assertThat(spans.get(0).remoteEndpoint().ipv4())
-        .isEqualTo("1.2.3.4");
-    assertThat(spans.get(0).remoteEndpoint().ipv6())
-        .isNull();
-  }
-
-  @Test
   public void acceptsIpv4CompatIpV6Address() throws UnknownHostException {
     brave.serverTracer().setStateUnknown("foo");
     brave.serverTracer().setServerReceived();

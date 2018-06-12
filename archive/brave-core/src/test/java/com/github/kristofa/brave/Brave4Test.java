@@ -6,7 +6,7 @@ import org.junit.After;
 public class Brave4Test extends BraveTest {
 
   @Override protected Brave newBrave() {
-    return TracerAdapter.newBrave(Tracing.newBuilder().build().tracer());
+    return TracerAdapter.newBrave(Tracing.newBuilder().build());
   }
 
   @Override protected Brave newBrave(Sampler sampler) {
@@ -14,11 +14,11 @@ public class Brave4Test extends BraveTest {
       @Override public boolean isSampled(long traceId) {
         return sampler.isSampled(traceId);
       }
-    }).build().tracer());
+    }).build());
   }
 
   @Override protected Brave newBraveWith128BitTraceIds() {
-    return TracerAdapter.newBrave(Tracing.newBuilder().traceId128Bit(true).build().tracer());
+    return TracerAdapter.newBrave(Tracing.newBuilder().traceId128Bit(true).build());
   }
 
   @After public void close(){

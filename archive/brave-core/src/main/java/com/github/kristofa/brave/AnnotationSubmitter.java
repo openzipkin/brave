@@ -44,7 +44,7 @@ public abstract class AnnotationSubmitter {
     public void submitAnnotation(String value) {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().annotate(span, recorder().currentTimeMicroseconds(), value);
+        recorder().annotate(span, recorder().currentTimeMicroseconds(span), value);
     }
 
     /**
@@ -67,7 +67,7 @@ public abstract class AnnotationSubmitter {
         Span span = currentSpan().get();
         if (span == null) return;
 
-        long timestamp = recorder().currentTimeMicroseconds();
+        long timestamp = recorder().currentTimeMicroseconds(span);
         recorder().annotate(span, timestamp, startAnnotation);
         recorder().start(span, timestamp);
     }
@@ -82,7 +82,7 @@ public abstract class AnnotationSubmitter {
         Span span = currentSpan().get();
         if (span == null) return false;
 
-        long timestamp = recorder().currentTimeMicroseconds();
+        long timestamp = recorder().currentTimeMicroseconds(span);
         recorder().annotate(span, timestamp, finishAnnotation);
         recorder().finish(span, timestamp);
         return true;

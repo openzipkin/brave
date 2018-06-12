@@ -66,7 +66,9 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
-        return startNewSpan(component, operation, recorder().currentTimeMicroseconds());
+        Span span = newSpan();
+        if (span == null) return null;
+        return startSpan(component, operation, recorder().currentTimeMicroseconds(span), span);
     }
 
     /**
@@ -106,6 +108,21 @@ public abstract class LocalTracer extends AnnotationSubmitter {
      * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
+        Span span = newSpan();
+        if (span == null) return null;
+        return startSpan(component, operation, timestamp, span);
+    }
+
+    SpanId startSpan(String component, String operation, long timestamp, Span span) {
+        recorder().start(span, timestamp);
+        recorder().name(span, operation);
+        recorder().tag(span, LOCAL_COMPONENT, component);
+
+        currentSpan().setCurrentSpan(span);
+        return Brave.context(span);
+    }
+
+    Span newSpan() {
         // When a trace context is extracted from an incoming request, it may have only the
         // sampled header (no ids). If the header says unsampled, we must honor that. Since
         // we currently don't synthesize a fake span when a trace is unsampled, we have to
@@ -122,13 +139,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
             currentSpan().setCurrentSpan(null);
             return null;
         }
-
-        recorder().start(span, timestamp);
-        recorder().name(span, operation);
-        recorder().tag(span, LOCAL_COMPONENT, component);
-
-        currentSpan().setCurrentSpan(span);
-        return context;
+        return span;
     }
 
     /**
@@ -137,7 +148,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     public void finishSpan() {
         Span span = currentSpan().get();
         if (span == null) return;
-        recorder().finish(span, recorder().currentTimeMicroseconds());
+        recorder().finish(span, recorder().currentTimeMicroseconds(span));
         currentSpan().setCurrentSpan(null);
     }
 

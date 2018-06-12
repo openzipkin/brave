@@ -7,15 +7,15 @@ public class Brave4LocalTracerTest extends LocalTracerTest {
   @Override Brave newBrave() {
     return TracerAdapter.newBrave(Tracing.newBuilder()
         .clock(() -> timestamp)
-        .localEndpoint(ZIPKIN_ENDPOINT)
-        .spanReporter(spans::add).build().tracer());
+        .endpoint(ZIPKIN_ENDPOINT)
+        .spanReporter(spans::add).build());
   }
 
   @Override Brave newBrave(ServerClientAndLocalSpanState state) {
     return TracerAdapter.newBrave(Tracing.newBuilder()
         .clock(() -> timestamp)
-        .localEndpoint(ZIPKIN_ENDPOINT)
-        .spanReporter(spans::add).build().tracer(), state);
+        .endpoint(ZIPKIN_ENDPOINT)
+        .spanReporter(spans::add).build(), state);
   }
 
   @After public void close(){

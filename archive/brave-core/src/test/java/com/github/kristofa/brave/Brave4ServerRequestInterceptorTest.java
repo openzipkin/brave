@@ -6,8 +6,8 @@ import org.junit.After;
 public class Brave4ServerRequestInterceptorTest extends ServerRequestInterceptorTest {
   @Override Brave newBrave() {
     return TracerAdapter.newBrave(Tracing.newBuilder()
-        .localEndpoint(ZIPKIN_ENDPOINT)
-        .spanReporter(spans::add).build().tracer());
+        .endpoint(ZIPKIN_ENDPOINT)
+        .spanReporter(spans::add).build());
   }
 
   @After public void close(){

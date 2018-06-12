@@ -130,12 +130,11 @@ public class ServerTracerTest {
 
     recorder.flush(span);
 
-    assertThat(spans.get(0)).isEqualTo(
-        BASE_SPAN.toBuilder()
-            .kind(Kind.SERVER)
-            .localEndpoint(ZIPKIN_ENDPOINT)
-            .timestamp(START_TIME_MICROSECONDS).build()
-    );
+    zipkin2.Span server = spans.get(0);
+    assertThat(server.kind()).isEqualTo(Kind.SERVER);
+    assertThat(server.localEndpoint()).isEqualTo(ZIPKIN_ENDPOINT);
+    assertThat(server.timestamp()).isGreaterThanOrEqualTo(START_TIME_MICROSECONDS);
+    assertThat(server.duration()).isNull();
   }
 
   @Test
@@ -180,24 +179,11 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0)).isEqualTo(
-        BASE_SPAN.toBuilder()
-            .kind(Kind.SERVER)
-            .localEndpoint(ZIPKIN_ENDPOINT)
-            .timestamp(START_TIME_MICROSECONDS).duration(100L).build()
-    );
-  }
-
-  @Test
-  public void setServerSend_preciseDuration() {
-    recorder.start(span, START_TIME_MICROSECONDS);
-    brave.serverSpanThreadBinder().setCurrentSpan(serverSpan);
-
-    timestamp = START_TIME_MICROSECONDS + 500;
-
-    brave.serverTracer().setServerSend();
-
-    assertThat(spans.get(0).duration()).isEqualTo(500L);
+    zipkin2.Span server = spans.get(0);
+    assertThat(server.kind()).isEqualTo(Kind.SERVER);
+    assertThat(server.localEndpoint()).isEqualTo(ZIPKIN_ENDPOINT);
+    assertThat(server.timestamp()).isGreaterThanOrEqualTo(START_TIME_MICROSECONDS);
+    assertThat(server.duration()).isGreaterThanOrEqualTo(1L);
   }
 
   /** Duration of less than one microsecond is confusing to plot and could coerce to null. */
@@ -210,7 +196,7 @@ public class ServerTracerTest {
 
     brave.serverTracer().setServerSend();
 
-    assertThat(spans.get(0).duration()).isEqualTo(1L);
+    assertThat(spans.get(0).duration()).isGreaterThanOrEqualTo(1L);
   }
 
   @Test

@@ -2,13 +2,13 @@ package com.github.kristofa.brave;
 
 import brave.Clock;
 import brave.Tracer;
-import brave.propagation.SamplingFlags;
+import brave.Tracing;
 import brave.propagation.TraceContext;
+import brave.sampler.Sampler;
 import com.github.kristofa.brave.internal.InternalSpan;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import zipkin.Constants;
 
 /**
  * This is a bridge between the new {@linkplain Tracer} api in {@code io.zipkin.brave:brave} and the
@@ -21,9 +21,9 @@ public final class TracerAdapter {
   /** The endpoint in {@linkplain ServerClientAndLocalSpanState} is no longer used. */
   static final Endpoint DUMMY_ENDPOINT = Endpoint.builder().serviceName("not used").build();
 
-  public static Brave newBrave(Tracer tracer) {
-    if (tracer == null) throw new NullPointerException("tracer == null");
-    return newBrave(tracer, new ThreadLocalServerClientAndLocalSpanState(DUMMY_ENDPOINT));
+  public static Brave newBrave(Tracing tracing) {
+    if (tracing == null) throw new NullPointerException("tracer == null");
+    return newBrave(tracing, new ThreadLocalServerClientAndLocalSpanState(DUMMY_ENDPOINT));
   }
 
   /**
@@ -31,10 +31,10 @@ public final class TracerAdapter {
    *
    * @param state for in-process propagation. Note {@link CommonSpanState#endpoint()} is ignored.
    */
-  public static Brave newBrave(Tracer tracer, ServerClientAndLocalSpanState state) {
-    if (tracer == null) throw new NullPointerException("tracer == null");
+  public static Brave newBrave(Tracing tracing, ServerClientAndLocalSpanState state) {
+    if (tracing == null) throw new NullPointerException("tracer == null");
     if (state == null) throw new NullPointerException("state == null");
-    Clock delegate = tracer.clock();
+    Clock delegate = brave.internal.Platform.get().clock();
     return new Brave.Builder(state)
         .clock(new AnnotationSubmitter.Clock() {
           @Override public long currentTimeMicroseconds() {
@@ -45,8 +45,8 @@ public final class TracerAdapter {
             return delegate.toString();
           }
         })
-        .spanFactory(new Brave4SpanFactory(tracer))
-        .recorder(new Brave4Recorder(tracer)).build();
+        .spanFactory(new Brave4SpanFactory(tracing))
+        .recorder(new Brave4Recorder(tracing)).build();
   }
 
   public static brave.Span toSpan(Tracer tracer, Span span) {
@@ -71,7 +71,7 @@ public final class TracerAdapter {
     if (result == null || result.equals(ServerSpan.EMPTY)) return null;
     if (result.getSpan() != null) return toSpan(tracer, result.getSpan());
     assert result.getSample() != null && !result.getSample() : "unexpected sample state: " + result;
-    return tracer.newTrace(SamplingFlags.NOT_SAMPLED);
+    return tracer.withSampler(Sampler.NEVER_SAMPLE).newTrace();
   }
 
   /** Sets a span associated with the context as the current server span. */
@@ -98,30 +98,32 @@ public final class TracerAdapter {
   }
 
   static final class Brave4SpanFactory extends SpanFactory {
-    final Tracer delegate;
+    final Tracer tracer;
 
-    Brave4SpanFactory(Tracer tracer) {
-      this.delegate = tracer;
+    Brave4SpanFactory(Tracing tracing) {
+      this.tracer = tracing.tracer();
     }
 
     @Override Span nextSpan(@Nullable SpanId maybeParent) {
       brave.Span span = maybeParent != null
-          ? delegate.newChild(toTraceContext(maybeParent))
-          : delegate.newTrace();
+          ? tracer.newChild(toTraceContext(maybeParent))
+          : tracer.newTrace();
       return Brave.toSpan(toSpanId(span.context()));
     }
 
     @Override Span joinSpan(SpanId spanId) {
       TraceContext context = toTraceContext(spanId);
-      return Brave.toSpan(toSpanId(delegate.joinSpan(context).context()));
+      return Brave.toSpan(toSpanId(tracer.joinSpan(context).context()));
     }
   }
 
   static final class Brave4Recorder extends Recorder {
+    final Tracing tracing;
     final Tracer tracer;
 
-    Brave4Recorder(Tracer tracer) {
-      this.tracer = tracer;
+    Brave4Recorder(Tracing tracing) {
+      this.tracing = tracing;
+      this.tracer = tracing.tracer();
     }
 
     @Override void name(Span span, String name) {
@@ -142,21 +144,34 @@ public final class TracerAdapter {
     @Override void address(Span span, String key, Endpoint endpoint) {
       brave.Span brave4 = brave4(span);
       switch (key) {
-        case Constants.SERVER_ADDR:
+        case "sa":
           brave4.kind(brave.Span.Kind.CLIENT);
           break;
-        case Constants.CLIENT_ADDR:
+        case "ca":
           brave4.kind(brave.Span.Kind.SERVER);
           break;
         default:
           throw new AssertionError(key + " is not yet supported");
       }
-      brave4.remoteEndpoint(zipkin.Endpoint.builder()
-          .serviceName(endpoint.service_name)
-          .ipv4(endpoint.ipv4)
-          .ipv6(endpoint.ipv6)
-          .port(endpoint.port)
-          .build());
+
+      zipkin2.Endpoint.Builder endpointBuilder =
+          zipkin2.Endpoint.newBuilder()
+              .serviceName(endpoint.service_name)
+              .port(endpoint.port != null ? endpoint.port : 0);
+      if (endpoint.ipv6 != null) {
+        endpointBuilder.parseIp(endpoint.ipv6);
+      }
+      int ipv4 = endpoint.ipv4;
+      if (endpoint.ipv4 != 0) {
+        endpointBuilder.parseIp( // allocation is ok here as Endpoint.ipv4Bytes would anyway
+            new byte[] {
+              (byte) (ipv4 >> 24 & 0xff),
+              (byte) (ipv4 >> 16 & 0xff),
+              (byte) (ipv4 >> 8 & 0xff),
+              (byte) (ipv4 & 0xff)
+            });
+      }
+      brave4.remoteEndpoint(endpointBuilder.build());
     }
 
     @Override void tag(Span span, String key, String value) {
@@ -176,8 +191,11 @@ public final class TracerAdapter {
       return tracer.toSpan(toTraceContext(InternalSpan.instance.context(span)));
     }
 
-    @Override public long currentTimeMicroseconds() {
-      return tracer.clock().currentTimeMicroseconds();
+    @Override
+    long currentTimeMicroseconds(Span span) {
+      return tracing
+          .clock(toTraceContext(InternalSpan.instance.context(span)))
+          .currentTimeMicroseconds();
     }
   }
 

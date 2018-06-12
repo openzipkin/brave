@@ -12,9 +12,10 @@ import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin.junit.HttpFailure;
-import zipkin.junit.ZipkinRule;
+import zipkin2.junit.HttpFailure;
+import zipkin2.junit.ZipkinRule;
 
+import static java.lang.Long.toHexString;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -151,7 +152,7 @@ public class HttpSpanCollectorTest {
     return InternalSpan.instance.toSpan(SpanId.builder().spanId(traceId).build());
   }
 
-  static zipkin.Span zipkinSpan(long traceId) {
-    return zipkin.Span.builder().traceId(traceId).id(traceId).name("").build();
+  static zipkin2.Span zipkinSpan(long traceId) {
+    return zipkin2.Span.newBuilder().traceId(toHexString(traceId)).id(toHexString(traceId)).build();
   }
 }

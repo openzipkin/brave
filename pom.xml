@@ -5,7 +5,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>4.14.0-SNAPSHOT</version>
+  <version>4.13.5-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -66,8 +66,8 @@
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.1.4.Final</resteasy.version>
-    <zipkin.version>2.4.5</zipkin.version>
-    <zipkin-reporter2.version>2.3.1</zipkin-reporter2.version>
+    <zipkin.version>2.9.2</zipkin.version>
+    <zipkin-reporter2.version>2.7.1</zipkin-reporter2.version>
     <zipkin-reporter.version>1.1.2</zipkin-reporter.version>
     <finagle.version>18.1.0</finagle.version>
     <log4j.version>2.10.0</log4j.version>
@@ -204,7 +204,7 @@
             <version>${zipkin.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.zipkin.java</groupId>
+            <groupId>io.zipkin.zipkin2</groupId>
             <artifactId>zipkin-junit</artifactId>
             <version>${zipkin.version}</version>
         </dependency>
@@ -569,7 +569,7 @@
         <plugin>
           <groupId>net.orfjackal.retrolambda</groupId>
           <artifactId>retrolambda-maven-plugin</artifactId>
-          <version>2.5.1</version>
+          <version>2.5.3</version>
           <executions>
             <execution>
               <goals>
