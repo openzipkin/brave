@@ -116,18 +116,6 @@ public abstract class HttpServerBenchmarks {
         .execute().body().close();
   }
 
-  @Benchmark public void tracedAwsServer_get() throws Exception {
-    get("/tracedaws");
-  }
-
-  @Benchmark public void tracedAwsServer_get_resumeTrace() throws Exception {
-    client.newCall(new Request.Builder().url(baseUrl() + "/tracedaws")
-        .header("X-Amzn-Trace-Id",
-            "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1")
-        .build())
-        .execute().body().close();
-  }
-
   void get(String path) throws IOException {
     client.newCall(new Request.Builder().url(baseUrl() + path).build()).execute().body().close();
   }

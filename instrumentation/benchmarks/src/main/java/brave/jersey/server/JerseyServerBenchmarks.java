@@ -5,7 +5,6 @@ import brave.http.HttpServerBenchmarks;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.util.Collections;
@@ -92,18 +91,6 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  @ApplicationPath("/tracedaws")
-  public static class TracedAWSApp extends Application {
-    @Override public Set<Object> getSingletons() {
-      return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
-          HttpTracing.create(Tracing.newBuilder()
-              .propagationFactory(AWSPropagation.FACTORY)
-              .spanReporter(Reporter.NOOP)
-              .build())
-      )));
-    }
-  }
-
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder.addServlets(
         servlet("Unsampled", ServletContainer.class)
@@ -122,10 +109,6 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
             .setLoadOnStartup(1)
             .addInitParam("javax.ws.rs.Application", Traced128App.class.getName())
             .addMapping("/traced128"),
-        servlet("TracedAWS", ServletContainer.class)
-            .setLoadOnStartup(1)
-            .addInitParam("javax.ws.rs.Application", TracedAWSApp.class.getName())
-            .addMapping("/tracedaws"),
         servlet("App", ServletContainer.class)
             .setLoadOnStartup(1)
             .addInitParam("javax.ws.rs.Application", App.class.getName())

@@ -4,7 +4,6 @@ import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
@@ -74,17 +73,6 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  public static class TracedAWS extends ForwardingTracingFilter {
-    public TracedAWS() {
-      super(TracingFilter.create(
-          Tracing.newBuilder()
-              .propagationFactory(AWSPropagation.FACTORY)
-              .spanReporter(Reporter.NOOP)
-              .build()
-      ));
-    }
-  }
-
   @Override protected void init(DeploymentInfo servletBuilder) {
     addFilterMappings(servletBuilder);
     servletBuilder.addServlets(
@@ -100,9 +88,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
         .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
         .addFilter(new FilterInfo("Traced128", Traced128.class))
-        .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
-        .addFilter(new FilterInfo("TracedAWS", TracedAWS.class))
-        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST);
+        .addFilterUrlMapping("Traced128", "/traced128", REQUEST);
   }
 
   // Convenience main entry-point
@@ -121,7 +107,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
       this.delegate = delegate;
     }
 
-    @Override public void init(FilterConfig filterConfig) throws ServletException {
+    @Override public void init(FilterConfig filterConfig) {
     }
 
     @Override public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse,

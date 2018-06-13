@@ -4,7 +4,6 @@ import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -62,12 +61,6 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     final ChannelDuplexHandler traced128 = NettyHttpTracing.create(
         Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
     ).serverHandler();
-    final ChannelDuplexHandler tracedaws = NettyHttpTracing.create(
-        Tracing.newBuilder()
-            .propagationFactory(AWSPropagation.FACTORY)
-            .spanReporter(Reporter.NOOP)
-            .build()
-    ).serverHandler();
 
     @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
       if (!(msg instanceof HttpRequest)) {
@@ -88,9 +81,6 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       } else if ("/traced128".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced128.channelRead(ctx, msg);
-      } else if ("/tracedaws".equals(uri)) {
-        ctx.channel().attr(URI_ATTRIBUTE).set(uri);
-        tracedaws.channelRead(ctx, msg);
       } else {
         ctx.fireChannelRead(msg);
       }
@@ -109,8 +99,6 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
         traced.write(ctx, msg, prm);
       } else if ("/traced128".equals(uri)) {
         traced128.write(ctx, msg, prm);
-      } else if ("/tracedaws".equals(uri)) {
-        tracedaws.write(ctx, msg, prm);
       } else {
         ctx.write(msg, prm);
       }

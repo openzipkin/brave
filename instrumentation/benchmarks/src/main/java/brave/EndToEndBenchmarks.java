@@ -4,7 +4,6 @@ import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
@@ -104,15 +103,6 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  public static class TracedAWS extends ForwardingTracingFilter {
-    public TracedAWS() {
-      super(Tracing.newBuilder()
-          .propagationFactory(AWSPropagation.FACTORY)
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
-    }
-  }
-
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
@@ -126,9 +116,6 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("Traced128", Traced128.class))
         .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
         .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
-        .addFilter(new FilterInfo("TracedAWS", TracedAWS.class))
-        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST)
-        .addFilterUrlMapping("TracedAWS", "/tracedaws/api", REQUEST)
         .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
   }
 

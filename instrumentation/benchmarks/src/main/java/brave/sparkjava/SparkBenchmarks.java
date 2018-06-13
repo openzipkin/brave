@@ -4,7 +4,6 @@ import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.aws.AWSPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
@@ -91,22 +90,6 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  public static class TracedAWS implements SparkApplication {
-    SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder()
-            .propagationFactory(AWSPropagation.FACTORY)
-            .spanReporter(Reporter.NOOP)
-            .build()
-    );
-
-    @Override
-    public void init() {
-      Spark.before(sparkTracing.before());
-      Spark.get("/tracedaws", (Request request, Response response) -> "hello world");
-      Spark.afterAfter(sparkTracing.afterAfter());
-    }
-  }
-
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder
         .addFilter(new FilterInfo("NotTraced", SparkFilter.class)
@@ -123,10 +106,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
         .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
         .addFilter(new FilterInfo("Traced128", SparkFilter.class)
         .addInitParam("applicationClass", Traced128.class.getName()))
-        .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
-        .addFilter(new FilterInfo("TracedAWS", SparkFilter.class)
-        .addInitParam("applicationClass", TracedAWS.class.getName()))
-        .addFilterUrlMapping("TracedAWS", "/tracedaws", REQUEST);
+        .addFilterUrlMapping("Traced128", "/traced128", REQUEST);
   }
 
   // Convenience main entry-point

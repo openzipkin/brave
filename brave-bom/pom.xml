@@ -198,11 +198,6 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>brave-propagation-aws</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
         <artifactId>brave-spring-beans</artifactId>
         <version>${project.version}</version>
       </dependency>
