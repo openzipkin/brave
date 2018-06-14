@@ -3,6 +3,7 @@ package brave.spring.webmvc;
 import brave.test.http.ITServletContainer;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration.Dynamic;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
@@ -53,12 +54,15 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
     appContext.register(TracingConfig.class); // generic tracing setup
     DispatcherServlet servlet = new DispatcherServlet(appContext);
     servlet.setDispatchOptionsRequest(true);
-    handler.addServlet(new ServletHolder(servlet), "/*");
+    ServletHolder servletHolder = new ServletHolder(servlet);
+    servletHolder.setAsyncSupported(true);
+    handler.addServlet(servletHolder, "/*");
     handler.addEventListener(new ContextLoaderListener(appContext));
 
     // add the trace filter, which lazy initializes a real tracing filter from the spring context
-    handler.getServletContext()
-        .addFilter("tracingFilter", DelegatingTracingFilter.class)
-        .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    Dynamic filterRegistration =
+        handler.getServletContext().addFilter("tracingFilter", DelegatingTracingFilter.class);
+    filterRegistration.setAsyncSupported(true);
+    filterRegistration.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 }

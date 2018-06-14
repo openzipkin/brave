@@ -37,6 +37,8 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
     ResourceConfig config = new ResourceConfig();
     config.register(new TestResource(httpTracing));
     config.register(TracingApplicationEventListener.create(httpTracing));
-    handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
+    ServletHolder servlet = new ServletHolder(new ServletContainer(config));
+    servlet.setAsyncSupported(true);
+    handler.addServlet(servlet, "/*");
   }
 }

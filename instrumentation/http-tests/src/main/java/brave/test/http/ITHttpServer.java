@@ -255,11 +255,30 @@ public abstract class ITHttpServer extends ITHttp {
     routeBasedRequestNameIncludesPathPrefix("/nested/items");
   }
 
+  /**
+   * Sometimes state used to carry http route data is different for async requests. This helps
+   * ensure we don't miss issues like this.
+   */
+  @Test
+  public void httpRoute_async() throws Exception {
+    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
+    init();
+
+    routeBasedRequestNameIncludesPathPrefix("/async_items");
+  }
+
   private void routeBasedRequestNameIncludesPathPrefix(String prefix) throws Exception {
+    Response request1 = get(prefix + "/1?foo");
+    Response request2 = get(prefix + "/2?bar");
+
+    // get() doesn't check the response, check to make sure the server didn't 500
+    assertThat(request1.isSuccessful()).isTrue();
+    assertThat(request2.isSuccessful()).isTrue();
+
     // Reading the route parameter from the response ensures the test endpoint is correct
-    assertThat(get(prefix + "/1?foo").body().string())
+    assertThat(request1.body().string())
         .isEqualTo("1");
-    assertThat(get(prefix + "/2?bar").body().string())
+    assertThat(request2.body().string())
         .isEqualTo("2");
 
     Span span1 = takeSpan(), span2 = takeSpan();

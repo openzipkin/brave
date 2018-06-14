@@ -13,6 +13,7 @@ import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 import org.glassfish.jersey.uri.UriTemplate;
 
+import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.FINISHED;
 import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.REQUEST_MATCHED;
 
 /**
@@ -50,12 +51,16 @@ public class SpanCustomizingApplicationEventListener
 
   @Override public void onEvent(RequestEvent event) {
     // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
-    if (event.getType() != REQUEST_MATCHED) return;
+    if (event.getType() != REQUEST_MATCHED && event.getType() != FINISHED) return;
     ContainerRequest request = event.getContainerRequest();
     SpanCustomizer span = (SpanCustomizer) request.getProperty(SpanCustomizer.class.getName());
     if (span == null) return;
+    if (event.getType() != REQUEST_MATCHED) {
+      parser.requestMatched(event, span);
+      return;
+    }
+    // Set the route attribute on completion to avoid any thread visibility issues reading it
     request.setProperty("http.route", route(event.getContainerRequest()));
-    parser.requestMatched(event, span);
   }
 
   /**

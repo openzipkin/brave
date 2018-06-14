@@ -7,6 +7,8 @@ import org.glassfish.jersey.internal.MapPropertiesDelegate;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.ExtendedUriInfo;
+import org.glassfish.jersey.server.internal.monitoring.RequestEventImpl;
+import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.uri.PathTemplate;
 import org.jboss.resteasy.core.ServerResponse;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -36,14 +38,17 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
           new PathTemplate("/items/{itemId}")
       )
   );
-  ContainerResponse response = new ContainerResponse(
-      new ContainerRequest(
-          URI.create("/"), null, null, null, new MapPropertiesDelegate()
+  ContainerRequest request = new ContainerRequest(
+      URI.create("/"), null, null, null, new MapPropertiesDelegate()
       ) {
-        @Override public ExtendedUriInfo getUriInfo() {
-          return uriInfo;
-        }
-      }, new ServerResponse());
+    @Override public ExtendedUriInfo getUriInfo() {
+      return uriInfo;
+    }
+  };
+  ContainerResponse response = new ContainerResponse(request, new ServerResponse());
+  RequestEvent event = new RequestEventImpl.Builder()
+      .setContainerRequest(request)
+      .setContainerResponse(response).build(RequestEvent.Type.FINISHED);
 
   FakeExtendedUriInfo nestedUriInfo = new FakeExtendedUriInfo(URI.create("/"),
       Arrays.asList(
@@ -65,11 +70,11 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
   TracingApplicationEventListener.Adapter adapter = new TracingApplicationEventListener.Adapter();
 
   @Benchmark public String parseRoute() {
-    return adapter.route(response);
+    return adapter.route(event);
   }
 
   @Benchmark public String parseRoute_nested() {
-    return adapter.route(nestedResponse);
+    return adapter.route(event);
   }
 
   // Convenience main entry-point

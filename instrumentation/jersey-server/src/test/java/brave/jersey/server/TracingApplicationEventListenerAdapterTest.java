@@ -5,6 +5,7 @@ import java.net.URI;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.ExtendedUriInfo;
+import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -18,13 +19,14 @@ import static org.mockito.Mockito.when;
 public class TracingApplicationEventListenerAdapterTest {
   Adapter adapter = new Adapter();
   @Mock ContainerRequest request;
+  @Mock RequestEvent event;
   @Mock ContainerResponse response;
 
   @Test public void methodFromResponse() {
-    when(response.getRequestContext()).thenReturn(request);
+    when(event.getContainerRequest()).thenReturn(request);
     when(request.getMethod()).thenReturn("GET");
 
-    assertThat(adapter.methodFromResponse(response))
+    assertThat(adapter.methodFromResponse(event))
         .isEqualTo("GET");
   }
 
@@ -36,11 +38,24 @@ public class TracingApplicationEventListenerAdapterTest {
   }
 
   @Test public void route() {
-    when(response.getRequestContext()).thenReturn(request);
+    when(event.getContainerRequest()).thenReturn(request);
     when(request.getProperty("http.route")).thenReturn("/items/{itemId}");
 
-    assertThat(adapter.route(response))
+    assertThat(adapter.route(event))
         .isEqualTo("/items/{itemId}");
+  }
+
+  @Test public void statusCodeAsInt() {
+    when(event.getContainerResponse()).thenReturn(response);
+    when(response.getStatus()).thenReturn(200);
+
+    assertThat(adapter.statusCodeAsInt(event))
+        .isEqualTo(200);
+  }
+
+  @Test public void statusCodeAsInt_noResponse() {
+    assertThat(adapter.statusCodeAsInt(event))
+        .isZero();
   }
 
   @Test public void url_derivedFromExtendedUriInfo() {
