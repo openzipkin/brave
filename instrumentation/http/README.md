@@ -262,20 +262,20 @@ If the response type is final, you may be able to make a copy and stash
 the route as a synthetic header. Since this is a copy of the response,
 there's no chance a user will receive this header in a real response.
 
-Here's an example for Play, where the header "brave-http-template" holds
+Here's an example for Play, where the header "brave-http-route" holds
 the route temporarily until the parser can read it.
 ```scala
     result.onComplete {
       case Failure(t) => handler.handleSend(null, t, span)
       case Success(r) => {
         // add a synthetic header if there was a routing path set
-        var resp = template.map(t => r.withHeaders("brave-http-template" -> t)).getOrElse(r)
+        var resp = template.map(t => r.withHeaders("brave-http-route" -> t)).getOrElse(r)
         handler.handleSend(resp, null, span)
       }
     }
 --snip--
-    override def template(response: Result): String =
-      response.header.headers.apply("brave-http-template")
+    override def route(response: Result): String =
+      response.header.headers.apply("brave-http-route")
 ```
 
 #### Common mistakes

@@ -63,6 +63,9 @@ public class ITVertxWebTracing extends ITHttpServer {
     router.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));
     });
+    router.route( "/async_items/:itemId").handler(ctx -> {
+      ctx.request().endHandler(v -> ctx.response().end(ctx.request().getParam("itemId")));
+    });
     Router subrouter = Router.router(vertx);
     subrouter.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));

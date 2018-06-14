@@ -56,7 +56,7 @@ public class TestResource {
   @GET
   @Path("async")
   public void async(@Suspended AsyncResponse response) {
-    new Thread(() -> response.resume("foo")).start();
+    blockOnAsyncResult("foo", response);
   }
 
   @GET
@@ -79,9 +79,29 @@ public class TestResource {
   }
 
   @GET
+  @Path("async_items/{itemId}")
+  public void asyncItem(@PathParam("itemId") String itemId, @Suspended AsyncResponse response) {
+    blockOnAsyncResult(itemId, response);
+  }
+
+  static void blockOnAsyncResult(String body, AsyncResponse response) {
+    Thread thread = new Thread(() -> response.resume(body));
+    thread.start();
+    try {
+      thread.join();
+    } catch (InterruptedException e) {
+    }
+  }
+
+  @GET
   @Path("exceptionAsync")
   public void disconnectAsync(@Suspended AsyncResponse response) {
-    new Thread(() -> response.resume(new IOException())).start();
+    Thread thread = new Thread(() -> response.resume(new IOException()));
+    thread.start();
+    try {
+      thread.join();
+    } catch (InterruptedException e) {
+    }
   }
 
   public static class NestedResource {

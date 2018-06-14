@@ -24,10 +24,15 @@ public final class SpanCustomizingAsyncHandlerInterceptor extends HandlerInterce
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object o) {
     SpanCustomizer span = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
-    if (span != null) {
-      setHttpRouteAttribute(request);
-      handlerParser.preHandle(request, o, span);
-    }
+    if (span != null) handlerParser.preHandle(request, o, span);
     return true;
+  }
+
+  // Set the route attribute on completion to avoid any thread visibility issues reading it
+  @Override
+  public void afterCompletion(
+      HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+    SpanCustomizer span = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
+    if (span != null) setHttpRouteAttribute(request);
   }
 }

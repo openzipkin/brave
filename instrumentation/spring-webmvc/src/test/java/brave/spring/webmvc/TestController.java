@@ -65,15 +65,20 @@ import org.springframework.web.bind.annotation.RequestMethod;
   }
 
   @RequestMapping(value = "/items/{itemId}")
-  public ResponseEntity<String> items(@PathVariable String itemId) {
+  public ResponseEntity<String> items(@PathVariable("itemId") String itemId) {
     return new ResponseEntity<String>(itemId, HttpStatus.OK);
+  }
+
+  @RequestMapping(value = "/async_items/{itemId}")
+  public Callable<ResponseEntity<String>> asyncItems(@PathVariable("itemId") String itemId) {
+    return () -> new ResponseEntity<String>(itemId, HttpStatus.OK);
   }
 
   @Controller
   @RequestMapping(value = "/nested")
   static class NestedController {
     @RequestMapping(value = "/items/{itemId}")
-    public ResponseEntity<String> items(@PathVariable String itemId) {
+    public ResponseEntity<String> items(@PathVariable("itemId") String itemId) {
       return new ResponseEntity<String>(itemId, HttpStatus.OK);
     }
   }

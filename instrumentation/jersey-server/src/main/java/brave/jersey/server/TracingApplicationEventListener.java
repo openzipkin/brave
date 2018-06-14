@@ -8,16 +8,15 @@ import brave.http.HttpTracing;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import javax.inject.Inject;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.ManagedAsync;
-import org.glassfish.jersey.server.internal.routing.RoutingContext;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
-import org.glassfish.jersey.uri.UriTemplate;
 
 import static brave.jersey.server.SpanCustomizingApplicationEventListener.route;
 
@@ -38,7 +37,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   };
 
   final Tracer tracer;
-  final HttpServerHandler<ContainerRequest, ContainerResponse> serverHandler;
+  final HttpServerHandler<ContainerRequest, RequestEvent> serverHandler;
   final TraceContext.Extractor<ContainerRequest> extractor;
   final EventParser parser;
 
@@ -62,7 +61,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     return null;
   }
 
-  static final class Adapter extends HttpServerAdapter<ContainerRequest, ContainerResponse> {
+  static final class Adapter extends HttpServerAdapter<ContainerRequest, RequestEvent> {
 
     @Override public String method(ContainerRequest request) {
       return request.getMethod();
@@ -81,26 +80,21 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       return request.getHeaderString(name);
     }
 
-    @Override public String methodFromResponse(ContainerResponse response) {
-      return response.getRequestContext().getMethod();
+    @Override public String methodFromResponse(RequestEvent event) {
+      return event.getContainerRequest().getMethod();
     }
 
-    /**
-     * This returns the matched template as defined by a base URL and path expressions.
-     *
-     * <p>Matched templates are pairs of (resource path, method path) added with
-     * {@link RoutingContext#pushTemplates(UriTemplate, UriTemplate)}.
-     * This code skips redundant slashes from either source caused by Path("/") or Path("").
-     */
-    @Override public String route(ContainerResponse response) {
-      return (String) response.getRequestContext().getProperty("http.route");
+    @Override public String route(RequestEvent event) {
+      return (String) event.getContainerRequest().getProperty("http.route");
     }
 
-    @Override public Integer statusCode(ContainerResponse response) {
-      return statusCodeAsInt(response);
+    @Override public Integer statusCode(RequestEvent event) {
+      return statusCodeAsInt(event);
     }
 
-    @Override public int statusCodeAsInt(ContainerResponse response) {
+    @Override public int statusCodeAsInt(RequestEvent event) {
+      ContainerResponse response = event.getContainerResponse();
+      if (response == null) return 0;
       return response.getStatus();
     }
 
@@ -111,7 +105,8 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   class TracingRequestEventListener implements RequestEventListener {
     final Span span;
-    Tracer.SpanInScope spanInScope; // only mutated when this is a synchronous method
+    // Invalidated when an asynchronous method is in use
+    volatile Tracer.SpanInScope spanInScope;
 
     TracingRequestEventListener(Span span, Tracer.SpanInScope spanInScope) {
       this.span = span;
@@ -119,36 +114,37 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     }
 
     /**
-     * This keeps the span in scope as long as possible. In synchronous methods, the span remains
-     * in scope for the whole request/response lifecycle. {@linkplain ManagedAsync} requests are the
-     * worst case: the span is only visible until request filters complete.
+     * This keeps the span in scope as long as possible. In synchronous methods, the span remains in
+     * scope for the whole request/response lifecycle. {@linkplain ManagedAsync} and {@linkplain
+     * Suspended} requests are the worst case: the span is only visible until request filters
+     * complete.
      */
-    @Override public void onEvent(RequestEvent event) {
-      // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
+    @Override
+    public void onEvent(RequestEvent event) {
+      Tracer.SpanInScope maybeSpanInScope;
       switch (event.getType()) {
+        // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
         case REQUEST_MATCHED:
-          event.getContainerRequest().setProperty("http.route", route(event.getContainerRequest()));
           parser.requestMatched(event, span);
           break;
         case REQUEST_FILTERED:
-          if (spanInScope == null) break;
+          if ((maybeSpanInScope = spanInScope) == null) break;
           // Jersey-specific @ManagedAsync stays on the request thread until REQUEST_FILTERED
-          if (event.getUriInfo().getMatchedResourceMethod().isManagedAsyncDeclared()) {
-            spanInScope.close();
-            spanInScope = null;
-          }
-          break;
-        case RESOURCE_METHOD_FINISHED:
-          if (spanInScope == null) break;
-          // A generic async method stays on the request thread until RESOURCE_METHOD_FINISHED
-          if (event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared()) {
-            spanInScope.close();
+          // Normal async methods sometimes stay on a thread until RESOURCE_METHOD_FINISHED, but
+          // this is not reliable.
+          if (event.getUriInfo().getMatchedResourceMethod().isManagedAsyncDeclared()
+              || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared()) {
+            maybeSpanInScope.close();
             spanInScope = null;
           }
           break;
         case FINISHED:
-          if (spanInScope != null) spanInScope.close();
-          serverHandler.handleSend(event.getContainerResponse(), event.getException(), span);
+          if ((maybeSpanInScope = spanInScope) != null) maybeSpanInScope.close();
+          String maybeHttpRoute = route(event.getContainerRequest());
+          if (maybeHttpRoute != null) {
+            event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
+          }
+          serverHandler.handleSend(event, event.getException(), span);
           break;
         default:
       }
