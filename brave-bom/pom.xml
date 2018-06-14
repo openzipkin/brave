@@ -13,8 +13,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.9.0</zipkin.version>
-    <zipkin-reporter.version>2.7.0</zipkin-reporter.version>
+    <zipkin.version>2.9.3</zipkin.version>
+    <zipkin-reporter.version>2.7.3</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -154,6 +154,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-mysql6</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-mysql8</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
