@@ -4,7 +4,7 @@ import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
-import javax.servlet.FilterRegistration;
+import javax.servlet.FilterRegistration.Dynamic;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -45,8 +45,8 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
     config.register(SpanCustomizingApplicationEventListener.create());
     handler.addServlet(new ServletHolder(new ServletContainer(config)), "/*");
 
-    // add the trace filter, which lazy initializes a real tracing filter from the spring context
-    FilterRegistration.Dynamic filterRegistration =
+    // add the underlying servlet tracing filter which the event listener decorates with more tags
+    Dynamic filterRegistration =
         handler.getServletContext().addFilter("tracingFilter", TracingFilter.create(httpTracing));
     filterRegistration.setAsyncSupported(true);
     // isMatchAfter=true is required for async tests to pass!

@@ -3,7 +3,7 @@ package brave.spring.webmvc;
 import brave.test.http.ITServletContainer;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
-import javax.servlet.FilterRegistration;
+import javax.servlet.FilterRegistration.Dynamic;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
@@ -60,7 +60,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
     handler.addEventListener(new ContextLoaderListener(appContext));
 
     // add the trace filter, which lazy initializes a real tracing filter from the spring context
-    FilterRegistration.Dynamic filterRegistration =
+    Dynamic filterRegistration =
         handler.getServletContext().addFilter("tracingFilter", DelegatingTracingFilter.class);
     filterRegistration.setAsyncSupported(true);
     filterRegistration.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
