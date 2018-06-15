@@ -1,14 +1,14 @@
 # brave-context-rxjava2
-`CurrentTraceContextcontextTracking` prevents traces from breaking
+`CurrentTraceContextAssemblyTracking` prevents traces from breaking
 during RxJava operations by scoping them with trace context.
 
 The design of this library borrows heavily from https://github.com/akaita/RxJava2Debug and https://github.com/akarnokd/RxJava2Extensions
 
-To set this up, create `CurrentTraceContextcontextTracking` using the
+To set this up, create `CurrentTraceContextAssemblyTracking` using the
 current trace context provided by your `Tracing` component.
 
 ```java
-contextTracking = CurrentTraceContextcontextTracking.create(
+contextTracking = CurrentTraceContextAssemblyTracking.create(
   tracing.currentTraceContext()
 );
 ```
