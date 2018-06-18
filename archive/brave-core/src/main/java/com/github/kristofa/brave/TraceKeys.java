@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 /**
- * @deprecated use {@link zipkin.TraceKeys}; will be removed in Brave 2.0
+ * @deprecated will be removed in Brave 2.0
  */
 @Deprecated
 public final class TraceKeys {

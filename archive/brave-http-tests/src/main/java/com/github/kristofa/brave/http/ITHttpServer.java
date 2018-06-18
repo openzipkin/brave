@@ -13,10 +13,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.Constants;
-import zipkin.Endpoint;
+import zipkin2.Endpoint;
 import zipkin2.Span;
-import zipkin.TraceKeys;
 import zipkin2.storage.InMemoryStorage;
 
 import static java.util.Arrays.asList;
@@ -28,7 +26,7 @@ public abstract class ITHttpServer {
   @Rule public ExpectedException thrown = ExpectedException.none();
   public OkHttpClient client = new OkHttpClient();
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
+  Endpoint local = Endpoint.newBuilder().serviceName("local").ip("127.0.0.1").port(100).build();
   InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   protected Brave brave;
@@ -212,7 +210,7 @@ public abstract class ITHttpServer {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_STATUS_CODE, "404"));
+        .contains(entry("http.status_code", "404"));
   }
 
   @Test
@@ -253,7 +251,7 @@ public abstract class ITHttpServer {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().keySet())
-        .contains(Constants.ERROR);
+        .contains("error");
   }
 
   @Test
@@ -267,15 +265,15 @@ public abstract class ITHttpServer {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_URL, url(path).toString()));
+        .contains(entry("http.url", url(path)));
   }
 
   Brave.Builder braveBuilder(Sampler sampler) {
     com.twitter.zipkin.gen.Endpoint localEndpoint = com.twitter.zipkin.gen.Endpoint.builder()
-        .ipv4(local.ipv4)
-        .ipv6(local.ipv6)
-        .port(local.port)
-        .serviceName(local.serviceName)
+        .ipv4(127<<24|1)
+        .ipv6(local.ipv6Bytes())
+        .port(local.port())
+        .serviceName(local.serviceName())
         .build();
     return new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
         .spanReporter(s -> storage.spanConsumer().accept(asList(s)))

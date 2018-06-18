@@ -1,7 +1,5 @@
 package brave;
 
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 /**
  * Simple interface users can customize a span with. For example, this can add custom tags useful
@@ -20,11 +18,12 @@ public interface SpanCustomizer {
 
   /**
    * Tags give your span context for search, viewing and analysis. For example, a key
-   * "your_app.version" would let you lookup spans by version. A tag {@link TraceKeys#SQL_QUERY}
-   * isn't searchable, but it can help in debugging when viewing a trace.
+   * "your_app.version" would let you lookup spans by version. A tag {@code "sql.query"} isn't
+   * searchable, but it can help in debugging when viewing a trace.
    *
-   * @param key Name used to lookup spans, such as "your_app.version". See {@link TraceKeys} for
-   * standard ones.
+   * @param key Name used to lookup spans, such as "your_app.version". See <a
+   *     href="https://zipkin.io/public/thrift/v1/zipkinCore.html">the thrift constants</a> for
+   *     standard ones.
    * @param value String value, cannot be <code>null</code>.
    */
   SpanCustomizer tag(String key, String value);
@@ -33,7 +32,6 @@ public interface SpanCustomizer {
    * Associates an event that explains latency with the current system time.
    *
    * @param value A short tag indicating the event, like "finagle.retry"
-   * @see Constants
    */
   SpanCustomizer annotate(String value);
 

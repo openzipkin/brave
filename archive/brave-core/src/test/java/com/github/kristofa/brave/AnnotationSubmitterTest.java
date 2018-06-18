@@ -13,7 +13,6 @@ import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import zipkin.Constants;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -111,7 +110,7 @@ public class AnnotationSubmitterTest {
 
     @Test
     public void doesntSetDurationWhenTimestampUnset() {
-        annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
+        annotationSubmitter.submitEndAnnotation("ss");
         assertThat(spans).allSatisfy(
             span -> {
                 assertThat(span.timestamp()).isNull();
@@ -124,8 +123,8 @@ public class AnnotationSubmitterTest {
     public void setsDurationWhenTimestampPresentButStartTickAbsent() {
         span.setTimestamp(START_TIME_MICROSECONDS - 1);
 
-        annotationSubmitter.submitStartAnnotation(Constants.SERVER_RECV);
-        annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
+        annotationSubmitter.submitStartAnnotation("sr");
+        annotationSubmitter.submitEndAnnotation("ss");
         assertThat(spans).extracting(zipkin2.Span::duration)
             .containsExactly(1L);
     }
@@ -136,8 +135,8 @@ public class AnnotationSubmitterTest {
 
         PowerMockito.when(System.nanoTime()).thenReturn(787L);
 
-        annotationSubmitter.submitStartAnnotation(Constants.SERVER_RECV);
-        annotationSubmitter.submitEndAnnotation(Constants.SERVER_SEND);
+        annotationSubmitter.submitStartAnnotation("sr");
+        annotationSubmitter.submitEndAnnotation("ss");
         assertThat(spans).extracting(zipkin2.Span::duration)
             .containsExactly(1L);
     }

@@ -20,7 +20,6 @@ import org.mockito.Answers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import zipkin.TraceKeys;
 
 import java.io.IOException;
 
@@ -80,7 +79,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
-    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation("http.url", url);
     inOrder.verify(clientTracer).setClientSent();
     inOrder.verify(clientTracer).setClientReceived();
     verifyNoMoreInteractions(clientTracer);
@@ -112,9 +111,9 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
-    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation("http.url", url);
     inOrder.verify(clientTracer).setClientSent();
-    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_STATUS_CODE, "400");
+    inOrder.verify(clientTracer).submitBinaryAnnotation("http.status_code", "400");
     inOrder.verify(clientTracer).setClientReceived();
     verifyNoMoreInteractions(clientTracer);
 
@@ -171,7 +170,7 @@ public class BraveOkHttpRequestResponseInterceptorTest {
 
     InOrder inOrder = inOrder(clientTracer);
     inOrder.verify(clientTracer).startNewSpan(HTTP_METHOD_GET);
-    inOrder.verify(clientTracer).submitBinaryAnnotation(TraceKeys.HTTP_URL, url);
+    inOrder.verify(clientTracer).submitBinaryAnnotation("http.url", url);
     inOrder.verify(clientTracer).setClientSent();
     inOrder.verify(clientTracer).setClientReceived();
     verifyNoMoreInteractions(clientTracer);

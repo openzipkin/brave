@@ -40,7 +40,6 @@ public abstract class HttpTracing {
    * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
-   * @see zipkin2.Constants#SERVER_ADDR
    * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */

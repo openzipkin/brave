@@ -3,7 +3,7 @@ package com.twitter.zipkin.gen;
 import javax.annotation.Generated;
 
 /**
- * @deprecated use {@link zipkin.Constants}; will be removed in Brave 2.0
+ * @deprecated will be removed in Brave 2.0
  */
 @Deprecated
 @Generated("thrift")

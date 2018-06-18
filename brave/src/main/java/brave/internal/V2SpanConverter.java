@@ -3,14 +3,9 @@ package brave.internal;
 import java.util.Map;
 import zipkin.Annotation;
 import zipkin.BinaryAnnotation;
-import zipkin.Constants;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.Span.Kind;
-
-import static zipkin.Constants.CLIENT_ADDR;
-import static zipkin.Constants.LOCAL_COMPONENT;
-import static zipkin.Constants.SERVER_ADDR;
 
 /**
  * This converts {@link zipkin.Span} instances to {@link Span} and visa versa.
@@ -53,29 +48,29 @@ public final class V2SpanConverter {
       zipkin2.Annotation input = in.annotations().get(i);
       Annotation a = Annotation.create(input.timestamp(), input.value(), local);
       if (a.value.length() == 2) {
-        if (a.value.equals(Constants.CLIENT_SEND)) {
+        if (a.value.equals("cs")) {
           kind = Kind.CLIENT;
           cs = a;
-          remoteEndpointType = SERVER_ADDR;
-        } else if (a.value.equals(Constants.SERVER_RECV)) {
+          remoteEndpointType = "sa";
+        } else if (a.value.equals("sr")) {
           kind = Kind.SERVER;
           sr = a;
-          remoteEndpointType = CLIENT_ADDR;
-        } else if (a.value.equals(Constants.SERVER_SEND)) {
+          remoteEndpointType = "ca";
+        } else if (a.value.equals("ss")) {
           kind = Kind.SERVER;
           ss = a;
-        } else if (a.value.equals(Constants.CLIENT_RECV)) {
+        } else if (a.value.equals("cr")) {
           kind = Kind.CLIENT;
           cr = a;
-        } else if (a.value.equals(Constants.MESSAGE_SEND)) {
+        } else if (a.value.equals("ms")) {
           kind = Kind.PRODUCER;
           ms = a;
-        } else if (a.value.equals(Constants.MESSAGE_RECV)) {
+        } else if (a.value.equals("mr")) {
           kind = Kind.CONSUMER;
           mr = a;
-        } else if (a.value.equals(Constants.WIRE_SEND)) {
+        } else if (a.value.equals("ws")) {
           ws = a;
-        } else if (a.value.equals(Constants.WIRE_RECV)) {
+        } else if (a.value.equals("wr")) {
           wr = a;
         } else {
           wroteEndpoint = true;
@@ -90,27 +85,27 @@ public final class V2SpanConverter {
     if (kind != null) {
       switch (kind) {
         case CLIENT:
-          remoteEndpointType = Constants.SERVER_ADDR;
-          if (startTs != 0L) cs = Annotation.create(startTs, Constants.CLIENT_SEND, local);
-          if (endTs != 0L) cr = Annotation.create(endTs, Constants.CLIENT_RECV, local);
+          remoteEndpointType = "sa";
+          if (startTs != 0L) cs = Annotation.create(startTs, "cs", local);
+          if (endTs != 0L) cr = Annotation.create(endTs, "cr", local);
           break;
         case SERVER:
-          remoteEndpointType = Constants.CLIENT_ADDR;
-          if (startTs != 0L) sr = Annotation.create(startTs, Constants.SERVER_RECV, local);
-          if (endTs != 0L) ss = Annotation.create(endTs, Constants.SERVER_SEND, local);
+          remoteEndpointType = "ca";
+          if (startTs != 0L) sr = Annotation.create(startTs, "sr", local);
+          if (endTs != 0L) ss = Annotation.create(endTs, "ss", local);
           break;
         case PRODUCER:
-          remoteEndpointType = Constants.MESSAGE_ADDR;
-          if (startTs != 0L) ms = Annotation.create(startTs, Constants.MESSAGE_SEND, local);
-          if (endTs != 0L) ws = Annotation.create(endTs, Constants.WIRE_SEND, local);
+          remoteEndpointType = "ma";
+          if (startTs != 0L) ms = Annotation.create(startTs, "ms", local);
+          if (endTs != 0L) ws = Annotation.create(endTs, "ws", local);
           break;
         case CONSUMER:
-          remoteEndpointType = Constants.MESSAGE_ADDR;
+          remoteEndpointType = "ma";
           if (startTs != 0L && endTs != 0L) {
-            wr = Annotation.create(startTs, Constants.WIRE_RECV, local);
-            mr = Annotation.create(endTs, Constants.MESSAGE_RECV, local);
+            wr = Annotation.create(startTs, "wr", local);
+            mr = Annotation.create(endTs, "mr", local);
           } else if (startTs != 0L) {
-            mr = Annotation.create(startTs, Constants.MESSAGE_RECV, local);
+            mr = Annotation.create(startTs, "mr", local);
           }
           break;
         default:
@@ -142,9 +137,9 @@ public final class V2SpanConverter {
       wroteEndpoint = true;
     } else if (local != null && remote != null) {
       // special-case when we are missing core annotations, but we have both address annotations
-      result.addBinaryAnnotation(BinaryAnnotation.address(CLIENT_ADDR, local));
+      result.addBinaryAnnotation(BinaryAnnotation.address("ca", local));
       wroteEndpoint = true;
-      remoteEndpointType = SERVER_ADDR;
+      remoteEndpointType = "sa";
     }
 
     if (remoteEndpointType != null && remote != null) {
@@ -156,7 +151,7 @@ public final class V2SpanConverter {
       result.timestamp(null).duration(null);
     }
     if (local != null && !wroteEndpoint) { // create a dummy annotation
-      result.addBinaryAnnotation(BinaryAnnotation.create(LOCAL_COMPONENT, "", local));
+      result.addBinaryAnnotation(BinaryAnnotation.create("lc", "", local));
     }
     return result.build();
   }

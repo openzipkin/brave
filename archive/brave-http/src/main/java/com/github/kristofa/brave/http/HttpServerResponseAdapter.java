@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Collections;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
-import zipkin.TraceKeys;
 
 /**
  * @deprecated Replaced by {@code HttpServerParser} from brave-http
@@ -22,6 +21,6 @@ public class HttpServerResponseAdapter implements ServerResponseAdapter {
     @Override
     public Collection<KeyValueAnnotation> responseAnnotations() {
         return Collections.singleton(KeyValueAnnotation.create(
-                TraceKeys.HTTP_STATUS_CODE, String.valueOf(response.getHttpStatusCode())));
+                "http.status_code", String.valueOf(response.getHttpStatusCode())));
     }
 }

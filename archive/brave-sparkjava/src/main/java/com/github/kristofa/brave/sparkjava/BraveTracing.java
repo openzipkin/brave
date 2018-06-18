@@ -14,7 +14,6 @@ import spark.ExceptionHandler;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
-import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -93,7 +92,7 @@ public final class BraveTracing {
         try {
           String message = exception.getMessage();
           if (message == null) message = exception.getClass().getSimpleName();
-          serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
+          serverTracer.submitBinaryAnnotation("error", message);
         } finally {
           delegate.handle(exception, request, response);
         }

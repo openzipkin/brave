@@ -5,14 +5,14 @@ import java.util.Collections;
 import java.util.List;
 import okhttp3.Request;
 import okhttp3.Response;
-import zipkin.TraceKeys;
 
 /**
  * Extend this type to change metadata recorded in spans representing http operations.
  *
  * <p><em>Be careful when customizing</em>, particularly not to add too much data. Large spans (ex
  * large orders of kilobytes) can be problematic and/or dropped. Also, be careful that span names
- * have low cardinality (ex no embedded variables). Finally, prefer names in {@link TraceKeys} where
+ * have low cardinality (ex no embedded variables). Finally, prefer names in
+ * <a href="https://zipkin.io/public/thrift/v1/zipkinCore.html">the thrift constants</a> where
  * possible, so that lookup keys are coherent.
  *
  * For more information, look at our <a href="http://zipkin.io/pages/instrumenting.html">instrumentation
@@ -32,20 +32,20 @@ public class OkHttpParser {
     return request.method();
   }
 
-  /** Returns the {@link zipkin.TraceKeys#HTTP_URL} */
+  /** Returns the "http.url" by default */
   public List<KeyValueAnnotation> networkRequestTags(Request request) {
     return Collections.singletonList(
-        KeyValueAnnotation.create(TraceKeys.HTTP_URL, request.url().toString())
+        KeyValueAnnotation.create("http.url", request.url().toString())
     );
   }
 
-  /** Returns the {@link zipkin.TraceKeys#HTTP_STATUS_CODE} if unsuccessful */
+  /** Returns the "http.status_code" if unsuccessful */
   public List<KeyValueAnnotation> networkResponseTags(Response response) {
     int code = response.code();
     if (response.isSuccessful()) return Collections.EMPTY_LIST;
 
     return Collections.singletonList(
-        KeyValueAnnotation.create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(code))
+        KeyValueAnnotation.create("http.status_code", String.valueOf(code))
     );
   }
 }

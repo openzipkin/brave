@@ -13,7 +13,6 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -75,7 +74,7 @@ public class BraveContainerResponseFilter implements ContainerResponseFilter {
     public void filter(final ContainerRequestContext containerRequestContext, final ContainerResponseContext containerResponseContext) throws IOException {
         Response.StatusType statusInfo = containerResponseContext.getStatusInfo();
         if (serverTracer != null && statusInfo.getFamily() == Response.Status.Family.SERVER_ERROR) {
-            serverTracer.submitBinaryAnnotation(Constants.ERROR, statusInfo.getReasonPhrase());
+            serverTracer.submitBinaryAnnotation("error", statusInfo.getReasonPhrase());
         }
         responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {
             @Override public int getHttpStatusCode() {

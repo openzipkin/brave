@@ -13,7 +13,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import zipkin.Constants;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 import zipkin2.reporter.Sender;
@@ -397,7 +396,7 @@ public class Brave {
             @Override public void setClientAddress(Brave brave, Endpoint ca) {
                 Span span = brave.serverSpanThreadBinder().get();
                 if (span == null) return;
-                brave.serverTracer.recorder().address(span, Constants.CLIENT_ADDR, ca);
+                brave.serverTracer.recorder().address(span, "ca", ca);
             }
         };
         new Span(); // ensure InternalSpan.instance points to a reference

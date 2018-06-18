@@ -18,10 +18,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.Constants;
-import zipkin.Endpoint;
-import zipkin.TraceKeys;
-import zipkin.internal.Util;
+import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.storage.InMemoryStorage;
 
@@ -33,7 +30,7 @@ public abstract class ITHttpClient<C> {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
+  Endpoint local = Endpoint.newBuilder().serviceName("local").ip("127.0.0.1").port(100).build();
   InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   protected Brave brave;
@@ -88,9 +85,9 @@ public abstract class ITHttpClient<C> {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(Util.toLowerHex(parent.getSpan().getTrace_id()));
+        .endsWith(IdConversion.convertToString(parent.getSpan().getTrace_id()));
     assertThat(request.getHeader("x-b3-parentspanid"))
-        .isEqualTo(IdConversion.convertToString(parent.getSpan().getId()));
+        .endsWith(IdConversion.convertToString(parent.getSpan().getId()));
   }
 
   @Test
@@ -108,7 +105,7 @@ public abstract class ITHttpClient<C> {
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(parent.traceIdString());
     assertThat(request.getHeader("x-b3-parentspanid"))
-        .isEqualTo(IdConversion.convertToString(parent.spanId));
+        .endsWith(IdConversion.convertToString(parent.spanId));
   }
 
   /**
@@ -137,7 +134,7 @@ public abstract class ITHttpClient<C> {
         assertThat(request.getHeader("x-b3-traceId"))
             .isEqualTo(parent.traceIdString());
         assertThat(request.getHeader("x-b3-parentspanid"))
-            .isEqualTo(IdConversion.convertToString(parent.spanId));
+            .endsWith(IdConversion.convertToString(parent.spanId));
       }
     } finally {
       brave.localTracer().finishSpan();
@@ -165,9 +162,9 @@ public abstract class ITHttpClient<C> {
       for (int i = 0; i < 2; i++) {
         RecordedRequest request = server.takeRequest();
         assertThat(request.getHeader("x-b3-traceId"))
-            .isEqualTo(Util.toLowerHex(parent.getSpan().getTrace_id()));
+            .endsWith(IdConversion.convertToString(parent.getSpan().getTrace_id()));
         assertThat(request.getHeader("x-b3-parentspanid"))
-            .isEqualTo(IdConversion.convertToString(parent.getSpan().getId()));
+            .endsWith(IdConversion.convertToString(parent.getSpan().getId()));
       }
     } finally {
       brave.serverTracer().clearCurrentSpan();
@@ -234,7 +231,7 @@ public abstract class ITHttpClient<C> {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_STATUS_CODE, "404"));
+        .contains(entry("http.status_code", "404"));
   }
 
   @Test
@@ -256,7 +253,7 @@ public abstract class ITHttpClient<C> {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().keySet())
-        .contains(Constants.ERROR);
+        .contains("error");
   }
 
   @Test
@@ -268,15 +265,15 @@ public abstract class ITHttpClient<C> {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_URL, server.url(path).toString()));
+        .contains(entry("http.url", server.url(path).toString()));
   }
 
   Brave.Builder braveBuilder(Sampler sampler) {
     com.twitter.zipkin.gen.Endpoint localEndpoint = com.twitter.zipkin.gen.Endpoint.builder()
-        .ipv4(local.ipv4)
-        .ipv6(local.ipv6)
-        .port(local.port)
-        .serviceName(local.serviceName)
+        .ipv4(127<<24|1)
+        .ipv6(local.ipv6Bytes())
+        .port(local.port())
+        .serviceName(local.serviceName())
         .build();
     return new Brave.Builder(new InheritableServerClientAndLocalSpanState(localEndpoint))
         .spanReporter(s -> storage.spanConsumer().accept(asList(s)))

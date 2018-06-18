@@ -17,8 +17,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InOrder;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import zipkin.TraceKeys;
-
 import java.sql.ResultSet;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -127,7 +125,7 @@ public class BraveP6SpyTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
+        order.verify(clientTracer).submitBinaryAnnotation(eq("sql.query"), eq(sql));
         order.verify(clientTracer).setClientSent(Endpoint.builder()
             .ipv4(HOST).port(PORT).serviceName(SERVICE_NAME).build());
         order.verify(clientTracer).setClientReceived();

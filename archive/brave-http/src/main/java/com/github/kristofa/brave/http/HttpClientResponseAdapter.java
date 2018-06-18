@@ -2,7 +2,6 @@ package com.github.kristofa.brave.http;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
-import zipkin.TraceKeys;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -25,7 +24,7 @@ public class HttpClientResponseAdapter implements ClientResponseAdapter {
 
         if ((httpStatus < 200) || (httpStatus > 299)) {
             return Collections.singleton(KeyValueAnnotation.create(
-                    TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus)));
+                    "http.status_code", String.valueOf(httpStatus)));
         }
         return Collections.emptyList();
     }

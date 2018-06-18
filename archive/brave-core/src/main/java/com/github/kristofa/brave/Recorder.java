@@ -1,6 +1,5 @@
 package com.github.kristofa.brave;
 
-import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Annotation;
 import com.twitter.zipkin.gen.BinaryAnnotation;
@@ -8,6 +7,7 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.List;
 import zipkin2.reporter.Reporter;
+import zipkin2.v1.V1SpanConverter;
 
 import static com.github.kristofa.brave.internal.DefaultSpanCodec.toZipkin;
 
@@ -109,7 +109,7 @@ abstract class Recorder {
           }
         }
       }
-      List<zipkin2.Span> toReport = V2SpanConverter.fromSpan(toZipkin(span));
+      List<zipkin2.Span> toReport = V1SpanConverter.create().convert(toZipkin(span));
       for (int i = 0, length = toReport.size(); i < length; i++) {
         reporter().report(toReport.get(i));
       }

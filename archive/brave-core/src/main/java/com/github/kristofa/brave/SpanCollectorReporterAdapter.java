@@ -1,7 +1,6 @@
 package com.github.kristofa.brave;
 
 import com.github.kristofa.brave.internal.DefaultSpanCodec;
-import com.github.kristofa.brave.internal.V2SpanConverter;
 import com.twitter.zipkin.gen.Span;
 import zipkin2.reporter.Reporter;
 
@@ -17,7 +16,7 @@ final class SpanCollectorReporterAdapter implements SpanCollector, Reporter<zipk
 
   @Override public void report(zipkin2.Span span) {
     checkNotNull(span, "Null span");
-    collect(DefaultSpanCodec.fromZipkin(V2SpanConverter.toSpan(span)));
+    collect(DefaultSpanCodec.fromZipkin(span));
   }
 
   @Override

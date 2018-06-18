@@ -4,7 +4,6 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.TraceKeys;
 
 import java.net.URI;
 import java.util.Collection;
@@ -76,7 +75,7 @@ public class HttpClientRequestAdapterTest {
         Collection<KeyValueAnnotation> annotations = clientRequestAdapter.requestAnnotations();
         assertEquals(1, annotations.size());
         KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals(TraceKeys.HTTP_URL, a.getKey());
+        assertEquals("http.url", a.getKey());
         assertEquals(TEST_URI, a.getValue());
         verify(request).getUri();
         verifyNoMoreInteractions(request, spanNameProvider);

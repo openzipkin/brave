@@ -6,7 +6,6 @@ import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
 import java.util.Collection;
 import java.util.Collections;
-import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.IdConversion.convertToLong;
 
@@ -55,7 +54,7 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         KeyValueAnnotation uriAnnotation = KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, request.getUri().toString());
+                "http.url", request.getUri().toString());
         return Collections.singleton(uriAnnotation);
     }
 

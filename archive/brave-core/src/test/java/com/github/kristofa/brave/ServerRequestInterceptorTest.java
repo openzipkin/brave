@@ -22,7 +22,7 @@ public class ServerRequestInterceptorTest {
     private static final Endpoint ENDPOINT = Endpoint.create("serviceName", 80);
     static final zipkin2.Endpoint ZIPKIN_ENDPOINT = zipkin2.Endpoint.newBuilder()
         .serviceName("service").port(80).build();
-    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create(zipkin.TraceKeys.HTTP_URL, "/orders/user/4543");
+    private static final KeyValueAnnotation ANNOTATION1 = KeyValueAnnotation.create("http.url", "/orders/user/4543");
     private static final KeyValueAnnotation ANNOTATION2 = KeyValueAnnotation.create("http.code", "200");
 
     List<zipkin2.Span> spans = new ArrayList<>();

@@ -4,7 +4,6 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import java.util.Collection;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin.TraceKeys;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -27,7 +26,7 @@ public class HttpServerResponseAdapterTest {
         Collection<KeyValueAnnotation> annotations = adapter.responseAnnotations();
         assertEquals(1, annotations.size());
         KeyValueAnnotation a = annotations.iterator().next();
-        assertEquals(TraceKeys.HTTP_STATUS_CODE, a.getKey());
+        assertEquals("http.status_code", a.getKey());
         assertEquals("500", a.getValue());
     }
 }

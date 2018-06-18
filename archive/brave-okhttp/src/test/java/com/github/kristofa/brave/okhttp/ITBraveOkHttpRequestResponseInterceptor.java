@@ -26,8 +26,8 @@ public class ITBraveOkHttpRequestResponseInterceptor extends ITHttpClient<OkHttp
         .dispatcher(new Dispatcher(
             BraveExecutorService.wrap(Executors.newSingleThreadExecutor(), brave)
         ))
-        .connectTimeout(1, TimeUnit.SECONDS)
-        .readTimeout(1, TimeUnit.SECONDS)
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .addNetworkInterceptor(filter).build();
   }

@@ -21,9 +21,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
-import zipkin.Constants;
-import zipkin.TraceKeys;
-
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -59,7 +56,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
+        order.verify(clientTracer).submitBinaryAnnotation(eq("sql.query"), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
     }
@@ -159,7 +156,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).startNewSpan("query");
-        order.verify(clientTracer).submitBinaryAnnotation(eq(TraceKeys.SQL_QUERY), eq(sql));
+        order.verify(clientTracer).submitBinaryAnnotation(eq("sql.query"), eq(sql));
         order.verify(clientTracer).setClientSent();
         order.verifyNoMoreInteractions();
     }
@@ -185,7 +182,7 @@ public class MySQLStatementInterceptorTest {
         final InOrder order = inOrder(clientTracer);
 
         order.verify(clientTracer).submitBinaryAnnotation(eq("warning.count"), eq(warningCount + ""));
-        order.verify(clientTracer).submitBinaryAnnotation(eq(Constants.ERROR), eq(errorCode + ""));
+        order.verify(clientTracer).submitBinaryAnnotation(eq("error"), eq(errorCode + ""));
         order.verify(clientTracer).setClientReceived();
         order.verifyNoMoreInteractions();
     }

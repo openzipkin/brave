@@ -17,8 +17,6 @@ import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.IdConversion.convertToString;
 import static com.github.kristofa.brave.http.BraveHttpHeaders.Sampled;
@@ -34,9 +32,8 @@ import static com.github.kristofa.brave.internal.Util.checkNotNull;
  * request and two spans for the associated network requests.
  *
  * Trace identifiers of each network attempt are propagated to the server via headers prefixed with
- * `X-B3`. These spans are also reported out of band, with {@link zipkin.Constants#CLIENT_SEND} and
- * {@link zipkin.Constants#CLIENT_RECV} annotations, binary annotations (tags) like {@link
- * TraceKeys#HTTP_URL} and {@link zipkin.Constants#SERVER_ADDR the server's ip and port}.
+ * `X-B3`. These spans are also reported out of band, with "cs" and "cr" annotations, binary
+ * annotations (tags) like "http.url" and the server's ip and port ("sa").
  *
  * <h3>Configuration</h3>
  *
@@ -86,8 +83,7 @@ public final class BraveTracingInterceptor implements Interceptor {
     }
 
     /**
-     * Indicates the service name used for the {@link Constants#SERVER_ADDR server address}.Default
-     * is empty string.
+     * Indicates the service name used for the server address ("sa").Default is empty string.
      *
      * <p>Setting this is not important when the server is instrumented with Zipkin. This is
      * important when the server is not instrumented with Zipkin. For example, if you are calling a
@@ -166,7 +162,7 @@ public final class BraveTracingInterceptor implements Interceptor {
       // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
       String message = e.getMessage();
       if (message == null) message = e.getClass().getSimpleName();
-      localTracer.submitBinaryAnnotation(Constants.ERROR, message);
+      localTracer.submitBinaryAnnotation("error", message);
       throw e;
     } finally {
       localTracer.finishSpan(); // span must be closed!
@@ -184,7 +180,7 @@ public final class BraveTracingInterceptor implements Interceptor {
       // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
       String message = e.getMessage();
       if (message == null) message = e.getClass().getSimpleName();
-      clientTracer.submitBinaryAnnotation(Constants.ERROR, message);
+      clientTracer.submitBinaryAnnotation("error", message);
       throw e;
     } finally {
       clientTracer.setClientReceived(); // span must be closed!

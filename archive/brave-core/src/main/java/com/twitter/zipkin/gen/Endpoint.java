@@ -4,7 +4,10 @@ import com.github.kristofa.brave.internal.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
 import javax.annotation.Generated;
+import zipkin2.Span;
+import zipkin2.codec.SpanBytesEncoder;
 
+import static com.github.kristofa.brave.internal.Util.UTF_8;
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 import static com.github.kristofa.brave.internal.Util.equal;
 
@@ -187,12 +190,30 @@ public class Endpoint implements Serializable {
 
   /** Returns a json representation of this endpoint */
   @Override public String toString() {
-    // zipkin.Endpoint.toString is json
-    return zipkin.Endpoint.builder()
-        .serviceName(service_name)
-        .port(port)
-        .ipv4(ipv4)
-        .ipv6(ipv6).build().toString();
+    // expensive, but only used when people are debugging and cheaper than maintaining json codec
+    Span fake = Span.newBuilder().traceId(0, 1).id(1).localEndpoint(toV2()).build();
+    String jsonSpan = new String(SpanBytesEncoder.JSON_V2.encode(fake), UTF_8);
+    return jsonSpan.substring(70, jsonSpan.length() - 1);
+  }
+
+  public zipkin2.Endpoint toV2() {
+    zipkin2.Endpoint.Builder result =
+        zipkin2.Endpoint.newBuilder()
+            .serviceName(service_name)
+            .port(port != null ? port: 0);
+
+    if (ipv4 != 0) {
+      result.parseIp( // allocation is ok here as Endpoint.ipv4Bytes would anyway
+          new byte[] {
+              (byte) (ipv4 >> 24 & 0xff),
+              (byte) (ipv4 >> 16 & 0xff),
+              (byte) (ipv4 >> 8 & 0xff),
+              (byte) (ipv4 & 0xff)
+          });
+    }
+
+    result.parseIp(ipv6);
+    return result.build();
   }
 }
 

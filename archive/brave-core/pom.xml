@@ -26,6 +26,7 @@
     <dependency>
         <groupId>io.zipkin.java</groupId>
         <artifactId>zipkin</artifactId>
+        <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter</groupId>

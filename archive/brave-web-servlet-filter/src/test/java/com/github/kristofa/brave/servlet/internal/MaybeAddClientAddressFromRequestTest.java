@@ -101,18 +101,6 @@ public final class MaybeAddClientAddressFromRequestTest {
   }
 
   @Test
-  public void parsesIpv4MappedIpV6Address() {
-    brave.serverTracer().setStateUnknown("get");
-    when(request.getHeader("X-Forwarded-For")).thenReturn("::ffff:1.2.3.4");
-
-    addressFunction.accept(request);
-    brave.serverTracer().setServerSend();
-
-    assertThat(spans.get(0).remoteEndpoint().ipv4())
-        .isEqualTo("1.2.3.4");
-  }
-
-  @Test
   public void parsesIpv4CompatIpV6Address() {
     brave.serverTracer().setStateUnknown("get");
     when(request.getHeader("X-Forwarded-For")).thenReturn("::0000:1.2.3.4");

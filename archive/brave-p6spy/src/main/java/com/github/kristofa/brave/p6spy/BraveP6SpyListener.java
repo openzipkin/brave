@@ -6,8 +6,6 @@ import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.JdbcEventListener;
 
 import com.twitter.zipkin.gen.Endpoint;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -134,7 +132,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
 
     private void beginTrace(final ClientTracer tracer, final String sql) {
         tracer.startNewSpan("query");
-        tracer.submitBinaryAnnotation(TraceKeys.SQL_QUERY, sql);
+        tracer.submitBinaryAnnotation("sql.query", sql);
 
         if (ipv4 != 0 && port > 0) {
             tracer.setClientSent(Endpoint.builder()
@@ -147,7 +145,7 @@ public final class BraveP6SpyListener extends JdbcEventListener {
     private void endTrace(final ClientTracer tracer, final SQLException statementException) {
         try {
             if (statementException != null) {
-                tracer.submitBinaryAnnotation(Constants.ERROR, Integer.toString(statementException.getErrorCode()));
+                tracer.submitBinaryAnnotation("error", Integer.toString(statementException.getErrorCode()));
             }
         } finally {
             tracer.setClientReceived();

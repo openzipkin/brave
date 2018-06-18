@@ -1,7 +1,7 @@
 package com.github.kristofa.brave;
 
 /**
- * Annotations that add to the {@link zipkin.Constants}.
+ * Annotations that add to the defaults.
  * 
  * @author kristof
  * @deprecated unused; will be removed in Brave 2.0

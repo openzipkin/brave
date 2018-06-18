@@ -19,7 +19,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
-import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -124,7 +123,7 @@ public class ServletHandlerInterceptor extends HandlerInterceptorAdapter {
             // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
             String message = ex.getMessage();
             if (message == null) message = ex.getClass().getSimpleName();
-            serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
+            serverTracer.submitBinaryAnnotation("error", message);
         }
 
        responseInterceptor.handle(new HttpServerResponseAdapter(new HttpResponse() {

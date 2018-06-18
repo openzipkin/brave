@@ -8,8 +8,6 @@ import com.mysql.jdbc.Statement;
 import com.mysql.jdbc.StatementInterceptorV2;
 
 import com.twitter.zipkin.gen.Endpoint;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -78,7 +76,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
 
     private void beginTrace(final ClientTracer tracer, final String sql, final Connection connection) throws SQLException {
         tracer.startNewSpan("query");
-        tracer.submitBinaryAnnotation(TraceKeys.SQL_QUERY, sql);
+        tracer.submitBinaryAnnotation("sql.query", sql);
 
         try {
             setClientSent(tracer, connection);
@@ -118,7 +116,7 @@ public class MySQLStatementInterceptor implements StatementInterceptorV2 {
                 tracer.submitBinaryAnnotation("warning.count", Integer.toString(warningCount));
             }
             if (statementException != null) {
-                tracer.submitBinaryAnnotation(Constants.ERROR, Integer.toString(statementException.getErrorCode()));
+                tracer.submitBinaryAnnotation("error", Integer.toString(statementException.getErrorCode()));
             }
         } finally {
             tracer.setClientReceived();

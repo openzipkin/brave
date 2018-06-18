@@ -65,8 +65,8 @@ tracingInterceptor = BraveTracingInterceptor.builder(brave)
 Be careful when customizing, particularly not to add too much data.
 Larges span (ex large orders of kilobytes) can be problematic and/or
 dropped. Also, be careful that span names have low cardinality (ex no
-embedded variables). Finally, prefer names in `zipkin.TraceKeys` where
-possible, so that lookup keys are coherent.
+embedded variables). Finally, prefer names in [thrift constants](https://zipkin.io/public/thrift/v1/zipkinCore.html"),
+where possible, so that lookup keys are coherent.
 
 For more information, look at our
 [instrumentation docs](http://zipkin.io/pages/instrumenting.html)

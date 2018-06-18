@@ -161,8 +161,8 @@ span.remoteEndpoint(Endpoint.builder()
 span.start();
 
 // if you have callbacks for when data is on the wire, note those events
-span.annotate(Constants.WIRE_SEND);
-span.annotate(Constants.WIRE_RECV);
+span.annotate("ws");
+span.annotate("wr");
 
 // when the response is complete, finish the span
 span.finish();

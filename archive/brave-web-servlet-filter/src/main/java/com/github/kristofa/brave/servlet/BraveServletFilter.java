@@ -23,8 +23,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
@@ -125,7 +123,7 @@ public class BraveServletFilter implements Filter {
                     // TODO: revisit https://github.com/openzipkin/openzipkin.github.io/issues/52
                     String message = e.getMessage();
                     if (message == null) message = e.getClass().getSimpleName();
-                    serverTracer.submitBinaryAnnotation(Constants.ERROR, message);
+                    serverTracer.submitBinaryAnnotation("error", message);
                 }
                 throw e;
             } finally {
@@ -184,7 +182,7 @@ public class BraveServletFilter implements Filter {
         /** Alternative to {@link #getStatus}, but for Servlet 2.5+ */
         @Override public Collection<KeyValueAnnotation> responseAnnotations() {
             return Collections.singleton(
-                KeyValueAnnotation.create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus))
+                KeyValueAnnotation.create("http.status_code", String.valueOf(httpStatus))
             );
         }
     }

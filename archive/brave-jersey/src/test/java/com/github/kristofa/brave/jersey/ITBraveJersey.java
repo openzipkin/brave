@@ -15,7 +15,6 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
-import zipkin.TraceKeys;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,7 +81,7 @@ public class ITBraveJersey extends JerseyTest {
     // Currently one side logs the full url where the other logs only the path
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
-        .filteredOn(e -> e.getKey().equals(TraceKeys.HTTP_URL))
+        .filteredOn(e -> e.getKey().equals("http.url"))
         .extracting(Map.Entry::getValue)
         .allSatisfy(url -> assertThat(url.endsWith("/test")));
   }

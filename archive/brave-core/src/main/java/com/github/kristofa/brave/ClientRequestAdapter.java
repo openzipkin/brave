@@ -43,8 +43,7 @@ public interface ClientRequestAdapter {
     /**
      * Provides the remote server address information for additional tracking.
      *
-     * Can be useful when communicating with non-traced services by adding server address to span
-     * i.e. {@link zipkin.Constants#SERVER_ADDR}
+     * Useful when communicating with non-traced services by adding the server address ("sa").
      *
      * @return request's target server endpoint information
      */

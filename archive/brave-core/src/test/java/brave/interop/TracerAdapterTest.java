@@ -10,12 +10,10 @@ import com.github.kristofa.brave.internal.InternalSpan;
 import com.twitter.zipkin.gen.Span;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import zipkin.Constants;
 import zipkin2.Annotation;
 import zipkin2.reporter.Reporter;
 
@@ -90,7 +88,7 @@ public class TracerAdapterTest {
 
   @Test public void startWithTracerAndFinishWithLocalTracer_doesntSupportDuration() {
     brave.Span brave4Span = brave4.tracer().newTrace().name("encode")
-        .tag(Constants.LOCAL_COMPONENT, "codec")
+        .tag("lc", "codec")
         .start(1L);
 
     com.twitter.zipkin.gen.Span brave3Span = toSpan(brave4Span.context());
@@ -215,7 +213,7 @@ public class TracerAdapterTest {
           assertThat(s.annotations())
               .containsExactly(Annotation.create(2L, "pump fake"));
           assertThat(s.tags())
-              .containsExactly(entry(Constants.LOCAL_COMPONENT, "codec"));
+              .containsExactly(entry("lc", "codec"));
         }
     );
     return spans.get(0);

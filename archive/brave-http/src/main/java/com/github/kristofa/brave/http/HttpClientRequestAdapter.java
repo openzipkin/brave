@@ -8,7 +8,6 @@ import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
 import java.util.Collection;
 import java.util.Collections;
-import zipkin.TraceKeys;
 
 /**
  * @deprecated Replaced by {@code HttpClientParser} from brave-http
@@ -46,7 +45,7 @@ public class HttpClientRequestAdapter implements ClientRequestAdapter {
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
         return Collections.singleton(KeyValueAnnotation.create(
-                TraceKeys.HTTP_URL, request.getUri().toString()));
+                "http.url", request.getUri().toString()));
     }
 
     @Override

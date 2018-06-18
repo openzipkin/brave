@@ -8,7 +8,6 @@ import com.twitter.zipkin.gen.Span;
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
 import org.junit.Test;
-import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.DefaultSpanCodec.newSpan;
 import static org.junit.Assert.assertEquals;
@@ -30,9 +29,9 @@ public class DefaultSpanCodecTest {
       .setName("get")
       .setTimestamp(1444438900939000L)
       .setDuration(376000L)
-      .addToAnnotations(Annotation.create(1444438900939000L, Constants.SERVER_RECV, web))
-      .addToAnnotations(Annotation.create(1444438901315000L, Constants.SERVER_SEND, web))
-      .addToBinary_annotations(BinaryAnnotation.address(Constants.CLIENT_ADDR, browser));
+      .addToAnnotations(Annotation.create(1444438900939000L, "sr", web))
+      .addToAnnotations(Annotation.create(1444438901315000L, "ss", web))
+      .addToBinary_annotations(BinaryAnnotation.address("ca", browser));
 
   @Test
   public void roundTripSpan_thrift() {

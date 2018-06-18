@@ -3,9 +3,6 @@ package com.github.kristofa.brave;
 import com.github.kristofa.brave.internal.Nullable;
 import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Span;
-import zipkin.Constants;
-
-import static zipkin.Constants.LOCAL_COMPONENT;
 
 /**
  * Local tracer is designed for in-process activity that explains latency.
@@ -60,10 +57,9 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     /**
      * Request a new local span, which starts now.
      *
-     * @param component {@link Constants#LOCAL_COMPONENT component} responsible for the operation
+     * @param component in-process component responsible for the operation
      * @param operation name of the operation that's begun
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
-     * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation) {
         Span span = newSpan();
@@ -101,11 +97,10 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     /**
      * Request a new local span, which started at the given timestamp.
      *
-     * @param component {@link Constants#LOCAL_COMPONENT component} responsible for the operation
+     * @param component in-process component responsible for the operation
      * @param operation name of the operation that's begun
      * @param timestamp time the operation started, in epoch microseconds.
      * @return metadata about the new span or null if one wasn't started due to sampling policy.
-     * @see Constants#LOCAL_COMPONENT
      */
     public SpanId startNewSpan(String component, String operation, long timestamp) {
         Span span = newSpan();
@@ -116,7 +111,7 @@ public abstract class LocalTracer extends AnnotationSubmitter {
     SpanId startSpan(String component, String operation, long timestamp, Span span) {
         recorder().start(span, timestamp);
         recorder().name(span, operation);
-        recorder().tag(span, LOCAL_COMPONENT, component);
+        recorder().tag(span, "lc", component);
 
         currentSpan().setCurrentSpan(span);
         return Brave.context(span);

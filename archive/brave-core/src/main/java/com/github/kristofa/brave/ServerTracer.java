@@ -6,7 +6,6 @@ import com.google.auto.value.AutoValue;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.util.Random;
-import zipkin.Constants;
 import zipkin2.reporter.Reporter;
 
 import static com.github.kristofa.brave.internal.Util.checkNotBlank;
@@ -178,7 +177,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * {@link ServerTracer#setStateUnknown(String)}.
      */
     public void setServerReceived() {
-        submitStartAnnotation(Constants.SERVER_RECV);
+        submitStartAnnotation("sr");
     }
 
     /**
@@ -189,8 +188,8 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * "unknown" if unknown.
      */
     public void setServerReceived(Endpoint client) {
-        submitAddress(Constants.CLIENT_ADDR, client);
-        submitStartAnnotation(Constants.SERVER_RECV);
+        submitAddress("ca", client);
+        submitStartAnnotation("sr");
     }
 
     /**
@@ -214,7 +213,7 @@ public abstract class ServerTracer extends AnnotationSubmitter {
      * Sets the server sent event for current thread.
      */
     public void setServerSend() {
-        if (submitEndAnnotation(Constants.SERVER_SEND)) {
+        if (submitEndAnnotation("ss")) {
             currentSpan().setCurrentSpan(ServerSpan.EMPTY);
         }
     }

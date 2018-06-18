@@ -6,13 +6,12 @@ import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import zipkin.Constants;
 
 import static com.github.kristofa.brave.internal.Util.checkNotNull;
 
 /**
- * Parses the {@link Constants#CLIENT_ADDR client address}, possibly by looking at
- * "X-Forwarded-For", then the remote address of the input. This performs no DNS lookups.
+ * Parses the client address, possibly by looking at "X-Forwarded-For", then the remote address of
+ * the input. This performs no DNS lookups.
  *
  * <p>This is a hack as {@code com.github.kristofa.brave.http.HttpServerRequest} is an interface and
  * would break api if we changed it. Moreover, this can work on non-http input types.

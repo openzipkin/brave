@@ -19,8 +19,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import zipkin.Endpoint;
-import zipkin.TraceKeys;
+import zipkin2.Endpoint;
 import zipkin.internal.TraceUtil;
 import zipkin2.Span;
 import zipkin2.storage.InMemoryStorage;
@@ -39,7 +38,7 @@ public class BraveTracingInterceptorTest {
   @Rule public ExpectedException thrown = ExpectedException.none();
   @Rule public MockWebServer server = new MockWebServer();
 
-  Endpoint local = Endpoint.builder().serviceName("local").ipv4(127 << 24 | 1).port(100).build();
+  Endpoint local = Endpoint.newBuilder().serviceName("local").ip("127.0.0.1").port(100).build();
   InMemoryStorage storage = InMemoryStorage.newBuilder().build();
 
   OkHttpClient client;
@@ -115,7 +114,7 @@ public class BraveTracingInterceptorTest {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_STATUS_CODE, "404"));
+        .contains(entry("http.status_code", "404"));
   }
 
   @Test
@@ -127,7 +126,7 @@ public class BraveTracingInterceptorTest {
 
     assertThat(collectedSpans())
         .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry(TraceKeys.HTTP_URL, url.toString()));
+        .contains(entry("http.url", url.toString()));
   }
 
   @Test
@@ -203,10 +202,10 @@ public class BraveTracingInterceptorTest {
 
   BraveTracingInterceptor.Builder interceptorBuilder(Sampler sampler) {
     com.twitter.zipkin.gen.Endpoint localEndpoint = com.twitter.zipkin.gen.Endpoint.builder()
-        .ipv4(local.ipv4)
-        .ipv6(local.ipv6)
-        .port(local.port)
-        .serviceName(local.serviceName)
+        .ipv4(127 << 24 | 1)
+        .ipv6(local.ipv6Bytes())
+        .port(local.port())
+        .serviceName(local.serviceName())
         .build();
     // Each call increases the fake clock by 1 millisecond
     final AtomicLong clock = new AtomicLong();

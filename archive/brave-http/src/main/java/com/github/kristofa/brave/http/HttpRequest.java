@@ -13,8 +13,6 @@ public interface HttpRequest {
      * Returns the entire URL, including the scheme, host and query parameters if available.
      *
      * @return Request URI.
-     *
-     * @see zipkin.TraceKeys#HTTP_URL
      */
     URI getUri();
 
