@@ -13,8 +13,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.9.3</zipkin.version>
-    <zipkin-reporter.version>2.7.3</zipkin-reporter.version>
+    <zipkin.version>2.9.4</zipkin.version>
+    <zipkin-reporter.version>2.7.4</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -74,6 +74,11 @@
       <dependency>
         <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin</artifactId>
+        <version>${zipkin.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-junit</artifactId>
         <version>${zipkin.version}</version>
       </dependency>
       <dependency>
