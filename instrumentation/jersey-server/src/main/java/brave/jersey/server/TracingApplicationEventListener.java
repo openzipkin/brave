@@ -122,7 +122,6 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
      */
     @Override
     public void onEvent(RequestEvent event) {
-      System.err.println("event "+event.getType() +" "+Thread.currentThread());
       Tracer.SpanInScope maybeSpanInScope;
       switch (event.getType()) {
         // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
