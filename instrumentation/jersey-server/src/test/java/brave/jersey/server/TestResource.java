@@ -56,6 +56,10 @@ public class TestResource {
   @GET
   @Path("async")
   public void async(@Suspended AsyncResponse response) {
+    if (tracer.currentSpan() == null) {
+      response.resume(new IllegalStateException("couldn't read current span!"));
+      return;
+    }
     blockOnAsyncResult("foo", response);
   }
 
@@ -63,6 +67,10 @@ public class TestResource {
   @Path("managedAsync")
   @ManagedAsync
   public void managedAsync(@Suspended AsyncResponse response) {
+    if (tracer.currentSpan() == null) {
+      response.resume(new IllegalStateException("couldn't read current span!"));
+      return;
+    }
     response.resume("foo");
   }
 

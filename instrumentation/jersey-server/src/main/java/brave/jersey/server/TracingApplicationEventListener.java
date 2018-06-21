@@ -107,6 +107,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     final Span span;
     // Invalidated when an asynchronous method is in use
     volatile Tracer.SpanInScope spanInScope;
+    volatile boolean async;
 
     TracingRequestEventListener(Span span, Tracer.SpanInScope spanInScope) {
       this.span = span;
@@ -126,20 +127,35 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
         // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
         case REQUEST_MATCHED:
           parser.requestMatched(event, span);
+          async = async(event);
           break;
         case REQUEST_FILTERED:
-          if ((maybeSpanInScope = spanInScope) == null) break;
           // Jersey-specific @ManagedAsync stays on the request thread until REQUEST_FILTERED
           // Normal async methods sometimes stay on a thread until RESOURCE_METHOD_FINISHED, but
-          // this is not reliable.
-          if (event.getUriInfo().getMatchedResourceMethod().isManagedAsyncDeclared()
-              || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared()) {
-            maybeSpanInScope.close();
-            spanInScope = null;
-          }
+          // this is not reliable. So, we eagerly close the scope from request filters, and re-apply
+          // it later when the resource method starts.
+          if (!async || (maybeSpanInScope = spanInScope) == null) break;
+          maybeSpanInScope.close();
+          spanInScope = null;
+          break;
+        case RESOURCE_METHOD_START:
+          // If we are async, we have to re-scope the span as the resource method invocation is
+          // is likely on a different thread than the request filtering.
+          if (!async || spanInScope != null) break;
+          spanInScope = tracer.withSpanInScope(span);
+          break;
+        case RESOURCE_METHOD_FINISHED:
+          // If we scoped above, we have to close that to avoid leaks.
+          if (!async || (maybeSpanInScope = spanInScope) == null) break;
+          maybeSpanInScope.close();
+          spanInScope = null;
           break;
         case FINISHED:
-          if ((maybeSpanInScope = spanInScope) != null) maybeSpanInScope.close();
+          // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
+          // Don't close the scope unless it is a synchronous method.
+          if (!async && (maybeSpanInScope = spanInScope) != null) {
+            maybeSpanInScope.close();
+          }
           String maybeHttpRoute = route(event.getContainerRequest());
           if (maybeHttpRoute != null) {
             event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
@@ -149,5 +165,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
         default:
       }
     }
+  }
+
+  static boolean async(RequestEvent event) {
+    return event.getUriInfo().getMatchedResourceMethod().isManagedAsyncDeclared()
+        || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared();
   }
 }

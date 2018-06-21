@@ -68,7 +68,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
   class DelegatingFilter implements Filter {
 
-    @Override public void init(FilterConfig filterConfig) throws ServletException {
+    @Override public void init(FilterConfig filterConfig) {
     }
 
     @Override
