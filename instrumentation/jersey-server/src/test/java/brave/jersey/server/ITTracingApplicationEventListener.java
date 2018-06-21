@@ -1,6 +1,7 @@
 package brave.jersey.server;
 
 import brave.test.http.ITServletContainer;
+import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -28,7 +29,8 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
 
   /** Tests that the span propagates between under asynchronous callbacks managed by jersey. */
   @Test public void managedAsync() throws Exception {
-    get("/managedAsync");
+    Response response = get("/managedAsync");
+    assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
     takeSpan();
   }

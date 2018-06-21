@@ -1,6 +1,7 @@
 package brave.vertx.web;
 
 import brave.SpanCustomizer;
+import brave.Tracing;
 import brave.http.HttpAdapter;
 import brave.http.HttpServerParser;
 import brave.test.http.ITHttpServer;
@@ -15,6 +16,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Response;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Span;
@@ -39,12 +41,18 @@ public class ITVertxWebTracing extends ITHttpServer {
       ctx.response().end("bar");
     });
     router.route("/async").handler(ctx -> {
+      if (Tracing.currentTracer().currentSpan() == null) {
+        throw new IllegalStateException("couldn't read current span!");
+      }
       ctx.request().endHandler(v -> ctx.response().end("bar"));
     });
     router.route("/reroute").handler(ctx -> {
       ctx.reroute("/foo");
     });
     router.route("/rerouteAsync").handler(ctx -> {
+      if (Tracing.currentTracer().currentSpan() == null) {
+        throw new IllegalStateException("couldn't read current span!");
+      }
       ctx.reroute("/async");
     });
     router.route("/extra").handler(ctx -> {
@@ -64,6 +72,9 @@ public class ITVertxWebTracing extends ITHttpServer {
       ctx.response().end(ctx.request().getParam("itemId"));
     });
     router.route( "/async_items/:itemId").handler(ctx -> {
+      if (Tracing.currentTracer().currentSpan() == null) {
+        throw new IllegalStateException("couldn't read current span!");
+      }
       ctx.request().endHandler(v -> ctx.response().end(ctx.request().getParam("itemId")));
     });
     Router subrouter = Router.router(vertx);
@@ -125,7 +136,8 @@ public class ITVertxWebTracing extends ITHttpServer {
     }).build();
     init();
 
-    get(path);
+    Response response = get(path);
+    assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
     Span span = takeSpan();
     assertThat(span.tags())

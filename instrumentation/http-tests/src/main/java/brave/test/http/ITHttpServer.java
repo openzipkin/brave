@@ -135,7 +135,8 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void async() throws Exception {
-    get("/async");
+    Response response = get("/async");
+    assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
     takeSpan();
   }
