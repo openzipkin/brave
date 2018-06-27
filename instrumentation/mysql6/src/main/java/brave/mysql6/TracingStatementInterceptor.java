@@ -82,7 +82,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
         }
       }
       Endpoint.Builder builder = Endpoint.newBuilder().serviceName(remoteServiceName).port(port);
-      if (!builder.parseIp(getHost(connection))) return;
+      builder.parseIp(getHost(connection));
       span.remoteEndpoint(builder.build());
     } catch (Exception e) {
       // remote address is optional
