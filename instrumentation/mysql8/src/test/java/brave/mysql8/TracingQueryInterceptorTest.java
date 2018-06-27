@@ -80,7 +80,8 @@ public class TracingQueryInterceptorTest {
     setupAndReturnPropertiesForHost("localhost");
 
     TracingQueryInterceptor.parseServerAddress(connection, span);
-    verifyNoMoreInteractions(span);
+    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
+        .port(5555).build());
   }
 
   @Test public void parseServerAddress_doesntCrash() throws SQLException {
