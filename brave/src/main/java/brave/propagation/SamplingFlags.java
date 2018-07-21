@@ -20,8 +20,23 @@ public class SamplingFlags {
   }
 
   /**
-   * Should we sample this request or not? True means sample, false means don't, null means we defer
-   * decision to someone further down in the stack.
+   * Sampled means send span data to Zipkin (or something else compatible with its data). It is a
+   * consistent decision for an entire request (trace-scoped). For example, the value should not
+   * move from true to false, even if the decision itself can be deferred.
+   *
+   * <p>Here are the valid options:
+   * <pre><ul>
+   *   <li>True means the trace is reported, starting with the first span to set the value true</li>
+   *   <li>False means the trace should not be reported</li>
+   *   <li>Null means the decision should be deferred to the next hop</li>
+   * </ul></pre>
+   *
+   * <p>Once set to true or false, it is expected that this decision is propagated and honored
+   * downstream.
+   *
+   * <p>Note: sampling does not imply the trace is invisible to others. For example, a common
+   * practice is to generate and propagate identifiers always. This allows other systems, such as
+   * logging, to correlate even when the tracing system has no data.
    */
   @Nullable public final Boolean sampled() {
     return sampled(flags);
