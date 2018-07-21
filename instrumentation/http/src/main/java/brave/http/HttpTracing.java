@@ -2,46 +2,32 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.Tracing;
-import com.google.auto.value.AutoValue;
 import zipkin2.Endpoint;
 
-@AutoValue
-public abstract class HttpTracing {
+public class HttpTracing { // Not final as it previously was not. This allows mocks and similar.
   public static HttpTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    final ErrorParser errorParser = tracing.errorParser();
-    return new AutoValue_HttpTracing.Builder()
-        .tracing(tracing)
-        .serverName("")
-        // override to re-use any custom error parser from the tracing component
-        .clientParser(new HttpClientParser() {
-          @Override protected ErrorParser errorParser() {
-            return errorParser;
-          }
-        })
-        .serverParser(new HttpServerParser() {
-          @Override protected ErrorParser errorParser() {
-            return errorParser;
-          }
-        })
-        .clientSampler(HttpSampler.TRACE_ID)
-        .serverSampler(HttpSampler.TRACE_ID);
+    return new Builder(tracing);
   }
 
-  public abstract Tracing tracing();
+  public Tracing tracing() {
+    return tracing;
+  }
 
-  public abstract HttpClientParser clientParser();
+  public HttpClientParser clientParser() {
+    return clientParser;
+  }
 
   /**
    * Used by http clients to indicate the name of the destination service.
    *
    * Defaults to "", which will not show in the zipkin UI or end up in the dependency graph.
    *
-   * <p>When present, a link from {@link Tracing.Builder#localServiceName(String)} to this name will
-   * increment for each traced client call.
+   * <p>When present, a link from {@link Tracing.Builder#localServiceName(String)} to this name
+   * will increment for each traced client call.
    *
    * <p>As this is endpoint-specific, it is typical to create a scoped instance of {@linkplain
    * HttpTracing} to assign this value.
@@ -54,7 +40,9 @@ public abstract class HttpTracing {
    * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */
-  public abstract String serverName();
+  public String serverName() {
+    return serverName;
+  }
 
   /**
    * Scopes this component for a client of the indicated server.
@@ -65,7 +53,9 @@ public abstract class HttpTracing {
     return toBuilder().serverName(serverName).build();
   }
 
-  public abstract HttpServerParser serverParser();
+  public HttpServerParser serverParser() {
+    return serverParser;
+  }
 
   /**
    * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
@@ -75,24 +65,83 @@ public abstract class HttpTracing {
    * making an http request as a part of booting your application. You may want to opt-out of
    * tracing client requests that did not originate from a server request.
    */
-  public abstract HttpSampler clientSampler();
+  public HttpSampler clientSampler() {
+    return clientSampler;
+  }
 
   /**
    * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
    * the {@link HttpSampler#TRACE_ID trace ID instead}.
    *
-   * <p>This decision happens when trace IDs were not in headers, or a sampling decision has not yet
-   * been made. For example, if a trace is already in progress, this function is not called. You can
-   * implement this to skip paths that you never want to trace.
+   * <p>This decision happens when trace IDs were not in headers, or a sampling decision has not
+   * yet been made. For example, if a trace is already in progress, this function is not called. You
+   * can implement this to skip paths that you never want to trace.
    */
-  public abstract HttpSampler serverSampler();
+  public HttpSampler serverSampler() {
+    return serverSampler;
+  }
 
-  public abstract Builder toBuilder();
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
 
-  @AutoValue.Builder
-  public static abstract class Builder {
+  final Tracing tracing;
+  final HttpClientParser clientParser;
+  final String serverName;
+  final HttpServerParser serverParser;
+  final HttpSampler clientSampler, serverSampler;
+
+  HttpTracing(Builder builder) {
+    this.tracing = builder.tracing;
+    this.clientParser = builder.clientParser;
+    this.serverName = builder.serverName;
+    this.serverParser = builder.serverParser;
+    this.clientSampler = builder.clientSampler;
+    this.serverSampler = builder.serverSampler;
+  }
+
+  public static final class Builder {
+    Tracing tracing;
+    HttpClientParser clientParser;
+    String serverName;
+    HttpServerParser serverParser;
+    HttpSampler clientSampler, serverSampler;
+
+    Builder(Tracing tracing) {
+      if (tracing == null) throw new NullPointerException("tracing == null");
+      final ErrorParser errorParser = tracing.errorParser();
+      this.tracing = tracing;
+      this.serverName = "";
+      // override to re-use any custom error parser from the tracing component
+      this.clientParser = new HttpClientParser() {
+        @Override protected ErrorParser errorParser() {
+          return errorParser;
+        }
+      };
+      this.serverParser = new HttpServerParser() {
+        @Override protected ErrorParser errorParser() {
+          return errorParser;
+        }
+      };
+      this.clientSampler = HttpSampler.TRACE_ID;
+      this.serverSampler(HttpSampler.TRACE_ID);
+    }
+
+    Builder(HttpTracing source) {
+      this.tracing = source.tracing;
+      this.clientParser = source.clientParser;
+      this.serverName = source.serverName;
+      this.serverParser = source.serverParser;
+      this.clientSampler = source.clientSampler;
+      this.serverSampler = source.serverSampler;
+    }
+
     /** @see HttpTracing#tracing() */
-    public abstract Builder tracing(Tracing tracing);
+    public Builder tracing(Tracing tracing) {
+      if (tracing == null) throw new NullPointerException("tracing == null");
+      this.tracing = tracing;
+      return this;
+    }
 
     /**
      * Overrides the tagging policy for http client spans.
@@ -100,7 +149,17 @@ public abstract class HttpTracing {
      * @see HttpParser#errorParser() for advice when making custom types
      * @see HttpTracing#clientParser()
      */
-    public abstract Builder clientParser(HttpClientParser clientParser);
+    public Builder clientParser(HttpClientParser clientParser) {
+      if (clientParser == null) throw new NullPointerException("clientParser == null");
+      this.clientParser = clientParser;
+      return this;
+    }
+
+    Builder serverName(String serverName) {
+      if (serverName == null) throw new NullPointerException("serverName == null");
+      this.serverName = serverName;
+      return this;
+    }
 
     /**
      * Overrides the tagging policy for http client spans.
@@ -108,22 +167,29 @@ public abstract class HttpTracing {
      * @see HttpParser#errorParser() for advice when making custom types
      * @see HttpTracing#serverParser()
      */
-    public abstract Builder serverParser(HttpServerParser serverParser);
+    public Builder serverParser(HttpServerParser serverParser) {
+      if (serverParser == null) throw new NullPointerException("serverParser == null");
+      this.serverParser = serverParser;
+      return this;
+    }
 
     /** @see HttpTracing#clientSampler() */
-    public abstract Builder clientSampler(HttpSampler clientSampler);
+    public Builder clientSampler(HttpSampler clientSampler) {
+      if (clientSampler == null) throw new NullPointerException("clientSampler == null");
+
+      this.clientSampler = clientSampler;
+      return this;
+    }
 
     /** @see HttpTracing#serverSampler() */
-    public abstract Builder serverSampler(HttpSampler serverSampler);
-
-    public abstract HttpTracing build();
-
-    abstract Builder serverName(String serverName);
-
-    Builder() {
+    public Builder serverSampler(HttpSampler serverSampler) {
+      if (serverSampler == null) throw new NullPointerException("serverSampler == null");
+      this.serverSampler = serverSampler;
+      return this;
     }
-  }
 
-  HttpTracing() { // intentionally hidden constructor
+    public HttpTracing build() {
+      return new HttpTracing(this);
+    }
   }
 }

@@ -47,7 +47,19 @@ final class RealScopedSpan extends ScopedSpan {
     recorder.finish(context);
   }
 
-  @Override public String toString() {
-    return "RealScopedSpan(" + context + ")";
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof RealScopedSpan)) return false;
+    RealScopedSpan that = (RealScopedSpan) o;
+    return context.equals(that.context) && scope.equals(that.scope);
+  }
+
+  @Override public int hashCode() {
+    int h = 1;
+    h *= 1000003;
+    h ^= context.hashCode();
+    h *= 1000003;
+    h ^= scope.hashCode();
+    return h;
   }
 }

@@ -2,88 +2,107 @@ package brave;
 
 import brave.internal.recorder.Recorder;
 import brave.propagation.TraceContext;
-import com.google.auto.value.AutoValue;
 import zipkin2.Endpoint;
 
 /** This wraps the public api and guards access to a mutable span. */
-@AutoValue
-abstract class RealSpan extends Span {
+final class RealSpan extends Span {
 
-  abstract Recorder recorder();
-  abstract ErrorParser errorParser();
+  final TraceContext context;
+  final Recorder recorder;
+  final ErrorParser errorParser;
+  final RealSpanCustomizer customizer;
 
-  static RealSpan create(TraceContext context, Recorder recorder, ErrorParser errorParser) {
-    return new AutoValue_RealSpan(context, RealSpanCustomizer.create(context, recorder), recorder,
-        errorParser);
+  RealSpan(TraceContext context, Recorder recorder, ErrorParser errorParser) {
+    this.context = context;
+    this.recorder = recorder;
+    this.customizer = new RealSpanCustomizer(context, recorder);
+    this.errorParser = errorParser;
   }
 
   @Override public boolean isNoop() {
     return false;
   }
 
+  @Override public TraceContext context() {
+    return context;
+  }
+
+  @Override public SpanCustomizer customizer() {
+    return new RealSpanCustomizer(context, recorder);
+  }
+
   @Override public Span start() {
-    recorder().start(context());
+    recorder.start(context());
     return this;
   }
 
   @Override public Span start(long timestamp) {
-    recorder().start(context(), timestamp);
+    recorder.start(context(), timestamp);
     return this;
   }
 
   @Override public Span name(String name) {
-    recorder().name(context(), name);
+    recorder.name(context(), name);
     return this;
   }
 
   @Override public Span kind(Kind kind) {
-    recorder().kind(context(), kind);
+    recorder.kind(context(), kind);
     return this;
   }
 
   @Override public Span annotate(String value) {
-    recorder().annotate(context(), value);
+    recorder.annotate(context(), value);
     return this;
   }
 
   @Override public Span annotate(long timestamp, String value) {
-    recorder().annotate(context(), timestamp, value);
+    recorder.annotate(context(), timestamp, value);
     return this;
   }
 
   @Override public Span tag(String key, String value) {
-    recorder().tag(context(), key, value);
+    recorder.tag(context(), key, value);
     return this;
   }
 
   @Override public Span error(Throwable throwable) {
-    errorParser().error(throwable, customizer());
+    errorParser.error(throwable, customizer());
     return this;
   }
 
   @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
-    recorder().remoteEndpoint(context(), remoteEndpoint);
+    recorder.remoteEndpoint(context(), remoteEndpoint);
     return this;
   }
 
   @Override public void finish() {
-    recorder().finish(context());
+    recorder.finish(context());
   }
 
   @Override public void finish(long timestamp) {
-    recorder().finish(context(), timestamp);
+    recorder.finish(context(), timestamp);
   }
 
   @Override public void abandon() {
-    recorder().abandon(context());
+    recorder.abandon(context());
   }
 
   @Override public void flush() {
-    recorder().flush(context());
+    recorder.flush(context());
   }
 
-  @Override
-  public String toString() {
-    return "RealSpan(" + context() + ")";
+  @Override public String toString() {
+    return "RealSpan(" + context + ")";
+  }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof RealSpan)) return false;
+    return context.equals(((RealSpan) o).context);
+  }
+
+  @Override public int hashCode() {
+    return context.hashCode();
   }
 }

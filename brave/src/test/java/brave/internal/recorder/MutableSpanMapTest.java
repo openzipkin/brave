@@ -25,8 +25,8 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PrepareForTest({MutableSpanMap.class, MutableSpan.class})
 public class MutableSpanMapTest {
   Endpoint endpoint = Platform.get().endpoint();
-  List<zipkin2.Span> spans = new ArrayList();
-  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+  List<zipkin2.Span> spans = new ArrayList<>();
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0L, spans::add, new AtomicBoolean(false));
 
   @Test
@@ -180,6 +180,10 @@ public class MutableSpanMapTest {
     // We also expect the spans to have been reported
     assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::value)
         .containsExactly("brave.flush", "brave.flush");
+
+    // We also expect the spans reported to have the endpoint of the tracer
+    assertThat(spans).extracting(Span::localEndpoint)
+        .containsExactly(endpoint, endpoint);
   }
 
   @Test

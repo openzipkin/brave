@@ -246,10 +246,8 @@ public class Tracer {
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     TraceContext decorated = propagationFactory.decorate(context);
-    if (!noop.get() && Boolean.TRUE.equals(decorated.sampled())) {
-      return RealSpan.create(decorated, recorder, errorParser);
-    }
-    return NoopSpan.create(decorated);
+    if (isNoop(context)) return new NoopSpan(decorated);
+    return new RealSpan(decorated, recorder, errorParser);
   }
 
   /**
@@ -308,9 +306,9 @@ public class Tracer {
    * as a method-local variable vs repeated calls.
    */
   public SpanCustomizer currentSpanCustomizer() {
-    TraceContext currentContext = currentTraceContext.get();
-    return currentContext != null && Boolean.TRUE.equals(currentContext.sampled())
-        ? RealSpanCustomizer.create(currentContext, recorder) : NoopSpanCustomizer.INSTANCE;
+    TraceContext context = currentTraceContext.get();
+    if (context == null || isNoop(context)) return NoopSpanCustomizer.INSTANCE;
+    return new RealSpanCustomizer(context, recorder);
   }
 
   /**
@@ -367,14 +365,10 @@ public class Tracer {
     if (name == null) throw new NullPointerException("name == null");
     TraceContext context = propagationFactory.decorate(newContextBuilder(parent, sampler).build());
     CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
-    ScopedSpan result;
-    if (!noop.get() && Boolean.TRUE.equals(context.sampled())) {
-      result = new RealScopedSpan(context, scope, recorder, errorParser);
-      recorder.name(context, name);
-      recorder.start(context);
-    } else {
-      result = new NoopScopedSpan(context, scope);
-    }
+    if (isNoop(context)) return new NoopScopedSpan(context, scope);
+    ScopedSpan result = new RealScopedSpan(context, scope, recorder, errorParser);
+    recorder.name(context, name);
+    recorder.start(context);
     return result;
   }
 
@@ -423,6 +417,10 @@ public class Tracer {
         .sampled(sampler.isSampled(nextId))
         .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
         .spanId(nextId);
+  }
+
+  boolean isNoop(TraceContext context) {
+    return noop.get() || !Boolean.TRUE.equals(context.sampled());
   }
 
   TraceContext.Builder newContextBuilder(TraceContext parent, SamplingFlags samplingFlags) {
