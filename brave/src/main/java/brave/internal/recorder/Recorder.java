@@ -12,6 +12,7 @@ import zipkin2.reporter.Reporter;
 
 /** Dispatches mutations on a span to a shared object per trace/span id. */
 public final class Recorder {
+  final Endpoint endpoint;
   final MutableSpanMap spanMap;
   final Clock clock;
   final Reporter<zipkin2.Span> reporter;
@@ -23,6 +24,7 @@ public final class Recorder {
       Reporter<zipkin2.Span> reporter,
       AtomicBoolean noop
   ) {
+    this.endpoint = localEndpoint;
     this.spanMap = new MutableSpanMap(localEndpoint, clock, reporter, noop);
     this.clock = clock;
     this.reporter = reporter;
@@ -109,7 +111,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(span.clock.currentTimeMicroseconds());
-      reporter.report(span.toSpan());
+      reporter.report(span.toSpan(endpoint));
     }
   }
 
@@ -119,7 +121,7 @@ public final class Recorder {
     if (span == null || noop.get()) return;
     synchronized (span) {
       span.finish(finishTimestamp);
-      reporter.report(span.toSpan());
+      reporter.report(span.toSpan(endpoint));
     }
   }
 
@@ -133,8 +135,8 @@ public final class Recorder {
     MutableSpan span = spanMap.remove(context);
     if (span == null || noop.get()) return;
     synchronized (span) {
-      span.finish(null);
-      reporter.report(span.toSpan());
+      span.finish(0L);
+      reporter.report(span.toSpan(endpoint));
     }
   }
 
@@ -142,7 +144,7 @@ public final class Recorder {
   public List<zipkin2.Span> snapshot() {
     List<zipkin2.Span> result = new ArrayList<>();
     for (MutableSpan value : spanMap.delegate.values()) {
-      result.add(value.toSpan());
+      result.add(value.toSpan(endpoint));
     }
     return result;
   }

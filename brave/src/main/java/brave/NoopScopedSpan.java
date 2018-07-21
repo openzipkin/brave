@@ -40,4 +40,20 @@ final class NoopScopedSpan extends ScopedSpan {
   @Override public String toString() {
     return "NoopScopedSpan(" + context + ")";
   }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof NoopScopedSpan)) return false;
+    NoopScopedSpan that = (NoopScopedSpan) o;
+    return context.equals(that.context) && scope.equals(that.scope);
+  }
+
+  @Override public int hashCode() {
+    int h = 1;
+    h *= 1000003;
+    h ^= context.hashCode();
+    h *= 1000003;
+    h ^= scope.hashCode();
+    return h;
+  }
 }

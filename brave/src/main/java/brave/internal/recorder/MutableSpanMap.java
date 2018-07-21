@@ -63,7 +63,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
     }
 
-    MutableSpan newSpan = new MutableSpan(clock, context, endpoint);
+    MutableSpan newSpan = new MutableSpan(clock, context);
     MutableSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
     return newSpan;
@@ -93,7 +93,7 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
       if (value == null || noop.get()) continue;
       try {
         value.annotate(value.clock.currentTimeMicroseconds(), "brave.flush");
-        reporter.report(value.toSpan());
+        reporter.report(value.toSpan(endpoint));
       } catch (RuntimeException e) {
         // don't crash the caller if there was a problem reporting an unrelated span.
         if (context != null && logger.isLoggable(Level.FINE)) {

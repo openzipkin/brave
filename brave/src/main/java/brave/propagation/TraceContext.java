@@ -93,16 +93,6 @@ public final class TraceContext extends SamplingFlags {
     return parentId;
   }
 
-  /** {@inheritDoc} */
-  @Override @Nullable public Boolean sampled() {
-    return sampled(flags);
-  }
-
-  /** {@inheritDoc} */
-  @Override public boolean debug() {
-    return debug(flags);
-  }
-
   /**
    * Unique 8-byte identifier of this span within a trace.
    *
@@ -240,15 +230,14 @@ public final class TraceContext extends SamplingFlags {
   }
 
   final long traceIdHigh, traceId, parentId, spanId;
-  final int flags; // bit field for sampled and debug
   final List<Object> extra;
 
   TraceContext(Builder builder) { // no external implementations
+    super(builder.flags);
     traceIdHigh = builder.traceIdHigh;
     traceId = builder.traceId;
     parentId = builder.parentId;
     spanId = builder.spanId;
-    flags = builder.flags;
     extra = builder.extra;
   }
 

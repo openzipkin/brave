@@ -3,7 +3,6 @@ package brave.http;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.sampler.ParameterizedSampler;
-import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,18 +59,34 @@ public final class HttpRuleSampler extends HttpSampler {
     String method = adapter.method(request);
     String path = adapter.path(request);
     if (method == null || path == null) return null; // use default if we couldn't parse
-    return sampler.sample(MethodAndPath.create(method, path)).sampled();
+    return sampler.sample(new MethodAndPath(method, path)).sampled();
   }
 
-  @AutoValue
-  static abstract class MethodAndPath {
-    static MethodAndPath create(String method, String path) {
-      return new AutoValue_HttpRuleSampler_MethodAndPath(method, path);
+  static final class MethodAndPath {
+
+    final String method;
+    final String path;
+
+    MethodAndPath(String method, String path) {
+      this.method = method;
+      this.path = path;
     }
 
-    abstract String method();
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof MethodAndPath)) return false;
+      MethodAndPath that = (MethodAndPath) o;
+      return method.equals(that.method) && path.equals(that.path);
+    }
 
-    abstract String path();
+    @Override public int hashCode() {
+      int h = 1;
+      h *= 1000003;
+      h ^= method.hashCode();
+      h *= 1000003;
+      h ^= path.hashCode();
+      return h;
+    }
   }
 
   static final class MethodAndPathRule extends ParameterizedSampler.Rule<MethodAndPath> {
@@ -85,8 +100,8 @@ public final class HttpRuleSampler extends HttpSampler {
     }
 
     @Override public boolean matches(MethodAndPath parameters) {
-      if (method != null && !method.equals(parameters.method())) return false;
-      return parameters.path().startsWith(path);
+      if (method != null && !method.equals(parameters.method)) return false;
+      return parameters.path.startsWith(path);
     }
   }
 }

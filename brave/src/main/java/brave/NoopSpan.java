@@ -1,14 +1,14 @@
 package brave;
 
 import brave.propagation.TraceContext;
-import com.google.auto.value.AutoValue;
 import zipkin2.Endpoint;
 
-@AutoValue
-abstract class NoopSpan extends Span {
+final class NoopSpan extends Span {
 
-  static NoopSpan create(TraceContext context) {
-    return new AutoValue_NoopSpan(context);
+  final TraceContext context;
+
+  NoopSpan(TraceContext context) {
+    this.context = context;
   }
 
   @Override public SpanCustomizer customizer() {
@@ -17,6 +17,10 @@ abstract class NoopSpan extends Span {
 
   @Override public boolean isNoop() {
     return true;
+  }
+
+  @Override public TraceContext context() {
+    return context;
   }
 
   @Override public Span start() {
@@ -65,5 +69,19 @@ abstract class NoopSpan extends Span {
   }
 
   @Override public void flush() {
+  }
+
+  @Override public String toString() {
+    return "NoopSpan(" + context + ")";
+  }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof NoopSpan)) return false;
+    return context.equals(((NoopSpan) o).context);
+  }
+
+  @Override public int hashCode() {
+    return context.hashCode();
   }
 }

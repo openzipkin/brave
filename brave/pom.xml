@@ -34,18 +34,6 @@
       <!-- annotations are not runtime retention, so don't need a runtime dep -->
       <scope>provided</scope>
     </dependency>
-    <!-- for value types... don't worry. this dependency is compile only! -->
-    <dependency>
-      <groupId>com.google.auto.value</groupId>
-      <artifactId>auto-value</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <!-- generated code includes Generated annotations! -->
-    <dependency>
-      <groupId>javax.annotation</groupId>
-      <artifactId>javax.annotation-api</artifactId>
-      <scope>provided</scope>
-    </dependency>
     <!-- to mock Platform calls -->
     <dependency>
       <groupId>org.powermock</groupId>
