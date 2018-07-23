@@ -9,8 +9,6 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
@@ -26,8 +24,6 @@ import zipkin2.reporter.Reporter;
  * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
  */
 final class MutableSpanMap extends ReferenceQueue<TraceContext> {
-  static final Logger logger = Logger.getLogger(MutableSpanMap.class.getName());
-
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, MutableSpan> delegate = new ConcurrentHashMap<>(64);
   final Endpoint endpoint;
@@ -87,19 +83,17 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
   /** Reports spans orphaned by garbage collection. */
   void reportOrphanedSpans() {
     Reference<? extends TraceContext> reference;
+    // This is called on critical path of unrelated traced operations. If we have orphaned spans, be
+    // careful to not penalize the performance of the caller. It is better to cache time when
+    // flushing a span than hurt performance of unrelated operations by calling
+    // currentTimeMicroseconds N times
+    long flushTime = 0L;
     while ((reference = poll()) != null) {
-      TraceContext context = reference.get();
       MutableSpan value = delegate.remove(reference);
       if (value == null || noop.get()) continue;
-      try {
-        value.annotate(value.clock.currentTimeMicroseconds(), "brave.flush");
-        reporter.report(value.toSpan(endpoint));
-      } catch (RuntimeException e) {
-        // don't crash the caller if there was a problem reporting an unrelated span.
-        if (context != null && logger.isLoggable(Level.FINE)) {
-          logger.log(Level.FINE, "error flushing " + context, e);
-        }
-      }
+      if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
+      value.annotate(flushTime, "brave.flush");
+      reporter.report(value.toSpan(endpoint));
     }
   }
 

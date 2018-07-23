@@ -130,6 +130,14 @@ public class TracerTest {
         .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
   }
 
+  @Test public void finish_doesntCrashOnBadReporter() {
+    tracer = Tracing.newBuilder().spanReporter(span -> {
+      throw new RuntimeException();
+    }).build().tracer();
+
+    tracer.newTrace().start().finish();
+  }
+
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
     tracer = Tracing.newBuilder()
         .propagationFactory(new Propagation.Factory() {

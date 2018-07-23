@@ -6,6 +6,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
@@ -27,7 +28,9 @@ public class MutableSpanMapTest {
   Endpoint endpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
-  MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0L, spans::add, new AtomicBoolean(false));
+  AtomicInteger clock = new AtomicInteger();
+  MutableSpanMap map = new MutableSpanMap(
+      endpoint, () -> clock.incrementAndGet() * 1000L, spans::add, new AtomicBoolean(false));
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
@@ -60,7 +63,7 @@ public class MutableSpanMapTest {
 
     when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
 
-    assertThat(span.clock.currentTimeMicroseconds()).isEqualTo(1);
+    assertThat(span.clock.currentTimeMicroseconds()).isEqualTo(1001L); // 1ms + 1us
   }
 
   @Test
@@ -163,6 +166,8 @@ public class MutableSpanMapTest {
     TraceContext context4 = context.toBuilder().spanId(4).build();
     map.getOrCreate(context4);
 
+    int initialClockVal = clock.get();
+
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
     blockOnGC();
@@ -184,6 +189,10 @@ public class MutableSpanMapTest {
     // We also expect the spans reported to have the endpoint of the tracer
     assertThat(spans).extracting(Span::localEndpoint)
         .containsExactly(endpoint, endpoint);
+
+    // we also expect the clock to have been called only once
+    assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::timestamp)
+        .allSatisfy(t -> assertThat(t).isEqualTo((initialClockVal + 1) * 1000));
   }
 
   @Test
@@ -196,6 +205,8 @@ public class MutableSpanMapTest {
     map.getOrCreate(context3);
     TraceContext context4 = context.toBuilder().spanId(4).build();
     map.getOrCreate(context4);
+
+    int initialClockVal = clock.get();
 
     map.noop.set(true);
 
@@ -215,6 +226,9 @@ public class MutableSpanMapTest {
 
     // since this is noop, we don't expect any spans to be reported
     assertThat(spans).isEmpty();
+
+    // we also expect the clock to not have been called
+    assertThat(clock.get()).isEqualTo(initialClockVal);
   }
 
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
