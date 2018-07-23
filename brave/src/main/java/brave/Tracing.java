@@ -10,6 +10,8 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin2.Endpoint;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
@@ -214,7 +216,9 @@ public abstract class Tracing implements Closeable {
      * synchronize with other mechanisms such as SLF4J's MDC.
      */
     public Builder currentTraceContext(CurrentTraceContext currentTraceContext) {
-      if (currentTraceContext == null) throw new NullPointerException("currentTraceContext == null");
+      if (currentTraceContext == null) {
+        throw new NullPointerException("currentTraceContext == null");
+      }
       this.currentTraceContext = currentTraceContext;
       return this;
     }
@@ -290,11 +294,12 @@ public abstract class Tracing implements Closeable {
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
+      SafeReporter<zipkin2.Span> reporter = new SafeReporter<>(builder.reporter, noop);
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
-          builder.reporter,
-          new Recorder(builder.endpoint, clock, builder.reporter, noop),
+          reporter,
+          new Recorder(builder.endpoint, clock, reporter, noop),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
@@ -346,5 +351,33 @@ public abstract class Tracing implements Closeable {
   }
 
   Tracing() { // intentionally hidden constructor
+  }
+
+  /** Declared here to ensure reporter bugs don't crash the caller */
+  static final class SafeReporter<S> implements Reporter<S> {
+    static final Logger logger = Logger.getLogger(SafeReporter.class.getName());
+
+    final AtomicBoolean noop;
+    final Reporter<S> delegate;
+
+    SafeReporter(Reporter<S> delegate, AtomicBoolean noop) {
+      this.delegate = delegate;
+      this.noop = noop;
+    }
+
+    @Override public void report(S span) {
+      if (noop.get()) return;
+      try {
+        delegate.report(span);
+      } catch (RuntimeException e) {
+        if (logger.isLoggable(Level.FINE)) { // fine level to not fill logs
+          logger.log(Level.FINE, "error reporting " + span, e);
+        }
+      }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
   }
 }
