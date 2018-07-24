@@ -2,7 +2,6 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.Span;
-import brave.Tracer;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,18 +34,6 @@ public final class Recorder {
   public Clock clock(TraceContext context) {
     if (noop.get()) return clock;
     return spanMap.getOrCreate(context).clock;
-  }
-
-  /**
-   * Indicates we are contributing to a span started by another tracer (ex on a different host).
-   * Defaults to false.
-   *
-   * @see Tracer#joinSpan(TraceContext)
-   * @see zipkin2.Span#shared()
-   */
-  public void setShared(TraceContext context) {
-    if (noop.get()) return;
-    spanMap.getOrCreate(context).setShared();
   }
 
   /** @see brave.Span#start() */

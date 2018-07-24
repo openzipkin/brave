@@ -1,7 +1,6 @@
 package brave;
 
 import brave.Tracer.SpanInScope;
-import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -19,6 +18,7 @@ import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
@@ -113,9 +113,32 @@ public class TracerTest {
   @Test public void join_setsShared() {
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isTrue();
+    assertThat(tracer.joinSpan(fromIncomingRequest).context())
+        .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+  }
+
+  /**
+   * Data from loopback requests should be partitioned into two spans: one for the client and the
+   * other for the server.
+   */
+  @Test public void join_sharedDataIsSeparate() {
+    Span clientSide = tracer.newTrace().kind(Span.Kind.CLIENT).start(1L);
+    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Span.Kind.SERVER).start(2L);
+    serverSide.finish(3L);
+    clientSide.finish(4L);
+
+    // Ensure they use the same span ID (sanity check)
+    String spanId = spans.get(0).id();
+    assertThat(spans).extracting(zipkin2.Span::id)
+        .containsExactly(spanId, spanId);
+
+    // Ensure the important parts are separated correctly
+    assertThat(spans).extracting(
+        zipkin2.Span::kind, zipkin2.Span::shared, zipkin2.Span::timestamp, zipkin2.Span::duration
+    ).containsExactly(
+        tuple(zipkin2.Span.Kind.SERVER, true, 2L, 1L),
+        tuple(zipkin2.Span.Kind.CLIENT, null, 1L, 3L)
+    );
   }
 
   @Test public void join_createsChildWhenUnsupported() {
@@ -123,11 +146,11 @@ public class TracerTest {
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isNull();
-    assertThat(spans.get(0).parentId())
-        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
+    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(shouldBeChild.shared())
+        .isFalse();
+    assertThat(shouldBeChild.parentId())
+        .isEqualTo(fromIncomingRequest.spanId());
   }
 
   @Test public void finish_doesntCrashOnBadReporter() {
@@ -149,11 +172,11 @@ public class TracerTest {
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isNull();
-    assertThat(spans.get(0).parentId())
-        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
+    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(shouldBeChild.shared())
+        .isFalse();
+    assertThat(shouldBeChild.parentId())
+        .isEqualTo(fromIncomingRequest.spanId());
   }
 
   @Test public void join_noop() {
@@ -229,10 +252,10 @@ public class TracerTest {
 
   /** A child span is not sharing a span ID with its parent by definition */
   @Test public void newChild_isntShared() {
-    tracer.newTrace().start().finish();
+    TraceContext parent = tracer.newTrace().context();
 
-    assertThat(spans.get(0).shared())
-        .isNull();
+    assertThat(tracer.newChild(parent).context().shared())
+        .isFalse();
   }
 
   @Test public void newChild_noop() {

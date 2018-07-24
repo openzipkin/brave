@@ -22,6 +22,19 @@ public class TraceContextTest {
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build().hashCode());
   }
 
+  /**
+   * Shared context is different than an unshared one, notably this keeps client/server loopback
+   * separate.
+   */
+  @Test public void compareUnequalIds_onShared() {
+    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
+
+    assertThat(context)
+        .isNotEqualTo(context.toBuilder().shared(true).build());
+    assertThat(context.hashCode())
+        .isNotEqualTo(context.toBuilder().shared(true).build().hashCode());
+  }
+
   @Test public void compareEqualIds() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(444L).build();
 

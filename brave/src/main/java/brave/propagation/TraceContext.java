@@ -20,6 +20,7 @@ import static brave.internal.HexCodec.writeHexLong;
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
+  static final int FLAG_SHARED = 1 << 4;
   static final Logger LOG = Logger.getLogger(TraceContext.class.getName());
 
   /**
@@ -100,6 +101,20 @@ public final class TraceContext extends SamplingFlags {
    */
   public long spanId() {
     return spanId;
+  }
+
+  /**
+   * True if we are contributing to a span started by another tracer (ex on a different host).
+   * Defaults to false.
+   *
+   * <h3>Impact on indexing</h3>
+   * <p>When an RPC trace is client-originated, it will be sampled and the same span ID is used for
+   * the server side. The shared flag helps prioritize timestamp and duration indexing in favor of
+   * the client. In v1 format, there is no shared flag, so it implies converters should not store
+   * timestamp and duration on the server span explicitly.
+   */
+  public boolean shared() {
+    return (flags & FLAG_SHARED) == FLAG_SHARED;
   }
 
   /**
@@ -211,6 +226,16 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
+    /** @see TraceContext#shared() */
+    public Builder shared(boolean shared){
+      if (shared) {
+        flags |= FLAG_SHARED;
+      } else {
+        flags &= ~FLAG_SHARED;
+      }
+      return this;
+    }
+
     /** @see TraceContext#extra() */
     public Builder extra(List<Object> extra) {
       this.extra = ensureImmutable(extra);
@@ -241,17 +266,31 @@ public final class TraceContext extends SamplingFlags {
     extra = builder.extra;
   }
 
-  /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
+
+  /**
+   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and
+   * the {@link #shared() shared flag}.
+   *
+   * <p>The shared flag is included to have parity with the {@link #hashCode()}.
+   */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;
     return (traceIdHigh == that.traceIdHigh)
         && (traceId == that.traceId)
-        && (spanId == that.spanId);
+        && (spanId == that.spanId)
+        && ((flags & FLAG_SHARED) == (that.flags & FLAG_SHARED));
   }
 
-  /** Only includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} */
+  /**
+   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and
+   * the {@link #shared() shared flag}.
+   *
+   * <p>The shared flag is included in the hash code to ensure loopback span data are partitioned
+   * properly. For example, if a client calls itself, the server-side shouldn't overwrite the client
+   * side.
+   */
   @Override public int hashCode() {
     int h = 1;
     h *= 1000003;
@@ -260,6 +299,8 @@ public final class TraceContext extends SamplingFlags {
     h ^= (int) ((traceId >>> 32) ^ traceId);
     h *= 1000003;
     h ^= (int) ((spanId >>> 32) ^ spanId);
+    h *= 1000003;
+    h ^= flags & FLAG_SHARED;
     return h;
   }
 

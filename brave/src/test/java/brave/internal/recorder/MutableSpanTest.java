@@ -131,9 +131,8 @@ public class MutableSpanTest {
 
   // This prevents the server timestamp from overwriting the client one on the collector
   @Test public void reportsSharedStatus() {
-    MutableSpan span = new MutableSpan(() -> 0L, context);
+    MutableSpan span = new MutableSpan(() -> 0L, context.toBuilder().shared(true).build());
 
-    span.setShared();
     span.start(1L);
     span.kind(SERVER);
     span.finish(2L);

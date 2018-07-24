@@ -166,7 +166,7 @@ public class Tracer {
     if (context.sampled() == null) { // then the caller didn't contribute data
       context = context.toBuilder().sampled(sampler.isSampled(context.traceId())).build();
     } else if (context.sampled()) { // we are recording and contributing to the same span ID
-      recorder.setShared(context);
+      context = context.toBuilder().shared(true).build();
     }
     return toSpan(context);
   }
@@ -225,7 +225,7 @@ public class Tracer {
       } else {
         builder = newContextBuilder(parent, sampler);
       }
-      return toSpan(builder.build());
+      return toSpan(builder.shared(false).build());
     }
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (extracted.traceIdContext() != null) {
