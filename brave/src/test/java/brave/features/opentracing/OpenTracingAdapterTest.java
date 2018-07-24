@@ -69,6 +69,7 @@ public class OpenTracingAdapterTest {
         .isEqualTo(TraceContext.newBuilder()
             .traceId(1L)
             .spanId(2L)
+            .shared(true)
             .sampled(true).build());
   }
 

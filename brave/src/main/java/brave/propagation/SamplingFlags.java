@@ -22,11 +22,6 @@ public class SamplingFlags {
   /**
    * Should we sample this request or not? True means sample, false means don't, null means we defer
    * decision to someone further down in the stack.
-   *
-   * <p>Note: this is a uniform decision for the entire trace. Advanced sampling patterns can
-   * overlay this via {@link Propagation.Factory#isNoop(TraceContext)}. For example, a noop context
-   * usually implies sampled is false or unset. However, you can collect data anyway, locally for
-   * metrics, or to an aggregation stream.
    */
   @Nullable public final Boolean sampled() {
     return sampled(flags);

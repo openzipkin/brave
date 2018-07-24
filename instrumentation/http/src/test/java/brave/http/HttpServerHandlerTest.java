@@ -1,8 +1,8 @@
 package brave.http;
 
+import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
-import brave.internal.HexCodec;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -57,10 +57,9 @@ public class HttpServerHandlerTest {
     // request sampler abstains (trace ID sampler will say true)
     when(sampler.trySample(adapter, request)).thenReturn(null);
 
-    handler.handleReceive(extractor, request).finish();
-
-    // If sampling was false, no span would be reported
-    assertThat(spans.get(0).shared()).isNull();
+    Span newSpan = handler.handleReceive(extractor, request);
+    assertThat(newSpan.isNoop()).isFalse();
+    assertThat(newSpan.context().shared()).isFalse();
   }
 
   @Test public void handleReceive_reusesTraceId() {
@@ -79,13 +78,9 @@ public class HttpServerHandlerTest {
     when(extractor.extract(request))
         .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
-    handler.handleReceive(extractor, request).finish();
-
-    assertThat(spans.get(0).shared()).isNull();
-    assertThat(spans.get(0).traceId())
-        .isEqualTo(incomingContext.traceIdString());
-    assertThat(spans.get(0).parentId())
-        .isEqualTo(HexCodec.toLowerHex(incomingContext.spanId()));
+    assertThat(handler.handleReceive(extractor, request).context())
+        .extracting(TraceContext::traceId, TraceContext::parentId, TraceContext::shared)
+        .containsOnly(incomingContext.traceId(), incomingContext.spanId(), false);
   }
 
   @Test public void handleReceive_reusesSpanIds() {
@@ -93,13 +88,8 @@ public class HttpServerHandlerTest {
     when(extractor.extract(request))
         .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
-    handler.handleReceive(extractor, request).finish();
-
-    assertThat(spans.get(0).shared()).isTrue();
-    assertThat(spans.get(0).traceId())
-        .isEqualTo(incomingContext.traceIdString());
-    assertThat(spans.get(0).id())
-        .isEqualTo(HexCodec.toLowerHex(incomingContext.spanId()));
+    assertThat(handler.handleReceive(extractor, request).context())
+        .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 
   @Test public void handleReceive_honorsSamplingFlags() {

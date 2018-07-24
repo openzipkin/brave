@@ -43,14 +43,17 @@ public class MutableSpanMapTest {
   @Test
   public void getOrCreate_reusesClockFromParent() {
     TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+    TraceContext traceJoin = trace.toBuilder().shared(true).build();
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
     TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
     MutableSpan traceSpan = map.getOrCreate(trace);
+    MutableSpan traceJoinSpan = map.getOrCreate(traceJoin);
     MutableSpan trace2Span = map.getOrCreate(trace2);
     MutableSpan traceChildSpan = map.getOrCreate(traceChild);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
+    assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
     assertThat(traceSpan.clock).isNotSameAs(trace2Span.clock);
   }
 
@@ -83,6 +86,13 @@ public class MutableSpanMapTest {
     assertThat(context1).isNotEqualTo(context2);
 
     assertThat(map.getOrCreate(context1)).isNotEqualTo(map.getOrCreate(context2));
+  }
+
+  @Test
+  public void getOrCreate_splitsSharedServerDataFromClient() {
+    TraceContext context2 = context.toBuilder().shared(true).build();
+
+    assertThat(map.getOrCreate(context)).isNotEqualTo(map.getOrCreate(context2));
   }
 
   @Test

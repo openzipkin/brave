@@ -68,8 +68,18 @@ final class MutableSpanMap extends ReferenceQueue<TraceContext> {
   /** Trace contexts are equal only on trace ID and span ID. try to get the parent's clock */
   @Nullable Clock maybeClockFromParent(TraceContext context) {
     long parentId = context.parentIdAsLong();
-    if (parentId == 0L) return null;
-    MutableSpan parent = delegate.get(new LookupKey(context.toBuilder().spanId(parentId).build()));
+    // NOTE: we still look for lookup key even on root span, as a client span can be root, and a
+    // server can share the same ID. Essentially, a shared span is similar to a child.
+    MutableSpan parent;
+    if (Boolean.TRUE.equals(context.shared())) {
+      TraceContext.Builder lookupContext = context.toBuilder().shared(false);
+      if (parentId != 0L) lookupContext.spanId(parentId);
+      parent = delegate.get(new LookupKey(lookupContext.build()));
+    } else if (parentId == 0L) {
+      parent = null; // root span was checked earlier
+    } else {
+      parent = delegate.get(new LookupKey(context.toBuilder().spanId(parentId).build()));
+    }
     return parent != null ? parent.clock : null;
   }
 

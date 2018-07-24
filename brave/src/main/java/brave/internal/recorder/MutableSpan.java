@@ -20,15 +20,12 @@ final class MutableSpan {
         .traceId(context.traceIdString())
         .parentId(parentId != 0L ? HexCodec.toLowerHex(parentId) : null)
         .id(HexCodec.toLowerHex(context.spanId()))
-        .debug(context.debug() ? true : null);
+        .debug(context.debug() ? true : null)
+        .shared(context.shared() ? true : null);
   }
 
   void start() {
     start(clock.currentTimeMicroseconds());
-  }
-
-  synchronized void setShared() {
-    span.shared(true);
   }
 
   synchronized void start(long timestamp) {
