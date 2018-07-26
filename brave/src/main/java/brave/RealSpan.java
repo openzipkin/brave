@@ -1,6 +1,8 @@
 package brave;
 
-import brave.internal.recorder.Recorder;
+import brave.Tracing.SpanReporter;
+import brave.internal.recorder.PendingSpanRecords;
+import brave.internal.recorder.SpanRecord;
 import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
@@ -8,14 +10,25 @@ import zipkin2.Endpoint;
 final class RealSpan extends Span {
 
   final TraceContext context;
-  final Recorder recorder;
+  final PendingSpanRecords pendingSpanRecords;
+  final SpanRecord record;
+  final Clock clock;
+  final SpanReporter spanReporter;
   final ErrorParser errorParser;
   final RealSpanCustomizer customizer;
 
-  RealSpan(TraceContext context, Recorder recorder, ErrorParser errorParser) {
+  RealSpan(TraceContext context,
+      PendingSpanRecords pendingSpanRecords,
+      SpanRecord record,
+      Clock clock,
+      SpanReporter spanReporter,
+      ErrorParser errorParser) {
     this.context = context;
-    this.recorder = recorder;
-    this.customizer = new RealSpanCustomizer(context, recorder);
+    this.pendingSpanRecords = pendingSpanRecords;
+    this.record = record;
+    this.clock = clock;
+    this.customizer = new RealSpanCustomizer(context, record, clock);
+    this.spanReporter = spanReporter;
     this.errorParser = errorParser;
   }
 
@@ -28,41 +41,73 @@ final class RealSpan extends Span {
   }
 
   @Override public SpanCustomizer customizer() {
-    return new RealSpanCustomizer(context, recorder);
+    return new RealSpanCustomizer(context, record, clock);
   }
 
   @Override public Span start() {
-    recorder.start(context());
-    return this;
+    return start(clock.currentTimeMicroseconds());
   }
 
   @Override public Span start(long timestamp) {
-    recorder.start(context(), timestamp);
+    synchronized (record) {
+      record.startTimestamp(timestamp);
+    }
     return this;
   }
 
   @Override public Span name(String name) {
-    recorder.name(context(), name);
+    synchronized (record) {
+      record.name(name);
+    }
     return this;
   }
 
   @Override public Span kind(Kind kind) {
-    recorder.kind(context(), kind);
+    synchronized (record) {
+      record.kind(kind);
+    }
     return this;
   }
 
   @Override public Span annotate(String value) {
-    recorder.annotate(context(), value);
-    return this;
+    return annotate(clock.currentTimeMicroseconds(), value);
   }
 
   @Override public Span annotate(long timestamp, String value) {
-    recorder.annotate(context(), timestamp, value);
+    // Modern instrumentation should not send annotations such as this, but we leniently
+    // accept them rather than fail. This for example allows old bridges like to Brave v3 to work
+    if ("cs".equals(value)) {
+      synchronized (record) {
+        record.kind(Span.Kind.CLIENT);
+        record.startTimestamp(timestamp);
+      }
+    } else if ("sr".equals(value)) {
+      synchronized (record) {
+        record.kind(Span.Kind.SERVER);
+        record.startTimestamp(timestamp);
+      }
+    } else if ("cr".equals(value)) {
+      synchronized (record) {
+        record.kind(Span.Kind.CLIENT);
+      }
+      finish(timestamp);
+    } else if ("ss".equals(value)) {
+      synchronized (record) {
+        record.kind(Span.Kind.SERVER);
+      }
+      finish(timestamp);
+    } else {
+      synchronized (record) {
+        record.annotate(timestamp, value);
+      }
+    }
     return this;
   }
 
   @Override public Span tag(String key, String value) {
-    recorder.tag(context(), key, value);
+    synchronized (record) {
+      record.tag(key, value);
+    }
     return this;
   }
 
@@ -72,24 +117,31 @@ final class RealSpan extends Span {
   }
 
   @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
-    recorder.remoteEndpoint(context(), remoteEndpoint);
+    synchronized (record) {
+      record.remoteEndpoint(remoteEndpoint);
+    }
     return this;
   }
 
   @Override public void finish() {
-    recorder.finish(context());
+    finish(clock.currentTimeMicroseconds());
   }
 
   @Override public void finish(long timestamp) {
-    recorder.finish(context(), timestamp);
+    if (!pendingSpanRecords.remove(context)) return;
+    synchronized (record) {
+      record.finishTimestamp(timestamp);
+    }
+    spanReporter.report(context, record);
   }
 
   @Override public void abandon() {
-    recorder.abandon(context());
+    pendingSpanRecords.remove(context);
   }
 
   @Override public void flush() {
-    recorder.flush(context());
+    abandon();
+    spanReporter.report(context, record);
   }
 
   @Override public String toString() {

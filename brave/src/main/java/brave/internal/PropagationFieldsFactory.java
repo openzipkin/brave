@@ -33,7 +33,8 @@ public abstract class PropagationFieldsFactory<P extends PropagationFields> {
     if (thisExtraIndex != -1 && parentExtraIndex == -1) return context;
 
     // otherwise, we are creating a new instance
-    List<Object> copyOfExtra = new ArrayList<>(context.extra());
+    List<Object> copyOfExtra =
+        extras.isEmpty() ? new ArrayList<>() : new ArrayList<>(context.extra());
     P fields;
     if (thisExtraIndex == -1 && parentExtraIndex != -1) { // clone then parent (for copy-on-write)
       fields = create((P) copyOfExtra.get(parentExtraIndex));
