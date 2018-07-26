@@ -49,7 +49,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.spanMap.endpoint")
+        .extracting("tracer.pendingSpanRecords.endpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
   }
@@ -68,7 +68,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.spanMap.endpoint")
+        .extracting("tracer.pendingSpanRecords.endpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -89,7 +89,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.spanMap.endpoint")
+        .extracting("tracer.pendingSpanRecords.endpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -106,7 +106,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.recorder.reporter.delegate")
+        .extracting("tracer.spanReporter.delegate")
         .containsExactly(Reporter.CONSOLE);
   }
 

@@ -1,0 +1,170 @@
+package brave.internal.recorder;
+
+import brave.Span.Kind;
+import org.junit.Test;
+import zipkin2.Annotation;
+import zipkin2.Endpoint;
+import zipkin2.Span;
+
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+
+public class SpanRecordTest {
+  @Test public void minimumDurationIsOne() {
+    SpanRecord span = new SpanRecord();
+
+    span.startTimestamp(1L);
+    span.finishTimestamp(1L);
+
+    assertThat(writeTo(span).duration()).isEqualTo(1L);
+  }
+
+  @Test public void replacesTag() {
+    SpanRecord span = new SpanRecord();
+
+    span.tag("1", "1");
+    span.tag("foo", "bar");
+    span.tag("2", "2");
+    span.tag("foo", "baz");
+    span.tag("3", "3");
+
+    assertThat(writeTo(span).tags()).containsOnly(
+        entry("1", "1"),
+        entry("foo", "baz"),
+        entry("2", "2"),
+        entry("3", "3")
+    );
+  }
+
+  @Test public void addsAnnotations() {
+    SpanRecord span = new SpanRecord();
+
+    span.startTimestamp(1L);
+    span.annotate(2L, "foo");
+    span.finishTimestamp(2L);
+
+    assertThat(writeTo(span).annotations())
+        .containsOnly(Annotation.create(2L, "foo"));
+  }
+
+  @Test public void finished_client() {
+    finish(Kind.CLIENT, Span.Kind.CLIENT);
+  }
+
+  @Test public void finished_server() {
+    finish(Kind.SERVER, Span.Kind.SERVER);
+  }
+
+  @Test public void finished_producer() {
+    finish(Kind.PRODUCER, Span.Kind.PRODUCER);
+  }
+
+  @Test public void finished_consumer() {
+    finish(Kind.CONSUMER, Span.Kind.CONSUMER);
+  }
+
+  void finish(Kind braveKind, Span.Kind span2Kind) {
+    SpanRecord span = new SpanRecord();
+    span.kind(braveKind);
+    span.startTimestamp(1L);
+    span.finishTimestamp(2L);
+
+    Span span2 = writeTo(span);
+    assertThat(span2.annotations()).isEmpty();
+    assertThat(span2.timestamp()).isEqualTo(1L);
+    assertThat(span2.duration()).isEqualTo(1L);
+    assertThat(span2.kind()).isEqualTo(span2Kind);
+  }
+
+  @Test public void flushed_client() {
+    flush(Kind.CLIENT, Span.Kind.CLIENT);
+  }
+
+  @Test public void flushed_server() {
+    flush(Kind.SERVER, Span.Kind.SERVER);
+  }
+
+  @Test public void flushed_producer() {
+    flush(Kind.PRODUCER, Span.Kind.PRODUCER);
+  }
+
+  @Test public void flushed_consumer() {
+    flush(Kind.CONSUMER, Span.Kind.CONSUMER);
+  }
+
+  void flush(Kind braveKind, Span.Kind span2Kind) {
+    SpanRecord span = new SpanRecord();
+    span.kind(braveKind);
+    span.startTimestamp(1L);
+    span.finishTimestamp(0L);
+
+    Span span2 = writeTo(span);
+    assertThat(span2.annotations()).isEmpty();
+    assertThat(span2.timestamp()).isEqualTo(1L);
+    assertThat(span2.duration()).isNull();
+    assertThat(span2.kind()).isEqualTo(span2Kind);
+  }
+
+  @Test public void remoteEndpoint() {
+    SpanRecord span = new SpanRecord();
+
+    Endpoint endpoint = Endpoint.newBuilder().serviceName("server").build();
+    span.kind(CLIENT);
+    span.remoteEndpoint(endpoint);
+    span.startTimestamp(1L);
+    span.finishTimestamp(2L);
+
+    assertThat(writeTo(span).remoteEndpoint())
+        .isEqualTo(endpoint);
+  }
+
+  // This prevents the server startTimestamp from overwriting the client one on the collector
+  @Test public void writeTo_sharedStatus() {
+    SpanRecord span = new SpanRecord();
+
+    span.setShared();
+    span.startTimestamp(1L);
+    span.kind(SERVER);
+    span.finishTimestamp(2L);
+
+    assertThat(writeTo(span).shared())
+        .isTrue();
+  }
+
+  @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
+    SpanRecord flushed = new SpanRecord();
+    flushed.finishTimestamp(0L);
+
+    assertThat(flushed).extracting(s -> s.startTimestamp, s -> s.finishTimestamp)
+        .allSatisfy(u -> assertThat(u).isEqualTo(0L));
+  }
+
+  /** We can't compute duration unless we started the span in the same tracer. */
+  @Test public void writeTo_finishUnstartedIsSameAsFlush() {
+    SpanRecord finishWithTimestamp = new SpanRecord();
+    finishWithTimestamp.finishTimestamp(2L);
+    Span.Builder finishWithTimestampBuilder = Span.newBuilder();
+    finishWithTimestamp.writeTo(finishWithTimestampBuilder);
+
+    SpanRecord finishWithNoTimestamp = new SpanRecord();
+    finishWithNoTimestamp.finishTimestamp(0L);
+    Span.Builder finishWithNoTimestampBuilder = Span.newBuilder();
+    finishWithNoTimestamp.writeTo(finishWithNoTimestampBuilder);
+
+    SpanRecord flush = new SpanRecord();
+    Span.Builder flushBuilder = Span.newBuilder();
+    flush.writeTo(flushBuilder);
+
+    assertThat(finishWithTimestampBuilder)
+        .isEqualToComparingFieldByFieldRecursively(finishWithNoTimestampBuilder)
+        .isEqualToComparingFieldByFieldRecursively(flushBuilder);
+  }
+
+  Span writeTo(SpanRecord span) {
+    Span.Builder result = Span.newBuilder().traceId(0L, 1L).id(1L);
+    span.writeTo(result);
+    return result.build();
+  }
+}

@@ -2,7 +2,8 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.Recorder;
+import brave.internal.recorder.PendingSpanRecords;
+import brave.internal.recorder.SpanRecord;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -70,7 +71,7 @@ public abstract class Tracing implements Closeable {
    * @param context references a potentially unstarted span you'd like a clock correlated with
    */
   public final Clock clock(TraceContext context) {
-    return tracer().recorder.clock(context);
+    return tracer().pendingSpanRecords.getOrCreate(context).clock();
   }
 
   abstract public ErrorParser errorParser();
@@ -294,12 +295,12 @@ public abstract class Tracing implements Closeable {
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
-      SafeReporter<zipkin2.Span> reporter = new SafeReporter<>(builder.reporter, noop);
+      SpanReporter reporter = new SpanReporter(builder.reporter, noop);
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
           reporter,
-          new Recorder(builder.endpoint, clock, reporter, noop),
+          new PendingSpanRecords(builder.endpoint, clock, reporter, noop),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
@@ -354,18 +355,29 @@ public abstract class Tracing implements Closeable {
   }
 
   /** Declared here to ensure reporter bugs don't crash the caller */
-  static final class SafeReporter<S> implements Reporter<S> {
-    static final Logger logger = Logger.getLogger(SafeReporter.class.getName());
+  static final class SpanReporter implements Reporter<zipkin2.Span> {
+    static final Logger logger = Logger.getLogger(SpanReporter.class.getName());
 
     final AtomicBoolean noop;
-    final Reporter<S> delegate;
+    final Reporter<zipkin2.Span> delegate;
 
-    SafeReporter(Reporter<S> delegate, AtomicBoolean noop) {
+    SpanReporter(Reporter<zipkin2.Span> delegate, AtomicBoolean noop) {
       this.delegate = delegate;
       this.noop = noop;
     }
 
-    @Override public void report(S span) {
+    void report(TraceContext context, SpanRecord span) {
+      zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
+          .traceId(context.traceIdHigh(), context.traceId())
+          .parentId(context.parentIdAsLong())
+          .id(context.spanId())
+          .debug(context.debug());
+
+      span.writeTo(builderWithContextData);
+      report(builderWithContextData.build());
+    }
+
+    @Override public void report(zipkin2.Span span) {
       if (noop.get()) return;
       try {
         delegate.report(span);

@@ -1,6 +1,8 @@
 package brave;
 
-import brave.internal.recorder.Recorder;
+import brave.Tracing.SpanReporter;
+import brave.internal.recorder.PendingSpanRecords;
+import brave.internal.recorder.SpanRecord;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 
@@ -9,13 +11,27 @@ final class RealScopedSpan extends ScopedSpan {
 
   final TraceContext context;
   final Scope scope;
-  final Recorder recorder;
+  final SpanRecord record;
+  final Clock clock;
+  final PendingSpanRecords pendingSpanRecords;
+  final SpanReporter spanReporter;
   final ErrorParser errorParser;
 
-  RealScopedSpan(TraceContext context, Scope scope, Recorder recorder, ErrorParser errorParser) {
+  RealScopedSpan(
+      TraceContext context,
+      Scope scope,
+      SpanRecord record,
+      Clock clock,
+      PendingSpanRecords pendingSpanRecords,
+      SpanReporter spanReporter,
+      ErrorParser errorParser
+  ) {
     this.context = context;
     this.scope = scope;
-    this.recorder = recorder;
+    this.pendingSpanRecords = pendingSpanRecords;
+    this.record = record;
+    this.clock = clock;
+    this.spanReporter = spanReporter;
     this.errorParser = errorParser;
   }
 
@@ -28,12 +44,12 @@ final class RealScopedSpan extends ScopedSpan {
   }
 
   @Override public ScopedSpan annotate(String value) {
-    recorder.annotate(context, value);
+    record.annotate(clock.currentTimeMicroseconds(), value);
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
-    recorder.tag(context, key, value);
+    record.tag(key, value);
     return this;
   }
 
@@ -44,7 +60,9 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    recorder.finish(context);
+    if (!pendingSpanRecords.remove(context)) return; // don't double-report
+    spanReporter.report(context, record);
+    record.finishTimestamp(clock.currentTimeMicroseconds());
   }
 
   @Override public boolean equals(Object o) {

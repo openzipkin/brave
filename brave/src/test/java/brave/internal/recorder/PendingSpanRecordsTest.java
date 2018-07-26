@@ -8,33 +8,23 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.powermock.api.mockito.PowerMockito.when;
 
-@RunWith(PowerMockRunner.class)
-// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
-@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
-@PrepareForTest({MutableSpanMap.class, MutableSpan.class})
-public class MutableSpanMapTest {
+public class PendingSpanRecordsTest {
   Endpoint endpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   AtomicInteger clock = new AtomicInteger();
-  MutableSpanMap map = new MutableSpanMap(
+  PendingSpanRecords map = new PendingSpanRecords(
       endpoint, () -> clock.incrementAndGet() * 1000L, spans::add, new AtomicBoolean(false));
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
-    MutableSpan span = map.getOrCreate(context);
+    PendingSpanRecord span = map.getOrCreate(context);
 
     assertThat(span).isNotNull();
   }
@@ -47,10 +37,10 @@ public class MutableSpanMapTest {
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
     TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
-    MutableSpan traceSpan = map.getOrCreate(trace);
-    MutableSpan traceJoinSpan = map.getOrCreate(traceJoin);
-    MutableSpan trace2Span = map.getOrCreate(trace2);
-    MutableSpan traceChildSpan = map.getOrCreate(traceChild);
+    PendingSpanRecord traceSpan = map.getOrCreate(trace);
+    PendingSpanRecord traceJoinSpan = map.getOrCreate(traceJoin);
+    PendingSpanRecord trace2Span = map.getOrCreate(trace2);
+    PendingSpanRecord traceChildSpan = map.getOrCreate(traceChild);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
     assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
@@ -58,20 +48,8 @@ public class MutableSpanMapTest {
   }
 
   @Test
-  public void relativeTimestamp_incrementsAccordingToNanoTick() {
-    mockStatic(System.class);
-    when(System.nanoTime()).thenReturn(0L);
-
-    MutableSpan span = map.getOrCreate(context);
-
-    when(System.nanoTime()).thenReturn(1000L); // 1 microsecond
-
-    assertThat(span.clock.currentTimeMicroseconds()).isEqualTo(1001L); // 1ms + 1us
-  }
-
-  @Test
   public void getOrCreate_cachesReference() {
-    MutableSpan span = map.getOrCreate(context);
+    PendingSpanRecord span = map.getOrCreate(context);
     assertThat(map.getOrCreate(context)).isSameAs(span);
   }
 
@@ -114,8 +92,7 @@ public class MutableSpanMapTest {
 
   @Test
   public void remove_okWhenDoesntExist() {
-    MutableSpan span = map.remove(context);
-    assertThat(span).isNull();
+    map.remove(context);
   }
 
   @Test
@@ -244,7 +221,7 @@ public class MutableSpanMapTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() {
-    MutableSpanMap map = new MutableSpanMap(endpoint, () -> 0, span ->
+    PendingSpanRecords map = new PendingSpanRecords(endpoint, () -> 0, span ->
     {
       throw new RuntimeException("die!");
     }, new AtomicBoolean(true));
@@ -271,22 +248,22 @@ public class MutableSpanMapTest {
   @Test
   public void toString_saysWhatReferentsAre() {
     assertThat(map.toString())
-        .isEqualTo("MutableSpanMap[]");
+        .isEqualTo("PendingSpanRecords[]");
 
     map.getOrCreate(context);
 
     assertThat(map.toString())
-        .isEqualTo("MutableSpanMap[WeakReference(" + context + ")]");
+        .isEqualTo("PendingSpanRecords[WeakReference(" + context + ")]");
 
     pretendGCHappened();
 
     assertThat(map.toString())
-        .isEqualTo("MutableSpanMap[ClearedReference()]");
+        .isEqualTo("PendingSpanRecords[ClearedReference()]");
   }
 
   @Test
   public void realKey_equalToItself() {
-    MutableSpanMap.RealKey key = new MutableSpanMap.RealKey(context, map);
+    PendingSpanRecords.RealKey key = new PendingSpanRecords.RealKey(context, map);
     assertThat(key).isEqualTo(key);
     key.clear();
     assertThat(key).isEqualTo(key);
@@ -294,8 +271,8 @@ public class MutableSpanMapTest {
 
   @Test
   public void realKey_equalToEquivalent() {
-    MutableSpanMap.RealKey key = new MutableSpanMap.RealKey(context, map);
-    MutableSpanMap.RealKey key2 = new MutableSpanMap.RealKey(context, map);
+    PendingSpanRecords.RealKey key = new PendingSpanRecords.RealKey(context, map);
+    PendingSpanRecords.RealKey key2 = new PendingSpanRecords.RealKey(context, map);
     assertThat(key).isEqualTo(key2);
     key.clear();
     assertThat(key).isNotEqualTo(key2);
@@ -305,7 +282,7 @@ public class MutableSpanMapTest {
 
   /** In reality, this clears a reference even if it is strongly held by the test! */
   void pretendGCHappened() {
-    ((MutableSpanMap.RealKey) map.delegate.keySet().iterator().next()).clear();
+    ((PendingSpanRecords.RealKey) map.delegate.keySet().iterator().next()).clear();
   }
 
   static void blockOnGC() {

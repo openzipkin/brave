@@ -102,6 +102,26 @@ public class RealSpanTest {
         .containsExactly(entry("foo", "bar"));
   }
 
+  @Test public void finished_client_annotation() {
+    finish("cs", "cr", zipkin2.Span.Kind.CLIENT);
+  }
+
+  @Test public void finished_server_annotation() {
+    finish("sr", "ss", zipkin2.Span.Kind.SERVER);
+  }
+
+  private void finish(String start, String end, zipkin2.Span.Kind span2Kind) {
+    Span span = tracing.tracer().newTrace().name("foo").start();
+    span.annotate(1L, start);
+    span.annotate(2L, end);
+
+    zipkin2.Span span2 = spans.get(0);
+    assertThat(span2.annotations()).isEmpty();
+    assertThat(span2.timestamp()).isEqualTo(1L);
+    assertThat(span2.duration()).isEqualTo(1L);
+    assertThat(span2.kind()).isEqualTo(span2Kind);
+  }
+
   @Test public void doubleFinishDoesntDoubleReport() {
     Span span = tracing.tracer().newTrace().name("foo").start();
 
