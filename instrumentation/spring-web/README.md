@@ -12,3 +12,7 @@ it is in place before proceeding. Here's an example in [XML](https://github.com/
 Then, wire `TracingClientHttpRequestInterceptor` and add it with the
 `RestTemplate.setInterceptors` method. If you are using `AsyncRestTemplate` and Spring 4.3+, you can
 wire `AsyncTracingClientHttpRequestInterceptor` and add it via `AsyncRestTemplate.setInterceptors`.
+
+For Spring boot users, autoConfiguration is available when the `HttpTracing` bean is configured.
+Basically it creates a `RestClient` and an `AsyncRestClient` for you if no other bean of this type exist.
+
