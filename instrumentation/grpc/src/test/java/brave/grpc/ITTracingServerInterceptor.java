@@ -43,6 +43,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -142,7 +143,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
     assertThat(span.parentId()).isEqualTo(parentId);
     assertThat(span.id()).isEqualTo(spanId);
@@ -176,7 +177,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
     assertThat(span.parentId()).isEqualTo(spanId);
     assertThat(span.id()).isNotEqualTo(spanId);
@@ -214,20 +215,20 @@ public class ITTracingServerInterceptor {
     assertThat(fromUserInterceptor.get())
         .isNotNull();
 
-    spans.take();
+    takeSpan();
   }
 
   @Test public void currentSpanVisibleToImpl() throws Exception {
     assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
         .isNotEmpty();
 
-    spans.take();
+    takeSpan();
   }
 
   @Test public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.kind())
         .isEqualTo(Span.Kind.SERVER);
   }
@@ -235,7 +236,7 @@ public class ITTracingServerInterceptor {
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.name())
         .isEqualTo("helloworld.greeter/sayhello");
   }
@@ -246,7 +247,7 @@ public class ITTracingServerInterceptor {
           .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      Span span = spans.take();
+      Span span = takeSpan();
       assertThat(span.tags()).containsExactly(
           entry("error", "UNKNOWN"),
           entry("grpc.status_code", "UNKNOWN")
@@ -280,7 +281,7 @@ public class ITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
         "grpc.message_received", "grpc.message_sent",
@@ -302,7 +303,7 @@ public class ITTracingServerInterceptor {
         .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).hasSize(10);
     // all response messages are tagged to the same span
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.tags()).hasSize(10);
   }
 
@@ -312,5 +313,14 @@ public class ITTracingServerInterceptor {
         .currentTraceContext( // connect to log4j
             ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
         .sampler(sampler);
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeSpan() throws InterruptedException {
+    Span result = spans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Span was not reported")
+        .isNotNull();
+    return result;
   }
 }

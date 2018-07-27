@@ -110,8 +110,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(2);
-    Span producerSpan1 = producerSpans.take(), producerSpan2 = producerSpans.take();
-    Span consumerSpan1 = consumerSpans.take(), consumerSpan2 = consumerSpans.take();
+    Span producerSpan1 = takeProducerSpan(), producerSpan2 = takeProducerSpan();
+    Span consumerSpan1 = takeConsumerSpan(), consumerSpan2 = takeConsumerSpan();
 
     // Check to see the trace is continued between the producer and the consumer
     // we don't know the order the spans will come in. Correlate with the tag instead.
@@ -145,8 +145,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(10);
-    consumerSpans.take();
-    consumerSpans.take();
+    takeConsumerSpan();
+    takeConsumerSpan();
     // producerSpans empty as not traced
   }
 
@@ -160,8 +160,8 @@ public class ITKafkaTracing {
     consumer.poll(10000);
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(consumerSpans.take());
-    allSpans.add(producerSpans.take());
+    allSpans.add(takeConsumerSpan());
+    allSpans.add(takeProducerSpan());
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
     assertThat(links).extracting("parent", "child").containsExactly(
@@ -180,8 +180,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = producerSpans.take();
-    Span consumerSpan = consumerSpans.take();
+    Span producerSpan = takeProducerSpan();
+    Span consumerSpan = takeConsumerSpan();
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span processor = consumerTracing.nextSpan(record);
@@ -195,7 +195,7 @@ public class ITKafkaTracing {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      Span processorSpan = consumerSpans.take();
+      Span processorSpan = takeConsumerSpan();
       assertThat(processorSpan.id())
           .isNotEqualTo(consumerSpan.id());
     }
@@ -254,8 +254,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = producerSpans.take();
-    Span consumerSpan = consumerSpans.take();
+    Span producerSpan = takeProducerSpan();
+    Span consumerSpan = takeConsumerSpan();
 
     assertThat(producerSpan.traceId())
         .isEqualTo(consumerSpan.traceId());
@@ -281,5 +281,23 @@ public class ITKafkaTracing {
   Producer<String, String> createTracingProducer() {
     KafkaProducer<String, String> producer = kafkaRule.helper().createStringProducer();
     return producerTracing.producer(producer);
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeProducerSpan() throws InterruptedException {
+    Span result = producerSpans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Producer span was not reported")
+        .isNotNull();
+    return result;
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeConsumerSpan() throws InterruptedException {
+    Span result = consumerSpans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Consumer span was not reported")
+        .isNotNull();
+    return result;
   }
 }

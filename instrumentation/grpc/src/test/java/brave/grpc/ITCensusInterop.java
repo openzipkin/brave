@@ -115,7 +115,7 @@ public class ITCensusInterop {
     // this takes 5 seconds due to hard-coding in ExportComponentImpl
     SpanData clientSpan = testHandler.waitForExport(1).get(0);
 
-    Span serverSpan = spans.take();
+    Span serverSpan = takeSpan();
     assertThat(clientSpan.getContext().getTraceId().toLowerBase16())
         .isEqualTo(serverSpan.traceId());
     assertThat(clientSpan.getContext().getSpanId().toLowerBase16())
@@ -139,7 +139,7 @@ public class ITCensusInterop {
     // this takes 5 seconds due to hard-coding in ExportComponentImpl
     SpanData clientSpan = testHandler.waitForExport(1).get(0);
 
-    Span serverSpan = spans.take();
+    Span serverSpan = takeSpan();
     assertThat(clientSpan.getContext().getTraceId().toLowerBase16())
         .isEqualTo(serverSpan.traceId());
     assertThat(clientSpan.getContext().getSpanId().toLowerBase16())
@@ -157,7 +157,7 @@ public class ITCensusInterop {
     // this takes 5 seconds due to hard-coding in ExportComponentImpl
     SpanData serverSpan = testHandler.waitForExport(1).get(0);
 
-    Span clientSpan = spans.take();
+    Span clientSpan = takeSpan();
     assertThat(clientSpan.traceId())
         .isEqualTo(serverSpan.getContext().getTraceId().toLowerBase16());
     assertThat(clientSpan.id()).isEqualTo(serverSpan.getParentSpanId().toLowerBase16());
@@ -207,5 +207,14 @@ public class ITCensusInterop {
       server.awaitTermination(1, TimeUnit.SECONDS);
     }
     tracing.close();
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeSpan() throws InterruptedException {
+    Span result = spans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Span was not reported")
+        .isNotNull();
+    return result;
   }
 }

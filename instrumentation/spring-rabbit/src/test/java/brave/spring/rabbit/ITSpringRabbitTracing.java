@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -72,9 +73,9 @@ public class ITSpringRabbitTracing {
     testFixture.awaitMessageConsumed();
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(testFixture.producerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
+    allSpans.add(takeProducerSpan());
+    allSpans.add(takeConsumerSpan());
+    allSpans.add(takeConsumerSpan());
 
     String originatingTraceId = allSpans.get(0).traceId();
     String consumerSpanId = allSpans.get(1).id();
@@ -102,8 +103,8 @@ public class ITSpringRabbitTracing {
     testFixture.awaitMessageConsumed();
 
     List<Span> consumerSpans = new ArrayList<>();
-    consumerSpans.add(testFixture.consumerSpans.take());
-    consumerSpans.add(testFixture.consumerSpans.take());
+    consumerSpans.add(takeConsumerSpan());
+    consumerSpans.add(takeConsumerSpan());
 
     assertThat(consumerSpans)
         .filteredOn(s -> s.kind() == CONSUMER)
@@ -125,7 +126,7 @@ public class ITSpringRabbitTracing {
     testFixture.produceMessage();
     testFixture.awaitMessageConsumed();
 
-    Span span1 = testFixture.consumerSpans.take(), span2 = testFixture.consumerSpans.take();
+    Span span1 = takeConsumerSpan(), span2 = takeConsumerSpan();
     Span consumerSpan = span1.kind() == Span.Kind.CONSUMER ? span1 : span2;
     Span listenerSpan = consumerSpan == span1 ? span2 : span1;
 
@@ -138,9 +139,9 @@ public class ITSpringRabbitTracing {
     testFixture.awaitMessageConsumed();
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(testFixture.producerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
+    allSpans.add(takeProducerSpan());
+    allSpans.add(takeConsumerSpan());
+    allSpans.add(takeConsumerSpan());
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
     assertThat(links).extracting("parent", "child").containsExactly(
@@ -154,8 +155,8 @@ public class ITSpringRabbitTracing {
     testFixture.awaitMessageConsumed();
 
     List<Span> consumerSpans = new ArrayList<>();
-    consumerSpans.add(testFixture.producerSpans.take());
-    consumerSpans.add(testFixture.consumerSpans.take());
+    consumerSpans.add(takeProducerSpan());
+    consumerSpans.add(takeConsumerSpan());
 
     assertThat(consumerSpans)
         .filteredOn(s -> s.kind() == CONSUMER)
@@ -178,9 +179,9 @@ public class ITSpringRabbitTracing {
     testFixture.awaitMessageConsumed();
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(testFixture.producerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
-    allSpans.add(testFixture.consumerSpans.take());
+    allSpans.add(takeProducerSpan());
+    allSpans.add(takeConsumerSpan());
+    allSpans.add(takeConsumerSpan());
 
     assertThat(allSpans)
         .extracting(Span::name)
@@ -408,5 +409,23 @@ public class ITSpringRabbitTracing {
       HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       return consumer.capturedMessage;
     }
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeProducerSpan() throws InterruptedException {
+    Span result = testFixture.producerSpans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Producer span was not reported")
+        .isNotNull();
+    return result;
+  }
+
+  /** Call this to block until a span was reported */
+  Span takeConsumerSpan() throws InterruptedException {
+    Span result = testFixture.consumerSpans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Consumer span was not reported")
+        .isNotNull();
+    return result;
   }
 }

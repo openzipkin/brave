@@ -91,7 +91,10 @@ public abstract class ITHttp {
 
   /** Call this to block until a span was reported */
   protected Span takeSpan() throws InterruptedException {
-    Span result = spans.take();
+    Span result = spans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Span was not reported")
+        .isNotNull();
     assertThat(result.annotations())
         .extracting(Annotation::value)
         .doesNotContain(CONTEXT_LEAK);
