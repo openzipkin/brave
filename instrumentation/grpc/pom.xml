@@ -2,7 +2,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.1.4</version>
+    <version>5.1.5-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
