@@ -3,7 +3,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>5.1.4-SNAPSHOT</version>
+  <version>5.1.4</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -34,7 +34,7 @@
     <url>https://github.com/openzipkin/brave</url>
     <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
     <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>5.1.4</tag>
   </scm>
 
   <!-- Developer section is needed for Maven Central, but doesn't need to include each person -->
