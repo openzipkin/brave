@@ -14,7 +14,7 @@
 
     <!-- use the same values in ../pom.xml -->
     <zipkin.version>2.10.4</zipkin.version>
-    <zipkin-reporter.version>2.7.6</zipkin-reporter.version>
+    <zipkin-reporter.version>2.7.7</zipkin-reporter.version>
   </properties>
 
   <organization>
