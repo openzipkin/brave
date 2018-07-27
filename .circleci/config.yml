@@ -47,7 +47,8 @@ jobs:
           name: Tests
           command: |
             # skip license on circleci due to #1512
-            ./mvnw verify -Dlicense.skip=true
+            # use install, as opposed to verify, to ensure invoker tests use latest code
+            ./mvnw install -Dlicense.skip=true
 
       - run:
           name: Collect test reports
