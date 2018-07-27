@@ -36,7 +36,7 @@ abstract class ServletRuntime {
   abstract boolean isAsync(HttpServletRequest request);
 
   abstract void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-      HttpServletRequest request, Span span);
+      HttpServletRequest request, HttpServletResponse response, Span span);
 
   ServletRuntime() {
   }
@@ -72,38 +72,48 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, Span span) {
+        HttpServletRequest request, HttpServletResponse response, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
-      request.getAsyncContext().addListener(new TracingAsyncListener(handler, span));
+      TracingAsyncListener listener = new TracingAsyncListener(handler, request, response, span);
+      request.getAsyncContext().addListener(listener);
     }
 
     static final class TracingAsyncListener implements AsyncListener {
       final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
       final Span span;
+      // cache the original supplied request and response rather than look them up later
+      final HttpServletRequest suppliedRequest;
+      final HttpServletResponse suppliedResponse;
       volatile boolean complete; // multiple async events can occur, only complete once
 
-      TracingAsyncListener(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-          Span span) {
+      TracingAsyncListener(
+          HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+          HttpServletRequest suppliedRequest,
+          HttpServletResponse suppliedResponse,
+          Span span
+      ) {
         this.handler = handler;
+        this.suppliedRequest = suppliedRequest;
+        this.suppliedResponse = suppliedResponse;
         this.span = span;
       }
 
       @Override public void onComplete(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(adaptResponse(e), null, span);
+        handler.handleSend(adaptResponse(), null, span);
         complete = true;
       }
 
       @Override public void onTimeout(AsyncEvent e) {
         if (complete) return;
         span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-        handler.handleSend(adaptResponse(e), null, span);
+        handler.handleSend(adaptResponse(), null, span);
         complete = true;
       }
 
       @Override public void onError(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(adaptResponse(e), e.getThrowable(), span);
+        handler.handleSend(adaptResponse(), e.getThrowable(), span);
         complete = true;
       }
 
@@ -114,13 +124,12 @@ abstract class ServletRuntime {
       }
 
       @Override public String toString() {
-        return "TracingAsyncListener{" + span.context() + "}";
+        return "TracingAsyncListener{" + span + "}";
       }
-    }
 
-    static HttpServletResponse adaptResponse(AsyncEvent e) {
-      return ADAPTER.adaptResponse((HttpServletRequest) e.getSuppliedRequest(),
-          (HttpServletResponse) e.getSuppliedResponse());
+      HttpServletResponse adaptResponse() {
+        return ADAPTER.adaptResponse(suppliedRequest, suppliedResponse);
+      }
     }
   }
 
@@ -134,7 +143,7 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, Span span) {
+        HttpServletRequest request, HttpServletResponse response, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }
 
