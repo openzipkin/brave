@@ -13,7 +13,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
-    <dubbo.version>2.6.1</dubbo.version>
+    <dubbo.version>2.6.2</dubbo.version>
   </properties>
 
   <dependencies>
