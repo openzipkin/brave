@@ -345,6 +345,13 @@ public final class TraceContext extends SamplingFlags {
 
   static List<Object> ensureImmutable(List<Object> extra) {
     if (extra == Collections.EMPTY_LIST) return extra;
+    // avoid copying datastructure by trusting certain names.
+    String simpleName = extra.getClass().getSimpleName();
+    if (simpleName.equals("SingletonList")
+        || simpleName.startsWith("Unmodifiable")
+        || simpleName.contains("Immutable")) {
+      return extra;
+    }
     // Faster to make a copy than check the type to see if it is already a singleton list
     if (extra.size() == 1) return Collections.singletonList(extra.get(0));
     return Collections.unmodifiableList(new ArrayList<>(extra));
