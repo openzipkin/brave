@@ -1,0 +1,5 @@
+Import-Package: \
+  !brave.internal*,\
+  *
+Export-Package: \
+	brave.http
