@@ -14,17 +14,17 @@ import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PendingSpanRecordsTest {
+public class PendingSpansTest {
   Endpoint endpoint = Platform.get().endpoint();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   AtomicInteger clock = new AtomicInteger();
-  PendingSpanRecords map = new PendingSpanRecords(
+  PendingSpans map = new PendingSpans(
       endpoint, () -> clock.incrementAndGet() * 1000L, spans::add, new AtomicBoolean(false));
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
-    PendingSpanRecord span = map.getOrCreate(context);
+    PendingSpan span = map.getOrCreate(context);
 
     assertThat(span).isNotNull();
   }
@@ -37,10 +37,10 @@ public class PendingSpanRecordsTest {
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
     TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
-    PendingSpanRecord traceSpan = map.getOrCreate(trace);
-    PendingSpanRecord traceJoinSpan = map.getOrCreate(traceJoin);
-    PendingSpanRecord trace2Span = map.getOrCreate(trace2);
-    PendingSpanRecord traceChildSpan = map.getOrCreate(traceChild);
+    PendingSpan traceSpan = map.getOrCreate(trace);
+    PendingSpan traceJoinSpan = map.getOrCreate(traceJoin);
+    PendingSpan trace2Span = map.getOrCreate(trace2);
+    PendingSpan traceChildSpan = map.getOrCreate(traceChild);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
     assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
@@ -49,7 +49,7 @@ public class PendingSpanRecordsTest {
 
   @Test
   public void getOrCreate_cachesReference() {
-    PendingSpanRecord span = map.getOrCreate(context);
+    PendingSpan span = map.getOrCreate(context);
     assertThat(map.getOrCreate(context)).isSameAs(span);
   }
 
@@ -221,7 +221,7 @@ public class PendingSpanRecordsTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() {
-    PendingSpanRecords map = new PendingSpanRecords(endpoint, () -> 0, span ->
+    PendingSpans map = new PendingSpans(endpoint, () -> 0, span ->
     {
       throw new RuntimeException("die!");
     }, new AtomicBoolean(true));
@@ -248,22 +248,22 @@ public class PendingSpanRecordsTest {
   @Test
   public void toString_saysWhatReferentsAre() {
     assertThat(map.toString())
-        .isEqualTo("PendingSpanRecords[]");
+        .isEqualTo("PendingSpans[]");
 
     map.getOrCreate(context);
 
     assertThat(map.toString())
-        .isEqualTo("PendingSpanRecords[WeakReference(" + context + ")]");
+        .isEqualTo("PendingSpans[WeakReference(" + context + ")]");
 
     pretendGCHappened();
 
     assertThat(map.toString())
-        .isEqualTo("PendingSpanRecords[ClearedReference()]");
+        .isEqualTo("PendingSpans[ClearedReference()]");
   }
 
   @Test
   public void realKey_equalToItself() {
-    PendingSpanRecords.RealKey key = new PendingSpanRecords.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
     assertThat(key).isEqualTo(key);
     key.clear();
     assertThat(key).isEqualTo(key);
@@ -271,8 +271,8 @@ public class PendingSpanRecordsTest {
 
   @Test
   public void realKey_equalToEquivalent() {
-    PendingSpanRecords.RealKey key = new PendingSpanRecords.RealKey(context, map);
-    PendingSpanRecords.RealKey key2 = new PendingSpanRecords.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    PendingSpans.RealKey key2 = new PendingSpans.RealKey(context, map);
     assertThat(key).isEqualTo(key2);
     key.clear();
     assertThat(key).isNotEqualTo(key2);
@@ -282,7 +282,7 @@ public class PendingSpanRecordsTest {
 
   /** In reality, this clears a reference even if it is strongly held by the test! */
   void pretendGCHappened() {
-    ((PendingSpanRecords.RealKey) map.delegate.keySet().iterator().next()).clear();
+    ((PendingSpans.RealKey) map.delegate.keySet().iterator().next()).clear();
   }
 
   static void blockOnGC() {

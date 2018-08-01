@@ -26,15 +26,15 @@ import zipkin2.reporter.Reporter;
  * <p>The internal implementation is derived from WeakConcurrentMap by Rafael Winterhalter. See
  * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
  */
-public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
+public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
-  final ConcurrentMap<Object, PendingSpanRecord> delegate = new ConcurrentHashMap<>(64);
+  final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Endpoint endpoint;
   final Clock clock;
   final Reporter<zipkin2.Span> reporter;
   final AtomicBoolean noop;
 
-  public PendingSpanRecords(
+  public PendingSpans(
       Endpoint endpoint,
       Clock clock,
       Reporter<zipkin2.Span> reporter,
@@ -46,14 +46,14 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
     this.noop = noop;
   }
 
-  @Nullable PendingSpanRecord get(TraceContext context) {
+  @Nullable PendingSpan get(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     reportOrphanedSpans();
     return delegate.get(new LookupKey(context));
   }
 
-  public PendingSpanRecord getOrCreate(TraceContext context) {
-    PendingSpanRecord result = get(context);
+  public PendingSpan getOrCreate(TraceContext context) {
+    PendingSpan result = get(context);
     if (result != null) return result;
 
     // save overhead calculating time if the parent is in-progress (usually is)
@@ -61,11 +61,11 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
     if (clock == null) {
       clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
     }
-    SpanRecord data = new SpanRecord();
+    MutableSpan data = new MutableSpan();
     data.localEndpoint(endpoint);
     if (context.shared()) data.setShared();
-    PendingSpanRecord newSpan = new PendingSpanRecord(data, clock);
-    PendingSpanRecord previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
+    PendingSpan newSpan = new PendingSpan(data, clock);
+    PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
     return newSpan;
   }
@@ -75,7 +75,7 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
     long parentId = context.parentIdAsLong();
     // NOTE: we still look for lookup key even on root span, as a client span can be root, and a
     // server can share the same ID. Essentially, a shared span is similar to a child.
-    PendingSpanRecord parent;
+    PendingSpan parent;
     if (Boolean.TRUE.equals(context.shared())) {
       TraceContext.Builder lookupContext = context.toBuilder().shared(false);
       if (parentId != 0L) lookupContext.spanId(parentId);
@@ -89,9 +89,9 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
   }
 
   /** @see brave.Span#abandon() */
-  @Nullable public boolean remove(TraceContext context) {
+  public boolean remove(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    PendingSpanRecord last = delegate.remove(new LookupKey(context));
+    PendingSpan last = delegate.remove(new LookupKey(context));
     reportOrphanedSpans(); // also clears the reference relating to the recent remove
     return last != null;
   }
@@ -106,7 +106,7 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
     Span.Builder builder = null;
     long flushTime = 0L;
     while ((contextKey = (RealKey) poll()) != null) {
-      PendingSpanRecord value = delegate.remove(contextKey);
+      PendingSpan value = delegate.remove(contextKey);
       if (value == null || noop.get() || !contextKey.sampled) continue;
       if (builder != null) {
         builder.clear();
@@ -120,7 +120,7 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
           .id(contextKey.spanId)
           .addAnnotation(flushTime, "brave.flush");
 
-      value.span.writeTo(builderWithContextData);
+      value.state.writeTo(builderWithContextData);
       reporter.report(builderWithContextData.build());
     }
   }
@@ -194,10 +194,10 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
   public List<Span> snapshot() {
     List<zipkin2.Span> result = new ArrayList<>();
     zipkin2.Span.Builder spanBuilder = zipkin2.Span.newBuilder();
-    for (Map.Entry<Object, PendingSpanRecord> entry : delegate.entrySet()) {
-      PendingSpanRecords.RealKey contextKey = (PendingSpanRecords.RealKey) entry.getKey();
+    for (Map.Entry<Object, PendingSpan> entry : delegate.entrySet()) {
+      PendingSpans.RealKey contextKey = (PendingSpans.RealKey) entry.getKey();
       spanBuilder.clear().traceId(contextKey.traceIdHigh, contextKey.traceId).id(contextKey.spanId);
-      entry.getValue().span.writeTo(spanBuilder);
+      entry.getValue().state.writeTo(spanBuilder);
       result.add(spanBuilder.build());
       spanBuilder.clear();
     }
@@ -205,6 +205,6 @@ public final class PendingSpanRecords extends ReferenceQueue<TraceContext> {
   }
 
   @Override public String toString() {
-    return "PendingSpanRecords" + delegate.keySet();
+    return "PendingSpans" + delegate.keySet();
   }
 }
