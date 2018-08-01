@@ -1,8 +1,8 @@
 package brave;
 
 import brave.Tracing.SpanReporter;
-import brave.internal.recorder.PendingSpanRecords;
-import brave.internal.recorder.SpanRecord;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 
@@ -11,25 +11,25 @@ final class RealScopedSpan extends ScopedSpan {
 
   final TraceContext context;
   final Scope scope;
-  final SpanRecord record;
+  final MutableSpan state;
   final Clock clock;
-  final PendingSpanRecords pendingSpanRecords;
+  final PendingSpans pendingSpans;
   final SpanReporter spanReporter;
   final ErrorParser errorParser;
 
   RealScopedSpan(
       TraceContext context,
       Scope scope,
-      SpanRecord record,
+      MutableSpan state,
       Clock clock,
-      PendingSpanRecords pendingSpanRecords,
+      PendingSpans pendingSpans,
       SpanReporter spanReporter,
       ErrorParser errorParser
   ) {
     this.context = context;
     this.scope = scope;
-    this.pendingSpanRecords = pendingSpanRecords;
-    this.record = record;
+    this.pendingSpans = pendingSpans;
+    this.state = state;
     this.clock = clock;
     this.spanReporter = spanReporter;
     this.errorParser = errorParser;
@@ -44,12 +44,12 @@ final class RealScopedSpan extends ScopedSpan {
   }
 
   @Override public ScopedSpan annotate(String value) {
-    record.annotate(clock.currentTimeMicroseconds(), value);
+    state.annotate(clock.currentTimeMicroseconds(), value);
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
-    record.tag(key, value);
+    state.tag(key, value);
     return this;
   }
 
@@ -60,9 +60,9 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    if (!pendingSpanRecords.remove(context)) return; // don't double-report
-    spanReporter.report(context, record);
-    record.finishTimestamp(clock.currentTimeMicroseconds());
+    if (!pendingSpans.remove(context)) return; // don't double-report
+    spanReporter.report(context, state);
+    state.finishTimestamp(clock.currentTimeMicroseconds());
   }
 
   @Override public boolean equals(Object o) {

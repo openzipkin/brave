@@ -11,9 +11,9 @@ import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class SpanRecordTest {
+public class MutableSpanTest {
   @Test public void minimumDurationIsOne() {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
 
     span.startTimestamp(1L);
     span.finishTimestamp(1L);
@@ -22,7 +22,7 @@ public class SpanRecordTest {
   }
 
   @Test public void replacesTag() {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
 
     span.tag("1", "1");
     span.tag("foo", "bar");
@@ -39,7 +39,7 @@ public class SpanRecordTest {
   }
 
   @Test public void addsAnnotations() {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
 
     span.startTimestamp(1L);
     span.annotate(2L, "foo");
@@ -66,7 +66,7 @@ public class SpanRecordTest {
   }
 
   void finish(Kind braveKind, Span.Kind span2Kind) {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
     span.kind(braveKind);
     span.startTimestamp(1L);
     span.finishTimestamp(2L);
@@ -95,7 +95,7 @@ public class SpanRecordTest {
   }
 
   void flush(Kind braveKind, Span.Kind span2Kind) {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
     span.kind(braveKind);
     span.startTimestamp(1L);
     span.finishTimestamp(0L);
@@ -108,7 +108,7 @@ public class SpanRecordTest {
   }
 
   @Test public void remoteEndpoint() {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
 
     Endpoint endpoint = Endpoint.newBuilder().serviceName("server").build();
     span.kind(CLIENT);
@@ -122,7 +122,7 @@ public class SpanRecordTest {
 
   // This prevents the server startTimestamp from overwriting the client one on the collector
   @Test public void writeTo_sharedStatus() {
-    SpanRecord span = new SpanRecord();
+    MutableSpan span = new MutableSpan();
 
     span.setShared();
     span.startTimestamp(1L);
@@ -134,7 +134,7 @@ public class SpanRecordTest {
   }
 
   @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
-    SpanRecord flushed = new SpanRecord();
+    MutableSpan flushed = new MutableSpan();
     flushed.finishTimestamp(0L);
 
     assertThat(flushed).extracting(s -> s.startTimestamp, s -> s.finishTimestamp)
@@ -143,17 +143,17 @@ public class SpanRecordTest {
 
   /** We can't compute duration unless we started the span in the same tracer. */
   @Test public void writeTo_finishUnstartedIsSameAsFlush() {
-    SpanRecord finishWithTimestamp = new SpanRecord();
+    MutableSpan finishWithTimestamp = new MutableSpan();
     finishWithTimestamp.finishTimestamp(2L);
     Span.Builder finishWithTimestampBuilder = Span.newBuilder();
     finishWithTimestamp.writeTo(finishWithTimestampBuilder);
 
-    SpanRecord finishWithNoTimestamp = new SpanRecord();
+    MutableSpan finishWithNoTimestamp = new MutableSpan();
     finishWithNoTimestamp.finishTimestamp(0L);
     Span.Builder finishWithNoTimestampBuilder = Span.newBuilder();
     finishWithNoTimestamp.writeTo(finishWithNoTimestampBuilder);
 
-    SpanRecord flush = new SpanRecord();
+    MutableSpan flush = new MutableSpan();
     Span.Builder flushBuilder = Span.newBuilder();
     flush.writeTo(flushBuilder);
 
@@ -162,7 +162,7 @@ public class SpanRecordTest {
         .isEqualToComparingFieldByFieldRecursively(flushBuilder);
   }
 
-  Span writeTo(SpanRecord span) {
+  Span writeTo(MutableSpan span) {
     Span.Builder result = Span.newBuilder().traceId(0L, 1L).id(1L);
     span.writeTo(result);
     return result.build();

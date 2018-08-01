@@ -2,9 +2,9 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.PendingSpanRecord;
-import brave.internal.recorder.PendingSpanRecords;
-import brave.internal.recorder.SpanRecord;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -64,7 +64,7 @@ public class Tracer {
   final Clock clock;
   final Propagation.Factory propagationFactory;
   final Tracing.SpanReporter spanReporter; // for toString
-  final PendingSpanRecords pendingSpanRecords;
+  final PendingSpans pendingSpans;
   final Sampler sampler;
   final ErrorParser errorParser;
   final CurrentTraceContext currentTraceContext;
@@ -75,7 +75,7 @@ public class Tracer {
       Clock clock,
       Propagation.Factory propagationFactory,
       Tracing.SpanReporter spanReporter,
-      PendingSpanRecords pendingSpanRecords,
+      PendingSpans pendingSpans,
       Sampler sampler,
       ErrorParser errorParser,
       CurrentTraceContext currentTraceContext,
@@ -86,7 +86,7 @@ public class Tracer {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
     this.spanReporter = spanReporter;
-    this.pendingSpanRecords = pendingSpanRecords;
+    this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.errorParser = errorParser;
     this.currentTraceContext = currentTraceContext;
@@ -113,7 +113,7 @@ public class Tracer {
         clock,
         propagationFactory,
         spanReporter,
-        pendingSpanRecords,
+        pendingSpans,
         sampler,
         errorParser,
         currentTraceContext,
@@ -250,11 +250,11 @@ public class Tracer {
     TraceContext decorated = propagationFactory.decorate(context);
     if (isNoop(decorated)) return new NoopSpan(decorated);
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
-    PendingSpanRecord pendingSpanRecord = pendingSpanRecords.getOrCreate(decorated);
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated);
     return new RealSpan(decorated,
-        pendingSpanRecords,
-        pendingSpanRecord.span(),
-        pendingSpanRecord.clock(),
+        pendingSpans,
+        pendingSpan.state(),
+        pendingSpan.clock(),
         spanReporter,
         errorParser
     );
@@ -319,8 +319,8 @@ public class Tracer {
     // note: we don't need to decorate the context for propagation as it is only used for toString
     TraceContext context = currentTraceContext.get();
     if (context == null || isNoop(context)) return NoopSpanCustomizer.INSTANCE;
-    PendingSpanRecord pendingSpanRecord = pendingSpanRecords.getOrCreate(context);
-    return new RealSpanCustomizer(context, pendingSpanRecord.span(), pendingSpanRecord.clock());
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
+    return new RealSpanCustomizer(context, pendingSpan.state(), pendingSpan.clock());
   }
 
   /**
@@ -378,12 +378,12 @@ public class Tracer {
     TraceContext context = propagationFactory.decorate(newContextBuilder(parent, sampler).build());
     CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
     if (isNoop(context)) return new NoopScopedSpan(context, scope);
-    PendingSpanRecord pendingSpanRecord = pendingSpanRecords.getOrCreate(context);
-    Clock clock = pendingSpanRecord.clock();
-    SpanRecord record = pendingSpanRecord.span();
-    record.name(name);
-    record.startTimestamp(clock.currentTimeMicroseconds());
-    return new RealScopedSpan(context, scope, record, clock, pendingSpanRecords, spanReporter,
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
+    Clock clock = pendingSpan.clock();
+    MutableSpan state = pendingSpan.state();
+    state.name(name);
+    state.startTimestamp(clock.currentTimeMicroseconds());
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans, spanReporter,
         errorParser);
   }
 
@@ -409,7 +409,7 @@ public class Tracer {
 
   @Override public String toString() {
     TraceContext currentSpan = currentTraceContext.get();
-    List<zipkin2.Span> inFlight = pendingSpanRecords.snapshot();
+    List<zipkin2.Span> inFlight = pendingSpans.snapshot();
     return "Tracer{"
         + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
         + (inFlight.size() > 0 ? ("inFlight=" + inFlight + ", ") : "")

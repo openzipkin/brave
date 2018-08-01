@@ -1,8 +1,8 @@
 package brave;
 
 import brave.Tracing.SpanReporter;
-import brave.internal.recorder.PendingSpanRecords;
-import brave.internal.recorder.SpanRecord;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
@@ -10,24 +10,24 @@ import zipkin2.Endpoint;
 final class RealSpan extends Span {
 
   final TraceContext context;
-  final PendingSpanRecords pendingSpanRecords;
-  final SpanRecord record;
+  final PendingSpans pendingSpans;
+  final MutableSpan state;
   final Clock clock;
   final SpanReporter spanReporter;
   final ErrorParser errorParser;
   final RealSpanCustomizer customizer;
 
   RealSpan(TraceContext context,
-      PendingSpanRecords pendingSpanRecords,
-      SpanRecord record,
+      PendingSpans pendingSpans,
+      MutableSpan state,
       Clock clock,
       SpanReporter spanReporter,
       ErrorParser errorParser) {
     this.context = context;
-    this.pendingSpanRecords = pendingSpanRecords;
-    this.record = record;
+    this.pendingSpans = pendingSpans;
+    this.state = state;
     this.clock = clock;
-    this.customizer = new RealSpanCustomizer(context, record, clock);
+    this.customizer = new RealSpanCustomizer(context, state, clock);
     this.spanReporter = spanReporter;
     this.errorParser = errorParser;
   }
@@ -41,7 +41,7 @@ final class RealSpan extends Span {
   }
 
   @Override public SpanCustomizer customizer() {
-    return new RealSpanCustomizer(context, record, clock);
+    return new RealSpanCustomizer(context, state, clock);
   }
 
   @Override public Span start() {
@@ -49,22 +49,22 @@ final class RealSpan extends Span {
   }
 
   @Override public Span start(long timestamp) {
-    synchronized (record) {
-      record.startTimestamp(timestamp);
+    synchronized (state) {
+      state.startTimestamp(timestamp);
     }
     return this;
   }
 
   @Override public Span name(String name) {
-    synchronized (record) {
-      record.name(name);
+    synchronized (state) {
+      state.name(name);
     }
     return this;
   }
 
   @Override public Span kind(Kind kind) {
-    synchronized (record) {
-      record.kind(kind);
+    synchronized (state) {
+      state.kind(kind);
     }
     return this;
   }
@@ -77,36 +77,36 @@ final class RealSpan extends Span {
     // Modern instrumentation should not send annotations such as this, but we leniently
     // accept them rather than fail. This for example allows old bridges like to Brave v3 to work
     if ("cs".equals(value)) {
-      synchronized (record) {
-        record.kind(Span.Kind.CLIENT);
-        record.startTimestamp(timestamp);
+      synchronized (state) {
+        state.kind(Span.Kind.CLIENT);
+        state.startTimestamp(timestamp);
       }
     } else if ("sr".equals(value)) {
-      synchronized (record) {
-        record.kind(Span.Kind.SERVER);
-        record.startTimestamp(timestamp);
+      synchronized (state) {
+        state.kind(Span.Kind.SERVER);
+        state.startTimestamp(timestamp);
       }
     } else if ("cr".equals(value)) {
-      synchronized (record) {
-        record.kind(Span.Kind.CLIENT);
+      synchronized (state) {
+        state.kind(Span.Kind.CLIENT);
       }
       finish(timestamp);
     } else if ("ss".equals(value)) {
-      synchronized (record) {
-        record.kind(Span.Kind.SERVER);
+      synchronized (state) {
+        state.kind(Span.Kind.SERVER);
       }
       finish(timestamp);
     } else {
-      synchronized (record) {
-        record.annotate(timestamp, value);
+      synchronized (state) {
+        state.annotate(timestamp, value);
       }
     }
     return this;
   }
 
   @Override public Span tag(String key, String value) {
-    synchronized (record) {
-      record.tag(key, value);
+    synchronized (state) {
+      state.tag(key, value);
     }
     return this;
   }
@@ -117,8 +117,8 @@ final class RealSpan extends Span {
   }
 
   @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
-    synchronized (record) {
-      record.remoteEndpoint(remoteEndpoint);
+    synchronized (state) {
+      state.remoteEndpoint(remoteEndpoint);
     }
     return this;
   }
@@ -128,20 +128,20 @@ final class RealSpan extends Span {
   }
 
   @Override public void finish(long timestamp) {
-    if (!pendingSpanRecords.remove(context)) return;
-    synchronized (record) {
-      record.finishTimestamp(timestamp);
+    if (!pendingSpans.remove(context)) return;
+    synchronized (state) {
+      state.finishTimestamp(timestamp);
     }
-    spanReporter.report(context, record);
+    spanReporter.report(context, state);
   }
 
   @Override public void abandon() {
-    pendingSpanRecords.remove(context);
+    pendingSpans.remove(context);
   }
 
   @Override public void flush() {
     abandon();
-    spanReporter.report(context, record);
+    spanReporter.report(context, state);
   }
 
   @Override public String toString() {

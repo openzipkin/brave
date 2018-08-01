@@ -14,7 +14,7 @@ import zipkin2.Span;
  * <p>While in-flight, the data is synchronized where necessary. When exposed to users, it can be
  * mutated without synchronization.
  */
-public final class SpanRecord {
+public final class MutableSpan {
   /*
    * One of these objects is allocated for each in-flight span, so we try to be parsimonious on things
    * like array allocation and object reference size.
@@ -123,6 +123,6 @@ public final class SpanRecord {
     if (shared) result.shared(true);
   }
 
-  SpanRecord(){ // intentionally hidden
+  MutableSpan(){ // intentionally hidden
   }
 }

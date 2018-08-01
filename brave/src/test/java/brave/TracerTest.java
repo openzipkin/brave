@@ -88,14 +88,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("pendingSpanRecords.endpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.endpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("pendingSpanRecords.endpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.endpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -103,7 +103,7 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("pendingSpanRecords.endpoint")
+    assertThat(tracer).extracting("pendingSpans.endpoint")
         .containsExactly(endpoint);
   }
 

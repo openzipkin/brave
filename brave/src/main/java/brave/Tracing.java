@@ -2,8 +2,8 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.PendingSpanRecords;
-import brave.internal.recorder.SpanRecord;
+import brave.internal.recorder.PendingSpans;
+import brave.internal.recorder.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -71,7 +71,7 @@ public abstract class Tracing implements Closeable {
    * @param context references a potentially unstarted span you'd like a clock correlated with
    */
   public final Clock clock(TraceContext context) {
-    return tracer().pendingSpanRecords.getOrCreate(context).clock();
+    return tracer().pendingSpans.getOrCreate(context).clock();
   }
 
   abstract public ErrorParser errorParser();
@@ -300,7 +300,7 @@ public abstract class Tracing implements Closeable {
           builder.clock,
           builder.propagationFactory,
           reporter,
-          new PendingSpanRecords(builder.endpoint, clock, reporter, noop),
+          new PendingSpans(builder.endpoint, clock, reporter, noop),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
@@ -366,7 +366,7 @@ public abstract class Tracing implements Closeable {
       this.noop = noop;
     }
 
-    void report(TraceContext context, SpanRecord span) {
+    void report(TraceContext context, MutableSpan span) {
       zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
           .traceId(context.traceIdHigh(), context.traceId())
           .parentId(context.parentIdAsLong())
