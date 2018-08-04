@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Endpoint;
 
 import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,94 +29,78 @@ public class TracingJdbcEventListenerTest {
   @Mock ConnectionInformation ci;
 
   @Mock Span span;
-  String url = "jdbc:mysql://127.0.0.1:5555/mydatabase";
+  String url = "jdbc:mysql://1.2.3.4:5555/mydatabase";
   String urlWithServiceName = url + "?zipkinServiceName=mysql_service&foo=bar";
   String urlWithEmptyServiceName = url + "?zipkinServiceName=&foo=bar";
   String urlWithWhiteSpace =
-      "jdbc:sqlserver://127.0.0.1;databaseName=mydatabase;applicationName=Microsoft JDBC Driver for SQL Server";
+      "jdbc:sqlserver://1.2.3.4;databaseName=mydatabase;applicationName=Microsoft JDBC Driver for SQL Server";
 
-
-  @Test public void parseServerAddress_ipAndPortFromUrl() throws SQLException {
+  @Test public void parseServerIpAndPort_IpAndPortFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().ip("127.0.0.1").port(5555).build());
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
+  @Test public void parseServerIpAndPort_serviceNameFromDatabaseName() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(
-        Endpoint.newBuilder().serviceName("mydatabase").ip("127.0.0.1").port(5555).build()
-    );
+    verify(span).remoteServiceName("mydatabase");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_serviceNameFromUrl() throws SQLException {
+  @Test public void parseServerIpAndPort_serviceNameFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithServiceName);
 
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(
-        Endpoint.newBuilder().serviceName("mysql_service").ip("127.0.0.1").port(5555).build()
-    );
+    verify(span).remoteServiceName("mysql_service");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_emptyServiceNameFromUrl() throws SQLException {
+  @Test public void parseServerIpAndPort_emptyServiceNameFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithEmptyServiceName);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(
-        Endpoint.newBuilder().serviceName("mydatabase").ip("127.0.0.1").port(5555).build()
-    );
+    verify(span).remoteServiceName("mydatabase");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_overrideServiceName() throws SQLException {
+  @Test public void parseServerIpAndPort_overrideServiceName() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("foo", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("foo", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(
-        Endpoint.newBuilder().serviceName("foo").ip("127.0.0.1").port(5555).build()
-    );
+    verify(span).remoteServiceName("foo");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_doesntNsLookup() throws SQLException {
-    when(connection.getMetaData()).thenReturn(metaData);
-    when(metaData.getURL()).thenReturn("jdbc:mysql://localhost:5555/mydatabase");
-
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
-
-    verifyNoMoreInteractions(span);
-  }
-
-  @Test public void parseServerAddress_doesntCrash() throws SQLException {
+  @Test public void parseServerIpAndPort_doesntCrash() throws SQLException {
     when(connection.getMetaData()).thenThrow(new SQLException());
 
-    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("", false).parseServerIpAndPort(connection, span);
 
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseServerAddress_withWhiteSpace() throws SQLException {
+  @Test public void parseServerIpAndPort_withWhiteSpace() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithWhiteSpace);
 
-    new TracingJdbcEventListener("foo", false).parseServerAddress(connection, span);
+    new TracingJdbcEventListener("foo", false).parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(
-        Endpoint.newBuilder().serviceName("foo").build()
-    );
+    verify(span).remoteServiceName("foo");
   }
 
   @Test public void nullSqlWontNPE() throws SQLException {

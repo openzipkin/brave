@@ -72,10 +72,8 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
 
     if (!consumerSpan.isNoop()) {
       consumerSpan.start();
+      if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
       tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
-      if (remoteServiceName != null) {
-        consumerSpan.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
-      }
       consumerSpan.finish();
       listenerSpan.start(); // not using scoped span as we want to start late
     }

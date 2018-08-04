@@ -29,18 +29,19 @@ import zipkin2.reporter.Reporter;
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
-  final Endpoint endpoint;
+  // Used when flushing spans
+  final Endpoint localEndpoint;
   final Clock clock;
   final Reporter<zipkin2.Span> reporter;
   final AtomicBoolean noop;
 
   public PendingSpans(
-      Endpoint endpoint,
+      Endpoint localEndpoint,
       Clock clock,
       Reporter<zipkin2.Span> reporter,
       AtomicBoolean noop
   ) {
-    this.endpoint = endpoint;
+    this.localEndpoint = localEndpoint;
     this.clock = clock;
     this.reporter = reporter;
     this.noop = noop;
@@ -62,7 +63,6 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
     }
     MutableSpan data = new MutableSpan();
-    data.localEndpoint(endpoint);
     if (context.shared()) data.setShared();
     PendingSpan newSpan = new PendingSpan(data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
@@ -118,6 +118,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
           .traceId(contextKey.traceIdHigh, contextKey.traceId)
           .id(contextKey.spanId)
+          .localEndpoint(localEndpoint)
           .addAnnotation(flushTime, "brave.flush");
 
       value.state.writeTo(builderWithContextData);

@@ -4,6 +4,7 @@ import brave.Span;
 import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -23,7 +24,6 @@ import com.alibaba.dubbo.rpc.support.RpcUtils;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.Future;
-import zipkin2.Endpoint;
 
 @Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
 // http://dubbo.io/books/dubbo-dev-book-en/impls/filter.html
@@ -63,19 +63,12 @@ public final class TracingFilter implements Filter {
     }
 
     if (!span.isNoop()) {
-      span.kind(kind).start();
+      span.kind(kind);
       String service = invoker.getInterface().getSimpleName();
       String method = RpcUtils.getMethodName(invocation);
-
-      span.kind(kind);
       span.name(service + "/" + method);
-
-      InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
-      Endpoint.Builder remoteEndpoint = Endpoint.newBuilder().port(remoteAddress.getPort());
-      if (!remoteEndpoint.parseIp(remoteAddress.getAddress())) {
-        remoteEndpoint.parseIp(remoteAddress.getHostName());
-      }
-      span.remoteEndpoint(remoteEndpoint.build());
+      parseRemoteAddress(rpcContext, span);
+      span.start();
     }
 
     boolean isOneway = false, deferFinish = false;
@@ -101,6 +94,12 @@ public final class TracingFilter implements Filter {
         span.finish();
       }
     }
+  }
+
+  static void parseRemoteAddress(RpcContext rpcContext, Span span) {
+    InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
+    if (remoteAddress == null) return;
+    span.remoteIpAndPort(Platform.get().getHostString(remoteAddress), remoteAddress.getPort());
   }
 
   static void onError(Throwable error, Span span) {

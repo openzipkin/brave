@@ -6,7 +6,6 @@ import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import zipkin2.Endpoint;
 
 /**
  * This standardizes a way to instrument http servers, particularly in a way that encourages use of
@@ -71,12 +70,13 @@ public final class HttpServerHandler<Req, Resp>
    */
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
     Span span = nextSpan(extractor.extract(carrier), request);
-    span.kind(Span.Kind.SERVER);
     return handleStart(request, span);
   }
 
-  @Override boolean parseRemoteEndpoint(Req request, Endpoint.Builder remoteEndpoint) {
-    return adapter.parseClientAddress(request, remoteEndpoint);
+  @Override void parseRequest(Req request, Span span) {
+    span.kind(Span.Kind.SERVER);
+    adapter.parseClientIpAndPort(request, span);
+    parser.request(adapter, request, span.customizer());
   }
 
   /** Creates a potentially noop span representing this request */

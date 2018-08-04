@@ -27,7 +27,6 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.function.Supplier;
-import zipkin2.Endpoint;
 
 /**
  * A MySQL query interceptor that will report to Zipkin how long each query takes.
@@ -56,7 +55,7 @@ public class TracingQueryInterceptor implements QueryInterceptor {
     int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
     span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
-    parseServerAddress(connection, span);
+    parseServerIpAndPort(connection, span);
     span.start();
     return null;
   }
@@ -83,10 +82,9 @@ public class TracingQueryInterceptor implements QueryInterceptor {
    * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
    * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/database}, or 3306 if absent.
    */
-  static void parseServerAddress(MysqlConnection connection, Span span) {
+  static void parseServerIpAndPort(MysqlConnection connection, Span span) {
     try {
       URI url = URI.create(connection.getURL().substring(5)); // strip "jdbc:"
-      int port = url.getPort() == -1 ? 3306 : url.getPort();
       String remoteServiceName = connection.getProperties().getProperty("zipkinServiceName");
       if (remoteServiceName == null || "".equals(remoteServiceName)) {
         String databaseName = getDatabaseName(connection);
@@ -96,9 +94,11 @@ public class TracingQueryInterceptor implements QueryInterceptor {
           remoteServiceName = "mysql";
         }
       }
-      Endpoint.Builder builder = Endpoint.newBuilder().serviceName(remoteServiceName).port(port);
-      builder.parseIp(getHost(connection));
-      span.remoteEndpoint(builder.build());
+      span.remoteServiceName(remoteServiceName);
+      String host = getHost(connection);
+      if (host != null) {
+        span.remoteIpAndPort(host, url.getPort() == -1 ? 3306 : url.getPort());
+      }
     } catch (Exception e) {
       // remote address is optional
     }
@@ -112,10 +112,8 @@ public class TracingQueryInterceptor implements QueryInterceptor {
   }
 
   private static String getHost(MysqlConnection connection) {
-    if (connection instanceof JdbcConnection) {
-      return ((JdbcConnection) connection).getHost();
-    }
-    return "";
+    if (!(connection instanceof JdbcConnection)) return null;
+    return ((JdbcConnection) connection).getHost();
   }
 
   @Override

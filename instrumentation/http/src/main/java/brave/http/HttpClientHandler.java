@@ -6,7 +6,6 @@ import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import zipkin2.Endpoint;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -42,8 +41,7 @@ public final class HttpClientHandler<Req, Resp>
   final Tracer tracer;
   final Sampler sampler;
   final HttpSampler httpSampler;
-  final String serverName;
-  final boolean serverNameSet;
+  @Nullable final String serverName;
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
     super(
@@ -54,8 +52,7 @@ public final class HttpClientHandler<Req, Resp>
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
     this.httpSampler = httpTracing.clientSampler();
-    this.serverName = httpTracing.serverName();
-    this.serverNameSet = !serverName.equals("");
+    this.serverName = !"".equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
   }
 
   /**
@@ -70,8 +67,8 @@ public final class HttpClientHandler<Req, Resp>
   }
 
   /**
-   * Like {@link #handleSend(TraceContext.Injector, Object)}, except for when the carrier of
-   * trace data is not the same as the request.
+   * Like {@link #handleSend(TraceContext.Injector, Object)}, except for when the carrier of trace
+   * data is not the same as the request.
    *
    * @see HttpClientParser#request(HttpAdapter, Object, SpanCustomizer)
    */
@@ -97,13 +94,13 @@ public final class HttpClientHandler<Req, Resp>
    */
   public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
-    span.kind(Span.Kind.CLIENT);
     return handleStart(request, span);
   }
 
-  @Override boolean parseRemoteEndpoint(Req request, Endpoint.Builder remoteEndpoint) {
-    remoteEndpoint.serviceName(serverName);
-    return adapter.parseServerAddress(request, remoteEndpoint) || serverNameSet;
+  @Override void parseRequest(Req request, Span span) {
+    span.kind(Span.Kind.CLIENT);
+    if (serverName != null) span.remoteServiceName(serverName);
+    parser.request(adapter, request, span.customizer());
   }
 
   /**

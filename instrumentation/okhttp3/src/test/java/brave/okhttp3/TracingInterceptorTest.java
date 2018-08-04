@@ -2,14 +2,13 @@ package brave.okhttp3;
 
 import brave.Span;
 import brave.Tracing;
-import brave.http.HttpTracing;
 import brave.propagation.StrictCurrentTraceContext;
-import okhttp3.Connection;
+import okhttp3.Interceptor;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.reporter.Reporter;
 
 import static org.mockito.Mockito.verify;
@@ -22,13 +21,12 @@ public class TracingInterceptorTest {
       .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(Reporter.NOOP)
       .build();
-  TracingInterceptor filter = new TracingInterceptor(HttpTracing.create(tracing));
-  @Mock Connection connection;
+  @Mock Interceptor.Chain chain;
   @Mock Span span;
 
-  @Test public void parseServerAddress_skipsOnNoop() {
+  @Test public void parseRouteAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
-    filter.parseServerAddress(connection, span);
+    TracingInterceptor.parseRouteAddress(chain, span);
 
     verify(span).isNoop();
     verifyNoMoreInteractions(span);

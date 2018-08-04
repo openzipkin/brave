@@ -4,7 +4,6 @@ import brave.Tracing.SpanReporter;
 import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
-import zipkin2.Endpoint;
 
 /** This wraps the public api and guards access to a mutable span. */
 final class RealSpan extends Span {
@@ -116,11 +115,17 @@ final class RealSpan extends Span {
     return this;
   }
 
-  @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
+  @Override public Span remoteServiceName(String remoteServiceName) {
     synchronized (state) {
-      state.remoteEndpoint(remoteEndpoint);
+      state.remoteServiceName(remoteServiceName);
     }
     return this;
+  }
+
+  @Override public boolean remoteIpAndPort(String remoteIp, int remotePort) {
+    synchronized (state) {
+      return state.remoteIpAndPort(remoteIp, remotePort);
+    }
   }
 
   @Override public void finish() {

@@ -110,9 +110,15 @@ public class MutableSpanTest {
   @Test public void remoteEndpoint() {
     MutableSpan span = new MutableSpan();
 
-    Endpoint endpoint = Endpoint.newBuilder().serviceName("server").build();
+    Endpoint endpoint = Endpoint.newBuilder()
+        .serviceName("fooService")
+        .ip("1.2.3.4")
+        .port(80)
+        .build();
+
     span.kind(CLIENT);
-    span.remoteEndpoint(endpoint);
+    span.remoteServiceName(endpoint.serviceName());
+    span.remoteIpAndPort(endpoint.ipv4(), endpoint.port());
     span.startTimestamp(1L);
     span.finishTimestamp(2L);
 

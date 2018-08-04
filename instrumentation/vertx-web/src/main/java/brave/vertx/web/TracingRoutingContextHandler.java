@@ -13,11 +13,11 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
 import java.util.concurrent.atomic.AtomicBoolean;
-import zipkin2.Endpoint;
 
 /**
  * <h3>Why not rely on {@code context.request().endHandler()} to finish a span?</h3>
- * <p>There can be only one {@link HttpServerRequest#endHandler(Handler) end handler}. We can't rely
+ * <p>There can be only one {@link HttpServerRequest#endHandler(Handler) end handler}. We can't
+ * rely
  * on {@code endHandler()} as a user can override it in their route. If they did, we'd leak an
  * unfinished span. For this reason, we speculatively use both an end handler and an end header
  * handler.
@@ -27,8 +27,8 @@ import zipkin2.Endpoint;
  *
  * <h3>Why use a thread local for the http route when parsing {@linkplain HttpServerResponse}?</h3>
  * <p>When parsing the response, we use a thread local to make the current route's path visible.
- * This is an alternative to wrapping {@linkplain HttpServerResponse} or declaring a custom type.
- * We don't wrap {@linkplain HttpServerResponse}, because this would lock the instrumentation to the
+ * This is an alternative to wrapping {@linkplain HttpServerResponse} or declaring a custom type. We
+ * don't wrap {@linkplain HttpServerResponse}, because this would lock the instrumentation to the
  * signatures currently present on it (for example, if a method is added, we'd have to recompile).
  * If a wrapper is eventually provided by vertx, we could use that, but it didn't exist at the time.
  * We could also define a custom composite type like ResponseWithTemplate. However, this would
@@ -154,15 +154,14 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return response.getStatusCode();
     }
 
-    @Override
-    public boolean parseClientAddress(HttpServerRequest req, Endpoint.Builder builder) {
-      if (super.parseClientAddress(req, builder)) return true;
+    /**
+     * This sets the client IP:port to the {@linkplain HttpServerRequest#remoteAddress() remote
+     * address} if the {@link HttpServerAdapter#parseClientIpAndPort default parsing} fails.
+     */
+    @Override public boolean parseClientIpAndPort(HttpServerRequest req, Span span) {
+      if (parseClientIpFromXForwardedFor(req, span)) return true;
       SocketAddress addr = req.remoteAddress();
-      if (builder.parseIp(addr.host())) {
-        builder.port(addr.port());
-        return true;
-      }
-      return false;
+      return span.remoteIpAndPort(addr.host(), addr.port());
     }
   }
 }

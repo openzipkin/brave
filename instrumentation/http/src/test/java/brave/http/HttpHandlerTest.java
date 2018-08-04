@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.Span;
 import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.StrictCurrentTraceContext;
@@ -8,14 +9,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
-import zipkin2.Endpoint;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,8 +31,7 @@ public class HttpHandlerTest {
 
   @Before public void init() {
     handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override boolean parseRemoteEndpoint(Object request, Endpoint.Builder remoteEndpoint) {
-        return false;
+      @Override void parseRequest(Object request, Span span) {
       }
     };
     when(span.context()).thenReturn(context);
@@ -50,55 +46,26 @@ public class HttpHandlerTest {
     verify(span, never()).start();
   }
 
-  @Test public void handleStart_parsesTagsWithCustomizer() {
-    when(adapter.method(request)).thenReturn("GET");
-    when(span.customizer()).thenReturn(spanCustomizer);
-
-    handler.handleStart(request, span);
-
-    verify(spanCustomizer).name("GET");
-    verify(spanCustomizer).tag("http.method", "GET");
-    verifyNoMoreInteractions(spanCustomizer);
-  }
-
   @Test public void handleStart_parsesTagsInScope() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
+      @Override void parseRequest(Object request, Span span) {
         assertThat(currentTraceContext.get()).isNotNull();
       }
-    }) {
-      @Override boolean parseRemoteEndpoint(Object request, Endpoint.Builder remoteEndpoint) {
-        return false;
-      }
     };
 
     handler.handleStart(request, span);
-  }
-
-  @Test public void handleStart_skipsRemoteEndpointWhenNotParsed() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override boolean parseRemoteEndpoint(Object request, Endpoint.Builder remoteEndpoint) {
-        return false;
-      }
-    };
-
-    handler.handleStart(request, span);
-
-    verify(span, never()).remoteEndpoint(any(Endpoint.class));
   }
 
   @Test public void handleStart_addsRemoteEndpointWhenParsed() {
     handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override boolean parseRemoteEndpoint(Object request, Endpoint.Builder remoteEndpoint) {
-        remoteEndpoint.serviceName("romeo");
-        return true;
+      @Override void parseRequest(Object request, Span span) {
+        span.remoteIpAndPort("1.2.3.4", 0);
       }
     };
 
     handler.handleStart(request, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("romeo").build());
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
   }
 
   @Test public void handleFinish_nothingOnNoop_success() {
@@ -135,8 +102,7 @@ public class HttpHandlerTest {
         assertThat(currentTraceContext.get()).isNotNull();
       }
     }) {
-      @Override boolean parseRemoteEndpoint(Object request, Endpoint.Builder remoteEndpoint) {
-        return false;
+      @Override void parseRequest(Object request, Span span) {
       }
     };
 
@@ -144,11 +110,9 @@ public class HttpHandlerTest {
   }
 
   @Test public void handleFinish_finishesWhenSpanNotInScope() {
-    doAnswer(new Answer() {
-      @Override public Object answer(InvocationOnMock invocation) {
-        assertThat(currentTraceContext.get()).isNull();
-        return null;
-      }
+    doAnswer(invocation -> {
+      assertThat(currentTraceContext.get()).isNull();
+      return null;
     }).when(span).finish();
 
     handler.handleFinish(response, null, span);
