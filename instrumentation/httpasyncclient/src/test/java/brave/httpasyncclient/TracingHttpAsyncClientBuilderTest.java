@@ -1,4 +1,4 @@
-package brave.httpclient;
+package brave.httpasyncclient;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -14,14 +14,14 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpAdapterTest {
+public class TracingHttpAsyncClientBuilderTest {
   @Mock HttpRequestWrapper request;
   @Mock brave.Span span;
 
   @Test public void parseTargetAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
-    HttpAdapter.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
 
     verify(span).isNoop();
     verifyNoMoreInteractions(span);
@@ -33,7 +33,7 @@ public class HttpAdapterTest {
     when(request.getTarget()).thenReturn(
         new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http"));
 
-    HttpAdapter.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", -1);
@@ -44,7 +44,7 @@ public class HttpAdapterTest {
     when(span.isNoop()).thenReturn(false);
     when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4"));
 
-    HttpAdapter.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", -1);
@@ -57,7 +57,7 @@ public class HttpAdapterTest {
 
     when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4", 9999));
 
-    HttpAdapter.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", 9999);

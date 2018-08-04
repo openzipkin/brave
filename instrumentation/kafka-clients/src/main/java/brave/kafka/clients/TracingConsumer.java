@@ -26,7 +26,6 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
-import zipkin2.Endpoint;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
@@ -77,9 +76,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           Span span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
             span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
-            if (remoteServiceName != null) {
-              span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
-            }
+            if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
             span.start().finish(); // span won't be shared by other records
           }
           // remove prior propagation headers from the record
@@ -88,12 +85,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         }
       }
     }
-    consumerSpansForTopic.values().forEach(span -> {
-      if (remoteServiceName != null) {
-        span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
-      }
-      span.finish();
-    });
+    consumerSpansForTopic.values()
+        .forEach(span -> span.remoteServiceName(remoteServiceName).finish());
     return records;
   }
 

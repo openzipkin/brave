@@ -22,7 +22,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Endpoint;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -34,56 +33,47 @@ public class TracingQueryInterceptorTest {
   @Mock Span span;
   String url = "jdbc:mysql://myhost:5555/mydatabase";
 
-  @Test public void parseServerAddress_ipFromHost_portFromUrl() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1");
+  @Test public void parseServerIpAndPort_ipFromHost_portFromUrl() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1");
+  @Test public void parseServerIpAndPort_serviceNameFromDatabaseName() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4");
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql-mydatabase")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql-mydatabase");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_propertiesOverrideServiceName() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1").setProperty("zipkinServiceName", "foo");
+  @Test public void parseServerIpAndPort_propertiesOverrideServiceName() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "foo");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("foo")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("foo");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_emptyZipkinServiceNameIgnored() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1").setProperty("zipkinServiceName", "");
+  @Test public void parseServerIpAndPort_emptyZipkinServiceNameIgnored() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_doesntNsLookup() throws SQLException {
-    setupAndReturnPropertiesForHost("localhost");
-
-    TracingQueryInterceptor.parseServerAddress(connection, span);
-
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .port(5555).build());
-  }
-
-  @Test public void parseServerAddress_doesntCrash() {
+  @Test public void parseServerIpAndPort_doesntCrash() {
     when(connection.getURL()).thenThrow(new RuntimeException());
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
     verifyNoMoreInteractions(span);
   }

@@ -33,9 +33,7 @@ public abstract class HttpAdapter<Req, Resp> {
    */
   @Nullable public abstract String url(Req request);
 
-  /**
-   * Returns one value corresponding to the specified header, or null.
-   */
+  /** Returns one value corresponding to the specified header, or null. */
   @Nullable public abstract String requestHeader(Req request, String name);
 
   /**

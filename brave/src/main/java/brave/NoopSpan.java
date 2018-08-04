@@ -1,7 +1,6 @@
 package brave;
 
 import brave.propagation.TraceContext;
-import zipkin2.Endpoint;
 
 final class NoopSpan extends Span {
 
@@ -47,8 +46,13 @@ final class NoopSpan extends Span {
     return this;
   }
 
-  @Override public Span remoteEndpoint(Endpoint endpoint) {
+  @Override public Span remoteServiceName(String remoteServiceName) {
     return this;
+  }
+
+  /** Returns true in order to prevent secondary conditions when in no-op mode */
+  @Override public boolean remoteIpAndPort(String remoteIp, int port) {
+    return true;
   }
 
   @Override public Span tag(String key, String value) {

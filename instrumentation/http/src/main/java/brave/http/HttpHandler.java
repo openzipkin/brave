@@ -4,7 +4,6 @@ import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import zipkin2.Endpoint;
 
 abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
 
@@ -22,12 +21,7 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
     if (span.isNoop()) return span;
     Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      parser.request(adapter, request, span.customizer());
-
-      Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
-      if (parseRemoteEndpoint(request, remoteEndpoint)) {
-        span.remoteEndpoint(remoteEndpoint.build());
-      }
+      parseRequest(request, span);
     } finally {
       ws.close();
     }
@@ -36,8 +30,8 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
     return span.start();
   }
 
-  /** parses the remote endpoint while the current span is in scope (for logging for example) */
-  abstract boolean parseRemoteEndpoint(Req request, Endpoint.Builder remoteEndpoint);
+  /** parses remote IP:port and tags while the span is in scope (for logging for example) */
+  abstract void parseRequest(Req request, Span span);
 
   void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;

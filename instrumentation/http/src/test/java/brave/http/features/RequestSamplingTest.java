@@ -19,7 +19,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -30,7 +29,7 @@ public class RequestSamplingTest {
 
   ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
   Tracing tracing = Tracing.newBuilder()
-      .endpoint(Endpoint.newBuilder().serviceName("server").build())
+      .localServiceName("server")
       .currentTraceContext(new StrictCurrentTraceContext())
       .spanReporter(spans::push)
       .build();

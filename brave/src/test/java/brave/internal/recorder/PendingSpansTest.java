@@ -1,6 +1,5 @@
 package brave.internal.recorder;
 
-import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -15,7 +14,7 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PendingSpansTest {
-  Endpoint endpoint = Platform.get().endpoint();
+  Endpoint endpoint = Endpoint.newBuilder().serviceName("PendingSpansTest").build();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   AtomicInteger clock = new AtomicInteger();

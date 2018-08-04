@@ -18,7 +18,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.powermock.api.mockito.PowerMockito.mock;
@@ -30,7 +29,6 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest({Platform.class, NetworkInterface.class})
 public class PlatformTest {
-  Endpoint unknownEndpoint = Endpoint.newBuilder().serviceName("unknown").build();
   Platform platform = Platform.Jre7.buildIfSupported();
 
   @Test public void clock_hasNiceToString_jre7() {
@@ -71,78 +69,81 @@ public class PlatformTest {
         .isEqualTo("5759e988ffffffff");
   }
 
-  @Test public void localEndpoint_lazySet() {
-    assertThat(platform.endpoint).isNull(); // sanity check setup
+  @Test public void linkLocalIp_lazySet() {
+    assertThat(platform.linkLocalIp).isNull(); // sanity check setup
 
-    assertThat(platform.endpoint())
+    // cannot test as the there is no link local IP
+    if (platform.produceLinkLocalIp() == null) return;
+
+    assertThat(platform.linkLocalIp())
         .isNotNull();
   }
 
-  @Test public void localEndpoint_sameInstance() {
-    assertThat(platform.endpoint())
-        .isSameAs(platform.endpoint());
+  @Test public void linkLocalIp_sameInstance() {
+    assertThat(platform.linkLocalIp())
+        .isSameAs(platform.linkLocalIp());
   }
 
-  @Test public void produceLocalEndpoint_exceptionReadingNics() throws Exception {
+  @Test public void produceLinkLocalIp_exceptionReadingNics() throws Exception {
     mockStatic(NetworkInterface.class);
     when(NetworkInterface.getNetworkInterfaces()).thenThrow(SocketException.class);
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.produceLinkLocalIp())
+        .isNull();
   }
 
   /** possible albeit very unlikely */
-  @Test public void produceLocalEndpoint_noNics() throws Exception {
+  @Test public void produceLinkLocalIp_noNics() throws Exception {
     mockStatic(NetworkInterface.class);
 
     when(NetworkInterface.getNetworkInterfaces())
         .thenReturn(null);
 
-    assertThat(platform.endpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.linkLocalIp())
+        .isNull();
 
     when(NetworkInterface.getNetworkInterfaces())
         .thenReturn(new Vector<NetworkInterface>().elements());
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.produceLinkLocalIp())
+        .isNull();
   }
 
   /** also possible albeit unlikely */
-  @Test public void produceLocalEndpoint_noAddresses() throws Exception {
+  @Test public void produceLinkLocalIp_noAddresses() throws Exception {
     nicWithAddress(null);
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.produceLinkLocalIp())
+        .isNull();
   }
 
-  @Test public void produceLocalEndpoint_siteLocal_ipv4() throws Exception {
+  @Test public void produceLinkLocalIp_siteLocal_ipv4() throws Exception {
     nicWithAddress(InetAddress.getByAddress("local", new byte[] {(byte) 192, (byte) 168, 0, 1}));
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint.toBuilder().ip("192.168.0.1").build());
+    assertThat(platform.produceLinkLocalIp())
+        .isEqualTo("192.168.0.1");
   }
 
-  @Test public void produceLocalEndpoint_siteLocal_ipv6() throws Exception {
+  @Test public void produceLinkLocalIp_siteLocal_ipv6() throws Exception {
     InetAddress ipv6 = Inet6Address.getByName("fec0:db8::c001");
     nicWithAddress(ipv6);
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint.toBuilder().ip(ipv6).build());
+    assertThat(platform.produceLinkLocalIp())
+        .isEqualTo(ipv6.getHostAddress());
   }
 
-  @Test public void produceLocalEndpoint_notSiteLocal_ipv4() throws Exception {
+  @Test public void produceLinkLocalIp_notSiteLocal_ipv4() throws Exception {
     nicWithAddress(InetAddress.getByAddress("external", new byte[] {1, 2, 3, 4}));
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.produceLinkLocalIp())
+        .isNull();
   }
 
-  @Test public void produceLocalEndpoint_notSiteLocal_ipv6() throws Exception {
+  @Test public void produceLinkLocalIp_notSiteLocal_ipv6() throws Exception {
     nicWithAddress(Inet6Address.getByName("2001:db8::c001"));
 
-    assertThat(platform.produceEndpoint())
-        .isEqualTo(unknownEndpoint);
+    assertThat(platform.produceLinkLocalIp())
+        .isNull();
   }
 
   /**
@@ -151,19 +152,19 @@ public class PlatformTest {
    * test inspired by dagger.internal.DoubleCheckTest
    */
   @Test
-  public void localEndpoint_provisionsOnce() throws Exception {
+  public void linkLocalIp_provisionsOnce() throws Exception {
     // create all the tasks up front so that they are executed with no delay
-    List<Callable<Endpoint>> tasks = new ArrayList<>();
+    List<Callable<String>> tasks = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      tasks.add(() -> platform.endpoint());
+      tasks.add(() -> platform.linkLocalIp());
     }
 
     ExecutorService executor = Executors.newFixedThreadPool(tasks.size());
-    List<Future<Endpoint>> futures = executor.invokeAll(tasks);
+    List<Future<String>> futures = executor.invokeAll(tasks);
 
     // check there's only a single unique endpoint returned
     Set<Object> results = Sets.newIdentityHashSet();
-    for (Future<Endpoint> future : futures) {
+    for (Future<String> future : futures) {
       results.add(future.get());
     }
     assertThat(results).hasSize(1);

@@ -37,7 +37,7 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
    * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
-   * @see HttpClientAdapter#parseServerAddress(Object, Endpoint.Builder)
+   * @see HttpClientAdapter#parseServerIpAndPort(Object, Endpoint.Builder)
    * @see brave.Span#remoteEndpoint(Endpoint)
    */
   public String serverName() {

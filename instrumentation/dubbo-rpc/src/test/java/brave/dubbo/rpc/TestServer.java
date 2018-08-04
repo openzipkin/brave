@@ -24,8 +24,7 @@ class TestServer {
   String linkLocalIp;
 
   TestServer() {
-    zipkin2.Endpoint endpoint = Platform.get().endpoint();
-    if (endpoint != null) linkLocalIp = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
+    linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip
       System.setProperty(Constants.DUBBO_IP_TO_BIND, linkLocalIp);
