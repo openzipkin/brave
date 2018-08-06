@@ -80,7 +80,7 @@
     <junit.version>4.12</junit.version>
     <assertj.version>3.10.0</assertj.version>
     <powermock.version>2.0.0-beta.5</powermock.version>
-    <mockito.version>1.10.19</mockito.version>
+    <mockito.version>2.21.0</mockito.version>
     <!-- last version on jax-rs 2.0 per https://jersey.github.io/download.html -->
     <jersey.version>2.25.1</jersey.version>
     <jmh.version>1.21</jmh.version>
@@ -96,11 +96,6 @@
     <maven-failsafe-plugin.version>2.22.0</maven-failsafe-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
     <centralsync-maven-plugin.version>0.1.0</centralsync-maven-plugin.version>
-
-    <!-- Catch common Java mistakes as compile-time errors -->
-    <plexus-compiler-javac-errorprone.version>2.8.4</plexus-compiler-javac-errorprone.version>
-    <errorprone.version>2.3.1</errorprone.version>
-    <animal-sniffer-maven-plugin.version>1.17</animal-sniffer-maven-plugin.version>
   </properties>
 
   <modules>
@@ -266,6 +261,11 @@
             <artifactId>javax.ws.rs-api</artifactId>
             <version>2.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+        </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -306,8 +306,7 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-all</artifactId>
-      <version>${mockito.version}</version>
+      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -325,6 +324,15 @@
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${maven-compiler-plugin.version}</version>
+          <inherited>true</inherited>
+          <configuration>
+            <!-- Retrolambda will rewrite lambdas as Java 6 bytecode -->
+            <source>1.8</source>
+            <target>1.8</target>
+            <!-- or die! com.sun.tools.javac.api.JavacTool -->
+            <fork>true</fork>
+            <showWarnings>true</showWarnings>
+          </configuration>
         </plugin>
 
         <plugin>
@@ -442,48 +450,6 @@
         </testResources>
       <plugins>
         <plugin>
-          <inherited>true</inherited>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <configuration>
-            <!-- Retrolambda will rewrite lambdas as Java 6 bytecode -->
-            <source>1.8</source>
-            <target>1.8</target>
-            <!-- or die! com.sun.tools.javac.api.JavacTool -->
-            <fork>true</fork>
-          </configuration>
-          <executions>
-            <execution>
-              <id>default-compile</id>
-              <phase>compile</phase>
-              <goals>
-                <goal>compile</goal>
-              </goals>
-              <!-- only use errorprone on main source tree -->
-              <configuration>
-                <compilerId>javac-with-errorprone</compilerId>
-                <forceJavacCompilerUse>true</forceJavacCompilerUse>
-                <showWarnings>true</showWarnings>
-                <compilerArgs>
-                  <arg>-XepDisableWarningsInGeneratedCode</arg>
-                </compilerArgs>
-              </configuration>
-            </execution>
-          </executions>
-          <dependencies>
-            <dependency>
-              <groupId>org.codehaus.plexus</groupId>
-              <artifactId>plexus-compiler-javac-errorprone</artifactId>
-              <version>${plexus-compiler-javac-errorprone.version}</version>
-            </dependency>
-            <dependency>
-              <groupId>com.google.errorprone</groupId>
-              <artifactId>error_prone_core</artifactId>
-              <version>${errorprone.version}</version>
-            </dependency>
-          </dependencies>
-        </plugin>
-
-        <plugin>
           <groupId>net.orfjackal.retrolambda</groupId>
           <artifactId>retrolambda-maven-plugin</artifactId>
           <version>2.5.4</version>
@@ -504,7 +470,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>animal-sniffer-maven-plugin</artifactId>
-          <version>${animal-sniffer-maven-plugin.version}</version>
+          <version>1.17</version>
           <configuration>
             <signature>
               <groupId>org.codehaus.mojo.signature</groupId>
@@ -607,7 +573,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[1.8,10)</version>
+                  <version>[1.8,11)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -618,6 +584,51 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>error-prone</id>
+      <activation>
+        <!-- error-prone isn't happy in jdk 10 yet https://github.com/google/error-prone/issues/860#issuecomment-396154710 -->
+        <jdk>[1.8,10)</jdk>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+              <execution>
+                <!-- only use errorprone on main source tree -->
+                <id>default-compile</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>compile</goal>
+                </goals>
+                <configuration>
+                  <compilerId>javac-with-errorprone</compilerId>
+                  <forceJavacCompilerUse>true</forceJavacCompilerUse>
+                  <!-- error-prone doesn't like generated code -->
+                  <compilerArgs>
+                    <arg>-XepDisableWarningsInGeneratedCode</arg>
+                  </compilerArgs>
+                </configuration>
+              </execution>
+            </executions>
+            <dependencies>
+              <dependency>
+                <groupId>org.codehaus.plexus</groupId>
+                <artifactId>plexus-compiler-javac-errorprone</artifactId>
+                <version>2.8.4</version>
+              </dependency>
+              <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_core</artifactId>
+                <version>2.3.1</version>
+              </dependency>
+            </dependencies>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>release</id>
       <build>
