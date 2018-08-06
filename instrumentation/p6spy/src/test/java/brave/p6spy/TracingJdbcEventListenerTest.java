@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Endpoint;
 
 import static brave.p6spy.ITTracingP6Factory.tracingBuilder;
@@ -61,7 +61,6 @@ public class TracingJdbcEventListenerTest {
   @Test public void parseServerAddress_serviceNameFromUrl() throws SQLException {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithServiceName);
-    when(connection.getCatalog()).thenReturn("mydatabase");
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
@@ -98,11 +97,14 @@ public class TracingJdbcEventListenerTest {
     when(metaData.getURL()).thenReturn("jdbc:mysql://localhost:5555/mydatabase");
 
     new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
+
     verifyNoMoreInteractions(span);
   }
 
   @Test public void parseServerAddress_doesntCrash() throws SQLException {
     when(connection.getMetaData()).thenThrow(new SQLException());
+
+    new TracingJdbcEventListener("", false).parseServerAddress(connection, span);
 
     verifyNoMoreInteractions(span);
   }
@@ -123,10 +125,6 @@ public class TracingJdbcEventListenerTest {
     try (Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build()) {
 
       when(statementInformation.getSql()).thenReturn(null);
-      when(statementInformation.getConnectionInformation()).thenReturn(ci);
-      when(ci.getConnection()).thenReturn(connection);
-      when(connection.getMetaData()).thenReturn(metaData);
-      when(metaData.getURL()).thenReturn(url);
 
       TracingJdbcEventListener listener = new TracingJdbcEventListener("", false);
       listener.onBeforeAnyExecute(statementInformation);

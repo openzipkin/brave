@@ -15,14 +15,13 @@
 package brave.mysql8;
 
 import brave.Span;
-import com.mysql.cj.jdbc.DatabaseMetaData;
 import com.mysql.cj.jdbc.JdbcConnection;
 import java.sql.SQLException;
 import java.util.Properties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Endpoint;
 
 import static org.mockito.Mockito.verify;
@@ -31,11 +30,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingQueryInterceptorTest {
-  @Mock
-  JdbcConnection connection;
-  @Mock
-  DatabaseMetaData metaData;
-
+  @Mock JdbcConnection connection;
   @Mock Span span;
   String url = "jdbc:mysql://myhost:5555/mydatabase";
 
@@ -80,18 +75,20 @@ public class TracingQueryInterceptorTest {
     setupAndReturnPropertiesForHost("localhost");
 
     TracingQueryInterceptor.parseServerAddress(connection, span);
+
     verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
         .port(5555).build());
   }
 
-  @Test public void parseServerAddress_doesntCrash() throws SQLException {
-    when(connection.getMetaData()).thenThrow(new SQLException());
+  @Test public void parseServerAddress_doesntCrash() {
+    when(connection.getURL()).thenThrow(new RuntimeException());
+
+    TracingQueryInterceptor.parseServerAddress(connection, span);
 
     verifyNoMoreInteractions(span);
   }
 
-  Properties setupAndReturnPropertiesForHost(String host) throws SQLException {
-    when(connection.getMetaData()).thenReturn(metaData);
+  Properties setupAndReturnPropertiesForHost(String host) {
     when(connection.getURL()).thenReturn(url);
     Properties properties = new Properties();
     when(connection.getProperties()).thenReturn(properties);

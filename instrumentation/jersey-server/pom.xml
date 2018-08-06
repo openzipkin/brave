@@ -71,12 +71,19 @@
     <profile>
       <id>jigsaw</id>
       <activation>
-        <jdk>[1.9,)</jdk>
+        <jdk>[9,)</jdk>
       </activation>
       <build>
         <plugins>
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
+            <!-- to prevent class not found in tests -->
+            <configuration>
+              <argLine>--add-modules java.xml.bind</argLine>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
             <!-- to prevent class not found in tests -->
             <configuration>
               <argLine>--add-modules java.xml.bind</argLine>

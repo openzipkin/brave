@@ -8,7 +8,7 @@ import java.util.Properties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Endpoint;
 
 import static org.mockito.Mockito.verify;
@@ -70,6 +70,8 @@ public class TracingStatementInterceptorTest {
 
   @Test public void parseServerAddress_doesntCrash() throws SQLException {
     when(connection.getMetaData()).thenThrow(new SQLException());
+
+    TracingStatementInterceptor.parseServerAddress(connection, span);
 
     verifyNoMoreInteractions(span);
   }
