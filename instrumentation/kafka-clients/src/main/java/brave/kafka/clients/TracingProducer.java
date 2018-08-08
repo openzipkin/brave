@@ -39,23 +39,19 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     this.remoteServiceName = remoteServiceName;
   }
 
-  @Override
-  public void initTransactions() {
+  @Override public void initTransactions() {
     delegate.initTransactions();
   }
 
-  @Override
-  public void beginTransaction() {
+  @Override public void beginTransaction() {
     delegate.beginTransaction();
   }
 
-  @Override
-  public void commitTransaction() {
+  @Override public void commitTransaction() {
     delegate.commitTransaction();
   }
 
-  @Override
-  public void abortTransaction() {
+  @Override public void abortTransaction() {
     delegate.abortTransaction();
   }
 
@@ -63,16 +59,14 @@ final class TracingProducer<K, V> implements Producer<K, V> {
    * Send with a callback is always called for KafkaProducer. We do the same here to enable
    * tracing.
    */
-  @Override
-  public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
+  @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
     return this.send(record, null);
   }
 
   /**
    * We wrap the send method to add tracing.
    */
-  @Override
-  public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
+  @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
     final Span span;
     if (traceContextOrSamplingFlags != null) {
@@ -99,33 +93,27 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     }
   }
 
-  @Override
-  public void flush() {
+  @Override public void flush() {
     delegate.flush();
   }
 
-  @Override
-  public List<PartitionInfo> partitionsFor(String topic) {
+  @Override public List<PartitionInfo> partitionsFor(String topic) {
     return delegate.partitionsFor(topic);
   }
 
-  @Override
-  public Map<MetricName, ? extends Metric> metrics() {
+  @Override public Map<MetricName, ? extends Metric> metrics() {
     return delegate.metrics();
   }
 
-  @Override
-  public void close() {
+  @Override public void close() {
     delegate.close();
   }
 
-  @Override
-  public void close(long timeout, TimeUnit unit) {
+  @Override public void close(long timeout, TimeUnit unit) {
     delegate.close(timeout, unit);
   }
 
-  @Override
-  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+  @Override public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
                                        String consumerGroupId) {
     delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
