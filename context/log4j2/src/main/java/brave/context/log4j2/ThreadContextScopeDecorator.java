@@ -1,6 +1,6 @@
 package brave.context.log4j2;
 
-import brave.propagation.CorrelationFieldScopeDecorator;
+import brave.internal.propagation.CorrelationFieldScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.apache.logging.log4j.ThreadContext;
 
