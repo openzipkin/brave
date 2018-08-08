@@ -1,6 +1,5 @@
 package brave.kafka.clients;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -33,7 +32,7 @@ public class TracingConsumerTest extends BaseTracingTest {
   public void should_call_wrapped_poll_and_close_spans() {
     consumer.addRecord(fakeRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
-    tracingConsumer.poll(Duration.ofMillis(10));
+    tracingConsumer.poll(10);
 
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
