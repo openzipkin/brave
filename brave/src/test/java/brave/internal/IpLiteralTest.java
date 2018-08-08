@@ -63,6 +63,10 @@ public class IpLiteralTest {
     assertThat(IpLiteral.ipOrNull("::1")).isEqualTo("::1");
   }
 
+  @Test public void ipOrNullv4_localhost() {
+    assertThat(IpLiteral.ipOrNull("127.0.0.1")).isEqualTo("127.0.0.1");
+  }
+
   /** This is an unusable compat Ipv4 of 0.0.0.2. This makes sure it isn't mistaken for localhost */
   @Test public void ipOrNullv6_notLocalhost() {
     assertThat(IpLiteral.ipOrNull("::2")).isEqualTo("::2");

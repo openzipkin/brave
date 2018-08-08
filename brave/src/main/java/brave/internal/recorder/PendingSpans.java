@@ -121,7 +121,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           .localEndpoint(localEndpoint)
           .addAnnotation(flushTime, "brave.flush");
 
-      value.state.writeTo(builderWithContextData);
+      MutableSpanConverter.convert(value.state, builderWithContextData);
       reporter.report(builderWithContextData.build());
     }
   }
@@ -198,7 +198,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     for (Map.Entry<Object, PendingSpan> entry : delegate.entrySet()) {
       PendingSpans.RealKey contextKey = (PendingSpans.RealKey) entry.getKey();
       spanBuilder.clear().traceId(contextKey.traceIdHigh, contextKey.traceId).id(contextKey.spanId);
-      entry.getValue().state.writeTo(spanBuilder);
+      MutableSpanConverter.convert(entry.getValue().state, spanBuilder);
       result.add(spanBuilder.build());
       spanBuilder.clear();
     }

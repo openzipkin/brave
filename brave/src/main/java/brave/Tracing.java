@@ -3,8 +3,8 @@ package brave;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpans;
+import brave.internal.recorder.SpanReporter;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -13,8 +13,6 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 import zipkin2.reporter.Sender;
@@ -390,48 +388,5 @@ public abstract class Tracing implements Closeable {
   }
 
   Tracing() { // intentionally hidden constructor
-  }
-
-  /** Declared here to ensure reporter bugs don't crash the caller */
-  static final class SpanReporter implements Reporter<zipkin2.Span> {
-    static final Logger logger = Logger.getLogger(SpanReporter.class.getName());
-
-    final zipkin2.Endpoint localEndpoint;
-    final Reporter<zipkin2.Span> delegate;
-    final AtomicBoolean noop;
-
-    SpanReporter(zipkin2.Endpoint localEndpoint, Reporter<zipkin2.Span> delegate,
-        AtomicBoolean noop) {
-      this.localEndpoint = localEndpoint;
-      this.delegate = delegate;
-      this.noop = noop;
-    }
-
-    void report(TraceContext context, MutableSpan span) {
-      zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
-          .traceId(context.traceIdHigh(), context.traceId())
-          .parentId(context.parentIdAsLong())
-          .id(context.spanId())
-          .localEndpoint(localEndpoint)
-          .debug(context.debug());
-
-      span.writeTo(builderWithContextData);
-      report(builderWithContextData.build());
-    }
-
-    @Override public void report(zipkin2.Span span) {
-      if (noop.get()) return;
-      try {
-        delegate.report(span);
-      } catch (RuntimeException e) {
-        if (logger.isLoggable(Level.FINE)) { // fine level to not fill logs
-          logger.log(Level.FINE, "error reporting " + span, e);
-        }
-      }
-    }
-
-    @Override public String toString() {
-      return delegate.toString();
-    }
   }
 }
