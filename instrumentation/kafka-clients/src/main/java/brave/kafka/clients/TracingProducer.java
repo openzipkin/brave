@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -27,12 +29,14 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   final Tracing tracing;
   final TraceContext.Injector<Headers> injector;
   final Producer<K, V> delegate;
+  final TraceContext.Extractor<Headers> extractor;
   @Nullable final String remoteServiceName;
 
   TracingProducer(Tracing tracing, Producer<K, V> delegate, @Nullable String remoteServiceName) {
     this.delegate = delegate;
     this.tracing = tracing;
     this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
+    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
     this.remoteServiceName = remoteServiceName;
   }
 
@@ -63,7 +67,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   /** We wrap the send method to add tracing. */
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
-    Span span = tracing.tracer().nextSpan();
+    TraceContextOrSamplingFlags spanContext = extractor.extract(record.headers());
+    Span span = tracing.tracer().nextSpan(spanContext);
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
     injector.inject(span.context(), record.headers());
     if (!span.isNoop()) {

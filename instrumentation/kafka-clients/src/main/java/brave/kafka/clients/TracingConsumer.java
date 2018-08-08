@@ -6,6 +6,8 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,8 +49,13 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.remoteServiceName = remoteServiceName;
   }
 
-  /** This */
+  @Deprecated
   @Override public ConsumerRecords<K, V> poll(long timeout) {
+    return poll(Duration.ofMillis(timeout));
+  }
+
+  /** This */
+  @Override public ConsumerRecords<K, V> poll(Duration timeout) {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
     if (records.isEmpty() || tracing.isNoop()) return records;
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
@@ -127,8 +134,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.commitSync();
   }
 
+  @Override public void commitSync(Duration timeout) {
+    delegate.commitSync(timeout);
+  }
+
   @Override public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets) {
     delegate.commitSync(offsets);
+  }
+
+  @Override
+  public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets, Duration timeout) {
+    delegate.commitSync(offsets, timeout);
   }
 
   @Override public void commitAsync() {
@@ -160,8 +176,18 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.position(partition);
   }
 
+  @Override
+  public long position(TopicPartition partition, Duration timeout) {
+    return delegate.position(partition, timeout);
+  }
+
   @Override public OffsetAndMetadata committed(TopicPartition partition) {
     return delegate.committed(partition);
+  }
+
+  @Override
+  public OffsetAndMetadata committed(TopicPartition partition, Duration timeout) {
+    return delegate.committed(partition, timeout);
   }
 
   @Override public Map<MetricName, ? extends Metric> metrics() {
@@ -172,8 +198,18 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.partitionsFor(topic);
   }
 
+  @Override
+  public List<PartitionInfo> partitionsFor(String topic, Duration timeout) {
+    return delegate.partitionsFor(topic, timeout);
+  }
+
   @Override public Map<String, List<PartitionInfo>> listTopics() {
     return delegate.listTopics();
+  }
+
+  @Override
+  public Map<String, List<PartitionInfo>> listTopics(Duration timeout) {
+    return delegate.listTopics(timeout);
   }
 
   @Override public Set<TopicPartition> paused() {
@@ -194,20 +230,41 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override
+  public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+    return delegate.offsetsForTimes(timestampsToSearch, timeout);
+  }
+
+  @Override
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
     return delegate.beginningOffsets(partitions);
+  }
+
+  @Override
+  public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions, Duration timeout) {
+    return delegate.beginningOffsets(partitions, timeout);
   }
 
   @Override public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
     return delegate.endOffsets(partitions);
   }
 
+  @Override
+  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
+    return delegate.endOffsets(partitions, timeout);
+  }
+
   @Override public void close() {
     delegate.close();
   }
 
+  @Deprecated
   @Override public void close(long timeout, TimeUnit unit) {
     delegate.close(timeout, unit);
+  }
+
+  @Override
+  public void close(Duration timeout) {
+    delegate.close(timeout);
   }
 
   @Override public void wakeup() {
