@@ -113,7 +113,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     delegate.close(timeout, unit);
   }
 
-  @Override public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+  @Override
+  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
                                        String consumerGroupId) {
     delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
