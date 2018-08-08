@@ -46,9 +46,5 @@ public class TracingKafkaClientSupplier implements KafkaClientSupplier {
    return getConsumer(config);
   }
 
-  @Override
-  public Consumer<byte[], byte[]> getGlobalConsumer(Map<String, Object> config) {
-    return getConsumer(config);
-  }
 }
 
