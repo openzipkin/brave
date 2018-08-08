@@ -29,8 +29,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   final TraceContext.Injector<Headers> injector;
   final TraceContext.Extractor<Headers> extractor;
   final Producer<K, V> delegate;
-  @Nullable
-  final String remoteServiceName;
+  @Nullable final String remoteServiceName;
 
   TracingProducer(Tracing tracing, Producer<K, V> delegate, @Nullable String remoteServiceName) {
     this.delegate = delegate;
