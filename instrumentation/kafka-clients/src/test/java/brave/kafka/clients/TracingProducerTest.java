@@ -13,7 +13,7 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class TracingProducerTest  extends BaseTracingTest {
+public class TracingProducerTest extends BaseTracingTest {
   MockProducer<Object, String> mockProducer = new MockProducer<>();
   Producer<Object, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
 

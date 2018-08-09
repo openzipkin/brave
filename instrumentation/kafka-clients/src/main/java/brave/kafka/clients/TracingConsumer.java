@@ -6,6 +6,7 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +46,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
     this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
     this.remoteServiceName = remoteServiceName;
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public ConsumerRecords<K, V> poll(Duration timeout) {
+    return poll(timeout.toMillis());
   }
 
   /** This */
@@ -127,8 +133,18 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.commitSync();
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void commitSync(Duration timeout) {
+    delegate.commitSync(timeout);
+  }
+
   @Override public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets) {
     delegate.commitSync(offsets);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets, Duration timeout) {
+    delegate.commitSync(offsets, timeout);
   }
 
   @Override public void commitAsync() {
@@ -160,8 +176,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.position(partition);
   }
 
+  public long position(TopicPartition partition, Duration timeout) {
+    return delegate.position(partition, timeout);
+  }
+
   @Override public OffsetAndMetadata committed(TopicPartition partition) {
     return delegate.committed(partition);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public OffsetAndMetadata committed(TopicPartition partition, Duration timeout) {
+    return delegate.committed(partition, timeout);
   }
 
   @Override public Map<MetricName, ? extends Metric> metrics() {
@@ -172,8 +197,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.partitionsFor(topic);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public List<PartitionInfo> partitionsFor(String topic, Duration timeout) {
+    return delegate.partitionsFor(topic, timeout);
+  }
+
   @Override public Map<String, List<PartitionInfo>> listTopics() {
     return delegate.listTopics();
+  }
+
+  @Override public Map<String, List<PartitionInfo>> listTopics(Duration timeout) {
+    return delegate.listTopics(timeout);
   }
 
   @Override public Set<TopicPartition> paused() {
@@ -193,13 +227,31 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.offsetsForTimes(timestampsToSearch);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
+      Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+    return delegate.offsetsForTimes(timestampsToSearch, timeout);
+  }
+
   @Override
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
     return delegate.beginningOffsets(partitions);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions,
+      Duration timeout) {
+    return delegate.beginningOffsets(partitions, timeout);
+  }
+
   @Override public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
     return delegate.endOffsets(partitions);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
+      Duration timeout) {
+    return delegate.endOffsets(partitions, timeout);
   }
 
   @Override public void close() {
@@ -208,6 +260,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   @Override public void close(long timeout, TimeUnit unit) {
     delegate.close(timeout, unit);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void close(Duration timeout) {
+    delegate.close(timeout);
   }
 
   @Override public void wakeup() {
