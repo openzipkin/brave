@@ -684,7 +684,7 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-Besides logging, other tools are available. `StrictScopeCustomizer` can
+Besides logging, other tools are available. [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java) can
 help find out when code is not closing scopes properly. This can be
 useful when writing or diagnosing custom instrumentation.
 
