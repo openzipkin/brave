@@ -1,8 +1,8 @@
 package brave;
 
 import brave.Tracer.SpanInScope;
-import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
@@ -19,10 +19,11 @@ import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
-
+  Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   Tracer tracer = Tracing.newBuilder()
       .spanReporter(new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
@@ -33,8 +34,25 @@ public class TracerTest {
           return "MyReporter{}";
         }
       })
+      .propagationFactory(new Propagation.Factory() {
+        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+          return propagationFactory.create(keyFactory);
+        }
+
+        @Override public boolean supportsJoin() {
+          return propagationFactory.supportsJoin();
+        }
+
+        @Override public boolean requires128BitTraceId() {
+          return propagationFactory.requires128BitTraceId();
+        }
+
+        @Override public TraceContext decorate(TraceContext context) {
+          return propagationFactory.decorate(context);
+        }
+      })
       .currentTraceContext(new StrictCurrentTraceContext())
-      .endpoint(Endpoint.newBuilder().serviceName("my-service").build())
+      .localServiceName("my-service")
       .build().tracer();
 
   @After public void close() {
@@ -70,23 +88,23 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.endpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.endpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
-    Endpoint endpoint = Endpoint.newBuilder().serviceName("my-bar").build();
+    Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("recorder.spanMap.endpoint")
-        .containsExactly(endpoint);
+    assertThat(tracer).extracting("pendingSpans.localEndpoint")
+        .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
   }
 
   @Test public void newTrace_isRootSpan() {
@@ -113,9 +131,32 @@ public class TracerTest {
   @Test public void join_setsShared() {
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isTrue();
+    assertThat(tracer.joinSpan(fromIncomingRequest).context())
+        .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+  }
+
+  /**
+   * Data from loopback requests should be partitioned into two spans: one for the client and the
+   * other for the server.
+   */
+  @Test public void join_sharedDataIsSeparate() {
+    Span clientSide = tracer.newTrace().kind(Span.Kind.CLIENT).start(1L);
+    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Span.Kind.SERVER).start(2L);
+    serverSide.finish(3L);
+    clientSide.finish(4L);
+
+    // Ensure they use the same span ID (sanity check)
+    String spanId = spans.get(0).id();
+    assertThat(spans).extracting(zipkin2.Span::id)
+        .containsExactly(spanId, spanId);
+
+    // Ensure the important parts are separated correctly
+    assertThat(spans).extracting(
+        zipkin2.Span::kind, zipkin2.Span::shared, zipkin2.Span::timestamp, zipkin2.Span::duration
+    ).containsExactly(
+        tuple(zipkin2.Span.Kind.SERVER, true, 2L, 1L),
+        tuple(zipkin2.Span.Kind.CLIENT, null, 1L, 3L)
+    );
   }
 
   @Test public void join_createsChildWhenUnsupported() {
@@ -123,11 +164,19 @@ public class TracerTest {
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isNull();
-    assertThat(spans.get(0).parentId())
-        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
+    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(shouldBeChild.shared())
+        .isFalse();
+    assertThat(shouldBeChild.parentId())
+        .isEqualTo(fromIncomingRequest.spanId());
+  }
+
+  @Test public void finish_doesntCrashOnBadReporter() {
+    tracer = Tracing.newBuilder().spanReporter(span -> {
+      throw new RuntimeException();
+    }).build().tracer();
+
+    tracer.newTrace().start().finish();
   }
 
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
@@ -141,11 +190,11 @@ public class TracerTest {
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    tracer.joinSpan(fromIncomingRequest).start().finish();
-    assertThat(spans.get(0).shared())
-        .isNull();
-    assertThat(spans.get(0).parentId())
-        .isEqualTo(HexCodec.toLowerHex(fromIncomingRequest.spanId()));
+    TraceContext shouldBeChild = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(shouldBeChild.shared())
+        .isFalse();
+    assertThat(shouldBeChild.parentId())
+        .isEqualTo(fromIncomingRequest.spanId());
   }
 
   @Test public void join_noop() {
@@ -221,10 +270,10 @@ public class TracerTest {
 
   /** A child span is not sharing a span ID with its parent by definition */
   @Test public void newChild_isntShared() {
-    tracer.newTrace().start().finish();
+    TraceContext parent = tracer.newTrace().context();
 
-    assertThat(spans.get(0).shared())
-        .isNull();
+    assertThat(tracer.newChild(parent).context().shared())
+        .isFalse();
   }
 
   @Test public void newChild_noop() {
@@ -369,7 +418,7 @@ public class TracerTest {
         .toBuilder().addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
-        .containsExactly(1L);
+        .contains(1L);
   }
 
   @Test public void startScopedSpan_isInScope() {
@@ -450,7 +499,7 @@ public class TracerTest {
     span.start(1L); // didn't set anything else! this is to help ensure no NPE
 
     assertThat(tracer).hasToString(
-        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1,\"localEndpoint\":{\"serviceName\":\"my-service\"}}], reporter=MyReporter{}}"
+        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1}], reporter=MyReporter{}}"
     );
 
     span.finish();
@@ -500,5 +549,68 @@ public class TracerTest {
       assertThat(tracer.currentSpan())
           .isEqualTo(parent);
     }
+  }
+
+  @Test public void join_getsExtraFromPropagationFactory() {
+    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+
+    TraceContext context = tracer.nextSpan().context();
+    ExtraFieldPropagation.set(context, "service", "napkin");
+
+    TraceContext joined = tracer.joinSpan(context).context();
+
+    assertThat(ExtraFieldPropagation.get(joined, "service")).isEqualTo("napkin");
+  }
+
+  @Test public void nextSpan_getsExtraFromPropagationFactory() {
+    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+
+    Span parent = tracer.nextSpan();
+    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+
+    TraceContext nextSpan;
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
+      nextSpan = tracer.nextSpan().context();
+    }
+
+    assertThat(ExtraFieldPropagation.get(nextSpan, "service")).isEqualTo("napkin");
+  }
+
+  @Test public void newChild_getsExtraFromPropagationFactory() {
+    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+
+    TraceContext context = tracer.nextSpan().context();
+    ExtraFieldPropagation.set(context, "service", "napkin");
+
+    TraceContext newChild = tracer.newChild(context).context();
+
+    assertThat(ExtraFieldPropagation.get(newChild, "service")).isEqualTo("napkin");
+  }
+
+  @Test public void startScopedSpanWithParent_getsExtraFromPropagationFactory() {
+    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+
+    TraceContext context = tracer.nextSpan().context();
+    ExtraFieldPropagation.set(context, "service", "napkin");
+
+    ScopedSpan scoped = tracer.startScopedSpanWithParent("foo", context);
+    scoped.finish();
+
+    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
+  }
+
+  @Test public void startScopedSpan_getsExtraFromPropagationFactory() {
+    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+
+    Span parent = tracer.nextSpan();
+    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+
+    ScopedSpan scoped;
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
+      scoped = tracer.startScopedSpan("foo");
+      scoped.finish();
+    }
+
+    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
   }
 }

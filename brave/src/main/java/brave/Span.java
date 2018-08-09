@@ -1,5 +1,6 @@
 package brave;
 
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
@@ -23,7 +24,8 @@ import zipkin2.Endpoint;
  *
  * <p>This captures duration of {@link #start()} until {@link #finish()} is called.
  *
- * <p>Note: When only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
+ * <p>Note: All methods return {@linkplain Span} for chaining, but the instance is always the same.
+ * Also, when only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
  */
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
@@ -113,11 +115,57 @@ public abstract class Span implements SpanCustomizer {
   public abstract Span error(Throwable throwable);
 
   /**
-   * For a client span, this would be the server's address.
-   *
-   * <p>It is often expensive to derive a remote address: always check {@link #isNoop()} first!
+   * @deprecated Use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String, int)}.
+   * Will be removed in Brave v6.
    */
-  public abstract Span remoteEndpoint(Endpoint endpoint);
+  @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
+    if (endpoint == null) return this;
+    remoteServiceName(endpoint.serviceName());
+    String ip = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
+    remoteIpAndPort(ip, endpoint.portAsInt());
+    return this;
+  }
+
+  /**
+   * Lower-case label of the remote node in the service graph, such as "favstar". Do not set if
+   * unknown. Avoid names with variables or unique identifiers embedded.
+   *
+   * <p>This is a primary label for trace lookup and aggregation, so it should be intuitive and
+   * consistent. Many use a name from service discovery.
+   *
+   * @see #remoteIpAndPort(String, int)
+   */
+  public abstract Span remoteServiceName(String remoteServiceName);
+
+  /**
+   * Sets the IP and port associated with the remote endpoint. For example, the server's listen
+   * socket or the connected client socket. This can also be set to forwarded values, such as an
+   * advertised IP.
+   *
+   * <p>Invalid inputs, such as hostnames, will return false. Port is only set with a valid IP, and
+   * zero or negative port values are ignored. For example, to set only the IP address, leave port
+   * as zero.
+   *
+   * <p>This returns boolean, not Span as it is often the case strings are malformed. Using this,
+   * you can do conditional parsing like so:
+   * <pre>{@code
+   * if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
+   * span.remoteIpAndPort(address.getHostName(), target.getPort());
+   * }</pre>
+   *
+   * <p>Note: Comma separated lists are not supported. If you have multiple entries choose the one
+   * most indicative of the remote side. For example, the left-most entry in X-Forwarded-For.
+   *
+   * @param remoteIp the IPv4 or IPv6 literal representing the remote service connection
+   * @param remotePort the port associated with the IP, or zero if unknown.
+   * @see #remoteServiceName(String)
+   * @since 5.2
+   */
+  // NOTE: this is remote (IP, port) vs remote IP:port String as zipkin2.Endpoint separates the two,
+  // and IP:port strings are uncommon at runtime (even if they are common at config).
+  // Parsing IP:port pairs on each request, including concerns like IPv6 bracketing, would add
+  // weight for little benefit. If this changes, we can overload it.
+  public abstract boolean remoteIpAndPort(@Nullable String remoteIp, int remotePort);
 
   /** Reports the span complete, assigning the most precise duration possible. */
   public abstract void finish();

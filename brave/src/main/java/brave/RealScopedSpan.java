@@ -1,6 +1,8 @@
 package brave;
 
-import brave.internal.recorder.Recorder;
+import brave.Tracing.SpanReporter;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 
@@ -9,13 +11,27 @@ final class RealScopedSpan extends ScopedSpan {
 
   final TraceContext context;
   final Scope scope;
-  final Recorder recorder;
+  final MutableSpan state;
+  final Clock clock;
+  final PendingSpans pendingSpans;
+  final SpanReporter spanReporter;
   final ErrorParser errorParser;
 
-  RealScopedSpan(TraceContext context, Scope scope, Recorder recorder, ErrorParser errorParser) {
+  RealScopedSpan(
+      TraceContext context,
+      Scope scope,
+      MutableSpan state,
+      Clock clock,
+      PendingSpans pendingSpans,
+      SpanReporter spanReporter,
+      ErrorParser errorParser
+  ) {
     this.context = context;
     this.scope = scope;
-    this.recorder = recorder;
+    this.pendingSpans = pendingSpans;
+    this.state = state;
+    this.clock = clock;
+    this.spanReporter = spanReporter;
     this.errorParser = errorParser;
   }
 
@@ -28,12 +44,12 @@ final class RealScopedSpan extends ScopedSpan {
   }
 
   @Override public ScopedSpan annotate(String value) {
-    recorder.annotate(context, value);
+    state.annotate(clock.currentTimeMicroseconds(), value);
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
-    recorder.tag(context, key, value);
+    state.tag(key, value);
     return this;
   }
 
@@ -44,10 +60,24 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    recorder.finish(context);
+    if (!pendingSpans.remove(context)) return; // don't double-report
+    spanReporter.report(context, state);
+    state.finishTimestamp(clock.currentTimeMicroseconds());
   }
 
-  @Override public String toString() {
-    return "RealScopedSpan(" + context + ")";
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof RealScopedSpan)) return false;
+    RealScopedSpan that = (RealScopedSpan) o;
+    return context.equals(that.context) && scope.equals(that.scope);
+  }
+
+  @Override public int hashCode() {
+    int h = 1;
+    h *= 1000003;
+    h ^= context.hashCode();
+    h *= 1000003;
+    h ^= scope.hashCode();
+    return h;
   }
 }

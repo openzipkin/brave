@@ -1,37 +1,45 @@
 package brave;
 
-import brave.internal.recorder.Recorder;
+import brave.internal.recorder.MutableSpan;
 import brave.propagation.TraceContext;
-import com.google.auto.value.AutoValue;
 
 /** This wraps the public api and guards access to a mutable span. */
-@AutoValue
-abstract class RealSpanCustomizer implements SpanCustomizer {
+final class RealSpanCustomizer implements SpanCustomizer {
 
-  abstract TraceContext context();
-  abstract Recorder recorder();
+  final TraceContext context;
+  final MutableSpan state;
+  final Clock clock;
 
-  static RealSpanCustomizer create(TraceContext context, Recorder recorder) {
-    return new AutoValue_RealSpanCustomizer(context, recorder);
+  RealSpanCustomizer(TraceContext context, MutableSpan state, Clock clock) {
+    this.context = context;
+    this.state = state;
+    this.clock = clock;
   }
 
   @Override public SpanCustomizer name(String name) {
-    recorder().name(context(), name);
+    synchronized (state) {
+      state.name(name);
+    }
     return this;
   }
 
   @Override public SpanCustomizer annotate(String value) {
-    recorder().annotate(context(), value);
+    long timestamp = clock.currentTimeMicroseconds();
+    synchronized (state) {
+      state.annotate(timestamp, value);
+    }
     return this;
   }
 
   @Override public SpanCustomizer tag(String key, String value) {
-    recorder().tag(context(), key, value);
+    synchronized (state) {
+      state.tag(key, value);
+    }
     return this;
   }
 
   @Override
   public String toString() {
-    return "RealSpanCustomizer(" + context() + ")";
+    return "RealSpanCustomizer(" + context + ")";
   }
 }

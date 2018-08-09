@@ -1,7 +1,9 @@
 package brave.propagation;
 
 import brave.internal.HexCodec;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
@@ -20,6 +22,19 @@ public class TraceContextTest {
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build());
     assertThat(context.hashCode())
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build().hashCode());
+  }
+
+  /**
+   * Shared context is different than an unshared one, notably this keeps client/server loopback
+   * separate.
+   */
+  @Test public void compareUnequalIds_onShared() {
+    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
+
+    assertThat(context)
+        .isNotEqualTo(context.toBuilder().shared(true).build());
+    assertThat(context.hashCode())
+        .isNotEqualTo(context.toBuilder().shared(true).build().hashCode());
   }
 
   @Test public void compareEqualIds() {
@@ -65,13 +80,30 @@ public class TraceContextTest {
   @Test public void ensureImmutable_convertsToSingletonList() {
     List<Object> list = new ArrayList<>();
     list.add("foo");
-    TraceContext.ensureImmutable(list);
     assertThat(TraceContext.ensureImmutable(list).getClass().getSimpleName())
         .isEqualTo("SingletonList");
   }
 
   @Test public void ensureImmutable_returnsEmptyList() {
     List<Object> list = Collections.emptyList();
+    assertThat(TraceContext.ensureImmutable(list))
+        .isSameAs(list);
+  }
+
+  @Test public void ensureImmutable_doesntCopySingletonList() {
+    List<Object> list = Collections.singletonList("foo");
+    assertThat(TraceContext.ensureImmutable(list))
+        .isSameAs(list);
+  }
+
+  @Test public void ensureImmutable_doesntCopyUnmodifiableList() {
+    List<Object> list = Collections.unmodifiableList(Arrays.asList("foo"));
+    assertThat(TraceContext.ensureImmutable(list))
+        .isSameAs(list);
+  }
+
+  @Test public void ensureImmutable_doesntCopyImmutableList() {
+    List<Object> list = ImmutableList.of("foo");
     assertThat(TraceContext.ensureImmutable(list))
         .isSameAs(list);
   }

@@ -20,8 +20,10 @@ import brave.propagation.TraceContext;
  * }
  * }</pre>
  *
- * <p>Usage notes: this type is intended for in-process synchronous code. Do not leak this type onto
- * another thread: it is not thread-safe. For advanced features or remote commands, use {@link Span}.
+ * <p>Usage notes: All methods return {@linkplain ScopedSpan} for chaining, but the instance is
+ * always the same. Also, this type is intended for in-process synchronous code. Do not leak this
+ * onto another thread: it is not thread-safe. For advanced features or remote commands, use
+ * {@link Span} instead.
  */
 public abstract class ScopedSpan {
 

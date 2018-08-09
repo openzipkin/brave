@@ -1,8 +1,6 @@
 package brave.internal.recorder;
 
 import brave.Span.Kind;
-import brave.internal.Platform;
-import brave.propagation.TraceContext;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;
@@ -11,38 +9,43 @@ import zipkin2.Span;
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanTest {
-  Endpoint localEndpoint = Platform.get().endpoint();
-  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+  @Test public void minimumDurationIsOne() {
+    MutableSpan span = new MutableSpan();
 
-  // zipkin needs one annotation or binary annotation so that the local endpoint can be read
-  @Test public void addsLocalEndpoint() {
-    MutableSpan span = newSpan();
+    span.startTimestamp(1L);
+    span.finishTimestamp(1L);
 
-    span.start(1L);
-    span.finish(2L);
-
-    assertThat(span.toSpan().localEndpoint())
-        .isEqualTo(localEndpoint);
+    assertThat(writeTo(span).duration()).isEqualTo(1L);
   }
 
-  @Test public void minimumDurationIsOne() {
-    MutableSpan span = newSpan();
+  @Test public void replacesTag() {
+    MutableSpan span = new MutableSpan();
 
-    span.start(1L).finish(1L);
+    span.tag("1", "1");
+    span.tag("foo", "bar");
+    span.tag("2", "2");
+    span.tag("foo", "baz");
+    span.tag("3", "3");
 
-    assertThat(span.toSpan().duration()).isEqualTo(1L);
+    assertThat(writeTo(span).tags()).containsOnly(
+        entry("1", "1"),
+        entry("foo", "baz"),
+        entry("2", "2"),
+        entry("3", "3")
+    );
   }
 
   @Test public void addsAnnotations() {
-    MutableSpan span = newSpan();
+    MutableSpan span = new MutableSpan();
 
-    span.start(1L);
+    span.startTimestamp(1L);
     span.annotate(2L, "foo");
-    span.finish(2L);
+    span.finishTimestamp(2L);
 
-    assertThat(span.toSpan().annotations())
+    assertThat(writeTo(span).annotations())
         .containsOnly(Annotation.create(2L, "foo"));
   }
 
@@ -62,35 +65,13 @@ public class MutableSpanTest {
     finish(Kind.CONSUMER, Span.Kind.CONSUMER);
   }
 
-  private void finish(Kind braveKind, Span.Kind span2Kind) {
-    MutableSpan span = newSpan();
+  void finish(Kind braveKind, Span.Kind span2Kind) {
+    MutableSpan span = new MutableSpan();
     span.kind(braveKind);
-    span.start(1L);
-    span.finish(2L);
+    span.startTimestamp(1L);
+    span.finishTimestamp(2L);
 
-    Span span2 = span.toSpan();
-    assertThat(span2.annotations()).isEmpty();
-    assertThat(span2.timestamp()).isEqualTo(1L);
-    assertThat(span2.duration()).isEqualTo(1L);
-    assertThat(span2.kind()).isEqualTo(span2Kind);
-  }
-
-  @Test
-  public void finished_client_annotation() {
-    finish("cs", "cr", Span.Kind.CLIENT);
-  }
-
-  @Test
-  public void finished_server_annotation() {
-    finish("sr", "ss", Span.Kind.SERVER);
-  }
-
-  private void finish(String start, String end, Span.Kind span2Kind) {
-    MutableSpan span = newSpan();
-    span.annotate(1L, start);
-    span.annotate(2L, end);
-
-    Span span2 = span.toSpan();
+    Span span2 = writeTo(span);
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isEqualTo(1L);
@@ -113,13 +94,13 @@ public class MutableSpanTest {
     flush(Kind.CONSUMER, Span.Kind.CONSUMER);
   }
 
-  private void flush(Kind braveKind, Span.Kind span2Kind) {
-    MutableSpan span = newSpan();
+  void flush(Kind braveKind, Span.Kind span2Kind) {
+    MutableSpan span = new MutableSpan();
     span.kind(braveKind);
-    span.start(1L);
-    span.finish(null);
+    span.startTimestamp(1L);
+    span.finishTimestamp(0L);
 
-    Span span2 = span.toSpan();
+    Span span2 = writeTo(span);
     assertThat(span2.annotations()).isEmpty();
     assertThat(span2.timestamp()).isEqualTo(1L);
     assertThat(span2.duration()).isNull();
@@ -127,44 +108,69 @@ public class MutableSpanTest {
   }
 
   @Test public void remoteEndpoint() {
-    MutableSpan span = newSpan();
+    MutableSpan span = new MutableSpan();
 
-    Endpoint endpoint = Endpoint.newBuilder().serviceName("server").build();
+    Endpoint endpoint = Endpoint.newBuilder()
+        .serviceName("fooService")
+        .ip("1.2.3.4")
+        .port(80)
+        .build();
+
     span.kind(CLIENT);
-    span.remoteEndpoint(endpoint);
-    span.start(1L);
-    span.finish(2L);
+    span.remoteServiceName(endpoint.serviceName());
+    span.remoteIpAndPort(endpoint.ipv4(), endpoint.port());
+    span.startTimestamp(1L);
+    span.finishTimestamp(2L);
 
-    assertThat(span.toSpan().remoteEndpoint())
+    assertThat(writeTo(span).remoteEndpoint())
         .isEqualTo(endpoint);
   }
 
-  // This prevents the server timestamp from overwriting the client one on the collector
-  @Test public void reportsSharedStatus() {
-    MutableSpan span = new MutableSpan(() -> 0L, context.toBuilder().build(), localEndpoint);
+  // This prevents the server startTimestamp from overwriting the client one on the collector
+  @Test public void writeTo_sharedStatus() {
+    MutableSpan span = new MutableSpan();
 
     span.setShared();
-    span.start(1L);
+    span.startTimestamp(1L);
     span.kind(SERVER);
-    span.finish(2L);
+    span.finishTimestamp(2L);
 
-    assertThat(span.toSpan().shared())
+    assertThat(writeTo(span).shared())
         .isTrue();
   }
 
   @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
-    Span flushed = newSpan().finish(null).toSpan();
-    assertThat(flushed).extracting(Span::timestamp, Span::duration)
-        .allSatisfy(u -> assertThat(u).isNull());
+    MutableSpan flushed = new MutableSpan();
+    flushed.finishTimestamp(0L);
+
+    assertThat(flushed).extracting(s -> s.startTimestamp, s -> s.finishTimestamp)
+        .allSatisfy(u -> assertThat(u).isEqualTo(0L));
   }
 
   /** We can't compute duration unless we started the span in the same tracer. */
-  @Test public void finishUnstartedIsSameAsFlush() {
-    assertThat(newSpan().finish(2L).toSpan())
-        .isEqualTo(newSpan().finish(null).toSpan());
+  @Test public void writeTo_finishUnstartedIsSameAsFlush() {
+    MutableSpan finishWithTimestamp = new MutableSpan();
+    finishWithTimestamp.finishTimestamp(2L);
+    Span.Builder finishWithTimestampBuilder = Span.newBuilder();
+    finishWithTimestamp.writeTo(finishWithTimestampBuilder);
+
+    MutableSpan finishWithNoTimestamp = new MutableSpan();
+    finishWithNoTimestamp.finishTimestamp(0L);
+    Span.Builder finishWithNoTimestampBuilder = Span.newBuilder();
+    finishWithNoTimestamp.writeTo(finishWithNoTimestampBuilder);
+
+    MutableSpan flush = new MutableSpan();
+    Span.Builder flushBuilder = Span.newBuilder();
+    flush.writeTo(flushBuilder);
+
+    assertThat(finishWithTimestampBuilder)
+        .isEqualToComparingFieldByFieldRecursively(finishWithNoTimestampBuilder)
+        .isEqualToComparingFieldByFieldRecursively(flushBuilder);
   }
 
-  MutableSpan newSpan() {
-    return new MutableSpan(() -> 0L, context, localEndpoint);
+  Span writeTo(MutableSpan span) {
+    Span.Builder result = Span.newBuilder().traceId(0L, 1L).id(1L);
+    span.writeTo(result);
+    return result.build();
   }
 }

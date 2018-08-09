@@ -41,4 +41,12 @@ public class SamplingFlagsTest {
     assertThat(flags.sampled()).isFalse();
     assertThat(flags.debug()).isFalse();
   }
+
+  @Test public void nullSampled() {
+    SamplingFlags flags = new SamplingFlags.Builder().sampled(true).sampled(null).build();
+
+    assertThat(flags).isSameAs(SamplingFlags.EMPTY);
+    assertThat(flags.sampled()).isNull();
+    assertThat(flags.debug()).isFalse();
+  }
 }

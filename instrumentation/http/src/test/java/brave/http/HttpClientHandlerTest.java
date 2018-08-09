@@ -11,12 +11,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -47,6 +48,19 @@ public class HttpClientHandlerTest {
 
   @After public void close() {
     Tracing.current().close();
+  }
+
+  @Test public void handleStart_parsesTagsWithCustomizer() {
+    brave.Span span = mock(brave.Span.class);
+    brave.SpanCustomizer spanCustomizer = mock(brave.SpanCustomizer.class);
+    when(adapter.method(request)).thenReturn("GET");
+    when(span.customizer()).thenReturn(spanCustomizer);
+
+    handler.handleStart(request, span);
+
+    verify(spanCustomizer).name("GET");
+    verify(spanCustomizer).tag("http.method", "GET");
+    verifyNoMoreInteractions(spanCustomizer);
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {

@@ -1,14 +1,13 @@
 package brave;
 
 import brave.propagation.TraceContext;
-import com.google.auto.value.AutoValue;
-import zipkin2.Endpoint;
 
-@AutoValue
-abstract class NoopSpan extends Span {
+final class NoopSpan extends Span {
 
-  static NoopSpan create(TraceContext context) {
-    return new AutoValue_NoopSpan(context);
+  final TraceContext context;
+
+  NoopSpan(TraceContext context) {
+    this.context = context;
   }
 
   @Override public SpanCustomizer customizer() {
@@ -17,6 +16,10 @@ abstract class NoopSpan extends Span {
 
   @Override public boolean isNoop() {
     return true;
+  }
+
+  @Override public TraceContext context() {
+    return context;
   }
 
   @Override public Span start() {
@@ -43,8 +46,13 @@ abstract class NoopSpan extends Span {
     return this;
   }
 
-  @Override public Span remoteEndpoint(Endpoint endpoint) {
+  @Override public Span remoteServiceName(String remoteServiceName) {
     return this;
+  }
+
+  /** Returns true in order to prevent secondary conditions when in no-op mode */
+  @Override public boolean remoteIpAndPort(String remoteIp, int port) {
+    return true;
   }
 
   @Override public Span tag(String key, String value) {
@@ -65,5 +73,19 @@ abstract class NoopSpan extends Span {
   }
 
   @Override public void flush() {
+  }
+
+  @Override public String toString() {
+    return "NoopSpan(" + context + ")";
+  }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof NoopSpan)) return false;
+    return context.equals(((NoopSpan) o).context);
+  }
+
+  @Override public int hashCode() {
+    return context.hashCode();
   }
 }

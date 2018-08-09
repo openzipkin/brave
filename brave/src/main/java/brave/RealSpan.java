@@ -1,89 +1,165 @@
 package brave;
 
-import brave.internal.recorder.Recorder;
+import brave.Tracing.SpanReporter;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
-import com.google.auto.value.AutoValue;
-import zipkin2.Endpoint;
 
 /** This wraps the public api and guards access to a mutable span. */
-@AutoValue
-abstract class RealSpan extends Span {
+final class RealSpan extends Span {
 
-  abstract Recorder recorder();
-  abstract ErrorParser errorParser();
+  final TraceContext context;
+  final PendingSpans pendingSpans;
+  final MutableSpan state;
+  final Clock clock;
+  final SpanReporter spanReporter;
+  final ErrorParser errorParser;
+  final RealSpanCustomizer customizer;
 
-  static RealSpan create(TraceContext context, Recorder recorder, ErrorParser errorParser) {
-    return new AutoValue_RealSpan(context, RealSpanCustomizer.create(context, recorder), recorder,
-        errorParser);
+  RealSpan(TraceContext context,
+      PendingSpans pendingSpans,
+      MutableSpan state,
+      Clock clock,
+      SpanReporter spanReporter,
+      ErrorParser errorParser) {
+    this.context = context;
+    this.pendingSpans = pendingSpans;
+    this.state = state;
+    this.clock = clock;
+    this.customizer = new RealSpanCustomizer(context, state, clock);
+    this.spanReporter = spanReporter;
+    this.errorParser = errorParser;
   }
 
   @Override public boolean isNoop() {
     return false;
   }
 
+  @Override public TraceContext context() {
+    return context;
+  }
+
+  @Override public SpanCustomizer customizer() {
+    return new RealSpanCustomizer(context, state, clock);
+  }
+
   @Override public Span start() {
-    recorder().start(context());
-    return this;
+    return start(clock.currentTimeMicroseconds());
   }
 
   @Override public Span start(long timestamp) {
-    recorder().start(context(), timestamp);
+    synchronized (state) {
+      state.startTimestamp(timestamp);
+    }
     return this;
   }
 
   @Override public Span name(String name) {
-    recorder().name(context(), name);
+    synchronized (state) {
+      state.name(name);
+    }
     return this;
   }
 
   @Override public Span kind(Kind kind) {
-    recorder().kind(context(), kind);
+    synchronized (state) {
+      state.kind(kind);
+    }
     return this;
   }
 
   @Override public Span annotate(String value) {
-    recorder().annotate(context(), value);
-    return this;
+    return annotate(clock.currentTimeMicroseconds(), value);
   }
 
   @Override public Span annotate(long timestamp, String value) {
-    recorder().annotate(context(), timestamp, value);
+    // Modern instrumentation should not send annotations such as this, but we leniently
+    // accept them rather than fail. This for example allows old bridges like to Brave v3 to work
+    if ("cs".equals(value)) {
+      synchronized (state) {
+        state.kind(Span.Kind.CLIENT);
+        state.startTimestamp(timestamp);
+      }
+    } else if ("sr".equals(value)) {
+      synchronized (state) {
+        state.kind(Span.Kind.SERVER);
+        state.startTimestamp(timestamp);
+      }
+    } else if ("cr".equals(value)) {
+      synchronized (state) {
+        state.kind(Span.Kind.CLIENT);
+      }
+      finish(timestamp);
+    } else if ("ss".equals(value)) {
+      synchronized (state) {
+        state.kind(Span.Kind.SERVER);
+      }
+      finish(timestamp);
+    } else {
+      synchronized (state) {
+        state.annotate(timestamp, value);
+      }
+    }
     return this;
   }
 
   @Override public Span tag(String key, String value) {
-    recorder().tag(context(), key, value);
+    synchronized (state) {
+      state.tag(key, value);
+    }
     return this;
   }
 
   @Override public Span error(Throwable throwable) {
-    errorParser().error(throwable, customizer());
+    errorParser.error(throwable, customizer());
     return this;
   }
 
-  @Override public Span remoteEndpoint(Endpoint remoteEndpoint) {
-    recorder().remoteEndpoint(context(), remoteEndpoint);
+  @Override public Span remoteServiceName(String remoteServiceName) {
+    synchronized (state) {
+      state.remoteServiceName(remoteServiceName);
+    }
     return this;
+  }
+
+  @Override public boolean remoteIpAndPort(String remoteIp, int remotePort) {
+    synchronized (state) {
+      return state.remoteIpAndPort(remoteIp, remotePort);
+    }
   }
 
   @Override public void finish() {
-    recorder().finish(context());
+    finish(clock.currentTimeMicroseconds());
   }
 
   @Override public void finish(long timestamp) {
-    recorder().finish(context(), timestamp);
+    if (!pendingSpans.remove(context)) return;
+    synchronized (state) {
+      state.finishTimestamp(timestamp);
+    }
+    spanReporter.report(context, state);
   }
 
   @Override public void abandon() {
-    recorder().abandon(context());
+    pendingSpans.remove(context);
   }
 
   @Override public void flush() {
-    recorder().flush(context());
+    abandon();
+    spanReporter.report(context, state);
   }
 
-  @Override
-  public String toString() {
-    return "RealSpan(" + context() + ")";
+  @Override public String toString() {
+    return "RealSpan(" + context + ")";
+  }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof RealSpan)) return false;
+    return context.equals(((RealSpan) o).context);
+  }
+
+  @Override public int hashCode() {
+    return context.hashCode();
   }
 }

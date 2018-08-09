@@ -1,6 +1,4 @@
 Import-Package: \
-  !zipkin,\
-  !zipkin.internal,\
   !zipkin2.internal,\
   *
 Export-Package: \

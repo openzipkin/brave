@@ -15,15 +15,13 @@
 package brave.mysql8;
 
 import brave.Span;
-import com.mysql.cj.jdbc.DatabaseMetaData;
 import com.mysql.cj.jdbc.JdbcConnection;
 import java.sql.SQLException;
 import java.util.Properties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-import zipkin2.Endpoint;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -31,67 +29,56 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingQueryInterceptorTest {
-  @Mock
-  JdbcConnection connection;
-  @Mock
-  DatabaseMetaData metaData;
-
+  @Mock JdbcConnection connection;
   @Mock Span span;
   String url = "jdbc:mysql://myhost:5555/mydatabase";
 
-  @Test public void parseServerAddress_ipFromHost_portFromUrl() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1");
+  @Test public void parseServerIpAndPort_ipFromHost_portFromUrl() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_serviceNameFromDatabaseName() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1");
+  @Test public void parseServerIpAndPort_serviceNameFromDatabaseName() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4");
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql-mydatabase")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql-mydatabase");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_propertiesOverrideServiceName() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1").setProperty("zipkinServiceName", "foo");
+  @Test public void parseServerIpAndPort_propertiesOverrideServiceName() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "foo");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("foo")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("foo");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_emptyZipkinServiceNameIgnored() throws SQLException {
-    setupAndReturnPropertiesForHost("127.0.0.1").setProperty("zipkinServiceName", "");
+  @Test public void parseServerIpAndPort_emptyZipkinServiceNameIgnored() throws SQLException {
+    setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "");
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .ip("127.0.0.1").port(5555).build());
+    verify(span).remoteServiceName("mysql");
+    verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerAddress_doesntNsLookup() throws SQLException {
-    setupAndReturnPropertiesForHost("localhost");
+  @Test public void parseServerIpAndPort_doesntCrash() {
+    when(connection.getURL()).thenThrow(new RuntimeException());
 
-    TracingQueryInterceptor.parseServerAddress(connection, span);
-    verify(span).remoteEndpoint(Endpoint.newBuilder().serviceName("mysql")
-        .port(5555).build());
-  }
-
-  @Test public void parseServerAddress_doesntCrash() throws SQLException {
-    when(connection.getMetaData()).thenThrow(new SQLException());
+    TracingQueryInterceptor.parseServerIpAndPort(connection, span);
 
     verifyNoMoreInteractions(span);
   }
 
-  Properties setupAndReturnPropertiesForHost(String host) throws SQLException {
-    when(connection.getMetaData()).thenReturn(metaData);
+  Properties setupAndReturnPropertiesForHost(String host) {
     when(connection.getURL()).thenReturn(url);
     Properties properties = new Properties();
     when(connection.getProperties()).thenReturn(properties);

@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import zipkin2.Endpoint;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
@@ -42,7 +41,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
     span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
     span.tag("sql.query", sql);
-    parseServerAddress(info.getConnectionInformation().getConnection(), span);
+    parseServerIpAndPort(info.getConnectionInformation().getConnection(), span);
     span.start();
   }
 
@@ -60,9 +59,9 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
    * This attempts to get the ip and port from the JDBC URL. Ex. localhost and 5555 from {@code
    * jdbc:mysql://localhost:5555/mydatabase}.
    */
-  void parseServerAddress(Connection connection, Span span) {
+  void parseServerIpAndPort(Connection connection, Span span) {
     try {
-      final String urlAsString = connection.getMetaData().getURL().substring(5); // strip "jdbc:"
+      String urlAsString = connection.getMetaData().getURL().substring(5); // strip "jdbc:"
       URI url = URI.create(urlAsString.replace(" ", "")); // Remove all white space according to RFC 2396
       String defaultRemoteServiceName = remoteServiceName;
       Matcher matcher = URL_SERVICE_NAME_FINDER.matcher(url.toString());
@@ -73,21 +72,15 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
           defaultRemoteServiceName = parsedServiceName;
         }
       }
-      Endpoint.Builder builder = Endpoint.newBuilder();
-      int port = url.getPort();
-      if (port > 0) builder.port(port);
-      boolean parsed = builder.parseIp(url.getHost());
       if (defaultRemoteServiceName == null || "".equals(defaultRemoteServiceName)) {
         String databaseName = connection.getCatalog();
         if (databaseName != null && !databaseName.isEmpty()) {
-          builder.serviceName(databaseName);
-        } else {
-          if (!parsed) return;
+          span.remoteServiceName(databaseName);
         }
       } else {
-        builder.serviceName(defaultRemoteServiceName);
+        span.remoteServiceName(defaultRemoteServiceName);
       }
-      span.remoteEndpoint(builder.build());
+      span.remoteIpAndPort(url.getHost(), url.getPort());
     } catch (Exception e) {
       // remote address is optional
     }

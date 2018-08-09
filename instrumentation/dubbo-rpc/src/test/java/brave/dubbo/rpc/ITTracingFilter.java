@@ -60,4 +60,13 @@ public abstract class ITTracingFilter {
         .setTracing(tracing);
     this.tracing = tracing;
   }
+
+  /** Call this to block until a span was reported */
+  Span takeSpan() throws InterruptedException {
+    Span result = spans.poll(3, TimeUnit.SECONDS);
+    assertThat(result)
+        .withFailMessage("Span was not reported")
+        .isNotNull();
+    return result;
+  }
 }

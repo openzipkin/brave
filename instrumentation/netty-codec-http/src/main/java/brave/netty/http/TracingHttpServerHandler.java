@@ -4,9 +4,10 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpSampler;
-import brave.http.HttpServerHandler;
+import brave.http.HttpServerAdapter;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
+import brave.internal.Platform;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -18,7 +19,6 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import java.net.InetSocketAddress;
-import zipkin2.Endpoint;
 
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
   static final Getter<HttpHeaders, String> GETTER = new Getter<HttpHeaders, String>() {
@@ -61,8 +61,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     // Place the span in scope so that downstream code can read trace IDs
     try {
       if (!span.isNoop()) {
+        parseChannelAddress(ctx, request, span);
         parser.request(adapter, request, span.customizer());
-        maybeParseClientAddress(ctx.channel(), request, span);
         span.start();
       }
       ctx.fireChannelRead(msg);
@@ -74,18 +74,15 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     }
   }
 
-  /** Like {@link HttpServerHandler}, but accepts a channel */
-  void maybeParseClientAddress(Channel channel, HttpRequest request, Span span) {
-    Endpoint.Builder remoteEndpoint = Endpoint.newBuilder();
-    if (adapter.parseClientAddress(request, remoteEndpoint)) {
-      span.remoteEndpoint(remoteEndpoint.build());
-    } else {
-      InetSocketAddress remoteAddress = (InetSocketAddress) channel.remoteAddress();
-      span.remoteEndpoint(Endpoint.newBuilder()
-          .ip(remoteAddress.getAddress())
-          .port(remoteAddress.getPort())
-          .build());
-    }
+  /**
+   * This sets the client IP:port to the {@linkplain Channel#remoteAddress() remote address} if
+   * {@link HttpServerAdapter#parseClientIpAndPort} fails.
+   */
+  void parseChannelAddress(ChannelHandlerContext ctx, HttpRequest request, Span span) {
+    if (adapter.parseClientIpFromXForwardedFor(request, span)) return;
+    InetSocketAddress remoteAddress = (InetSocketAddress) ctx.channel().remoteAddress();
+    if (remoteAddress.getAddress() == null) return;
+    span.remoteIpAndPort(Platform.get().getHostString(remoteAddress), remoteAddress.getPort());
   }
 
   /** Creates a potentially noop span representing this request */

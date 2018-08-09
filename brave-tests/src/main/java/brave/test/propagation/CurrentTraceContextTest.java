@@ -67,7 +67,7 @@ public abstract class CurrentTraceContextTest {
   void noticesDifferentSpanId(Scope scope) {
     TraceContext differentSpanId = context.toBuilder().spanId(context.spanId() + 1L).build();
     try (Scope scope2 = currentTraceContext.maybeScope(differentSpanId)) {
-      assertThat(scope).isNotEqualTo(Scope.NOOP);
+      assertThat(scope2).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
           .isEqualTo(differentSpanId);
       verifyImplicitContext(differentSpanId);
@@ -86,7 +86,7 @@ public abstract class CurrentTraceContextTest {
 
   void noticesDifferentContext(Scope scope) {
     try (Scope scope2 = currentTraceContext.maybeScope(context2)) {
-      assertThat(scope).isNotEqualTo(Scope.NOOP);
+      assertThat(scope2).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
           .isEqualTo(context2);
       verifyImplicitContext(context2);
@@ -120,7 +120,7 @@ public abstract class CurrentTraceContextTest {
   void canClearScope(Supplier<Scope> noScoper) {
     try (Scope scope = currentTraceContext.newScope(context)) {
       try (Scope noScope = noScoper.get()) {
-        assertThat(scope).isNotEqualTo(Scope.NOOP);
+        assertThat(noScope).isNotEqualTo(Scope.NOOP);
         assertThat(currentTraceContext.get())
             .isNull();
         verifyImplicitContext(null);

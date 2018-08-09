@@ -166,10 +166,8 @@ Here's an example of a client span:
 // before you send a request, add metadata that describes the operation
 span = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
 span.tag("myrpc.version", "1.0.0");
-span.remoteEndpoint(Endpoint.newBuilder()
-    .serviceName("backend")
-    .ip("172.3.4.1")
-    .port(8108).build());
+span.remoteServiceName("backend");
+span.remoteIpAndPort("172.3.4.1", 8108);
 
 // Add the trace context to the request, so it can be propagated in-band
 tracing.propagation().injector(Request::addHeader)
