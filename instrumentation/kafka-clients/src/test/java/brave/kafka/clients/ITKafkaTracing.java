@@ -10,6 +10,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -251,7 +252,7 @@ public class ITKafkaTracing {
 
     producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
 
-    ConsumerRecords<String, String> records = consumer.poll(10000);
+    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
 
     assertThat(records).hasSize(1);
     Span producerSpan = producerSpans.take();
