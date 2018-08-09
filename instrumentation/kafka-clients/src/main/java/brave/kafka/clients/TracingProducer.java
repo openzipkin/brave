@@ -20,7 +20,6 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
-import zipkin2.Endpoint;
 
 final class TracingProducer<K, V> implements Producer<K, V> {
 
