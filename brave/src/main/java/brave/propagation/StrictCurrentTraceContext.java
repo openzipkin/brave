@@ -10,8 +10,8 @@ package brave.propagation;
  */
 @Deprecated
 public final class StrictCurrentTraceContext extends ThreadLocalCurrentTraceContext {
-  static final Builder SCOPE_DECORATING_BUILDER = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(new StrictScopeDecorator());
+  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
+      ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(new StrictScopeDecorator());
 
   public StrictCurrentTraceContext() { // Preserve historical public ctor
     // intentionally not inheritable to ensure instrumentation propagation doesn't accidentally work

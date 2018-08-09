@@ -12,7 +12,7 @@ public class CurrentTraceContextFactoryBean implements FactoryBean {
   List<ScopeDecorator> scopeDecorators;
 
   @Override public CurrentTraceContext getObject() {
-    ThreadLocalCurrentTraceContext.Builder builder = ThreadLocalCurrentTraceContext.newBuilder();
+    CurrentTraceContext.Builder builder = ThreadLocalCurrentTraceContext.newBuilder();
     if (scopeDecorators != null) {
       for (ScopeDecorator scopeDecorator : scopeDecorators) {
         builder.addScopeDecorator(scopeDecorator);

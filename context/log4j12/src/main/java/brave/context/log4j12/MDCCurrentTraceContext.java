@@ -14,7 +14,7 @@ import org.apache.log4j.MDC;
  */
 @Deprecated
 public final class MDCCurrentTraceContext extends CurrentTraceContext {
-  static final ThreadLocalCurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
+  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
       ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(MDCScopeDecorator.create());
 
   public static MDCCurrentTraceContext create() {

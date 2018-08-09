@@ -14,7 +14,7 @@ import org.apache.logging.log4j.ThreadContext;
  */
 @Deprecated
 public final class ThreadContextCurrentTraceContext extends CurrentTraceContext {
-  static final ThreadLocalCurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
+  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
       ThreadLocalCurrentTraceContext.newBuilder()
           .addScopeDecorator(ThreadContextScopeDecorator.create());
 
