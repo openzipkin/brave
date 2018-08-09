@@ -148,7 +148,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.commitSync(offsets);
   }
 
-  @Override public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets, Duration timeout) {
+  @Override
+  public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets, Duration timeout) {
     delegate.commitSync(offsets, timeout);
   }
 
@@ -230,15 +231,18 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.offsetsForTimes(timestampsToSearch);
   }
 
-  @Override public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+  @Override public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
+      Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
     return delegate.offsetsForTimes(timestampsToSearch, timeout);
   }
 
-  @Override public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
+  @Override
+  public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
     return delegate.beginningOffsets(partitions);
   }
 
-  @Override public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions, Duration timeout) {
+  @Override public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions,
+      Duration timeout) {
     return delegate.beginningOffsets(partitions, timeout);
   }
 
@@ -246,7 +250,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.endOffsets(partitions);
   }
 
-  @Override public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
+  @Override public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
+      Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
   }
 
@@ -259,7 +264,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   @Override public void close(Duration timeout) {
-     delegate.close(timeout);
+    delegate.close(timeout);
   }
 
   @Override public void wakeup() {
