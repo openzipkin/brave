@@ -4,6 +4,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import java.io.Closeable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -24,12 +25,16 @@ import java.util.concurrent.ExecutorService;
  */
 public abstract class CurrentTraceContext {
 
-  public abstract static class Builder {
-    /**
-     * Use this to add features such as thread checks or log correlation fields when a scope is
-     * created or closed.
-     */
-    public abstract Builder scopeDecorators(List<ScopeDecorator> scopeDecorators);
+  /** Implementations of this allow standardized configuration, for example scope decoration. */
+  public abstract static class Builder<B extends Builder<B>> {
+    ArrayList<ScopeDecorator> scopeDecorators = new ArrayList<>();
+
+    /** Implementations call decorators in order to add features like log correlation to a scope. */
+    public B addScopeDecorator(ScopeDecorator scopeDecorator) {
+      if (scopeDecorator == null) throw new NullPointerException("scopeDecorator == null");
+      this.scopeDecorators.add(scopeDecorator);
+      return (B) this;
+    }
 
     public abstract CurrentTraceContext build();
   }
@@ -38,8 +43,8 @@ public abstract class CurrentTraceContext {
   public abstract @Nullable TraceContext get();
 
   /**
-   * Sets the current span in scope until the returned object is closed. It is a programming
-   * error to drop or never close the result. Using try-with-resources is preferred for this reason.
+   * Sets the current span in scope until the returned object is closed. It is a programming error
+   * to drop or never close the result. Using try-with-resources is preferred for this reason.
    *
    * @param currentSpan span to place into scope or null to clear the scope
    */
@@ -52,13 +57,33 @@ public abstract class CurrentTraceContext {
   }
 
   protected CurrentTraceContext() {
-    this(Collections.emptyList());
+    this.scopeDecorators = Collections.emptyList();
   }
 
-  protected CurrentTraceContext(List<ScopeDecorator> scopeDecorators) {
-    this.scopeDecorators = scopeDecorators;
+  protected CurrentTraceContext(Builder<?> builder) {
+    this.scopeDecorators = (List<ScopeDecorator>) builder.scopeDecorators.clone();
   }
 
+  /**
+   * When implementing {@linkplain #newScope(TraceContext)}, decorate the result before returning
+   * it.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   *   @Override public Scope newScope(@Nullable TraceContext currentSpan) {
+   *     final TraceContext previous = local.get();
+   *     local.set(currentSpan);
+   *     class ThreadLocalScope implements Scope {
+   *       @Override public void close() {
+   *         local.set(previous);
+   *       }
+   *     }
+   *     Scope result = new ThreadLocalScope();
+   *     // ensure scope hooks are attached to the result
+   *     return decorateScope(currentSpan, result);
+   *   }
+   * }</pre>
+   */
   protected Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
     int length = scopeDecorators.size();
     if (length == 0) return scope;
@@ -73,7 +98,8 @@ public abstract class CurrentTraceContext {
    * already in scope. This can reduce overhead when scoping callbacks. However, this will not apply
    * any changes, notably in {@link TraceContext#extra()}. As such, it should be used carefully and
    * only in conditions where redundancy is possible and the intent is primarily to facilitate
-   * {@link Tracer#currentSpan}. Most often, this is used to eliminate redundant scopes by wrappers.
+   * {@link Tracer#currentSpan}. Most often, this is used to eliminate redundant scopes by
+   * wrappers.
    *
    * <p>For example, RxJava includes hooks to wrap types that represent an asynchronous functional
    * composition. For example, {@code flowable.parallel().flatMap(Y).sequential()} Assembly hooks
@@ -105,7 +131,8 @@ public abstract class CurrentTraceContext {
   /** A span remains in the scope it was bound to until close is called. */
   public interface Scope extends Closeable {
     /**
-     * Returned when {@link CurrentTraceContext#maybeScope(TraceContext)} detected scope redundancy.
+     * Returned when {@link CurrentTraceContext#maybeScope(TraceContext)} detected scope
+     * redundancy.
      */
     Scope NOOP = new Scope() {
       @Override public void close() {
@@ -120,6 +147,10 @@ public abstract class CurrentTraceContext {
     @Override void close();
   }
 
+  /**
+   * Use this to add features such as thread checks or log correlation fields when a scope is
+   * created or closed.
+   */
   public interface ScopeDecorator {
     Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope);
   }
@@ -149,24 +180,24 @@ public abstract class CurrentTraceContext {
 
     /** Uses a non-inheritable static thread local */
     public static CurrentTraceContext create() {
-      return new ThreadLocalCurrentTraceContext(Collections.emptyList(), DEFAULT);
+      return new ThreadLocalCurrentTraceContext(new Builder(), DEFAULT);
     }
 
     /**
-     * Uses an inheritable static thread local which allows arbitrary calls to {@link Thread#start()}
-     * to automatically inherit this context. This feature is available as it is was the default in
-     * Brave 3, because some users couldn't control threads in their applications.
+     * Uses an inheritable static thread local which allows arbitrary calls to {@link
+     * Thread#start()} to automatically inherit this context. This feature is available as it is was
+     * the default in Brave 3, because some users couldn't control threads in their applications.
      *
      * <p>This can be a problem in scenarios such as thread pool expansion, leading to data being
-     * recorded in the wrong span, or spans with the wrong parent. If you are impacted by this, switch
-     * to {@link #create()}.
+     * recorded in the wrong span, or spans with the wrong parent. If you are impacted by this,
+     * switch to {@link #create()}.
      */
     public static CurrentTraceContext inheritable() {
-      return new ThreadLocalCurrentTraceContext(Collections.emptyList(), INHERITABLE);
+      return new Default();
     }
 
-    Default(ThreadLocal<TraceContext> local) {
-      super(Collections.emptyList(), local);
+    Default() {
+      super(new Builder(), INHERITABLE);
     }
   }
 

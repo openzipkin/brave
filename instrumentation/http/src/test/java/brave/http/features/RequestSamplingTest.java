@@ -4,7 +4,8 @@ import brave.Tracing;
 import brave.http.HttpAdapter;
 import brave.http.HttpSampler;
 import brave.http.HttpTracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.Call;
@@ -30,7 +31,9 @@ public class RequestSamplingTest {
   ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
   Tracing tracing = Tracing.newBuilder()
       .localServiceName("server")
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
       .spanReporter(spans::push)
       .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)

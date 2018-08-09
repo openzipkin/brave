@@ -3,7 +3,8 @@ package brave.grpc;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -98,7 +99,9 @@ public class ITCensusInterop {
       Tracing.newBuilder()
           .propagationFactory(GrpcPropagation.newFactory(B3Propagation.FACTORY))
           .spanReporter(spans::add)
-          .currentTraceContext(new StrictCurrentTraceContext())
+          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+              .addScopeDecorator(StrictScopeDecorator.create())
+              .build())
           .build();
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
 
@@ -129,10 +132,10 @@ public class ITCensusInterop {
     initClient(false); // trace client with census
 
     try (Scope tagger =
-        Tags.getTagger()
-            .emptyBuilder()
-            .put(RpcMeasureConstants.RPC_METHOD, TagValue.create("edge.Ingress/InitialRoute"))
-            .buildScoped()) {
+             Tags.getTagger()
+                 .emptyBuilder()
+                 .put(RpcMeasureConstants.RPC_METHOD, TagValue.create("edge.Ingress/InitialRoute"))
+                 .buildScoped()) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
 

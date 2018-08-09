@@ -4,7 +4,7 @@ import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
@@ -156,14 +156,14 @@ public class TracingFactoryBeanTest {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"currentTraceContext\">\n"
-        + "    <bean class=\"brave.propagation.StrictCurrentTraceContext\"/>\n"
+        + "    <bean class=\"brave.spring.beans.CurrentTraceContextFactoryBean\"/>\n"
         + "  </property>\n"
         + "</bean>"
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.currentTraceContext")
-        .allMatch(o -> o instanceof StrictCurrentTraceContext);
+        .allMatch(o -> o instanceof ThreadLocalCurrentTraceContext);
   }
 
   @Test public void propagationFactory() {

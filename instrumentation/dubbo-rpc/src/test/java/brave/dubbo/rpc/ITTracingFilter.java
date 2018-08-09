@@ -1,7 +1,8 @@
 package brave.dubbo.rpc;
 
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -50,7 +51,9 @@ public abstract class ITTracingFilter {
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+            .addScopeDecorator(StrictScopeDecorator.create())
+            .build())
         .sampler(sampler);
   }
 

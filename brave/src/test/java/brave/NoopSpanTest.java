@@ -1,8 +1,7 @@
 package brave;
 
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import java.net.InetSocketAddress;
 import org.junit.After;
 import org.junit.Test;
 
@@ -10,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class NoopSpanTest {
   Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .clock(() -> {
         throw new AssertionError();
       })
@@ -20,7 +19,7 @@ public class NoopSpanTest {
       .build().tracer();
   Span span = tracer.newTrace();
 
-  @After public void close(){
+  @After public void close() {
     Tracing.current().close();
   }
 

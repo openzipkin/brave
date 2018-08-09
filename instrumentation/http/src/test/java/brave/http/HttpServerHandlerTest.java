@@ -4,7 +4,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.SamplingFlags;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.eq;
@@ -39,7 +38,7 @@ public class HttpServerHandlerTest {
   @Before public void init() {
     HttpTracing httpTracing = HttpTracing.newBuilder(
         Tracing.newBuilder()
-            .currentTraceContext(new StrictCurrentTraceContext())
+            .currentTraceContext(ThreadLocalCurrentTraceContext.create())
             .spanReporter(spans::add)
             .build()
     ).serverSampler(sampler).build();
@@ -83,7 +82,7 @@ public class HttpServerHandlerTest {
   @Test public void handleReceive_reusesTraceId() {
     HttpTracing httpTracing = HttpTracing.create(
         Tracing.newBuilder()
-            .currentTraceContext(new StrictCurrentTraceContext())
+            .currentTraceContext(ThreadLocalCurrentTraceContext.create())
             .supportsJoin(false)
             .spanReporter(spans::add)
             .build()

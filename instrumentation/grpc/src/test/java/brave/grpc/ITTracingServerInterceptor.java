@@ -2,9 +2,10 @@ package brave.grpc;
 
 import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.context.log4j2.ThreadContextCurrentTraceContext;
+import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.internal.Nullable;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import io.grpc.CallOptions;
@@ -43,7 +44,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -311,7 +311,10 @@ public class ITTracingServerInterceptor {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
         .currentTraceContext( // connect to log4j
-            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
+            ThreadLocalCurrentTraceContext.newBuilder()
+                .addScopeDecorator(StrictScopeDecorator.create())
+                .addScopeDecorator(ThreadContextScopeDecorator.create())
+                .build())
         .sampler(sampler);
   }
 

@@ -3,7 +3,7 @@ package brave.features.sampler;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import java.lang.annotation.Retention;
@@ -41,7 +41,7 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
         .spanReporter(spans::add)
         .sampler(new Sampler() {
           @Override public boolean isSampled(long traceId) {

@@ -3,7 +3,7 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpHandlerTest {
-  CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
+  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
   @Mock HttpAdapter<Object, Object> adapter;
   @Mock brave.Span span;

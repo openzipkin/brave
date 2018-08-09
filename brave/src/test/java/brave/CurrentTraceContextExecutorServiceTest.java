@@ -1,7 +1,8 @@
 package brave;
 
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -24,7 +25,9 @@ public class CurrentTraceContextExecutorServiceTest {
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
 
   // override default so that it isn't inheritable
-  CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
+  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build();
   ExecutorService executor = currentTraceContext.executorService(wrappedExecutor);
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();

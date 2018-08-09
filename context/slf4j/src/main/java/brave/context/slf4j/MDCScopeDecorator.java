@@ -1,17 +1,27 @@
 package brave.context.slf4j;
 
 import brave.internal.propagation.CorrelationFieldScopeDecorator;
+import brave.propagation.CurrentTraceContext;
 import org.slf4j.MDC;
 
 /**
  * Adds {@linkplain MDC} properties "traceId", "parentId" and "spanId" when a {@link
  * brave.Tracer#currentSpan() span is current}. These can be used in log correlation.
+ *
+ * <p>Ex.
+ * <pre>{@code
+ * tracing = Tracing.newBuilder()
+ *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+ *                    .addScopeDecorator(MDCScopeDecorator.create())
+ *                    .build()
+ *                  )
+ *                  ...
+ *                  .build();
+ * }</pre>
  */
 public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
-  static final MDCScopeDecorator INSTANCE = new MDCScopeDecorator();
-
-  public static MDCScopeDecorator create() {
-    return INSTANCE;
+  public static CurrentTraceContext.ScopeDecorator create() {
+    return new MDCScopeDecorator();
   }
 
   @Override protected String getIfString(String key) {
@@ -24,5 +34,8 @@ public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
 
   @Override protected void remove(String key) {
     MDC.remove(key);
+  }
+
+  MDCScopeDecorator() {
   }
 }

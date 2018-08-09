@@ -2,7 +2,8 @@ package brave.features.advanced;
 
 import brave.Clock;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class CustomScopedClockTracingTest {
   List<Span> spans = new ArrayList();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .build();
 

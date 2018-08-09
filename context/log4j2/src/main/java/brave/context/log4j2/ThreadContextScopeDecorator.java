@@ -7,12 +7,22 @@ import org.apache.logging.log4j.ThreadContext;
 /**
  * Adds {@linkplain ThreadContext} properties "traceId", "parentId" and "spanId" when a {@link
  * brave.Tracer#currentSpan() span is current}. These can be used in log correlation.
+ *
+ * <p>Ex.
+ * <pre>{@code
+ * tracing = Tracing.newBuilder()
+ *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+ *                    .addScopeDecorator(ThreadContextScopeDecorator.create())
+ *                    .build()
+ *                  )
+ *                  ...
+ *                  .build();
+ * }</pre>
  */
 public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDecorator {
-  static final ThreadContextScopeDecorator INSTANCE = new ThreadContextScopeDecorator();
 
   public static ScopeDecorator create() {
-    return INSTANCE;
+    return new ThreadContextScopeDecorator();
   }
 
   @Override protected String getIfString(String key) {

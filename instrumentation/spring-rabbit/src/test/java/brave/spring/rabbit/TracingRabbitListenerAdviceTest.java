@@ -1,7 +1,7 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.aopalliance.intercept.MethodInvocation;
@@ -27,10 +27,11 @@ public class TracingRabbitListenerAdviceTest {
 
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .build();
-  TracingRabbitListenerAdvice tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, "my-service");
+  TracingRabbitListenerAdvice tracingRabbitListenerAdvice =
+      new TracingRabbitListenerAdvice(tracing, "my-service");
   MethodInvocation methodInvocation = mock(MethodInvocation.class);
 
   @After public void close() {

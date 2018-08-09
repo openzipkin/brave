@@ -2,9 +2,25 @@ package brave.propagation;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
 
-/** Useful when developing instrumentation as state is enforced more strictly. */
-public final class StrictCurrentScopeDecorator implements CurrentTraceContext.ScopeDecorator {
+/**
+ * Useful when developing instrumentation as state is enforced more strictly.
+ *
+ * <p>Ex.
+ * <pre>{@code
+ * tracing = Tracing.newBuilder()
+ *                  .spanReporter(...)
+ *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+ *                    .addScopeDecorator(StrictScopeDecorator.create())
+ *                    .build()
+ *                  ).build();
+ * }</pre>
+ */
+public final class StrictScopeDecorator implements ScopeDecorator {
+  public static ScopeDecorator create() {
+    return new StrictScopeDecorator();
+  }
 
   /** Identifies problems by throwing assertion errors when a scope is closed on a different thread. */
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
@@ -34,5 +50,8 @@ public final class StrictCurrentScopeDecorator implements CurrentTraceContext.Sc
     @Override public String toString() {
       return caller.toString();
     }
+  }
+
+  StrictScopeDecorator() {
   }
 }
