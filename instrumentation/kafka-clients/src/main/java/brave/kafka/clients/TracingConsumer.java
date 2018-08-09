@@ -49,7 +49,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.remoteServiceName = remoteServiceName;
   }
 
-  // Do not use @Override annotation to avoid compatibility issue version < 1.0
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public ConsumerRecords<K, V> poll(Duration timeout) {
     return poll(timeout.toMillis());
   }
@@ -134,6 +134,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.commitSync();
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public void commitSync(Duration timeout) {
     delegate.commitSync(timeout);
   }
@@ -142,6 +143,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.commitSync(offsets);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public void commitSync(Map<TopicPartition, OffsetAndMetadata> offsets, Duration timeout) {
     delegate.commitSync(offsets, timeout);
   }
@@ -183,6 +185,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.committed(partition);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public OffsetAndMetadata committed(TopicPartition partition, Duration timeout) {
     return delegate.committed(partition, timeout);
   }
@@ -195,6 +198,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.partitionsFor(topic);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public List<PartitionInfo> partitionsFor(String topic, Duration timeout) {
     return delegate.partitionsFor(topic, timeout);
   }
@@ -224,6 +228,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.offsetsForTimes(timestampsToSearch);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
       Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
     return delegate.offsetsForTimes(timestampsToSearch, timeout);
@@ -234,6 +239,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.beginningOffsets(partitions);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions,
       Duration timeout) {
     return delegate.beginningOffsets(partitions, timeout);
@@ -243,6 +249,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.endOffsets(partitions);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
       Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
@@ -256,6 +263,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.close(timeout, unit);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public void close(Duration timeout) {
     delegate.close(timeout);
   }
