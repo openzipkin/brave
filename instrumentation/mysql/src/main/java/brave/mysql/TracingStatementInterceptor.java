@@ -10,7 +10,6 @@ import com.mysql.jdbc.StatementInterceptorV2;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.Properties;
-import zipkin2.Endpoint;
 
 /**
  * A MySQL statement interceptor that will report to Zipkin how long each statement takes.
@@ -41,7 +40,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
     int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
     span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
-    parseServerAddress(connection, span);
+    parseServerIpAndPort(connection, span);
     span.start();
     return null;
   }
@@ -65,10 +64,9 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
    * MySQL exposes the host connecting to, but not the port. This attempts to get the port from the
    * JDBC URL. Ex. 5555 from {@code jdbc:mysql://localhost:5555/database}, or 3306 if absent.
    */
-  static void parseServerAddress(Connection connection, Span span) {
+  static void parseServerIpAndPort(Connection connection, Span span) {
     try {
       URI url = URI.create(connection.getMetaData().getURL().substring(5)); // strip "jdbc:"
-      int port = url.getPort() == -1 ? 3306 : url.getPort();
       String remoteServiceName = connection.getProperties().getProperty("zipkinServiceName");
       if (remoteServiceName == null || "".equals(remoteServiceName)) {
         String databaseName = connection.getCatalog();
@@ -78,9 +76,11 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
           remoteServiceName = "mysql";
         }
       }
-      Endpoint.Builder builder = Endpoint.newBuilder().serviceName(remoteServiceName).port(port);
-      builder.parseIp(connection.getHost());
-      span.remoteEndpoint(builder.build());
+      span.remoteServiceName(remoteServiceName);
+      String host = connection.getHost();
+      if (host != null) {
+        span.remoteIpAndPort(host, url.getPort() == -1 ? 3306 : url.getPort());
+      }
     } catch (Exception e) {
       // remote address is optional
     }

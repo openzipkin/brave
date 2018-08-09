@@ -52,7 +52,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
     assertThat(span.parentId()).isEqualTo(parentId);
     assertThat(span.id()).isEqualTo(spanId);
@@ -73,7 +73,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
     assertThat(span.parentId()).isEqualTo(spanId);
     assertThat(span.id()).isNotEqualTo(spanId);
@@ -92,13 +92,13 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
-    spans.take();
+    takeSpan();
   }
 
   @Test public void reportsServerKindToZipkin() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.kind())
         .isEqualTo(Span.Kind.SERVER);
   }
@@ -106,7 +106,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.name())
         .isEqualTo("genericservice/sayhello");
   }
@@ -117,7 +117,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
       failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
     } catch (IllegalArgumentException e) {
-      Span span = spans.take();
+      Span span = takeSpan();
       assertThat(span.tags()).containsExactly(
           entry("error", "IllegalArgumentException")
       );

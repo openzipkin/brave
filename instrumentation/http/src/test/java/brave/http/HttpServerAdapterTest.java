@@ -1,27 +1,32 @@
 package brave.http;
 
+import brave.Span;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-import zipkin2.Endpoint;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isA;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServerAdapterTest {
   @Mock HttpServerAdapter<Object, Object> adapter;
+  @Mock Span span;
   Object request = new Object();
   Object response = new Object();
 
   @Before public void callRealMethod() {
-    when(adapter.parseClientAddress(eq(request), isA(Endpoint.Builder.class))).thenCallRealMethod();
+    doCallRealMethod().when(adapter).parseClientIpAndPort(eq(request), isA(Span.class));
     when(adapter.path(request)).thenCallRealMethod();
     when(adapter.statusCodeAsInt(response)).thenCallRealMethod();
+    when(adapter.parseClientIpFromXForwardedFor(request, span)).thenCallRealMethod();
   }
 
   @Test public void path_doesntCrashOnNullUrl() {
@@ -43,26 +48,18 @@ public class HttpServerAdapterTest {
         .isEqualTo("/bar");
   }
 
-  @Test public void parseClientAddress_prefersXForwardedFor() {
-    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("127.0.0.1");
+  @Test public void parseClientIpAndPort_prefersXForwardedFor() {
+    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("1.2.3.4");
 
-    Endpoint.Builder remoteAddress = Endpoint.newBuilder();
-    assertThat(adapter.parseClientAddress(request, remoteAddress))
-        .isTrue();
+    adapter.parseClientIpAndPort(request, span);
 
-    assertThat(remoteAddress.build())
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientAddress_skipsOnNoIp() {
-    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
-        .isFalse();
-  }
+  @Test public void parseClientIpAndPort_skipsOnNoIp() {
+    adapter.parseClientIpAndPort(request, span);
 
-  @Test public void parseClientAddress_doesntNsLookup() {
-    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("localhost");
-
-    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
-        .isFalse();
+    verifyNoMoreInteractions(span);
   }
 }

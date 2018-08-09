@@ -5,7 +5,6 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
-import com.google.auto.value.AutoValue;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -75,21 +74,21 @@ import java.util.Deque;
  * }
  * }</pre>
  */
-@AutoValue
-public abstract class ThreadLocalSpan {
+public class ThreadLocalSpan {
   /**
    * This uses the {@link Tracing#currentTracer()}, which means calls to {@link #next()} may return
    * null. Use this when you have no other means to get a reference to the tracer. For example, JDBC
    * connections, as they often initialize prior to the tracing component.
    */
-  public static final ThreadLocalSpan CURRENT_TRACER = new ThreadLocalSpan() {
+  public static final ThreadLocalSpan CURRENT_TRACER = new ThreadLocalSpan(null) {
     @Override Tracer tracer() {
       return Tracing.currentTracer();
     }
   };
 
   public static ThreadLocalSpan create(Tracer tracer) {
-    return new AutoValue_ThreadLocalSpan(tracer);
+    if (tracer == null) throw new NullPointerException("tracer == null");
+    return new ThreadLocalSpan(tracer);
   }
 
   /**
@@ -103,7 +102,15 @@ public abstract class ThreadLocalSpan {
         }
       };
 
-  abstract Tracer tracer();
+  final Tracer tracer;
+
+  ThreadLocalSpan(Tracer tracer) {
+    this.tracer = tracer;
+  }
+
+  Tracer tracer() {
+    return tracer;
+  }
 
   /**
    * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link #CURRENT_TRACER}
@@ -113,7 +120,7 @@ public abstract class ThreadLocalSpan {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan(extracted);
-    SpanAndScope spanAndScope = SpanAndScope.create(next, tracer.withSpanInScope(next));
+    SpanAndScope spanAndScope = new SpanAndScope(next, tracer.withSpanInScope(next));
     currentSpanInScope.get().addFirst(spanAndScope);
     return next;
   }
@@ -126,7 +133,7 @@ public abstract class ThreadLocalSpan {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan();
-    SpanAndScope spanAndScope = SpanAndScope.create(next, tracer.withSpanInScope(next));
+    SpanAndScope spanAndScope = new SpanAndScope(next, tracer.withSpanInScope(next));
     currentSpanInScope.get().addFirst(spanAndScope);
     return next;
   }
@@ -144,24 +151,37 @@ public abstract class ThreadLocalSpan {
     SpanAndScope scope = currentSpanInScope.get().pollFirst();
     if (scope == null) return currentSpan;
 
-    scope.scope().close();
-    assert scope.span().equals(currentSpan) :
-        "Misalignment: scoped span " + scope.span() + " !=  current span " + currentSpan;
+    scope.scope.close();
+    assert scope.span.equals(currentSpan) :
+        "Misalignment: scoped span " + scope.span + " !=  current span " + currentSpan;
     return currentSpan;
   }
 
-  ThreadLocalSpan() {
-  }
-
   /** Allows state checks when nesting spans */
-  @AutoValue
-  static abstract class SpanAndScope {
-    static SpanAndScope create(Span span, SpanInScope scope) {
-      return new AutoValue_ThreadLocalSpan_SpanAndScope(span, scope);
+  static final class SpanAndScope {
+
+    final Span span;
+    final SpanInScope scope;
+
+    SpanAndScope(Span span, SpanInScope scope) {
+      this.span = span;
+      this.scope = scope;
     }
 
-    abstract Span span();
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof SpanAndScope)) return false;
+      SpanAndScope that = (SpanAndScope) o;
+      return span.equals(that.span) && scope.equals(that.scope);
+    }
 
-    abstract SpanInScope scope();
+    @Override public int hashCode() {
+      int h = 1;
+      h *= 1000003;
+      h ^= span.hashCode();
+      h *= 1000003;
+      h ^= scope.hashCode();
+      return h;
+    }
   }
 }

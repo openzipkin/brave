@@ -4,6 +4,7 @@ import brave.Clock;
 import brave.Tracer;
 import brave.Tracing;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.security.SecureRandom;
 import java.util.Enumeration;
@@ -11,7 +12,6 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
-import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
@@ -25,7 +25,7 @@ public abstract class Platform {
 
   private static final Platform PLATFORM = findPlatform();
 
-  volatile Endpoint endpoint;
+  volatile String linkLocalIp;
 
   public Reporter<zipkin2.Span> reporter() {
     return LoggingReporter.INSTANCE;
@@ -45,32 +45,30 @@ public abstract class Platform {
     }
   }
 
-  public Endpoint endpoint() {
+  /** Guards {@link InetSocketAddress#getHostString()}, as it isn't available until Java 7 */
+  @Nullable public abstract String getHostString(InetSocketAddress socket);
+
+  @Nullable public String linkLocalIp() {
     // uses synchronized variant of double-checked locking as getting the endpoint can be expensive
-    if (endpoint == null) {
-      synchronized (this) {
-        if (endpoint == null) {
-          endpoint = produceEndpoint();
-        }
+    if (linkLocalIp != null) return linkLocalIp;
+    synchronized (this) {
+      if (linkLocalIp == null) {
+        linkLocalIp = produceLinkLocalIp();
       }
     }
-    return endpoint;
+    return linkLocalIp;
   }
 
-  Endpoint produceEndpoint() {
-    Endpoint.Builder builder = Endpoint.newBuilder().serviceName("unknown");
+  String produceLinkLocalIp() {
     try {
       Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
-      if (nics == null) return builder.build();
+      if (nics == null) return null;
       while (nics.hasMoreElements()) {
         NetworkInterface nic = nics.nextElement();
         Enumeration<InetAddress> addresses = nic.getInetAddresses();
         while (addresses.hasMoreElements()) {
           InetAddress address = addresses.nextElement();
-          if (address.isSiteLocalAddress()) {
-            builder.ip(address);
-            break;
-          }
+          if (address.isSiteLocalAddress()) return address.getHostAddress();
         }
       }
     } catch (Exception e) {
@@ -79,7 +77,7 @@ public abstract class Platform {
         logger.log(Level.FINE, "error reading nics", e);
       }
     }
-    return builder.build();
+    return null;
   }
 
   public static Platform get() {
@@ -178,6 +176,10 @@ public abstract class Platform {
       return null;
     }
 
+    @IgnoreJRERequirement @Override public String getHostString(InetSocketAddress socket) {
+      return socket.getHostString();
+    }
+
     @IgnoreJRERequirement @Override public long randomLong() {
       return java.util.concurrent.ThreadLocalRandom.current().nextLong();
     }
@@ -198,6 +200,10 @@ public abstract class Platform {
   }
 
   static class Jre6 extends Platform {
+
+    @Override public String getHostString(InetSocketAddress socket) {
+      return socket.getAddress().getHostAddress();
+    }
 
     @Override public long randomLong() {
       return prng.nextLong();

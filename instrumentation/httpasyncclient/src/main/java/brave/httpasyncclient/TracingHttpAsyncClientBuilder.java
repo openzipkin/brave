@@ -9,6 +9,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.Future;
 import org.apache.http.Header;
 import org.apache.http.HttpException;
@@ -29,7 +30,6 @@ import org.apache.http.nio.IOControl;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.HttpContext;
-import zipkin2.Endpoint;
 
 /**
  * Note: The current span is only visible to interceptors {@link #addInterceptorLast(HttpRequestInterceptor)
@@ -78,7 +78,13 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
 
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
-      Span span = handler.handleSend(injector, request, HttpRequestWrapper.wrap(request, host));
+      Span span;
+      try (Scope scope = currentTraceContext.maybeScope(parent)) {
+        span = handler.nextSpan(request);
+      }
+      HttpRequestWrapper requestWrapper = HttpRequestWrapper.wrap(request, host);
+      parseTargetAddress(requestWrapper, span);
+      handler.handleSend(injector, request, requestWrapper, span);
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
@@ -102,20 +108,18 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  static final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequest, HttpResponse> {
-
-    @Override public boolean parseServerAddress(HttpRequest httpRequest, Endpoint.Builder builder) {
-      if (!(httpRequest instanceof HttpRequestWrapper)) return false;
-      HttpHost target = ((HttpRequestWrapper) httpRequest).getTarget();
-      if (target == null) return false;
-      if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
-        int port = target.getPort();
-        if (port > 0) builder.port(port);
-        return true;
-      }
-      return false;
+  static void parseTargetAddress(HttpRequestWrapper httpRequest, Span span) {
+    if (span.isNoop()) return;
+    HttpHost target = httpRequest.getTarget();
+    if (target == null) return;
+    InetAddress address = target.getAddress();
+    if (address != null) {
+      if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
     }
+    span.remoteIpAndPort(target.getHostName(), target.getPort());
+  }
 
+  static final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequest, HttpResponse> {
     @Override public String method(HttpRequest request) {
       return request.getRequestLine().getMethod();
     }

@@ -1,16 +1,20 @@
 package brave;
 
+import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.Recorder;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-import zipkin2.Endpoint;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 import zipkin2.reporter.Sender;
@@ -21,8 +25,8 @@ import zipkin2.reporter.Sender;
  * <p>Instances built via {@link #newBuilder()} are registered automatically such that statically
  * configured instrumentation like JDBC drivers can use {@link #current()}.
  *
- * <p>This type can be extended so that the object graph can be built differently or overridden, for
- * example via spring or when mocking.
+ * <p>This type can be extended so that the object graph can be built differently or overridden,
+ * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
 
@@ -46,8 +50,8 @@ public abstract class Tracing implements Closeable {
   abstract public Propagation.Factory propagationFactory();
 
   /**
-   * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether
-   * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
+   * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether the
+   * overhead of tracing will occur and/or if a trace will be reported to Zipkin.
    *
    * @see Tracer#withSampler(Sampler)
    */
@@ -68,7 +72,7 @@ public abstract class Tracing implements Closeable {
    * @param context references a potentially unstarted span you'd like a clock correlated with
    */
   public final Clock clock(TraceContext context) {
-    return tracer().recorder.clock(context);
+    return tracer().pendingSpans.getOrCreate(context).clock();
   }
 
   abstract public ErrorParser errorParser();
@@ -121,8 +125,8 @@ public abstract class Tracing implements Closeable {
   @Override abstract public void close();
 
   public static final class Builder {
-    String localServiceName;
-    Endpoint endpoint;
+    String localServiceName = "unknown", localIp;
+    int localPort; // zero means null
     Reporter<zipkin2.Span> reporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
@@ -133,26 +137,62 @@ public abstract class Tracing implements Closeable {
     ErrorParser errorParser = new ErrorParser();
 
     /**
-     * Controls the name of the service being traced, while still using a default site-local IP.
-     * This is an alternative to {@link #endpoint(Endpoint)}.
+     * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
+     * variables or unique identifiers embedded. Defaults to "unknown".
      *
-     * @param localServiceName name of the service being traced. Defaults to "unknown".
+     * <p>This is a primary label for trace lookup and aggregation, so it should be intuitive and
+     * consistent. Many use a name from service discovery.
+     *
+     * @see #localIp(String)
      */
     public Builder localServiceName(String localServiceName) {
-      if (localServiceName == null) throw new NullPointerException("localServiceName == null");
-      this.localServiceName = localServiceName;
+      if (localServiceName == null || localServiceName.isEmpty()) {
+        throw new IllegalArgumentException(localServiceName + " is not a valid serviceName");
+      }
+      this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
+      return this;
+    }
+
+    /**
+     * The text representation of the primary IP address associated with this service. Ex.
+     * 192.168.99.100 or 2001:db8::c001. Defaults to a link local IP.
+     *
+     * @see #localServiceName(String)
+     * @see #localPort(int)
+     * @since 5.2
+     */
+    public Builder localIp(String localIp) {
+      String maybeIp = IpLiteral.ipOrNull(localIp);
+      if (maybeIp == null) throw new IllegalArgumentException(localIp + " is not a valid IP");
+      this.localIp = maybeIp;
+      return this;
+    }
+
+    /**
+     * The primary listen port associated with this service. No default.
+     *
+     * @see #localIp(String)
+     * @since 5.2
+     */
+    public Builder localPort(int localPort) {
+      if (localPort > 0xffff) throw new IllegalArgumentException("invalid localPort " + localPort);
+      if (localPort < 0) localPort = 0;
+      this.localPort = localPort;
       return this;
     }
 
     /**
      * Sets the {@link zipkin2.Span#localEndpoint Endpoint of the local service} being traced.
-     * Defaults to a site local IP.
      *
-     * <p>Use {@link #localServiceName} when only effecting the service name.
+     * @deprecated Use {@link #localServiceName(String)} {@link #localIp(String)} and {@link
+     * #localPort(int)}. Will be removed in Brave v6.
      */
-    public Builder endpoint(Endpoint endpoint) {
+    @Deprecated
+    public Builder endpoint(zipkin2.Endpoint endpoint) {
       if (endpoint == null) throw new NullPointerException("endpoint == null");
-      this.endpoint = endpoint;
+      this.localServiceName = endpoint.serviceName();
+      this.localIp = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
+      this.localPort = endpoint.portAsInt();
       return this;
     }
 
@@ -183,8 +223,8 @@ public abstract class Tracing implements Closeable {
      * Assigns microsecond-resolution timestamp source for operations like {@link Span#start()}.
      * Defaults to JRE-specific platform time.
      *
-     * <p>Note: timestamps are read once per trace, then {@link System#nanoTime() ticks} thereafter.
-     * This ensures there's no clock skew problems inside a single trace.
+     * <p>Note: timestamps are read once per trace, then {@link System#nanoTime() ticks}
+     * thereafter. This ensures there's no clock skew problems inside a single trace.
      *
      * See {@link Tracing#clock(TraceContext)}
      */
@@ -207,14 +247,17 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Responsible for implementing {@link Tracer#startScopedSpan(String)}, {@link Tracer#currentSpanCustomizer()},
-     * {@link Tracer#currentSpan()} and {@link Tracer#withSpanInScope(Span)}.
+     * Responsible for implementing {@link Tracer#startScopedSpan(String)}, {@link
+     * Tracer#currentSpanCustomizer()}, {@link Tracer#currentSpan()} and {@link
+     * Tracer#withSpanInScope(Span)}.
      *
      * <p>By default a simple thread-local is used. Override to support other mechanisms or to
      * synchronize with other mechanisms such as SLF4J's MDC.
      */
     public Builder currentTraceContext(CurrentTraceContext currentTraceContext) {
-      if (currentTraceContext == null) throw new NullPointerException("currentTraceContext == null");
+      if (currentTraceContext == null) {
+        throw new NullPointerException("currentTraceContext == null");
+      }
       this.currentTraceContext = currentTraceContext;
       return this;
     }
@@ -260,12 +303,7 @@ public abstract class Tracing implements Closeable {
 
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
-      if (endpoint == null) {
-        endpoint = Platform.get().endpoint();
-        if (localServiceName != null) {
-          endpoint = endpoint.toBuilder().serviceName(localServiceName).build();
-        }
-      }
+      if (localIp == null) localIp = Platform.get().linkLocalIp();
       if (reporter == null) reporter = Platform.get().reporter();
       return new Default(this);
     }
@@ -290,11 +328,17 @@ public abstract class Tracing implements Closeable {
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
+      zipkin2.Endpoint localEndpoint = zipkin2.Endpoint.newBuilder()
+          .serviceName(builder.localServiceName)
+          .ip(builder.localIp)
+          .port(builder.localPort)
+          .build();
+      SpanReporter reporter = new SpanReporter(localEndpoint, builder.reporter, noop);
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
-          builder.reporter,
-          new Recorder(builder.endpoint, clock, builder.reporter, noop),
+          reporter,
+          new PendingSpans(localEndpoint, clock, reporter, noop),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
@@ -346,5 +390,48 @@ public abstract class Tracing implements Closeable {
   }
 
   Tracing() { // intentionally hidden constructor
+  }
+
+  /** Declared here to ensure reporter bugs don't crash the caller */
+  static final class SpanReporter implements Reporter<zipkin2.Span> {
+    static final Logger logger = Logger.getLogger(SpanReporter.class.getName());
+
+    final zipkin2.Endpoint localEndpoint;
+    final Reporter<zipkin2.Span> delegate;
+    final AtomicBoolean noop;
+
+    SpanReporter(zipkin2.Endpoint localEndpoint, Reporter<zipkin2.Span> delegate,
+        AtomicBoolean noop) {
+      this.localEndpoint = localEndpoint;
+      this.delegate = delegate;
+      this.noop = noop;
+    }
+
+    void report(TraceContext context, MutableSpan span) {
+      zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
+          .traceId(context.traceIdHigh(), context.traceId())
+          .parentId(context.parentIdAsLong())
+          .id(context.spanId())
+          .localEndpoint(localEndpoint)
+          .debug(context.debug());
+
+      span.writeTo(builderWithContextData);
+      report(builderWithContextData.build());
+    }
+
+    @Override public void report(zipkin2.Span span) {
+      if (noop.get()) return;
+      try {
+        delegate.report(span);
+      } catch (RuntimeException e) {
+        if (logger.isLoggable(Level.FINE)) { // fine level to not fill logs
+          logger.log(Level.FINE, "error reporting " + span, e);
+        }
+      }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
   }
 }

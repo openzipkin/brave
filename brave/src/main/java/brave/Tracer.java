@@ -2,7 +2,9 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.Recorder;
+import brave.internal.recorder.MutableSpan;
+import brave.internal.recorder.PendingSpan;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -16,7 +18,6 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import zipkin2.reporter.Reporter;
 
 /**
  * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
@@ -62,8 +63,8 @@ public class Tracer {
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final Reporter<zipkin2.Span> reporter; // for toString
-  final Recorder recorder;
+  final Tracing.SpanReporter spanReporter; // for toString
+  final PendingSpans pendingSpans;
   final Sampler sampler;
   final ErrorParser errorParser;
   final CurrentTraceContext currentTraceContext;
@@ -73,8 +74,8 @@ public class Tracer {
   Tracer(
       Clock clock,
       Propagation.Factory propagationFactory,
-      Reporter<zipkin2.Span> reporter,
-      Recorder recorder,
+      Tracing.SpanReporter spanReporter,
+      PendingSpans pendingSpans,
       Sampler sampler,
       ErrorParser errorParser,
       CurrentTraceContext currentTraceContext,
@@ -84,8 +85,8 @@ public class Tracer {
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
-    this.reporter = reporter;
-    this.recorder = recorder;
+    this.spanReporter = spanReporter;
+    this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.errorParser = errorParser;
     this.currentTraceContext = currentTraceContext;
@@ -111,8 +112,8 @@ public class Tracer {
     return new Tracer(
         clock,
         propagationFactory,
-        reporter,
-        recorder,
+        spanReporter,
+        pendingSpans,
         sampler,
         errorParser,
         currentTraceContext,
@@ -166,7 +167,7 @@ public class Tracer {
     if (context.sampled() == null) { // then the caller didn't contribute data
       context = context.toBuilder().sampled(sampler.isSampled(context.traceId())).build();
     } else if (context.sampled()) { // we are recording and contributing to the same span ID
-      recorder.setShared(context);
+      context = context.toBuilder().shared(true).build();
     }
     return toSpan(context);
   }
@@ -225,7 +226,7 @@ public class Tracer {
       } else {
         builder = newContextBuilder(parent, sampler);
       }
-      return toSpan(builder.build());
+      return toSpan(builder.shared(false).build());
     }
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (extracted.traceIdContext() != null) {
@@ -242,14 +243,21 @@ public class Tracer {
     throw new AssertionError("should not reach here");
   }
 
-  /** Converts the context as-is to a Span object */
+  /** Converts the context to a Span object after decorating it for propagation */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
+    // decorating here addresses join, new traces or children and ad-hoc trace contexts
     TraceContext decorated = propagationFactory.decorate(context);
-    if (!noop.get() && Boolean.TRUE.equals(decorated.sampled())) {
-      return RealSpan.create(decorated, recorder, errorParser);
-    }
-    return NoopSpan.create(decorated);
+    if (isNoop(decorated)) return new NoopSpan(decorated);
+    // allocate a mutable span in case multiple threads call this method.. they'll use the same data
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated);
+    return new RealSpan(decorated,
+        pendingSpans,
+        pendingSpan.state(),
+        pendingSpan.clock(),
+        spanReporter,
+        errorParser
+    );
   }
 
   /**
@@ -308,9 +316,11 @@ public class Tracer {
    * as a method-local variable vs repeated calls.
    */
   public SpanCustomizer currentSpanCustomizer() {
-    TraceContext currentContext = currentTraceContext.get();
-    return currentContext != null && Boolean.TRUE.equals(currentContext.sampled())
-        ? RealSpanCustomizer.create(currentContext, recorder) : NoopSpanCustomizer.INSTANCE;
+    // note: we don't need to decorate the context for propagation as it is only used for toString
+    TraceContext context = currentTraceContext.get();
+    if (context == null || isNoop(context)) return NoopSpanCustomizer.INSTANCE;
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
+    return new RealSpanCustomizer(context, pendingSpan.state(), pendingSpan.clock());
   }
 
   /**
@@ -367,15 +377,14 @@ public class Tracer {
     if (name == null) throw new NullPointerException("name == null");
     TraceContext context = propagationFactory.decorate(newContextBuilder(parent, sampler).build());
     CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
-    ScopedSpan result;
-    if (!noop.get() && Boolean.TRUE.equals(context.sampled())) {
-      result = new RealScopedSpan(context, scope, recorder, errorParser);
-      recorder.name(context, name);
-      recorder.start(context);
-    } else {
-      result = new NoopScopedSpan(context, scope);
-    }
-    return result;
+    if (isNoop(context)) return new NoopScopedSpan(context, scope);
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
+    Clock clock = pendingSpan.clock();
+    MutableSpan state = pendingSpan.state();
+    state.name(name);
+    state.startTimestamp(clock.currentTimeMicroseconds());
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans, spanReporter,
+        errorParser);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -400,12 +409,12 @@ public class Tracer {
 
   @Override public String toString() {
     TraceContext currentSpan = currentTraceContext.get();
-    List<zipkin2.Span> inFlight = recorder.snapshot();
+    List<zipkin2.Span> inFlight = pendingSpans.snapshot();
     return "Tracer{"
         + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
         + (inFlight.size() > 0 ? ("inFlight=" + inFlight + ", ") : "")
         + (noop.get() ? "noop=true, " : "")
-        + "reporter=" + reporter
+        + "reporter=" + spanReporter
         + "}";
   }
 
@@ -423,6 +432,10 @@ public class Tracer {
         .sampled(sampler.isSampled(nextId))
         .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
         .spanId(nextId);
+  }
+
+  boolean isNoop(TraceContext context) {
+    return noop.get() || !Boolean.TRUE.equals(context.sampled());
   }
 
   TraceContext.Builder newContextBuilder(TraceContext parent, SamplingFlags samplingFlags) {

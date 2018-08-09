@@ -29,16 +29,6 @@ public final class TraceIdContext extends SamplingFlags {
     return traceId;
   }
 
-  /** {@inheritDoc} */
-  @Override @Nullable public Boolean sampled() {
-    return sampled(flags);
-  }
-
-  /** {@inheritDoc} */
-  @Override public boolean debug() {
-    return debug(flags);
-  }
-
   public Builder toBuilder() {
     return new Builder(this);
   }
@@ -108,12 +98,11 @@ public final class TraceIdContext extends SamplingFlags {
   }
 
   final long traceIdHigh, traceId;
-  final int flags; // bit field for sampled and debug
 
   TraceIdContext(Builder builder) { // no external implementations
+    super(builder.flags);
     traceIdHigh = builder.traceIdHigh;
     traceId = builder.traceId;
-    flags = builder.flags;
   }
 
   /** Only includes mandatory fields {@link #traceIdHigh()} and {@link #traceId()} */

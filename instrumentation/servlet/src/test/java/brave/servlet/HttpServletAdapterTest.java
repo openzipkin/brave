@@ -1,20 +1,22 @@
 package brave.servlet;
 
+import brave.Span;
 import javax.servlet.http.HttpServletRequest;
-import org.assertj.core.api.AbstractObjectAssert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-import zipkin2.Endpoint;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServletAdapterTest {
   HttpServletAdapter adapter = new HttpServletAdapter();
   @Mock HttpServletRequest request;
+  @Mock Span span;
 
   @Test public void path_doesntCrashOnNullUrl() {
     assertThat(adapter.path(request))
@@ -36,45 +38,33 @@ public class HttpServletAdapterTest {
         .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
-  @Test public void parseClientAddress_prefersXForwardedFor() {
-    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("127.0.0.1");
+  @Test public void parseClientIpAndPort_prefersXForwardedFor() {
+    when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
+    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("1.2.3.4");
 
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
+    adapter.parseClientIpAndPort(request, span);
+
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientAddress_skipsOnNoIp() {
-    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
-        .isFalse();
+  @Test public void parseClientIpAndPort_skipsRemotePortOnXForwardedFor() {
+    when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4");
+    when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
+
+    adapter.parseClientIpAndPort(request, span);
+
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientAddress_readsRemotePort() {
-    when(request.getHeader("X-Forwarded-For")).thenReturn("127.0.0.1");
+  @Test public void parseClientIpAndPort_acceptsRemoteAddr() {
+    when(request.getRemoteAddr()).thenReturn("1.2.3.4");
     when(request.getRemotePort()).thenReturn(61687);
 
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").port(61687).build());
-  }
+    adapter.parseClientIpAndPort(request, span);
 
-  @Test public void parseClientAddress_acceptsRemoteAddr() {
-    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
-  }
-
-  @Test public void parseClientAddress_doesntNsLookup() {
-    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("localhost");
-
-    assertThat(adapter.parseClientAddress(request, Endpoint.newBuilder()))
-        .isFalse();
-  }
-
-  AbstractObjectAssert<?, Endpoint> assertParsedEndpoint() {
-    Endpoint.Builder remoteAddress = Endpoint.newBuilder();
-    assertThat(adapter.parseClientAddress(request, remoteAddress))
-        .isTrue();
-
-    return assertThat(remoteAddress.build());
+    verify(span).remoteIpAndPort("1.2.3.4", 61687);
+    verifyNoMoreInteractions(span);
   }
 }

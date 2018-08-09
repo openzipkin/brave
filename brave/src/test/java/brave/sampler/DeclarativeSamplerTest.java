@@ -1,7 +1,7 @@
 package brave.sampler;
 
 import brave.propagation.SamplingFlags;
-import com.google.auto.value.AutoAnnotation;
+import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import org.junit.Before;
@@ -82,8 +82,19 @@ public class DeclarativeSamplerTest {
     boolean enabled() default true;
   }
 
-  // note: Unlike normal java annotations, auto-annotation do value-based equals and hashCode
-  @AutoAnnotation static Traced traced(float sampleRate, boolean enabled) {
-    return new AutoAnnotation_DeclarativeSamplerTest_traced(sampleRate, enabled);
+  static Traced traced(float sampleRate, boolean enabled) {
+    return new Traced() {
+      @Override public Class<? extends Annotation> annotationType() {
+        return Traced.class;
+      }
+
+      @Override public float sampleRate() {
+        return sampleRate;
+      }
+
+      @Override public boolean enabled() {
+        return enabled;
+      }
+    };
   }
 }

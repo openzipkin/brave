@@ -36,7 +36,7 @@ abstract class ServletRuntime {
   abstract boolean isAsync(HttpServletRequest request);
 
   abstract void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-      HttpServletRequest request, Span span);
+      HttpServletRequest request, HttpServletResponse response, Span span);
 
   ServletRuntime() {
   }
@@ -72,9 +72,10 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, Span span) {
+        HttpServletRequest request, HttpServletResponse response, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
-      request.getAsyncContext().addListener(new TracingAsyncListener(handler, span));
+      TracingAsyncListener listener = new TracingAsyncListener(handler, span);
+      request.getAsyncContext().addListener(listener, request, response);
     }
 
     static final class TracingAsyncListener implements AsyncListener {
@@ -82,8 +83,10 @@ abstract class ServletRuntime {
       final Span span;
       volatile boolean complete; // multiple async events can occur, only complete once
 
-      TracingAsyncListener(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-          Span span) {
+      TracingAsyncListener(
+          HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+          Span span
+      ) {
         this.handler = handler;
         this.span = span;
       }
@@ -108,20 +111,24 @@ abstract class ServletRuntime {
       }
 
       /** If another async is created (ex via asyncContext.dispatch), this needs to be re-attached */
-      @Override public void onStartAsync(AsyncEvent event) {
-        AsyncContext eventAsyncContext = event.getAsyncContext();
-        if (eventAsyncContext != null) eventAsyncContext.addListener(this);
+      @Override public void onStartAsync(AsyncEvent e) {
+        AsyncContext eventAsyncContext = e.getAsyncContext();
+        if (eventAsyncContext != null) {
+          eventAsyncContext.addListener(this, e.getSuppliedRequest(), e.getSuppliedResponse());
+        }
       }
 
       @Override public String toString() {
-        return "TracingAsyncListener{" + span.context() + "}";
+        return "TracingAsyncListener{" + span + "}";
       }
     }
+  }
 
-    static HttpServletResponse adaptResponse(AsyncEvent e) {
-      return ADAPTER.adaptResponse((HttpServletRequest) e.getSuppliedRequest(),
-          (HttpServletResponse) e.getSuppliedResponse());
-    }
+  static HttpServletResponse adaptResponse(AsyncEvent event) {
+    return ADAPTER.adaptResponse(
+        (HttpServletRequest) event.getSuppliedRequest(),
+        (HttpServletResponse) event.getSuppliedResponse()
+    );
   }
 
   static final class Servlet25 extends ServletRuntime {
@@ -134,7 +141,7 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, Span span) {
+        HttpServletRequest request, HttpServletResponse response, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }
 

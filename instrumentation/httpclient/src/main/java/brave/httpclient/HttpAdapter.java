@@ -1,25 +1,13 @@
 package brave.httpclient;
 
+import brave.Span;
+import java.net.InetAddress;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpRequestWrapper;
-import zipkin2.Endpoint;
 
 final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequestWrapper, HttpResponse> {
-
-  @Override
-  public boolean parseServerAddress(HttpRequestWrapper httpRequest, Endpoint.Builder builder) {
-    HttpHost target = httpRequest.getTarget();
-    if (target == null) return false;
-    if (builder.parseIp(target.getAddress()) || builder.parseIp(target.getHostName())) {
-      int port = target.getPort();
-      if (port > 0) builder.port(port);
-      return true;
-    }
-    return false;
-  }
-
   @Override public String method(HttpRequestWrapper request) {
     return request.getRequestLine().getMethod();
   }
@@ -47,5 +35,16 @@ final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequestWrapper,
 
   @Override public int statusCodeAsInt(HttpResponse response) {
     return response.getStatusLine().getStatusCode();
+  }
+
+  static void parseTargetAddress(HttpRequestWrapper httpRequest, Span span) {
+    if (span.isNoop()) return;
+    HttpHost target = httpRequest.getTarget();
+    if (target == null) return;
+    InetAddress address = target.getAddress();
+    if (address != null) {
+      if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
+    }
+    span.remoteIpAndPort(target.getHostName(), target.getPort());
   }
 }

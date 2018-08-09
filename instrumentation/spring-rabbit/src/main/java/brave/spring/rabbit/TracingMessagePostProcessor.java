@@ -10,7 +10,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import zipkin2.Endpoint;
 
 /**
  * MessagePostProcessor to be used with the {@link RabbitTemplate#setBeforePublishPostProcessors
@@ -40,14 +39,10 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
   }
 
   @Override public Message postProcessMessage(Message message) {
-    Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).name("publish").start();
-    if (!span.isNoop()) {
-      if (remoteServiceName != null) {
-        span.remoteEndpoint(Endpoint.newBuilder().serviceName(remoteServiceName).build());
-      }
-    }
+    Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).name("publish");
+    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
     injector.inject(span.context(), message.getMessageProperties());
-    span.finish();
+    span.start().finish();
     return message;
   }
 }

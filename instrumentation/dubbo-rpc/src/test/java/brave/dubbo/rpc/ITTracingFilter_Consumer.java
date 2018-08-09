@@ -37,7 +37,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThat(context.parentId()).isNull();
     assertThat(context.sampled()).isTrue();
 
-    spans.take();
+    takeSpan();
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
@@ -55,7 +55,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isEqualTo(parent.context().spanId());
 
     // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(spans.take(), spans.take()))
+    assertThat(Arrays.asList(takeSpan(), takeSpan()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);
   }
@@ -89,7 +89,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     }
 
     // Check we reported 2 in-process spans and 2 client spans
-    assertThat(Arrays.asList(spans.take(), spans.take(), spans.take(), spans.take()))
+    assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
         .extracting(Span::kind)
         .containsOnly(null, Span.Kind.CLIENT);
   }
@@ -108,7 +108,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   @Test public void reportsClientKindToZipkin() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.kind())
         .isEqualTo(Span.Kind.CLIENT);
   }
@@ -116,7 +116,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.name())
         .isEqualTo("greeterservice/sayhello");
   }
@@ -130,7 +130,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     } catch (RpcException e) {
     }
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.tags().get("error"))
         .contains("RemotingException");
   }
@@ -140,7 +140,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.tags().get("error"))
         .contains("RemotingException");
   }
@@ -150,7 +150,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       client.get().sayHello("romeo");
     });
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.duration())
         .isNull();
   }
@@ -167,7 +167,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     } catch (RpcException e) {
     }
 
-    Span span = spans.take();
+    Span span = takeSpan();
     assertThat(span.tags().get("dubbo.error_code"))
         .isEqualTo("1");
     assertThat(span.tags().get("error"))

@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.1.3-SNAPSHOT</version>
+    <version>5.1.6-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -14,7 +14,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
-    <spring-rabbit.version>1.7.6.RELEASE</spring-rabbit.version>
+    <spring-rabbit.version>1.7.9.RELEASE</spring-rabbit.version>
   </properties>
 
   <dependencies>

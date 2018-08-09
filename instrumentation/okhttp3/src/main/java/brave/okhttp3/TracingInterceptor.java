@@ -13,7 +13,6 @@ import okhttp3.Connection;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-import zipkin2.Endpoint;
 
 /**
  * This is a network-level interceptor, which creates a new span for each attempt. Note that this
@@ -57,7 +56,8 @@ public final class TracingInterceptor implements Interceptor {
     Request.Builder requestBuilder = request.newBuilder();
 
     Span span = handler.handleSend(injector, requestBuilder, request);
-    parseServerAddress(chain.connection(), span);
+    parseRouteAddress(chain, span);
+
     Response response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -70,14 +70,12 @@ public final class TracingInterceptor implements Interceptor {
     }
   }
 
-  /** This is different than default because the request does not hold the address */
-  void parseServerAddress(Connection connection, Span span) {
+  static void parseRouteAddress(Chain chain, Span span) {
     if (span.isNoop()) return;
-    InetSocketAddress remoteAddress = connection.route().socketAddress();
-    Endpoint.Builder builder = Endpoint.newBuilder().serviceName(remoteServiceName);
-    builder.parseIp(remoteAddress.getAddress());
-    builder.port(remoteAddress.getPort());
-    span.remoteEndpoint(builder.build());
+    Connection connection = chain.connection();
+    if (connection == null) return;
+    InetSocketAddress socketAddress = connection.route().socketAddress();
+    span.remoteIpAndPort(socketAddress.getHostString(), socketAddress.getPort());
   }
 
   static final class HttpAdapter extends brave.http.HttpClientAdapter<Request, Response> {

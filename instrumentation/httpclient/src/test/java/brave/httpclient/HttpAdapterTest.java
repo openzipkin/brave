@@ -4,59 +4,63 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.apache.http.HttpHost;
 import org.apache.http.client.methods.HttpRequestWrapper;
-import org.assertj.core.api.AbstractObjectAssert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-import zipkin2.Endpoint;
+import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpAdapterTest {
-  HttpAdapter adapter = new HttpAdapter();
   @Mock HttpRequestWrapper request;
+  @Mock brave.Span span;
 
-  @Test public void parseServerAddress_skipsOnNoop() {
-    assertThat(adapter.parseServerAddress(request, Endpoint.newBuilder()))
-        .isFalse();
+  @Test public void parseTargetAddress_skipsOnNoop() {
+    when(span.isNoop()).thenReturn(true);
+
+    HttpAdapter.parseTargetAddress(request, span);
+
+    verify(span).isNoop();
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseServerAddress_prefersAddress() throws UnknownHostException {
-    when(request.getTarget()).thenReturn(new HttpHost(InetAddress.getByName("127.0.0.1")));
+  @Test public void parseTargetAddress_prefersAddress() throws UnknownHostException {
+    when(span.isNoop()).thenReturn(false);
+    when(span.remoteIpAndPort("1.2.3.4", -1)).thenReturn(true);
+    when(request.getTarget()).thenReturn(
+        new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http"));
 
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
+    HttpAdapter.parseTargetAddress(request, span);
+
+    verify(span).isNoop();
+    verify(span).remoteIpAndPort("1.2.3.4", -1);
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseServerAddress_acceptsHostname() {
-    when(request.getTarget()).thenReturn(new HttpHost("127.0.0.1"));
+  @Test public void parseTargetAddress_acceptsHostname() {
+    when(span.isNoop()).thenReturn(false);
+    when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4"));
 
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").build());
+    HttpAdapter.parseTargetAddress(request, span);
+
+    verify(span).isNoop();
+    verify(span).remoteIpAndPort("1.2.3.4", -1);
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseServerAddress_ipAndPortFromHost() {
-    when(request.getTarget()).thenReturn(new HttpHost("127.0.0.1", 9999));
+  @Test public void parseTargetAddress_IpAndPortFromHost() {
+    when(span.isNoop()).thenReturn(false);
+    when(span.remoteIpAndPort("1.2.3.4", 9999)).thenReturn(true);
 
-    assertParsedEndpoint()
-        .isEqualTo(Endpoint.newBuilder().ip("127.0.0.1").port(9999).build());
-  }
+    when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4", 9999));
 
-  @Test public void parseServerAddress_doesntNsLookup() {
-    when(request.getTarget()).thenReturn(new HttpHost("localhost"));
+    HttpAdapter.parseTargetAddress(request, span);
 
-    assertThat(adapter.parseServerAddress(request, Endpoint.newBuilder()))
-        .isFalse();
-  }
-
-  AbstractObjectAssert<?, Endpoint> assertParsedEndpoint() {
-    Endpoint.Builder remoteAddress = Endpoint.newBuilder();
-    assertThat(adapter.parseServerAddress(request, remoteAddress))
-        .isTrue();
-
-    return assertThat(remoteAddress.build());
+    verify(span).isNoop();
+    verify(span).remoteIpAndPort("1.2.3.4", 9999);
+    verifyNoMoreInteractions(span);
   }
 }

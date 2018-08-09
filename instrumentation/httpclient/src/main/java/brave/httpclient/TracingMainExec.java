@@ -1,5 +1,6 @@
 package brave.httpclient;
 
+import brave.Span;
 import brave.Tracer;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
@@ -46,7 +47,11 @@ final class TracingMainExec implements ClientExecChain {
   @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
       HttpClientContext context, HttpExecutionAware execAware)
       throws IOException, HttpException {
-    handler.handleSend(injector, request, tracer.currentSpan());
+    Span span = tracer.currentSpan();
+    if (span != null) {
+      HttpAdapter.parseTargetAddress(request, span);
+      handler.handleSend(injector, request, span);
+    }
     return mainExec.execute(route, request, context, execAware);
   }
 }

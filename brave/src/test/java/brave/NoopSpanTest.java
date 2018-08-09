@@ -2,9 +2,9 @@ package brave;
 
 import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.net.InetSocketAddress;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,7 +43,8 @@ public class NoopSpanTest {
     span.annotate("foo");
     span.annotate(2L, "foo");
     span.tag("bar", "baz");
-    span.remoteEndpoint(Endpoint.newBuilder().serviceName("lalala").ip("127.0.0.1").build());
+    span.remoteServiceName("aloha");
+    span.remoteIpAndPort("1.2.3.4", 9000);
     span.finish(1L);
     span.finish();
     span.abandon();

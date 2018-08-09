@@ -1,10 +1,10 @@
 package brave.servlet;
 
+import brave.Span;
 import brave.http.HttpServerAdapter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-import zipkin2.Endpoint;
 
 /** This can also parse the remote IP of the client. */
 // public for others like sparkjava to use
@@ -25,15 +25,12 @@ public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, Ht
   final ServletRuntime servlet = ServletRuntime.get();
 
   /**
-   * Parses the remote address, via the "X-Forwarded-For" header, falling back to the
-   * {@linkplain HttpServletRequest#getRemoteAddr() remote address}.
+   * This sets the client IP:port to the {@linkplain HttpServletRequest#getRemoteAddr() remote
+   * address} if the {@link HttpServerAdapter#parseClientIpAndPort default parsing} fails.
    */
-  @Override public boolean parseClientAddress(HttpServletRequest req, Endpoint.Builder builder) {
-    if (builder.parseIp(req.getHeader("X-Forwarded-For")) || builder.parseIp(req.getRemoteAddr())) {
-      builder.port(req.getRemotePort());
-      return true;
-    }
-    return false;
+  @Override public boolean parseClientIpAndPort(HttpServletRequest req, Span span) {
+    if (parseClientIpFromXForwardedFor(req, span)) return true;
+    return span.remoteIpAndPort(req.getRemoteAddr(), req.getRemotePort());
   }
 
   @Override public String method(HttpServletRequest request) {
