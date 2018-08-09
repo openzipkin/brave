@@ -15,6 +15,12 @@ import static brave.internal.HexCodec.lowerHexEqualsUnsignedLong;
  */
 public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
 
+  /**
+   * When the input is not null "traceId", "parentId" and "spanId" correlation properties are saved
+   * off and replaced with those of the current span. When the input is null, these properties are
+   * removed. Either way, "traceId", "parentId" and "spanId" properties are restored on {@linkplain
+   * Scope#close()}.
+   */
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
     String previousTraceId = getIfString("traceId");
     String previousSpanId = getIfString("spanId");
@@ -39,6 +45,10 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     return new CorrelationFieldCurrentTraceContextScope();
   }
 
+  /**
+   * Idempotently sets correlation properties to hex representation of trace identifiers in this
+   * context.
+   */
   void maybeReplaceTraceContext(
       TraceContext currentSpan,
       String previousTraceId,
@@ -60,10 +70,15 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     if (!sameSpanId) put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
   }
 
+  /**
+   * Returns the correlation property of the specified name iff it is a string, or null otherwise.
+   */
   protected abstract @Nullable String getIfString(String key);
 
+  /** Replaces the correlation property of the specified name */
   protected abstract void put(String key, String value);
 
+  /** Removes the correlation property of the specified name */
   protected abstract void remove(String key);
 
   final void replace(String key, @Nullable String value) {

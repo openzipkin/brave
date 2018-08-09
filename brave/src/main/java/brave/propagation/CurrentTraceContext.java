@@ -61,7 +61,7 @@ public abstract class CurrentTraceContext {
   }
 
   protected CurrentTraceContext(Builder<?> builder) {
-    this.scopeDecorators = (List<ScopeDecorator>) builder.scopeDecorators.clone();
+    this.scopeDecorators = new ArrayList<>(builder.scopeDecorators);
   }
 
   /**
@@ -86,7 +86,6 @@ public abstract class CurrentTraceContext {
    */
   protected Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
     int length = scopeDecorators.size();
-    if (length == 0) return scope;
     for (int i = 0; i < length; i++) {
       scope = scopeDecorators.get(i).decorateScope(currentSpan, scope);
     }
