@@ -3,6 +3,7 @@ package brave;
 import brave.Tracer.SpanInScope;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
@@ -49,6 +50,10 @@ public class TracerTest {
 
         @Override public TraceContext decorate(TraceContext context) {
           return propagationFactory.decorate(context);
+        }
+
+        @Override public void decorate(MutableTraceContext context) {
+          propagationFactory.decorate(context);
         }
       })
       .currentTraceContext(new StrictCurrentTraceContext())

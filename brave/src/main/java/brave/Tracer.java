@@ -6,6 +6,7 @@ import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -182,6 +183,32 @@ public class Tracer {
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
     return toSpan(newContextBuilder(parent, sampler).build());
+  }
+
+  /** TODO */
+  public Span nextSpan(MutableTraceContext extracted) {
+    long traceId = extracted.traceId(), nextId = nextId();
+    if (traceId == 0L) {
+      TraceContext implicitParent = currentTraceContext.get();
+      if (implicitParent != null) { // Reuse the IDs from the current span as the parent
+        extracted.traceIdHigh(implicitParent.traceIdHigh());
+        extracted.traceId(implicitParent.traceId());
+        extracted.parentId(implicitParent.spanId());
+        // fall through, with an implicit parent, not an extracted one
+        for (int i = 0, length = implicitParent.extra().size(); i < length; i++) {
+          extracted.addExtra(implicitParent.extra().get(i));
+        }
+      } else { // make a new trace ID
+        extracted.traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L);
+        extracted.traceId(nextId);
+        extracted.parentId(0L); // ensure the parent ID is cleared.
+      }
+    } else { // try to set the parent from the extracted state
+      extracted.parentId(extracted.spanId());
+    }
+    extracted.spanId(nextId);
+    if (extracted.sampled() == null) extracted.sampled(sampler.isSampled(extracted.traceId()));
+    return toSpan(TraceContext.create(extracted));
   }
 
   /**

@@ -58,6 +58,10 @@ public interface Propagation<K> {
     public TraceContext decorate(TraceContext context) {
       return context;
     }
+
+    public void decorate(MutableTraceContext contextBuilder) {
+      return;
+    }
   }
 
   /** Creates keys for use in propagated contexts */

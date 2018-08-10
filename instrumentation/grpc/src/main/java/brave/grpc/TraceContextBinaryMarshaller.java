@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import io.grpc.Metadata.BinaryMarshaller;
 import java.util.logging.Logger;
@@ -23,8 +24,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
   private static final int FORMAT_LENGTH =
       4 /* version + 3 fields */ + 16 /* trace ID */ + 8 /* span ID */ + 1 /* sampled bit */;
 
-  @Override
-  public byte[] toBytes(TraceContext traceContext) {
+  @Override public byte[] toBytes(TraceContext traceContext) {
     checkNotNull(traceContext, "traceContext");
     byte[] bytes = new byte[FORMAT_LENGTH];
     bytes[0] = VERSION;
@@ -40,8 +40,12 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
     return bytes;
   }
 
-  @Override
-  public TraceContext parseBytes(byte[] bytes) {
+  @Override public TraceContext parseBytes(byte[] bytes) {
+    TraceContext.Builder result = parseBuilderFromBytes(bytes);
+    return result != null ? result.build() : null;
+  }
+
+  @Nullable static TraceContext.Builder parseBuilderFromBytes(byte[] bytes) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {
@@ -85,8 +89,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
         .traceIdHigh(traceIdHigh)
         .traceId(traceId)
         .spanId(spanId)
-        .sampled(sampled)
-        .build();
+        .sampled(sampled);
   }
 
   /** Inspired by {@code okio.Buffer.writeLong} */

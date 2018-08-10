@@ -251,6 +251,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       TraceContext result = delegate.decorate(context);
       return extraFactory.decorate(result);
     }
+
+    @Override public void decorate(MutableTraceContext contextBuilder) {
+      extraFactory.decorate(contextBuilder);
+    }
   }
 
   final Propagation<K> delegate;
