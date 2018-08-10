@@ -1,7 +1,7 @@
 package brave.grpc;
 
+import brave.propagation.MutableTraceContext;
 import brave.propagation.TraceContext;
-import io.grpc.Metadata.BinaryMarshaller;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -13,7 +13,7 @@ import static java.util.logging.Level.FINE;
  * <p>See
  * https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md
  */
-final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContext> {
+final class TraceContextBinaryMarshaller {
   static final Logger logger = Logger.getLogger(TraceContextBinaryMarshaller.class.getName());
   static final byte VERSION = 0,
       TRACE_ID_FIELD_ID = 0,
@@ -23,8 +23,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
   private static final int FORMAT_LENGTH =
       4 /* version + 3 fields */ + 16 /* trace ID */ + 8 /* span ID */ + 1 /* sampled bit */;
 
-  @Override
-  public byte[] toBytes(TraceContext traceContext) {
+  static byte[] toBytes(TraceContext traceContext) {
     checkNotNull(traceContext, "traceContext");
     byte[] bytes = new byte[FORMAT_LENGTH];
     bytes[0] = VERSION;
@@ -40,17 +39,16 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
     return bytes;
   }
 
-  @Override
-  public TraceContext parseBytes(byte[] bytes) {
+  static void extract(byte[] bytes, MutableTraceContext destination) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
-    if (bytes.length == 0) return null;
+    if (bytes.length == 0) return;
     if (bytes[0] != VERSION) {
       logger.log(FINE, "Invalid input: unsupported version {0}", bytes[0]);
-      return null;
+      return;
     }
     if (bytes.length < FORMAT_LENGTH - 2 /* sampled field + bit is optional */) {
       logger.fine("Invalid input: truncated");
-      return null;
+      return;
     }
     long traceIdHigh, traceId, spanId;
     Boolean sampled = null;
@@ -62,7 +60,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
       pos += 16;
     } else {
       logger.log(FINE, "Invalid input: expected trace ID at offset {0}", pos);
-      return null;
+      return;
     }
     if (bytes[pos] == SPAN_ID_FIELD_ID) {
       pos++;
@@ -70,23 +68,20 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
       pos += 8;
     } else {
       logger.log(FINE, "Invalid input: expected span ID at offset {0}", pos);
-      return null;
+      return;
     }
     // The trace options field is optional. However, when present, it should be valid.
     if (bytes.length > pos && bytes[pos] == TRACE_OPTION_FIELD_ID) {
       pos++;
       if (bytes.length < pos + 1) {
         logger.log(FINE, "Invalid input: truncated");
-        return null;
+        return;
       }
-      sampled = bytes[pos] == 1;
+      destination.sampled(bytes[pos] == 1);
     }
-    return TraceContext.newBuilder()
-        .traceIdHigh(traceIdHigh)
-        .traceId(traceId)
-        .spanId(spanId)
-        .sampled(sampled)
-        .build();
+    destination.traceIdHigh(traceIdHigh);
+    destination.traceId(traceId);
+    destination.spanId(spanId);
   }
 
   /** Inspired by {@code okio.Buffer.writeLong} */

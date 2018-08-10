@@ -35,8 +35,8 @@ import java.util.Map;
  * ExtraFieldPropagation.get("x-country-code", "FO");
  * }</pre>
  *
- * <p>You may also need to propagate a trace context you aren't using. For example, you may be in an
- * Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
+ * <p>You may also need to propagate a trace context you aren't using. For example, you may be in
+ * an Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
  * correctly, pass-through its tracing header like so.
  *
  * <pre>{@code
@@ -166,7 +166,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   /**
-   * Sets the current value of the field with the specified key, or drops if not a configured field.
+   * Sets the current value of the field with the specified key, or drops if not a configured
+   * field.
    *
    * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
    */
@@ -191,15 +192,17 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (extracted == null) throw new NullPointerException("extracted == null");
     TraceContext extractedContext = extracted.context();
     if (extractedContext != null) {
-      return getAll(extractedContext.extra());
+      return getAll(extractedContext);
     }
-    return getAll(extracted.extra());
+    PropagationFields fields = extracted.findExtra(Extra.class);
+    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   /** Returns a mapping of any fields in the trace context. */
   public static Map<String, String> getAll(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    return getAll(context.extra());
+    PropagationFields fields = context.findExtra(Extra.class);
+    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   @Nullable static TraceContext currentTraceContext() {
@@ -209,12 +212,12 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
   /** Returns the value of the field with the specified key or null if not available */
   @Nullable public static String get(TraceContext context, String name) {
-    return PropagationFields.get(context, lowercase(name));
+    return PropagationFields.get(context, lowercase(name), Extra.class);
   }
 
   /** Sets the value of the field with the specified key, or drops if not a configured field */
   public static void set(TraceContext context, String name, String value) {
-    PropagationFields.put(context, lowercase(name), value);
+    PropagationFields.put(context, lowercase(name), value, Extra.class);
   }
 
   static final class Factory extends Propagation.Factory {
@@ -247,9 +250,20 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       return new ExtraFieldPropagation<>(this, keyFactory, keys);
     }
 
-    @Override public TraceContext decorate(TraceContext context) {
-      TraceContext result = delegate.decorate(context);
-      return extraFactory.decorate(result);
+    @Override public <C, K> MutableTraceContext.Extractor<C> extractor(KeyFactory<K> keyFactory,
+        Getter<C, K> getter) {
+      MutableTraceContext.Extractor<C> extractorDelegate = delegate.extractor(keyFactory, getter);
+      ExtraFieldPropagation<K> propagation = (ExtraFieldPropagation<K>) create(keyFactory);
+      return new ExtraFieldMutableExtractor<>(propagation, extractorDelegate, getter);
+    }
+
+    @Override public void decorate(MutableTraceContext mutableContext) {
+      extraFactory.decorate(mutableContext);
+      delegate.decorate(mutableContext);
+    }
+
+    @Override protected boolean isDecorated(TraceContext context) {
+      return extraFactory.isDecorated(context);
     }
   }
 
@@ -314,11 +328,6 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
   }
 
-  static Map<String, String> getAll(List<Object> extraList) {
-    PropagationFields fields = PropagationFields.find(extraList);
-    return fields != null ? fields.toMap() : Collections.emptyMap();
-  }
-
   static final class ExtraFieldExtractor<C, K> implements Extractor<C> {
     final ExtraFieldPropagation<K> propagation;
     final Extractor<C> delegate;
@@ -334,13 +343,39 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
 
       // always allocate in case fields are added late
-      PredefinedPropagationFields fields = propagation.extraFactory.create();
+      Extra fields = propagation.extraFactory.create();
       for (int i = 0, length = propagation.fieldNames.length; i < length; i++) {
         String maybeValue = getter.get(carrier, propagation.keys.get(i));
         if (maybeValue == null) continue;
         fields.put(i, maybeValue);
       }
       return result.toBuilder().addExtra(fields).build();
+    }
+  }
+
+  static final class ExtraFieldMutableExtractor<C, K> implements MutableTraceContext.Extractor<C> {
+    final ExtraFieldPropagation<K> propagation;
+    final MutableTraceContext.Extractor<C> delegate;
+    final Propagation.Getter<C, K> getter;
+
+    ExtraFieldMutableExtractor(ExtraFieldPropagation<K> propagation,
+        MutableTraceContext.Extractor<C> delegate, Getter<C, K> getter) {
+      this.propagation = propagation;
+      this.delegate = delegate;
+      this.getter = getter;
+    }
+
+    @Override public void extract(C carrier, MutableTraceContext destination) {
+      delegate.extract(carrier, destination);
+
+      // always allocate in case fields are added late
+      Extra fields = propagation.extraFactory.create();
+      for (int i = 0, length = propagation.fieldNames.length; i < length; i++) {
+        String maybeValue = getter.get(carrier, propagation.keys.get(i));
+        if (maybeValue == null) continue;
+        fields.put(i, maybeValue);
+      }
+      destination.addExtra(fields);
     }
   }
 

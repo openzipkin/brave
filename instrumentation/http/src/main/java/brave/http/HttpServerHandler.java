@@ -4,8 +4,8 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 
 /**
  * This standardizes a way to instrument http servers, particularly in a way that encourages use of
@@ -56,6 +56,7 @@ public final class HttpServerHandler<Req, Resp>
    *
    * <p>This is typically called before the request is processed by the actual library.
    */
+  @Deprecated
   public Span handleReceive(TraceContext.Extractor<Req> extractor, Req request) {
     return handleReceive(extractor, request, request);
   }
@@ -68,25 +69,51 @@ public final class HttpServerHandler<Req, Resp>
    *
    * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
    */
+  @Deprecated
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
-    Span span = nextSpan(extractor.extract(carrier), request);
+    Span span = nextSpan(MutableTraceContext.create(extractor.extract(carrier)), request);
     return handleStart(request, span);
+  }
+
+  /**
+   * Conditionally joins a span, or starts a new trace, depending on if a trace context was
+   * extracted from the request. Tags are added before the span is started.
+   *
+   * <p>This is typically called before the request is processed by the actual library.
+   */
+  public Span handleReceive(MutableTraceContext.Extractor<Req> extractor, Req request) {
+    return handleReceive(extractor, request, request);
+  }
+
+  /**
+   * Like {@link #handleReceive(TraceContext.Extractor, Object)}, except for when the carrier of
+   * trace data is not the same as the request.
+   *
+   * <p>Request data is parsed before the span is started.
+   *
+   * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
+   */
+  public <C> Span handleReceive(MutableTraceContext.Extractor<C> extractor, C carrier,
+      Req request) {
+    MutableTraceContext context = new MutableTraceContext();
+    extractor.extract(carrier, context);
+    Span span = nextSpan(context, request);
+    return handleStart(request, span);
+  }
+
+  /** Creates a potentially noop span representing this request */
+  Span nextSpan(MutableTraceContext extracted, Req request) {
+    if (extracted.sampled() == null) { // Otherwise, try to make a new decision
+      Boolean sampled = sampler.trySample(adapter, request);
+      if (sampled != null) extracted.sampled(sampled);
+    }
+    return tracer.joinSpan(extracted);
   }
 
   @Override void parseRequest(Req request, Span span) {
     span.kind(Span.Kind.SERVER);
     adapter.parseClientIpAndPort(request, span);
     parser.request(adapter, request, span.customizer());
-  }
-
-  /** Creates a potentially noop span representing this request */
-  Span nextSpan(TraceContextOrSamplingFlags extracted, Req request) {
-    if (extracted.sampled() == null) { // Otherwise, try to make a new decision
-      extracted = extracted.sampled(sampler.trySample(adapter, request));
-    }
-    return extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
   }
 
   /**

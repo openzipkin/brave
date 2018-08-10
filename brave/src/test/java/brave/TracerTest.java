@@ -3,6 +3,7 @@ package brave;
 import brave.Tracer.SpanInScope;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.ThreadLocalCurrentTraceContext;
@@ -17,7 +18,6 @@ import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -49,6 +49,10 @@ public class TracerTest {
 
         @Override public TraceContext decorate(TraceContext context) {
           return propagationFactory.decorate(context);
+        }
+
+        @Override public void decorate(MutableTraceContext mutableContext) {
+          propagationFactory.decorate(mutableContext);
         }
       })
       .currentTraceContext(ThreadLocalCurrentTraceContext.create())
@@ -375,14 +379,14 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_appendsToChildOfCurrent() {
     // current parent already has extra stuff
-    Span parent = tracer.toSpan(tracer.newTrace().context().toBuilder().extra(asList(1L)).build());
+    Span parent = tracer.toSpan(tracer.newTrace().context().toBuilder().addExtra(1L).build());
 
     TraceContextOrSamplingFlags extracted =
-        TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(2L).build();
+        TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1F).build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
-          .containsExactly(1L, 2L);
+          .containsExactlyInAnyOrder(1L, 1F);
     }
   }
 
@@ -488,7 +492,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, reporter=MyReporter{}}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\"}], reporter=MyReporter{}}"
       );
     }
   }

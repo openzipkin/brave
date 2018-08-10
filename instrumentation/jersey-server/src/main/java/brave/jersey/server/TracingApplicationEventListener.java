@@ -5,8 +5,8 @@ import brave.Tracer;
 import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
 import javax.inject.Inject;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
@@ -38,13 +38,13 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   final Tracer tracer;
   final HttpServerHandler<ContainerRequest, RequestEvent> serverHandler;
-  final TraceContext.Extractor<ContainerRequest> extractor;
+  final MutableTraceContext.Extractor<ContainerRequest> extractor;
   final EventParser parser;
 
   @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
     tracer = httpTracing.tracing().tracer();
     serverHandler = HttpServerHandler.create(httpTracing, new Adapter());
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    extractor = httpTracing.tracing().propagationFactory().extractor(GETTER);
     this.parser = parser;
   }
 

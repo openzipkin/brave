@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.propagation.MutableTraceContext;
 import brave.propagation.TraceContext;
 import org.junit.Test;
 
@@ -14,6 +15,7 @@ public class TraceContextBinaryMarshallerTest {
       .spanId(-1)
       .sampled(true)
       .build();
+  MutableTraceContext mutableContext = new MutableTraceContext();
   byte[] contextBytes = {
       0, // version
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // trace ID
@@ -21,103 +23,121 @@ public class TraceContextBinaryMarshallerTest {
       2, 1 // sampled
   };
 
-  TraceContextBinaryMarshaller binaryMarshaller = new TraceContextBinaryMarshaller();
-
   @Test public void roundtrip() {
-    byte[] serialized = binaryMarshaller.toBytes(context);
+    byte[] serialized = TraceContextBinaryMarshaller.toBytes(context);
     assertThat(serialized)
         .containsExactly(contextBytes);
 
-    assertThat(binaryMarshaller.parseBytes(serialized))
+    TraceContextBinaryMarshaller.extract(serialized, mutableContext);
+    assertThat(mutableContext.toTraceContext())
         .isEqualTo(context);
   }
 
   @Test public void roundtrip_unsampled() {
     context = context.toBuilder().sampled(false).build();
 
-    byte[] serialized = binaryMarshaller.toBytes(context);
+    byte[] serialized = TraceContextBinaryMarshaller.toBytes(context);
     contextBytes[contextBytes.length - 1] = 0; // unsampled
     assertThat(serialized)
         .containsExactly(contextBytes);
 
-    assertThat(binaryMarshaller.parseBytes(serialized))
+    TraceContextBinaryMarshaller.extract(serialized, mutableContext);
+    assertThat(mutableContext.toTraceContext())
         .isEqualTo(context);
   }
 
-  @Test public void parseBytes_empty_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[0]))
-        .isNull();
+  @Test public void extract_empty_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[0], mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_unsupportedVersionId_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_unsupportedVersionId_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         1, // bad version
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         2, 1
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdFirst_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_unsupportedFieldIdFirst_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         4, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // bad field number
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         2, 1
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdSecond_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_unsupportedFieldIdSecond_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         4, -1, -1, -1, -1, -1, -1, -1, -1, // bad field number
         2, 1
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdThird_toSampledNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_unsupportedFieldIdThird_toSampledNull() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         4, 1 // bad field number
-    }).sampled()).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.sampled()).isNull();
   }
 
-  @Test public void parseBytes_64BitTraceId_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_64BitTraceId_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, // half a trace ID
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         2, 1
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_32BitSpanId_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_32BitSpanId_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         1, -1, -1, -1, -1, // half a span ID
         2, 1
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.isEmpty()).isTrue();
   }
 
-  @Test public void parseBytes_truncatedTraceOptions_toNull() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_truncatedTraceOptions_isEmpty() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         2 // has field ID, but missing sampled bit
-    })).isNull();
+    }, mutableContext);
+
+    assertThat(mutableContext.sampled()).isNull();
   }
 
-  @Test public void parseBytes_missingTraceOptions() {
-    assertThat(binaryMarshaller.parseBytes(new byte[] {
+  @Test public void extract_missingTraceOptions() {
+    TraceContextBinaryMarshaller.extract(new byte[] {
         0,
         0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
         1, -1, -1, -1, -1, -1, -1, -1, -1,
         // no trace options field
-    })).isEqualTo(context);
+    }, mutableContext);
+
+    assertThat(mutableContext.toTraceContext())
+        .isEqualTo(context);
   }
 }

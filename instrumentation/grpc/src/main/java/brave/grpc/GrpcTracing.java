@@ -4,7 +4,6 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.Propagation;
 import io.grpc.ClientInterceptor;
-import io.grpc.Metadata;
 import io.grpc.ServerInterceptor;
 
 public final class GrpcTracing {
@@ -76,7 +75,7 @@ public final class GrpcTracing {
   }
 
   final Tracing tracing;
-  final Propagation<Metadata.Key<String>> propagation;
+  final Propagation.Factory propagationFactory;
   final GrpcClientParser clientParser;
   final GrpcServerParser serverParser;
   final boolean grpcPropagationFormatEnabled;
@@ -88,7 +87,7 @@ public final class GrpcTracing {
     if (grpcPropagationFormatEnabled) {
       propagationFactory = GrpcPropagation.newFactory(propagationFactory);
     }
-    propagation = propagationFactory.create(AsciiMetadataKeyFactory.INSTANCE);
+    this.propagationFactory = propagationFactory;
     clientParser = builder.clientParser;
     serverParser = builder.serverParser;
   }

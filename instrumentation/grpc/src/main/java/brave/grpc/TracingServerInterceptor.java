@@ -3,9 +3,10 @@ package brave.grpc;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
+import brave.grpc.GrpcPropagation.Tags;
+import brave.propagation.MutableTraceContext;
+import brave.propagation.MutableTraceContext.Extractor;
 import brave.propagation.Propagation;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.Metadata;
@@ -37,7 +38,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
     tracer = grpcTracing.tracing.tracer();
-    extractor = grpcTracing.propagation.extractor(GETTER);
+    extractor = grpcTracing.propagationFactory.extractor(AsciiMetadataKeyFactory.INSTANCE, GETTER);
     parser = grpcTracing.serverParser;
     grpcPropagationFormatEnabled = grpcTracing.grpcPropagationFormatEnabled;
   }
@@ -45,14 +46,13 @@ final class TracingServerInterceptor implements ServerInterceptor {
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
       final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(headers);
-    Span span = extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+    MutableTraceContext extracted = new MutableTraceContext();
+    extractor.extract(headers, extracted);
+    Span span = tracer.joinSpan(extracted);
 
     // If grpc propagation is enabled, make sure we refresh the server method
     if (grpcPropagationFormatEnabled) {
-      GrpcPropagation.Tags tags = GrpcPropagation.findTags(span.context());
+      Tags tags = span.context().findExtra(Tags.class);
       if (tags != null) tags.put(RPC_METHOD, call.getMethodDescriptor().getFullMethodName());
     }
 

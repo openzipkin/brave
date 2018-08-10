@@ -3,10 +3,10 @@ package brave.propagation;
 import brave.Tracer;
 import brave.internal.Nullable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import static brave.propagation.TraceContext.ensureImmutable;
+import static brave.propagation.InternalMutableTraceContext.ensureImmutable;
+import static java.util.Collections.emptyList;
 
 /**
  * Union type that contains only one of trace context, trace ID context or sampling flags. This type
@@ -32,10 +32,13 @@ import static brave.propagation.TraceContext.ensureImmutable;
  */
 //@Immutable
 public final class TraceContextOrSamplingFlags {
-  public static final TraceContextOrSamplingFlags EMPTY =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
+  public static final TraceContextOrSamplingFlags
+      EMPTY = new TraceContextOrSamplingFlags(3, SamplingFlags.EMPTY, emptyList()),
+      NOT_SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.NOT_SAMPLED, emptyList()),
+      SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.SAMPLED, emptyList()),
+      DEBUG = new TraceContextOrSamplingFlags(3, SamplingFlags.DEBUG, emptyList());
 
-  public static Builder newBuilder(){
+  public static Builder newBuilder() {
     return new Builder();
   }
 
@@ -47,14 +50,20 @@ public final class TraceContextOrSamplingFlags {
   public TraceContextOrSamplingFlags sampled(@Nullable Boolean sampled) {
     switch (type) {
       case 1:
-        return new TraceContextOrSamplingFlags(type, ((TraceContext) value).toBuilder()
-            .sampled(sampled).build(), extra);
+        return new TraceContextOrSamplingFlags(
+            type, ((TraceContext) value).toBuilder().sampled(sampled).build(), extra);
       case 2:
-        return new TraceContextOrSamplingFlags(type, ((TraceIdContext) value).toBuilder()
-            .sampled(sampled).build(), extra);
+        return new TraceContextOrSamplingFlags(
+            type, ((TraceIdContext) value).toBuilder().sampled(sampled).build(), extra);
       case 3:
-        return new TraceContextOrSamplingFlags(type, new SamplingFlags.Builder()
-            .sampled(sampled).debug(value.debug()).build(), extra);
+        // TODO: unit tests
+        if (extra.isEmpty()) { // use constants if no state was extracted
+          if (value.debug()) return DEBUG;
+          if (sampled == null) return EMPTY;
+          return sampled ? SAMPLED : NOT_SAMPLED;
+        }
+        SamplingFlags flags = SamplingFlags.create(sampled, value.debug());
+        return new TraceContextOrSamplingFlags(type, flags, extra);
     }
     throw new AssertionError("programming error");
   }
@@ -80,6 +89,12 @@ public final class TraceContextOrSamplingFlags {
     return extra;
   }
 
+  /** Returns an {@linkplain #extra() extra} of the given type if present or null if not. */
+  public <T> T findExtra(Class<T> type) {
+    int index = InternalMutableTraceContext.findExtra(extra, type);
+    return index != -1 ? (T) extra.get(index) : null;
+  }
+
   public final Builder toBuilder() {
     Builder result = new Builder();
     result.type = type;
@@ -94,15 +109,21 @@ public final class TraceContextOrSamplingFlags {
   }
 
   public static TraceContextOrSamplingFlags create(TraceContext context) {
-    return new TraceContextOrSamplingFlags(1, context, Collections.emptyList());
+    return new TraceContextOrSamplingFlags(1, context, emptyList());
   }
 
   public static TraceContextOrSamplingFlags create(TraceIdContext traceIdContext) {
-    return new TraceContextOrSamplingFlags(2, traceIdContext, Collections.emptyList());
+    return new TraceContextOrSamplingFlags(2, traceIdContext, emptyList());
   }
 
   public static TraceContextOrSamplingFlags create(SamplingFlags flags) {
-    return new TraceContextOrSamplingFlags(3, flags, Collections.emptyList());
+    return new TraceContextOrSamplingFlags(3, flags, emptyList());
+  }
+
+  public static TraceContextOrSamplingFlags create(@Nullable Boolean sampled, boolean debug) {
+    if (debug) return DEBUG;
+    if (sampled == null) return EMPTY;
+    return sampled ? SAMPLED : NOT_SAMPLED;
   }
 
   final int type;
@@ -120,7 +141,7 @@ public final class TraceContextOrSamplingFlags {
   public static final class Builder {
     int type;
     SamplingFlags value;
-    List<Object> extra = Collections.emptyList();
+    List<Object> extra = emptyList();
 
     /** @see TraceContextOrSamplingFlags#context() */
     public final Builder context(TraceContext context) {
@@ -173,12 +194,12 @@ public final class TraceContextOrSamplingFlags {
         TraceContext context = (TraceContext) value;
         if (context.extra().isEmpty()) {
           context = context.toBuilder().extra(extra).build();
-          return new TraceContextOrSamplingFlags(type, context, Collections.emptyList());
+          return new TraceContextOrSamplingFlags(type, context, emptyList());
         }
         ArrayList<Object> copy = new ArrayList<>(extra);
         copy.addAll(context.extra());
         context = context.toBuilder().extra(copy).build();
-        return new TraceContextOrSamplingFlags(type, context, Collections.emptyList());
+        return new TraceContextOrSamplingFlags(type, context, emptyList());
       }
       // make sure the extra data is immutable and unmodifiable
       return new TraceContextOrSamplingFlags(type, value, extra);

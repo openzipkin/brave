@@ -8,6 +8,7 @@ import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
@@ -45,13 +46,13 @@ public final class TracingFilter implements Filter {
   final CurrentTraceContext currentTraceContext;
   final Tracer tracer;
   final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
-  final TraceContext.Extractor<HttpServletRequest> extractor;
+  final MutableTraceContext.Extractor<HttpServletRequest> extractor;
 
   TracingFilter(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing, ADAPTER);
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    extractor = httpTracing.tracing().propagationFactory().extractor(GETTER);
   }
 
   @Override

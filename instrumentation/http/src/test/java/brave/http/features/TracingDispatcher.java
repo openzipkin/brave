@@ -5,7 +5,7 @@ import brave.Tracer;
 import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
-import brave.propagation.TraceContext;
+import brave.propagation.MutableTraceContext;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -14,12 +14,12 @@ final class TracingDispatcher extends Dispatcher {
   final Dispatcher delegate;
   final Tracer tracer;
   final HttpServerHandler<RecordedRequest, MockResponse> handler;
-  final TraceContext.Extractor<RecordedRequest> extractor;
+  final MutableTraceContext.Extractor<RecordedRequest> extractor;
 
   TracingDispatcher(HttpTracing httpTracing, Dispatcher delegate) {
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, new MockWebServerAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(RecordedRequest::getHeader);
+    extractor = httpTracing.tracing().propagationFactory().extractor(RecordedRequest::getHeader);
     this.delegate = delegate;
   }
 

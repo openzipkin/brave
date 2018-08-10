@@ -5,8 +5,8 @@ import brave.Tracer;
 import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -50,13 +50,13 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   final Tracer tracer;
   final ThreadLocal<Route> currentRoute;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> serverHandler;
-  final TraceContext.Extractor<HttpServerRequest> extractor;
+  final MutableTraceContext.Extractor<HttpServerRequest> extractor;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
     currentRoute = new ThreadLocal<>();
     serverHandler = HttpServerHandler.create(httpTracing, new Adapter(currentRoute));
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    extractor = httpTracing.tracing().propagationFactory().extractor(GETTER);
   }
 
   @Override public void handle(RoutingContext context) {

@@ -7,16 +7,14 @@ import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.internal.recorder.SpanReporter;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.propagation.TraceIdContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import java.io.Closeable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -131,7 +129,8 @@ public class Tracer {
    * #nextSpan()}.
    */
   public Span newTrace() {
-    return toSpan(newContextBuilder(null, sampler).build());
+    TraceContext context = nextContext(new MutableTraceContext(), false);
+    return _toSpan(context);
   }
 
   /**
@@ -139,9 +138,9 @@ public class Tracer {
    * should not be used for messaging operations, as {@link #nextSpan(TraceContextOrSamplingFlags)}
    * is a better choice.
    *
-   * <p>When this incoming context is sampled, we assume this is a shared span, one where the caller
-   * and the current tracer report to the same span IDs. If no sampling decision occurred yet, we
-   * have exclusive access to this span ID.
+   * <p>When this incoming context is sampled, we assume this is a shared span, one where the
+   * caller and the current tracer report to the same span IDs. If no sampling decision occurred
+   * yet, we have exclusive access to this span ID.
    *
    * <p>Here's an example of conditionally joining a span, depending on if a trace context was
    * extracted from an incoming request.
@@ -160,17 +159,31 @@ public class Tracer {
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
    */
-  public final Span joinSpan(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    if (!supportsJoin) return newChild(context);
-    // If we are joining a trace, we are sharing IDs with the caller
-    // If the sampled flag was left unset, we need to make the decision here
-    if (context.sampled() == null) { // then the caller didn't contribute data
-      context = context.toBuilder().sampled(sampler.isSampled(context.traceId())).build();
-    } else if (context.sampled()) { // we are recording and contributing to the same span ID
-      context = context.toBuilder().shared(true).build();
+  public final Span joinSpan(TraceContext extracted) {
+    if (extracted == null) throw new NullPointerException("extracted == null");
+    if (!supportsJoin) return newChild(extracted);
+
+    if (extracted.sampled() == null || extracted.sampled()) {
+      return _joinSpan(MutableTraceContext.create(extracted));
     }
-    return toSpan(context);
+    return toSpan(extracted);
+  }
+
+  public final Span joinSpan(MutableTraceContext extracted) {
+    if (extracted == null) throw new NullPointerException("extracted == null");
+    if (!supportsJoin || extracted.spanId() == 0L) return nextSpan(extracted);
+    return _joinSpan(extracted);
+  }
+
+  Span _joinSpan(MutableTraceContext mutableContext) {
+    // When sampled, we are recording data under the same IDs as the caller
+    if (Boolean.TRUE.equals(mutableContext.sampled())) {
+      mutableContext.shared(true);
+    } else if (mutableContext.sampled() == null) {
+      mutableContext.sampled(sampler.isSampled(mutableContext.traceId()));
+    }
+    propagationFactory.decorate(mutableContext);
+    return _toSpan(mutableContext.toTraceContext());
   }
 
   /**
@@ -182,7 +195,37 @@ public class Tracer {
    */
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
-    return toSpan(newContextBuilder(parent, sampler).build());
+    return nextSpan(MutableTraceContext.create(parent));
+  }
+
+  /** TODO */
+  public Span nextSpan(MutableTraceContext mutableContext) {
+    TraceContext context = nextContext(mutableContext, true);
+    return _toSpan(context);
+  }
+
+  TraceContext nextContext(MutableTraceContext mutableContext, boolean readCurrentSpan) {
+    if (mutableContext == null) throw new NullPointerException("mutableContext == null");
+    long traceId = mutableContext.traceId(), nextId = nextId();
+    if (traceId == 0L) {
+      TraceContext implicitParent;
+      // Reuse the IDs from the current span as the parent
+      if (readCurrentSpan && (implicitParent = currentTraceContext.get()) != null) {
+        mutableContext.parent(implicitParent);
+      } else { // make a new trace ID
+        mutableContext.traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L);
+        mutableContext.traceId(nextId);
+        mutableContext.parentId(0L); // ensure the parent ID is cleared.
+      }
+    } else { // try to set the parent from the extracted state
+      mutableContext.parentId(mutableContext.spanId());
+    }
+    mutableContext.spanId(nextId);
+    if (mutableContext.sampled() == null) {
+      mutableContext.sampled(sampler.isSampled(mutableContext.traceId()));
+    }
+    propagationFactory.decorate(mutableContext);
+    return mutableContext.toTraceContext();
   }
 
   /**
@@ -210,49 +253,30 @@ public class Tracer {
    * @see TraceContextOrSamplingFlags
    */
   public Span nextSpan(TraceContextOrSamplingFlags extracted) {
-    TraceContext parent = extracted.context();
-    if (extracted.samplingFlags() != null) {
-      TraceContext implicitParent = currentTraceContext.get();
-      if (implicitParent == null) {
-        return toSpan(newContextBuilder(null, extracted.samplingFlags())
-            .extra(extracted.extra()).build());
-      }
-      // fall through, with an implicit parent, not an extracted one
-      parent = appendExtra(implicitParent, extracted.extra());
-    }
-    if (parent != null) {
-      TraceContext.Builder builder;
-      if (extracted.samplingFlags() != null) {
-        builder = newContextBuilder(parent, extracted.samplingFlags());
-      } else {
-        builder = newContextBuilder(parent, sampler);
-      }
-      return toSpan(builder.shared(false).build());
-    }
-    TraceIdContext traceIdContext = extracted.traceIdContext();
-    if (extracted.traceIdContext() != null) {
-      Boolean sampled = traceIdContext.sampled();
-      if (sampled == null) sampled = sampler.isSampled(traceIdContext.traceId());
-      return toSpan(TraceContext.newBuilder()
-          .sampled(sampled)
-          .debug(traceIdContext.debug())
-          .traceIdHigh(traceIdContext.traceIdHigh()).traceId(traceIdContext.traceId())
-          .spanId(nextId())
-          .extra(extracted.extra()).build());
-    }
-    // TraceContextOrSamplingFlags is a union of 3 types, we've checked all three
-    throw new AssertionError("should not reach here");
+    return nextSpan(MutableTraceContext.create(extracted));
   }
 
-  /** Converts the context to a Span object after decorating it for propagation */
+  /**
+   * Converts the context to a Span object after ensuring it is sampled and decorating it for
+   * propagation.
+   */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     // decorating here addresses join, new traces or children and ad-hoc trace contexts
-    TraceContext decorated = propagationFactory.decorate(context);
-    if (isNoop(decorated)) return new NoopSpan(decorated);
+    if (context.sampled() == null) {
+      MutableTraceContext mutableContext = MutableTraceContext.create(context);
+      mutableContext.sampled(sampler.isSampled(mutableContext.traceId()));
+      propagationFactory.decorate(mutableContext);
+      return _toSpan(mutableContext.toTraceContext());
+    }
+    return _toSpan(propagationFactory.decorate(context));
+  }
+
+  Span _toSpan(TraceContext context) {
+    if (isNoop(context)) return new NoopSpan(context);
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
-    PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated);
-    return new RealSpan(decorated,
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
+    return new RealSpan(context,
         pendingSpans,
         pendingSpan.state(),
         pendingSpan.clock(),
@@ -298,8 +322,8 @@ public class Tracer {
    * <p>When tracing in-process commands, prefer {@link #startScopedSpan(String)} which scopes by
    * default.
    *
-   * <p>Note: While downstream code might affect the span, calling this method, and calling close on
-   * the result have no effect on the input. For example, calling close on the result does not
+   * <p>Note: While downstream code might affect the span, calling this method, and calling close
+   * on the result have no effect on the input. For example, calling close on the result does not
    * finish the span. Not only is it safe to call close, you must call close to end the scope, or
    * risk leaking resources associated with the scope.
    *
@@ -342,7 +366,8 @@ public class Tracer {
    * block.
    */
   public Span nextSpan() {
-    return toSpan(newContextBuilder(currentTraceContext.get(), sampler).build());
+    TraceContext context = nextContext(new MutableTraceContext(), true);
+    return _toSpan(context);
   }
 
   /**
@@ -370,13 +395,15 @@ public class Tracer {
   /**
    * Same as {@link #startScopedSpan(String)}, except ignores the current trace context.
    *
-   * <p>Use this when you are creating a scoped span in a method block where the parent was created.
-   * You can also use this to force a new trace by passing null parent.
+   * <p>Use this when you are creating a scoped span in a method block where the parent was
+   * created. You can also use this to force a new trace by passing null parent.
    */
   // this api is needed to make tools such as executors which need to carry the invocation context
   public ScopedSpan startScopedSpanWithParent(String name, @Nullable TraceContext parent) {
     if (name == null) throw new NullPointerException("name == null");
-    TraceContext context = propagationFactory.decorate(newContextBuilder(parent, sampler).build());
+    MutableTraceContext mutableContext = new MutableTraceContext();
+    if (parent != null) mutableContext.parent(parent);
+    TraceContext context = nextContext(mutableContext, true);
     CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
     if (isNoop(context)) return new NoopScopedSpan(context, scope);
     PendingSpan pendingSpan = pendingSpans.getOrCreate(context);
@@ -419,33 +446,8 @@ public class Tracer {
         + "}";
   }
 
-  TraceContext.Builder newContextBuilder(@Nullable TraceContext parent, Sampler sampler) {
-    long nextId = nextId();
-    if (parent != null) {
-      Boolean sampled = parent.sampled();
-      if (sampled == null) sampled = sampler.isSampled(parent.traceId());
-      return parent.toBuilder() // copies "extra" from the parent
-          .spanId(nextId)
-          .parentId(parent.spanId())
-          .sampled(sampled);
-    }
-    return TraceContext.newBuilder()
-        .sampled(sampler.isSampled(nextId))
-        .traceIdHigh(traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L).traceId(nextId)
-        .spanId(nextId);
-  }
-
   boolean isNoop(TraceContext context) {
     return noop.get() || !Boolean.TRUE.equals(context.sampled());
-  }
-
-  TraceContext.Builder newContextBuilder(TraceContext parent, SamplingFlags samplingFlags) {
-    return newContextBuilder(parent, samplerOverride(samplingFlags)).debug(samplingFlags.debug());
-  }
-
-  Sampler samplerOverride(SamplingFlags samplingFlags) {
-    Boolean sampled = samplingFlags.sampled();
-    return sampled == null ? sampler : sampled ? Sampler.ALWAYS_SAMPLE : Sampler.NEVER_SAMPLE;
   }
 
   /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */
@@ -455,16 +457,5 @@ public class Tracer {
       nextId = Platform.get().randomLong();
     }
     return nextId;
-  }
-
-  static TraceContext appendExtra(TraceContext context, List<Object> extra) {
-    if (extra.isEmpty()) return context;
-    if (context.extra().isEmpty()) {
-      return context.toBuilder().extra(extra).build();
-    } else {
-      List<Object> merged = new ArrayList<>(context.extra());
-      merged.addAll(extra);
-      return context.toBuilder().extra(merged).build();
-    }
   }
 }

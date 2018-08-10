@@ -2,9 +2,9 @@ package brave.features.async;
 
 import brave.Span;
 import brave.Tracing;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -53,12 +53,11 @@ public class OneWaySpanTest {
     server.setDispatcher(new Dispatcher() {
       @Override public MockResponse dispatch(RecordedRequest recordedRequest) {
         // pull the context out of the incoming request
-        TraceContextOrSamplingFlags extracted = serverTracing.propagation()
-            .extractor(RecordedRequest::getHeader).extract(recordedRequest);
+        MutableTraceContext context = new MutableTraceContext();
+        serverTracing.propagationFactory()
+            .extractor(RecordedRequest::getHeader).extract(recordedRequest, context);
 
-        Span span = extracted.context() != null
-            ? serverTracing.tracer().joinSpan(extracted.context())
-            : serverTracing.tracer().nextSpan(extracted);
+        Span span = serverTracing.tracer().joinSpan(context);
 
         span.name(recordedRequest.getMethod())
             .kind(Span.Kind.SERVER)

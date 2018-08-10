@@ -3,6 +3,7 @@ package brave.grpc;
 import brave.grpc.GrpcPropagation.Tags;
 import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -32,12 +33,16 @@ public class GrpcPropagationBenchmarks {
       B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE);
   static final Injector<Metadata> b3Injector = b3.injector(TracingClientInterceptor.SETTER);
   static final Extractor<Metadata> b3Extractor = b3.extractor(TracingServerInterceptor.GETTER);
+  static final MutableTraceContext.Extractor<Metadata> b3MutableExtractor = B3Propagation.FACTORY
+      .extractor(AsciiMetadataKeyFactory.INSTANCE, TracingServerInterceptor.GETTER);
 
   static final Propagation.Factory bothFactory = GrpcPropagation.newFactory(B3Propagation.FACTORY);
   static final Propagation<Metadata.Key<String>> both =
       bothFactory.create(AsciiMetadataKeyFactory.INSTANCE);
   static final Injector<Metadata> bothInjector = both.injector(TracingClientInterceptor.SETTER);
   static final Extractor<Metadata> bothExtractor = both.extractor(TracingServerInterceptor.GETTER);
+  static final MutableTraceContext.Extractor<Metadata> bothMutableExtractor =
+      bothFactory.extractor(AsciiMetadataKeyFactory.INSTANCE, TracingServerInterceptor.GETTER);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -53,9 +58,9 @@ public class GrpcPropagationBenchmarks {
   static final Metadata nothingIncoming = new Metadata();
 
   static {
-    Tags.put(contextWithTags, "method", "helloworld.Greeter/SayHello");
     b3Injector.inject(context, incomingB3);
     bothInjector.inject(contextWithTags, incomingBoth);
+    contextWithTags.findExtra(Tags.class).put("method", "helloworld.Greeter/SayHello");
     bothInjector.inject(context, incomingBothNoTags);
   }
 
@@ -70,6 +75,14 @@ public class GrpcPropagationBenchmarks {
 
   @Benchmark public TraceContextOrSamplingFlags extract_b3_nothing() {
     return b3Extractor.extract(nothingIncoming);
+  }
+
+  @Benchmark public void mutable_extract_b3() {
+    b3MutableExtractor.extract(incomingBoth, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_b3_nothing() {
+    b3MutableExtractor.extract(nothingIncoming, new MutableTraceContext());
   }
 
   @Benchmark public void inject_both() {
@@ -94,11 +107,23 @@ public class GrpcPropagationBenchmarks {
     return bothExtractor.extract(incomingBothNoTags);
   }
 
+  @Benchmark public void mutable_extract_both() {
+    bothMutableExtractor.extract(incomingBoth, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_both_nothing() {
+    bothMutableExtractor.extract(nothingIncoming, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_both_no_tags() {
+    bothMutableExtractor.extract(incomingBothNoTags, new MutableTraceContext());
+  }
+
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
         .addProfiler("gc")
-        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName() + ".*inject_both")
+        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName())
         .build();
 
     new Runner(opt).run();

@@ -5,9 +5,9 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.propagation.MutableTraceContext;
+import brave.propagation.MutableTraceContext.Extractor;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContextOrSamplingFlags;
 import com.rabbitmq.client.Channel;
 import java.util.Map;
 import org.aopalliance.aop.Advice;
@@ -17,7 +17,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import zipkin2.Endpoint;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
@@ -53,18 +52,20 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
   @Nullable final String remoteServiceName;
 
   TracingRabbitListenerAdvice(Tracing tracing, @Nullable String remoteServiceName) {
-    this.extractor = tracing.propagation().extractor(GETTER);
+    this.extractor = tracing.propagationFactory().extractor(GETTER);
     this.tracer = tracing.tracer();
     this.tracing = tracing;
     this.remoteServiceName = remoteServiceName;
   }
 
   /**
-   * MethodInterceptor for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel, Message)}
+   * MethodInterceptor for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel,
+   * Message)}
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     Message message = (Message) methodInvocation.getArguments()[1];
-    TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
+    MutableTraceContext extracted = new MutableTraceContext();
+    extractTraceContextAndRemoveHeaders(message, extracted);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
     Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("next-message");
@@ -88,14 +89,13 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     }
   }
 
-  TraceContextOrSamplingFlags extractTraceContextAndRemoveHeaders(Message message) {
+  void extractTraceContextAndRemoveHeaders(Message message, MutableTraceContext extracted) {
     MessageProperties messageProperties = message.getMessageProperties();
-    TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
+    extractor.extract(messageProperties, extracted);
     Map<String, Object> headers = messageProperties.getHeaders();
     for (String key : tracing.propagation().keys()) {
       headers.remove(key);
     }
-    return extracted;
   }
 
   void tagReceivedMessageProperties(Span span, MessageProperties messageProperties) {

@@ -30,6 +30,8 @@ public class ExtraFieldPropagationBenchmarks {
   static final Propagation<String> extra = factory.create(Propagation.KeyFactory.STRING);
   static final Injector<Map<String, String>> extraInjector = extra.injector(Map::put);
   static final Extractor<Map<String, String>> extraExtractor = extra.extractor(Map::get);
+  static final MutableTraceContext.Extractor<Map<String, String>> extraMutableExtractor =
+      factory.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -68,6 +70,18 @@ public class ExtraFieldPropagationBenchmarks {
 
   @Benchmark public TraceContextOrSamplingFlags extract_no_extra() {
     return extraExtractor.extract(incomingNoExtra);
+  }
+
+  @Benchmark public void mutable_extract() {
+    extraMutableExtractor.extract(incoming, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_nothing() {
+    extraMutableExtractor.extract(nothingIncoming, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_no_extra() {
+    extraMutableExtractor.extract(incomingNoExtra, new MutableTraceContext());
   }
 
   // Convenience main entry-point
