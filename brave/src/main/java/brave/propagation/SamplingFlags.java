@@ -13,18 +13,6 @@ public class SamplingFlags {
   public static final SamplingFlags SAMPLED = new SamplingFlags(NOT_SAMPLED.flags | FLAG_SAMPLED);
   public static final SamplingFlags DEBUG = new SamplingFlags(SAMPLED.flags | FLAG_DEBUG);
 
-  /** Allows you to create flags from a boolean value without allocating a builder instance */
-  public static SamplingFlags create(@Nullable Boolean sampled, boolean debug) {
-    if (debug) return DEBUG;
-    if (sampled == null) return EMPTY;
-    return sampled ? SAMPLED : NOT_SAMPLED;
-  }
-
-  public SamplingFlags build() {
-    return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-        : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
-  }
-
   final int flags; // bit field for sampled and debug
 
   SamplingFlags(int flags) {
@@ -65,8 +53,6 @@ public class SamplingFlags {
     return "SamplingFlags(sampled=" + sampled() + ", debug=" + debug() + ")";
   }
 
-  /** @deprecated use {@link #create(Boolean, boolean)}. This will be removed in Brave v6 */
-  @Deprecated
   public static final class Builder {
     int flags = 0; // bit field for sampled and debug
 
@@ -101,6 +87,7 @@ public class SamplingFlags {
       return this;
     }
 
+
     /** Allows you to create flags from a boolean value without allocating a builder instance */
     public static SamplingFlags build(@Nullable Boolean sampled) {
       if (sampled != null) return sampled ? SAMPLED : NOT_SAMPLED;
@@ -109,11 +96,11 @@ public class SamplingFlags {
 
     public SamplingFlags build() {
       return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-          : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
+          : SamplingFlags.sampled(flags) ? SAMPLED : NOT_SAMPLED;
     }
   }
 
-  @Nullable static Boolean sampled(int flags) {
+  private static Boolean sampled(int flags) {
     return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
         ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
         : null;

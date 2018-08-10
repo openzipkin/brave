@@ -1,6 +1,5 @@
 package brave.internal;
 
-import brave.propagation.MutableTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,12 +50,5 @@ public abstract class PropagationFieldsFactory<P extends PropagationFields> {
     TraceContext resultContext = context.toBuilder().extra(unmodifiableList(copyOfExtra)).build();
     fields.tryAssociate(resultContext); // associate this with the new context
     return resultContext;
-  }
-
-  public final void decorate(MutableTraceContext extractedState) {
-    // If there's an implicit context while extracting only fields fields, we will have two extras!
-    P extra = extractedState.findExtra(type());
-    if (extra != null) return;
-    extractedState.addExtra(create());
   }
 }

@@ -1,11 +1,13 @@
 package brave.propagation;
 
 import brave.internal.Nullable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
-import static brave.propagation.InternalMutableTraceContext.ensureImmutable;
 
 /**
  * Contains trace identifiers and sampling data propagated in and out-of-process.
@@ -58,14 +60,6 @@ public final class TraceContext extends SamplingFlags {
      * @param carrier holds propagation fields. For example, an incoming message or http request.
      */
     TraceContextOrSamplingFlags extract(C carrier);
-  }
-
-  public static TraceContext create(MutableTraceContext state) {
-    String missing = "";
-    if (state.traceId == 0L) missing += " traceId";
-    if (state.spanId == 0L) missing += " spanId";
-    if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
-    return new TraceContext(state);
   }
 
   public static Builder newBuilder() {
@@ -130,16 +124,11 @@ public final class TraceContext extends SamplingFlags {
    * example implementation could be storing a class containing a correlation value, which is
    * extracted from incoming requests and injected as-is onto outgoing requests.
    *
-   * <p>Implementations are responsible for scoping any data stored here. This can be performed
-   * when {@link Propagation.Factory#decorate(TraceContext)} is called.
+   * <p>Implementations are responsible for scoping any data stored here. This can be performed when
+   * {@link Propagation.Factory#decorate(TraceContext)} is called.
    */
   public List<Object> extra() {
     return extra;
-  }
-
-  /** Returns an {@linkplain #extra() extra} of the given type if present or null if not. */
-  public <T> T findExtra(Class<T> type) {
-    return InternalMutableTraceContext.findExtra(extra, type);
   }
 
   public Builder toBuilder() {
@@ -176,7 +165,8 @@ public final class TraceContext extends SamplingFlags {
     return new String(result);
   }
 
-  public static final class Builder extends InternalMutableTraceContext {
+  public static final class Builder extends InternalBuilder {
+    List<Object> extra = Collections.emptyList();
 
     Builder(TraceContext context) { // no external implementations
       traceIdHigh = context.traceIdHigh;
@@ -219,48 +209,36 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** @see TraceContext#sampled() */
-    public Builder sampled(boolean sampled) {
-      _sampled(sampled);
+    @Override public Builder sampled(boolean sampled) {
+      super.sampled(sampled);
       return this;
     }
 
     /** @see TraceContext#sampled() */
-    public Builder sampled(@Nullable Boolean sampled) {
-      _sampled(sampled);
+    @Override public Builder sampled(@Nullable Boolean sampled) {
+      super.sampled(sampled);
       return this;
     }
 
     /** @see TraceContext#debug() */
-    public Builder debug(boolean debug) {
-      _debug(debug);
+    @Override public Builder debug(boolean debug) {
+      super.debug(debug);
       return this;
     }
 
     /** @see TraceContext#shared() */
-    public Builder shared(boolean shared) {
-      _shared(shared);
+    public Builder shared(boolean shared){
+      if (shared) {
+        flags |= FLAG_SHARED;
+      } else {
+        flags &= ~FLAG_SHARED;
+      }
       return this;
-    }
-
-    /** Returns an {@linkplain #extra(List) extra} of the given type if present or null if not. */
-    public <T> T findExtra(Class<T> type) {
-      return findExtra(extra, type);
     }
 
     /** @see TraceContext#extra() */
-    public final Builder addExtra(Object extra) {
-      _addExtra(extra);
-      return this;
-    }
-
-    /**
-     * Shares the input with the builder, replacing any current data in the builder.
-     *
-     * @see TraceContext#extra()
-     */
-    public final Builder extra(List<Object> extra) {
-      if (extra == null) throw new NullPointerException("extra == null");
-      this.extra = extra; // sharing a copy in case it is immutable
+    public Builder extra(List<Object> extra) {
+      this.extra = ensureImmutable(extra);
       return this;
     }
 
@@ -272,10 +250,6 @@ public final class TraceContext extends SamplingFlags {
       return new TraceContext(this);
     }
 
-    @Override Logger logger() {
-      return LOG;
-    }
-
     Builder() { // no external implementations
     }
   }
@@ -283,27 +257,19 @@ public final class TraceContext extends SamplingFlags {
   final long traceIdHigh, traceId, parentId, spanId;
   final List<Object> extra;
 
-  TraceContext(MutableTraceContext state) { // no external implementations
-    super(state.flags);
-    traceIdHigh = state.traceIdHigh;
-    traceId = state.traceId;
-    parentId = state.parentId;
-    spanId = state.spanId;
-    extra = ensureImmutable(state.extra);
-  }
-
   TraceContext(Builder builder) { // no external implementations
     super(builder.flags);
     traceIdHigh = builder.traceIdHigh;
     traceId = builder.traceId;
     parentId = builder.parentId;
     spanId = builder.spanId;
-    extra = ensureImmutable(builder.extra);
+    extra = builder.extra;
   }
 
+
   /**
-   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and the
-   * {@link #shared() shared flag}.
+   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and
+   * the {@link #shared() shared flag}.
    *
    * <p>The shared flag is included to have parity with the {@link #hashCode()}.
    */
@@ -318,8 +284,8 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and the
-   * {@link #shared() shared flag}.
+   * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and
+   * the {@link #shared() shared flag}.
    *
    * <p>The shared flag is included in the hash code to ensure loopback span data are partitioned
    * properly. For example, if a client calls itself, the server-side shouldn't overwrite the client
@@ -336,5 +302,58 @@ public final class TraceContext extends SamplingFlags {
     h *= 1000003;
     h ^= flags & FLAG_SHARED;
     return h;
+  }
+
+  // parseXXX methods package protected until we figure out if this is reusable enough to expose
+  static class InternalBuilder extends TraceIdContext.InternalBuilder {
+    long parentId, spanId;
+
+    /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
+    final <C, K> boolean parseParentId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String parentIdString = getter.get(carrier, key);
+      if (parentIdString == null) return true; // absent parent is ok
+      int length = parentIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      parentId = lenientLowerHexToUnsignedLong(parentIdString, 0, length);
+      if (parentId == 0) {
+        maybeLogNotLowerHex(key, parentIdString);
+        return false;
+      }
+      return true;
+    }
+
+    /** Parses the span id from the input string. Returns true if the ID is valid. */
+    final <C, K> boolean parseSpanId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String spanIdString = getter.get(carrier, key);
+      if (isNull(key, spanIdString)) return false;
+      int length = spanIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
+      if (spanId == 0) {
+        maybeLogNotLowerHex(key, spanIdString);
+        return false;
+      }
+      return true;
+    }
+
+    @Override Logger logger() {
+      return LOG;
+    }
+  }
+
+  static List<Object> ensureImmutable(List<Object> extra) {
+    if (extra == Collections.EMPTY_LIST) return extra;
+    // avoid copying datastructure by trusting certain names.
+    String simpleName = extra.getClass().getSimpleName();
+    if (simpleName.equals("SingletonList")
+        || simpleName.startsWith("Unmodifiable")
+        || simpleName.contains("Immutable")) {
+      return extra;
+    }
+    // Faster to make a copy than check the type to see if it is already a singleton list
+    if (extra.size() == 1) return Collections.singletonList(extra.get(0));
+    return Collections.unmodifiableList(new ArrayList<>(extra));
   }
 }

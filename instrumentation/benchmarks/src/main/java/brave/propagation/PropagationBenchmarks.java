@@ -29,6 +29,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Thread)
 public class PropagationBenchmarks {
   static final Propagation<String> b3 = Propagation.B3_STRING;
+
   static final Injector<Map<String, String>> b3Injector = b3.injector(Map::put);
   static final Extractor<Map<String, String>> b3Extractor = b3.extractor(Map::get);
 
@@ -42,12 +43,6 @@ public class PropagationBenchmarks {
   static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
     {
       b3Injector.inject(context, this);
-    }
-  };
-
-  static final Map<String, String> incomingNotSampled = new LinkedHashMap<String, String>() {
-    {
-      put("X-B3-Sampled", "0"); // unsampled
     }
   };
 
@@ -76,10 +71,6 @@ public class PropagationBenchmarks {
     return b3Extractor.extract(nothingIncoming);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_b3_unsampled() {
-    return b3Extractor.extract(incomingNotSampled);
-  }
-
   @Benchmark public TraceContextOrSamplingFlags extract_b3_malformed() {
     return b3Extractor.extract(incomingMalformed);
   }
@@ -87,7 +78,7 @@ public class PropagationBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + PropagationBenchmarks.class.getSimpleName() +".extract_b3_unsampled")
+        .include(".*" + PropagationBenchmarks.class.getSimpleName())
         .build();
 
     new Runner(opt).run();
