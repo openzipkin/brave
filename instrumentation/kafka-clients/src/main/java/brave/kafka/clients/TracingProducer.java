@@ -67,9 +67,9 @@ final class TracingProducer<K, V> implements Producer<K, V> {
    * We wrap the send method to add tracing.
    */
   @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
-    TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
     final Span span;
-    if (traceContextOrSamplingFlags != null) {
+    if (tracing.tracer().currentSpan() == null) {
+      TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
       span = tracing.tracer().nextSpan(traceContextOrSamplingFlags);
     } else {
       span = tracing.tracer().nextSpan();
