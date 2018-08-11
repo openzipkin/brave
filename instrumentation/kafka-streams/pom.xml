@@ -18,6 +18,8 @@
         <main.signature.artifact>java18</main.signature.artifact>
 
         <kafka.version>2.0.0</kafka.version>
+        <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
+        <kafka-junit.version>4.1.2</kafka-junit.version>
     </properties>
 
     <dependencies>
@@ -39,6 +41,17 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>brave-tests</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.charithe</groupId>
+            <artifactId>kafka-junit</artifactId>
+            <version>${kafka-junit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
