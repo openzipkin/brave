@@ -25,7 +25,7 @@ public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDeco
     return new ThreadContextScopeDecorator();
   }
 
-  @Override protected String getIfString(String key) {
+  @Override protected String get(String key) {
     return ThreadContext.get(key);
   }
 

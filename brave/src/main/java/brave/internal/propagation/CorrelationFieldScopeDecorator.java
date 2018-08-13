@@ -22,9 +22,9 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
    * Scope#close()}.
    */
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
-    String previousTraceId = getIfString("traceId");
-    String previousSpanId = getIfString("spanId");
-    String previousParentId = getIfString("parentId");
+    String previousTraceId = get("traceId");
+    String previousSpanId = get("spanId");
+    String previousParentId = get("parentId");
 
     if (currentSpan != null) {
       maybeReplaceTraceContext(currentSpan, previousTraceId, previousParentId, previousSpanId);
@@ -73,7 +73,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
   /**
    * Returns the correlation property of the specified name iff it is a string, or null otherwise.
    */
-  protected abstract @Nullable String getIfString(String key);
+  protected abstract @Nullable String get(String key);
 
   /** Replaces the correlation property of the specified name */
   protected abstract void put(String key, String value);

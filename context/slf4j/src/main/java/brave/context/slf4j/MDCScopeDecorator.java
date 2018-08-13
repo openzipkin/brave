@@ -24,7 +24,7 @@ public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
     return new MDCScopeDecorator();
   }
 
-  @Override protected String getIfString(String key) {
+  @Override protected String get(String key) {
     return MDC.get(key);
   }
 
