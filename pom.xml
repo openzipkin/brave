@@ -73,9 +73,9 @@
     <finagle.version>18.7.0</finagle.version>
     <log4j.version>2.11.0</log4j.version>
     <okhttp.version>3.11.0</okhttp.version>
-    <grpc.version>1.13.2</grpc.version>
+    <grpc.version>1.14.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.25.Final</netty.version>
+    <netty.version>4.1.27.Final</netty.version>
     <sparkjava.version>2.7.1</sparkjava.version>
     <junit.version>4.12</junit.version>
     <assertj.version>3.10.0</assertj.version>
@@ -85,7 +85,7 @@
     <jersey.version>2.25.1</jersey.version>
     <jmh.version>1.21</jmh.version>
 
-    <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
     <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
