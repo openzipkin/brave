@@ -3,8 +3,8 @@ package brave.context.slf4j;
 import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.test.propagation.CurrentTraceContextTest;
 import brave.propagation.TraceContext;
+import brave.test.propagation.CurrentTraceContextTest;
 import org.slf4j.MDC;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +15,7 @@ public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
     return MDCCurrentTraceContext.create(CurrentTraceContext.Default.create());
   }
 
-  protected void verifyImplicitContext(@Nullable TraceContext context) {
+  @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
       assertThat(MDC.get("traceId"))
           .isEqualTo(context.traceIdString());
