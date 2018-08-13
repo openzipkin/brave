@@ -6,7 +6,6 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;

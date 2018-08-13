@@ -7,6 +7,10 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -17,11 +21,6 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 final class TracingProducer<K, V> implements Producer<K, V> {
 
@@ -69,8 +68,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     final Span span;
     if (tracing.tracer().currentSpan() == null) {
-      TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
-      span = tracing.tracer().nextSpan(traceContextOrSamplingFlags);
+      TraceContextOrSamplingFlags traceContext = extractor.extract(record.headers());
+      span = tracing.tracer().nextSpan(traceContext);
     } else {
       span = tracing.tracer().nextSpan();
     }
@@ -80,9 +79,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
       if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
       }
-      if (remoteServiceName != null) {
-        span.remoteServiceName(remoteServiceName);
-      }
+      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).name("send").kind(Kind.PRODUCER).start();
     }
     try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
@@ -115,7 +112,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   @Override
   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
-                                       String consumerGroupId) {
+      String consumerGroupId) {
     delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
 }

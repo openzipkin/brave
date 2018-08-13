@@ -5,6 +5,7 @@ public final class IpLiteral {
 
   @Nullable public static String ipOrNull(@Nullable String ip) {
     if (ip == null || ip.isEmpty()) return null;
+    if ("::1".equals(ip) || "127.0.0.1".equals(ip)) return ip; // special-case localhost
     IpFamily format = detectFamily(ip);
     if (format == IpFamily.IPv4Embedded) {
       ip = ip.substring(ip.lastIndexOf(':') + 1);

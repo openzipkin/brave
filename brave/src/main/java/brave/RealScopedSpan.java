@@ -1,8 +1,8 @@
 package brave;
 
-import brave.Tracing.SpanReporter;
 import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpans;
+import brave.internal.recorder.SpanReporter;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 
