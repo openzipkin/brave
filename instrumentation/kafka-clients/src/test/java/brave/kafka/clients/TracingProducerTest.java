@@ -34,6 +34,24 @@ public class TracingProducerTest  extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
+
+  @Test
+  public void should_add_b3_headers_to_records_and_try_to_extract() {
+    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    record.headers().add("tx-id", "1".getBytes());
+    tracingProducer.send(record);
+
+    List<String> headerKeys = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .map(Header::key)
+        .collect(Collectors.toList());
+
+    List<String> expectedHeaders = Arrays.asList(
+        "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
+
   @Test
   public void should_add_parent_trace_when_context_exist() {
     ScopedSpan scopedSpan = tracing.tracer().startScopedSpan("main");
