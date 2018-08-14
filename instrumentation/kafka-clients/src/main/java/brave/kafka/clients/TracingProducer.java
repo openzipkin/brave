@@ -65,15 +65,22 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   /**
    * We wrap the send method to add tracing.
+   * This method is expecting an existing current trace context to create a child span.
+   * If there is no current context, an additional operation will be performed to extract
+   * context from record headers. This could impact performance if no context is injected
+   * on record headers, but is required to propagate context on Kafka Streams instrumentation.
    */
   @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     final Span span;
-    if (tracing.tracer().currentSpan() == null) {
+    final TraceContext maybeParent = tracing.currentTraceContext().get();
+    //Only if there is no trace context and there are headers available, additional extract is performed
+    if (maybeParent == null && record.headers().toArray().length > 0) {
       TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
       span = tracing.tracer().nextSpan(traceContextOrSamplingFlags);
     } else {
       span = tracing.tracer().nextSpan();
     }
+
     tracing.propagation().keys().forEach(key -> record.headers().remove(key));
     injector.inject(span.context(), record.headers());
     if (!span.isNoop()) {
