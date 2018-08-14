@@ -87,7 +87,7 @@ public final class KafkaTracing {
   TraceContextOrSamplingFlags extractAndClearHeaders(ConsumerRecord<?, ?> record) {
     TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
     // clear propagation headers if we were able to extract a span
-    if (extracted != TraceContextOrSamplingFlags.EMPTY) {
+    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
       tracing.propagation().keys().forEach(key -> record.headers().remove(key));
     }
     return extracted;

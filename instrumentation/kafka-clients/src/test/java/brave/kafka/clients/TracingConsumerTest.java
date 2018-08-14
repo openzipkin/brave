@@ -79,7 +79,6 @@ public class TracingConsumerTest extends BaseTracingTest {
         .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
-
   @Test
   public void should_add_new_trace_headers_if_b3_missing() throws Exception {
     consumer.addRecord(fakeRecord);

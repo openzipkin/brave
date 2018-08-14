@@ -87,9 +87,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
       if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
       }
-      if (remoteServiceName != null) {
-        span.remoteServiceName(remoteServiceName);
-      }
+      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).name("send").kind(Kind.PRODUCER).start();
     }
     try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
@@ -122,7 +120,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   @Override
   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
-                                       String consumerGroupId) {
+      String consumerGroupId) {
     delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
   }
 }

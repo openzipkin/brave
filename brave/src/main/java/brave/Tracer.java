@@ -5,6 +5,7 @@ import brave.internal.Platform;
 import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
+import brave.internal.recorder.SpanReporter;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -63,7 +64,7 @@ public class Tracer {
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final Tracing.SpanReporter spanReporter; // for toString
+  final SpanReporter spanReporter; // for toString
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final ErrorParser errorParser;
@@ -74,7 +75,7 @@ public class Tracer {
   Tracer(
       Clock clock,
       Propagation.Factory propagationFactory,
-      Tracing.SpanReporter spanReporter,
+      SpanReporter spanReporter,
       PendingSpans pendingSpans,
       Sampler sampler,
       ErrorParser errorParser,

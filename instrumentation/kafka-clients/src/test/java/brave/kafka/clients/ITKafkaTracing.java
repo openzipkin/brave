@@ -252,7 +252,9 @@ public class ITKafkaTracing {
 
     producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
 
-    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
+    // intentionally using deprecated method as we are checking the same class in an invoker test
+    // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
+    ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
     Span producerSpan = takeProducerSpan();

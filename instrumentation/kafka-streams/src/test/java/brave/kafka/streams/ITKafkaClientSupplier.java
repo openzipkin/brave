@@ -22,6 +22,9 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import zipkin2.Span;
 
 import java.time.Duration;
@@ -32,6 +35,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -58,6 +62,18 @@ public class ITKafkaClientSupplier {
   private Producer<String, String> producer;
   private Consumer<String, String> consumer;
 
+  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
+    // only check success path to avoid masking assertion errors or exceptions
+    @Override protected void succeeded(Description description) {
+      try {
+        assertThat(streamsSpans.poll(100, TimeUnit.MILLISECONDS))
+            .withFailMessage("Stream span remaining in queue. Check for redundant reporting")
+            .isNull();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  };
 
   @After
   public void close() {
@@ -85,6 +101,7 @@ public class ITKafkaClientSupplier {
     streamsConfig.put(
         StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
         kafkaRule.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+    streamsConfig.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     streamsConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     KafkaStreams streams = new KafkaStreams(topology, streamsConfig, supplier);
@@ -95,12 +112,17 @@ public class ITKafkaClientSupplier {
 
     streams.start();
 
+    //TODO fix waiting time for kafka streams to be running
     do {
-      Thread.sleep(500);
+      Thread.sleep(1_000);
     } while (!streams.state().isRunning());
+
     Span span = takeStreamsSpan();
 
     assertNotNull(span);
+
+    streams.close();
+    //streams.cleanUp();
   }
 
   @Test
@@ -115,6 +137,7 @@ public class ITKafkaClientSupplier {
     streamsConfig.put(
         StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
         kafkaRule.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+    streamsConfig.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     streamsConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     KafkaStreams streams = new KafkaStreams(topology, streamsConfig, supplier);
@@ -126,18 +149,23 @@ public class ITKafkaClientSupplier {
 
     streams.start();
 
+    //TODO fix waiting time for kafka streams to be running
     do {
-      Thread.sleep(500);
+      Thread.sleep(1_000);
     } while (!streams.state().isRunning());
 
-    ConsumerRecords<String, String> consumerRecord =
-        consumer.poll(Duration.ofMillis(100));
-    assertNotNull(consumerRecord);
+    //ConsumerRecords<String, String> consumerRecords =
+    //    consumer.poll(Duration.ofMillis(100));
+    //assertThat(consumerRecords).hasSize(1);
 
     Span spanInput = takeStreamsSpan(), spanOutput = takeStreamsSpan();
 
     assertNotNull(spanInput);
     assertNotNull(spanOutput);
+    assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
+
+    streams.close();
+    //streams.cleanUp();
   }
 
 
