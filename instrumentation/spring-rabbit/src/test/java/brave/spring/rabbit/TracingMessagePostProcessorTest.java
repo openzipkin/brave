@@ -1,7 +1,7 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TracingMessagePostProcessorTest {
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .build();
   TracingMessagePostProcessor tracingMessagePostProcessor =

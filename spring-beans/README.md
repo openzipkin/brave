@@ -24,7 +24,11 @@ Here are some example beans using the factories in this module:
       </bean>
     </property>
     <property name="currentTraceContext">
-      <bean class="brave.context.slf4j.MDCCurrentTraceContext" factory-method="create"/>
+      <bean class="brave.spring.beans.CurrentTraceContextFactoryBean">
+        <property name="scopeDecorators">
+          <bean class="brave.context.slf4j.MDCScopeDecorator" factory-method="create"/>
+        </property>
+      </bean>
     </property>
   </bean>
 

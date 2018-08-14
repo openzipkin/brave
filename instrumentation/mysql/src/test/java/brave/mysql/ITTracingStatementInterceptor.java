@@ -2,7 +2,7 @@ package brave.mysql;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import java.sql.Connection;
@@ -126,7 +126,7 @@ public class ITTracingStatementInterceptor {
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
         .sampler(sampler);
   }
 

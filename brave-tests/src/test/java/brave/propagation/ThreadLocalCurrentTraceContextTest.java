@@ -4,7 +4,7 @@ import brave.test.propagation.CurrentTraceContextTest;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DefaultCurrentTraceContextTest extends CurrentTraceContextTest {
+public class ThreadLocalCurrentTraceContextTest extends CurrentTraceContextTest {
 
   @Override protected CurrentTraceContext newCurrentTraceContext() {
     return CurrentTraceContext.Default.create();

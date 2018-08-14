@@ -2,7 +2,8 @@ package brave.http;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,9 @@ public class HttpClientHandlerTest {
   @Before public void init() {
     httpTracing = HttpTracing.newBuilder(
         Tracing.newBuilder()
-            .currentTraceContext(new StrictCurrentTraceContext())
+            .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+                .addScopeDecorator(StrictScopeDecorator.create())
+                .build())
             .spanReporter(spans::add)
             .build()
     ).clientSampler(new HttpSampler() {

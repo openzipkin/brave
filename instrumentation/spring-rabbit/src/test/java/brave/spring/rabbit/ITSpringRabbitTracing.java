@@ -1,7 +1,8 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -221,7 +222,9 @@ public class ITSpringRabbitTracing {
     @Bean
     public Tracing tracing(BlockingQueue<Span> producerSpans) {
       return Tracing.newBuilder()
-          .currentTraceContext(new StrictCurrentTraceContext())
+          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+              .addScopeDecorator(StrictScopeDecorator.create())
+              .build())
           .localServiceName("spring-amqp-producer")
           .spanReporter(producerSpans::add)
           .build();
@@ -279,7 +282,9 @@ public class ITSpringRabbitTracing {
     public Tracing tracing(BlockingQueue<Span> consumerSpans) {
       return Tracing.newBuilder()
           .localServiceName("spring-amqp-consumer")
-          .currentTraceContext(new StrictCurrentTraceContext())
+          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+              .addScopeDecorator(StrictScopeDecorator.create())
+              .build())
           .spanReporter(consumerSpans::add)
           .build();
     }

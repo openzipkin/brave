@@ -6,7 +6,8 @@ import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.concurrent.BlockingQueue;
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * different thread than main (which does the assertions).
  *
  * <p><pre><ul>
- *   <li>{@link StrictCurrentTraceContext} double-checks threads don't leak contexts</li>
+ *   <li>{@link StrictScopeDecorator} double-checks threads don't leak contexts</li>
  *   <li>Span reporting double-checks the span was de-scoped on finish, to prevent leaks</li>
  *   <li>Spans report into a concurrent blocking queue to prevent assertions race conditions</li>
  *   <li>After tests complete, the queue is strictly checked to catch redundant span reporting</li>
@@ -101,7 +102,9 @@ public abstract class ITHttp {
     return result;
   }
 
-  protected CurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
+  protected CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build();
   protected HttpTracing httpTracing;
 
   /**

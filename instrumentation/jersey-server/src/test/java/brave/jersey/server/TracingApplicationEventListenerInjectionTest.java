@@ -2,7 +2,7 @@ package brave.jersey.server;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingApplicationEventListenerInjectionTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(Reporter.NOOP)
       .build();
 

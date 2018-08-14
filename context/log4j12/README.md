@@ -2,12 +2,15 @@
 This adds trace and span IDs to the Log4J v1.2 Mapped Diagnostic Context so that you
 can search or aggregate logs accordingly.
 
-To enable this, configure `brave.Tracing` with `MDCCurrentTraceContext`
+To enable this, configure `brave.Tracing` with `MDCScopeDecorator`
 like so:
 
 ```java
 tracing = Tracing.newBuilder()
-    .currentTraceContext(MDCCurrentTraceContext.create())
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+       .addScopeDecorator(MDCScopeDecorator.create())
+       .build()
+    )
     ...
     .build();
 ```

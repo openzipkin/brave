@@ -2,7 +2,7 @@ package brave.okhttp3;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import okhttp3.Interceptor;
 import org.junit.After;
 import org.junit.Test;
@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class TracingInterceptorTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(Reporter.NOOP)
       .build();
   @Mock Interceptor.Chain chain;
@@ -32,7 +32,7 @@ public class TracingInterceptorTest {
     verifyNoMoreInteractions(span);
   }
 
-  @After public void close(){
+  @After public void close() {
     tracing.close();
   }
 }

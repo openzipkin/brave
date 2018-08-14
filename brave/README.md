@@ -512,7 +512,7 @@ needed to support the current span. It also exposes utilities which you
 can use to decorate executors.
 
 ```java
-CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.create();
+CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
 tracing = Tracing.newBuilder()
                  .currentTraceContext(currentTraceContext)
                  ...
@@ -666,6 +666,28 @@ class MyFilter extends Filter {
 }
 ```
 
+### Customizing in-process propagation (Ex. log correlation)
+
+The `CurrentTraceContext` makes a trace context visible, such that spans
+aren't accidentally added to the wrong trace. It also accepts hooks like
+log correlation.
+
+For example, if you use Log4J 2, you can copy trace IDs to your logging
+context with [our decorator](../context/log4j2/README.md):
+```java
+tracing = Tracing.newBuilder()
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+       .addScopeDecorator(ThreadContextScopeDecorator.create())
+       .build()
+    )
+    ...
+    .build();
+```
+
+Besides logging, other tools are available. [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java) can
+help find out when code is not closing scopes properly. This can be
+useful when writing or diagnosing custom instrumentation.
+
 ## Disabling Tracing
 
 If you are in a situation where you need to turn off tracing at runtime,
@@ -687,7 +709,7 @@ When writing unit tests, there are a few tricks that will make bugs
 easier to find:
 
 * Report spans into a concurrent queue, so you can read them in tests
-* Use `StrictCurrentTraceContext` to reveal subtle propagation bugs
+* Use `StrictScopeDecorator` to reveal subtle thread-related propagation bugs
 * Unconditionally cleanup `Tracing.current()`, to prevent leaks
 
 Here's an example setup for your unit test fixture:
@@ -695,7 +717,10 @@ Here's an example setup for your unit test fixture:
 ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
 Tracing tracing = Tracing.newBuilder()
-                 .currentTraceContext(new StrictCurrentTraceContext())
+                 .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+                   .addScopeDecorator(StrictScopeDecorator.create())
+                   .build()
+                 )
                  .spanReporter(spans::add)
                  .build();
 

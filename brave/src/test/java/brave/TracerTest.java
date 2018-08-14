@@ -5,7 +5,7 @@ import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
@@ -51,7 +51,7 @@ public class TracerTest {
           return propagationFactory.decorate(context);
         }
       })
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .localServiceName("my-service")
       .build().tracer();
 

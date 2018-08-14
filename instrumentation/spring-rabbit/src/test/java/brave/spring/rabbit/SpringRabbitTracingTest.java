@@ -1,7 +1,7 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -15,7 +15,7 @@ import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(new StrictCurrentTraceContext())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(Reporter.NOOP)
       .build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);

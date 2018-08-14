@@ -2,7 +2,7 @@ package brave.p6spy;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -107,7 +107,7 @@ public class ITTracingP6Factory {
   static Tracing.Builder tracingBuilder(Sampler sampler, ArrayList<Span> spans) {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
         .sampler(sampler);
   }
 }

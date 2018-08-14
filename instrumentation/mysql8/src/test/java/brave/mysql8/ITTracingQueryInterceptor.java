@@ -16,7 +16,7 @@ package brave.mysql8;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import java.sql.Connection;
@@ -31,7 +31,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import zipkin2.Span;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -170,12 +169,8 @@ public class ITTracingQueryInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(new Reporter<Span>() {
-          @Override public void report(Span span) {
-            spans.add(span);
-          }
-        })
-        .currentTraceContext(new StrictCurrentTraceContext())
+        .spanReporter(spans::add)
+        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
         .sampler(sampler);
   }
 

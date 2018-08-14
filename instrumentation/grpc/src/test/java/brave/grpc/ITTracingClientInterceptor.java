@@ -4,8 +4,9 @@ import brave.ScopedSpan;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
-import brave.context.log4j2.ThreadContextCurrentTraceContext;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.context.log4j2.ThreadContextScopeDecorator;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
@@ -343,7 +344,10 @@ public class ITTracingClientInterceptor {
     return Tracing.newBuilder()
         .spanReporter(spans::add)
         .currentTraceContext( // connect to log4j
-            ThreadContextCurrentTraceContext.create(new StrictCurrentTraceContext()))
+            ThreadLocalCurrentTraceContext.newBuilder()
+                .addScopeDecorator(StrictScopeDecorator.create())
+                .addScopeDecorator(ThreadContextScopeDecorator.create())
+                .build())
         .sampler(sampler);
   }
 

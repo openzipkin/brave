@@ -1,8 +1,10 @@
 package brave.context.rxjava2;
 
 import brave.context.rxjava2.CurrentTraceContextAssemblyTracking.SavedHooks;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyTracking;
 import io.reactivex.Completable;
@@ -47,7 +49,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class CurrentTraceContextAssemblyTrackingTest {
-  StrictCurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
+  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build();
   CurrentTraceContextAssemblyTracking contextTracking =
       CurrentTraceContextAssemblyTracking.create(currentTraceContext);
   TraceContext context1 = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
