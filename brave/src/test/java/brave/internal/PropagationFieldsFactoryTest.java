@@ -44,7 +44,13 @@ public abstract class PropagationFieldsFactoryTest {
       PropagationFields.put(context1, FIELD1, "1");
       TraceContext context2 = tracing.tracer().newChild(context1).context();
 
-      // same values when propagating down
+      // Instances are not the same
+      assertThat(PropagationFields.find(context1.extra()))
+          .isNotSameAs(PropagationFields.find(context2.extra()));
+
+      // But have the same values
+      assertThat(PropagationFields.find(context1.extra()).toMap())
+          .isEqualTo(PropagationFields.find(context2.extra()).toMap());
       assertThat(PropagationFields.get(context1, FIELD1))
           .isEqualTo(PropagationFields.get(context2, FIELD1))
           .isEqualTo("1");
@@ -52,6 +58,7 @@ public abstract class PropagationFieldsFactoryTest {
       PropagationFields.put(context1, FIELD1, "2");
       PropagationFields.put(context2, FIELD1, "3");
 
+      // Yet downstream changes don't affect eachother
       assertThat(PropagationFields.get(context1, FIELD1))
           .isEqualTo("2");
       assertThat(PropagationFields.get(context2, FIELD1))
@@ -169,7 +176,6 @@ public abstract class PropagationFieldsFactoryTest {
 
         TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
             .samplingFlags(SamplingFlags.EMPTY)
-            .addExtra(factory.create())
             .build();
 
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
