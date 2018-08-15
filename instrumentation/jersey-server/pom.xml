@@ -12,6 +12,9 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <!-- Jersey 2.7 -> 2.25 are Java 7. We don't currently compile against Jersey 2.26+
+         https://jersey.github.io/documentation/latest/modules-and-dependencies.html#d0e560
+         -->
   </properties>
 
   <dependencies>

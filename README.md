@@ -31,6 +31,31 @@ You may want to put trace IDs into your log files, or change thread local
 behavior. Look at our [context libraries](context/), for integration with
 tools such as SLF4J.
 
+## Version Compatibility policy
+All Brave libraries match the minimum Java version of what's being
+traced or integrated with, and adds no 3rd party dependencies. The goal
+is to neither impact your projects' choices, nor subject your project
+to dependency decisions made by others.
+
+For example, even including a basic reporting library,
+[zipkin-sender-urlconnection](https://github.com/openzipkin/zipkin-reporter-java), Brave transitively includes no json,
+logging, protobuf or thrift dependency. This means zero concern if your
+application chooses a specific version of SLF4J, Gson or Guava.
+Moreover, the entire dependency tree including basic reporting in json,
+thrift or protobuf is less than 512KiB of jars.
+
+There is a floor Java version of 1.6, which allows older JREs and older
+Android runtimes, yet may limit some applications. For example, Servlet
+2.5 works with Java 1.5, but due to Brave being 1.6, you will not be
+able to trace Servlet 2.5 applications until you use at least JRE 1.6.
+
+All integrations set their associated library to "provided" scope. This
+ensures Brave doesn't interfere with the versions you choose.
+
+Some libraries update often which leads to api drift. In some cases, we
+test versions ranges to reduce the impact of this. For example, we test
+[gRPC](instrumentation/grpc) and [Kafka](instrumentation/kafka-clients) against multiple library versions.
+
 ## Artifacts
 All artifacts publish to the group ID "io.zipkin.brave". We use a common
 release version for all components.

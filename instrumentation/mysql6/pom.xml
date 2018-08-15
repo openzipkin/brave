@@ -12,6 +12,9 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <!-- mysql-connector-java 6+ requires Java 8 -->
+    <main.java.version>1.8</main.java.version>
+    <main.signature.artifact>java18</main.signature.artifact>
   </properties>
 
   <dependencies>
