@@ -39,9 +39,10 @@ to dependency decisions made by others.
 
 For example, even including a basic reporting library,
 [zipkin-sender-urlconnection](https://github.com/openzipkin/zipkin-reporter-java), Brave transitively includes no json,
-logging, protobuf or thrift dependency. This means zero concern if you
-choose to any version of any SLF4J or Log4J library, or common libraries
-like Guava.
+logging, protobuf or thrift dependency. This means zero concern if your
+application chooses a specific version of SLF4J, Gson or Guava.
+Moreover, the entire dependency tree including basic reporting in json,
+thrift or protobuf is less than 512KiB of jars.
 
 There is a floor Java version of 1.6, which allows older JREs and older
 Android runtimes, yet may limit some applications. For example, Servlet
