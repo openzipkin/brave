@@ -40,7 +40,7 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
   );
   ContainerRequest request = new ContainerRequest(
       URI.create("/"), null, null, null, new MapPropertiesDelegate()
-      ) {
+  ) {
     @Override public ExtendedUriInfo getUriInfo() {
       return uriInfo;
     }
@@ -58,14 +58,6 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
           new PathTemplate("/nested")
       )
   );
-  ContainerResponse nestedResponse = new ContainerResponse(
-      new ContainerRequest(
-          URI.create("/"), null, null, null, new MapPropertiesDelegate()
-      ) {
-        @Override public ExtendedUriInfo getUriInfo() {
-          return nestedUriInfo;
-        }
-      }, new ServerResponse());
 
   TracingApplicationEventListener.Adapter adapter = new TracingApplicationEventListener.Adapter();
 

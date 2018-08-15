@@ -94,6 +94,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
+        .addProfiler("gc")
         .include(".*" + ServletBenchmarks.class.getSimpleName() + ".*")
         .build();
 
@@ -103,7 +104,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   static class ForwardingTracingFilter implements Filter {
     final Filter delegate;
 
-    public ForwardingTracingFilter(Filter delegate) {
+    ForwardingTracingFilter(Filter delegate) {
       this.delegate = delegate;
     }
 

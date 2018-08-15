@@ -13,8 +13,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -24,14 +22,14 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@State(Scope.Thread)
-public class PropagationBenchmarks {
-  static final Propagation<String> b3 = Propagation.B3_STRING;
-
-  static final Injector<Map<String, String>> b3Injector = b3.injector(Map::put);
-  static final Extractor<Map<String, String>> b3Extractor = b3.extractor(Map::get);
+public class ExtraFieldPropagationBenchmarks {
+  static final Propagation.Factory
+      factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id");
+  static final Propagation<String> extra = factory.create(Propagation.KeyFactory.STRING);
+  static final Injector<Map<String, String>> extraInjector = extra.injector(Map::put);
+  static final Extractor<Map<String, String>> extraExtractor = extra.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -42,43 +40,41 @@ public class PropagationBenchmarks {
 
   static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
     {
-      b3Injector.inject(context, this);
+      extraInjector.inject(context, this);
+      put("x-vcap-request-id", "216a2aea45d08fc9");
     }
   };
 
-  static final Map<String, String> incomingMalformed = new LinkedHashMap<String, String>() {
+  static final Map<String, String> incomingNoExtra = new LinkedHashMap<String, String>() {
     {
-      put("x-amzn-trace-id", "Sampled=-;Parent=463ac35%Af6413ad;Root=1-??-abc!#%0123456789123456");
-      put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
-      put("X-B3-SpanId",  "48485a3953bb6124"); // ok
-      put("X-B3-ParentSpanId", "-"); // not ok
+      extraInjector.inject(context, this);
     }
   };
 
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
-  Map<String, String> carrier = new LinkedHashMap<>();
-
-  @Benchmark public void inject_b3() {
-    b3Injector.inject(context, carrier);
+  @Benchmark public void inject() {
+    Map<String, String> carrier = new LinkedHashMap<>();
+    extraInjector.inject(context, carrier);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_b3() {
-    return b3Extractor.extract(incoming);
+  @Benchmark public TraceContextOrSamplingFlags extract() {
+    return extraExtractor.extract(incoming);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_b3_nothing() {
-    return b3Extractor.extract(nothingIncoming);
+  @Benchmark public TraceContextOrSamplingFlags extract_nothing() {
+    return extraExtractor.extract(nothingIncoming);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_b3_malformed() {
-    return b3Extractor.extract(incomingMalformed);
+  @Benchmark public TraceContextOrSamplingFlags extract_no_extra() {
+    return extraExtractor.extract(incomingNoExtra);
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + PropagationBenchmarks.class.getSimpleName())
+        .addProfiler("gc")
+        .include(".*" + ExtraFieldPropagationBenchmarks.class.getSimpleName())
         .build();
 
     new Runner(opt).run();

@@ -125,11 +125,6 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
 
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
-    EndToEndBenchmarks bm = new EndToEndBenchmarks();
-    bm.init();
-    bm.tracedExtraServer_get();
-    bm.tracedExtraServer_get_request_id();
-    bm.close();
     Options opt = new OptionsBuilder()
         .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*")
         .build();
