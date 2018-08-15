@@ -1,6 +1,6 @@
 package brave.propagation;
 
-import brave.context.log4j2.ThreadContextCurrentTraceContext;
+import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.internal.HexCodec;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -20,12 +20,14 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 public class CurrentTraceContextBenchmarks {
-  static final CurrentTraceContext base = CurrentTraceContext.Default.create();
-  static final CurrentTraceContext log4j2 = ThreadContextCurrentTraceContext.create(base);
+  static final CurrentTraceContext base = ThreadLocalCurrentTraceContext.create();
+  static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(ThreadContextScopeDecorator.create())
+      .build();
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
@@ -107,6 +109,7 @@ public class CurrentTraceContextBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
+        .addProfiler("gc")
         .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName())
         .build();
 
