@@ -12,15 +12,16 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.7</main.java.version>
-    <main.signature.artifact>java17</main.signature.artifact>
+    <!-- RxJava 2.x continues support for Java 1.6 and Android 2.3+ -->
+    <main.java.version>1.6</main.java.version>
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>io.reactivex.rxjava2</groupId>
       <artifactId>rxjava</artifactId>
-      <version>2.1.17</version>
+      <version>2.2.0</version>
       <scope>provided</scope>
     </dependency>
 
@@ -33,7 +34,7 @@
     <dependency>
       <groupId>com.github.akarnokd</groupId>
       <artifactId>rxjava2-extensions</artifactId>
-      <version>0.19.5</version>
+      <version>0.20.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
