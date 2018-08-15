@@ -16,8 +16,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -29,7 +27,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Fork(3)
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@State(Scope.Thread)
 public class GrpcPropagationBenchmarks {
   static final Propagation<Metadata.Key<String>> b3 =
       B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE);
@@ -48,26 +45,22 @@ public class GrpcPropagationBenchmarks {
       .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
       .sampled(true)
       .build();
-  static final TraceContext contextWithTags;
+  static final TraceContext contextWithTags = bothFactory.decorate(context);
 
   static final Metadata incomingB3 = new Metadata();
   static final Metadata incomingBoth = new Metadata();
   static final Metadata incomingBothNoTags = new Metadata();
+  static final Metadata nothingIncoming = new Metadata();
 
   static {
-    contextWithTags = bothFactory.decorate(context);
     Tags.put(contextWithTags, "method", "helloworld.Greeter/SayHello");
-
     b3Injector.inject(context, incomingB3);
     bothInjector.inject(contextWithTags, incomingBoth);
     bothInjector.inject(context, incomingBothNoTags);
   }
 
-  static final Metadata nothingIncoming = new Metadata();
-
-  Metadata carrier = new Metadata();
-
   @Benchmark public void inject_b3() {
+    Metadata carrier = new Metadata();
     b3Injector.inject(context, carrier);
   }
 
@@ -80,10 +73,12 @@ public class GrpcPropagationBenchmarks {
   }
 
   @Benchmark public void inject_both() {
+    Metadata carrier = new Metadata();
     bothInjector.inject(contextWithTags, carrier);
   }
 
   @Benchmark public void inject_both_no_tags() {
+    Metadata carrier = new Metadata();
     bothInjector.inject(context, carrier);
   }
 
@@ -103,7 +98,7 @@ public class GrpcPropagationBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
         .addProfiler("gc")
-        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName())
+        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName() + ".*inject_both")
         .build();
 
     new Runner(opt).run();

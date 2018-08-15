@@ -13,8 +13,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -26,7 +24,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Fork(3)
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@State(Scope.Thread)
 public class B3PropagationBenchmarks {
   static final Propagation<String> b3 = Propagation.B3_STRING;
   static final Injector<Map<String, String>> b3Injector = b3.injector(Map::put);
@@ -62,9 +59,8 @@ public class B3PropagationBenchmarks {
 
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
-  Map<String, String> carrier = new LinkedHashMap<>();
-
   @Benchmark public void inject() {
+    Map<String, String> carrier = new LinkedHashMap<>();
     b3Injector.inject(context, carrier);
   }
 
