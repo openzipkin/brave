@@ -24,8 +24,11 @@ final class TraceContextObservable<T> extends Observable<T> {
 
   @Override
   protected void subscribeActual(io.reactivex.Observer<? super T> s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
@@ -44,22 +47,31 @@ final class TraceContextObservable<T> extends Observable<T> {
 
     @Override
     public void onNext(T t) {
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onNext(t);
+      } finally {
+        scope.close();
       }
     }
 
     @Override
     public void onError(Throwable t) {
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onError(t);
+      } finally {
+        scope.close();
       }
     }
 
     @Override
     public void onComplete() {
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onComplete();
+      } finally {
+        scope.close();
       }
     }
 

@@ -21,7 +21,8 @@ final class TraceContextCallableFlowable<T> extends Flowable<T> implements Calla
 
   @Override
   protected void subscribeActual(org.reactivestreams.Subscriber<? super T> s) {
-    try (CurrentTraceContext.Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    CurrentTraceContext.Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       if (s instanceof ConditionalSubscriber) {
         source.subscribe(
             new TraceContextConditionalSubscriber<>(
@@ -29,14 +30,19 @@ final class TraceContextCallableFlowable<T> extends Flowable<T> implements Calla
       } else {
         source.subscribe(new TraceContextSubscriber<>(s, currentTraceContext, assemblyContext));
       }
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() throws Exception {
-    try (CurrentTraceContext.Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    CurrentTraceContext.Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }

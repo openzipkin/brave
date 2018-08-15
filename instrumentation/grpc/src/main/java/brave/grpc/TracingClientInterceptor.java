@@ -2,6 +2,7 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext.Injector;
 import io.grpc.CallOptions;
@@ -49,45 +50,67 @@ final class TracingClientInterceptor implements ClientInterceptor {
       final MethodDescriptor<ReqT, RespT> method, final CallOptions callOptions,
       final Channel next) {
     Span span = tracer.nextSpan();
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    SpanInScope scope = tracer.withSpanInScope(span);
+    try {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
           injector.inject(span.context(), headers);
           span.kind(Span.Kind.CLIENT).start();
-          try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+          SpanInScope scope = tracer.withSpanInScope(span);
+          try { // retrolambda can't resolve this try/finally
             parser.onStart(method, callOptions, headers, span.customizer());
-            super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
-              @Override public void onMessage(RespT message) {
-                try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-                  parser.onMessageReceived(message, span.customizer());
-                  delegate().onMessage(message);
-                }
-              }
-
-              @Override public void onClose(Status status, Metadata trailers) {
-                try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-                  super.onClose(status, trailers);
-                  parser.onClose(status, trailers, span.customizer());
-                } finally {
-                  span.finish();
-                }
-              }
-            }, headers);
+            super.start(new TracingClientCallListener<>(responseListener, span), headers);
+          } finally {
+            scope.close();
           }
         }
 
         @Override public void sendMessage(ReqT message) {
-          try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+          SpanInScope scope = tracer.withSpanInScope(span);
+          try { // retrolambda can't resolve this try/finally
             super.sendMessage(message);
             parser.onMessageSent(message, span.customizer());
+          } finally {
+            scope.close();
           }
         }
       };
     } catch (RuntimeException | Error e) {
       span.error(e).finish();
       throw e;
+    } finally {
+      scope.close();
+    }
+  }
+
+  final class TracingClientCallListener<RespT> extends SimpleForwardingClientCallListener<RespT> {
+    final Span span;
+
+    TracingClientCallListener(ClientCall.Listener<RespT> responseListener, Span span) {
+      super(responseListener);
+      this.span = span;
+    }
+
+    @Override public void onMessage(RespT message) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
+        parser.onMessageReceived(message, span.customizer());
+        delegate().onMessage(message);
+      } finally {
+        scope.close();
+      }
+    }
+
+    @Override public void onClose(Status status, Metadata trailers) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try {
+        super.onClose(status, trailers);
+        parser.onClose(status, trailers, span.customizer());
+      } finally {
+        scope.close();
+        span.finish();
+      }
     }
   }
 }

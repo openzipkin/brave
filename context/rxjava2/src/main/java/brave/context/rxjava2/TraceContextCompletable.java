@@ -25,8 +25,11 @@ final class TraceContextCompletable extends Completable {
 
   @Override
   protected void subscribeActual(CompletableObserver s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
@@ -49,22 +52,31 @@ final class TraceContextCompletable extends Completable {
     public void onSubscribe(Disposable d) {
       if (!DisposableHelper.validate(this.d, d)) return;
       this.d = d;
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onSubscribe(this);
+      } finally {
+        scope.close();
       }
     }
 
     @Override
     public void onError(Throwable t) {
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onError(t);
+      } finally {
+        scope.close();
       }
     }
 
     @Override
     public void onComplete() {
-      try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+      Scope scope = currentTraceContext.maybeScope(assemblyContext);
+      try { // retrolambda can't resolve this try/finally
         actual.onComplete();
+      } finally {
+        scope.close();
       }
     }
 

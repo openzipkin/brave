@@ -57,7 +57,7 @@ public final class CurrentTraceContextAssemblyTracking {
    * Enable the protocol violation hooks by chaining it before any existing hook.
    *
    * @return the SavedHooks instance that allows restoring the previous assembly hook handlers
-   *     overridden by this method
+   * overridden by this method
    * @see #enable()
    */
   public SavedHooks enableAndChain() {

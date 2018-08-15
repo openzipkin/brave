@@ -22,7 +22,8 @@ final class TraceContextFlowable<T> extends Flowable<T> {
 
   @Override
   protected void subscribeActual(Subscriber s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       if (s instanceof ConditionalSubscriber) {
         source.subscribe(
             new TraceContextConditionalSubscriber<>(
@@ -30,6 +31,8 @@ final class TraceContextFlowable<T> extends Flowable<T> {
       } else {
         source.subscribe(new TraceContextSubscriber<>(s, currentTraceContext, assemblyContext));
       }
+    } finally {
+      scope.close();
     }
   }
 }

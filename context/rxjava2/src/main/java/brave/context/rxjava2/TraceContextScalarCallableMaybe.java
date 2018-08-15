@@ -25,16 +25,22 @@ final class TraceContextScalarCallableMaybe<T> extends Maybe<T> implements Scala
 
   @Override
   protected void subscribeActual(MaybeObserver<? super T> s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((ScalarCallable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }

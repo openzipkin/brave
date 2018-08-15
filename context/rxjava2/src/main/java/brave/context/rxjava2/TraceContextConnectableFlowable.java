@@ -24,7 +24,8 @@ final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
 
   @Override
   protected void subscribeActual(org.reactivestreams.Subscriber<? super T> s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       if (s instanceof ConditionalSubscriber) {
         source.subscribe(
             new TraceContextConditionalSubscriber<>(
@@ -32,13 +33,18 @@ final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
       } else {
         source.subscribe(new TraceContextSubscriber<>(s, currentTraceContext, assemblyContext));
       }
+    } finally {
+      scope.close();
     }
   }
 
   @Override
   public void connect(Consumer<? super Disposable> connection) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.connect(connection);
+    } finally {
+      scope.close();
     }
   }
 }

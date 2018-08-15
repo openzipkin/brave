@@ -24,16 +24,22 @@ final class TraceContextCallableObservable<T> extends Observable<T> implements C
 
   @Override
   protected void subscribeActual(io.reactivex.Observer<? super T> s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() throws Exception {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }

@@ -26,16 +26,22 @@ final class TraceContextScalarCallableCompletable<T> extends Completable
 
   @Override
   protected void subscribeActual(CompletableObserver s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((ScalarCallable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }

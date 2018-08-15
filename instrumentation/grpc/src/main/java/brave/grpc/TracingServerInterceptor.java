@@ -2,6 +2,7 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -59,27 +60,27 @@ final class TracingServerInterceptor implements ServerInterceptor {
     parser.onStart(call, headers, span.customizer());
     // startCall invokes user interceptors, so we place the span in scope here
     ServerCall.Listener<ReqT> result;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    SpanInScope scope = tracer.withSpanInScope(span);
+    try { // retrolambda can't resolve this try/finally
       result = next.startCall(new TracingServerCall<>(span, call, parser), headers);
     } catch (RuntimeException | Error e) {
       span.error(e);
       span.finish();
       throw e;
+    } finally {
+      scope.close();
     }
 
     // This ensures the server implementation can see the span in scope
     return new ScopingServerCallListener<>(tracer, span, result, parser);
   }
 
-  static final class TracingServerCall<ReqT, RespT>
-      extends SimpleForwardingServerCall<ReqT, RespT> {
+  final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
     final Span span;
-    final GrpcServerParser parser;
 
     TracingServerCall(Span span, ServerCall<ReqT, RespT> call, GrpcServerParser parser) {
       super(call);
       this.span = span;
-      this.parser = parser;
     }
 
     @Override public void request(int numMessages) {
@@ -121,33 +122,48 @@ final class TracingServerInterceptor implements ServerInterceptor {
     }
 
     @Override public void onMessage(ReqT message) {
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
         parser.onMessageReceived(message, span.customizer());
         delegate().onMessage(message);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onHalfClose() {
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
         delegate().onHalfClose();
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onCancel() {
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
         delegate().onCancel();
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onComplete() {
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
         delegate().onComplete();
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onReady() {
-      try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+      SpanInScope scope = tracer.withSpanInScope(span);
+      try { // retrolambda can't resolve this try/finally
         delegate().onReady();
+      } finally {
+        scope.close();
       }
     }
   }

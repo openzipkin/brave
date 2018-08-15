@@ -42,8 +42,11 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
         parents[i] = new TraceContextSubscriber<>(z, currentTraceContext, assemblyContext);
       }
     }
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(parents);
+    } finally {
+      scope.close();
     }
   }
 }

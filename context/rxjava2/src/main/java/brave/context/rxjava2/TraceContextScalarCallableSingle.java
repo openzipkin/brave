@@ -25,16 +25,22 @@ final class TraceContextScalarCallableSingle<T> extends Single<T> implements Sca
 
   @Override
   protected void subscribeActual(SingleObserver<? super T> s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((ScalarCallable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }

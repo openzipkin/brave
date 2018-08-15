@@ -25,16 +25,22 @@ final class TraceContextCallableCompletable<T> extends Completable implements Ca
 
   @Override
   protected void subscribeActual(CompletableObserver s) {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       source.subscribe(new Observer(s, currentTraceContext, assemblyContext));
+    } finally {
+      scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public T call() throws Exception {
-    try (Scope scope = currentTraceContext.maybeScope(assemblyContext)) {
+    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();
+    } finally {
+      scope.close();
     }
   }
 }
