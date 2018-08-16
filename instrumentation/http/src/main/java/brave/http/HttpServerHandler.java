@@ -81,8 +81,10 @@ public final class HttpServerHandler<Req, Resp>
 
   /** Creates a potentially noop span representing this request */
   Span nextSpan(TraceContextOrSamplingFlags extracted, Req request) {
-    if (extracted.sampled() == null) { // Otherwise, try to make a new decision
-      extracted = extracted.sampled(sampler.trySample(adapter, request));
+    Boolean sampled = extracted.sampled();
+    // only recreate the context if the http sampler made a decision
+    if (sampled == null && (sampled = sampler.trySample(adapter, request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
     }
     return extracted.context() != null
         ? tracer.joinSpan(extracted.context())

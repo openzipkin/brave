@@ -47,12 +47,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <h3>Debugging test failures</h3>
  *
  * <p>If a test hangs, likely {@link BlockingQueue#take()} is being called when a span wasn't
- * reported. An exception or bug could cause this (for example, the error handling route not
- * calling {@link brave.Span#finish()}).
+ * reported. An exception or bug could cause this (for example, the error handling route not calling
+ * {@link brave.Span#finish()}).
  *
- * <p>If a test fails on {@link After}, it can mean that your test created a span, but didn't {@link BlockingQueue#take()}
- * it off the queue. If you are testing something that creates a span, you may not want to verify
- * each one. In this case, at least take them similar to below:
+ * <p>If a test fails on {@link After}, it can mean that your test created a span, but didn't
+ * {@link
+ * BlockingQueue#take()} it off the queue. If you are testing something that creates a span, you may
+ * not want to verify each one. In this case, at least take them similar to below:
  *
  * <p><pre>{@code
  * for (int i = 0; i < 10; i++) takeSpan(); // we expected 10 spans
@@ -64,15 +65,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Testing such instrumentation could be easier, ex reporting into a list. Some other race-detecting
  * features may feel overkill in this case.
  *
- * <p>Consider though, this is a base class for all http instrumentation: servers (always report off
- * main thread) and asynchronous clients (often report off main). Also, even blocking clients can
- * execute their "on headers received" hook on a separate thread! Even if the http client you are
- * working on does everything on the same thread, a small change could invalidate that assumption.
- * If something written to work on one thread is suddenly working on two threads, tests can fail
- * "randomly", perhaps not until an unrelated change to JRE. When tests fail, they also make it
- * impossible to release new code until we disable the test or fix it. Bugs or race conditions
- * instrumentation can be very time consuming to solve. For example, they can appear as "flakes" in
- * CI servers such as Travis, which can be near impossible to debug.
+ * <p>Consider though, this is a base class for all http instrumentation: servers (always report
+ * off main thread) and asynchronous clients (often report off main). Also, even blocking clients
+ * can execute their "on headers received" hook on a separate thread! Even if the http client you
+ * are working on does everything on the same thread, a small change could invalidate that
+ * assumption. If something written to work on one thread is suddenly working on two threads, tests
+ * can fail "randomly", perhaps not until an unrelated change to JRE. When tests fail, they also
+ * make it impossible to release new code until we disable the test or fix it. Bugs or race
+ * conditions instrumentation can be very time consuming to solve. For example, they can appear as
+ * "flakes" in CI servers such as Travis, which can be near impossible to debug.
  *
  * <p>Bottom-line is that we accept that strict tests are harder up front, and not necessary for a
  * few types of blocking client instrumentation. However, the majority of http instrumentation have
@@ -88,7 +89,7 @@ public abstract class ITHttp {
    * to read them on the main thread, we use a concurrent queue. As some implementations report
    * after a response is sent, we use a blocking queue to prevent race conditions in tests.
    */
-  protected BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   /** Call this to block until a span was reported */
   protected Span takeSpan() throws InterruptedException {
@@ -108,8 +109,8 @@ public abstract class ITHttp {
   protected HttpTracing httpTracing;
 
   /**
-   * This closes the current instance of tracing, to prevent it from being accidentally
-   * visible to other test classes which call {@link Tracing#current()}.
+   * This closes the current instance of tracing, to prevent it from being accidentally visible to
+   * other test classes which call {@link Tracing#current()}.
    */
   @After public void close() throws Exception {
     Tracing current = Tracing.current();

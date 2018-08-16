@@ -131,8 +131,11 @@ public class TracerTest {
   @Test public void join_setsShared() {
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
-    assertThat(tracer.joinSpan(fromIncomingRequest).context())
-        .isEqualTo(fromIncomingRequest.toBuilder().shared(true).build());
+    TraceContext joined = tracer.joinSpan(fromIncomingRequest).context();
+    assertThat(joined.shared())
+        .isTrue();
+    assertThat(joined)
+        .isEqualToComparingFieldByField(fromIncomingRequest.toBuilder().shared(true).build());
   }
 
   /**
@@ -378,11 +381,11 @@ public class TracerTest {
     Span parent = tracer.toSpan(tracer.newTrace().context().toBuilder().extra(asList(1L)).build());
 
     TraceContextOrSamplingFlags extracted =
-        TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(2L).build();
+        TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1F).build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
-          .containsExactly(1L, 2L);
+          .containsExactlyInAnyOrder(1L, 1F);
     }
   }
 
@@ -485,10 +488,10 @@ public class TracerTest {
   }
 
   @Test public void toString_withSpanInScope() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, reporter=MyReporter{}}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\"}], reporter=MyReporter{}}"
       );
     }
   }

@@ -1,17 +1,39 @@
 package brave.propagation;
 
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
+import brave.internal.TraceContexts;
+import java.util.List;
+
+import static brave.internal.TraceContexts.FLAG_DEBUG;
+import static brave.internal.TraceContexts.FLAG_SAMPLED;
+import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
 
 //@Immutable
 public class SamplingFlags {
-  static final int FLAG_SAMPLED = 1 << 1;
-  static final int FLAG_SAMPLED_SET = 1 << 2;
-  static final int FLAG_DEBUG = 1 << 3;
-
   public static final SamplingFlags EMPTY = new SamplingFlags(0);
   public static final SamplingFlags NOT_SAMPLED = new SamplingFlags(FLAG_SAMPLED_SET);
   public static final SamplingFlags SAMPLED = new SamplingFlags(NOT_SAMPLED.flags | FLAG_SAMPLED);
   public static final SamplingFlags DEBUG = new SamplingFlags(SAMPLED.flags | FLAG_DEBUG);
+
+  static {
+    InternalPropagation.instance = new InternalPropagation() {
+      @Override public int flags(SamplingFlags flags) {
+        return flags.flags;
+      }
+
+      @Override
+      public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId, long parentId,
+          long spanId, List<Object> extra) {
+        return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+      }
+    };
+  }
+
+  public SamplingFlags build() {
+    return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
+        : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
+  }
 
   final int flags; // bit field for sampled and debug
 
@@ -39,7 +61,9 @@ public class SamplingFlags {
    * logging, to correlate even when the tracing system has no data.
    */
   @Nullable public final Boolean sampled() {
-    return sampled(flags);
+    return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
+        ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
+        : null;
   }
 
   /**
@@ -53,6 +77,8 @@ public class SamplingFlags {
     return "SamplingFlags(sampled=" + sampled() + ", debug=" + debug() + ")";
   }
 
+  /** @deprecated prefer using constants. This will be removed in Brave v6 */
+  @Deprecated
   public static final class Builder {
     int flags = 0; // bit field for sampled and debug
 
@@ -62,31 +88,18 @@ public class SamplingFlags {
 
     public Builder sampled(@Nullable Boolean sampled) {
       if (sampled == null) {
-        flags &= ~FLAG_SAMPLED_SET;
-        flags &= ~FLAG_SAMPLED;
+        flags &= ~(FLAG_SAMPLED_SET | FLAG_SAMPLED);
         return this;
       }
-      flags |= FLAG_SAMPLED_SET;
-      if (sampled) {
-        flags |= FLAG_SAMPLED;
-      } else {
-        flags &= ~FLAG_SAMPLED;
-      }
+      flags = TraceContexts.sampled(sampled, flags);
       return this;
     }
 
     /** Ensures sampled is set when debug is */
     public Builder debug(boolean debug) {
-      if (debug) {
-        flags |= FLAG_DEBUG;
-        flags |= FLAG_SAMPLED_SET;
-        flags |= FLAG_SAMPLED;
-      } else {
-        flags &= ~FLAG_DEBUG;
-      }
+      flags = SamplingFlags.debug(debug, flags);
       return this;
     }
-
 
     /** Allows you to create flags from a boolean value without allocating a builder instance */
     public static SamplingFlags build(@Nullable Boolean sampled) {
@@ -96,17 +109,20 @@ public class SamplingFlags {
 
     public SamplingFlags build() {
       return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-          : SamplingFlags.sampled(flags) ? SAMPLED : NOT_SAMPLED;
+          : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
     }
   }
 
-  private static Boolean sampled(int flags) {
-    return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
-        ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
-        : null;
+  static boolean debug(int flags) {
+    return (flags & FLAG_DEBUG) == FLAG_DEBUG;
   }
 
-  private static boolean debug(int flags) {
-    return (flags & FLAG_DEBUG) == FLAG_DEBUG;
+  static int debug(boolean debug, int flags) {
+    if (debug) {
+      flags |= FLAG_DEBUG | FLAG_SAMPLED_SET | FLAG_SAMPLED;
+    } else {
+      flags &= ~FLAG_DEBUG;
+    }
+    return flags;
   }
 }

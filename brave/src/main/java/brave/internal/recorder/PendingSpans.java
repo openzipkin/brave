@@ -2,6 +2,7 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.internal.Nullable;
+import brave.internal.TraceContexts;
 import brave.propagation.TraceContext;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -50,20 +51,26 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   @Nullable PendingSpan get(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     reportOrphanedSpans();
-    return delegate.get(new LookupKey(context));
+    LookupKey lookupKey = getLookupKey();
+    lookupKey.set(context);
+    return delegate.get(lookupKey);
   }
 
-  public PendingSpan getOrCreate(TraceContext context) {
+  public PendingSpan getOrCreate(TraceContext context, boolean start) {
     PendingSpan result = get(context);
     if (result != null) return result;
+
+    MutableSpan data = new MutableSpan();
+    if (context.shared()) data.setShared();
 
     // save overhead calculating time if the parent is in-progress (usually is)
     TickClock clock = getClockFromParent(context);
     if (clock == null) {
       clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
+      if (start) data.startTimestamp(clock.baseEpochMicros);
+    } else if (start) {
+      data.startTimestamp(clock.currentTimeMicroseconds());
     }
-    MutableSpan data = new MutableSpan();
-    if (context.shared()) data.setShared();
     PendingSpan newSpan = new PendingSpan(data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
@@ -75,15 +82,12 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     long parentId = context.parentIdAsLong();
     // NOTE: we still look for lookup key even on root span, as a client span can be root, and a
     // server can share the same ID. Essentially, a shared span is similar to a child.
-    PendingSpan parent;
-    if (Boolean.TRUE.equals(context.shared())) {
-      TraceContext.Builder lookupContext = context.toBuilder().shared(false);
-      if (parentId != 0L) lookupContext.spanId(parentId);
-      parent = delegate.get(new LookupKey(lookupContext.build()));
-    } else if (parentId == 0L) {
-      parent = null; // root span was checked earlier
-    } else {
-      parent = delegate.get(new LookupKey(context.toBuilder().spanId(parentId).build()));
+    PendingSpan parent = null;
+    if (context.shared() || parentId != 0L) {
+      LookupKey lookupKey = getLookupKey();
+      long spanId = parentId != 0L ? parentId : context.spanId();
+      lookupKey.set(context.traceIdHigh(), context.traceId(), spanId, false);
+      parent = delegate.get(lookupKey);
     }
     return parent != null ? parent.clock : null;
   }
@@ -91,7 +95,9 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   /** @see brave.Span#abandon() */
   public boolean remove(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    PendingSpan last = delegate.remove(new LookupKey(context));
+    LookupKey lookupKey = getLookupKey();
+    lookupKey.set(context);
+    PendingSpan last = delegate.remove(lookupKey);
     reportOrphanedSpans(); // also clears the reference relating to the recent remove
     return last != null;
   }
@@ -175,19 +181,48 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
    * the real key, it would fail in equals comparison.
    */
   static final class LookupKey {
-    final TraceContext context;
+    long traceIdHigh, traceId, spanId;
+    boolean shared;
+    int hashCode;
 
-    LookupKey(TraceContext context) {
-      this.context = context;
+    void set(TraceContext context) {
+      set(context.traceIdHigh(), context.traceId(), context.spanId(), context.shared());
+    }
+
+    void set(long traceIdHigh, long traceId, long spanId, boolean shared) {
+      this.traceIdHigh = traceIdHigh;
+      this.traceId = traceId;
+      this.spanId = spanId;
+      this.shared = shared;
+      hashCode = generateHashCode(traceIdHigh, traceId, spanId, shared);
     }
 
     @Override public int hashCode() {
-      return context.hashCode();
+      return hashCode;
+    }
+
+    static int generateHashCode(long traceIdHigh, long traceId, long spanId, boolean shared) {
+      int h = 1;
+      h *= 1000003;
+      h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
+      h *= 1000003;
+      h ^= (int) ((traceId >>> 32) ^ traceId);
+      h *= 1000003;
+      h ^= (int) ((spanId >>> 32) ^ spanId);
+      h *= 1000003;
+      h ^= shared ? TraceContexts.FLAG_SHARED : 0; // to match TraceContext.hashCode
+      return h;
     }
 
     /** Resolves hash code collisions */
     @Override public boolean equals(Object other) {
-      return context.equals(((RealKey) other).get());
+      RealKey that = (RealKey) other;
+      TraceContext thatContext = that.get();
+      if (thatContext == null) return false;
+      return (traceIdHigh == thatContext.traceIdHigh())
+          && (traceId == thatContext.traceId())
+          && (spanId == thatContext.spanId())
+          && shared == thatContext.shared();
     }
   }
 
@@ -207,5 +242,16 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
   @Override public String toString() {
     return "PendingSpans" + delegate.keySet();
+  }
+
+  static final ThreadLocal<LookupKey> LOOKUP_KEY = new ThreadLocal<>();
+
+  static LookupKey getLookupKey() {
+    LookupKey lookupKey = LOOKUP_KEY.get();
+    if (lookupKey == null) {
+      lookupKey = new LookupKey();
+      LOOKUP_KEY.set(lookupKey);
+    }
+    return lookupKey;
   }
 }

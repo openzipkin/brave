@@ -123,18 +123,16 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
       // It is ok to go without a trace ID, if sampling or debug is set
-      if (traceIdString == null) {
-        return TraceContextOrSamplingFlags.create(
-            debug ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
-        );
-      }
+      if (traceIdString == null) return TraceContextOrSamplingFlags.create(sampledV, debug);
 
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();
       if (result.parseTraceId(traceIdString, propagation.traceIdKey)
           && result.parseSpanId(getter, carrier, propagation.spanIdKey)
           && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
-        return TraceContextOrSamplingFlags.create(result.sampled(sampledV).debug(debug).build());
+        if (sampledV != null) result.sampled(sampledV.booleanValue());
+        if (debug) result.debug(true);
+        return TraceContextOrSamplingFlags.create(result.build());
       }
       return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
     }

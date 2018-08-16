@@ -34,7 +34,9 @@ public class MapPropagationFields extends PropagationFields {
       if (values == null) {
         values = new LinkedHashMap<>();
         values.put(name, value);
-      } else if (!value.equals(values.get(name))) {
+      } else if (value.equals(values.get(name))) {
+        return;
+      } else {
         // this is the copy-on-write part
         values = new LinkedHashMap<>(values);
         values.put(name, value);
@@ -69,5 +71,16 @@ public class MapPropagationFields extends PropagationFields {
     }
     if (values == null) return Collections.emptyMap();
     return values;
+  }
+
+  @Override public int hashCode() { // for unit tests
+    return values == null ? 0 : values.hashCode();
+  }
+
+  @Override public boolean equals(Object o) { // for unit tests
+    if (o == this) return true;
+    if (!(o instanceof MapPropagationFields)) return false;
+    MapPropagationFields that = (MapPropagationFields) o;
+    return values == null ? that.values == null : values.equals(that.values);
   }
 }

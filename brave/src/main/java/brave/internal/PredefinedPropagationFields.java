@@ -50,8 +50,9 @@ public class PredefinedPropagationFields extends PropagationFields {
       if (elements == null) {
         elements = new String[fieldNames.length];
         elements[index] = value;
-      } else if (!value.equals(elements[index])) {
-        // this is the copy-on-write part
+      } else if (value.equals(elements[index])) {
+        return;
+      } else { // this is the copy-on-write part
         elements = Arrays.copyOf(elements, elements.length);
         elements[index] = value;
       }
@@ -103,5 +104,16 @@ public class PredefinedPropagationFields extends PropagationFields {
       if (fieldNames[i].equals(name)) return i;
     }
     return -1;
+  }
+
+  @Override public int hashCode() { // for unit tests
+    return values == null ? 0 : Arrays.hashCode(values);
+  }
+
+  @Override public boolean equals(Object o) { // for unit tests
+    if (o == this) return true;
+    if (!(o instanceof PredefinedPropagationFields)) return false;
+    PredefinedPropagationFields that = (PredefinedPropagationFields) o;
+    return values == null ? that.values == null : Arrays.equals(values, that.values);
   }
 }

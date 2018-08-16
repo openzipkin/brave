@@ -1,15 +1,10 @@
 package brave.propagation;
 
 import brave.internal.HexCodec;
-import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.junit.Test;
 
+import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.TraceContexts.FLAG_SHARED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextTest {
@@ -22,6 +17,16 @@ public class TraceContextTest {
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build());
     assertThat(context.hashCode())
         .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build().hashCode());
+  }
+
+  @Test public void contextWithShared_true() {
+    assertThat(base.toBuilder().sampled(false).shared(true).build().flags)
+        .isEqualTo(FLAG_SAMPLED_SET | FLAG_SHARED);
+  }
+
+  @Test public void contextWithShared_false() {
+    assertThat(base.toBuilder().sampled(false).shared(false).build().flags)
+        .isEqualTo(FLAG_SAMPLED_SET);
   }
 
   /**
@@ -72,43 +77,7 @@ public class TraceContextTest {
         .isEqualTo("000000000000014d00000000000001bc/0000000000000003");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void ensureImmutable_returnsImmutableEmptyList() {
-    TraceContext.ensureImmutable(new ArrayList<>()).add("foo");
-  }
-
-  @Test public void ensureImmutable_convertsToSingletonList() {
-    List<Object> list = new ArrayList<>();
-    list.add("foo");
-    assertThat(TraceContext.ensureImmutable(list).getClass().getSimpleName())
-        .isEqualTo("SingletonList");
-  }
-
-  @Test public void ensureImmutable_returnsEmptyList() {
-    List<Object> list = Collections.emptyList();
-    assertThat(TraceContext.ensureImmutable(list))
-        .isSameAs(list);
-  }
-
-  @Test public void ensureImmutable_doesntCopySingletonList() {
-    List<Object> list = Collections.singletonList("foo");
-    assertThat(TraceContext.ensureImmutable(list))
-        .isSameAs(list);
-  }
-
-  @Test public void ensureImmutable_doesntCopyUnmodifiableList() {
-    List<Object> list = Collections.unmodifiableList(Arrays.asList("foo"));
-    assertThat(TraceContext.ensureImmutable(list))
-        .isSameAs(list);
-  }
-
-  @Test public void ensureImmutable_doesntCopyImmutableList() {
-    List<Object> list = ImmutableList.of("foo");
-    assertThat(TraceContext.ensureImmutable(list))
-        .isSameAs(list);
-  }
-
-  @Test public void canUsePrimitiveOverloads() {
+  @Test public void canUsePrimitiveOverloads_true() {
     TraceContext primitives = base.toBuilder()
         .parentId(1L)
         .sampled(true)
@@ -123,6 +92,44 @@ public class TraceContextTest {
 
     assertThat(primitives)
         .isEqualToComparingFieldByField(objects);
+    assertThat(primitives.debug())
+        .isTrue();
+    assertThat(primitives.sampled())
+        .isTrue();
+  }
+
+  @Test public void canUsePrimitiveOverloads_false() {
+    base = base.toBuilder().debug(true).build();
+
+    TraceContext primitives = base.toBuilder()
+        .parentId(1L)
+        .sampled(false)
+        .debug(false)
+        .build();
+
+    TraceContext objects = base.toBuilder()
+        .parentId(Long.valueOf(1L))
+        .sampled(Boolean.FALSE)
+        .debug(Boolean.FALSE)
+        .build();
+
+    assertThat(primitives)
+        .isEqualToComparingFieldByField(objects);
+    assertThat(primitives.debug())
+        .isFalse();
+    assertThat(primitives.sampled())
+        .isFalse();
+  }
+
+  @Test public void canSetSampledNull() {
+    base = base.toBuilder().sampled(true).build();
+
+    TraceContext objects = base.toBuilder().sampled(null).build();
+
+    assertThat(objects.debug())
+        .isFalse();
+    assertThat(objects.sampled())
+        .isNull();
   }
 
   @Test public void nullToZero() {
@@ -138,10 +145,65 @@ public class TraceContextTest {
         .isEqualToComparingFieldByField(zeros);
   }
 
+  @Test public void parseTraceId_128bit() {
+    String traceIdString = "463ac35c9f6413ad48485a3953bb6124";
+
+    TraceContext.Builder builder = parseGoodTraceID(traceIdString);
+
+    assertThat(HexCodec.toLowerHex(builder.traceIdHigh))
+        .isEqualTo("463ac35c9f6413ad");
+    assertThat(HexCodec.toLowerHex(builder.traceId))
+        .isEqualTo("48485a3953bb6124");
+  }
+
+  @Test public void parseTraceId_64bit() {
+    String traceIdString = "48485a3953bb6124";
+
+    TraceContext.Builder builder = parseGoodTraceID(traceIdString);
+
+    assertThat(builder.traceIdHigh).isZero();
+    assertThat(HexCodec.toLowerHex(builder.traceId))
+        .isEqualTo(traceIdString);
+  }
+
+  @Test public void parseTraceId_short128bit() {
+    String traceIdString = "3ac35c9f6413ad48485a3953bb6124";
+
+    TraceContext.Builder builder = parseGoodTraceID(traceIdString);
+
+    assertThat(HexCodec.toLowerHex(builder.traceIdHigh))
+        .isEqualTo("003ac35c9f6413ad");
+    assertThat(HexCodec.toLowerHex(builder.traceId))
+        .isEqualTo("48485a3953bb6124");
+  }
+
+  @Test public void parseTraceId_short64bit() {
+    String traceIdString = "6124";
+
+    TraceContext.Builder builder = parseGoodTraceID(traceIdString);
+
+    assertThat(builder.traceIdHigh).isZero();
+    assertThat(HexCodec.toLowerHex(builder.traceId))
+        .isEqualTo("000000000000" + traceIdString);
+  }
+
+  /**
+   * Trace ID is a required parameter, so it cannot be null empty malformed or other nonsense.
+   *
+   * <p>Notably, this shouldn't throw exception or allocate anything
+   */
+  @Test public void parseTraceId_malformedReturnsFalse() {
+    parseBadTraceId("463acL$c9f6413ad48485a3953bb6124");
+    parseBadTraceId("holy 💩");
+    parseBadTraceId("-");
+    parseBadTraceId("");
+    parseBadTraceId(null);
+  }
+
   @Test public void parseSpanId() {
     String spanIdString = "48485a3953bb6124";
 
-    TestBuilder builder = parseGoodSpanId(spanIdString);
+    TraceContext.Builder builder = parseGoodSpanId(spanIdString);
 
     assertThat(HexCodec.toLowerHex(builder.spanId))
         .isEqualTo(spanIdString);
@@ -150,7 +212,7 @@ public class TraceContextTest {
   @Test public void parseSpanId_short64bit() {
     String spanIdString = "6124";
 
-    TestBuilder builder = parseGoodSpanId(spanIdString);
+    TraceContext.Builder builder = parseGoodSpanId(spanIdString);
 
     assertThat(HexCodec.toLowerHex(builder.spanId))
         .isEqualTo("000000000000" + spanIdString);
@@ -167,30 +229,10 @@ public class TraceContextTest {
     parseBadSpanId("-");
     parseBadSpanId("");
     parseBadSpanId(null);
-
-    assertThat(messages).containsExactly(
-        "span-id: 463acL$c9f6413ad is not a lower-hex string",
-        "span-id: holy 💩 is not a lower-hex string",
-        "span-id should be a 1 to 16 character lower-hex string with no prefix",
-        "span-id should be a 1 to 16 character lower-hex string with no prefix",
-        "span-id was null"
-    );
   }
 
-  @Test public void parseSpanId_whenFineDisabledNoLogs() {
-    logger.setLevel(Level.INFO);
-
-    parseBadSpanId("463acL$c9f6413ad");
-    parseBadSpanId("holy 💩");
-    parseBadSpanId("-");
-    parseBadSpanId("");
-    parseBadSpanId(null);
-
-    assertThat(messages).isEmpty();
-  }
-
-  TestBuilder parseGoodSpanId(String spanIdString) {
-    TestBuilder builder = new TestBuilder();
+  TraceContext.Builder parseGoodSpanId(String spanIdString) {
+    TraceContext.Builder builder = TraceContext.newBuilder();
     Propagation.Getter<String, String> getter = (c, k) -> c;
     assertThat(builder.parseSpanId(getter, spanIdString, "span-id"))
         .isTrue();
@@ -198,7 +240,7 @@ public class TraceContextTest {
   }
 
   void parseBadSpanId(String spanIdString) {
-    TestBuilder builder = new TestBuilder();
+    TraceContext.Builder builder = TraceContext.newBuilder();
     Propagation.Getter<String, String> getter = (c, k) -> c;
     assertThat(builder.parseSpanId(getter, spanIdString, "span-id"))
         .isFalse();
@@ -208,14 +250,14 @@ public class TraceContextTest {
   @Test public void parseParentId() {
     String parentIdString = "48485a3953bb6124";
 
-    TestBuilder builder = parseGoodParentId(parentIdString);
+    TraceContext.Builder builder = parseGoodParentId(parentIdString);
 
     assertThat(HexCodec.toLowerHex(builder.parentId))
         .isEqualTo(parentIdString);
   }
 
   @Test public void parseParentId_null_is_ok() {
-    TestBuilder builder = parseGoodParentId(null);
+    TraceContext.Builder builder = parseGoodParentId(null);
 
     assertThat(builder.parentId).isZero();
   }
@@ -223,7 +265,7 @@ public class TraceContextTest {
   @Test public void parseParentId_short64bit() {
     String parentIdString = "6124";
 
-    TestBuilder builder = parseGoodParentId(parentIdString);
+    TraceContext.Builder builder = parseGoodParentId(parentIdString);
 
     assertThat(HexCodec.toLowerHex(builder.parentId))
         .isEqualTo("000000000000" + parentIdString);
@@ -239,28 +281,10 @@ public class TraceContextTest {
     parseBadParentId("holy 💩");
     parseBadParentId("-");
     parseBadParentId("");
-
-    assertThat(messages).containsExactly(
-        "parent-id: 463acL$c9f6413ad is not a lower-hex string",
-        "parent-id: holy 💩 is not a lower-hex string",
-        "parent-id should be a 1 to 16 character lower-hex string with no prefix",
-        "parent-id should be a 1 to 16 character lower-hex string with no prefix"
-    );
   }
 
-  @Test public void parseParentId_whenFineDisabledNoLogs() {
-    logger.setLevel(Level.INFO);
-
-    parseBadParentId("463acL$c9f6413ad");
-    parseBadParentId("holy 💩");
-    parseBadParentId("-");
-    parseBadParentId("");
-
-    assertThat(messages).isEmpty();
-  }
-
-  TestBuilder parseGoodParentId(String parentIdString) {
-    TestBuilder builder = new TestBuilder();
+  TraceContext.Builder parseGoodParentId(String parentIdString) {
+    TraceContext.Builder builder = TraceContext.newBuilder();
     Propagation.Getter<String, String> getter = (c, k) -> c;
     assertThat(builder.parseParentId(getter, parentIdString, "parent-id"))
         .isTrue();
@@ -268,29 +292,25 @@ public class TraceContextTest {
   }
 
   void parseBadParentId(String parentIdString) {
-    TestBuilder builder = new TestBuilder();
+    TraceContext.Builder builder = TraceContext.newBuilder();
     Propagation.Getter<String, String> getter = (c, k) -> c;
     assertThat(builder.parseParentId(getter, parentIdString, "parent-id"))
         .isFalse();
     assertThat(builder.parentId).isZero();
   }
 
-  List<String> messages = new ArrayList<>();
+  TraceContext.Builder parseGoodTraceID(String traceIdString) {
+    TraceContext.Builder builder = TraceContext.newBuilder();
+    assertThat(builder.parseTraceId(traceIdString, "trace-id"))
+        .isTrue();
+    return builder;
+  }
 
-  Logger logger = new Logger("", null) {
-    {
-      setLevel(Level.ALL);
-    }
-
-    @Override public void log(Level level, String msg) {
-      assertThat(level).isEqualTo(Level.FINE);
-      messages.add(msg);
-    }
-  };
-
-  class TestBuilder extends TraceContext.InternalBuilder {
-    @Override Logger logger() {
-      return logger;
-    }
+  void parseBadTraceId(String traceIdString) {
+    TraceContext.Builder builder = TraceContext.newBuilder();
+    assertThat(builder.parseTraceId(traceIdString, "trace-id"))
+        .isFalse();
+    assertThat(builder.traceIdHigh).isZero();
+    assertThat(builder.traceId).isZero();
   }
 }

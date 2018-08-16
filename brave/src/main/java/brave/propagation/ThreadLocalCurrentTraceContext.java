@@ -33,7 +33,7 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
     return new Builder();
   }
 
-  static final class Builder extends CurrentTraceContext.Builder<Builder> {
+  static final class Builder extends CurrentTraceContext.Builder{
 
     @Override public CurrentTraceContext build() {
       return new ThreadLocalCurrentTraceContext(this, DEFAULT);

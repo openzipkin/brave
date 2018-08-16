@@ -2,6 +2,7 @@ package brave.grpc;
 
 import brave.grpc.GrpcPropagation.Tags;
 import brave.internal.HexCodec;
+import brave.internal.PropagationFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -53,7 +54,7 @@ public class GrpcPropagationBenchmarks {
   static final Metadata nothingIncoming = new Metadata();
 
   static {
-    Tags.put(contextWithTags, "method", "helloworld.Greeter/SayHello");
+    PropagationFields.put(contextWithTags, "method", "helloworld.Greeter/SayHello", Tags.class);
     b3Injector.inject(context, incomingB3);
     bothInjector.inject(contextWithTags, incomingBoth);
     bothInjector.inject(context, incomingBothNoTags);

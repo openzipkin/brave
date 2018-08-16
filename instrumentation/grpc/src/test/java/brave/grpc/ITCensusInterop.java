@@ -72,7 +72,7 @@ public class ITCensusInterop {
           tracing != null ? tracing.currentTraceContext().get() : null;
       Map<String, String> braveTags =
           currentTraceContext != null
-              ? GrpcPropagation.findTags(currentTraceContext).toMap()
+              ? currentTraceContext.findExtra(brave.grpc.GrpcPropagation.Tags.class).toMap()
               : Collections.emptyMap();
       for (Map.Entry<String, String> entry : braveTags.entrySet()) {
         spanCustomizer.tag(entry.getKey(), entry.getValue());

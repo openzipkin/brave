@@ -1,7 +1,6 @@
 package brave.grpc;
 
 import brave.internal.MapPropagationFields;
-import brave.internal.Nullable;
 import brave.internal.PropagationFieldsFactory;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -20,8 +19,8 @@ final class GrpcPropagation<K> implements Propagation<K> {
    * This creates a compatible metadata key based on Census, except this extracts a brave trace
    * context as opposed to a census span context
    */
-  static final Metadata.Key<TraceContext> GRPC_TRACE_BIN =
-      Metadata.Key.of("grpc-trace-bin", new TraceContextBinaryMarshaller());
+  static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
+      Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
 
   /** This stashes the tag context in "extra" so it isn't lost */
   static final Metadata.Key<Map<String, String>> GRPC_TAGS_BIN =
@@ -100,33 +99,20 @@ final class GrpcPropagation<K> implements Propagation<K> {
     @Override
     public void inject(TraceContext traceContext, C carrier) {
       if (carrier instanceof Metadata) {
-        ((Metadata) carrier).put(GRPC_TRACE_BIN, traceContext);
-        Tags tags = findTags(traceContext);
+        byte[] serialized = TraceContextBinaryFormat.toBytes(traceContext);
+        ((Metadata) carrier).put(GRPC_TRACE_BIN, serialized);
+        Tags tags = traceContext.findExtra(Tags.class);
         if (tags != null) ((Metadata) carrier).put(GRPC_TAGS_BIN, tags.toMap());
       }
       delegate.inject(traceContext, carrier);
     }
   }
 
-  @Nullable
-  static Tags findTags(TraceContext traceContext) {
-    List<Object> extra = traceContext.extra();
-    for (int i = 0, length = extra.size(); i < length; i++) {
-      Object next = extra.get(i);
-      if (next instanceof GrpcPropagation.Tags) {
-        return (Tags) next;
-      }
-    }
-    return null;
-  }
-
   static final class GrpcExtractor<C, K> implements Extractor<C> {
-    final GrpcPropagation<K> propagation;
     final Extractor<C> delegate;
     final Propagation.Getter<C, K> getter;
 
     GrpcExtractor(GrpcPropagation<K> propagation, Getter<C, K> getter) {
-      this.propagation = propagation;
       this.delegate = propagation.delegate.extractor(getter);
       this.getter = getter;
     }
@@ -135,17 +121,13 @@ final class GrpcPropagation<K> implements Propagation<K> {
     public TraceContextOrSamplingFlags extract(C carrier) {
       Tags tags = null;
       if (carrier instanceof Metadata) {
-        TraceContext extractedTrace = ((Metadata) carrier).get(GRPC_TRACE_BIN);
         Map<String, String> extractedTags = ((Metadata) carrier).get(GRPC_TAGS_BIN);
-        if (extractedTags != null) {
-          tags = new Tags(extractedTags, extractedTags.remove(RPC_METHOD));
-        }
-        if (extractedTrace != null) {
-          if (tags == null) return TraceContextOrSamplingFlags.create(extractedTrace);
-          return TraceContextOrSamplingFlags.newBuilder()
-              .addExtra(tags)
-              .context(extractedTrace)
-              .build();
+        // Remove the incoming RPC method as we should replace it with our current server method.
+        if (extractedTags != null) tags = new Tags(extractedTags, extractedTags.remove(RPC_METHOD));
+        byte[] bytes = ((Metadata) carrier).get(GRPC_TRACE_BIN);
+        if (bytes != null) {
+          TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
+          if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);
         }
       }
       TraceContextOrSamplingFlags result = delegate.extract(carrier);

@@ -21,8 +21,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class TraceContextBinaryMarshallerBenchmarks {
-  static final TraceContextBinaryMarshaller marshaller = new TraceContextBinaryMarshaller();
-
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
       .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
@@ -30,14 +28,14 @@ public class TraceContextBinaryMarshallerBenchmarks {
       .sampled(true)
       .build();
 
-  static final byte[] serialized = marshaller.toBytes(context);
+  static final byte[] serialized = TraceContextBinaryFormat.toBytes(context);
 
   @Benchmark public byte[] toBytes() {
-    return marshaller.toBytes(context);
+    return TraceContextBinaryFormat.toBytes(context);
   }
 
   @Benchmark public TraceContext parseBytes() {
-    return marshaller.parseBytes(serialized);
+    return TraceContextBinaryFormat.parseBytes(serialized, null);
   }
 
   // Convenience main entry-point
