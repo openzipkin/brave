@@ -28,7 +28,7 @@ public final class StrictScopeDecorator implements ScopeDecorator {
         Thread.currentThread().getName(), currentSpan)));
   }
 
-  class StrictScope implements Scope {
+  static final class StrictScope implements Scope {
     final Scope delegate;
     final Throwable caller;
     final long threadId = Thread.currentThread().getId();

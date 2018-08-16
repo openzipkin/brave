@@ -22,7 +22,7 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void put_ignore_if_not_defined() {
-    PropagationFields.put(context, "balloon-color", "red");
+    PropagationFields.put(context, "balloon-color", "red", factory.type());
 
     assertThat(((PropagationFields) context.extra().get(0)).toMap())
         .isEmpty();
@@ -35,6 +35,21 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
 
     assertThat(fields)
         .isEqualToComparingFieldByField(factory.create());
+  }
+
+  @Test public void put_idempotent() {
+    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+
+    fields.put("foo", "red");
+    String[] fieldsArray = fields.values;
+
+    fields.put("foo", "red");
+    assertThat(fields.values)
+        .isSameAs(fieldsArray);
+
+    fields.put("foo", "blue");
+    assertThat(fields.values)
+        .isNotSameAs(fieldsArray);
   }
 
   @Test public void get_ignore_if_not_defined_index() {

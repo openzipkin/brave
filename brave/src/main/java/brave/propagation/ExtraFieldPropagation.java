@@ -5,6 +5,7 @@ import brave.internal.Nullable;
 import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
 import brave.internal.PropagationFieldsFactory;
+import brave.internal.TraceContexts;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
@@ -35,8 +36,8 @@ import java.util.Map;
  * ExtraFieldPropagation.get("x-country-code", "FO");
  * }</pre>
  *
- * <p>You may also need to propagate a trace context you aren't using. For example, you may be in an
- * Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
+ * <p>You may also need to propagate a trace context you aren't using. For example, you may be in
+ * an Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
  * correctly, pass-through its tracing header like so.
  *
  * <pre>{@code
@@ -166,7 +167,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   /**
-   * Sets the current value of the field with the specified key, or drops if not a configured field.
+   * Sets the current value of the field with the specified key, or drops if not a configured
+   * field.
    *
    * <p>Prefer {@link #set(TraceContext, String, String)} if you have a reference to a span.
    */
@@ -190,16 +192,16 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   public static Map<String, String> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
     TraceContext extractedContext = extracted.context();
-    if (extractedContext != null) {
-      return getAll(extractedContext.extra());
-    }
-    return getAll(extracted.extra());
+    if (extractedContext != null) return getAll(extractedContext);
+    PropagationFields fields = TraceContext.findExtra(Extra.class, extracted.extra());
+    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   /** Returns a mapping of any fields in the trace context. */
   public static Map<String, String> getAll(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    return getAll(context.extra());
+    PropagationFields fields = context.findExtra(Extra.class);
+    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   @Nullable static TraceContext currentTraceContext() {
@@ -209,12 +211,12 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
   /** Returns the value of the field with the specified key or null if not available */
   @Nullable public static String get(TraceContext context, String name) {
-    return PropagationFields.get(context, lowercase(name));
+    return PropagationFields.get(context, lowercase(name), Extra.class);
   }
 
   /** Sets the value of the field with the specified key, or drops if not a configured field */
   public static void set(TraceContext context, String name, String value) {
-    PropagationFields.put(context, lowercase(name), value);
+    PropagationFields.put(context, lowercase(name), value, Extra.class);
   }
 
   static final class Factory extends Propagation.Factory {
@@ -295,14 +297,9 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
     @Override public void inject(TraceContext traceContext, C carrier) {
       delegate.inject(traceContext, carrier);
-      List<Object> extra = traceContext.extra();
-      for (int i = 0, length = extra.size(); i < length; i++) {
-        Object next = extra.get(i);
-        if (next instanceof Extra) {
-          inject((Extra) next, carrier);
-          return;
-        }
-      }
+      Extra extra = traceContext.findExtra(Extra.class);
+      if (extra == null) return;
+      inject(extra, carrier);
     }
 
     void inject(Extra fields, C carrier) {
@@ -312,11 +309,6 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
         setter.put(carrier, keys.get(i), maybeValue);
       }
     }
-  }
-
-  static Map<String, String> getAll(List<Object> extraList) {
-    PropagationFields fields = PropagationFields.find(extraList);
-    return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   static final class ExtraFieldExtractor<C, K> implements Extractor<C> {
@@ -334,7 +326,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
 
       // always allocate in case fields are added late
-      PredefinedPropagationFields fields = propagation.extraFactory.create();
+      Extra fields = propagation.extraFactory.create();
       for (int i = 0, length = propagation.fieldNames.length; i < length; i++) {
         String maybeValue = getter.get(carrier, propagation.keys.get(i));
         if (maybeValue == null) continue;
@@ -375,6 +367,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
     @Override protected Extra create(Extra parent) {
       return new Extra(parent, fieldNames);
+    }
+
+    @Override protected TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
+      return TraceContexts.contextWithExtra(context, extra); // more efficient
     }
   }
 

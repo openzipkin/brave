@@ -23,7 +23,7 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
-    PendingSpan span = map.getOrCreate(context);
+    PendingSpan span = map.getOrCreate(context, false);
 
     assertThat(span).isNotNull();
   }
@@ -36,10 +36,10 @@ public class PendingSpansTest {
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
     TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
-    PendingSpan traceSpan = map.getOrCreate(trace);
-    PendingSpan traceJoinSpan = map.getOrCreate(traceJoin);
-    PendingSpan trace2Span = map.getOrCreate(trace2);
-    PendingSpan traceChildSpan = map.getOrCreate(traceChild);
+    PendingSpan traceSpan = map.getOrCreate(trace, false);
+    PendingSpan traceJoinSpan = map.getOrCreate(traceJoin, false);
+    PendingSpan trace2Span = map.getOrCreate(trace2, false);
+    PendingSpan traceChildSpan = map.getOrCreate(traceChild, false);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
     assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
@@ -48,8 +48,8 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_cachesReference() {
-    PendingSpan span = map.getOrCreate(context);
-    assertThat(map.getOrCreate(context)).isSameAs(span);
+    PendingSpan span = map.getOrCreate(context, false);
+    assertThat(map.getOrCreate(context, false)).isSameAs(span);
   }
 
   @Test
@@ -62,19 +62,19 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    assertThat(map.getOrCreate(context1)).isNotEqualTo(map.getOrCreate(context2));
+    assertThat(map.getOrCreate(context1, false)).isNotEqualTo(map.getOrCreate(context2, false));
   }
 
   @Test
   public void getOrCreate_splitsSharedServerDataFromClient() {
     TraceContext context2 = context.toBuilder().shared(true).build();
 
-    assertThat(map.getOrCreate(context)).isNotEqualTo(map.getOrCreate(context2));
+    assertThat(map.getOrCreate(context, false)).isNotEqualTo(map.getOrCreate(context2, false));
   }
 
   @Test
   public void remove_clearsReference() {
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
     map.remove(context);
 
     assertThat(map.delegate).isEmpty();
@@ -83,7 +83,7 @@ public class PendingSpansTest {
 
   @Test
   public void remove_doesntReport() {
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
     map.remove(context);
 
     assertThat(spans).isEmpty();
@@ -104,8 +104,8 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    map.getOrCreate(context1);
-    map.getOrCreate(context2);
+    map.getOrCreate(context1, false);
+    map.getOrCreate(context2, false);
 
     map.remove(context1);
 
@@ -116,7 +116,7 @@ public class PendingSpansTest {
   /** mainly ensures internals aren't dodgy on null */
   @Test
   public void remove_whenSomeReferencesAreCleared() {
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
     pretendGCHappened();
     map.remove(context);
 
@@ -127,9 +127,9 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_whenSomeReferencesAreCleared() {
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
     pretendGCHappened();
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
 
     // we'd expect two distinct entries.. the span would be reported twice, but merged zipkin-side
     assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
@@ -144,13 +144,13 @@ public class PendingSpansTest {
   @Test
   public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
-    map.getOrCreate(context1);
+    map.getOrCreate(context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
-    map.getOrCreate(context2);
+    map.getOrCreate(context2, false);
     TraceContext context3 = context.toBuilder().spanId(3).build();
-    map.getOrCreate(context3);
+    map.getOrCreate(context3, false);
     TraceContext context4 = context.toBuilder().spanId(4).build();
-    map.getOrCreate(context4);
+    map.getOrCreate(context4, false);
 
     int initialClockVal = clock.get();
 
@@ -184,13 +184,13 @@ public class PendingSpansTest {
   @Test
   public void noop_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
-    map.getOrCreate(context1);
+    map.getOrCreate(context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
-    map.getOrCreate(context2);
+    map.getOrCreate(context2, false);
     TraceContext context3 = context.toBuilder().spanId(3).build();
-    map.getOrCreate(context3);
+    map.getOrCreate(context3, false);
     TraceContext context4 = context.toBuilder().spanId(4).build();
-    map.getOrCreate(context4);
+    map.getOrCreate(context4, false);
 
     int initialClockVal = clock.get();
 
@@ -226,7 +226,7 @@ public class PendingSpansTest {
     }, new AtomicBoolean(true));
 
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    map.getOrCreate(context.toBuilder().build());
+    map.getOrCreate(context.toBuilder().build(), false);
 
     blockOnGC();
 
@@ -249,7 +249,7 @@ public class PendingSpansTest {
     assertThat(map.toString())
         .isEqualTo("PendingSpans[]");
 
-    map.getOrCreate(context);
+    map.getOrCreate(context, false);
 
     assertThat(map.toString())
         .isEqualTo("PendingSpans[WeakReference(" + context + ")]");
@@ -269,6 +269,20 @@ public class PendingSpansTest {
   }
 
   @Test
+  public void lookupKey_hashCode() {
+    TraceContext context1 = context;
+    TraceContext context2 = context.toBuilder().shared(true).build();
+
+    assertThat(PendingSpans.LookupKey.generateHashCode(
+        context1.traceIdHigh(), context1.traceId(), context1.spanId(), context1.shared()
+    )).isEqualTo(context1.hashCode());
+
+    assertThat(PendingSpans.LookupKey.generateHashCode(
+        context2.traceIdHigh(), context2.traceId(), context2.spanId(), context2.shared()
+    )).isEqualTo(context2.hashCode());
+  }
+
+  @Test
   public void realKey_equalToEquivalent() {
     PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
     PendingSpans.RealKey key2 = new PendingSpans.RealKey(context, map);
@@ -277,6 +291,27 @@ public class PendingSpansTest {
     assertThat(key).isNotEqualTo(key2);
     key2.clear();
     assertThat(key).isEqualTo(key2);
+  }
+
+  @Test
+  public void lookupKey_equalToRealKey() {
+    PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
+    lookupKey.set(context);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    assertThat(lookupKey.equals(key)).isTrue();
+    key.clear();
+    assertThat(lookupKey.equals(key)).isFalse();
+  }
+
+  @Test
+  public void lookupKey_equalToRealKey_shared() {
+    context = context.toBuilder().shared(true).build();
+    PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
+    lookupKey.set(context);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    assertThat(lookupKey.equals(key)).isTrue();
+    key = new PendingSpans.RealKey(context.toBuilder().shared(false).build(), map);
+    assertThat(lookupKey.equals(key)).isFalse();
   }
 
   /** In reality, this clears a reference even if it is strongly held by the test! */

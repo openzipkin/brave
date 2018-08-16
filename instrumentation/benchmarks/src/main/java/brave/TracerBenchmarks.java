@@ -175,7 +175,7 @@ public class TracerBenchmarks {
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
         .addProfiler("gc")
-        .include(".*" + TracerBenchmarks.class.getSimpleName() + ".*")
+        .include(".*" + TracerBenchmarks.class.getSimpleName()+".*startScopedSpanWithParent_unsampled_extra")
         .build();
 
     new Runner(opt).run();

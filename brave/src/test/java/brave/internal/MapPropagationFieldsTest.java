@@ -1,5 +1,6 @@
 package brave.internal;
 
+import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,21 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest {
 
     assertThat(fields.values)
         .containsEntry("balloon-color", "red");
+  }
+
+  @Test public void put_idempotent() {
+    MapPropagationFields fields = (MapPropagationFields) factory.create();
+
+    fields.put("balloon-color", "red");
+    Map<String, String> fieldsMap = fields.values;
+
+    fields.put("balloon-color", "red");
+    assertThat(fields.values)
+        .isSameAs(fieldsMap);
+
+    fields.put("balloon-color", "blue");
+    assertThat(fields.values)
+        .isNotSameAs(fieldsMap);
   }
 
   @Test public void unmodifiable() {

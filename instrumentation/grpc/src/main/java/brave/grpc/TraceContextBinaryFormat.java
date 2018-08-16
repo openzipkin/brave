@@ -1,7 +1,9 @@
 package brave.grpc;
 
+import brave.grpc.GrpcPropagation.Tags;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
-import io.grpc.Metadata.BinaryMarshaller;
+import java.util.Collections;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -13,18 +15,17 @@ import static java.util.logging.Level.FINE;
  * <p>See
  * https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md
  */
-final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContext> {
-  static final Logger logger = Logger.getLogger(TraceContextBinaryMarshaller.class.getName());
+final class TraceContextBinaryFormat {
+  static final Logger logger = Logger.getLogger(TraceContextBinaryFormat.class.getName());
   static final byte VERSION = 0,
       TRACE_ID_FIELD_ID = 0,
       SPAN_ID_FIELD_ID = 1,
       TRACE_OPTION_FIELD_ID = 2;
 
-  private static final int FORMAT_LENGTH =
+  static final int FORMAT_LENGTH =
       4 /* version + 3 fields */ + 16 /* trace ID */ + 8 /* span ID */ + 1 /* sampled bit */;
 
-  @Override
-  public byte[] toBytes(TraceContext traceContext) {
+  static byte[] toBytes(TraceContext traceContext) {
     checkNotNull(traceContext, "traceContext");
     byte[] bytes = new byte[FORMAT_LENGTH];
     bytes[0] = VERSION;
@@ -40,8 +41,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
     return bytes;
   }
 
-  @Override
-  public TraceContext parseBytes(byte[] bytes) {
+  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable Tags tags) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {
@@ -53,7 +53,6 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
       return null;
     }
     long traceIdHigh, traceId, spanId;
-    Boolean sampled = null;
     int pos = 1;
     if (bytes[pos] == TRACE_ID_FIELD_ID) {
       pos++;
@@ -73,6 +72,7 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
       return null;
     }
     // The trace options field is optional. However, when present, it should be valid.
+    Boolean sampled = null;
     if (bytes.length > pos && bytes[pos] == TRACE_OPTION_FIELD_ID) {
       pos++;
       if (bytes.length < pos + 1) {
@@ -81,12 +81,13 @@ final class TraceContextBinaryMarshaller implements BinaryMarshaller<TraceContex
       }
       sampled = bytes[pos] == 1;
     }
-    return TraceContext.newBuilder()
+    TraceContext.Builder builder = TraceContext.newBuilder()
         .traceIdHigh(traceIdHigh)
         .traceId(traceId)
-        .spanId(spanId)
-        .sampled(sampled)
-        .build();
+        .spanId(spanId);
+    if (sampled != null) builder.sampled(sampled.booleanValue());
+    if (tags != null) builder.extra(Collections.singletonList(tags));
+    return builder.build();
   }
 
   /** Inspired by {@code okio.Buffer.writeLong} */

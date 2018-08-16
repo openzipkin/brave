@@ -24,16 +24,20 @@ import java.util.concurrent.ExecutorService;
  * com.google.inject.servlet.RequestScoper and com.github.kristofa.brave.CurrentSpan
  */
 public abstract class CurrentTraceContext {
+  static {
+    // ensure a reference to InternalPropagation exists
+    SamplingFlags.DEBUG.toString();
+  }
 
   /** Implementations of this allow standardized configuration, for example scope decoration. */
-  public abstract static class Builder<B extends Builder<B>> {
+  public abstract static class Builder {
     ArrayList<ScopeDecorator> scopeDecorators = new ArrayList<>();
 
     /** Implementations call decorators in order to add features like log correlation to a scope. */
-    public B addScopeDecorator(ScopeDecorator scopeDecorator) {
+    public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
       if (scopeDecorator == null) throw new NullPointerException("scopeDecorator == null");
       this.scopeDecorators.add(scopeDecorator);
-      return (B) this;
+      return this;
     }
 
     public abstract CurrentTraceContext build();
@@ -52,15 +56,11 @@ public abstract class CurrentTraceContext {
 
   final List<ScopeDecorator> scopeDecorators;
 
-  public interface Factory {
-    CurrentTraceContext create(List<ScopeDecorator> scopeDecorators);
-  }
-
   protected CurrentTraceContext() {
     this.scopeDecorators = Collections.emptyList();
   }
 
-  protected CurrentTraceContext(Builder<?> builder) {
+  protected CurrentTraceContext(Builder builder) {
     this.scopeDecorators = new ArrayList<>(builder.scopeDecorators);
   }
 

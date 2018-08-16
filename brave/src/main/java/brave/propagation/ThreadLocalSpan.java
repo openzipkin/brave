@@ -113,8 +113,8 @@ public class ThreadLocalSpan {
   }
 
   /**
-   * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link #CURRENT_TRACER}
-   * and tracing isn't available.
+   * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link
+   * #CURRENT_TRACER} and tracing isn't available.
    */
   @Nullable public Span next(TraceContextOrSamplingFlags extracted) {
     Tracer tracer = tracer();
@@ -142,8 +142,9 @@ public class ThreadLocalSpan {
    * Returns the span set in scope via {@link #next()} or null if there was none.
    *
    * <p>When assertions are on, this will throw an assertion error if the span returned was not the
-   * one currently in context. This could happen if someone called {@link Tracer#withSpanInScope(Span)}
-   * or {@link CurrentTraceContext#newScope(TraceContext)} outside a try/finally block.
+   * one currently in context. This could happen if someone called {@link
+   * Tracer#withSpanInScope(Span)} or {@link CurrentTraceContext#newScope(TraceContext)} outside a
+   * try/finally block.
    */
   @Nullable public Span remove() {
     Tracer tracer = tracer();

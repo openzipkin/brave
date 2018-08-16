@@ -3,6 +3,7 @@ package brave.grpc;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
+import brave.grpc.GrpcPropagation.Tags;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -52,7 +53,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     // If grpc propagation is enabled, make sure we refresh the server method
     if (grpcPropagationFormatEnabled) {
-      GrpcPropagation.Tags tags = GrpcPropagation.findTags(span.context());
+      Tags tags = span.context().findExtra(Tags.class);
       if (tags != null) tags.put(RPC_METHOD, call.getMethodDescriptor().getFullMethodName());
     }
 
