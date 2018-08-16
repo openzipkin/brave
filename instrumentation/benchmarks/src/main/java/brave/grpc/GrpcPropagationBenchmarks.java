@@ -98,7 +98,7 @@ public class GrpcPropagationBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
         .addProfiler("gc")
-        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName() + ".*inject_both")
+        .include(".*" + GrpcPropagationBenchmarks.class.getSimpleName())
         .build();
 
     new Runner(opt).run();

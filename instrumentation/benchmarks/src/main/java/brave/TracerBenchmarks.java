@@ -1,6 +1,8 @@
 package brave;
 
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -33,6 +35,10 @@ public class TracerBenchmarks {
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
   TraceContext unsampledContext =
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
+  TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
+  TraceContextOrSamplingFlags unsampledExtracted =
+      TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED);
+
   Tracer tracer;
 
   @Setup(Level.Trial) public void init() {
@@ -71,6 +77,42 @@ public class TracerBenchmarks {
 
   void newChildWithSpanInScope(TraceContext context) {
     Span span = tracer.newChild(context).name("encode").start();
+    try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
+      span.tag("foo", "bar");
+      span.tag("baz", "qux");
+    } finally {
+      span.finish();
+    }
+  }
+
+  @Benchmark public void joinWithSpanInScope() {
+    joinWithSpanInScope(context);
+  }
+
+  @Benchmark public void joinWithSpanInScope_unsampled() {
+    joinWithSpanInScope(unsampledContext);
+  }
+
+  void joinWithSpanInScope(TraceContext context) {
+    Span span = tracer.joinSpan(context).name("encode").start();
+    try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
+      span.tag("foo", "bar");
+      span.tag("baz", "qux");
+    } finally {
+      span.finish();
+    }
+  }
+
+  @Benchmark public void nextWithSpanInScope() {
+    nextWithSpanInScope(extracted);
+  }
+
+  @Benchmark public void nextWithSpanInScope_unsampled() {
+    nextWithSpanInScope(unsampledExtracted);
+  }
+
+  void nextWithSpanInScope(TraceContextOrSamplingFlags extracted) {
+    Span span = tracer.nextSpan(extracted).name("encode").start();
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       span.tag("foo", "bar");
       span.tag("baz", "qux");
