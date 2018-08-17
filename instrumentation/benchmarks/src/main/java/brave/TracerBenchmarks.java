@@ -1,5 +1,8 @@
 package brave;
 
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -30,19 +33,34 @@ import zipkin2.reporter.Reporter;
 @Threads(2)
 @State(Scope.Benchmark)
 public class TracerBenchmarks {
+  Propagation.Factory extraFactory = ExtraFieldPropagation.newFactory(
+      B3Propagation.FACTORY, "x-vcap-request-id");
 
   TraceContext context =
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
+  TraceContext contextExtra = extraFactory.decorate(context);
   TraceContext unsampledContext =
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
+  TraceContext unsampledContextExtra = extraFactory.decorate(unsampledContext);
   TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
+  TraceContextOrSamplingFlags extractedExtra = TraceContextOrSamplingFlags.create(contextExtra);
   TraceContextOrSamplingFlags unsampledExtracted =
       TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED);
+  TraceContextOrSamplingFlags unsampledExtractedExtra =
+      TraceContextOrSamplingFlags.newBuilder()
+          .samplingFlags(SamplingFlags.NOT_SAMPLED)
+          .addExtra(contextExtra.extra())
+          .build();
 
   Tracer tracer;
+  Tracer tracerExtra;
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    tracerExtra = Tracing.newBuilder()
+        .propagationFactory(ExtraFieldPropagation.newFactory(
+            B3Propagation.FACTORY, "x-vcap-request-id"))
+        .spanReporter(Reporter.NOOP).build().tracer();
   }
 
   @TearDown(Level.Trial) public void close() {
@@ -50,14 +68,22 @@ public class TracerBenchmarks {
   }
 
   @Benchmark public void startScopedSpanWithParent() {
-    startScopedSpanWithParent(context);
+    startScopedSpanWithParent(tracer, context);
+  }
+
+  @Benchmark public void startScopedSpanWithParent_extra() {
+    startScopedSpanWithParent(tracerExtra, contextExtra);
   }
 
   @Benchmark public void startScopedSpanWithParent_unsampled() {
-    startScopedSpanWithParent(unsampledContext);
+    startScopedSpanWithParent(tracer, unsampledContext);
   }
 
-  void startScopedSpanWithParent(TraceContext context) {
+  @Benchmark public void startScopedSpanWithParent_unsampled_extra() {
+    startScopedSpanWithParent(tracerExtra, unsampledContextExtra);
+  }
+
+  void startScopedSpanWithParent(Tracer tracer, TraceContext context) {
     ScopedSpan span = tracer.startScopedSpanWithParent("encode", context);
     try {
       span.tag("foo", "bar");
@@ -68,14 +94,22 @@ public class TracerBenchmarks {
   }
 
   @Benchmark public void newChildWithSpanInScope() {
-    newChildWithSpanInScope(context);
+    newChildWithSpanInScope(tracer, context);
+  }
+
+  @Benchmark public void newChildWithSpanInScope_extra() {
+    newChildWithSpanInScope(tracerExtra, contextExtra);
   }
 
   @Benchmark public void newChildWithSpanInScope_unsampled() {
-    newChildWithSpanInScope(unsampledContext);
+    newChildWithSpanInScope(tracer, unsampledContext);
   }
 
-  void newChildWithSpanInScope(TraceContext context) {
+  @Benchmark public void newChildWithSpanInScope_unsampled_extra() {
+    newChildWithSpanInScope(tracerExtra, unsampledContextExtra);
+  }
+
+  void newChildWithSpanInScope(Tracer tracer, TraceContext context) {
     Span span = tracer.newChild(context).name("encode").start();
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       span.tag("foo", "bar");
@@ -86,14 +120,22 @@ public class TracerBenchmarks {
   }
 
   @Benchmark public void joinWithSpanInScope() {
-    joinWithSpanInScope(context);
+    joinWithSpanInScope(tracer, context);
+  }
+
+  @Benchmark public void joinWithSpanInScope_extra() {
+    joinWithSpanInScope(tracerExtra, contextExtra);
   }
 
   @Benchmark public void joinWithSpanInScope_unsampled() {
-    joinWithSpanInScope(unsampledContext);
+    joinWithSpanInScope(tracer, unsampledContext);
   }
 
-  void joinWithSpanInScope(TraceContext context) {
+  @Benchmark public void joinWithSpanInScope_unsampled_extra() {
+    joinWithSpanInScope(tracerExtra, unsampledContextExtra);
+  }
+
+  void joinWithSpanInScope(Tracer tracer, TraceContext context) {
     Span span = tracer.joinSpan(context).name("encode").start();
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       span.tag("foo", "bar");
@@ -104,14 +146,22 @@ public class TracerBenchmarks {
   }
 
   @Benchmark public void nextWithSpanInScope() {
-    nextWithSpanInScope(extracted);
+    nextWithSpanInScope(tracer, extracted);
+  }
+
+  @Benchmark public void nextWithSpanInScope_extra() {
+    nextWithSpanInScope(tracerExtra, extractedExtra);
   }
 
   @Benchmark public void nextWithSpanInScope_unsampled() {
-    nextWithSpanInScope(unsampledExtracted);
+    nextWithSpanInScope(tracer, unsampledExtracted);
   }
 
-  void nextWithSpanInScope(TraceContextOrSamplingFlags extracted) {
+  @Benchmark public void nextWithSpanInScope_unsampled_extra() {
+    nextWithSpanInScope(tracerExtra, unsampledExtractedExtra);
+  }
+
+  void nextWithSpanInScope(Tracer tracer, TraceContextOrSamplingFlags extracted) {
     Span span = tracer.nextSpan(extracted).name("encode").start();
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       span.tag("foo", "bar");
