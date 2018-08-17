@@ -35,7 +35,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
     tracer = grpcTracing.tracing.tracer();
-    injector = grpcTracing.propagation.injector(SETTER);
+    injector = grpcTracing.propagationFactory.create(AsciiMetadataKeyFactory.INSTANCE)
+        .injector(SETTER);
     parser = grpcTracing.clientParser;
   }
 

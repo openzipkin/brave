@@ -22,7 +22,7 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void put_ignore_if_not_defined() {
-    PropagationFields.put(context, "balloon-color", "red");
+    PropagationFields.put(context, "balloon-color", "red", factory.type());
 
     assertThat(((PropagationFields) context.extra().get(0)).toMap())
         .isEmpty();

@@ -20,6 +20,11 @@ public final class B3Propagation<K> implements Propagation<K> {
       return true;
     }
 
+    public <C, K> MutableTraceContext.Extractor<C> extractor(KeyFactory<K> keyFactory,
+        Getter<C, K> getter) {
+      return new B3MutableExtractor<>(new B3Propagation<>(keyFactory), getter);
+    }
+
     @Override public String toString() {
       return "B3PropagationFactory";
     }
@@ -123,11 +128,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
       // It is ok to go without a trace ID, if sampling or debug is set
-      if (traceIdString == null) {
-        return TraceContextOrSamplingFlags.create(
-            debug ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
-        );
-      }
+      if (traceIdString == null) return TraceContextOrSamplingFlags.create(sampledV, debug);
 
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();
@@ -137,6 +138,35 @@ public final class B3Propagation<K> implements Propagation<K> {
         return TraceContextOrSamplingFlags.create(result.sampled(sampledV).debug(debug).build());
       }
       return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
+    }
+  }
+
+  static final class B3MutableExtractor<C, K> implements MutableTraceContext.Extractor<C> {
+    final B3Propagation<K> propagation;
+    final Getter<C, K> getter;
+
+    B3MutableExtractor(B3Propagation<K> propagation, Getter<C, K> getter) {
+      this.propagation = propagation;
+      this.getter = getter;
+    }
+
+    @Override public void extract(C carrier, MutableTraceContext destination) {
+      if (carrier == null) throw new NullPointerException("carrier == null");
+      if (destination == null) throw new NullPointerException("destination == null");
+      // Start by looking at the sampled state as this is used regardless
+      // Official sampled value is 1, though some old instrumentation send true
+      String sampled = getter.get(carrier, propagation.sampledKey);
+      if (sampled != null) {
+        destination.sampled(sampled.equals("1") || sampled.equalsIgnoreCase("true"));
+      }
+      destination.debug("1".equals(getter.get(carrier, propagation.debugKey)));
+
+      // Chain parsing of the trace IDs into the context
+      String traceIdString = getter.get(carrier, propagation.traceIdKey);
+      if (traceIdString != null && destination.parseTraceId(traceIdString, propagation.traceIdKey)
+          && destination.parseSpanId(getter, carrier, propagation.spanIdKey)
+          && destination.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
+      }
     }
   }
 }

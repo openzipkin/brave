@@ -3,9 +3,9 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Tracing;
 import brave.internal.Nullable;
-import brave.propagation.TraceContext.Extractor;
+import brave.propagation.MutableTraceContext;
+import brave.propagation.MutableTraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import brave.propagation.TraceContextOrSamplingFlags;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -44,7 +44,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.delegate = delegate;
     this.tracing = tracing;
     this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
-    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
+    this.extractor = tracing.propagationFactory().extractor(KafkaPropagation.HEADER_GETTER);
     this.remoteServiceName = remoteServiceName;
   }
 
@@ -58,20 +58,21 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
     if (records.isEmpty() || tracing.isNoop()) return records;
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
+    MutableTraceContext extracted = new MutableTraceContext();
     for (TopicPartition partition : records.partitions()) {
       String topic = partition.topic();
       List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
       for (int i = 0, length = recordsInPartition.size(); i < length; i++) {
         ConsumerRecord<K, V> record = recordsInPartition.get(i);
-        TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+        extractor.extract(record.headers(), extracted);
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // make or reuse a span for this topic
-        if (extracted.samplingFlags() != null && extracted.extra().isEmpty()) {
+        if (extracted.isEmpty()) {
           Span consumerSpanForTopic = consumerSpansForTopic.get(topic);
           if (consumerSpanForTopic == null) {
             consumerSpansForTopic.put(topic,
-                consumerSpanForTopic = tracing.tracer().nextSpan(extracted).name("poll")
+                consumerSpanForTopic = tracing.tracer().nextSpan().name("poll")
                     .kind(Span.Kind.CONSUMER)
                     .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
                     .start());
@@ -88,6 +89,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           // remove prior propagation headers from the record
           tracing.propagation().keys().forEach(key -> record.headers().remove(key));
           injector.inject(span.context(), record.headers());
+          extracted.clear();
         }
       }
     }

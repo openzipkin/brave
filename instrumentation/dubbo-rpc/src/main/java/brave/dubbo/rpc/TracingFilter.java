@@ -5,9 +5,9 @@ import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Platform;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.extension.Activate;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
@@ -31,7 +31,7 @@ import java.util.concurrent.Future;
 public final class TracingFilter implements Filter {
 
   Tracer tracer;
-  TraceContext.Extractor<Map<String, String>> extractor;
+  MutableTraceContext.Extractor<Map<String, String>> extractor;
   TraceContext.Injector<Map<String, String>> injector;
 
   /**
@@ -41,7 +41,7 @@ public final class TracingFilter implements Filter {
    */
   public void setTracing(Tracing tracing) {
     tracer = tracing.tracer();
-    extractor = tracing.propagation().extractor(GETTER);
+    extractor = tracing.propagationFactory().extractor(GETTER);
     injector = tracing.propagation().injector(SETTER);
   }
 
@@ -56,10 +56,9 @@ public final class TracingFilter implements Filter {
       span = tracer.nextSpan();
       injector.inject(span.context(), invocation.getAttachments());
     } else {
-      TraceContextOrSamplingFlags extracted = extractor.extract(invocation.getAttachments());
-      span = extracted.context() != null
-          ? tracer.joinSpan(extracted.context())
-          : tracer.nextSpan(extracted);
+      MutableTraceContext extracted = new MutableTraceContext();
+      extractor.extract(invocation.getAttachments(), extracted);
+      span = tracer.joinSpan(extracted);
     }
 
     if (!span.isNoop()) {

@@ -8,9 +8,8 @@ import brave.http.HttpServerAdapter;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.internal.Platform;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,7 +32,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
 
   final Tracer tracer;
   final HttpNettyAdapter adapter;
-  final TraceContext.Extractor<HttpHeaders> extractor;
+  final MutableTraceContext.Extractor<HttpHeaders> extractor;
   final HttpSampler sampler;
   final HttpServerParser parser;
 
@@ -42,7 +41,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     sampler = httpTracing.serverSampler();
     parser = httpTracing.serverParser();
     adapter = new HttpNettyAdapter();
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    extractor = httpTracing.tracing().propagationFactory().extractor(GETTER);
   }
 
   @Override public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -53,7 +52,10 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
 
     HttpRequest request = (HttpRequest) msg;
 
-    Span span = nextSpan(extractor.extract(request.headers()), request).kind(Span.Kind.SERVER);
+    MutableTraceContext extracted = new MutableTraceContext();
+    extractor.extract(request.headers(), extracted);
+
+    Span span = nextSpan(extracted, request).kind(Span.Kind.SERVER);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
     SpanInScope spanInScope = tracer.withSpanInScope(span);
     ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).set(spanInScope);
@@ -87,13 +89,12 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
 
   /** Creates a potentially noop span representing this request */
   // copy/pasted from HttpServerHandler.nextSpan
-  Span nextSpan(TraceContextOrSamplingFlags extracted, HttpRequest request) {
+  Span nextSpan(MutableTraceContext extracted, HttpRequest request) {
     if (extracted.sampled() == null) { // Otherwise, try to make a new decision
-      extracted = extracted.sampled(sampler.trySample(adapter, request));
+      Boolean sampled = sampler.trySample(adapter, request);
+      if (sampled != null) extracted.sampled(sampled);
     }
-    return extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+    return tracer.joinSpan(extracted);
   }
 
   @Override public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise prm) {

@@ -28,6 +28,8 @@ public class B3PropagationBenchmarks {
   static final Propagation<String> b3 = Propagation.B3_STRING;
   static final Injector<Map<String, String>> b3Injector = b3.injector(Map::put);
   static final Extractor<Map<String, String>> b3Extractor = b3.extractor(Map::get);
+  static final MutableTraceContext.Extractor<Map<String, String>> b3MutableExtractor =
+      B3Propagation.FACTORY.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -78,6 +80,22 @@ public class B3PropagationBenchmarks {
 
   @Benchmark public TraceContextOrSamplingFlags extract_malformed() {
     return b3Extractor.extract(incomingMalformed);
+  }
+
+  @Benchmark public void mutable_extract() {
+    b3MutableExtractor.extract(incoming, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_nothing() {
+    b3MutableExtractor.extract(nothingIncoming, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_unsampled() {
+    b3MutableExtractor.extract(incomingNotSampled, new MutableTraceContext());
+  }
+
+  @Benchmark public void mutable_extract_malformed() {
+    b3MutableExtractor.extract(incomingMalformed, new MutableTraceContext());
   }
 
   // Convenience main entry-point

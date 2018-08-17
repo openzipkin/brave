@@ -126,6 +126,19 @@ public class ThreadLocalSpan {
   }
 
   /**
+   * Returns the {@link Tracer#nextSpan(MutableTraceContext)} or null if {@link #CURRENT_TRACER}
+   * and tracing isn't available.
+   */
+  @Nullable public Span next(MutableTraceContext extracted) {
+    Tracer tracer = tracer();
+    if (tracer == null) return null;
+    Span next = tracer.nextSpan(extracted);
+    SpanAndScope spanAndScope = new SpanAndScope(next, tracer.withSpanInScope(next));
+    currentSpanInScope.get().addFirst(spanAndScope);
+    return next;
+  }
+
+  /**
    * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
    * available.
    */

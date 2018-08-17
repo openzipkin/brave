@@ -3,8 +3,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.MutableTraceContext;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -45,12 +44,12 @@ public final class KafkaTracing {
   }
 
   private final Tracing tracing;
-  private final TraceContext.Extractor<Headers> extractor;
+  private final MutableTraceContext.Extractor<Headers> extractor;
   private final String remoteServiceName;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
+    this.extractor = tracing.propagationFactory().extractor(KafkaPropagation.HEADER_GETTER);
     this.remoteServiceName = builder.remoteServiceName;
   }
 
@@ -76,21 +75,22 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record);
+    MutableTraceContext extracted = new MutableTraceContext();
+    extractAndClearHeaders(record, extracted);
+    boolean loggedUpstream = Boolean.TRUE.equals(extracted.sampled());
     Span result = tracing.tracer().nextSpan(extracted);
-    if (extracted.context() == null && !result.isNoop()) {
+    if (!loggedUpstream && !result.isNoop()) {
       addTags(record, result);
     }
     return result;
   }
 
-  TraceContextOrSamplingFlags extractAndClearHeaders(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+  void extractAndClearHeaders(ConsumerRecord<?, ?> record, MutableTraceContext extracted) {
+    extractor.extract(record.headers(), extracted);
     // clear propagation headers if we were able to extract a span
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.isEmpty()) {
       tracing.propagation().keys().forEach(key -> record.headers().remove(key));
     }
-    return extracted;
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */

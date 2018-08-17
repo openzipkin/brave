@@ -114,7 +114,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    PropagationFields fields = PropagationFields.find(context.extra());
+    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
     fields.put("x-vcap-request-id", uuid);
 
     injector.inject(context, carrier);
@@ -123,7 +123,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    PropagationFields fields = PropagationFields.find(context.extra());
+    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("x-amzn-trace-id", awsTraceId);
 
@@ -141,7 +141,7 @@ public class ExtraFieldPropagationTest {
         .build();
     initialize();
 
-    PropagationFields fields = PropagationFields.find(context.extra());
+    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("country-code", "FO");
 

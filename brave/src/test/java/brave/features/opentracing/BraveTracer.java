@@ -1,8 +1,8 @@
 package brave.features.opentracing;
 
 import brave.internal.Nullable;
+import brave.propagation.MutableTraceContext;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.ScopeManager;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -24,13 +24,13 @@ final class BraveTracer implements Tracer {
   final brave.Tracer tracer;
   final List<String> propagationKeys;
   final TraceContext.Injector<TextMap> injector;
-  final TraceContext.Extractor<TextMapView> extractor;
+  final MutableTraceContext.Extractor<TextMapView> extractor;
 
   BraveTracer(brave.Tracing tracing) {
     tracer = tracing.tracer();
     propagationKeys = tracing.propagation().keys();
     injector = tracing.propagation().injector(TextMap::put);
-    extractor = tracing.propagation().extractor(TextMapView::get);
+    extractor = tracing.propagationFactory().extractor(TextMapView::get);
   }
 
   @Override public ScopeManager scopeManager() {
@@ -57,11 +57,9 @@ final class BraveTracer implements Tracer {
     if (format != Format.Builtin.HTTP_HEADERS) {
       throw new UnsupportedOperationException(format.toString());
     }
-    TraceContextOrSamplingFlags extracted =
-        extractor.extract(new TextMapView(propagationKeys, (TextMap) carrier));
-    TraceContext context = extracted.context() != null
-        ? tracer.joinSpan(extracted.context()).context()
-        : tracer.nextSpan(extracted).context();
+    MutableTraceContext extracted = new MutableTraceContext();
+    extractor.extract(new TextMapView(propagationKeys, (TextMap) carrier), extracted);
+    TraceContext context = tracer.joinSpan(extracted).context();
     return new BraveSpanContext(context);
   }
 
