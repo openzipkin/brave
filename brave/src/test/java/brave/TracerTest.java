@@ -613,4 +613,18 @@ public class TracerTest {
 
     assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
   }
+
+  @Test public void startScopedSpan() {
+    ScopedSpan scoped = tracer.startScopedSpan("foo");
+    try {
+      assertThat(tracer.currentTraceContext.get()).isSameAs(scoped.context());
+    } finally {
+      scoped.finish();
+    }
+
+    assertThat(spans.get(0).name())
+        .isEqualTo("foo");
+    assertThat(spans.get(0).durationAsLong())
+        .isPositive();
+  }
 }
