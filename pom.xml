@@ -661,14 +661,12 @@
                   <forceJavacCompilerUse>true</forceJavacCompilerUse>
                   <compilerArgs>
                     <arg>-XDcompilePolicy=simple</arg>
-                    <arg>-Xplugin:ErrorProne</arg>
-                    <!-- TODO: why does this not work? -->
-                    <!--<arg>-XepDisableWarningsInGeneratedCode</arg>-->
+                    <arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode</arg>
                   </compilerArgs>
                   <annotationProcessorPaths>
                     <processorPath>
                       <groupId>com.google.errorprone</groupId>
-                      <artifactId>error_prone_ant</artifactId>
+                      <artifactId>error_prone_core</artifactId>
                       <version>2.3.1</version>
                     </processorPath>
                   </annotationProcessorPaths>
