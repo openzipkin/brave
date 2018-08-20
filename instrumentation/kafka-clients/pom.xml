@@ -15,6 +15,9 @@
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
 
+    <!-- disable errorprone override warning as we do this intentionally to allow old clients -->
+    <errorprone.args>-Xep:MissingOverride:OFF</errorprone.args>
+
     <kafka.version>2.0.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.2</kafka-junit.version>
@@ -84,37 +87,4 @@
       </plugin>
     </plugins>
   </build>
-  <profiles>
-    <profile>
-      <!-- disable errorprone override warning as we do this intentionally to allow old clients -->
-      <id>error-prone-off</id>
-      <activation>
-        <!-- error-prone isn't happy in jdk 10 yet https://github.com/google/error-prone/issues/860#issuecomment-396154710 -->
-        <jdk>[1.8,10)</jdk>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>default-compile</id>
-                <phase>compile</phase>
-                <goals>
-                  <goal>compile</goal>
-                </goals>
-                <configuration>
-                  <compilerId>javac-with-errorprone</compilerId>
-                  <compilerArgs>
-                    <arg>-Xep:MissingOverride:OFF</arg>
-                  </compilerArgs>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>

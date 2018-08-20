@@ -58,6 +58,10 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
+    <!-- override to set exclusions per-project -->
+    <!-- error-prone doesn't like generated code -->
+    <errorprone.args>-XepDisableWarningsInGeneratedCode</errorprone.args>
+
     <!-- use the same values in bom/pom.xml -->
     <zipkin.version>2.10.4</zipkin.version>
     <zipkin-reporter.version>2.7.7</zipkin-reporter.version>
@@ -617,8 +621,7 @@
                   <compilerId>javac-with-errorprone</compilerId>
                   <forceJavacCompilerUse>true</forceJavacCompilerUse>
                   <compilerArgs>
-                    <!-- error-prone doesn't like generated code -->
-                    <arg>-XepDisableWarningsInGeneratedCode</arg>
+                    <arg>${errorprone.args}</arg>
                   </compilerArgs>
                 </configuration>
               </execution>
@@ -661,7 +664,7 @@
                   <forceJavacCompilerUse>true</forceJavacCompilerUse>
                   <compilerArgs>
                     <arg>-XDcompilePolicy=simple</arg>
-                    <arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode</arg>
+                    <arg>-Xplugin:ErrorProne ${errorprone.args}</arg>
                   </compilerArgs>
                   <annotationProcessorPaths>
                     <processorPath>
