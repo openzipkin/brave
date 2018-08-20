@@ -58,6 +58,10 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
+    <!-- override to set exclusions per-project -->
+    <!-- error-prone doesn't like generated code -->
+    <errorprone.args>-XepDisableWarningsInGeneratedCode</errorprone.args>
+
     <!-- use the same values in bom/pom.xml -->
     <zipkin.version>2.10.4</zipkin.version>
     <zipkin-reporter.version>2.7.7</zipkin-reporter.version>
@@ -596,10 +600,9 @@
 
   <profiles>
     <profile>
-      <id>error-prone</id>
+      <id>error-prone-1.8</id>
       <activation>
-        <!-- error-prone isn't happy in jdk 10 yet https://github.com/google/error-prone/issues/860#issuecomment-396154710 -->
-        <jdk>[1.8,10)</jdk>
+        <jdk>1.8</jdk>
         <activeByDefault>false</activeByDefault>
       </activation>
       <build>
@@ -617,9 +620,8 @@
                 <configuration>
                   <compilerId>javac-with-errorprone</compilerId>
                   <forceJavacCompilerUse>true</forceJavacCompilerUse>
-                  <!-- error-prone doesn't like generated code -->
                   <compilerArgs>
-                    <arg>-XepDisableWarningsInGeneratedCode</arg>
+                    <arg>${errorprone.args}</arg>
                   </compilerArgs>
                 </configuration>
               </execution>
@@ -636,6 +638,44 @@
                 <version>2.3.1</version>
               </dependency>
             </dependencies>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>error-prone-9+</id>
+      <activation>
+        <jdk>[9,)</jdk>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+              <execution>
+                <!-- only use errorprone on main source tree -->
+                <id>default-compile</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>compile</goal>
+                </goals>
+                <configuration>
+                  <forceJavacCompilerUse>true</forceJavacCompilerUse>
+                  <compilerArgs>
+                    <arg>-XDcompilePolicy=simple</arg>
+                    <arg>-Xplugin:ErrorProne ${errorprone.args}</arg>
+                  </compilerArgs>
+                  <annotationProcessorPaths>
+                    <processorPath>
+                      <groupId>com.google.errorprone</groupId>
+                      <artifactId>error_prone_core</artifactId>
+                      <version>2.3.1</version>
+                    </processorPath>
+                  </annotationProcessorPaths>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
