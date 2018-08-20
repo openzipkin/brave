@@ -596,10 +596,9 @@
 
   <profiles>
     <profile>
-      <id>error-prone</id>
+      <id>error-prone-1.8</id>
       <activation>
-        <!-- error-prone isn't happy in jdk 10 yet https://github.com/google/error-prone/issues/860#issuecomment-396154710 -->
-        <jdk>[1.8,10)</jdk>
+        <jdk>1.8</jdk>
         <activeByDefault>false</activeByDefault>
       </activation>
       <build>
@@ -617,8 +616,8 @@
                 <configuration>
                   <compilerId>javac-with-errorprone</compilerId>
                   <forceJavacCompilerUse>true</forceJavacCompilerUse>
-                  <!-- error-prone doesn't like generated code -->
                   <compilerArgs>
+                    <!-- error-prone doesn't like generated code -->
                     <arg>-XepDisableWarningsInGeneratedCode</arg>
                   </compilerArgs>
                 </configuration>
@@ -636,6 +635,46 @@
                 <version>2.3.1</version>
               </dependency>
             </dependencies>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>error-prone-9+</id>
+      <activation>
+        <jdk>[9,)</jdk>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+              <execution>
+                <!-- only use errorprone on main source tree -->
+                <id>default-compile</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>compile</goal>
+                </goals>
+                <configuration>
+                  <forceJavacCompilerUse>true</forceJavacCompilerUse>
+                  <compilerArgs>
+                    <arg>-XDcompilePolicy=simple</arg>
+                    <arg>-Xplugin:ErrorProne</arg>
+                    <!-- TODO: why does this not work? -->
+                    <!--<arg>-XepDisableWarningsInGeneratedCode</arg>-->
+                  </compilerArgs>
+                  <annotationProcessorPaths>
+                    <processorPath>
+                      <groupId>com.google.errorprone</groupId>
+                      <artifactId>error_prone_ant</artifactId>
+                      <version>2.3.1</version>
+                    </processorPath>
+                  </annotationProcessorPaths>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
