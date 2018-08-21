@@ -30,11 +30,6 @@ public class SamplingFlags {
     };
   }
 
-  public SamplingFlags build() {
-    return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-        : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
-  }
-
   final int flags; // bit field for sampled and debug
 
   SamplingFlags(int flags) {
@@ -108,8 +103,7 @@ public class SamplingFlags {
     }
 
     public SamplingFlags build() {
-      return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-          : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
+      return toSamplingFlags(flags);
     }
   }
 
@@ -124,5 +118,10 @@ public class SamplingFlags {
       flags &= ~FLAG_DEBUG;
     }
     return flags;
+  }
+
+  static SamplingFlags toSamplingFlags(int flags) {
+    return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
+        : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
   }
 }
