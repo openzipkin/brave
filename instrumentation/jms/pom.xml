@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>io.zipkin.brave</groupId>
+    <artifactId>brave-instrumentation-parent</artifactId>
+    <version>5.2.1-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>brave-instrumentation-jms</artifactId>
+  <name>Brave Instrumentation: JMS</name>
+
+  <properties>
+    <main.basedir>${project.basedir}/../..</main.basedir>
+    <main.java.version>1.6</main.java.version>
+    <main.signature.artifact>java16</main.signature.artifact>
+
+    <!-- disable errorprone override warning as we do this intentionally to allow JMS 1.1 -->
+    <errorprone.args>-Xep:MissingOverride:OFF</errorprone.args>
+
+    <activemq.version>5.15.5</activemq.version>
+  </properties>
+
+  <dependencies>
+    <!-- Provided at 2.0.1 eventhough 1.1 is supported via invoker tests -->
+    <dependency>
+      <groupId>javax.jms</groupId>
+      <artifactId>javax.jms-api</artifactId>
+      <version>2.0.1</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- JMS 1.1 impl = new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false") -->
+    <dependency>
+      <groupId>org.apache.activemq</groupId>
+      <artifactId>activemq-broker</artifactId>
+      <version>${activemq.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- JMS 2.0 impl with a lot of deps, notably Netty. Ideally we can swap this out at some point.
+         https://issues.apache.org/jira/browse/AMQ-5736?focusedCommentId=16593091&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-16593091
+         -->
+    <dependency>
+      <groupId>org.apache.activemq</groupId>
+      <artifactId>artemis-junit</artifactId>
+      <version>2.6.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>brave.jms</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-invoker-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
