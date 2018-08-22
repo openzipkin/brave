@@ -70,13 +70,13 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message");
 
     if (!consumerSpan.isNoop()) {
-      // incur timestamp overhead only once
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
       tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
-      consumerSpan.finish(timestamp);
-      listenerSpan.start(timestamp); // not using scoped span as we want to start late
+      long consumerFinish = timestamp + 1L; // save a clock reading
+      consumerSpan.finish(consumerFinish);
+      listenerSpan.start(consumerFinish); // not using scoped span as we want to start late
     }
 
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
