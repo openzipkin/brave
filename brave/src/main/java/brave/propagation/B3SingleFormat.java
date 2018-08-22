@@ -52,11 +52,11 @@ final class B3SingleFormat {
 
   static @Nullable TraceContextOrSamplingFlags maybeB3SingleFormat(String b3) {
     int length = b3.length();
-    if (length == 1) {
+    if (length == 1) { // assume just tracing flag. ex "b3: 1"
       int flags = parseSampledFlag(b3, 0);
       if (flags == 0) return null;
       return TraceContextOrSamplingFlags.create(SamplingFlags.toSamplingFlags(flags));
-    } else if (length == 3) {
+    } else if (length == 3) { // assume tracing + debug flag. ex "b3: 1-1"
       int flags = parseSampledFlag(b3, 0);
       if (flags == 0) return null;
       flags = parseDebugFlag(b3, 2, flags);
@@ -73,16 +73,14 @@ final class B3SingleFormat {
       return null;
     }
 
-    int pos = 0;
     long traceIdHigh, traceId;
-    if (b3.charAt(32) == '-') {
+    boolean traceId128 = b3.charAt(32) == '-';
+    if (traceId128) {
       traceIdHigh = lenientLowerHexToUnsignedLong(b3, 0, 16);
       traceId = lenientLowerHexToUnsignedLong(b3, 16, 32);
-      pos += 33; // traceid128-
     } else {
       traceIdHigh = 0L;
       traceId = lenientLowerHexToUnsignedLong(b3, 0, 16);
-      pos += 17; // traceid64-
     }
 
     if (traceIdHigh == 0L && traceId == 0L) {
@@ -90,6 +88,7 @@ final class B3SingleFormat {
       return null;
     }
 
+    int pos = traceId128 ? 33 : 17; // traceid-
     long spanId = lenientLowerHexToUnsignedLong(b3, pos, pos + 16);
     if (spanId == 0L) {
       logger.log(FINE, "Invalid input: expected a 16 lower hex span ID at offset {0}", pos);
@@ -128,7 +127,6 @@ final class B3SingleFormat {
         Collections.emptyList()
     ));
   }
-
 
   static int parseSampledFlag(String b3, int pos) {
     int flags;
