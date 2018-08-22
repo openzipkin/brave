@@ -9,6 +9,7 @@ import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import com.rabbitmq.client.Channel;
+import java.util.List;
 import java.util.Map;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -31,8 +32,8 @@ import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_ROUTING_KEY;
  * point was ideal as it covers both programmatic and {@link RabbitListener} annotation driven amqp
  * consumers.
  *
- * The spans are modeled as a zero duration CONSUMER span to represent the consuming the message
- * from the rabbit broker, and a child span representing the processing of the messsage.
+ * The spans are modeled as a duration 1 {@link Span.Kind#CONSUMER} span to represent consuming the
+ * message from the rabbit broker with a child span representing the processing of the message.
  */
 final class TracingRabbitListenerAdvice implements MethodInterceptor {
 
@@ -46,37 +47,43 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     }
   };
 
-  final Extractor<MessageProperties> extractor;
-  final Tracer tracer;
   final Tracing tracing;
+  final Tracer tracer;
+  final Extractor<MessageProperties> extractor;
+  final List<String> propagationKeys;
   @Nullable final String remoteServiceName;
 
   TracingRabbitListenerAdvice(Tracing tracing, @Nullable String remoteServiceName) {
-    this.extractor = tracing.propagation().extractor(GETTER);
-    this.tracer = tracing.tracer();
     this.tracing = tracing;
+    this.tracer = tracing.tracer();
+    this.extractor = tracing.propagation().extractor(GETTER);
+    this.propagationKeys = tracing.propagation().keys();
     this.remoteServiceName = remoteServiceName;
   }
 
   /**
-   * MethodInterceptor for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel, Message)}
+   * MethodInterceptor for {@link SimpleMessageListenerContainer.ContainerDelegate#invokeListener(Channel,
+   * Message)}
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     Message message = (Message) methodInvocation.getArguments()[1];
-    TraceContextOrSamplingFlags extracted = extractTraceContextAndRemoveHeaders(message);
+    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(message);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
-    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("next-message");
-    Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message");
+    Span consumerSpan = tracer.nextSpan(extracted);
+    Span listenerSpan = tracer.newChild(consumerSpan.context());
 
     if (!consumerSpan.isNoop()) {
+      setConsumerSpan(consumerSpan, message.getMessageProperties());
+
+      // incur timestamp overhead only once
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
-      if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
-      tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
       long consumerFinish = timestamp + 1L; // save a clock reading
       consumerSpan.finish(consumerFinish);
-      listenerSpan.start(consumerFinish); // not using scoped span as we want to start late
+
+      // not using scoped span as we want to start with a pre-configured time
+      listenerSpan.name("on-message").start(consumerFinish);
     }
 
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
@@ -89,20 +96,22 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     }
   }
 
-  TraceContextOrSamplingFlags extractTraceContextAndRemoveHeaders(Message message) {
+  TraceContextOrSamplingFlags extractAndClearHeaders(Message message) {
     MessageProperties messageProperties = message.getMessageProperties();
     TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
     Map<String, Object> headers = messageProperties.getHeaders();
-    for (String key : tracing.propagation().keys()) {
-      headers.remove(key);
+    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
+      headers.remove(propagationKeys.get(i));
     }
     return extracted;
   }
 
-  void tagReceivedMessageProperties(Span span, MessageProperties messageProperties) {
-    maybeTag(span, RABBIT_EXCHANGE, messageProperties.getReceivedExchange());
-    maybeTag(span, RABBIT_ROUTING_KEY, messageProperties.getReceivedRoutingKey());
-    maybeTag(span, RABBIT_QUEUE, messageProperties.getConsumerQueue());
+  void setConsumerSpan(Span span, MessageProperties properties) {
+    span.name("next-message").kind(CONSUMER);
+    maybeTag(span, RABBIT_EXCHANGE, properties.getReceivedExchange());
+    maybeTag(span, RABBIT_ROUTING_KEY, properties.getReceivedRoutingKey());
+    maybeTag(span, RABBIT_QUEUE, properties.getConsumerQueue());
+    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
   }
 
   static void maybeTag(Span span, String tag, String value) {
