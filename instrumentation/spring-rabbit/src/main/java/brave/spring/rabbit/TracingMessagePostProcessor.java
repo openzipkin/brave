@@ -1,7 +1,6 @@
 package brave.spring.rabbit;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.Propagation.Setter;
@@ -29,20 +28,22 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
   };
 
   final Injector<MessageProperties> injector;
-  final Tracer tracer;
+  final Tracing tracing;
   @Nullable final String remoteServiceName;
 
   TracingMessagePostProcessor(Tracing tracing, @Nullable String remoteServiceName) {
     this.injector = tracing.propagation().injector(SETTER);
-    this.tracer = tracing.tracer();
+    this.tracing = tracing;
     this.remoteServiceName = remoteServiceName;
   }
 
   @Override public Message postProcessMessage(Message message) {
-    Span span = tracer.nextSpan().kind(Span.Kind.PRODUCER).name("publish");
+    Span span = tracing.tracer().nextSpan().kind(Span.Kind.PRODUCER).name("publish");
     if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
     injector.inject(span.context(), message.getMessageProperties());
-    span.start().finish();
+    // incur timestamp overhead only once
+    long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
+    span.start(timestamp).finish(timestamp);
     return message;
   }
 }

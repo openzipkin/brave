@@ -53,10 +53,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return poll(timeout.toMillis());
   }
 
-  /** This */
+  /** This uses a single timestamp for all records polled, to reduce overhead. */
   @Override public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
     if (records.isEmpty() || tracing.isNoop()) return records;
+    long timestamp = 0L;
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
     for (TopicPartition partition : records.partitions()) {
       String topic = partition.topic();
@@ -68,22 +69,30 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // make or reuse a span for this topic
         if (extracted.samplingFlags() != null && extracted.extra().isEmpty()) {
-          Span consumerSpanForTopic = consumerSpansForTopic.get(topic);
-          if (consumerSpanForTopic == null) {
-            consumerSpansForTopic.put(topic,
-                consumerSpanForTopic = tracing.tracer().nextSpan(extracted).name("poll")
-                    .kind(Span.Kind.CONSUMER)
-                    .tag(KafkaTags.KAFKA_TOPIC_TAG, topic)
-                    .start());
+          Span span = consumerSpansForTopic.get(topic);
+          if (span == null) {
+            span = tracing.tracer().nextSpan(extracted);
+            if (!span.isNoop()) {
+              setConsumerSpan(topic, span, remoteServiceName);
+              // incur timestamp overhead only once
+              if (timestamp == 0L) {
+                timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
+              }
+              span.start(timestamp);
+            }
+            consumerSpansForTopic.put(topic, span);
           }
           // no need to remove propagation headers as we failed to extract anything
-          injector.inject(consumerSpanForTopic.context(), record.headers());
+          injector.inject(span.context(), record.headers());
         } else { // we extracted request-scoped data, so cannot share a consumer span.
           Span span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
-            span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
-            if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-            span.start().finish(); // span won't be shared by other records
+            setConsumerSpan(topic, span, remoteServiceName);
+            // incur timestamp overhead only once
+            if (timestamp == 0L) {
+              timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
+            }
+            span.start(timestamp).finish(timestamp); // span won't be shared by other records
           }
           // remove prior propagation headers from the record
           tracing.propagation().keys().forEach(key -> record.headers().remove(key));
@@ -91,8 +100,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         }
       }
     }
-    consumerSpansForTopic.values()
-        .forEach(span -> span.remoteServiceName(remoteServiceName).finish());
+    for (Span span : consumerSpansForTopic.values()) span.finish(timestamp);
     return records;
   }
 
@@ -269,5 +277,10 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   @Override public void wakeup() {
     delegate.wakeup();
+  }
+
+  static void setConsumerSpan(String topic, Span span, String remoteServiceName) {
+    span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
+    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
   }
 }

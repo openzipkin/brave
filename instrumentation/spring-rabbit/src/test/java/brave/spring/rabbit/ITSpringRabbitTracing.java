@@ -422,6 +422,8 @@ public class ITSpringRabbitTracing {
     assertThat(result)
         .withFailMessage("Producer span was not reported")
         .isNotNull();
+    // ensure the span finished
+    assertThat(result.durationAsLong()).isPositive();
     return result;
   }
 
@@ -431,6 +433,8 @@ public class ITSpringRabbitTracing {
     assertThat(result)
         .withFailMessage("Consumer span was not reported")
         .isNotNull();
+    // ensure the span finished
+    assertThat(result.durationAsLong()).isPositive();
     return result;
   }
 }
