@@ -1,6 +1,5 @@
 package brave.propagation;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.test.propagation.PropagationTest;
 import java.util.Map;
@@ -8,32 +7,42 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class B3PropagationTest extends PropagationTest<String> {
+public class B3SinglePropagationTest extends PropagationTest<String> {
   @Override protected Propagation<String> propagation() {
-    return Propagation.B3_STRING;
+    return Propagation.B3_SINGLE_STRING;
   }
 
   @Override protected void inject(Map<String, String> map, @Nullable String traceId,
       @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
       @Nullable Boolean debug) {
-    if (traceId != null) map.put("X-B3-TraceId", traceId);
-    if (parentId != null) map.put("X-B3-ParentSpanId", parentId);
-    if (spanId != null) map.put("X-B3-SpanId", spanId);
-    if (sampled != null) map.put("X-B3-Sampled", sampled ? "1" : "0");
-    if (debug != null) map.put("X-B3-Flags", debug ? "1" : "0");
+    StringBuilder builder = new StringBuilder();
+    if (traceId == null) {
+      if (sampled != null) {
+        builder.append(sampled ? '1' : '0');
+        if (debug != null) builder.append(debug ? "-1" : "-0");
+      } else if (Boolean.TRUE.equals(debug)) {
+        builder.append("1-1");
+      }
+    } else {
+      builder.append(traceId).append('-').append(spanId);
+      if (sampled != null) builder.append(sampled ? "-1" : "-0");
+      if (parentId != null) builder.append('-').append(parentId);
+      if (debug != null) builder.append(debug ? "-1" : "-0");
+    }
+    if (builder.length() != 0) map.put("b3", builder.toString());
   }
 
   @Override protected void inject(Map<String, String> carrier, SamplingFlags flags) {
     if (flags.debug()) {
-      carrier.put("X-B3-Flags", "1");
+      carrier.put("b3", "1-1");
     } else if (flags.sampled() != null) {
-      carrier.put("X-B3-Sampled", flags.sampled() ? "1" : "0");
+      carrier.put("b3", flags.sampled() ? "1" : "0");
     }
   }
 
   @Test public void extractTraceContext_sampledFalse() {
     MapEntry mapEntry = new MapEntry();
-    map.put("X-B3-Sampled", "false");
+    map.put("b3", "0");
 
     SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
 
@@ -43,7 +52,7 @@ public class B3PropagationTest extends PropagationTest<String> {
 
   @Test public void extractTraceContext_sampledFalseUpperCase() {
     MapEntry mapEntry = new MapEntry();
-    map.put("X-B3-Sampled", "FALSE");
+    map.put("B3", "0");
 
     SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
 
@@ -53,9 +62,7 @@ public class B3PropagationTest extends PropagationTest<String> {
 
   @Test public void extractTraceContext_malformed() {
     MapEntry mapEntry = new MapEntry();
-    map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
-    map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
-    map.put("X-B3-ParentSpanId", "-"); // not ok
+    map.put("b3", "not-a-tumor");
 
     SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
 
@@ -63,10 +70,9 @@ public class B3PropagationTest extends PropagationTest<String> {
         .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extractTraceContext_malformed_sampled() {
+  @Test public void extractTraceContext_malformed_uuid() {
     MapEntry mapEntry = new MapEntry();
-    map.put("X-B3-TraceId", "-"); // not ok
-    map.put("X-B3-Sampled", "1"); // ok
+    map.put("b3", "b970dafd-0d95-40aa-95d8-1d8725aebe40");
 
     SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
 
@@ -76,26 +82,12 @@ public class B3PropagationTest extends PropagationTest<String> {
 
   @Test public void extractTraceContext_debug_with_ids() {
     MapEntry mapEntry = new MapEntry();
-    map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
-    map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
-    map.put("X-B3-Flags", "1"); // accidentally missing sampled flag
+
+    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1-1");
 
     TraceContext result = propagation().extractor(mapEntry).extract(map).context();
 
-    assertThat(result.sampled())
+    assertThat(result.debug())
         .isTrue();
-  }
-
-  @Test public void extractTraceContext_singleHeaderFormat() {
-    MapEntry mapEntry = new MapEntry();
-
-    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7");
-
-    TraceContext result = propagation().extractor(mapEntry).extract(map).context();
-
-    assertThat(result.traceIdString())
-        .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
-    assertThat(HexCodec.toLowerHex(result.spanId()))
-        .isEqualTo("00f067aa0ba902b7");
   }
 }

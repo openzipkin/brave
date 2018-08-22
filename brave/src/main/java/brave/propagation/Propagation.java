@@ -19,6 +19,8 @@ import java.util.List;
  */
 public interface Propagation<K> {
   Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
+  Propagation<String> B3_SINGLE_STRING =
+      B3SinglePropagation.FACTORY.create(Propagation.KeyFactory.STRING);
 
   abstract class Factory {
     /**

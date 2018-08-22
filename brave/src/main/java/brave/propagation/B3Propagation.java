@@ -1,10 +1,13 @@
 package brave.propagation;
 
-import java.util.Arrays;
+import brave.propagation.B3SinglePropagation.B3SingleExtractor;
 import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.HexCodec.toLowerHex;
+import static brave.propagation.B3SinglePropagation.LOWER_NAME;
+import static brave.propagation.B3SinglePropagation.UPPER_NAME;
+import static java.util.Arrays.asList;
 
 /**
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
@@ -46,21 +49,19 @@ public final class B3Propagation<K> implements Propagation<K> {
    * "1" implies sampled and is a request to override collection-tier sampling policy.
    */
   static final String FLAGS_NAME = "X-B3-Flags";
-  final K traceIdKey;
-  final K spanIdKey;
-  final K parentSpanIdKey;
-  final K sampledKey;
-  final K debugKey;
+  final K lowerKey, upperKey, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
 
   B3Propagation(KeyFactory<K> keyFactory) {
+    this.lowerKey = keyFactory.create(LOWER_NAME);
+    this.upperKey = keyFactory.create(UPPER_NAME);
     this.traceIdKey = keyFactory.create(TRACE_ID_NAME);
     this.spanIdKey = keyFactory.create(SPAN_ID_NAME);
     this.parentSpanIdKey = keyFactory.create(PARENT_SPAN_ID_NAME);
     this.sampledKey = keyFactory.create(SAMPLED_NAME);
     this.debugKey = keyFactory.create(FLAGS_NAME);
     this.fields = Collections.unmodifiableList(
-        Arrays.asList(traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+        asList(lowerKey, upperKey, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
   }
 
@@ -104,15 +105,23 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   static final class B3Extractor<C, K> implements TraceContext.Extractor<C> {
     final B3Propagation<K> propagation;
+    final B3SingleExtractor<C, K> singleExtractor;
     final Getter<C, K> getter;
 
     B3Extractor(B3Propagation<K> propagation, Getter<C, K> getter) {
       this.propagation = propagation;
+      this.singleExtractor =
+          new B3SingleExtractor<>(propagation.lowerKey, propagation.upperKey, getter);
       this.getter = getter;
     }
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
+
+      // try to extract single-header format
+      TraceContextOrSamplingFlags extracted = singleExtractor.extract(carrier);
+      if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) return extracted;
+
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
       String sampled = getter.get(carrier, propagation.sampledKey);
