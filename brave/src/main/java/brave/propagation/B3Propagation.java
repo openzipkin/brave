@@ -1,13 +1,13 @@
 package brave.propagation;
 
 import brave.propagation.B3SinglePropagation.B3SingleExtractor;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.HexCodec.toLowerHex;
 import static brave.propagation.B3SinglePropagation.LOWER_NAME;
 import static brave.propagation.B3SinglePropagation.UPPER_NAME;
+import static java.util.Arrays.asList;
 
 /**
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
@@ -61,7 +61,7 @@ public final class B3Propagation<K> implements Propagation<K> {
     this.sampledKey = keyFactory.create(SAMPLED_NAME);
     this.debugKey = keyFactory.create(FLAGS_NAME);
     this.fields = Collections.unmodifiableList(
-        Arrays.asList(traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+        asList(lowerKey, upperKey, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
   }
 
