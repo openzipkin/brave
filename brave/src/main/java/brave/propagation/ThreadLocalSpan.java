@@ -95,6 +95,7 @@ public class ThreadLocalSpan {
    * This keeps track of a stack with a normal array dequeue. Redundant stacking of the same span is
    * not possible because there is no api to place an arbitrary span in scope using this api.
    */
+  @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
   final ThreadLocal<Deque<SpanAndScope>> currentSpanInScope =
       new ThreadLocal<Deque<SpanAndScope>>() {
         @Override protected Deque<SpanAndScope> initialValue() {

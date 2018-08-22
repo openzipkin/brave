@@ -45,6 +45,7 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
 
   static final ThreadLocal<TraceContext> DEFAULT = new ThreadLocal<>();
 
+  @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
   final ThreadLocal<TraceContext> local;
 
   ThreadLocalCurrentTraceContext(
