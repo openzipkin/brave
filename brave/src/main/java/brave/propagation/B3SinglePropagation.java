@@ -48,8 +48,7 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
   static final String LOWER_NAME = "b3";
   static final String UPPER_NAME = "B3";
 
-  final K lowerKey;
-  final K upperKey;
+  final K lowerKey, upperKey;
   final List<K> fields;
 
   B3SinglePropagation(KeyFactory<K> keyFactory) {
@@ -87,8 +86,7 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
   }
 
   static final class B3SingleExtractor<C, K> implements TraceContext.Extractor<C> {
-    final K lowerKey;
-    final K upperKey;
+    final K lowerKey, upperKey;
     final Getter<C, K> getter;
 
     B3SingleExtractor(K lowerKey, K upperKey, Getter<C, K> getter) {

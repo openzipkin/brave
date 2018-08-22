@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.test.propagation.PropagationTest;
 import java.util.Map;
@@ -83,5 +84,18 @@ public class B3PropagationTest extends PropagationTest<String> {
 
     assertThat(result.sampled())
         .isTrue();
+  }
+
+  @Test public void extractTraceContext_singleHeaderFormat() {
+    MapEntry mapEntry = new MapEntry();
+
+    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7");
+
+    TraceContext result = propagation().extractor(mapEntry).extract(map).context();
+
+    assertThat(result.traceIdString())
+        .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
+    assertThat(HexCodec.toLowerHex(result.spanId()))
+        .isEqualTo("00f067aa0ba902b7");
   }
 }

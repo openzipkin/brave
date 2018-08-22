@@ -49,13 +49,7 @@ public final class B3Propagation<K> implements Propagation<K> {
    * "1" implies sampled and is a request to override collection-tier sampling policy.
    */
   static final String FLAGS_NAME = "X-B3-Flags";
-  final K lowerKey; // only for extraction
-  final K upperKey; // only for extraction
-  final K traceIdKey;
-  final K spanIdKey;
-  final K parentSpanIdKey;
-  final K sampledKey;
-  final K debugKey;
+  final K lowerKey, upperKey, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
 
   B3Propagation(KeyFactory<K> keyFactory) {
