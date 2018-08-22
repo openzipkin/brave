@@ -33,7 +33,7 @@ final class B3SingleFormat {
     Boolean sampled = context.sampled();
     if (sampled != null) {
       result[pos++] = '-';
-      result[pos++] = (sampled == Boolean.TRUE) ? '1' : '0';
+      result[pos++] = sampled ? '1' : '0';
     }
 
     long b3Id = context.parentIdAsLong();

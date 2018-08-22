@@ -120,7 +120,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // try to extract single-header format
       TraceContextOrSamplingFlags extracted = singleExtractor.extract(carrier);
-      if (extracted != TraceContextOrSamplingFlags.EMPTY) return extracted;
+      if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) return extracted;
 
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
