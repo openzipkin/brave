@@ -11,7 +11,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -297,6 +296,8 @@ public class ITKafkaTracing {
     assertThat(result)
         .withFailMessage("Producer span was not reported")
         .isNotNull();
+    // ensure the span finished
+    assertThat(result.durationAsLong()).isPositive();
     return result;
   }
 
@@ -306,6 +307,8 @@ public class ITKafkaTracing {
     assertThat(result)
         .withFailMessage("Consumer span was not reported")
         .isNotNull();
+    // ensure the span finished
+    assertThat(result.durationAsLong()).isPositive();
     return result;
   }
 }

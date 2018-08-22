@@ -17,7 +17,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import zipkin2.Endpoint;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
@@ -71,11 +70,13 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     Span listenerSpan = tracer.newChild(consumerSpan.context()).name("on-message");
 
     if (!consumerSpan.isNoop()) {
-      consumerSpan.start();
+      long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
+      consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
       tagReceivedMessageProperties(consumerSpan, message.getMessageProperties());
-      consumerSpan.finish();
-      listenerSpan.start(); // not using scoped span as we want to start late
+      long consumerFinish = timestamp + 1L; // save a clock reading
+      consumerSpan.finish(consumerFinish);
+      listenerSpan.start(consumerFinish); // not using scoped span as we want to start late
     }
 
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
