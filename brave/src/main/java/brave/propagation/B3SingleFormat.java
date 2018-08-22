@@ -1,22 +1,47 @@
 package brave.propagation;
 
+import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import java.util.Collections;
 import java.util.logging.Logger;
 
-import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
 import static brave.internal.TraceContexts.FLAG_DEBUG;
 import static brave.internal.TraceContexts.FLAG_SAMPLED;
 import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
 import static java.util.logging.Level.FINE;
 
-/** Implements the progation format described in {@link B3SinglePropagation}. */
-final class B3SingleFormat {
+/** Implements the propagation format described in {@link B3SinglePropagation}. */
+public final class B3SingleFormat {
   static final Logger logger = Logger.getLogger(B3SingleFormat.class.getName());
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 2 + 16 + 2; // traceid128-spanid-1-parentid-1
 
-  static String writeB3SingleFormat(TraceContext context) {
+  /**
+   * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
+   * parent ID}, to a hyphen delimited string.
+   *
+   * <p>This is appropriate for receivers who understand "b3" single header format, and always do
+   * work in a child span. For example, message consumers always do work in child spans, so message
+   * producers can use this format to save bytes on the wire. On the other hand, RPC clients should
+   * use {@link #writeB3SingleFormat(TraceContext)} instead, as RPC servers often share a trace ID.
+   */
+  public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
+    return writeB3SingleFormat(context, 0L);
+  }
+
+  /**
+   * Writes all B3 defined fields in the trace context to a hyphen delimited string. This is
+   * appropriate for receivers who understand "b3" single header format.
+   *
+   * <p>The {@link TraceContext#parentIdAsLong() parent ID} is serialized in case the receiver is
+   * an RPC server. When downstream is known to be a messaging consumer, or a server that does not
+   * share trace IDs, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
+   */
+  public static String writeB3SingleFormat(TraceContext context) {
+    return writeB3SingleFormat(context, context.parentIdAsLong());
+  }
+
+  static String writeB3SingleFormat(TraceContext context, long parentId) {
     char[] result = getCharBuffer();
     int pos = 0;
     long traceIdHigh = context.traceIdHigh();
@@ -36,10 +61,9 @@ final class B3SingleFormat {
       result[pos++] = sampled ? '1' : '0';
     }
 
-    long b3Id = context.parentIdAsLong();
-    if (b3Id != 0) {
+    if (parentId != 0) {
       result[pos++] = '-';
-      writeHexLong(result, pos, b3Id);
+      writeHexLong(result, pos, parentId);
       pos += 16;
     }
 
@@ -50,7 +74,7 @@ final class B3SingleFormat {
     return new String(result, 0, pos);
   }
 
-  static @Nullable TraceContextOrSamplingFlags maybeB3SingleFormat(String b3) {
+  @Nullable public static TraceContextOrSamplingFlags parseB3SingleFormat(String b3) {
     int length = b3.length();
     if (length == 1) { // assume just tracing flag. ex "b3: 1"
       int flags = parseSampledFlag(b3, 0);
@@ -73,49 +97,83 @@ final class B3SingleFormat {
       return null;
     }
 
+    int pos = 0;
     long traceIdHigh, traceId;
-    boolean traceId128 = b3.charAt(32) == '-';
-    if (traceId128) {
-      traceIdHigh = lenientLowerHexToUnsignedLong(b3, 0, 16);
-      traceId = lenientLowerHexToUnsignedLong(b3, 16, 32);
+    if (b3.charAt(32) == '-') {
+      traceIdHigh = tryParse16HexCharacters(b3, pos, length);
+      pos += 16; // upper 64 bits of the trace ID
+      traceId = tryParse16HexCharacters(b3, pos, length);
     } else {
       traceIdHigh = 0L;
-      traceId = lenientLowerHexToUnsignedLong(b3, 0, 16);
+      traceId = tryParse16HexCharacters(b3, pos, length);
     }
+    pos += 16; // traceId
+    if (!checkHyphen(b3, pos)) return null;
+    pos++; // consume the hyphen
 
     if (traceIdHigh == 0L && traceId == 0L) {
       logger.fine("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0");
       return null;
     }
 
-    int pos = traceId128 ? 33 : 17; // traceid-
-    long spanId = lenientLowerHexToUnsignedLong(b3, pos, pos + 16);
+    long spanId = tryParse16HexCharacters(b3, pos, length);
     if (spanId == 0L) {
       logger.log(FINE, "Invalid input: expected a 16 lower hex span ID at offset {0}", pos);
       return null;
     }
-    pos += 17; // spanid-
+    pos += 16; // spanid
 
     int flags = 0;
-    if (length == pos + 1 || (length > pos + 2 && b3.charAt(pos + 1) == '-')) {
-      flags = parseSampledFlag(b3, pos++);
-      if (flags == 0) return null;
-      pos++; // skip the dash
-    }
-
     long parentId = 0L;
-    if (length >= pos + 17) {
-      parentId = lenientLowerHexToUnsignedLong(b3, pos, pos + 16);
-      if (parentId == 0L) {
-        logger.log(FINE, "Invalid input: expected a 16 lower hex parent ID at offset {0}", pos);
+    if (length > pos) {
+      // If we are at this point, we have more than just traceId-spanId.
+      // If the sampling field is present, we'll have a delimiter 2 characters from now. Ex "-1"
+      // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
+      // Therefore, if we have less than two characters, the input is truncated.
+      if (length == pos + 1) {
+        logger.fine("Invalid input: truncated");
         return null;
       }
-      pos += 17;
-    }
+      if (!checkHyphen(b3, pos)) return null;
+      pos++; // consume the hyphen
 
-    if (length == pos + 1) {
-      flags = parseDebugFlag(b3, pos, flags);
-      if (flags == 0) return null;
+      // If our position is at the end of the string, or another delimiter is one character past our
+      // position, try to read sampled status.
+      if (length == pos + 1 || delimiterFollowsPos(b3, pos, length)) {
+        flags = parseSampledFlag(b3, pos);
+        if (flags == 0) return null;
+        pos++; // consume the sampled status
+      }
+
+      if (length > pos) {
+        // If we are at this point, we have only two possible fields left, parent and/or debug
+        // If the parent field is present, we'll have at least 17 characters. If it is absent, but debug
+        // is present, we'll have we'll have a delimiter 2 characters from now. Ex "-1"
+        // Therefore, if we have less than two characters, the input is truncated.
+        if (length == pos + 1) {
+          logger.fine("Invalid input: truncated");
+          return null;
+        }
+
+        if (length > pos + 2) {
+          if (!checkHyphen(b3, pos)) return null;
+          pos++; // consume the hyphen
+          parentId = tryParse16HexCharacters(b3, pos, length);
+          if (parentId == 0L) {
+            logger.log(FINE, "Invalid input: expected a 16 lower hex parent ID at offset {0}", pos);
+            return null;
+          }
+          pos += 16;
+        }
+
+        // the only option at this point is that we have a debug flag
+        if (length == pos + 2) {
+          if (!checkHyphen(b3, pos)) return null;
+          pos++; // consume the hyphen
+          flags = parseDebugFlag(b3, pos, flags);
+          if (flags == 0) return null;
+        }
+      }
     }
 
     return TraceContextOrSamplingFlags.create(new TraceContext(
@@ -126,6 +184,22 @@ final class B3SingleFormat {
         spanId,
         Collections.emptyList()
     ));
+  }
+
+  static boolean checkHyphen(String b3, int pos) {
+    if (b3.charAt(pos) == '-') return true;
+    logger.log(FINE, "Invalid input: expected a hyphen(-) delimiter offset {0}", pos);
+    return false;
+  }
+
+  static boolean delimiterFollowsPos(String b3, int pos, int length) {
+    return (length >= pos + 2) && b3.charAt(pos + 1) == '-';
+  }
+
+  static long tryParse16HexCharacters(CharSequence lowerHex, int index, int length) {
+    int endIndex = index + 16;
+    if (endIndex > length) return 0L;
+    return HexCodec.lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
   }
 
   static int parseSampledFlag(String b3, int pos) {

@@ -102,7 +102,7 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
       if (b3 == null) b3 = getter.get(carrier, upperKey);
       if (b3 == null) return TraceContextOrSamplingFlags.EMPTY;
 
-      TraceContextOrSamplingFlags extracted = B3SingleFormat.maybeB3SingleFormat(b3);
+      TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3);
       // if null, the trace context is malformed so return empty
       if (extracted == null) return TraceContextOrSamplingFlags.EMPTY;
       return extracted;
