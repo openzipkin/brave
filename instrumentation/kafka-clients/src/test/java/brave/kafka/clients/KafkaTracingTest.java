@@ -1,13 +1,20 @@
 package brave.kafka.clients;
 
 import brave.Span;
+import brave.Tracing;
 import brave.internal.HexCodec;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
+import static brave.kafka.clients.KafkaPropagation.GETTER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class KafkaTracingTest extends BaseTracingTest {
 
@@ -91,5 +98,24 @@ public class KafkaTracingTest extends BaseTracingTest {
 
     kafkaTracing.nextSpan(fakeRecord);
     assertThat(fakeRecord.headers().headers("foo")).isNotEmpty();
+  }
+
+  @Test public void failsFastIfPropagationDoesntSupportSingleHeader() {
+    // Fake propagation because B3 by default does support single header extraction!
+    Propagation<String> propagation = mock(Propagation.class);
+    when(propagation.extractor(GETTER)).thenReturn(carrier -> {
+      assertThat(carrier.lastHeader("b3")).isNotNull(); // sanity check
+      return TraceContextOrSamplingFlags.EMPTY; // pretend we couldn't parse
+    });
+
+    Propagation.Factory propagationFactory = mock(Propagation.Factory.class);
+    when(propagationFactory.create(Propagation.KeyFactory.STRING)).thenReturn(propagation);
+
+    assertThatThrownBy(() -> KafkaTracing.newBuilder(
+        Tracing.newBuilder().propagationFactory(propagationFactory).build())
+        .b3SingleFormat(true)
+        .build()
+    ).hasMessage(
+        "KafkaTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
   }
 }

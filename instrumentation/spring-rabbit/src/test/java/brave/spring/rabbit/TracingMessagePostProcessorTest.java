@@ -71,6 +71,20 @@ public class TracingMessagePostProcessorTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
+  @Test public void should_add_b3_single_header_to_message() {
+    TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
+        SpringRabbitTracing.newBuilder(tracing).b3SingleFormat(true).build()
+    );
+
+    Message message = MessageBuilder.withBody(new byte[0]).build();
+    Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
+
+    assertThat(postProcessMessage.getMessageProperties().getHeaders())
+      .containsOnlyKeys("b3");
+    assertThat(postProcessMessage.getMessageProperties().getHeaders().get("b3").toString())
+        .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
+  }
+
   @Test public void should_report_span() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     tracingMessagePostProcessor.postProcessMessage(message);

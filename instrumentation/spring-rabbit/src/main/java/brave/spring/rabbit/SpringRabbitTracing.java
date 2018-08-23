@@ -1,6 +1,8 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -16,6 +18,9 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import static brave.spring.rabbit.SpringRabbitPropagation.B3_SINGLE_TEST_HEADERS;
+import static brave.spring.rabbit.SpringRabbitPropagation.TEST_CONTEXT;
 
 /**
  * Factory for Brave instrumented Spring Rabbit classes.
@@ -39,6 +44,7 @@ public final class SpringRabbitTracing {
   public static final class Builder {
     final Tracing tracing;
     String remoteServiceName = "rabbitmq";
+    boolean b3SingleFormat;
 
     Builder(Tracing tracing) {
       this.tracing = tracing;
@@ -50,6 +56,17 @@ public final class SpringRabbitTracing {
      */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    /**
+     * When true, only writes a single {@link B3SingleFormat b3 header} for outbound propagation.
+     *
+     * <p>Use this to reduce overhead. Note: normal {@link Tracing#propagation()} is used to parse
+     * incoming headers. The implementation must be able to read "b3" headers.
+     */
+    public Builder b3SingleFormat(boolean b3SingleFormat) {
+      this.b3SingleFormat = b3SingleFormat;
       return this;
     }
 
@@ -68,7 +85,16 @@ public final class SpringRabbitTracing {
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(SpringRabbitPropagation.GETTER);
-    this.injector = tracing.propagation().injector(SpringRabbitPropagation.SETTER);
+    if (builder.b3SingleFormat) {
+      TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
+      if (!TEST_CONTEXT.equals(testExtraction)) {
+        throw new IllegalArgumentException(
+            "SpringRabbitTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+      }
+      this.injector = SpringRabbitPropagation.B3_SINGLE_INJECTOR;
+    } else {
+      this.injector = tracing.propagation().injector(SpringRabbitPropagation.SETTER);
+    }
     this.propagationKeys = builder.tracing.propagation().keys();
     this.remoteServiceName = builder.remoteServiceName;
     Field beforePublishPostProcessorsField = null;

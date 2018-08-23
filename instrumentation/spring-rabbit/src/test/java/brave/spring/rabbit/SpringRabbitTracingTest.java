@@ -1,7 +1,9 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.Propagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collection;
 import org.junit.After;
 import org.junit.Test;
@@ -11,7 +13,11 @@ import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 import zipkin2.reporter.Reporter;
 
-import static org.assertj.core.api.Java6Assertions.assertThat;
+import static brave.spring.rabbit.SpringRabbitPropagation.GETTER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class SpringRabbitTracingTest {
   Tracing tracing = Tracing.newBuilder()
@@ -74,5 +80,24 @@ public class SpringRabbitTracingTest {
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
         .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+  }
+
+  @Test public void failsFastIfPropagationDoesntSupportSingleHeader() {
+    // Fake propagation because B3 by default does support single header extraction!
+    Propagation<String> propagation = mock(Propagation.class);
+    when(propagation.extractor(GETTER)).thenReturn(carrier -> {
+      assertThat(carrier.getHeaders().get("b3")).isNotNull(); // sanity check
+      return TraceContextOrSamplingFlags.EMPTY; // pretend we couldn't parse
+    });
+
+    Propagation.Factory propagationFactory = mock(Propagation.Factory.class);
+    when(propagationFactory.create(Propagation.KeyFactory.STRING)).thenReturn(propagation);
+
+    assertThatThrownBy(() -> SpringRabbitTracing.newBuilder(
+        Tracing.newBuilder().propagationFactory(propagationFactory).build())
+        .b3SingleFormat(true)
+        .build()
+    ).hasMessage(
+        "SpringRabbitTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
   }
 }
