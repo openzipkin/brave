@@ -3,12 +3,109 @@ package brave.propagation;
 import org.junit.Test;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
+import static brave.propagation.B3SingleFormat.writeB3SingleAsBytes;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class B3SingleFormatTest {
   String traceId = "0000000000000001";
   String parentId = "0000000000000002";
   String spanId = "0000000000000003";
+
+  @Test public void writeB3SingleFormat_notYetSampled() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceId + "-" + spanId)
+        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormat_unsampled() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceId + "-" + spanId + "-0")
+        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormat_sampled() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).sampled(true).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceId + "-" + spanId + "-1")
+        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormat_debug() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceId + "-" + spanId + "-1-1")
+        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormat_parent() {
+    TraceContext context =
+        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(true).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceId + "-" + spanId + "-1-" + parentId)
+        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormatWithoutParent_notYetSampled() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).build();
+
+    assertThat(writeB3SingleFormatWithoutParentId(context))
+        .isEqualTo(traceId + "-" + spanId)
+        .isEqualTo(new String(writeB3SingleFormatWithoutParentIdAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormatWithoutParent_unsampled() {
+    TraceContext context =
+        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(false).build();
+
+    assertThat(writeB3SingleFormatWithoutParentId(context))
+        .isEqualTo(traceId + "-" + spanId + "-0")
+        .isEqualTo(new String(writeB3SingleFormatWithoutParentIdAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormatWithoutParent_sampled() {
+    TraceContext context =
+        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(true).build();
+
+    assertThat(writeB3SingleFormatWithoutParentId(context))
+        .isEqualTo(traceId + "-" + spanId + "-1")
+        .isEqualTo(new String(writeB3SingleFormatWithoutParentIdAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormatWithoutParent_debug() {
+    TraceContext context =
+        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).debug(true).build();
+
+    assertThat(writeB3SingleFormatWithoutParentId(context))
+        .isEqualTo(traceId + "-" + spanId + "-1-1")
+        .isEqualTo(new String(writeB3SingleFormatWithoutParentIdAsBytes(context), UTF_8));
+  }
+
+  /** for example, parsing a w3c context */
+  @Test public void parseB3SingleFormat_middleOfString() {
+    String input = "b3=" + traceId + traceId + "-" + spanId + ",";
+    assertThat(parseB3SingleFormat(input, 3, input.length() - 1).context())
+        .isEqualToComparingFieldByField(
+            TraceContext.newBuilder().traceIdHigh(1).traceId(1).spanId(3).build()
+        );
+  }
+
+  /** for example, parsing a w3c context */
+  @Test public void parseB3SingleFormat_middleOfString_flags() {
+    String input = "b2=foo,b3=1-1,b4=bar";
+    assertThat(parseB3SingleFormat(input, 10, 13).samplingFlags())
+        .isSameAs(SamplingFlags.DEBUG);
+  }
 
   @Test public void parseB3SingleFormat_idsNotYetSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId).context())
@@ -59,6 +156,11 @@ public class B3SingleFormatTest {
         );
   }
 
+  @Test public void parseB3SingleFormat_idsUnsampled_with_malformed_debug() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0-?"))
+        .isNull(); // instead of raising exception
+  }
+
   @Test public void parseB3SingleFormat_sampledFalse() {
     assertThat(parseB3SingleFormat("0"))
         .isEqualTo(TraceContextOrSamplingFlags.NOT_SAMPLED);
@@ -79,6 +181,26 @@ public class B3SingleFormatTest {
         .isEqualTo(TraceContextOrSamplingFlags.DEBUG);
   }
 
+  @Test public void parseB3SingleFormat_debug_malformed() {
+    assertThat(parseB3SingleFormat("1-?"))
+        .isNull(); // instead of raising exception
+  }
+
+  @Test public void parseB3SingleFormat_malformed_traceId() {
+    assertThat(parseB3SingleFormat(traceId.substring(0, 15) + "?-" + spanId))
+        .isNull(); // instead of raising exception
+  }
+
+  @Test public void parseB3SingleFormat_malformed_id() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15) + "?"))
+        .isNull(); // instead of raising exception
+  }
+
+  @Test public void parseB3SingleFormat_malformed_parentid() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15) + "?"))
+        .isNull(); // instead of raising exception
+  }
+
   @Test public void parseB3SingleFormat_malformed() {
     assertThat(parseB3SingleFormat("not-a-tumor"))
         .isNull(); // instead of raising exception
@@ -90,11 +212,15 @@ public class B3SingleFormatTest {
   }
 
   @Test public void parseB3SingleFormat_truncated() {
+    assertThat(parseB3SingleFormat(""))
+        .isNull(); // instead of raising exception
     assertThat(parseB3SingleFormat("-"))
         .isNull();
     assertThat(parseB3SingleFormat("-1"))
         .isNull();
     assertThat(parseB3SingleFormat("1-"))
+        .isNull();
+    assertThat(parseB3SingleFormat(traceId.substring(0, 15)))
         .isNull();
     assertThat(parseB3SingleFormat(traceId))
         .isNull();
@@ -108,12 +234,16 @@ public class B3SingleFormatTest {
         .isNull();
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-"))
         .isNull();
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15)))
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15)))
         .isNull();
   }
 
   @Test public void parseB3SingleFormat_tooBig() {
+    // overall length is ok, but it is malformed as parent is too long
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + traceId + traceId))
+        .isNull(); // instead of raising exception
+    // overall length is not ok
+    assertThat(parseB3SingleFormat(traceId + traceId + traceId + "-" + spanId + "-" + traceId))
         .isNull();
   }
 }
