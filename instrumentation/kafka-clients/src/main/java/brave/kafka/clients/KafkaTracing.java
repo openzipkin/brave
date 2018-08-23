@@ -3,6 +3,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.propagation.B3SingleFormat;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.List;
@@ -10,6 +11,9 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.header.Headers;
+
+import static brave.kafka.clients.KafkaPropagation.B3_SINGLE_TEST_HEADERS;
+import static brave.kafka.clients.KafkaPropagation.TEST_CONTEXT;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
@@ -25,6 +29,7 @@ public final class KafkaTracing {
   public static final class Builder {
     final Tracing tracing;
     String remoteServiceName = "kafka";
+    boolean b3SingleFormat;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
@@ -37,6 +42,17 @@ public final class KafkaTracing {
      */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    /**
+     * When true, only writes a single {@link B3SingleFormat b3 header} for outbound propagation.
+     *
+     * <p>Use this to reduce overhead. Note: normal {@link Tracing#propagation()} is used to parse
+     * incoming headers. The implementation must be able to read "b3" headers.
+     */
+    public Builder b3SingleFormat(boolean b3SingleFormat) {
+      this.b3SingleFormat = b3SingleFormat;
       return this;
     }
 
@@ -54,7 +70,16 @@ public final class KafkaTracing {
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(KafkaPropagation.GETTER);
-    this.injector = tracing.propagation().injector(KafkaPropagation.SETTER);
+    if (builder.b3SingleFormat) {
+      TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
+      if (!TEST_CONTEXT.equals(testExtraction)) {
+        throw new IllegalArgumentException(
+            "KafkaTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+      }
+      this.injector = KafkaPropagation.B3_SINGLE_INJECTOR;
+    } else {
+      this.injector = tracing.propagation().injector(KafkaPropagation.SETTER);
+    }
     this.propagationKeys = builder.tracing.propagation().keys();
     this.remoteServiceName = builder.remoteServiceName;
   }

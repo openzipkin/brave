@@ -85,6 +85,22 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
+  @Test public void should_add_b3_single_header_to_message() {
+    tracingProducer = KafkaTracing.newBuilder(tracing).b3SingleFormat(true).build()
+        .producer(mockProducer);
+
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+
+    List<Header> headers = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .collect(Collectors.toList());
+
+    assertThat(headers).hasSize(1);
+    assertThat(headers.get(0).key()).isEqualTo("b3");
+    assertThat(new String(headers.get(0).value(), UTF_8))
+        .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
+  }
+
   @Test public void should_call_wrapped_producer() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
