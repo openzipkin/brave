@@ -5,12 +5,8 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import com.rabbitmq.client.Channel;
-import java.util.List;
-import java.util.Map;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
@@ -37,28 +33,16 @@ import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_ROUTING_KEY;
  */
 final class TracingRabbitListenerAdvice implements MethodInterceptor {
 
-  static final Getter<MessageProperties, String> GETTER = new Getter<MessageProperties, String>() {
-    @Override public String get(MessageProperties carrier, String key) {
-      return (String) carrier.getHeaders().get(key);
-    }
-
-    @Override public String toString() {
-      return "MessageProperties::setHeader";
-    }
-  };
-
+  final SpringRabbitTracing springRabbitTracing;
   final Tracing tracing;
   final Tracer tracer;
-  final Extractor<MessageProperties> extractor;
-  final List<String> propagationKeys;
   @Nullable final String remoteServiceName;
 
-  TracingRabbitListenerAdvice(Tracing tracing, @Nullable String remoteServiceName) {
-    this.tracing = tracing;
+  TracingRabbitListenerAdvice(SpringRabbitTracing springRabbitTracing) {
+    this.springRabbitTracing = springRabbitTracing;
+    this.tracing = springRabbitTracing.tracing;
     this.tracer = tracing.tracer();
-    this.extractor = tracing.propagation().extractor(GETTER);
-    this.propagationKeys = tracing.propagation().keys();
-    this.remoteServiceName = remoteServiceName;
+    this.remoteServiceName = springRabbitTracing.remoteServiceName;
   }
 
   /**
@@ -67,7 +51,7 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     Message message = (Message) methodInvocation.getArguments()[1];
-    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(message);
+    TraceContextOrSamplingFlags extracted = springRabbitTracing.extractAndClearHeaders(message);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
     Span consumerSpan = tracer.nextSpan(extracted);
@@ -94,16 +78,6 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     } finally {
       listenerSpan.finish();
     }
-  }
-
-  TraceContextOrSamplingFlags extractAndClearHeaders(Message message) {
-    MessageProperties messageProperties = message.getMessageProperties();
-    TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
-    Map<String, Object> headers = messageProperties.getHeaders();
-    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
-      headers.remove(propagationKeys.get(i));
-    }
-    return extracted;
   }
 
   void setConsumerSpan(Span span, MessageProperties properties) {

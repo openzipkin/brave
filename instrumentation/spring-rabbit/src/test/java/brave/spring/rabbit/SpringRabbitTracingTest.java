@@ -2,6 +2,7 @@ package brave.spring.rabbit;
 
 import brave.Tracing;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import java.util.Collection;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -10,7 +11,6 @@ import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 import zipkin2.reporter.Reporter;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
@@ -28,49 +28,51 @@ public class SpringRabbitTracingTest {
     RabbitTemplate template = new RabbitTemplate();
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
         .extracting("beforePublishPostProcessors")
-        .containsExactly(asList(rabbitTracing.tracingMessagePostProcessor));
+        .allSatisfy(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
+            postProcessor -> postProcessor instanceof TracingMessagePostProcessor
+        ));
   }
 
   @Test public void decorateRabbitTemplate_skips_when_present() {
     RabbitTemplate template = new RabbitTemplate();
-    template.setBeforePublishPostProcessors(rabbitTracing.tracingMessagePostProcessor);
+    template.setBeforePublishPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
         .extracting("beforePublishPostProcessors")
-        .containsExactly(asList(rabbitTracing.tracingMessagePostProcessor));
+        .hasSize(1);
   }
 
   @Test public void decorateRabbitTemplate_appends_when_absent() {
     RabbitTemplate template = new RabbitTemplate();
-    UnzipPostProcessor postProcessor = new UnzipPostProcessor();
-    template.setBeforePublishPostProcessors(postProcessor);
+    template.setBeforePublishPostProcessors(new UnzipPostProcessor());
 
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
         .extracting("beforePublishPostProcessors")
-        .containsExactly(asList(postProcessor, rabbitTracing.tracingMessagePostProcessor));
+        .anySatisfy(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
+            postProcessor -> postProcessor instanceof TracingMessagePostProcessor
+        ));
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_adds_by_default() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .containsExactly(rabbitTracing.tracingRabbitListenerAdvice);
+        .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_skips_when_present() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-    factory.setAdviceChain(rabbitTracing.tracingRabbitListenerAdvice);
+    factory.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .containsExactly(rabbitTracing.tracingRabbitListenerAdvice);
+        .hasSize(1);
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_appends_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-    CacheInterceptor advice = new CacheInterceptor();
-    factory.setAdviceChain(advice);
+    factory.setAdviceChain(new CacheInterceptor());
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .containsExactly(advice, rabbitTracing.tracingRabbitListenerAdvice);
+        .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 }

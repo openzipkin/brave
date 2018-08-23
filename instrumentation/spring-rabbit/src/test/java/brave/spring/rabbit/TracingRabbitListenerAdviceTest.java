@@ -31,8 +31,9 @@ public class TracingRabbitListenerAdviceTest {
       .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .build();
-  TracingRabbitListenerAdvice tracingRabbitListenerAdvice =
-      new TracingRabbitListenerAdvice(tracing, "my-service");
+  TracingRabbitListenerAdvice tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(
+      SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
+  );
   MethodInvocation methodInvocation = mock(MethodInvocation.class);
 
   @After public void close() {
@@ -63,7 +64,7 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(spans)
         .extracting(Span::remoteServiceName)
-        .containsExactly("my-service", null);
+        .containsExactly("my-exchange", null);
   }
 
   @Test public void tags_consumer_span_but_not_listener() throws Throwable {

@@ -5,7 +5,8 @@ import brave.test.propagation.PropagationSetterTest;
 import java.util.Collections;
 import org.springframework.amqp.core.MessageProperties;
 
-import static brave.spring.rabbit.TracingRabbitListenerAdvice.GETTER;
+import static brave.spring.rabbit.SpringRabbitPropagation.GETTER;
+import static brave.spring.rabbit.SpringRabbitPropagation.SETTER;
 
 public class MessagePropertiesSetterTest extends PropagationSetterTest<MessageProperties, String> {
   MessageProperties carrier = new MessageProperties();
@@ -19,7 +20,7 @@ public class MessagePropertiesSetterTest extends PropagationSetterTest<MessagePr
   }
 
   @Override protected Propagation.Setter<MessageProperties, String> setter() {
-    return TracingMessagePostProcessor.SETTER;
+    return SETTER;
   }
 
   @Override protected Iterable<String> read(MessageProperties carrier, String key) {
