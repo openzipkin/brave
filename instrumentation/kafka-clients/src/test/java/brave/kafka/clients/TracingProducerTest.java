@@ -3,6 +3,8 @@ package brave.kafka.clients;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import brave.ScopedSpan;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,6 +30,61 @@ public class TracingProducerTest extends BaseTracingTest {
 
     List<String> expectedHeaders = Arrays.asList(
         "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
+
+
+  @Test
+  public void should_add_b3_headers_to_records_and_try_to_extract() {
+    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    record.headers().add("tx-id", "1".getBytes());
+    tracingProducer.send(record);
+
+    List<String> headerKeys = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .map(Header::key)
+        .collect(Collectors.toList());
+
+    List<String> expectedHeaders = Arrays.asList(
+        "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
+
+  @Test
+  public void should_add_parent_trace_when_context_exist() {
+    ScopedSpan scopedSpan = tracing.tracer().startScopedSpan("main");
+    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    scopedSpan.finish();
+
+    List<String> headerKeys = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .map(Header::key)
+        .collect(Collectors.toList());
+
+    List<String> expectedHeaders = Arrays.asList(
+        "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
+
+    assertThat(headerKeys).containsAll(expectedHeaders);
+  }
+
+  @Test
+  public void should_add_parent_trace_when_context_injected_on_headers() {
+    brave.Span span = tracing.tracer().newTrace().start();
+    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    tracing.propagation().injector(KafkaPropagation.HEADER_SETTER).inject(span.context(), record.headers());
+    span.finish();
+
+    tracingProducer.send(record);
+
+    List<String> headerKeys = mockProducer.history().stream()
+        .flatMap(records -> Arrays.stream(records.headers().toArray()))
+        .map(Header::key)
+        .collect(Collectors.toList());
+
+    List<String> expectedHeaders = Arrays.asList(
+        "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
 
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
