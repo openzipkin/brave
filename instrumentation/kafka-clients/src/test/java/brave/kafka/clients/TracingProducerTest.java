@@ -1,10 +1,9 @@
 package brave.kafka.clients;
 
+import brave.ScopedSpan;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import brave.ScopedSpan;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -17,10 +16,10 @@ import static org.assertj.core.api.Assertions.entry;
 
 public class TracingProducerTest extends BaseTracingTest {
   MockProducer<Object, String> mockProducer = new MockProducer<>();
-  Producer<Object, String> tracingProducer = KafkaTracing.create(tracing).producer(mockProducer);
+  KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
+  Producer<Object, String> tracingProducer = kafkaTracing.producer(mockProducer);
 
-  @Test
-  public void should_add_b3_headers_to_records() {
+  @Test public void should_add_b3_headers_to_records() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<String> headerKeys = mockProducer.history().stream()
@@ -34,10 +33,9 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
-
-  @Test
-  public void should_add_b3_headers_to_records_and_try_to_extract() {
-    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+  @Test public void should_add_b3_headers_to_records_and_try_to_extract() {
+    ProducerRecord<Object, String> record =
+        new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     record.headers().add("tx-id", "1".getBytes());
     tracingProducer.send(record);
 
@@ -52,8 +50,7 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
-  @Test
-  public void should_add_parent_trace_when_context_exist() {
+  @Test public void should_add_parent_trace_when_context_exist() {
     ScopedSpan scopedSpan = tracing.tracer().startScopedSpan("main");
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     scopedSpan.finish();
@@ -69,11 +66,10 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
-  @Test
-  public void should_add_parent_trace_when_context_injected_on_headers() {
+  @Test public void should_add_parent_trace_when_context_injected_on_headers() {
     brave.Span span = tracing.tracer().newTrace().start();
-    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
-    tracing.propagation().injector(KafkaPropagation.HEADER_SETTER).inject(span.context(), record.headers());
+    ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    kafkaTracing.injector.inject(span.context(), record.headers());
     span.finish();
 
     tracingProducer.send(record);
@@ -89,15 +85,13 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
-  @Test
-  public void should_call_wrapped_producer() {
+  @Test public void should_call_wrapped_producer() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     assertThat(mockProducer.history()).hasSize(1);
   }
 
-  @Test
-  public void send_should_set_name() {
+  @Test public void send_should_set_name() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
@@ -106,8 +100,7 @@ public class TracingProducerTest extends BaseTracingTest {
         .containsOnly("send");
   }
 
-  @Test
-  public void send_should_tag_topic_and_key() {
+  @Test public void send_should_tag_topic_and_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
@@ -116,8 +109,7 @@ public class TracingProducerTest extends BaseTracingTest {
         .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
-  @Test
-  public void send_shouldnt_tag_null_key() {
+  @Test public void send_shouldnt_tag_null_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, null, TEST_VALUE));
     mockProducer.completeNext();
 
@@ -126,8 +118,7 @@ public class TracingProducerTest extends BaseTracingTest {
         .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
-  @Test
-  public void send_shouldnt_tag_binary_key() {
+  @Test public void send_shouldnt_tag_binary_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
