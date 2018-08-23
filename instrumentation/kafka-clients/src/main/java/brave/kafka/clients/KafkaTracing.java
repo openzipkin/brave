@@ -5,6 +5,7 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -44,13 +45,17 @@ public final class KafkaTracing {
     }
   }
 
-  private final Tracing tracing;
-  private final TraceContext.Extractor<Headers> extractor;
-  private final String remoteServiceName;
+  final Tracing tracing;
+  final TraceContext.Extractor<Headers> extractor;
+  final TraceContext.Injector<Headers> injector;
+  final List<String> propagationKeys;
+  final String remoteServiceName;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
+    this.extractor = tracing.propagation().extractor(KafkaPropagation.GETTER);
+    this.injector = tracing.propagation().injector(KafkaPropagation.SETTER);
+    this.propagationKeys = builder.tracing.propagation().keys();
     this.remoteServiceName = builder.remoteServiceName;
   }
 
@@ -60,12 +65,12 @@ public final class KafkaTracing {
    * #nextSpan(ConsumerRecord)}.
    */
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
-    return new TracingConsumer<>(tracing, consumer, remoteServiceName);
+    return new TracingConsumer<>(consumer, this);
   }
 
   /** Starts and propagates {@link Span.Kind#PRODUCER} span for each message sent. */
   public <K, V> Producer<K, V> producer(Producer<K, V> producer) {
-    return new TracingProducer<>(tracing, producer, remoteServiceName);
+    return new TracingProducer<>(producer, this);
   }
 
   /**
@@ -76,7 +81,7 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record);
+    TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record.headers());
     Span result = tracing.tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(record, result);
@@ -84,13 +89,19 @@ public final class KafkaTracing {
     return result;
   }
 
-  TraceContextOrSamplingFlags extractAndClearHeaders(ConsumerRecord<?, ?> record) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+  TraceContextOrSamplingFlags extractAndClearHeaders(Headers headers) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(headers);
     // clear propagation headers if we were able to extract a span
     if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
-      tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+      clearHeaders(headers);
     }
     return extracted;
+  }
+
+  void clearHeaders(Headers headers) {
+    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
+      headers.remove(propagationKeys.get(i));
+    }
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */

@@ -3,10 +3,15 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Span.Kind;
 import brave.Tracer;
-import brave.Tracing;
 import brave.internal.Nullable;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -18,25 +23,24 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
 final class TracingProducer<K, V> implements Producer<K, V> {
 
-  final Tracing tracing;
-  final TraceContext.Injector<Headers> injector;
-  final TraceContext.Extractor<Headers> extractor;
   final Producer<K, V> delegate;
+  final KafkaTracing kafkaTracing;
+  final CurrentTraceContext currentTraceContext;
+  final Tracer tracer;
+  final Injector<Headers> injector;
+  final Extractor<Headers> extractor;
   @Nullable final String remoteServiceName;
 
-  TracingProducer(Tracing tracing, Producer<K, V> delegate, @Nullable String remoteServiceName) {
+  TracingProducer(Producer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
-    this.tracing = tracing;
-    this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
-    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
-    this.remoteServiceName = remoteServiceName;
+    this.kafkaTracing = kafkaTracing;
+    this.currentTraceContext = kafkaTracing.tracing.currentTraceContext();
+    this.tracer = kafkaTracing.tracing.tracer();
+    this.injector = kafkaTracing.injector;
+    this.extractor = kafkaTracing.extractor;
+    this.remoteServiceName = kafkaTracing.remoteServiceName;
   }
 
   @Override public void initTransactions() {
@@ -64,25 +68,31 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   }
 
   /**
-   * We wrap the send method to add tracing.
-   * This method is expecting an existing current trace context to create a child span.
-   * If there is no current context, an additional operation will be performed to extract
-   * context from record headers. This could impact performance if no context is injected
-   * on record headers, but is required to propagate context on Kafka Streams instrumentation.
+   * This wraps the send method to add tracing.
+   *
+   * <p>When there is no current span, this attempts to extract one from headers. This is possible
+   * when a call to produce a message happens directly after a tracing consumer received a span. One
+   * example scenario is Kafka Streams instrumentation.
    */
-  @Override public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
-    final Span span;
-    final TraceContext maybeParent = tracing.currentTraceContext().get();
-    //Only if there is no trace context and there are headers available, additional extract is performed
-    if (maybeParent == null && record.headers().toArray().length > 0) {
-      TraceContextOrSamplingFlags traceContextOrSamplingFlags = extractor.extract(record.headers());
-      span = tracing.tracer().nextSpan(traceContextOrSamplingFlags);
+  // TODO: make b3single an option and then note how using this minimizes overhead
+  @Override
+  public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
+    TraceContext maybeParent = currentTraceContext.get();
+    // Unlike message consumers, we try current span before trying extraction. This is the proper
+    // order because the span in scope should take precedence over a potentially stale header entry.
+    //
+    // NOTE: Brave instrumentation used properly does not result in stale header entries, as we
+    // always clear message headers after reading.
+    Span span;
+    if (maybeParent == null) {
+      span = tracer.nextSpan(extractor.extract(record.headers()));
     } else {
-      span = tracing.tracer().nextSpan();
+      span = tracer.newChild(maybeParent);
     }
 
-    tracing.propagation().keys().forEach(key -> record.headers().remove(key));
+    kafkaTracing.clearHeaders(record.headers());
     injector.inject(span.context(), record.headers());
+
     if (!span.isNoop()) {
       if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
@@ -90,7 +100,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).name("send").kind(Kind.PRODUCER).start();
     }
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+
+    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return delegate.send(record, new TracingCallback(span, callback));
     } catch (RuntimeException | Error e) {
       span.error(e).finish(); // finish as an exception means the callback won't finish the span

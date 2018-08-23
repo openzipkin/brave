@@ -314,4 +314,7 @@ public final class B3SingleFormat {
     }
     return charBuffer;
   }
+
+  B3SingleFormat() {
+  }
 }

@@ -2,8 +2,6 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
-import brave.internal.Nullable;
-import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.time.Duration;
@@ -34,18 +32,18 @@ import org.apache.kafka.common.header.Headers;
  */
 final class TracingConsumer<K, V> implements Consumer<K, V> {
 
+  final Consumer<K, V> delegate;
+  final KafkaTracing kafkaTracing;
   final Tracing tracing;
   final Injector<Headers> injector;
-  final Extractor<Headers> extractor;
-  final Consumer<K, V> delegate;
-  @Nullable final String remoteServiceName;
+  final String remoteServiceName;
 
-  TracingConsumer(Tracing tracing, Consumer<K, V> delegate, @Nullable String remoteServiceName) {
+  TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
-    this.tracing = tracing;
-    this.injector = tracing.propagation().injector(KafkaPropagation.HEADER_SETTER);
-    this.extractor = tracing.propagation().extractor(KafkaPropagation.HEADER_GETTER);
-    this.remoteServiceName = remoteServiceName;
+    this.kafkaTracing = kafkaTracing;
+    this.tracing = kafkaTracing.tracing;
+    this.injector = kafkaTracing.injector;
+    this.remoteServiceName = kafkaTracing.remoteServiceName;
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -64,7 +62,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
       List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
       for (int i = 0, length = recordsInPartition.size(); i < length; i++) {
         ConsumerRecord<K, V> record = recordsInPartition.get(i);
-        TraceContextOrSamplingFlags extracted = extractor.extract(record.headers());
+        TraceContextOrSamplingFlags extracted =
+            kafkaTracing.extractAndClearHeaders(record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // make or reuse a span for this topic
@@ -73,7 +72,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           if (span == null) {
             span = tracing.tracer().nextSpan(extracted);
             if (!span.isNoop()) {
-              setConsumerSpan(topic, span, remoteServiceName);
+              setConsumerSpan(topic, span);
               // incur timestamp overhead only once
               if (timestamp == 0L) {
                 timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
@@ -82,20 +81,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             consumerSpansForTopic.put(topic, span);
           }
-          // no need to remove propagation headers as we failed to extract anything
           injector.inject(span.context(), record.headers());
         } else { // we extracted request-scoped data, so cannot share a consumer span.
           Span span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
-            setConsumerSpan(topic, span, remoteServiceName);
+            setConsumerSpan(topic, span);
             // incur timestamp overhead only once
             if (timestamp == 0L) {
               timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
             }
             span.start(timestamp).finish(timestamp); // span won't be shared by other records
           }
-          // remove prior propagation headers from the record
-          tracing.propagation().keys().forEach(key -> record.headers().remove(key));
           injector.inject(span.context(), record.headers());
         }
       }
@@ -279,7 +275,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.wakeup();
   }
 
-  static void setConsumerSpan(String topic, Span span, String remoteServiceName) {
+  void setConsumerSpan(String topic, Span span) {
     span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
     if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
   }

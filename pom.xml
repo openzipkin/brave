@@ -73,6 +73,11 @@
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.1.4.Final</resteasy.version>
+
+    <kafka.version>2.0.0</kafka.version>
+    <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
+    <kafka-junit.version>4.1.2</kafka-junit.version>
+
     <finagle.version>18.7.0</finagle.version>
     <log4j.version>2.11.0</log4j.version>
     <okhttp.version>3.11.0</okhttp.version>
