@@ -1,12 +1,18 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.aopalliance.aop.Advice;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -52,15 +58,19 @@ public final class SpringRabbitTracing {
     }
   }
 
-  final TracingMessagePostProcessor tracingMessagePostProcessor;
-  final TracingRabbitListenerAdvice tracingRabbitListenerAdvice;
+  final Tracing tracing;
+  final Extractor<MessageProperties> extractor;
+  final Injector<MessageProperties> injector;
+  final List<String> propagationKeys;
+  final String remoteServiceName;
   final Field beforePublishPostProcessorsField;
 
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
-    Tracing tracing = builder.tracing;
-    String remoteServiceName = builder.remoteServiceName;
-    this.tracingMessagePostProcessor = new TracingMessagePostProcessor(tracing, remoteServiceName);
-    this.tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(tracing, remoteServiceName);
+    this.tracing = builder.tracing;
+    this.extractor = tracing.propagation().extractor(SpringRabbitPropagation.GETTER);
+    this.injector = tracing.propagation().injector(SpringRabbitPropagation.SETTER);
+    this.propagationKeys = builder.tracing.propagation().keys();
+    this.remoteServiceName = builder.remoteServiceName;
     Field beforePublishPostProcessorsField = null;
     try {
       beforePublishPostProcessorsField =
@@ -74,6 +84,7 @@ public final class SpringRabbitTracing {
   /** Creates an instrumented {@linkplain RabbitTemplate} */
   public RabbitTemplate newRabbitTemplate(ConnectionFactory connectionFactory) {
     RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+    TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(this);
     rabbitTemplate.setBeforePublishPostProcessors(tracingMessagePostProcessor);
     return rabbitTemplate;
   }
@@ -89,6 +100,7 @@ public final class SpringRabbitTracing {
       return rabbitTemplate;
     }
 
+    TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(this);
     // If there are no existing post processors, return only the tracing one
     if (processors == null) {
       rabbitTemplate.setBeforePublishPostProcessors(tracingMessagePostProcessor);
@@ -118,7 +130,7 @@ public final class SpringRabbitTracing {
   ) {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setConnectionFactory(connectionFactory);
-    factory.setAdviceChain(tracingRabbitListenerAdvice);
+    factory.setAdviceChain(new TracingRabbitListenerAdvice(this));
     return factory;
   }
 
@@ -128,9 +140,10 @@ public final class SpringRabbitTracing {
   ) {
     Advice[] chain = factory.getAdviceChain();
 
+    TracingRabbitListenerAdvice tracingAdvice = new TracingRabbitListenerAdvice(this);
     // If there are no existing advice, return only the tracing one
     if (chain == null) {
-      factory.setAdviceChain(tracingRabbitListenerAdvice);
+      factory.setAdviceChain(tracingAdvice);
       return factory;
     }
 
@@ -144,8 +157,22 @@ public final class SpringRabbitTracing {
     // Otherwise, add ours and return
     Advice[] newChain = new Advice[chain.length + 1];
     System.arraycopy(chain, 0, newChain, 0, chain.length);
-    newChain[chain.length] = tracingRabbitListenerAdvice;
+    newChain[chain.length] = tracingAdvice;
     factory.setAdviceChain(newChain);
     return factory;
+  }
+
+  TraceContextOrSamplingFlags extractAndClearHeaders(Message message) {
+    MessageProperties messageProperties = message.getMessageProperties();
+    TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
+    Map<String, Object> headers = messageProperties.getHeaders();
+    clearHeaders(headers);
+    return extracted;
+  }
+
+  void clearHeaders(Map<String, Object> headers) {
+    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
+      headers.remove(propagationKeys.get(i));
+    }
   }
 }

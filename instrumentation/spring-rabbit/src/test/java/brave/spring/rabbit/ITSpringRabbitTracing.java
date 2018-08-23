@@ -193,7 +193,9 @@ public class ITSpringRabbitTracing {
   public static class CommonRabbitConfig {
     @Bean
     public ConnectionFactory connectionFactory() {
-      return new CachingConnectionFactory();
+      CachingConnectionFactory result = new CachingConnectionFactory();
+      result.setAddresses("127.0.0.1");
+      return result;
     }
 
     @Bean

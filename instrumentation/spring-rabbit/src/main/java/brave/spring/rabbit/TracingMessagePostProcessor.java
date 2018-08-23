@@ -1,10 +1,13 @@
 package brave.spring.rabbit;
 
 import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
@@ -17,33 +20,47 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
  */
 final class TracingMessagePostProcessor implements MessagePostProcessor {
 
-  static final Setter<MessageProperties, String> SETTER = new Setter<MessageProperties, String>() {
-    @Override public void put(MessageProperties carrier, String key, String value) {
-      carrier.setHeader(key, value);
-    }
-
-    @Override public String toString() {
-      return "MessageProperties::setHeader";
-    }
-  };
-
-  final Injector<MessageProperties> injector;
+  final SpringRabbitTracing springRabbitTracing;
   final Tracing tracing;
+  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
+  final Injector<MessageProperties> injector;
   @Nullable final String remoteServiceName;
 
-  TracingMessagePostProcessor(Tracing tracing, @Nullable String remoteServiceName) {
-    this.injector = tracing.propagation().injector(SETTER);
-    this.tracing = tracing;
-    this.remoteServiceName = remoteServiceName;
+  TracingMessagePostProcessor(SpringRabbitTracing springRabbitTracing) {
+    this.springRabbitTracing = springRabbitTracing;
+    this.tracing = springRabbitTracing.tracing;
+    this.tracer = tracing.tracer();
+    this.currentTraceContext = tracing.currentTraceContext();
+    this.injector = springRabbitTracing.injector;
+    this.remoteServiceName = springRabbitTracing.remoteServiceName;
   }
 
   @Override public Message postProcessMessage(Message message) {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.PRODUCER).name("publish");
-    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+    TraceContext maybeParent = currentTraceContext.get();
+    // Unlike message consumers, we try current span before trying extraction. This is the proper
+    // order because the span in scope should take precedence over a potentially stale header entry.
+    //
+    // NOTE: Brave instrumentation used properly does not result in stale header entries, as we
+    // always clear message headers after reading.
+    Span span;
+    if (maybeParent == null) {
+      TraceContextOrSamplingFlags extracted = springRabbitTracing.extractAndClearHeaders(message);
+      span = tracer.nextSpan(extracted);
+    } else {
+      span = tracer.newChild(maybeParent);
+      springRabbitTracing.clearHeaders(message.getMessageProperties().getHeaders());
+    }
+
+    if (!span.isNoop()) {
+      span.kind(Span.Kind.PRODUCER).name("publish");
+      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+      // incur timestamp overhead only once
+      long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
+      span.start(timestamp).finish(timestamp);
+    }
+
     injector.inject(span.context(), message.getMessageProperties());
-    // incur timestamp overhead only once
-    long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
-    span.start(timestamp).finish(timestamp);
     return message;
   }
 }

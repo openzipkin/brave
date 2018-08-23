@@ -178,7 +178,7 @@ public abstract class ITHttpServer extends ITHttp {
     Span span = takeSpan();
     assertThat(span.remoteEndpoint())
         .extracting(Endpoint::ipv4)
-        .contains("1.2.3.4");
+        .isEqualTo("1.2.3.4");
   }
 
   @Test

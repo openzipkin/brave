@@ -240,7 +240,7 @@ public class TracerTest {
     assertThat(tracer.toSpan(context))
         .isInstanceOf(RealSpan.class)
         .extracting(Span::context)
-        .containsExactly(context);
+        .isEqualToComparingFieldByField(context);
   }
 
   @Test public void toSpan_noop() {

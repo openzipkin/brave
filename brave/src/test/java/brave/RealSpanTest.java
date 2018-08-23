@@ -49,7 +49,7 @@ public class RealSpanTest {
 
     assertThat(spans).hasSize(1).first()
         .extracting(zipkin2.Span::timestamp)
-        .containsExactly(2L);
+        .isEqualTo(2L);
   }
 
   @Test public void finish() {
@@ -58,7 +58,7 @@ public class RealSpanTest {
 
     assertThat(spans).hasSize(1).first()
         .extracting(zipkin2.Span::duration)
-        .doesNotContainNull();
+        .isNotNull();
   }
 
   @Test public void finish_timestamp() {
@@ -67,7 +67,7 @@ public class RealSpanTest {
 
     assertThat(spans).hasSize(1).first()
         .extracting(zipkin2.Span::duration)
-        .containsExactly(3L);
+        .isEqualTo(3L);
   }
 
   @Test public void abandon() {
