@@ -81,10 +81,10 @@ public final class B3SingleFormat {
   }
 
   /**
-   * Like {@link #writeB3SingleAsBytes(TraceContext)}, but for carriers with byte array or byte
-   * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * Like {@link #writeB3SingleFormatAsBytes(TraceContext)}, but for carriers with byte array or
+   * byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
-  public static byte[] writeB3SingleAsBytes(TraceContext context) {
+  public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
     char[] buffer = getCharBuffer();
     int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
     return asciiToNewByteArray(buffer, length);

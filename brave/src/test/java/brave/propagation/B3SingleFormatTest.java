@@ -3,7 +3,7 @@ package brave.propagation;
 import org.junit.Test;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
-import static brave.propagation.B3SingleFormat.writeB3SingleAsBytes;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatAsBytes;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
@@ -20,7 +20,7 @@ public class B3SingleFormatTest {
 
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId)
-        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeB3SingleFormat_unsampled() {
@@ -28,7 +28,7 @@ public class B3SingleFormatTest {
 
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId + "-0")
-        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeB3SingleFormat_sampled() {
@@ -36,7 +36,7 @@ public class B3SingleFormatTest {
 
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId + "-1")
-        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeB3SingleFormat_debug() {
@@ -44,7 +44,7 @@ public class B3SingleFormatTest {
 
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId + "-1-1")
-        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeB3SingleFormat_parent() {
@@ -53,7 +53,7 @@ public class B3SingleFormatTest {
 
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId + "-1-" + parentId)
-        .isEqualTo(new String(writeB3SingleAsBytes(context), UTF_8));
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeB3SingleFormatWithoutParent_notYetSampled() {
