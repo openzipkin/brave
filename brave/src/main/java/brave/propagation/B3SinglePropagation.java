@@ -4,31 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * This format corresponds to the propagation key "b3" (or "B3"), which delimits fields in the
- * following manner.
- *
- * <pre>{@code
- * b3: {x-b3-traceid}-{x-b3-spanid}-{x-b3-sampled}-{x-b3-parentspanid}-{x-b3-flags}
- * }</pre>
- *
- * <p>For example, a sampled root span would look like:
- * {@code 4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1}
- *
- * <p>Like normal B3, it is valid to omit trace identifiers in order to only propagate a sampling
- * decision. For example, the following are valid downstream hints:
- * <ul>
- * <li>sampled - {@code b3: 1}</li>
- * <li>unsampled - {@code b3: 0}</li>
- * <li>debug - {@code b3: 1-1}</li>
- * </ul>
- * Note: {@code b3: 0-1} isn't supported as it doesn't make sense. Debug boosts ordinary sampling
- * decision to also affect the collector tier. {@code b3: 0-1} would be like saying, don't sample,
- * except at the collector tier, which is impossible as if you don't sample locally the data will
- * never arrive at a collector.
- *
- * <p>See <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
- */
+/** Implements the propagation format described in {@link B3SingleFormat}. */
 public final class B3SinglePropagation<K> implements Propagation<K> {
 
   public static final Factory FACTORY = new Factory() {
@@ -102,7 +78,7 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
       if (b3 == null) b3 = getter.get(carrier, upperKey);
       if (b3 == null) return TraceContextOrSamplingFlags.EMPTY;
 
-      TraceContextOrSamplingFlags extracted = B3SingleFormat.maybeB3SingleFormat(b3);
+      TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3);
       // if null, the trace context is malformed so return empty
       if (extracted == null) return TraceContextOrSamplingFlags.EMPTY;
       return extracted;
