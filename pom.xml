@@ -68,6 +68,7 @@
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.18.RELEASE</spring4.version>
     <spring.version>3.2.18.RELEASE</spring.version>
+
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
     <jetty.version>8.1.22.v20160922</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
@@ -77,6 +78,8 @@
     <kafka.version>2.0.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.2</kafka-junit.version>
+
+    <spring-rabbit.version>1.7.9.RELEASE</spring-rabbit.version>
 
     <finagle.version>18.7.0</finagle.version>
     <log4j.version>2.11.0</log4j.version>
