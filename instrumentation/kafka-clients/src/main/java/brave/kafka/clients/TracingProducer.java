@@ -85,21 +85,23 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     // always clear message headers after reading.
     Span span;
     if (maybeParent == null) {
-      span = tracer.nextSpan(extractor.extract(record.headers()));
+      span = tracer.nextSpan(kafkaTracing.extractAndClearHeaders(record.headers()));
     } else {
+      // If we have a span in scope assume headers were cleared before
       span = tracer.newChild(maybeParent);
     }
 
-    kafkaTracing.clearHeaders(record.headers());
-    injector.inject(span.context(), record.headers());
-
     if (!span.isNoop()) {
+      span.kind(Span.Kind.PRODUCER).name("send");
+      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       if (record.key() instanceof String && !"".equals(record.key())) {
         span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
       }
-      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic()).name("send").kind(Kind.PRODUCER).start();
+      span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+      span.start();
     }
+
+    injector.inject(span.context(), record.headers());
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return delegate.send(record, new TracingCallback(span, callback));

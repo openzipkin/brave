@@ -7,7 +7,6 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
-import brave.propagation.TraceContextOrSamplingFlags;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
@@ -45,11 +44,10 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
     // always clear message headers after reading.
     Span span;
     if (maybeParent == null) {
-      TraceContextOrSamplingFlags extracted = springRabbitTracing.extractAndClearHeaders(message);
-      span = tracer.nextSpan(extracted);
+      span = tracer.nextSpan(springRabbitTracing.extractAndClearHeaders(message));
     } else {
+      // If we have a span in scope assume headers were cleared before
       span = tracer.newChild(maybeParent);
-      springRabbitTracing.clearHeaders(message.getMessageProperties().getHeaders());
     }
 
     if (!span.isNoop()) {

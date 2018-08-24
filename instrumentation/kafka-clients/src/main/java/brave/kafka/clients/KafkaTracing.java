@@ -6,10 +6,13 @@ import brave.Tracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.List;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 import static brave.kafka.clients.KafkaPropagation.B3_SINGLE_TEST_HEADERS;
@@ -64,7 +67,7 @@ public final class KafkaTracing {
   final Tracing tracing;
   final TraceContext.Extractor<Headers> extractor;
   final TraceContext.Injector<Headers> injector;
-  final List<String> propagationKeys;
+  final Set<String> propagationKeys;
   final String remoteServiceName;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
@@ -80,7 +83,7 @@ public final class KafkaTracing {
     } else {
       this.injector = tracing.propagation().injector(KafkaPropagation.SETTER);
     }
-    this.propagationKeys = builder.tracing.propagation().keys();
+    this.propagationKeys = new LinkedHashSet<>(builder.tracing.propagation().keys());
     this.remoteServiceName = builder.remoteServiceName;
   }
 
@@ -123,9 +126,15 @@ public final class KafkaTracing {
     return extracted;
   }
 
+  // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
+  // this could prevent having to go back and clear them later. Another option is to encourage,
+  // then special-case single header propagation. When there's only 1 propagation key, you don't
+  // need to do a loop!
   void clearHeaders(Headers headers) {
-    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
-      headers.remove(propagationKeys.get(i));
+    // Headers::remove creates and consumes an iterator each time. This does one loop instead.
+    for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
+      Header next = i.next();
+      if (propagationKeys.contains(next.key())) i.remove();
     }
   }
 
