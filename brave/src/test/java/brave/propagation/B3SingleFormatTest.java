@@ -3,8 +3,8 @@ package brave.propagation;
 import org.junit.Test;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatAsBytes;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatAsBytes;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -51,7 +51,7 @@ public class B3SingleFormatTest {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build();
 
     assertThat(writeB3SingleFormat(context))
-        .isEqualTo(traceId + "-" + spanId + "-1-1")
+        .isEqualTo(traceId + "-" + spanId + "-d")
         .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
@@ -95,7 +95,7 @@ public class B3SingleFormatTest {
         TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).debug(true).build();
 
     assertThat(writeB3SingleFormatWithoutParentId(context))
-        .isEqualTo(traceId + "-" + spanId + "-1-1")
+        .isEqualTo(traceId + "-" + spanId + "-d")
         .isEqualTo(new String(writeB3SingleFormatWithoutParentIdAsBytes(context), UTF_8));
   }
 
@@ -110,14 +110,14 @@ public class B3SingleFormatTest {
 
   /** for example, parsing a w3c context */
   @Test public void parseB3SingleFormat_middleOfString_debugOnly() {
-    String input = "b2=foo,b3=1-1,b4=bar";
-    assertThat(parseB3SingleFormat(input, 10, 13).samplingFlags())
+    String input = "b2=foo,b3=d,b4=bar";
+    assertThat(parseB3SingleFormat(input, 10, 11).samplingFlags())
         .isSameAs(SamplingFlags.DEBUG);
   }
 
   @Test public void parseB3SingleFormat_middleOfString_incorrectOffset() {
-    String input = "b2=foo,b3=1-1,b4=bar";
-    assertThat(parseB3SingleFormat(input, 10, 14))
+    String input = "b2=foo,b3=d,b4=bar";
+    assertThat(parseB3SingleFormat(input, 10, 12))
         .isNull(); // instead of raising exception
   }
 
@@ -150,29 +150,17 @@ public class B3SingleFormatTest {
   }
 
   @Test public void parseB3SingleFormat_parent_debug() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId + "-1").context())
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d-" + parentId).context())
         .isEqualToComparingFieldByField(
             TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).debug(true).build()
         );
   }
 
   @Test public void parseB3SingleFormat_idsWithDebug() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-1").context())
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d").context())
         .isEqualToComparingFieldByField(
             TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build()
         );
-  }
-
-  @Test public void parseB3SingleFormat_idsUnsampled_with_redundant_debug() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0-0").context())
-        .isEqualToComparingFieldByField(
-            TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build()
-        );
-  }
-
-  @Test public void parseB3SingleFormat_idsUnsampled_with_malformed_debug() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0-?"))
-        .isNull(); // instead of raising exception
   }
 
   @Test public void parseB3SingleFormat_sampledFalse() {
@@ -185,19 +173,9 @@ public class B3SingleFormatTest {
         .isEqualTo(TraceContextOrSamplingFlags.SAMPLED);
   }
 
-  @Test public void parseB3SingleFormat_sampled_redundant() {
-    assertThat(parseB3SingleFormat("1-0"))
-        .isEqualTo(TraceContextOrSamplingFlags.SAMPLED);
-  }
-
   @Test public void parseB3SingleFormat_debug() {
-    assertThat(parseB3SingleFormat("1-1"))
+    assertThat(parseB3SingleFormat("d"))
         .isEqualTo(TraceContextOrSamplingFlags.DEBUG);
-  }
-
-  @Test public void parseB3SingleFormat_debug_malformed() {
-    assertThat(parseB3SingleFormat("1-?"))
-        .isNull(); // instead of raising exception
   }
 
   @Test public void parseB3SingleFormat_malformed_traceId() {
