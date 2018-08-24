@@ -16,28 +16,27 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
       @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
       @Nullable Boolean debug) {
     StringBuilder builder = new StringBuilder();
+    char sampledChar = sampledChar(sampled, debug);
     if (traceId == null) {
-      if (sampled != null) {
-        builder.append(sampled ? '1' : '0');
-        if (debug != null) builder.append(debug ? "-1" : "-0");
-      } else if (Boolean.TRUE.equals(debug)) {
-        builder.append("1-1");
-      }
+      if (sampledChar != 0) builder.append(sampledChar);
     } else {
       builder.append(traceId).append('-').append(spanId);
-      if (sampled != null) builder.append(sampled ? "-1" : "-0");
+      if (sampledChar != 0) builder.append('-').append(sampledChar);
       if (parentId != null) builder.append('-').append(parentId);
-      if (debug != null) builder.append(debug ? "-1" : "-0");
     }
     if (builder.length() != 0) map.put("b3", builder.toString());
   }
 
+  /** returns 0 if there's no sampling status */
+  static char sampledChar(@Nullable Boolean sampled, @Nullable Boolean debug) {
+    if (Boolean.TRUE.equals(debug)) return 'd';
+    if (sampled != null) return sampled ? '1' : '0';
+    return 0;
+  }
+
   @Override protected void inject(Map<String, String> carrier, SamplingFlags flags) {
-    if (flags.debug()) {
-      carrier.put("b3", "1-1");
-    } else if (flags.sampled() != null) {
-      carrier.put("b3", flags.sampled() ? "1" : "0");
-    }
+    char sampledChar = sampledChar(flags.sampled(), flags.debug());
+    if (sampledChar != 0) carrier.put("b3", String.valueOf(sampledChar));
   }
 
   @Test public void extractTraceContext_sampledFalse() {
@@ -83,7 +82,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   @Test public void extractTraceContext_debug_with_ids() {
     MapEntry mapEntry = new MapEntry();
 
-    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1-1");
+    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-d");
 
     TraceContext result = propagation().extractor(mapEntry).extract(map).context();
 

@@ -17,29 +17,34 @@ import static java.util.logging.Level.FINE;
  * following manner.
  *
  * <pre>{@code
- * b3: {x-b3-traceid}-{x-b3-spanid}-{x-b3-sampled}-{x-b3-parentspanid}-{x-b3-flags}
+ * b3: {x-b3-traceid}-{x-b3-spanid}-{if x-b3-flags 'd' else x-b3-sampled}-{x-b3-parentspanid}
  * }</pre>
  *
  * <p>For example, a sampled root span would look like:
  * {@code 4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1}
  *
+ * <p>... a not yet sampled root span would look like:
+ * {@code 4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7}
+ *
+ * <p>... and a debug RPC child span would look like:
+ * {@code 4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-d-5b4185666d50f68b}
+ *
  * <p>Like normal B3, it is valid to omit trace identifiers in order to only propagate a sampling
  * decision. For example, the following are valid downstream hints:
  * <ul>
+ * <li>don't sample - {@code b3: 0}</li>
  * <li>sampled - {@code b3: 1}</li>
- * <li>unsampled - {@code b3: 0}</li>
- * <li>debug - {@code b3: 1-1}</li>
+ * <li>debug - {@code b3: d}</li>
  * </ul>
- * Note: {@code b3: 0-1} isn't supported as it doesn't make sense. Debug boosts ordinary sampling
- * decision to also affect the collector tier. {@code b3: 0-1} would be like saying, don't sample,
- * except at the collector tier, which is impossible as if you don't sample locally the data will
- * never arrive at a collector.
+ *
+ * Reminder: debug (previously {@code X-B3-Flags: 1}), is a boosted sample signal which is recorded
+ * to ensure it reaches the collector tier. See {@link TraceContext#debug()}.
  *
  * <p>See <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3SingleFormat {
   static final Logger logger = Logger.getLogger(B3SingleFormat.class.getName());
-  static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 2 + 16 + 2; // traceid128-spanid-1-parentid-1
+  static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 2 + 16; // traceid128-spanid-1-parentid
 
   /**
    * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
@@ -106,18 +111,13 @@ public final class B3SingleFormat {
     Boolean sampled = context.sampled();
     if (sampled != null) {
       result[pos++] = '-';
-      result[pos++] = sampled ? '1' : '0';
+      result[pos++] = context.debug() ? 'd' : sampled ? '1' : '0';
     }
 
-    if (parentId != 0) {
+    if (parentId != 0L) {
       result[pos++] = '-';
       writeHexLong(result, pos, parentId);
       pos += 16;
-    }
-
-    if (context.debug()) {
-      result[pos++] = '-';
-      result[pos++] = '1';
     }
     return pos;
   }
@@ -134,11 +134,16 @@ public final class B3SingleFormat {
   @Nullable
   public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3, int beginIndex,
       int endIndex) {
-    if (endIndex <= beginIndex + 3) { // possibly sampling flags
-      return decode(b3, beginIndex, endIndex);
+    if (beginIndex == endIndex) {
+      logger.log(FINE, "Invalid input: empty");
+      return null;
     }
 
     int pos = beginIndex;
+    if (pos + 1 == endIndex) { // possibly sampling flags
+      return tryParseSamplingFlags(b3, pos);
+    }
+
     // At this point we minimally expect a traceId-spanId pair
     if (endIndex < 16 + 1 + 16 /* traceid64-spanid */) {
       logger.fine("Invalid input: truncated");
@@ -188,37 +193,23 @@ public final class B3SingleFormat {
       // If our position is at the end of the string, or another delimiter is one character past our
       // position, try to read sampled status.
       if (endIndex == pos + 1 || delimiterFollowsPos(b3, pos, endIndex)) {
-        flags = parseSampledFlag(b3, pos);
+        flags = parseFlags(b3, pos);
         if (flags == 0) return null;
         pos++; // consume the sampled status
       }
 
       if (endIndex > pos) {
-        // If we are at this point, we have only two possible fields left, parent and/or debug
-        // If the parent field is present, we'll have at least 17 characters. If it is absent, but debug
-        // is present, we'll have we'll have a delimiter 2 characters from now. Ex "-1"
-        // Therefore, if we have less than two characters, the input is truncated.
-        if (endIndex == pos + 1) {
+        // If we are at this point, we should have a parent ID, encoded as "-[0-9a-f]{16}"
+        if (endIndex != pos + 17) {
           logger.fine("Invalid input: truncated");
           return null;
         }
 
-        if (endIndex > pos + 2) {
-          if (!checkHyphen(b3, pos++)) return null;
-          parentId = tryParse16HexCharacters(b3, pos, endIndex);
-          if (parentId == 0L) {
-            logger.log(FINE, "Invalid input: expected a 16 lower hex parent ID at offset {0}", pos);
-            return null;
-          }
-          pos += 16;
-        }
-
-        // the only option at this point is that we have a debug flag
-        if (endIndex == pos + 2) {
-          if (!checkHyphen(b3, pos)) return null;
-          pos++; // consume the hyphen
-          flags = parseDebugFlag(b3, pos, flags);
-          if (flags == 0) return null;
+        if (!checkHyphen(b3, pos++)) return null;
+        parentId = tryParse16HexCharacters(b3, pos, endIndex);
+        if (parentId == 0L) {
+          logger.log(FINE, "Invalid input: expected a 16 lower hex parent ID at offset {0}", pos);
+          return null;
         }
       }
     }
@@ -233,25 +224,9 @@ public final class B3SingleFormat {
     ));
   }
 
-  @Nullable
-  static TraceContextOrSamplingFlags decode(CharSequence b3, int beginIndex, int endIndex) {
-    int pos = beginIndex;
-    if (pos == endIndex) { // empty
-      logger.log(FINE, "Invalid input: expected 0 or 1 for sampled at offset {0}", pos);
-      return null;
-    }
-
-    int flags = parseSampledFlag(b3, pos++);
+  static TraceContextOrSamplingFlags tryParseSamplingFlags(CharSequence b3, int pos) {
+    int flags = parseFlags(b3, pos);
     if (flags == 0) return null;
-    if (endIndex > pos) {
-      if (!checkHyphen(b3, pos++)) return null;
-      if (endIndex == pos) {
-        logger.fine("Invalid input: truncated");
-        return null;
-      }
-      flags = parseDebugFlag(b3, pos, flags);
-      if (flags == 0) return null;
-    }
     return TraceContextOrSamplingFlags.create(SamplingFlags.toSamplingFlags(flags));
   }
 
@@ -271,29 +246,24 @@ public final class B3SingleFormat {
     return HexCodec.lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
   }
 
-  static int parseSampledFlag(CharSequence b3, int pos) {
+  static int parseFlags(CharSequence b3, int pos) {
     int flags;
     char sampledChar = b3.charAt(pos);
-    if (sampledChar == '1') {
+    if (sampledChar == 'd') {
+      flags = FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG;
+    } else if (sampledChar == '1') {
       flags = FLAG_SAMPLED_SET | FLAG_SAMPLED;
     } else if (sampledChar == '0') {
       flags = FLAG_SAMPLED_SET;
     } else {
-      logger.log(FINE, "Invalid input: expected 0 or 1 for sampled at offset {0}", pos);
+      logInvalidSampled(pos);
       flags = 0;
     }
     return flags;
   }
 
-  static int parseDebugFlag(CharSequence b3, int pos, int flags) {
-    char lastChar = b3.charAt(pos);
-    if (lastChar == '1') {
-      flags = FLAG_DEBUG | FLAG_SAMPLED_SET | FLAG_SAMPLED;
-    } else if (lastChar != '0') { // redundant to say debug false, but whatev
-      logger.log(FINE, "Invalid input: expected 1 for debug at offset {0}", pos);
-      flags = 0;
-    }
-    return flags;
+  static void logInvalidSampled(int pos) {
+    logger.log(FINE, "Invalid input: expected 0, 1 or d for sampled at offset {0}", pos);
   }
 
   static byte[] asciiToNewByteArray(char[] buffer, int length) {
