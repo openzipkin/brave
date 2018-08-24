@@ -23,6 +23,14 @@ public class B3SingleFormatTest {
         .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
+  @Test public void writeB3SingleFormat_notYetSampled_128() {
+    TraceContext context = TraceContext.newBuilder().traceIdHigh(9).traceId(1).spanId(3).build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo("0000000000000009" + traceId + "-" + spanId)
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
+  }
+
   @Test public void writeB3SingleFormat_unsampled() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build();
 
@@ -101,10 +109,16 @@ public class B3SingleFormatTest {
   }
 
   /** for example, parsing a w3c context */
-  @Test public void parseB3SingleFormat_middleOfString_flags() {
+  @Test public void parseB3SingleFormat_middleOfString_debugOnly() {
     String input = "b2=foo,b3=1-1,b4=bar";
     assertThat(parseB3SingleFormat(input, 10, 13).samplingFlags())
         .isSameAs(SamplingFlags.DEBUG);
+  }
+
+  @Test public void parseB3SingleFormat_middleOfString_incorrectOffset() {
+    String input = "b2=foo,b3=1-1,b4=bar";
+    assertThat(parseB3SingleFormat(input, 10, 14))
+        .isNull(); // instead of raising exception
   }
 
   @Test public void parseB3SingleFormat_idsNotYetSampled() {
@@ -196,7 +210,14 @@ public class B3SingleFormatTest {
         .isNull(); // instead of raising exception
   }
 
-  @Test public void parseB3SingleFormat_malformed_parentid() {
+  @Test public void parseB3SingleFormat_malformed_sampled_parentid() {
+    assertThat(
+        parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15) + "?"))
+        .isNull(); // instead of raising exception
+  }
+
+  // odd but possible to not yet sample a child
+  @Test public void parseB3SingleFormat_malformed_parentid_notYetSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15) + "?"))
         .isNull(); // instead of raising exception
   }
