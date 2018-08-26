@@ -1,7 +1,6 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import brave.Span.Kind;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
@@ -27,7 +26,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   final Producer<K, V> delegate;
   final KafkaTracing kafkaTracing;
-  final CurrentTraceContext currentTraceContext;
+  final CurrentTraceContext current;
   final Tracer tracer;
   final Injector<Headers> injector;
   final Extractor<Headers> extractor;
@@ -36,7 +35,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   TracingProducer(Producer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
     this.kafkaTracing = kafkaTracing;
-    this.currentTraceContext = kafkaTracing.tracing.currentTraceContext();
+    this.current = kafkaTracing.tracing.currentTraceContext();
     this.tracer = kafkaTracing.tracing.tracer();
     this.injector = kafkaTracing.injector;
     this.extractor = kafkaTracing.extractor;
@@ -77,7 +76,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   // TODO: make b3single an option and then note how using this minimizes overhead
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
-    TraceContext maybeParent = currentTraceContext.get();
+    TraceContext maybeParent = current.get();
     // Unlike message consumers, we try current span before trying extraction. This is the proper
     // order because the span in scope should take precedence over a potentially stale header entry.
     //
@@ -104,7 +103,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     injector.inject(span.context(), record.headers());
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return delegate.send(record, new TracingCallback(span, callback));
+      return delegate.send(record, TracingCallback.create(callback, span, current));
     } catch (RuntimeException | Error e) {
       span.error(e).finish(); // finish as an exception means the callback won't finish the span
       throw e;
