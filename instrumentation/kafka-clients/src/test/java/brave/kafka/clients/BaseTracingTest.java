@@ -1,6 +1,8 @@
 package brave.kafka.clients;
 
 import brave.Tracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.google.common.base.Charsets;
 import java.nio.charset.Charset;
@@ -29,9 +31,12 @@ abstract class BaseTracingTest {
 
   ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
       .spanReporter(spans::add)
       .build();
+  CurrentTraceContext current = tracing.currentTraceContext();
   KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
 
   @After public void tearDown() {
