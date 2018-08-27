@@ -76,7 +76,7 @@
           <includes>
             <include>**/ITTracingHandlerInterceptor*.java</include>
             <include>**/BaseITSpanCustomizingHandlerInterceptor*.java</include>
-            <include>**/TestController*.java</include>
+            <include>**/Servlet25TestController*.java</include>
           </includes>
         </configuration>
       </plugin>

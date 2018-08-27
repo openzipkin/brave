@@ -25,8 +25,11 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("mvc.controller.class", "TestController")
-        .containsEntry("mvc.controller.method", "foo");
+        .containsKeys("mvc.controller.class", "mvc.controller.method");
+    assertThat(span.tags().get("mvc.controller.class"))
+        .endsWith("TestController"); // controller has a version prefix
+    assertThat(span.tags().get("mvc.controller.method"))
+        .isEqualTo("foo");
   }
 
   @Configuration
@@ -49,7 +52,7 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
           }
         };
 
-    appContext.register(TestController.class); // the test resource
+    registerTestController(appContext);
     appContext.register(TracingConfig.class); // generic tracing setup
     DispatcherServlet servlet = new DispatcherServlet(appContext);
     servlet.setDispatchOptionsRequest(true);
@@ -59,6 +62,8 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
     // add the trace filter, which lazy initializes a real tracing filter from the spring context
     addDelegatingTracingFilter(handler);
   }
+
+  protected abstract void registerTestController(AnnotationConfigWebApplicationContext appContext);
 
   // abstract because filter registration types were not introduced until servlet 3.0
   protected abstract void addDelegatingTracingFilter(ServletContextHandler handler);

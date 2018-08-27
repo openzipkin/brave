@@ -27,7 +27,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("mvc.controller.class", "TestController")
+        .containsEntry("mvc.controller.class", "Servlet3TestController")
         .containsEntry("mvc.controller.method", "foo");
   }
 
@@ -50,7 +50,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
           }
         };
 
-    appContext.register(TestController.class); // the test resource
+    appContext.register(Servlet3TestController.class); // the test resource
     appContext.register(TracingConfig.class); // generic tracing setup
     DispatcherServlet servlet = new DispatcherServlet(appContext);
     servlet.setDispatchOptionsRequest(true);
