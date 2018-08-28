@@ -1,14 +1,13 @@
 # Brave JMS instrumentation
 This module provides instrumentation for JMS 1.1 or 2.0 consumers,
-producers and listeners.
+producers and listeners. It works by wrapping connections or connection
+factories.
 
 Under the scenes:
 * `TracingMessageProducer` - completes a producer span per message and propagates it via headers.
 * `TracingMessageConsumer` - completes a consumer span on `receive`, resuming a trace in headers if present.
 * `TracingMessageListener` - does the same as `TracingMessageConsumer`, and times the user-supplied listener.
 
-For those using v2.0 JMSxxx types, `TracingJMSContext` addresses these
-concerns as well.
 
 ## Setup
 First, setup the generic Jms component like this:
@@ -18,31 +17,12 @@ jmsTracing = JmsTracing.newBuilder(tracing)
                        .build();
 ```
 
-To use the producer simply wrap it like this:
+Now, just wrap your connection or connection factory
 ```java
-MessageProducer messageProducer = session.createProducer(queue);
-MessageProducer tracingMessageProducer = jmsTracing.producer(messageProducer);
+ConnectionFactory tracingConnectionFactory = jmsTracing.connectionFactory(connectionFactory);
 
-// You'll notice "b3" as a message property
-tracingMessageProducer.send(message);
-```
-
-Same goes for the consumer:
-```java
-MessageConsumer messageConsumer = session.createConsumer(queue);
-MessageConsumer tracingMessageConsumer = jmsTracing.consumer(messageConsumer);
-
-// If you are using message listeners, your work will be traced based on incoming "b3" headers
-tracingMessageConsumer.setListener(myListener);
-```
-
-If you are using a v2.0 `JMSContext`, wrap it like so:
-```java
-JMSContext context = factory.createContext();
-JMSContext tracingContext = TracingJMSContext.create(context, jmsTracing);
-
-// Now, anything supplied by that context will be decorated for tracing.
-tracingContext.createConsumer(jmsQueue);
+// When you later send a message, you'll notice "b3" as a message property
+producer.send(message);
 ```
 
 *NOTE* `JMSConsumer.receiveBodyXXX()` methods are not traced due to lack
