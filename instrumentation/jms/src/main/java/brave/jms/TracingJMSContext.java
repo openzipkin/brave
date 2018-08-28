@@ -18,12 +18,16 @@ import javax.jms.TemporaryQueue;
 import javax.jms.TemporaryTopic;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
+import javax.jms.XAJMSContext;
 
-public final class TracingJMSContext implements JMSContext {
+public class TracingJMSContext implements JMSContext {
   // Not directly linked to JmsTracing to avoid classpath problems with JMS 1.1
   public static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (jmsTracing == null) throw new NullPointerException("jmsTracing == null");
+    if (delegate instanceof XAJMSContext) {
+      return new TracingXAJMSContext((XAJMSContext) delegate, jmsTracing);
+    }
     return new TracingJMSContext(delegate, jmsTracing);
   }
 
