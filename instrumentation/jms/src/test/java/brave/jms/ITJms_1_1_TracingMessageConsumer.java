@@ -4,7 +4,9 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
+import javax.jms.Session;
 import javax.jms.TextMessage;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -18,6 +20,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   @Rule public TestName testName = new TestName();
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
+  Session tracedSession;
   MessageProducer producer;
   MessageConsumer consumer;
   TextMessage message;
@@ -27,11 +30,18 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Before public void setup() throws Exception {
+    tracedSession = jmsTracing.connection(jms.connection)
+        .createSession(false, Session.AUTO_ACKNOWLEDGE);
+
     producer = jms.createQueueProducer();
-    consumer = jmsTracing.messageConsumer(jms.createQueueConsumer());
+    consumer = tracedSession.createConsumer(jms.queue);
     message = jms.createTextMessage("foo");
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
+  }
+
+  @After public void tearDownTraced() throws JMSException {
+    tracedSession.close();
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {

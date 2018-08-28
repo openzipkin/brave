@@ -4,10 +4,13 @@ import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.Map;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
+import javax.jms.Session;
 import javax.jms.TextMessage;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,6 +25,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   @Rule public TestName testName = new TestName();
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
+  Session tracedSession;
   MessageProducer producer;
   MessageConsumer consumer;
   TextMessage message;
@@ -32,7 +36,10 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Before public void setup() throws Exception {
-    producer = jmsTracing.messageProducer(jms.createQueueProducer());
+    tracedSession = jmsTracing.connection(jms.connection)
+        .createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+    producer = tracedSession.createProducer(jms.queue);
     consumer = jms.createQueueConsumer();
     message = jms.createTextMessage("foo");
     for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
@@ -40,6 +47,10 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     }
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
+  }
+
+  @After public void tearDownTraced() throws JMSException {
+    tracedSession.close();
   }
 
   @Test public void should_add_b3_single_property() throws Exception {
@@ -105,7 +116,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Test public void should_record_error() throws Exception {
-    jms.session.close();
+    tracedSession.close();
 
     try {
       producer.send(message);

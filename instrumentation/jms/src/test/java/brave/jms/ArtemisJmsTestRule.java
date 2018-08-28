@@ -26,7 +26,7 @@ class ArtemisJmsTestRule extends JmsTestRule {
   }
 
   JMSContext newContext() {
-    return factory.createContext();
+    return factory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
   }
 
   @Override QueueConnection newQueueConnection() throws Exception {

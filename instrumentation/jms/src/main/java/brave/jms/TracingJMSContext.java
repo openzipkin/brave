@@ -20,9 +20,9 @@ import javax.jms.TextMessage;
 import javax.jms.Topic;
 import javax.jms.XAJMSContext;
 
-public class TracingJMSContext implements JMSContext {
+class TracingJMSContext implements JMSContext {
   // Not directly linked to JmsTracing to avoid classpath problems with JMS 1.1
-  public static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {
+  static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (jmsTracing == null) throw new NullPointerException("jmsTracing == null");
     if (delegate instanceof XAJMSContext) {
@@ -37,9 +37,12 @@ public class TracingJMSContext implements JMSContext {
   TracingJMSContext(JMSContext delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
-    this.delegate.setExceptionListener(TracingExceptionListener.create(
-        delegate.getExceptionListener(), jmsTracing.tracing.tracer()
-    ));
+    ExceptionListener original = delegate.getExceptionListener();
+    if (original != null) {
+      delegate.setExceptionListener(TracingExceptionListener.create(original, jmsTracing));
+    } else {
+      delegate.setExceptionListener(TracingExceptionListener.create(jmsTracing));
+    }
   }
 
   @Override public JMSContext createContext(int sessionMode) {
@@ -67,9 +70,7 @@ public class TracingJMSContext implements JMSContext {
   }
 
   @Override public void setExceptionListener(ExceptionListener listener) {
-    delegate.setExceptionListener(
-        TracingExceptionListener.create(listener, jmsTracing.tracing.tracer())
-    );
+    delegate.setExceptionListener(TracingExceptionListener.create(listener, jmsTracing));
   }
 
   @Override public void start() {

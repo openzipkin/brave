@@ -5,6 +5,7 @@ import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -18,14 +19,22 @@ public class ITTracingJMSConsumer extends JmsTest {
   @Rule public TestName testName = new TestName();
   @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
 
+  JMSContext tracedContext;
   JMSProducer producer;
   JMSConsumer consumer;
   JMSContext context;
 
   @Before public void setup() {
     context = jms.newContext();
+    tracedContext = jmsTracing.connectionFactory(jms.factory)
+        .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+
     producer = context.createProducer();
-    consumer = TracingJMSContext.create(context, jmsTracing).createConsumer(jms.queue);
+    consumer = tracedContext.createConsumer(jms.queue);
+  }
+
+  @After public void tearDownTraced() {
+    tracedContext.close();
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {

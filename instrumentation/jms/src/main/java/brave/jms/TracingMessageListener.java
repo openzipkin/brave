@@ -15,6 +15,12 @@ import static brave.Span.Kind.CONSUMER;
  * message from the JMS destination, and a child span representing the processing of the message.
  */
 final class TracingMessageListener implements MessageListener {
+
+  static MessageListener create(MessageListener delegate, JmsTracing jmsTracing) {
+    if (delegate instanceof TracingMessageListener) return delegate;
+    return new TracingMessageListener(delegate, jmsTracing);
+  }
+
   final MessageListener delegate;
   final JmsTracing jmsTracing;
   final Tracing tracing;

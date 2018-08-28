@@ -8,6 +8,11 @@ import javax.jms.Topic;
 import javax.jms.TopicPublisher;
 
 final class TracingTopicPublisher extends TracingMessageProducer implements TopicPublisher {
+  static TopicPublisher create(TopicPublisher delegate, JmsTracing jmsTracing) {
+    if (delegate == null) throw new NullPointerException("topicPublisher == null");
+    if (delegate instanceof TracingTopicPublisher) return delegate;
+    return new TracingTopicPublisher(delegate, jmsTracing);
+  }
 
   TracingTopicPublisher(TopicPublisher delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);

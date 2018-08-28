@@ -9,6 +9,7 @@ import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,6 +24,7 @@ public class ITTracingJMSProducer extends JmsTest {
   @Rule public TestName testName = new TestName();
   @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
 
+  JMSContext tracedContext;
   JMSProducer producer;
   JMSConsumer consumer;
   JMSContext context;
@@ -30,9 +32,16 @@ public class ITTracingJMSProducer extends JmsTest {
 
   @Before public void setup() {
     context = jms.newContext();
-    producer = TracingJMSContext.create(context, jmsTracing).createProducer();
+    tracedContext = jmsTracing.connectionFactory(jms.factory)
+        .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+
+    producer = tracedContext.createProducer();
     existingProperties.forEach(producer::setProperty);
     consumer = context.createConsumer(jms.queue);
+  }
+
+  @After public void tearDownTraced() {
+    tracedContext.close();
   }
 
   @Test public void should_add_b3_single_property() throws Exception {

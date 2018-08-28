@@ -9,9 +9,23 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
+import javax.jms.QueueSender;
+import javax.jms.TopicPublisher;
 
 class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
     implements MessageProducer {
+
+  static MessageProducer create(MessageProducer delegate, JmsTracing jmsTracing) {
+    if (delegate == null) throw new NullPointerException("messageProducer == null");
+    if (delegate instanceof TracingMessageProducer) return delegate;
+    if (delegate instanceof QueueSender) {
+      return TracingQueueSender.create((QueueSender) delegate, jmsTracing);
+    }
+    if (delegate instanceof TopicPublisher) {
+      return TracingTopicPublisher.create((TopicPublisher) delegate, jmsTracing);
+    }
+    return new TracingMessageProducer(delegate, jmsTracing);
+  }
 
   TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);

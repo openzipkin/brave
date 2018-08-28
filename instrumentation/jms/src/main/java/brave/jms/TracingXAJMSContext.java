@@ -5,6 +5,10 @@ import javax.jms.XAJMSContext;
 import javax.transaction.xa.XAResource;
 
 final class TracingXAJMSContext extends TracingJMSContext implements XAJMSContext {
+  static XAJMSContext create(XAJMSContext delegate, JmsTracing jmsTracing) {
+    if (delegate instanceof TracingXAJMSContext) return delegate;
+    return new TracingXAJMSContext(delegate, jmsTracing);
+  }
 
   TracingXAJMSContext(XAJMSContext delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);

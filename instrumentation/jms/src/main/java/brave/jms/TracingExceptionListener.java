@@ -3,15 +3,18 @@ package brave.jms;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.internal.Nullable;
 import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
 
 final class TracingExceptionListener {
-  static ExceptionListener create(@Nullable ExceptionListener delegate, Tracer tracer) {
-    if (delegate == null) return new TagError(tracer);
+  static ExceptionListener create(JmsTracing jmsTracing) {
+    return new TagError(jmsTracing.tracing.tracer());
+  }
+
+  static ExceptionListener create(ExceptionListener delegate, JmsTracing jmsTracing) {
+    if (delegate == null) throw new NullPointerException("exceptionListener == null");
     if (delegate instanceof TagError) return delegate;
-    return new DelegateAndTagError(delegate, tracer);
+    return new DelegateAndTagError(delegate, jmsTracing.tracing.tracer());
   }
 
   static class TagError implements ExceptionListener {

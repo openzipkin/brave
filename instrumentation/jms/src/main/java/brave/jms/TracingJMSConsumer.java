@@ -27,10 +27,7 @@ final class TracingJMSConsumer extends TracingConsumer<JMSConsumer> implements J
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSRuntimeException {
-    if (!(listener instanceof TracingMessageListener)) {
-      listener = new TracingMessageListener(listener, jmsTracing);
-    }
-    delegate.setMessageListener(listener);
+    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
   }
 
   @Override public Message receive() {

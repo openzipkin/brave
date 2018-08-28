@@ -6,8 +6,14 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.QueueSender;
+import javax.jms.QueueSender;
 
 final class TracingQueueSender extends TracingMessageProducer implements QueueSender {
+  static QueueSender create(QueueSender delegate, JmsTracing jmsTracing) {
+    if (delegate == null) throw new NullPointerException("queueSender == null");
+    if (delegate instanceof TracingQueueSender) return delegate;
+    return new TracingQueueSender(delegate, jmsTracing);
+  }
 
   TracingQueueSender(QueueSender delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);

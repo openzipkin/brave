@@ -5,9 +5,23 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
+import javax.jms.QueueReceiver;
+import javax.jms.TopicSubscriber;
 
 class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
     implements MessageConsumer {
+
+  static MessageConsumer create(MessageConsumer delegate, JmsTracing jmsTracing) {
+    if (delegate == null) throw new NullPointerException("messageConsumer == null");
+    if (delegate instanceof TracingMessageConsumer) return delegate;
+    if (delegate instanceof QueueReceiver) {
+      return TracingQueueReceiver.create((QueueReceiver) delegate, jmsTracing);
+    }
+    if (delegate instanceof TopicSubscriber) {
+      return new TracingTopicSubscriber((TopicSubscriber) delegate, jmsTracing);
+    }
+    return new TracingMessageConsumer(delegate, jmsTracing);
+  }
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
@@ -31,10 +45,7 @@ class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSException {
-    if (!(listener instanceof TracingMessageListener)) {
-      listener = new TracingMessageListener(listener, jmsTracing);
-    }
-    delegate.setMessageListener(listener);
+    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
   }
 
   @Override public Message receive() throws JMSException {
