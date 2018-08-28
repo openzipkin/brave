@@ -10,7 +10,7 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
 
-final class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
+class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
     implements MessageProducer {
 
   TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {

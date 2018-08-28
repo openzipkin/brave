@@ -6,7 +6,7 @@ import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 
-final class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
+class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
     implements MessageConsumer {
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {

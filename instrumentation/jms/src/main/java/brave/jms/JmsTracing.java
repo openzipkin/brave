@@ -15,7 +15,11 @@ import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
+import javax.jms.QueueReceiver;
+import javax.jms.QueueSender;
 import javax.jms.Topic;
+import javax.jms.TopicPublisher;
+import javax.jms.TopicSubscriber;
 
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
@@ -83,11 +87,23 @@ public final class JmsTracing {
 
   public MessageConsumer messageConsumer(MessageConsumer messageConsumer) {
     if (messageConsumer == null) throw new NullPointerException("messageConsumer == null");
+    if (messageConsumer instanceof QueueReceiver) {
+      return new TracingQueueReceiver((QueueReceiver) messageConsumer, this);
+    }
+    if (messageConsumer instanceof TopicSubscriber) {
+      return new TracingTopicSubscriber((TopicSubscriber) messageConsumer, this);
+    }
     return new TracingMessageConsumer(messageConsumer, this);
   }
 
   public MessageProducer messageProducer(MessageProducer messageProducer) {
     if (messageProducer == null) throw new NullPointerException("messageProducer == null");
+    if (messageProducer instanceof QueueSender) {
+      return new TracingQueueSender((QueueSender) messageProducer, this);
+    }
+    if (messageProducer instanceof TopicPublisher) {
+      return new TracingTopicPublisher((TopicPublisher) messageProducer, this);
+    }
     return new TracingMessageProducer(messageProducer, this);
   }
 

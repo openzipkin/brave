@@ -15,6 +15,6 @@ final class TracingXAJMSContext extends TracingJMSContext implements XAJMSContex
   }
 
   @Override public XAResource getXAResource() {
-    return ((XAJMSContext)delegate).getXAResource();
+    return ((XAJMSContext) delegate).getXAResource();
   }
 }
