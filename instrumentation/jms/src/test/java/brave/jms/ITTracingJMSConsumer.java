@@ -1,10 +1,10 @@
 package brave.jms;
 
+import javax.jms.JMSConsumer;
+import javax.jms.JMSContext;
 import javax.jms.JMSException;
+import javax.jms.JMSProducer;
 import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.TextMessage;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -13,25 +13,19 @@ import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
-public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
+/** When adding tests here, also add to {@linkplain brave.jms.ITJms_2_0_TracingMessageConsumer} */
+public class ITTracingJMSConsumer extends JmsTest {
   @Rule public TestName testName = new TestName();
-  @Rule public JmsTestRule jms = newJmsTestRule(testName);
+  @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
 
-  MessageProducer producer;
-  MessageConsumer consumer;
-  TextMessage message;
+  JMSProducer producer;
+  JMSConsumer consumer;
+  JMSContext context;
 
-  JmsTestRule newJmsTestRule(TestName testName) {
-    return new JmsTestRule.ActiveMQ(testName);
-  }
-
-  @Before public void setup() throws Exception {
-    producer = jms.createQueueProducer();
-    consumer = jmsTracing.messageConsumer(jms.createQueueConsumer());
-    message = jms.createTextMessage("foo");
-    // this forces us to handle JMS write concerns!
-    jms.setReadOnlyProperties(message, true);
+  @Before public void setup() {
+    context = jms.newContext();
+    producer = context.createProducer();
+    consumer = TracingJMSContext.create(context, jmsTracing).createConsumer(jms.queue);
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {
@@ -39,7 +33,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
         m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
     );
 
-    producer.send(message);
+    producer.send(jms.queue, "foo");
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.name()).isEqualTo("receive");
@@ -65,9 +59,8 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     });
 
     String parentId = "463ac35c9f6413ad";
-    jms.setReadOnlyProperties(message, false);
-    message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(message);
+    producer.setProperty("b3", parentId + "-" + parentId + "-1");
+    producer.send(jms.queue, "foo");
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
@@ -75,8 +68,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Test public void receive_startsNewTrace() throws Exception {
-    producer.send(message);
-
+    producer.send(jms.queue, "foo");
     consumer.receive();
 
     Span consumerSpan = takeSpan();
@@ -88,9 +80,8 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
   @Test public void receive_resumesTrace() throws Exception {
     String parentId = "463ac35c9f6413ad";
-    jms.setReadOnlyProperties(message, false);
-    message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(message);
+    producer.setProperty("b3", parentId + "-" + parentId + "-1");
+    producer.send(jms.queue, "foo");
 
     Message received = consumer.receive();
     Span consumerSpan = takeSpan();

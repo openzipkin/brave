@@ -2,13 +2,13 @@ package brave.jms;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
 import static brave.Span.Kind.CONSUMER;
-import static brave.jms.TracingMessageConsumer.tagReceivedMessage;
 
 /**
  * The spans are modeled as a duration 1 {@link Span.Kind#CONSUMER} span to represent receiving
@@ -40,13 +40,13 @@ final class TracingMessageListener implements MessageListener {
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
-      tagReceivedMessage(message, consumerSpan);
+      jmsTracing.tagQueueOrTopic(message, consumerSpan);
       long consumerFinish = timestamp + 1L; // save a clock reading
       consumerSpan.finish(consumerFinish);
       listenerSpan.start(consumerFinish); // not using scoped span as we want to start late
     }
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
+    try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       delegate.onMessage(message);
     } catch (Throwable t) {
       listenerSpan.error(t);

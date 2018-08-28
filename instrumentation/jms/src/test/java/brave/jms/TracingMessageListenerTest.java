@@ -14,7 +14,6 @@ import zipkin2.Span;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -81,10 +80,8 @@ public class TracingMessageListenerTest {
         .extracting(Span::kind)
         .containsExactly(CONSUMER, null);
 
-    assertThat(spans.get(0).tags())
-        .containsExactly(entry("jms.destination", "queue://foo"));
-    assertThat(spans.get(1).tags())
-        .isEmpty();
+    assertThat(spans.get(0).tags()).containsEntry("jms.queue", "foo");
+    assertThat(spans.get(1).tags()).isEmpty();
   }
 
   @Test public void consumer_span_starts_before_listener() throws Throwable {

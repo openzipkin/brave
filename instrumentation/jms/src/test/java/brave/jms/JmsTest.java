@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class JmsTest {
 
-  @After public void tearDown() throws Exception {
+  @After public void tearDown() {
     tracing.close();
   }
 

@@ -10,6 +10,7 @@ import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSProducer} */
 public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessageProducer {
 
   @Override JmsTestRule newJmsTestRule(TestName testName) {

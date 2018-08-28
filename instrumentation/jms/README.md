@@ -7,6 +7,9 @@ Under the scenes:
 * `TracingMessageConsumer` - completes a consumer span on `receive`, resuming a trace in headers if present.
 * `TracingMessageListener` - does the same as `TracingMessageConsumer`, and times the user-supplied listener.
 
+For those using v2.0 JMSxxx types, `TracingJMSContext` addresses these
+concerns as well.
+
 ## Setup
 First, setup the generic Jms component like this:
 ```java
@@ -33,10 +36,24 @@ MessageConsumer tracingMessageConsumer = jmsTracing.consumer(messageConsumer);
 tracingMessageConsumer.setListener(myListener);
 ```
 
+If you are using a v2.0 `JMSContext`, wrap it like so:
+```java
+JMSContext context = factory.createContext();
+JMSContext tracingContext = TracingJMSContext.create(context, jmsTracing);
+
+// Now, anything supplied by that context will be decorated for tracing.
+tracingContext.createConsumer(jmsQueue);
+```
+
+*NOTE* `JMSConsumer.receiveBodyXXX()` methods are not traced due to lack
+of hooks. `JMSConsumer.receive()` followed by `Message.getBody()` is the
+most compatible alternative. If you desire other routes, please raise an
+issue or join https://gitter.im/openzipkin/zipkin
+
 ## What's happening?
 Typically, there are three spans involved in message tracing:
 * If a message producer is traced, it completes a PRODUCER span per message
-* If a consumer is traced, receive completes a CONSUMER span based on the incoming message or topic
+* If a consumer is traced, receive completes a CONSUMER span based on the incoming queue or topic
 * Message listener timing is in a child of the CONSUMER span.
 
 ## Custom Message Processing
@@ -60,7 +77,7 @@ If you are in a position where you have a custom processing loop, you can do som
 to trace manually or you can do similar via automatic instrumentation like AspectJ.
 ```java
 void process(Message message) {
-  // Grab any span from the message. The topic and key are automatically tagged
+  // Grab any span from the queue. The queue or topic is automatically tagged
   Span span = jmsTracing.nextSpan(message).name("process").start();
 
   // Below is the same setup as any synchronous tracing

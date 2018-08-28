@@ -1,34 +1,43 @@
 package brave.jms;
 
 import brave.Span;
-import brave.SpanCustomizer;
-import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
 
-import static brave.jms.JmsTracing.JMS_DESTINATION;
-
-final class TracingMessageProducer implements MessageProducer {
-
-  final MessageProducer delegate;
-  final JmsTracing jmsTracing;
-  final Tracer tracer;
-  final CurrentTraceContext current;
-  @Nullable final String remoteServiceName;
+final class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
+    implements MessageProducer {
 
   TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
-    this.delegate = delegate;
-    this.jmsTracing = jmsTracing;
-    this.tracer = jmsTracing.tracing.tracer();
-    this.current = jmsTracing.tracing.currentTraceContext();
-    this.remoteServiceName = jmsTracing.remoteServiceName;
+    super(delegate, jmsTracing);
+  }
+
+  @Override void addB3SingleHeader(TraceContext context, Message message) {
+    JmsTracing.addB3SingleHeader(context, message);
+  }
+
+  @Override void clearPropagationHeaders(Message message) {
+    PropertyFilter.MESSAGE.filterProperties(message, jmsTracing.propagationKeys);
+  }
+
+  @Override TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
+    return jmsTracing.extractAndClearMessage(message);
+  }
+
+  @Override Destination destination(Message message) {
+    try {
+      Destination result = message.getJMSDestination();
+      if (result != null) return result;
+      return delegate.getDestination();
+    } catch (JMSException ignored) {
+      // don't crash on wonky exceptions!
+    }
+    return null;
   }
 
   @Override public void setDisableMessageID(boolean value) throws JMSException {
@@ -211,45 +220,6 @@ final class TracingMessageProducer implements MessageProducer {
       throw e;
     } finally {
       ws.close();
-    }
-  }
-
-  Span createAndStartProducerSpan(Destination destination, Message message) {
-    TraceContext maybeParent = current.get();
-    // Unlike message consumers, we try current span before trying extraction. This is the proper
-    // order because the span in scope should take precedence over a potentially stale header entry.
-    //
-    // NOTE: Brave instrumentation used properly does not result in stale header entries, as we
-    // always clear message headers after reading.
-    Span span;
-    if (maybeParent == null) {
-      span = tracer.nextSpan(jmsTracing.extractAndClearMessage(message));
-    } else {
-      // As JMS is sensitive about write access to headers, we  defensively clear even if it seems
-      // upstream would have cleared (because there is a span in scope!).
-      span = tracer.newChild(maybeParent);
-      jmsTracing.clearPropagationHeaders(message);
-    }
-
-    if (!span.isNoop()) {
-      span.kind(Span.Kind.PRODUCER).name("send");
-      tagProducedMessage(destination, message, span.customizer());
-      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-      span.start();
-    }
-
-    JmsTracing.addB3SingleHeader(span.context(), message);
-    return span;
-  }
-
-  void tagProducedMessage(Destination destination, Message message,
-      SpanCustomizer span) {
-    try {
-      if (destination == null) destination = message.getJMSDestination();
-      if (destination == null) destination = delegate.getDestination();
-      if (destination != null) span.tag(JMS_DESTINATION, destination.toString());
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
     }
   }
 }

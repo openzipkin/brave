@@ -1,6 +1,7 @@
 package brave.jms;
 
 import java.lang.reflect.Field;
+import javax.jms.JMSContext;
 import javax.jms.QueueConnection;
 import javax.jms.TextMessage;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
@@ -16,15 +17,20 @@ import org.junit.rules.TestName;
  */
 class ArtemisJmsTestRule extends JmsTestRule {
   EmbeddedJMSResource resource = new EmbeddedJMSResource();
+  ActiveMQJMSConnectionFactory factory;
 
   ArtemisJmsTestRule(TestName testName) {
     super(testName);
+    factory = new ActiveMQJMSConnectionFactory("vm://0");
+    factory.setProducerMaxRate(1); // to allow tests to use production order
+  }
+
+  JMSContext newContext() {
+    return factory.createContext();
   }
 
   @Override QueueConnection newQueueConnection() throws Exception {
     resource.start();
-    ActiveMQJMSConnectionFactory factory = new ActiveMQJMSConnectionFactory("vm://0");
-    factory.setProducerMaxRate(1); // to allow tests to use production order
     return factory.createQueueConnection();
   }
 
@@ -37,6 +43,7 @@ class ArtemisJmsTestRule extends JmsTestRule {
 
   @Override public void after() {
     super.after();
+    factory.close();
     resource.stop();
   }
 }

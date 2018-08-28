@@ -1,6 +1,7 @@
 package brave.jms;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
@@ -8,17 +9,21 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Topic;
 
-import static brave.jms.TracingMessageConsumer.tagReceivedMessage;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
-  static final String JMS_DESTINATION = "jms.destination";
+  static final String JMS_QUEUE = "jms.queue";
+  static final String JMS_TOPIC = "jms.topic";
+
   static final Getter<Message, String> GETTER = new Getter<Message, String>() {
     @Override public String get(Message carrier, String key) {
       try {
@@ -99,7 +104,7 @@ public final class JmsTracing {
 
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
-      tagReceivedMessage(message, result);
+      tagQueueOrTopic(message, result);
     }
     return result;
   }
@@ -108,22 +113,35 @@ public final class JmsTracing {
     TraceContextOrSamplingFlags extracted = extractor.extract(message);
     // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
     // message writable
-    clearPropagationHeaders(message);
+    PropertyFilter.MESSAGE.filterProperties(message, propagationKeys);
     return extracted;
-  }
-
-  void clearPropagationHeaders(Message message) {
-    try {
-      Messages.filterProperties(message, propagationKeys);
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
-    }
   }
 
   /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
   static void addB3SingleHeader(TraceContext context, Message message) {
     try {
       message.setStringProperty("b3", writeB3SingleFormatWithoutParentId(context));
+    } catch (JMSException ignored) {
+      // don't crash on wonky exceptions!
+    }
+  }
+
+  void tagQueueOrTopic(Message message, SpanCustomizer span) {
+    try {
+      Destination destination = message.getJMSDestination();
+      if (destination != null) tagQueueOrTopic(destination, span);
+    } catch (JMSException e) {
+      // don't crash on wonky exceptions!
+    }
+  }
+
+  void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
+    try {
+      if (destination instanceof Queue) {
+        span.tag(JMS_QUEUE, ((Queue) destination).getQueueName());
+      } else if (destination instanceof Topic) {
+        span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
+      }
     } catch (JMSException ignored) {
       // don't crash on wonky exceptions!
     }

@@ -1,36 +1,25 @@
 package brave.jms;
 
-import brave.Span;
-import brave.SpanCustomizer;
-import brave.Tracer;
-import brave.Tracing;
-import brave.internal.Nullable;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 
-import static brave.jms.JmsTracing.JMS_DESTINATION;
-import static brave.jms.JmsTracing.addB3SingleHeader;
-
-final class TracingMessageConsumer implements MessageConsumer {
-  final MessageConsumer delegate;
-  final JmsTracing jmsTracing;
-  final Tracing tracing;
-  final Tracer tracer;
-  final Extractor<Message> extractor;
-  @Nullable final String remoteServiceName;
+final class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
+    implements MessageConsumer {
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
-    this.delegate = delegate;
-    this.jmsTracing = jmsTracing;
-    this.tracing = jmsTracing.tracing;
-    this.tracer = tracing.tracer();
-    this.extractor = jmsTracing.extractor;
-    this.remoteServiceName = jmsTracing.remoteServiceName;
+    super(delegate, jmsTracing);
+  }
+
+  @Override Destination destination(Message message) {
+    try {
+      return message.getJMSDestination();
+    } catch (JMSException ignored) {
+      // don't crash on wonky exceptions!
+    }
+    return null;
   }
 
   @Override public String getMessageSelector() throws JMSException {
@@ -68,31 +57,5 @@ final class TracingMessageConsumer implements MessageConsumer {
 
   @Override public void close() throws JMSException {
     delegate.close();
-  }
-
-  void handleReceive(Message message) {
-    if (message == null || tracing.isNoop()) return;
-    // remove prior propagation headers from the message
-    TraceContextOrSamplingFlags extracted = jmsTracing.extractAndClearMessage(message);
-    Span span = tracer.nextSpan(extracted);
-    if (!span.isNoop()) {
-      span.name("receive").kind(Span.Kind.CONSUMER);
-      tagReceivedMessage(message, span.customizer());
-      if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-
-      // incur timestamp overhead only once
-      long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
-      span.start(timestamp).finish(timestamp);
-    }
-    addB3SingleHeader(span.context(), message);
-  }
-
-  static void tagReceivedMessage(Message message, SpanCustomizer span) {
-    try {
-      Destination destination = message.getJMSDestination();
-      if (destination != null) span.tag(JMS_DESTINATION, destination.toString());
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
-    }
   }
 }
