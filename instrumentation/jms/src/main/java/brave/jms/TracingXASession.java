@@ -7,7 +7,7 @@ import javax.jms.XASession;
 import javax.jms.XATopicSession;
 import javax.transaction.xa.XAResource;
 
-class TracingXASession extends TracingSession implements XASession {
+class TracingXASession<S extends XASession> extends TracingSession<S> implements XASession {
   static XASession create(XASession delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingXASession) return delegate;
     if (delegate instanceof XAQueueSession) {
@@ -19,18 +19,15 @@ class TracingXASession extends TracingSession implements XASession {
     return new TracingXASession(delegate, jmsTracing);
   }
 
-  final XASession xas;
-
-  TracingXASession(XASession delegate, JmsTracing jmsTracing) {
+  TracingXASession(S delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
-    xas = delegate;
   }
 
   @Override public Session getSession() throws JMSException {
-    return TracingSession.create(xas.getSession(), jmsTracing);
+    return TracingSession.create(delegate.getSession(), jmsTracing);
   }
 
   @Override public XAResource getXAResource() {
-    return xas.getXAResource();
+    return delegate.getXAResource();
   }
 }

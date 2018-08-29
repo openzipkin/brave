@@ -23,7 +23,7 @@ import javax.jms.TopicSession;
 import javax.jms.TopicSubscriber;
 import javax.jms.XASession;
 
-class TracingSession implements Session {
+class TracingSession<S extends Session> implements Session {
   static Session create(Session delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (delegate instanceof TracingSession) return delegate;
@@ -36,13 +36,13 @@ class TracingSession implements Session {
     if (delegate instanceof XASession) {
       return TracingXASession.create((XASession) delegate, jmsTracing);
     }
-    return new TracingSession(delegate, jmsTracing);
+    return new TracingSession<>(delegate, jmsTracing);
   }
 
-  final Session delegate;
+  final S delegate;
   final JmsTracing jmsTracing;
 
-  TracingSession(Session delegate, JmsTracing jmsTracing) {
+  TracingSession(S delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
   }

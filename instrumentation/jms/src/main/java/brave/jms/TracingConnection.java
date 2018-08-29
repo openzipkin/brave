@@ -13,7 +13,7 @@ import javax.jms.Topic;
 import javax.jms.TopicConnection;
 import javax.jms.XAConnection;
 
-class TracingConnection implements Connection {
+class TracingConnection<C extends Connection> implements Connection {
   static Connection create(Connection delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("connection == null");
     if (delegate instanceof TracingConnection) return delegate;
@@ -26,13 +26,13 @@ class TracingConnection implements Connection {
     if (delegate instanceof XAConnection) {
       return new TracingXAConnection((XAConnection) delegate, jmsTracing);
     }
-    return new TracingConnection(delegate, jmsTracing);
+    return new TracingConnection<>(delegate, jmsTracing);
   }
 
-  final Connection delegate;
+  final C delegate;
   final JmsTracing jmsTracing;
 
-  TracingConnection(Connection delegate, JmsTracing jmsTracing) {
+  TracingConnection(C delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
   }

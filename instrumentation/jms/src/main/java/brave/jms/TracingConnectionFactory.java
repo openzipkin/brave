@@ -7,7 +7,7 @@ import javax.jms.JMSException;
 import javax.jms.QueueConnectionFactory;
 import javax.jms.TopicConnectionFactory;
 
-class TracingConnectionFactory implements ConnectionFactory {
+class TracingConnectionFactory<C extends ConnectionFactory> implements ConnectionFactory {
   static ConnectionFactory create(ConnectionFactory delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("connectionFactory == null");
     if (delegate instanceof TracingConnectionFactory) return delegate;
@@ -17,13 +17,13 @@ class TracingConnectionFactory implements ConnectionFactory {
     if (delegate instanceof TopicConnectionFactory) {
       return TracingTopicConnectionFactory.create((TopicConnectionFactory) delegate, jmsTracing);
     }
-    return new TracingConnectionFactory(delegate, jmsTracing);
+    return new TracingConnectionFactory<>(delegate, jmsTracing);
   }
 
-  final ConnectionFactory delegate;
+  final C delegate;
   final JmsTracing jmsTracing;
 
-  TracingConnectionFactory(ConnectionFactory delegate, JmsTracing jmsTracing) {
+  TracingConnectionFactory(C delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
   }

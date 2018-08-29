@@ -6,7 +6,7 @@ import javax.jms.XAQueueConnection;
 import javax.jms.XASession;
 import javax.jms.XATopicConnection;
 
-final class TracingXAConnection extends TracingConnection implements XAConnection {
+final class TracingXAConnection extends TracingConnection<XAConnection> implements XAConnection {
   static XAConnection create(XAConnection delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingXAConnection) return delegate;
     if (delegate instanceof XATopicConnection) {
@@ -23,8 +23,7 @@ final class TracingXAConnection extends TracingConnection implements XAConnectio
   }
 
   @Override public XASession createXASession() throws JMSException {
-    XASession xs = ((XAQueueConnection) delegate).createXASession();
-    return TracingXAQueueSession.create(xs, jmsTracing);
+    return TracingXAQueueSession.create(delegate.createXASession(), jmsTracing);
   }
 }
 

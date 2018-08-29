@@ -7,17 +7,15 @@ import javax.jms.XAJMSContext;
 import javax.jms.XAQueueConnectionFactory;
 import javax.jms.XATopicConnectionFactory;
 
-class TracingXAConnectionFactory implements XAConnectionFactory {
+final class TracingXAConnectionFactory implements XAConnectionFactory {
   static XAConnectionFactory create(XAConnectionFactory delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("xaConnectionFactory == null");
     if (delegate instanceof TracingXAConnectionFactory) return delegate;
     if (delegate instanceof XAQueueConnectionFactory) {
-      return TracingXAQueueConnectionFactory.create((XAQueueConnectionFactory) delegate,
-          jmsTracing);
+      return new TracingXAQueueConnectionFactory((XAQueueConnectionFactory) delegate, jmsTracing);
     }
     if (delegate instanceof XATopicConnectionFactory) {
-      return TracingXATopicConnectionFactory.create((XATopicConnectionFactory) delegate,
-          jmsTracing);
+      return new TracingXATopicConnectionFactory((XATopicConnectionFactory) delegate, jmsTracing);
     }
     return new TracingXAConnectionFactory(delegate, jmsTracing);
   }

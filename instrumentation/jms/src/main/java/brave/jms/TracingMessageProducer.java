@@ -12,7 +12,7 @@ import javax.jms.MessageProducer;
 import javax.jms.QueueSender;
 import javax.jms.TopicPublisher;
 
-class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
+class TracingMessageProducer<M extends MessageProducer> extends TracingProducer<M, Message>
     implements MessageProducer {
 
   static MessageProducer create(MessageProducer delegate, JmsTracing jmsTracing) {
@@ -24,10 +24,10 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
     if (delegate instanceof TopicPublisher) {
       return TracingTopicPublisher.create((TopicPublisher) delegate, jmsTracing);
     }
-    return new TracingMessageProducer(delegate, jmsTracing);
+    return new TracingMessageProducer<>(delegate, jmsTracing);
   }
 
-  TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
+  TracingMessageProducer(M delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
   }
 

@@ -8,7 +8,7 @@ import javax.jms.MessageListener;
 import javax.jms.QueueReceiver;
 import javax.jms.TopicSubscriber;
 
-class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
+class TracingMessageConsumer<C extends MessageConsumer> extends TracingConsumer<C>
     implements MessageConsumer {
 
   static MessageConsumer create(MessageConsumer delegate, JmsTracing jmsTracing) {
@@ -20,10 +20,10 @@ class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
     if (delegate instanceof TopicSubscriber) {
       return TracingTopicSubscriber.create((TopicSubscriber) delegate, jmsTracing);
     }
-    return new TracingMessageConsumer(delegate, jmsTracing);
+    return new TracingMessageConsumer<>(delegate, jmsTracing);
   }
 
-  TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
+  TracingMessageConsumer(C delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
   }
 
