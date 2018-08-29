@@ -13,7 +13,7 @@ By default, the following are added to both http client and server spans:
 * Tags/binary annotations:
   * "http.method", eg "GET"
   * "http.path", which does not include query parameters.
-  * "http.status_code" when the status us not success.
+  * "http.status_code" when the status is not success.
   * "error", when there is an exception or status is >=400
 * Remote IP and port information
 
