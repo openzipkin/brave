@@ -17,20 +17,23 @@ class TracingTopicConnection extends TracingConnection implements TopicConnectio
     return new TracingTopicConnection(delegate, jmsTracing);
   }
 
+  final TopicConnection tc;
+
   TracingTopicConnection(TopicConnection delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    tc = delegate;
   }
 
   @Override public TopicSession createTopicSession(boolean transacted, int acknowledgeMode)
       throws JMSException {
-    TopicSession ts = ((TopicConnection) delegate).createTopicSession(transacted, acknowledgeMode);
+    TopicSession ts = tc.createTopicSession(transacted, acknowledgeMode);
     return TracingTopicSession.create(ts, jmsTracing);
   }
 
   @Override public ConnectionConsumer createConnectionConsumer(Topic topic, String messageSelector,
       ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createConnectionConsumer(topic, messageSelector, sessionPool, maxMessages);
+        tc.createConnectionConsumer(topic, messageSelector, sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 }

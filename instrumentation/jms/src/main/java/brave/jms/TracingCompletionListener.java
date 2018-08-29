@@ -10,7 +10,7 @@ import javax.jms.Message;
  * Decorates, then finishes a producer span. Allows tracing to record the duration between batching
  * for send and actual send.
  */
-final class TracingCompletionListener implements CompletionListener {
+@JMS2_0 final class TracingCompletionListener implements CompletionListener {
   static CompletionListener create(CompletionListener delegate, Span span,
       CurrentTraceContext current) {
     if (span.isNoop()) return delegate; // save allocation overhead

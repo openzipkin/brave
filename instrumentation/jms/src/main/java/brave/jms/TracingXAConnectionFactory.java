@@ -39,11 +39,13 @@ class TracingXAConnectionFactory implements XAConnectionFactory {
     return TracingXAConnection.create(delegate.createXAConnection(userName, password), jmsTracing);
   }
 
-  @Override public XAJMSContext createXAContext() {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public XAJMSContext createXAContext() {
     return TracingXAJMSContext.create(delegate.createXAContext(), jmsTracing);
   }
 
-  @Override public XAJMSContext createXAContext(String userName, String password) {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public XAJMSContext createXAContext(String userName, String password) {
     return TracingXAJMSContext.create(delegate.createXAContext(userName, password), jmsTracing);
   }
 }

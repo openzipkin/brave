@@ -42,11 +42,15 @@ class TracingConnection implements Connection {
     return TracingSession.create(delegate.createSession(transacted, acknowledgeMode), jmsTracing);
   }
 
-  @Override public Session createSession(int sessionMode) throws JMSException {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0
+  public Session createSession(int sessionMode) throws JMSException {
     return TracingSession.create(delegate.createSession(sessionMode), jmsTracing);
   }
 
-  @Override public Session createSession() throws JMSException {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0
+  public Session createSession() throws JMSException {
     return TracingSession.create(delegate.createSession(), jmsTracing);
   }
 
@@ -89,7 +93,8 @@ class TracingConnection implements Connection {
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
-  @Override
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0
   public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String subscriptionName,
       String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
@@ -107,7 +112,9 @@ class TracingConnection implements Connection {
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
-  @Override public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic,
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0
+  public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic,
       String subscriptionName, String messageSelector, ServerSessionPool sessionPool,
       int maxMessages) throws JMSException {
     ConnectionConsumer cc =

@@ -20,8 +20,7 @@ import javax.jms.TextMessage;
 import javax.jms.Topic;
 import javax.jms.XAJMSContext;
 
-class TracingJMSContext implements JMSContext {
-  // Not directly linked to JmsTracing to avoid classpath problems with JMS 1.1
+@JMS2_0 class TracingJMSContext implements JMSContext {
   static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (jmsTracing == null) throw new NullPointerException("jmsTracing == null");
@@ -146,8 +145,7 @@ class TracingJMSContext implements JMSContext {
   }
 
   @Override public JMSConsumer createConsumer(Destination destination) {
-    JMSConsumer cDelegate = delegate.createConsumer(destination);
-    return new TracingJMSConsumer(cDelegate, destination, jmsTracing);
+    return new TracingJMSConsumer(delegate.createConsumer(destination), destination, jmsTracing);
   }
 
   @Override public JMSConsumer createConsumer(Destination destination, String messageSelector) {
@@ -170,8 +168,7 @@ class TracingJMSContext implements JMSContext {
   }
 
   @Override public JMSConsumer createDurableConsumer(Topic topic, String name) {
-    JMSConsumer cDelegate = delegate.createDurableConsumer(topic, name);
-    return new TracingJMSConsumer(cDelegate, topic, jmsTracing);
+    return new TracingJMSConsumer(delegate.createDurableConsumer(topic, name), topic, jmsTracing);
   }
 
   @Override

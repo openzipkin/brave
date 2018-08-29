@@ -16,19 +16,19 @@ class TracingQueueConnectionFactory extends TracingConnectionFactory
     return new TracingQueueConnectionFactory(delegate, jmsTracing);
   }
 
-  final QueueConnectionFactory tcf;
+  final QueueConnectionFactory qcf;
 
   TracingQueueConnectionFactory(QueueConnectionFactory delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
-    this.tcf = delegate;
+    this.qcf = delegate;
   }
 
   @Override public QueueConnection createQueueConnection() throws JMSException {
-    return TracingQueueConnection.create(tcf.createQueueConnection(), jmsTracing);
+    return TracingQueueConnection.create(qcf.createQueueConnection(), jmsTracing);
   }
 
   @Override public QueueConnection createQueueConnection(String userName, String password)
       throws JMSException {
-    return TracingQueueConnection.create(tcf.createQueueConnection(userName, password), jmsTracing);
+    return TracingQueueConnection.create(qcf.createQueueConnection(userName, password), jmsTracing);
   }
 }

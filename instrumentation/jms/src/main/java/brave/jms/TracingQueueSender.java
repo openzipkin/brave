@@ -6,7 +6,6 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.QueueSender;
-import javax.jms.QueueSender;
 
 final class TracingQueueSender extends TracingMessageProducer implements QueueSender {
   static QueueSender create(QueueSender delegate, JmsTracing jmsTracing) {
@@ -15,19 +14,22 @@ final class TracingQueueSender extends TracingMessageProducer implements QueueSe
     return new TracingQueueSender(delegate, jmsTracing);
   }
 
+  final QueueSender qs;
+
   TracingQueueSender(QueueSender delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    this.qs = delegate;
   }
 
   @Override public Queue getQueue() throws JMSException {
-    return ((QueueSender) delegate).getQueue();
+    return qs.getQueue();
   }
 
   @Override public void send(Queue queue, Message message) throws JMSException {
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((QueueSender) delegate).send(queue, message);
+      qs.send(queue, message);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;
@@ -43,7 +45,7 @@ final class TracingQueueSender extends TracingMessageProducer implements QueueSe
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((QueueSender) delegate).send(queue, message, deliveryMode, priority, timeToLive);
+      qs.send(queue, message, deliveryMode, priority, timeToLive);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;

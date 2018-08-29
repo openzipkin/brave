@@ -4,7 +4,7 @@ import javax.jms.JMSContext;
 import javax.jms.XAJMSContext;
 import javax.transaction.xa.XAResource;
 
-final class TracingXAJMSContext extends TracingJMSContext implements XAJMSContext {
+@JMS2_0 final class TracingXAJMSContext extends TracingJMSContext implements XAJMSContext {
   static XAJMSContext create(XAJMSContext delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingXAJMSContext) return delegate;
     return new TracingXAJMSContext(delegate, jmsTracing);

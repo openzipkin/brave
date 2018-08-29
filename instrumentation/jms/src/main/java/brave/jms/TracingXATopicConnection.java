@@ -1,7 +1,6 @@
 package brave.jms;
 
 import javax.jms.JMSException;
-import javax.jms.TopicConnection;
 import javax.jms.XASession;
 import javax.jms.XATopicConnection;
 import javax.jms.XATopicSession;
@@ -12,17 +11,18 @@ final class TracingXATopicConnection extends TracingTopicConnection implements X
     return new TracingXATopicConnection(delegate, jmsTracing);
   }
 
-  TracingXATopicConnection(TopicConnection delegate, JmsTracing jmsTracing) {
+  final XATopicConnection xatc;
+
+  TracingXATopicConnection(XATopicConnection delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    xatc = delegate;
   }
 
   @Override public XATopicSession createXATopicSession() throws JMSException {
-    XATopicSession xts = ((XATopicConnection) delegate).createXATopicSession();
-    return new TracingXATopicSession(xts, jmsTracing);
+    return new TracingXATopicSession(xatc.createXATopicSession(), jmsTracing);
   }
 
   @Override public XASession createXASession() throws JMSException {
-    XASession xs = ((XATopicConnection) delegate).createXASession();
-    return TracingXATopicSession.create(xs, jmsTracing);
+    return TracingXATopicSession.create(xatc.createXASession(), jmsTracing);
   }
 }

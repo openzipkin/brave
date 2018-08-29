@@ -13,23 +13,23 @@ final class TracingQueueSession extends TracingSession implements QueueSession {
     return new TracingQueueSession(delegate, jmsTracing);
   }
 
+  final QueueSession qs;
+
   TracingQueueSession(QueueSession delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    qs = delegate;
   }
 
   @Override public QueueReceiver createReceiver(Queue queue) throws JMSException {
-    QueueReceiver qr = ((QueueSession) delegate).createReceiver(queue);
-    return TracingQueueReceiver.create(qr, jmsTracing);
+    return TracingQueueReceiver.create(qs.createReceiver(queue), jmsTracing);
   }
 
   @Override public QueueReceiver createReceiver(Queue queue, String messageSelector)
       throws JMSException {
-    QueueReceiver qr = ((QueueSession) delegate).createReceiver(queue, messageSelector);
-    return TracingQueueReceiver.create(qr, jmsTracing);
+    return TracingQueueReceiver.create(qs.createReceiver(queue, messageSelector), jmsTracing);
   }
 
   @Override public QueueSender createSender(Queue queue) throws JMSException {
-    QueueSender qs = ((QueueSession) delegate).createSender(queue);
-    return TracingQueueSender.create(qs, jmsTracing);
+    return TracingQueueSender.create(qs.createSender(queue), jmsTracing);
   }
 }

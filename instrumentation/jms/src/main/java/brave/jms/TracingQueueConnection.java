@@ -6,31 +6,35 @@ import javax.jms.Queue;
 import javax.jms.QueueConnection;
 import javax.jms.QueueSession;
 import javax.jms.ServerSessionPool;
+import javax.jms.XAQueueConnection;
 import javax.jms.XAQueueSession;
 
 class TracingQueueConnection extends TracingConnection implements QueueConnection {
   static QueueConnection create(QueueConnection delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingQueueConnection) return delegate;
     if (delegate instanceof XAQueueSession) {
-      return new TracingXAQueueConnection(delegate, jmsTracing);
+      return new TracingXAQueueConnection((XAQueueConnection) delegate, jmsTracing);
     }
     return new TracingQueueConnection(delegate, jmsTracing);
   }
 
+  final QueueConnection qc;
+
   TracingQueueConnection(QueueConnection delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    this.qc = delegate;
   }
 
   @Override public QueueSession createQueueSession(boolean transacted, int acknowledgeMode)
       throws JMSException {
-    QueueSession ts = ((QueueConnection) delegate).createQueueSession(transacted, acknowledgeMode);
-    return TracingQueueSession.create(ts, jmsTracing);
+    return TracingQueueSession.create(qc.createQueueSession(transacted, acknowledgeMode),
+        jmsTracing);
   }
 
   @Override public ConnectionConsumer createConnectionConsumer(Queue queue, String messageSelector,
       ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createConnectionConsumer(queue, messageSelector, sessionPool, maxMessages);
+        qc.createConnectionConsumer(queue, messageSelector, sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 }

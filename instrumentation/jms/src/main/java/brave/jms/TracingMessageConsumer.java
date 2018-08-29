@@ -18,7 +18,7 @@ class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
       return TracingQueueReceiver.create((QueueReceiver) delegate, jmsTracing);
     }
     if (delegate instanceof TopicSubscriber) {
-      return new TracingTopicSubscriber((TopicSubscriber) delegate, jmsTracing);
+      return TracingTopicSubscriber.create((TopicSubscriber) delegate, jmsTracing);
     }
     return new TracingMessageConsumer(delegate, jmsTracing);
   }

@@ -21,9 +21,7 @@ import javax.jms.TextMessage;
 import javax.jms.Topic;
 import javax.jms.TopicSession;
 import javax.jms.TopicSubscriber;
-import javax.jms.XAQueueSession;
 import javax.jms.XASession;
-import javax.jms.XATopicSession;
 
 class TracingSession implements Session {
   static Session create(Session delegate, JmsTracing jmsTracing) {
@@ -137,13 +135,15 @@ class TracingSession implements Session {
     return TracingMessageConsumer.create(mc, jmsTracing);
   }
 
-  @Override public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName)
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName)
       throws JMSException {
     MessageConsumer mc = delegate.createSharedConsumer(topic, sharedSubscriptionName);
     return TracingMessageConsumer.create(mc, jmsTracing);
   }
 
-  @Override public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
       String messageSelector) throws JMSException {
     MessageConsumer mc =
         delegate.createSharedConsumer(topic, sharedSubscriptionName, messageSelector);
@@ -161,35 +161,39 @@ class TracingSession implements Session {
   @Override public TopicSubscriber createDurableSubscriber(Topic topic, String name)
       throws JMSException {
     TopicSubscriber ts = delegate.createDurableSubscriber(topic, name);
-    return (TopicSubscriber) TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingTopicSubscriber.create(ts, jmsTracing);
   }
 
   @Override
   public TopicSubscriber createDurableSubscriber(Topic topic, String name, String messageSelector,
       boolean noLocal) throws JMSException {
     TopicSubscriber ts = delegate.createDurableSubscriber(topic, name, messageSelector, noLocal);
-    return (TopicSubscriber) TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingTopicSubscriber.create(ts, jmsTracing);
   }
 
-  @Override public MessageConsumer createDurableConsumer(Topic topic, String name)
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createDurableConsumer(Topic topic, String name)
       throws JMSException {
     return TracingMessageConsumer.create(delegate.createDurableConsumer(topic, name), jmsTracing);
   }
 
-  @Override
-  public MessageConsumer createDurableConsumer(Topic topic, String name, String messageSelector,
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createDurableConsumer(Topic topic, String name,
+      String messageSelector,
       boolean noLocal) throws JMSException {
     MessageConsumer mc = delegate.createDurableConsumer(topic, name, messageSelector, noLocal);
     return TracingMessageConsumer.create(mc, jmsTracing);
   }
 
-  @Override public MessageConsumer createSharedDurableConsumer(Topic topic, String name)
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createSharedDurableConsumer(Topic topic, String name)
       throws JMSException {
     MessageConsumer mc = delegate.createSharedDurableConsumer(topic, name);
     return TracingMessageConsumer.create(mc, jmsTracing);
   }
 
-  @Override public MessageConsumer createSharedDurableConsumer(Topic topic, String name,
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public MessageConsumer createSharedDurableConsumer(Topic topic, String name,
       String messageSelector) throws JMSException {
     MessageConsumer mc = delegate.createSharedDurableConsumer(topic, name, messageSelector);
     return TracingMessageConsumer.create(mc, jmsTracing);

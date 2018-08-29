@@ -13,25 +13,25 @@ final class TracingTopicSession extends TracingSession implements TopicSession {
     return new TracingTopicSession(delegate, jmsTracing);
   }
 
+  final TopicSession ts;
+
   TracingTopicSession(TopicSession delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    ts = delegate;
   }
 
   @Override public TopicSubscriber createSubscriber(Topic topic) throws JMSException {
-    TopicSubscriber ts = ((TopicSession) delegate).createSubscriber(topic);
-    return (TopicSubscriber) TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingTopicSubscriber.create(ts.createSubscriber(topic), jmsTracing);
   }
 
   @Override
   public TopicSubscriber createSubscriber(Topic topic, String messageSelector, boolean noLocal)
       throws JMSException {
-    TopicSubscriber ts =
-        ((TopicSession) delegate).createSubscriber(topic, messageSelector, noLocal);
-    return (TopicSubscriber) TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingTopicSubscriber.create(ts.createSubscriber(topic, messageSelector, noLocal),
+        jmsTracing);
   }
 
   @Override public TopicPublisher createPublisher(Topic topic) throws JMSException {
-    TopicPublisher tp = ((TopicSession) delegate).createPublisher(topic);
-    return (TopicPublisher) TracingTopicPublisher.create(tp, jmsTracing);
+    return TracingTopicPublisher.create(ts.createPublisher(topic), jmsTracing);
   }
 }

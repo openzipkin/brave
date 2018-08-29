@@ -37,20 +37,24 @@ class TracingConnectionFactory implements ConnectionFactory {
     return TracingConnection.create(delegate.createConnection(userName, password), jmsTracing);
   }
 
-  @Override public JMSContext createContext() {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public JMSContext createContext() {
     return TracingJMSContext.create(delegate.createContext(), jmsTracing);
   }
 
-  @Override public JMSContext createContext(String userName, String password) {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public JMSContext createContext(String userName, String password) {
     return TracingJMSContext.create(delegate.createContext(userName, password), jmsTracing);
   }
 
-  @Override public JMSContext createContext(String userName, String password, int sessionMode) {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public JMSContext createContext(String userName, String password, int sessionMode) {
     JMSContext cDelegate = delegate.createContext(userName, password, sessionMode);
     return TracingJMSContext.create(cDelegate, jmsTracing);
   }
 
-  @Override public JMSContext createContext(int sessionMode) {
+  /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0 public JMSContext createContext(int sessionMode) {
     return TracingJMSContext.create(delegate.createContext(sessionMode), jmsTracing);
   }
 }

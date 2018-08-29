@@ -6,7 +6,7 @@ import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
-final class TracingJMSConsumer extends TracingConsumer<JMSConsumer> implements JMSConsumer {
+@JMS2_0 final class TracingJMSConsumer extends TracingConsumer<JMSConsumer> implements JMSConsumer {
   final Destination destination;
 
   TracingJMSConsumer(JMSConsumer delegate, Destination destination, JmsTracing jmsTracing) {

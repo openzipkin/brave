@@ -14,19 +14,22 @@ final class TracingTopicPublisher extends TracingMessageProducer implements Topi
     return new TracingTopicPublisher(delegate, jmsTracing);
   }
 
+  final TopicPublisher tp;
+
   TracingTopicPublisher(TopicPublisher delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    tp = delegate;
   }
 
   @Override public Topic getTopic() throws JMSException {
-    return ((TopicPublisher) delegate).getTopic();
+    return tp.getTopic();
   }
 
   @Override public void publish(Message message) throws JMSException {
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((TopicPublisher) delegate).publish(message);
+      tp.publish(message);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;
@@ -41,7 +44,7 @@ final class TracingTopicPublisher extends TracingMessageProducer implements Topi
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((TopicPublisher) delegate).publish(message, deliveryMode, priority, timeToLive);
+      tp.publish(message, deliveryMode, priority, timeToLive);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;
@@ -55,7 +58,7 @@ final class TracingTopicPublisher extends TracingMessageProducer implements Topi
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((TopicPublisher) delegate).publish(topic, message);
+      tp.publish(topic, message);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;
@@ -71,7 +74,7 @@ final class TracingTopicPublisher extends TracingMessageProducer implements Topi
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      ((TopicPublisher) delegate).publish(topic, message, deliveryMode, priority, timeToLive);
+      tp.publish(topic, message, deliveryMode, priority, timeToLive);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;

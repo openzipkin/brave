@@ -2,11 +2,10 @@ package brave.jms;
 
 import javax.jms.JMSException;
 import javax.jms.QueueSession;
-import javax.jms.Session;
 import javax.jms.XAQueueSession;
 
 final class TracingXAQueueSession extends TracingXASession implements XAQueueSession {
-  TracingXAQueueSession(Session delegate, JmsTracing jmsTracing) {
+  TracingXAQueueSession(XAQueueSession delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
   }
 

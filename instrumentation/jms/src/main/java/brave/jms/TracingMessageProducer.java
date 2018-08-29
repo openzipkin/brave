@@ -95,12 +95,12 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
-  public void setDeliveryDelay(long deliveryDelay) throws JMSException {
+  @JMS2_0 public void setDeliveryDelay(long deliveryDelay) throws JMSException {
     delegate.setDeliveryDelay(deliveryDelay);
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
-  public long getDeliveryDelay() throws JMSException {
+  @JMS2_0 public long getDeliveryDelay() throws JMSException {
     return delegate.getDeliveryDelay();
   }
 
@@ -172,6 +172,7 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
+  @JMS2_0
   public void send(Message message, CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(null, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
@@ -187,7 +188,7 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
-  public void send(Message message, int deliveryMode, int priority, long timeToLive,
+  @JMS2_0 public void send(Message message, int deliveryMode, int priority, long timeToLive,
       CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(null, message);
     completionListener = TracingCompletionListener.create(completionListener, span, current);
@@ -204,8 +205,8 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
-  public void send(Destination destination, Message message, CompletionListener completionListener)
-      throws JMSException {
+  @JMS2_0 public void send(Destination destination, Message message,
+      CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(destination, message);
     completionListener = TracingCompletionListener.create(completionListener, span, current);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
@@ -221,7 +222,7 @@ class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
-  public void send(Destination destination, Message message, int deliveryMode, int priority,
+  @JMS2_0 public void send(Destination destination, Message message, int deliveryMode, int priority,
       long timeToLive, CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(destination, message);
     completionListener = TracingCompletionListener.create(completionListener, span, current);
