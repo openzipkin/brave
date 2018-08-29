@@ -15,9 +15,13 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
+import javax.jms.QueueConnection;
 import javax.jms.Topic;
+import javax.jms.TopicConnection;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
+import javax.jms.XAQueueConnection;
+import javax.jms.XATopicConnection;
 
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
@@ -87,8 +91,24 @@ public final class JmsTracing {
     return TracingConnection.create(connection, this);
   }
 
+  public QueueConnection queueConnection(QueueConnection connection) {
+    return TracingQueueConnection.create(connection, this);
+  }
+
+  public TopicConnection topicConnection(TopicConnection connection) {
+    return TracingTopicConnection.create(connection, this);
+  }
+
   public XAConnection xaConnection(XAConnection xaConnection) {
     return TracingXAConnection.create(xaConnection, this);
+  }
+
+  public XAQueueConnection xaQueueConnection(XAQueueConnection connection) {
+    return TracingXAQueueConnection.create(connection, this);
+  }
+
+  public XATopicConnection xaTopicConnection(XATopicConnection connection) {
+    return TracingXATopicConnection.create(connection, this);
   }
 
   public ConnectionFactory connectionFactory(ConnectionFactory connectionFactory) {

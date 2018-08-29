@@ -9,7 +9,9 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
+import javax.jms.Queue;
 import javax.jms.QueueSender;
+import javax.jms.Topic;
 import javax.jms.TopicPublisher;
 
 class TracingMessageProducer<M extends MessageProducer> extends TracingProducer<M, Message>
@@ -141,11 +143,40 @@ class TracingMessageProducer<M extends MessageProducer> extends TracingProducer<
     }
   }
 
+  enum SendDestination {
+    DESTINATION {
+      @Override void apply(MessageProducer producer, Destination destination, Message message)
+          throws JMSException {
+        producer.send(destination, message);
+      }
+    },
+    QUEUE {
+      @Override void apply(MessageProducer producer, Destination destination, Message message)
+          throws JMSException {
+        ((QueueSender) producer).send((Queue) destination, message);
+      }
+    },
+    TOPIC {
+      @Override void apply(MessageProducer producer, Destination destination, Message message)
+          throws JMSException {
+        ((TopicPublisher) producer).publish((Topic) destination, message);
+      }
+    };
+
+    abstract void apply(MessageProducer producer, Destination destination, Message message)
+        throws JMSException;
+  }
+
   @Override public void send(Destination destination, Message message) throws JMSException {
+    send(SendDestination.DESTINATION, destination, message);
+  }
+
+  void send(SendDestination sendDestination, Destination destination, Message message)
+      throws JMSException {
     Span span = createAndStartProducerSpan(destination, message);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
-      delegate.send(destination, message);
+      sendDestination.apply(delegate, destination, message);
     } catch (RuntimeException | JMSException | Error e) {
       span.error(e);
       throw e;

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import org.junit.After;
 import org.junit.Rule;
@@ -73,5 +74,9 @@ public abstract class JmsTest {
       result.put(name, headers.getStringProperty(name));
     }
     return result;
+  }
+
+  interface JMSRunnable {
+    void run() throws JMSException;
   }
 }

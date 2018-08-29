@@ -1,11 +1,19 @@
 package brave.jms;
 
+import java.util.Collections;
+import java.util.Map;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
+import javax.jms.QueueReceiver;
+import javax.jms.QueueSender;
+import javax.jms.QueueSession;
 import javax.jms.Session;
 import javax.jms.TextMessage;
+import javax.jms.TopicPublisher;
+import javax.jms.TopicSession;
+import javax.jms.TopicSubscriber;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -21,8 +29,17 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
   Session tracedSession;
-  MessageProducer producer;
-  MessageConsumer consumer;
+  MessageProducer messageProducer;
+  MessageConsumer messageConsumer;
+
+  QueueSession tracedQueueSession;
+  QueueSender queueSender;
+  QueueReceiver queueReceiver;
+
+  TopicSession tracedTopicSession;
+  TopicPublisher topicPublisher;
+  TopicSubscriber topicSubscriber;
+
   TextMessage message;
 
   JmsTestRule newJmsTestRule(TestName testName) {
@@ -32,30 +49,67 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   @Before public void setup() throws Exception {
     tracedSession = jmsTracing.connection(jms.connection)
         .createSession(false, Session.AUTO_ACKNOWLEDGE);
+    tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
+        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+    tracedTopicSession = jmsTracing.topicConnection(jms.topicConnection)
+        .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    producer = jms.createQueueProducer();
-    consumer = tracedSession.createConsumer(jms.queue);
-    message = jms.createTextMessage("foo");
+    messageProducer = jms.session.createProducer(jms.destination);
+    messageConsumer = tracedSession.createConsumer(jms.destination);
+
+    queueSender = jms.queueSession.createSender(jms.queue);
+    queueReceiver = tracedQueueSession.createReceiver(jms.queue);
+
+    topicPublisher = jms.topicSession.createPublisher(jms.topic);
+    topicSubscriber = tracedTopicSession.createSubscriber(jms.topic);
+
+    message = jms.newMessage("foo");
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
   }
 
   @After public void tearDownTraced() throws JMSException {
     tracedSession.close();
+    tracedQueueSession.close();
+    tracedTopicSession.close();
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {
-    consumer.setMessageListener(
+    messageListener_startsNewTrace(
+        () -> messageProducer.send(message),
+        messageConsumer,
+        Collections.singletonMap("jms.queue", jms.destinationName)
+    );
+  }
+
+  @Test public void messageListener_startsNewTrace_queue() throws Exception {
+    messageListener_startsNewTrace(
+        () -> queueSender.send(message),
+        queueReceiver,
+        Collections.singletonMap("jms.queue", jms.queueName)
+    );
+  }
+
+  @Test public void messageListener_startsNewTrace_topic() throws Exception {
+    messageListener_startsNewTrace(
+        () -> topicPublisher.send(message),
+        topicSubscriber,
+        Collections.singletonMap("jms.topic", jms.topicName)
+    );
+  }
+
+  void messageListener_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
+      Map<String, String> consumerTags) throws Exception {
+    messageConsumer.setMessageListener(
         m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
     );
-
-    producer.send(message);
+    send.run();
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
     assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
-    assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
+    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
 
     Span listenerSpan = takeSpan();
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
@@ -65,7 +119,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Test public void messageListener_resumesTrace() throws Exception {
-    consumer.setMessageListener(m -> {
+    queueReceiver.setMessageListener(m -> {
       try {
         // clearing headers ensures later work doesn't try to use the old parent
         assertThat(m.getStringProperty("b3")).isNull();
@@ -77,7 +131,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     String parentId = "463ac35c9f6413ad";
     jms.setReadOnlyProperties(message, false);
     message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(message);
+    queueSender.send(message);
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
@@ -85,9 +139,9 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Test public void receive_startsNewTrace() throws Exception {
-    producer.send(message);
+    queueSender.send(message);
 
-    consumer.receive();
+    queueReceiver.receive();
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.name()).isEqualTo("receive");
@@ -100,9 +154,9 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     String parentId = "463ac35c9f6413ad";
     jms.setReadOnlyProperties(message, false);
     message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(message);
+    queueSender.send(message);
 
-    Message received = consumer.receive();
+    Message received = queueReceiver.receive();
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
 

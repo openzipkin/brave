@@ -3,6 +3,7 @@ package brave.jms;
 import java.util.concurrent.CountDownLatch;
 import javax.jms.CompletionListener;
 import javax.jms.Message;
+import javax.jms.MessageProducer;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -18,7 +19,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
   }
 
   @Test public void should_complete_on_callback() throws Exception {
-    producer.send(message, new CompletionListener() {
+    messageProducer.send(message, new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
       }
@@ -41,22 +42,24 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
 
     // To force error to be on callback thread, we need to wait until message is
     // queued. Only then, shutdown the session.
-    jms.createQueueProducer().send(message, new CompletionListener() {
-      @Override public void onCompletion(Message message) {
-        try {
-          latch.await();
-        } catch (InterruptedException e) {
+    try (MessageProducer producer = jms.session.createProducer(jms.queue)) {
+      producer.send(message, new CompletionListener() {
+        @Override public void onCompletion(Message message) {
+          try {
+            latch.await();
+          } catch (InterruptedException e) {
+          }
         }
-      }
 
-      @Override public void onException(Message message, Exception exception) {
-      }
-    });
+        @Override public void onException(Message message, Exception exception) {
+        }
+      });
+    }
 
     // If we hang here, this means the above send is not actually non-blocking!
     // Assuming messages are sent sequentially in a queue, the below should block until the forme
     // went through.
-    producer.send(message, new CompletionListener() {
+    queueSender.send(message, new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
       }

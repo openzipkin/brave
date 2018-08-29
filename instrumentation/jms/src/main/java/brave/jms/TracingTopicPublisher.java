@@ -53,17 +53,7 @@ final class TracingTopicPublisher extends TracingMessageProducer<TopicPublisher>
   }
 
   @Override public void publish(Topic topic, Message message) throws JMSException {
-    Span span = createAndStartProducerSpan(null, message);
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
-    try {
-      delegate.publish(topic, message);
-    } catch (RuntimeException | JMSException | Error e) {
-      span.error(e);
-      throw e;
-    } finally {
-      ws.close();
-      span.finish();
-    }
+    send(SendDestination.TOPIC, topic, message);
   }
 
   @Override

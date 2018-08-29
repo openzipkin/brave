@@ -23,17 +23,7 @@ final class TracingQueueSender extends TracingMessageProducer<QueueSender> imple
   }
 
   @Override public void send(Queue queue, Message message) throws JMSException {
-    Span span = createAndStartProducerSpan(null, message);
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
-    try {
-      delegate.send(queue, message);
-    } catch (RuntimeException | JMSException | Error e) {
-      span.error(e);
-      throw e;
-    } finally {
-      ws.close();
-      span.finish();
-    }
+    send(SendDestination.QUEUE, queue, message);
   }
 
   @Override
