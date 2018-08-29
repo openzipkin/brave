@@ -53,7 +53,8 @@ public final class B3SingleFormat {
    * <p>This is appropriate for receivers who understand "b3" single header format, and always do
    * work in a child span. For example, message consumers always do work in child spans, so message
    * producers can use this format to save bytes on the wire. On the other hand, RPC clients should
-   * use {@link #writeB3SingleFormat(TraceContext)} instead, as RPC servers often share a trace ID.
+   * use {@link #writeB3SingleFormat(TraceContext)} instead, as RPC servers often share a span ID
+   * with the client.
    */
   public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
     char[] buffer = getCharBuffer();
@@ -76,8 +77,8 @@ public final class B3SingleFormat {
    * appropriate for receivers who understand "b3" single header format.
    *
    * <p>The {@link TraceContext#parentIdAsLong() parent ID} is serialized in case the receiver is
-   * an RPC server. When downstream is known to be a messaging consumer, or a server that does not
-   * share trace IDs, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
+   * an RPC server. When downstream is known to be a messaging consumer, or a server that never
+   * reuses a client's span ID, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
    */
   public static String writeB3SingleFormat(TraceContext context) {
     char[] buffer = getCharBuffer();
