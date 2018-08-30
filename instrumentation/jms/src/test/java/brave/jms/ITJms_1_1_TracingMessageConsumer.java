@@ -119,7 +119,20 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Test public void messageListener_resumesTrace() throws Exception {
-    queueReceiver.setMessageListener(m -> {
+    messageListener_resumesTrace(() -> messageProducer.send(message), messageConsumer);
+  }
+
+  @Test public void messageListener_resumesTrace_queue() throws Exception {
+    messageListener_resumesTrace(() -> queueSender.send(message), queueReceiver);
+  }
+
+  @Test public void messageListener_resumesTrace_topic() throws Exception {
+    messageListener_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
+  }
+
+  void messageListener_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer)
+      throws Exception {
+    messageConsumer.setMessageListener(m -> {
       try {
         // clearing headers ensures later work doesn't try to use the old parent
         assertThat(m.getStringProperty("b3")).isNull();
@@ -131,7 +144,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     String parentId = "463ac35c9f6413ad";
     jms.setReadOnlyProperties(message, false);
     message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    queueSender.send(message);
+    send.run();
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
@@ -139,24 +152,61 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   @Test public void receive_startsNewTrace() throws Exception {
-    queueSender.send(message);
+    receive_startsNewTrace(
+        () -> messageProducer.send(message),
+        messageConsumer,
+        Collections.singletonMap("jms.queue", jms.destinationName)
+    );
+  }
 
-    queueReceiver.receive();
+  @Test public void receive_startsNewTrace_queue() throws Exception {
+    receive_startsNewTrace(
+        () -> queueSender.send(message),
+        queueReceiver,
+        Collections.singletonMap("jms.queue", jms.queueName)
+    );
+  }
+
+  @Test public void receive_startsNewTrace_topic() throws Exception {
+    receive_startsNewTrace(
+        () -> topicPublisher.send(message),
+        topicSubscriber,
+        Collections.singletonMap("jms.topic", jms.topicName)
+    );
+  }
+
+  void receive_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
+      Map<String, String> consumerTags) throws Exception {
+    send.run();
+
+    messageConsumer.receive();
 
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
     assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
-    assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
+    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
   }
 
   @Test public void receive_resumesTrace() throws Exception {
+    receive_resumesTrace(() -> messageProducer.send(message), messageConsumer);
+  }
+
+  @Test public void receive_resumesTrace_queue() throws Exception {
+    receive_resumesTrace(() -> queueSender.send(message), queueReceiver);
+  }
+
+  @Test public void receive_resumesTrace_topic() throws Exception {
+    receive_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
+  }
+
+  void receive_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer) throws Exception {
     String parentId = "463ac35c9f6413ad";
     jms.setReadOnlyProperties(message, false);
     message.setStringProperty("b3", parentId + "-" + parentId + "-1");
-    queueSender.send(message);
+    send.run();
 
-    Message received = queueReceiver.receive();
+    Message received = messageConsumer.receive();
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
 

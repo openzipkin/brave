@@ -58,7 +58,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     tracedTopicSession = jmsTracing.topicConnection(jms.topicConnection)
         .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    messageProducer = tracedSession.createProducer(jms.destination);
+    messageProducer = tracedSession.createProducer(null /* to test explicit destination */);
     messageConsumer = jms.session.createConsumer(jms.destination);
 
     queueSender = tracedQueueSession.createSender(null /* to test explicit queue */);
@@ -82,7 +82,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Test public void should_add_b3_single_property() throws Exception {
-    messageProducer.send(message);
+    messageProducer.send(jms.destination, message);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
@@ -107,7 +107,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   @Test public void should_not_serialize_parent_span_id() throws Exception {
     ScopedSpan parent = tracing.tracer().startScopedSpan("main");
     try {
-      messageProducer.send(message);
+      messageProducer.send(jms.destination, message);
     } finally {
       parent.finish();
     }
@@ -128,7 +128,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
     ScopedSpan parent = tracing.tracer().startScopedSpan("main");
     try {
-      messageProducer.send(message);
+      messageProducer.send(jms.destination, message);
     } finally {
       parent.finish();
     }
@@ -143,23 +143,46 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Test public void should_record_properties() throws Exception {
-    messageProducer.send(message);
+    messageProducer.send(jms.destination, message);
+    should_record_properties(Collections.singletonMap("jms.queue", jms.destinationName));
+  }
 
-    messageConsumer.receive();
+  @Test public void should_record_properties_queue() throws Exception {
+    queueSender.send(jms.queue, message);
+    should_record_properties(Collections.singletonMap("jms.queue", jms.queueName));
+  }
 
+  @Test public void should_record_properties_topic() throws Exception {
+    topicPublisher.send(jms.topic, message);
+    should_record_properties(Collections.singletonMap("jms.topic", jms.topicName));
+  }
+
+  void should_record_properties(Map<String, String> producerTags) throws Exception {
     Span producerSpan = takeSpan();
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.kind()).isEqualTo(Span.Kind.PRODUCER);
     assertThat(producerSpan.timestampAsLong()).isPositive();
     assertThat(producerSpan.durationAsLong()).isPositive();
-    assertThat(producerSpan.tags()).containsEntry("jms.queue", jms.destinationName);
+    assertThat(producerSpan.tags()).isEqualTo(producerTags);
   }
 
   @Test public void should_record_error() throws Exception {
+    should_record_error(() -> messageProducer.send(message));
+  }
+
+  @Test public void should_record_error_queue() throws Exception {
+    should_record_error(() -> queueSender.send(message));
+  }
+
+  @Test public void should_record_error_topic() throws Exception {
+    should_record_error(() -> topicPublisher.send(message));
+  }
+
+  void should_record_error(JMSRunnable send) throws Exception {
     tracedSession.close();
 
     try {
-      messageProducer.send(message);
+      send.run();
     } catch (Exception e) {
     }
 
