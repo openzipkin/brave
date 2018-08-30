@@ -12,6 +12,8 @@ import javax.jms.MessageProducer;
 import javax.jms.ObjectMessage;
 import javax.jms.Queue;
 import javax.jms.QueueBrowser;
+import javax.jms.QueueReceiver;
+import javax.jms.QueueSender;
 import javax.jms.QueueSession;
 import javax.jms.Session;
 import javax.jms.StreamMessage;
@@ -19,32 +21,41 @@ import javax.jms.TemporaryQueue;
 import javax.jms.TemporaryTopic;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
+import javax.jms.TopicPublisher;
 import javax.jms.TopicSession;
 import javax.jms.TopicSubscriber;
+import javax.jms.XAQueueSession;
 import javax.jms.XASession;
+import javax.jms.XATopicSession;
 
-class TracingSession<S extends Session> implements Session {
-  static Session create(Session delegate, JmsTracing jmsTracing) {
-    if (delegate == null) throw new NullPointerException("delegate == null");
-    if (delegate instanceof TracingSession) return delegate;
-    if (delegate instanceof QueueSession) {
-      return TracingQueueSession.create((QueueSession) delegate, jmsTracing);
-    }
-    if (delegate instanceof TopicSession) {
-      return TracingTopicSession.create((TopicSession) delegate, jmsTracing);
-    }
-    if (delegate instanceof XASession) {
-      return TracingXASession.create((XASession) delegate, jmsTracing);
-    }
-    return new TracingSession<>(delegate, jmsTracing);
+import static brave.jms.TracingConnection.TYPE_QUEUE;
+import static brave.jms.TracingConnection.TYPE_TOPIC;
+import static brave.jms.TracingConnection.TYPE_XA;
+import static brave.jms.TracingConnection.TYPE_XA_QUEUE;
+import static brave.jms.TracingConnection.TYPE_XA_TOPIC;
+
+/** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
+class TracingSession implements QueueSession, TopicSession {
+
+  static TracingSession create(Session delegate, JmsTracing jmsTracing) {
+    if (delegate instanceof TracingSession) return (TracingSession) delegate;
+    return new TracingSession(delegate, jmsTracing);
   }
 
-  final S delegate;
+  final Session delegate;
   final JmsTracing jmsTracing;
+  final int types;
 
-  TracingSession(S delegate, JmsTracing jmsTracing) {
+  TracingSession(Session delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
+    int types = 0;
+    if (delegate instanceof QueueSession) types |= TYPE_QUEUE;
+    if (delegate instanceof TopicSession) types |= TYPE_TOPIC;
+    if (delegate instanceof XASession) types |= TYPE_XA;
+    if (delegate instanceof XAQueueSession) types |= TYPE_XA_QUEUE;
+    if (delegate instanceof XATopicSession) types |= TYPE_XA_TOPIC;
+    this.types = types;
   }
 
   @Override public BytesMessage createBytesMessage() throws JMSException {
@@ -218,5 +229,61 @@ class TracingSession<S extends Session> implements Session {
 
   @Override public void unsubscribe(String name) throws JMSException {
     delegate.unsubscribe(name);
+  }
+
+  // QueueSession
+
+  @Override public QueueReceiver createReceiver(Queue queue) throws JMSException {
+    checkQueueSession();
+    QueueSession qs = (QueueSession) delegate;
+    return TracingQueueReceiver.create(qs.createReceiver(queue), jmsTracing);
+  }
+
+  @Override public QueueReceiver createReceiver(Queue queue, String messageSelector)
+      throws JMSException {
+    checkQueueSession();
+    QueueSession qs = (QueueSession) delegate;
+    return TracingQueueReceiver.create(qs.createReceiver(queue, messageSelector), jmsTracing);
+  }
+
+  @Override public QueueSender createSender(Queue queue) throws JMSException {
+    checkQueueSession();
+    QueueSession qs = (QueueSession) delegate;
+    return TracingQueueSender.create(qs.createSender(queue), jmsTracing);
+  }
+
+  void checkQueueSession() {
+    if ((types & TYPE_QUEUE) != TYPE_QUEUE) {
+      throw new IllegalStateException(delegate + " is not a QueueSession");
+    }
+  }
+
+  // TopicSession
+
+  @Override public TopicSubscriber createSubscriber(Topic topic) throws JMSException {
+    checkTopicSession();
+    TopicSession ts = (TopicSession) delegate;
+    return TracingTopicSubscriber.create(ts.createSubscriber(topic), jmsTracing);
+  }
+
+  @Override
+  public TopicSubscriber createSubscriber(Topic topic, String messageSelector, boolean noLocal)
+      throws JMSException {
+    checkTopicSession();
+    TopicSession ts = (TopicSession) delegate;
+    return TracingTopicSubscriber.create(ts.createSubscriber(topic, messageSelector, noLocal),
+        jmsTracing);
+  }
+
+  @Override public TopicPublisher createPublisher(Topic topic) throws JMSException {
+    checkTopicSession();
+    TopicSession ts = (TopicSession) delegate;
+    return TracingTopicPublisher.create(ts.createPublisher(topic), jmsTracing);
+  }
+
+  void checkTopicSession() {
+    if ((types & TYPE_TOPIC) != TYPE_TOPIC) {
+      throw new IllegalStateException(delegate + " is not a TopicSession");
+    }
   }
 }

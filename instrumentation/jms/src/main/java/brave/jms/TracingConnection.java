@@ -6,35 +6,46 @@ import javax.jms.ConnectionMetaData;
 import javax.jms.Destination;
 import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
+import javax.jms.Queue;
 import javax.jms.QueueConnection;
+import javax.jms.QueueSession;
 import javax.jms.ServerSessionPool;
 import javax.jms.Session;
 import javax.jms.Topic;
 import javax.jms.TopicConnection;
+import javax.jms.TopicSession;
 import javax.jms.XAConnection;
+import javax.jms.XAQueueConnection;
+import javax.jms.XATopicConnection;
 
-class TracingConnection<C extends Connection> implements Connection {
-  static Connection create(Connection delegate, JmsTracing jmsTracing) {
-    if (delegate == null) throw new NullPointerException("connection == null");
-    if (delegate instanceof TracingConnection) return delegate;
-    if (delegate instanceof QueueConnection) {
-      return TracingQueueConnection.create((QueueConnection) delegate, jmsTracing);
-    }
-    if (delegate instanceof TopicConnection) {
-      return TracingTopicConnection.create((TopicConnection) delegate, jmsTracing);
-    }
-    if (delegate instanceof XAConnection) {
-      return new TracingXAConnection((XAConnection) delegate, jmsTracing);
-    }
-    return new TracingConnection<>(delegate, jmsTracing);
+/** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
+class TracingConnection implements QueueConnection, TopicConnection {
+  static final int
+      TYPE_QUEUE = 1 << 1,
+      TYPE_TOPIC = 1 << 2,
+      TYPE_XA = 1 << 3,
+      TYPE_XA_QUEUE = 1 << 4,
+      TYPE_XA_TOPIC = 1 << 5;
+
+  static TracingConnection create(Connection delegate, JmsTracing jmsTracing) {
+    if (delegate instanceof TracingConnection) return (TracingConnection) delegate;
+    return new TracingConnection(delegate, jmsTracing);
   }
 
-  final C delegate;
+  final Connection delegate;
   final JmsTracing jmsTracing;
+  final int types;
 
-  TracingConnection(C delegate, JmsTracing jmsTracing) {
+  TracingConnection(Connection delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
+    int types = 0;
+    if (delegate instanceof QueueConnection) types |= TYPE_QUEUE;
+    if (delegate instanceof TopicConnection) types |= TYPE_TOPIC;
+    if (delegate instanceof XAConnection) types |= TYPE_XA;
+    if (delegate instanceof XAQueueConnection) types |= TYPE_XA_QUEUE;
+    if (delegate instanceof XATopicConnection) types |= TYPE_XA_TOPIC;
+    this.types = types;
   }
 
   @Override public Session createSession(boolean transacted, int acknowledgeMode)
@@ -121,5 +132,49 @@ class TracingConnection<C extends Connection> implements Connection {
         delegate.createSharedDurableConnectionConsumer(topic, subscriptionName, messageSelector,
             sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
+  }
+
+  // QueueConnection
+  @Override public QueueSession createQueueSession(boolean transacted, int acknowledgeMode)
+      throws JMSException {
+    checkQueueConnection();
+    QueueSession qs = ((QueueConnection) delegate).createQueueSession(transacted, acknowledgeMode);
+    return TracingSession.create(qs, jmsTracing);
+  }
+
+  @Override public ConnectionConsumer createConnectionConsumer(Queue queue, String messageSelector,
+      ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    checkQueueConnection();
+    ConnectionConsumer cc = ((QueueConnection) delegate)
+        .createConnectionConsumer(queue, messageSelector, sessionPool, maxMessages);
+    return TracingConnectionConsumer.create(cc, jmsTracing);
+  }
+
+  void checkQueueConnection() {
+    if ((types & TYPE_QUEUE) != TYPE_QUEUE) {
+      throw new IllegalStateException(delegate + " is not a QueueConnection");
+    }
+  }
+
+  // TopicConnection
+  @Override public TopicSession createTopicSession(boolean transacted, int acknowledgeMode)
+      throws JMSException {
+    checkTopicConnection();
+    TopicSession ts = ((TopicConnection) delegate).createTopicSession(transacted, acknowledgeMode);
+    return TracingSession.create(ts, jmsTracing);
+  }
+
+  @Override public ConnectionConsumer createConnectionConsumer(Topic topic, String messageSelector,
+      ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    checkTopicConnection();
+    ConnectionConsumer cc = ((TopicConnection) delegate)
+        .createConnectionConsumer(topic, messageSelector, sessionPool, maxMessages);
+    return TracingConnectionConsumer.create(cc, jmsTracing);
+  }
+
+  void checkTopicConnection() {
+    if ((types & TYPE_TOPIC) != TYPE_TOPIC) {
+      throw new IllegalStateException(delegate + " is not a TopicConnection");
+    }
   }
 }

@@ -92,11 +92,11 @@ public final class JmsTracing {
   }
 
   public QueueConnection queueConnection(QueueConnection connection) {
-    return TracingQueueConnection.create(connection, this);
+    return TracingConnection.create(connection, this);
   }
 
   public TopicConnection topicConnection(TopicConnection connection) {
-    return TracingTopicConnection.create(connection, this);
+    return TracingConnection.create(connection, this);
   }
 
   public XAConnection xaConnection(XAConnection xaConnection) {
@@ -104,11 +104,11 @@ public final class JmsTracing {
   }
 
   public XAQueueConnection xaQueueConnection(XAQueueConnection connection) {
-    return TracingXAQueueConnection.create(connection, this);
+    return TracingXAConnection.create(connection, this);
   }
 
   public XATopicConnection xaTopicConnection(XATopicConnection connection) {
-    return TracingXATopicConnection.create(connection, this);
+    return TracingXAConnection.create(connection, this);
   }
 
   public ConnectionFactory connectionFactory(ConnectionFactory connectionFactory) {
