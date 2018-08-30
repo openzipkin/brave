@@ -12,6 +12,7 @@ import javax.jms.XAConnectionFactory;
 import javax.jms.XAQueueConnectionFactory;
 import javax.jms.XATopicConnectionFactory;
 
+/** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 class TracingConnectionFactory implements QueueConnectionFactory, TopicConnectionFactory {
   static final int
       TYPE_CF = 1 << 1,

@@ -172,14 +172,14 @@ class TracingSession implements QueueSession, TopicSession {
   @Override public TopicSubscriber createDurableSubscriber(Topic topic, String name)
       throws JMSException {
     TopicSubscriber ts = delegate.createDurableSubscriber(topic, name);
-    return TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingMessageConsumer.create(ts, jmsTracing);
   }
 
   @Override
   public TopicSubscriber createDurableSubscriber(Topic topic, String name, String messageSelector,
       boolean noLocal) throws JMSException {
     TopicSubscriber ts = delegate.createDurableSubscriber(topic, name, messageSelector, noLocal);
-    return TracingTopicSubscriber.create(ts, jmsTracing);
+    return TracingMessageConsumer.create(ts, jmsTracing);
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
@@ -236,20 +236,20 @@ class TracingSession implements QueueSession, TopicSession {
   @Override public QueueReceiver createReceiver(Queue queue) throws JMSException {
     checkQueueSession();
     QueueSession qs = (QueueSession) delegate;
-    return TracingQueueReceiver.create(qs.createReceiver(queue), jmsTracing);
+    return TracingMessageConsumer.create(qs.createReceiver(queue), jmsTracing);
   }
 
   @Override public QueueReceiver createReceiver(Queue queue, String messageSelector)
       throws JMSException {
     checkQueueSession();
     QueueSession qs = (QueueSession) delegate;
-    return TracingQueueReceiver.create(qs.createReceiver(queue, messageSelector), jmsTracing);
+    return TracingMessageConsumer.create(qs.createReceiver(queue, messageSelector), jmsTracing);
   }
 
   @Override public QueueSender createSender(Queue queue) throws JMSException {
     checkQueueSession();
     QueueSession qs = (QueueSession) delegate;
-    return TracingQueueSender.create(qs.createSender(queue), jmsTracing);
+    return TracingMessageProducer.create(qs.createSender(queue), jmsTracing);
   }
 
   void checkQueueSession() {
@@ -263,7 +263,7 @@ class TracingSession implements QueueSession, TopicSession {
   @Override public TopicSubscriber createSubscriber(Topic topic) throws JMSException {
     checkTopicSession();
     TopicSession ts = (TopicSession) delegate;
-    return TracingTopicSubscriber.create(ts.createSubscriber(topic), jmsTracing);
+    return TracingMessageConsumer.create(ts.createSubscriber(topic), jmsTracing);
   }
 
   @Override
@@ -271,14 +271,14 @@ class TracingSession implements QueueSession, TopicSession {
       throws JMSException {
     checkTopicSession();
     TopicSession ts = (TopicSession) delegate;
-    return TracingTopicSubscriber.create(ts.createSubscriber(topic, messageSelector, noLocal),
+    return TracingMessageConsumer.create(ts.createSubscriber(topic, messageSelector, noLocal),
         jmsTracing);
   }
 
   @Override public TopicPublisher createPublisher(Topic topic) throws JMSException {
     checkTopicSession();
     TopicSession ts = (TopicSession) delegate;
-    return TracingTopicPublisher.create(ts.createPublisher(topic), jmsTracing);
+    return TracingMessageProducer.create(ts.createPublisher(topic), jmsTracing);
   }
 
   void checkTopicSession() {

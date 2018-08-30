@@ -12,6 +12,7 @@ import javax.jms.XATopicConnectionFactory;
 import static brave.jms.TracingConnection.TYPE_XA_QUEUE;
 import static brave.jms.TracingConnection.TYPE_XA_TOPIC;
 
+/** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 final class TracingXAConnectionFactory extends TracingConnectionFactory
     implements XAQueueConnectionFactory, XATopicConnectionFactory {
 

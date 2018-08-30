@@ -14,23 +14,26 @@ import javax.jms.QueueSender;
 import javax.jms.Topic;
 import javax.jms.TopicPublisher;
 
-class TracingMessageProducer<M extends MessageProducer> extends TracingProducer<M, Message>
-    implements MessageProducer {
+import static brave.jms.TracingConnection.TYPE_QUEUE;
+import static brave.jms.TracingConnection.TYPE_TOPIC;
 
-  static MessageProducer create(MessageProducer delegate, JmsTracing jmsTracing) {
-    if (delegate == null) throw new NullPointerException("messageProducer == null");
-    if (delegate instanceof TracingMessageProducer) return delegate;
-    if (delegate instanceof QueueSender) {
-      return TracingQueueSender.create((QueueSender) delegate, jmsTracing);
-    }
-    if (delegate instanceof TopicPublisher) {
-      return TracingTopicPublisher.create((TopicPublisher) delegate, jmsTracing);
-    }
-    return new TracingMessageProducer<>(delegate, jmsTracing);
+/** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
+final class TracingMessageProducer extends TracingProducer<MessageProducer, Message>
+    implements QueueSender, TopicPublisher {
+
+  static TracingMessageProducer create(MessageProducer delegate, JmsTracing jmsTracing) {
+    if (delegate instanceof TracingMessageProducer) return (TracingMessageProducer) delegate;
+    return new TracingMessageProducer(delegate, jmsTracing);
   }
 
-  TracingMessageProducer(M delegate, JmsTracing jmsTracing) {
+  final int types;
+
+  TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
+    int types = 0;
+    if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
+    if (delegate instanceof TopicPublisher) types |= TYPE_TOPIC;
+    this.types = types;
   }
 
   @Override void addB3SingleHeader(TraceContext context, Message message) {
@@ -266,6 +269,114 @@ class TracingMessageProducer<M extends MessageProducer> extends TracingProducer<
       throw e;
     } finally {
       ws.close();
+    }
+  }
+
+  // QueueSender
+
+  @Override public Queue getQueue() throws JMSException {
+    checkQueueSender();
+    return ((QueueSender) delegate).getQueue();
+  }
+
+  @Override public void send(Queue queue, Message message) throws JMSException {
+    checkQueueSender();
+    send(SendDestination.QUEUE, queue, message);
+  }
+
+  @Override
+  public void send(Queue queue, Message message, int deliveryMode, int priority, long timeToLive)
+      throws JMSException {
+    checkQueueSender();
+    QueueSender qs = (QueueSender) delegate;
+    Span span = createAndStartProducerSpan(null, message);
+    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    try {
+      qs.send(queue, message, deliveryMode, priority, timeToLive);
+    } catch (RuntimeException | JMSException | Error e) {
+      span.error(e);
+      throw e;
+    } finally {
+      ws.close();
+      span.finish();
+    }
+  }
+
+  void checkQueueSender() {
+    if ((types & TYPE_QUEUE) != TYPE_QUEUE) {
+      throw new IllegalStateException(delegate + " is not a QueueSender");
+    }
+  }
+
+  // TopicPublisher
+
+  @Override public Topic getTopic() throws JMSException {
+    checkTopicPublisher();
+    return ((TopicPublisher) delegate).getTopic();
+  }
+
+  @Override public void publish(Message message) throws JMSException {
+    checkTopicPublisher();
+    TopicPublisher tp = (TopicPublisher) delegate;
+
+    Span span = createAndStartProducerSpan(null, message);
+    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    try {
+      tp.publish(message);
+    } catch (RuntimeException | JMSException | Error e) {
+      span.error(e);
+      throw e;
+    } finally {
+      ws.close();
+      span.finish();
+    }
+  }
+
+  @Override public void publish(Message message, int deliveryMode, int priority, long timeToLive)
+      throws JMSException {
+    checkTopicPublisher();
+    TopicPublisher tp = (TopicPublisher) delegate;
+
+    Span span = createAndStartProducerSpan(null, message);
+    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    try {
+      tp.publish(message, deliveryMode, priority, timeToLive);
+    } catch (RuntimeException | JMSException | Error e) {
+      span.error(e);
+      throw e;
+    } finally {
+      ws.close();
+      span.finish();
+    }
+  }
+
+  @Override public void publish(Topic topic, Message message) throws JMSException {
+    checkTopicPublisher();
+    send(SendDestination.TOPIC, topic, message);
+  }
+
+  @Override
+  public void publish(Topic topic, Message message, int deliveryMode, int priority, long timeToLive)
+      throws JMSException {
+    checkTopicPublisher();
+    TopicPublisher tp = (TopicPublisher) delegate;
+
+    Span span = createAndStartProducerSpan(null, message);
+    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    try {
+      tp.publish(topic, message, deliveryMode, priority, timeToLive);
+    } catch (RuntimeException | JMSException | Error e) {
+      span.error(e);
+      throw e;
+    } finally {
+      ws.close();
+      span.finish();
+    }
+  }
+
+  void checkTopicPublisher() {
+    if ((types & TYPE_TOPIC) != TYPE_TOPIC) {
+      throw new IllegalStateException(delegate + " is not a TopicPublisher");
     }
   }
 }
