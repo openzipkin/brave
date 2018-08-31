@@ -2,6 +2,7 @@ package brave.spring.rabbit;
 
 import brave.Tracing;
 import brave.propagation.B3SingleFormat;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -44,7 +45,7 @@ public final class SpringRabbitTracing {
   public static final class Builder {
     final Tracing tracing;
     String remoteServiceName = "rabbitmq";
-    boolean b3SingleFormat;
+    boolean writeB3SingleFormat;
 
     Builder(Tracing tracing) {
       this.tracing = tracing;
@@ -65,8 +66,8 @@ public final class SpringRabbitTracing {
      * <p>Use this to reduce overhead. Note: normal {@link Tracing#propagation()} is used to parse
      * incoming headers. The implementation must be able to read "b3" headers.
      */
-    public Builder b3SingleFormat(boolean b3SingleFormat) {
-      this.b3SingleFormat = b3SingleFormat;
+    public Builder writeB3SingleFormat(boolean writeB3SingleFormat) {
+      this.writeB3SingleFormat = writeB3SingleFormat;
       return this;
     }
 
@@ -85,17 +86,19 @@ public final class SpringRabbitTracing {
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(SpringRabbitPropagation.GETTER);
-    if (builder.b3SingleFormat) {
+    List<String> keyList = builder.tracing.propagation().keys();
+    // Use a more efficient injector if we are only propagating a single header
+    if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
       TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
       if (!TEST_CONTEXT.equals(testExtraction)) {
         throw new IllegalArgumentException(
-            "SpringRabbitTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+            "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
       }
       this.injector = SpringRabbitPropagation.B3_SINGLE_INJECTOR;
     } else {
       this.injector = tracing.propagation().injector(SpringRabbitPropagation.SETTER);
     }
-    this.propagationKeys = builder.tracing.propagation().keys();
+    this.propagationKeys = keyList;
     this.remoteServiceName = builder.remoteServiceName;
     Field beforePublishPostProcessorsField = null;
     try {

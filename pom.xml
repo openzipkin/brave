@@ -78,7 +78,7 @@
     <kafka.version>2.0.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.2</kafka-junit.version>
-
+    <activemq.version>5.15.5</activemq.version>
     <spring-rabbit.version>1.7.9.RELEASE</spring-rabbit.version>
 
     <finagle.version>18.7.0</finagle.version>

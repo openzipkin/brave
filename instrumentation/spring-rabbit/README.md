@@ -16,7 +16,7 @@ public Tracing tracing() {
 @Bean
 public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
   return SpringRabbitTracing.newBuilder(tracing)
-                            .b3SingleFormat(true) // for more efficient propagation
+                            .writeB3SingleFormat(true) // for more efficient propagation
                             .remoteServiceName("my-mq-service")
                             .build();
 }

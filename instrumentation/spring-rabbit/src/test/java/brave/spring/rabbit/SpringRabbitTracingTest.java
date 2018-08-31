@@ -95,9 +95,9 @@ public class SpringRabbitTracingTest {
 
     assertThatThrownBy(() -> SpringRabbitTracing.newBuilder(
         Tracing.newBuilder().propagationFactory(propagationFactory).build())
-        .b3SingleFormat(true)
+        .writeB3SingleFormat(true)
         .build()
     ).hasMessage(
-        "SpringRabbitTracing.Builder.b3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+        "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
   }
 }

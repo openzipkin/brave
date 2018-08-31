@@ -44,7 +44,7 @@ public class TracingMessageListenerTest {
     tracing.close();
   }
 
-  @Test public void starts_new_trace_if_none_exists() throws Throwable {
+  @Test public void starts_new_trace_if_none_exists() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
@@ -53,7 +53,7 @@ public class TracingMessageListenerTest {
         .containsExactly(CONSUMER, null);
   }
 
-  @Test public void consumer_and_listener_have_names() throws Throwable {
+  @Test public void consumer_and_listener_have_names() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
@@ -62,7 +62,7 @@ public class TracingMessageListenerTest {
         .containsExactly("receive", "on-message");
   }
 
-  @Test public void consumer_has_remote_service_name() throws Throwable {
+  @Test public void consumer_has_remote_service_name() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
@@ -71,7 +71,7 @@ public class TracingMessageListenerTest {
         .containsExactly("my-service", null);
   }
 
-  @Test public void tags_consumer_span_but_not_listener() throws Throwable {
+  @Test public void tags_consumer_span_but_not_listener() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
@@ -84,7 +84,7 @@ public class TracingMessageListenerTest {
     assertThat(spans.get(1).tags()).isEmpty();
   }
 
-  @Test public void consumer_span_starts_before_listener() throws Throwable {
+  @Test public void consumer_span_starts_before_listener() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
@@ -99,7 +99,7 @@ public class TracingMessageListenerTest {
         .isPositive();
   }
 
-  @Test public void continues_parent_trace() throws Throwable {
+  @Test public void continues_parent_trace() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     message.setStringProperty("X-B3-TraceId", TRACE_ID);
     message.setStringProperty("X-B3-SpanId", SPAN_ID);
@@ -117,7 +117,7 @@ public class TracingMessageListenerTest {
         .contains(SPAN_ID);
   }
 
-  @Test public void continues_parent_trace_single_header() throws Throwable {
+  @Test public void continues_parent_trace_single_header() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     message.setStringProperty("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
 
@@ -132,7 +132,7 @@ public class TracingMessageListenerTest {
         .contains(SPAN_ID);
   }
 
-  @Test public void reports_span_if_consume_fails() throws Throwable {
+  @Test public void reports_span_if_consume_fails() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
@@ -147,7 +147,7 @@ public class TracingMessageListenerTest {
         .contains("expected exception");
   }
 
-  @Test public void reports_span_if_consume_fails_with_no_message() throws Throwable {
+  @Test public void reports_span_if_consume_fails_with_no_message() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumeFailed(message, new RuntimeException());
 
@@ -162,12 +162,12 @@ public class TracingMessageListenerTest {
         .containsOnly("RuntimeException");
   }
 
-  void onMessageConsumed(Message message) throws Throwable {
+  void onMessageConsumed(Message message) throws Exception {
     doNothing().when(delegate).onMessage(message);
     tracingMessageListener.onMessage(message);
   }
 
-  void onMessageConsumeFailed(Message message, Throwable throwable) throws Throwable {
+  void onMessageConsumeFailed(Message message, Throwable throwable) throws Exception {
     doThrow(throwable).when(delegate).onMessage(message);
 
     try {

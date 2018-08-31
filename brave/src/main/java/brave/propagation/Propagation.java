@@ -3,6 +3,8 @@ package brave.propagation;
 import brave.internal.Nullable;
 import java.util.List;
 
+import static brave.propagation.Propagation.KeyFactory.STRING;
+
 /**
  * Injects and extracts {@link TraceContext trace identifiers} as text into carriers that travel
  * in-band across process boundaries. Identifiers are often encoded as messaging or RPC request
@@ -18,9 +20,8 @@ import java.util.List;
  * @param <K> Usually, but not always a String
  */
 public interface Propagation<K> {
-  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
-  Propagation<String> B3_SINGLE_STRING =
-      B3SinglePropagation.FACTORY.create(Propagation.KeyFactory.STRING);
+  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(STRING);
+  Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.create(STRING);
 
   abstract class Factory {
     /**

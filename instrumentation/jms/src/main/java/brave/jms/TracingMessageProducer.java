@@ -36,8 +36,8 @@ final class TracingMessageProducer extends TracingProducer<MessageProducer, Mess
     this.types = types;
   }
 
-  @Override void addB3SingleHeader(TraceContext context, Message message) {
-    JmsTracing.addB3SingleHeader(context, message);
+  @Override void addB3SingleHeader(Message message, TraceContext context) {
+    JmsTracing.addB3SingleHeader(message, context);
   }
 
   @Override void clearPropagationHeaders(Message message) {

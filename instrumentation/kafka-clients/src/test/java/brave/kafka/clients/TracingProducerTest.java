@@ -86,7 +86,7 @@ public class TracingProducerTest extends BaseTracingTest {
   }
 
   @Test public void should_add_b3_single_header_to_message() {
-    tracingProducer = KafkaTracing.newBuilder(tracing).b3SingleFormat(true).build()
+    tracingProducer = KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
         .producer(mockProducer);
 
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
