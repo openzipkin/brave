@@ -14,6 +14,7 @@ import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
+import javax.jms.MessageListener;
 import javax.jms.Queue;
 import javax.jms.QueueConnection;
 import javax.jms.Topic;
@@ -123,6 +124,9 @@ public final class JmsTracing {
    * Use this to create a span for processing the given message. Note: the result has no name and is
    * not started.
    *
+   * <p>In general, prefer {@link MessageListener} for processing messages, as it is more efficient
+   * and less lossy with regards to context data.
+   *
    * <p>This creates a child from identifiers extracted from the message message, or a new span if
    * one couldn't be extracted.
    */
@@ -145,8 +149,19 @@ public final class JmsTracing {
     return extracted;
   }
 
+  /**
+   * We currently serialize the context as a "b3" message property. We can't add the context as an
+   * Object property because JMS only supports "primitive objects, String, Map and List types".
+   *
+   * <p>Using {@link MessageListener} is preferred where possible, as we can coordinate without
+   * writing "b3", which notably saves us from losing data in {@link TraceContext#extra()}.
+   */
+  void setNextParent(Message message, TraceContext context) {
+    addB3SingleHeader(message, context);
+  }
+
   /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
-  static void addB3SingleHeader(TraceContext context, Message message) {
+  static void addB3SingleHeader(Message message, TraceContext context) {
     try {
       message.setStringProperty("b3", writeB3SingleFormatWithoutParentId(context));
     } catch (JMSException ignored) {

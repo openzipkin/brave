@@ -21,16 +21,12 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
     }
   };
 
-  static final String LOWER_NAME = "b3";
-  static final String UPPER_NAME = "B3";
-
-  final K lowerKey, upperKey;
+  final K b3Key;
   final List<K> fields;
 
   B3SinglePropagation(KeyFactory<K> keyFactory) {
-    this.lowerKey = keyFactory.create(LOWER_NAME);
-    this.upperKey = keyFactory.create(UPPER_NAME);
-    this.fields = Collections.unmodifiableList(Arrays.asList(lowerKey, upperKey));
+    this.b3Key = keyFactory.create("b3");
+    this.fields = Collections.unmodifiableList(Arrays.asList(b3Key));
   }
 
   @Override public List<K> keys() {
@@ -52,30 +48,27 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
     }
 
     @Override public void inject(TraceContext traceContext, C carrier) {
-      setter.put(carrier, propagation.lowerKey, B3SingleFormat.writeB3SingleFormat(traceContext));
+      setter.put(carrier, propagation.b3Key, B3SingleFormat.writeB3SingleFormat(traceContext));
     }
   }
 
   @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
-    return new B3SingleExtractor<>(lowerKey, upperKey, getter);
+    return new B3SingleExtractor<>(b3Key, getter);
   }
 
   static final class B3SingleExtractor<C, K> implements TraceContext.Extractor<C> {
-    final K lowerKey, upperKey;
+    final K b3Key;
     final Getter<C, K> getter;
 
-    B3SingleExtractor(K lowerKey, K upperKey, Getter<C, K> getter) {
-      this.lowerKey = lowerKey;
-      this.upperKey = upperKey;
+    B3SingleExtractor(K b3Key, Getter<C, K> getter) {
+      this.b3Key = b3Key;
       this.getter = getter;
     }
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
-      String b3 = getter.get(carrier, lowerKey);
-      // In case someone accidentally propagated the wrong case format
-      if (b3 == null) b3 = getter.get(carrier, upperKey);
+      String b3 = getter.get(carrier, b3Key);
       if (b3 == null) return TraceContextOrSamplingFlags.EMPTY;
 
       TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3);

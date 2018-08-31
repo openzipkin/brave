@@ -17,8 +17,6 @@
 
     <!-- disable errorprone override warning as we do this intentionally to allow JMS 1.1 -->
     <errorprone.args>-Xep:MissingOverride:OFF</errorprone.args>
-
-    <activemq.version>5.15.5</activemq.version>
   </properties>
 
   <dependencies>

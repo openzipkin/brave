@@ -2,6 +2,7 @@ package brave.jms;
 
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.Propagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.Enumeration;
@@ -22,6 +23,16 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class JmsTest {
+  static final Propagation.Setter<Message, String> SETTER =
+      new Propagation.Setter<Message, String>() {
+        @Override public void put(Message carrier, String key, String value) {
+          try {
+            carrier.setStringProperty(key, value);
+          } catch (JMSException e) {
+            throw new AssertionError(e);
+          }
+        }
+      };
 
   @After public void tearDown() {
     tracing.close();

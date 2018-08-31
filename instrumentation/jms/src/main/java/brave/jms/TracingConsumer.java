@@ -41,7 +41,7 @@ abstract class TracingConsumer<C> {
       long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
       span.start(timestamp).finish(timestamp);
     }
-    JmsTracing.addB3SingleHeader(span.context(), message);
+    jmsTracing.setNextParent(message, span.context());
   }
 
   abstract @Nullable Destination destination(Message message);

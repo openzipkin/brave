@@ -36,7 +36,7 @@ public class TracingMessagePostProcessorBenchmarks {
     Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
     tracingPostProcessor = new TracingMessagePostProcessor(SpringRabbitTracing.create(tracing));
     tracingB3SinglePostProcessor = new TracingMessagePostProcessor(
-        SpringRabbitTracing.newBuilder(tracing).b3SingleFormat(true).build()
+        SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
     );
   }
 

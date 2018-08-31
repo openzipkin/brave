@@ -49,16 +49,6 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
         .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void extractTraceContext_sampledFalseUpperCase() {
-    MapEntry mapEntry = new MapEntry();
-    map.put("B3", "0");
-
-    SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
-
-    assertThat(result)
-        .isEqualTo(SamplingFlags.NOT_SAMPLED);
-  }
-
   @Test public void extractTraceContext_malformed() {
     MapEntry mapEntry = new MapEntry();
     map.put("b3", "not-a-tumor");

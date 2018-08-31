@@ -36,7 +36,7 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     this.extractor = jmsTracing.tracing.propagation().extractor(GETTER);
   }
 
-  @Override void addB3SingleHeader(TraceContext context, JMSProducer message) {
+  @Override void addB3SingleHeader(JMSProducer message, TraceContext context) {
     message.setProperty("b3", writeB3SingleFormatWithoutParentId(context));
   }
 

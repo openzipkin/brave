@@ -49,11 +49,11 @@ abstract class TracingProducer<P, M> {
       span.start();
     }
 
-    addB3SingleHeader(span.context(), message);
+    addB3SingleHeader(message, span.context());
     return span;
   }
 
-  abstract void addB3SingleHeader(TraceContext context, M message);
+  abstract void addB3SingleHeader(M message, TraceContext context);
 
   abstract void clearPropagationHeaders(M message);
 

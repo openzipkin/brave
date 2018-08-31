@@ -73,7 +73,7 @@ public class TracingMessagePostProcessorTest {
 
   @Test public void should_add_b3_single_header_to_message() {
     TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
-        SpringRabbitTracing.newBuilder(tracing).b3SingleFormat(true).build()
+        SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
     );
 
     Message message = MessageBuilder.withBody(new byte[0]).build();
