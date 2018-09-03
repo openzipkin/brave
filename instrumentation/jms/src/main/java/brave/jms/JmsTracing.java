@@ -89,14 +89,26 @@ public final class JmsTracing {
   }
 
   public Connection connection(Connection connection) {
+    // It is common to implement both interfaces
+    if (connection instanceof XAConnection) {
+      return xaConnection((XAConnection) connection);
+    }
     return TracingConnection.create(connection, this);
   }
 
   public QueueConnection queueConnection(QueueConnection connection) {
+    // It is common to implement both interfaces
+    if (connection instanceof XAQueueConnection) {
+      return xaQueueConnection((XAQueueConnection) connection);
+    }
     return TracingConnection.create(connection, this);
   }
 
   public TopicConnection topicConnection(TopicConnection connection) {
+    // It is common to implement both interfaces
+    if (connection instanceof XATopicConnection) {
+      return xaTopicConnection((XATopicConnection) connection);
+    }
     return TracingConnection.create(connection, this);
   }
 
@@ -113,11 +125,27 @@ public final class JmsTracing {
   }
 
   public ConnectionFactory connectionFactory(ConnectionFactory connectionFactory) {
+    // It is common to implement both interfaces
+    if (connectionFactory instanceof XAConnectionFactory) {
+      return (ConnectionFactory) xaConnectionFactory((XAConnectionFactory) connectionFactory);
+    }
     return TracingConnectionFactory.create(connectionFactory, this);
   }
 
   public XAConnectionFactory xaConnectionFactory(XAConnectionFactory xaConnectionFactory) {
     return TracingXAConnectionFactory.create(xaConnectionFactory, this);
+  }
+
+  /**
+   * Returns a message listener that optionally starts a consumer span for the message received
+   * before wrapping the listener in a separate span.
+   *
+   * @param messageListener listener to wrap
+   * @param addConsumerSpan set to true when the underlying message receipt is not traced (ex. JCA)
+   */
+  public MessageListener messageListener(MessageListener messageListener, boolean addConsumerSpan) {
+    if (messageListener instanceof TracingMessageListener) return messageListener;
+    return new TracingMessageListener(messageListener, this, addConsumerSpan);
   }
 
   /**
