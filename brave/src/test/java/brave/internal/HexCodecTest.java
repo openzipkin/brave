@@ -31,6 +31,30 @@ public class HexCodecTest {
     }
 
     try {
+      lowerHexToUnsignedLong(Character.toString((char) ('9' + 1))); // invalid
+      failBecauseExceptionWasNotThrown(NumberFormatException.class);
+    } catch (NumberFormatException e) {
+    }
+
+    try {
+      lowerHexToUnsignedLong(Character.toString((char) ('0' - 1))); // invalid
+      failBecauseExceptionWasNotThrown(NumberFormatException.class);
+    } catch (NumberFormatException e) {
+    }
+
+    try {
+      lowerHexToUnsignedLong(Character.toString((char) ('f' + 1))); // invalid
+      failBecauseExceptionWasNotThrown(NumberFormatException.class);
+    } catch (NumberFormatException e) {
+    }
+
+    try {
+      lowerHexToUnsignedLong(Character.toString((char) ('a' - 1))); // invalid
+      failBecauseExceptionWasNotThrown(NumberFormatException.class);
+    } catch (NumberFormatException e) {
+    }
+
+    try {
       lowerHexToUnsignedLong("fffffffffffffffffffffffffffffffff"); // too long
       failBecauseExceptionWasNotThrown(NumberFormatException.class);
     } catch (NumberFormatException e) {
