@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.3.0-SNAPSHOT</version>
+    <version>5.3.0</version>
   </parent>
 
   <artifactId>brave-instrumentation-benchmarks</artifactId>
@@ -280,7 +280,7 @@
               <!-- instead of javac-with-errorprone -->
               <compilerId>javac</compilerId>
               <!-- scrub errorprone compiler args -->
-              <compilerArgs/>
+              <compilerArgs />
             </configuration>
           </execution>
         </executions>
