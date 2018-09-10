@@ -22,7 +22,6 @@ final class KafkaPropagation {
 
   static final Injector<Headers> B3_SINGLE_INJECTOR = new Injector<Headers>() {
     @Override public void inject(TraceContext traceContext, Headers carrier) {
-      carrier.remove("b3");
       carrier.add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
     }
 

@@ -35,6 +35,15 @@ public class ExtraFieldPropagationTest {
         .build());
   }
 
+  /**
+   * Ensure extra fields aren't leaked. This prevents tools from deleting entries when clearing a
+   * trace.
+   */
+  @Test public void keysDontIncludeExtra() {
+    assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
+        .isEqualTo(Propagation.B3_STRING.keys());
+  }
+
   @Test public void downcasesNames() {
     ExtraFieldPropagation.Factory factory =
         (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
