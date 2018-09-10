@@ -258,20 +258,22 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   final Propagation<K> delegate;
   final ExtraFactory extraFactory;
   final String[] fieldNames;
-  final List<K> keys, allKeys;
+  final List<K> keys;
 
   ExtraFieldPropagation(Factory factory, Propagation.KeyFactory<K> keyFactory, List<K> keys) {
     this.delegate = factory.delegate.create(keyFactory);
     this.extraFactory = factory.extraFactory;
     this.fieldNames = factory.fieldNames;
     this.keys = keys;
-    List<K> allKeys = new ArrayList<>(delegate.keys());
-    allKeys.addAll(keys);
-    this.allKeys = allKeys;
   }
 
+  /**
+   * Only returns trace context keys. Extra field names are not returned to ensure tools don't
+   * delete them. This is to support users accessing extra fields without Brave apis (ex via
+   * headers).
+   */
   @Override public List<K> keys() {
-    return allKeys;
+    return delegate.keys();
   }
 
   @Override public <C> Injector<C> injector(Setter<C, K> setter) {

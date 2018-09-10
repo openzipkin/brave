@@ -92,6 +92,10 @@ public interface Propagation<K> {
    * <p>For example, if the carrier is a single-use or immutable request object, you don't need to
    * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
    * successive calls should clear these fields first.
+   *
+   * <p><em>Note:</em> If your implementation carries "extra fields", such as correlation IDs, do
+   * not return the names of those fields here. If you do, they will be deleted, which can interfere
+   * with user headers.
    */
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata
