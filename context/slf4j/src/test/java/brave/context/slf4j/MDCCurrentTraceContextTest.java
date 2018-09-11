@@ -5,14 +5,21 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
+import java.util.function.Supplier;
 import org.slf4j.MDC;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext newCurrentTraceContext() {
-    return MDCCurrentTraceContext.create(CurrentTraceContext.Default.create());
+  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
+    return CurrentSupplier.class;
+  }
+
+  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
+    @Override public CurrentTraceContext get() {
+      return MDCCurrentTraceContext.create(CurrentTraceContext.Default.create());
+    }
   }
 
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {

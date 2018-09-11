@@ -1,8 +1,6 @@
 package brave.internal;
 
 import brave.Clock;
-import brave.Tracer;
-import brave.Tracing;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -10,40 +8,22 @@ import java.security.SecureRandom;
 import java.util.Enumeration;
 import java.util.Random;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
-import zipkin2.Span;
-import zipkin2.reporter.Reporter;
 
 /**
- * Access to platform-specific features and implements a default logging spanReporter.
+ * Access to platform-specific features.
+ *
+ * <p>Note: Logging is centralized here to avoid classloader problems.
  *
  * <p>Originally designed by OkHttp team, derived from {@code okhttp3.internal.platform.Platform}
  */
 public abstract class Platform {
-  static final Logger logger = Logger.getLogger(Tracer.class.getName());
-
   private static final Platform PLATFORM = findPlatform();
+  private static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
 
   volatile String linkLocalIp;
-
-  public Reporter<zipkin2.Span> reporter() {
-    return LoggingReporter.INSTANCE;
-  }
-
-  enum LoggingReporter implements Reporter<zipkin2.Span> {
-    INSTANCE;
-
-    @Override public void report(Span span) {
-      if (!logger.isLoggable(Level.INFO)) return;
-      if (span == null) throw new NullPointerException("span == null");
-      logger.info(span.toString());
-    }
-
-    @Override public String toString() {
-      return "LoggingReporter{name=" + logger.getName() + "}";
-    }
-  }
 
   /** Guards {@link InetSocketAddress#getHostString()}, as it isn't available until Java 7 */
   @Nullable public abstract String getHostString(InetSocketAddress socket);
@@ -73,15 +53,29 @@ public abstract class Platform {
       }
     } catch (Exception e) {
       // don't crash the caller if there was a problem reading nics.
-      if (logger.isLoggable(Level.FINE)) {
-        logger.log(Level.FINE, "error reading nics", e);
-      }
+      log("error reading nics", e);
     }
     return null;
   }
 
   public static Platform get() {
     return PLATFORM;
+  }
+
+  /** Like {@link Logger#log(Level, String) */
+  public void log(String msg, @Nullable Throwable thrown) {
+    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    LOG.log(Level.FINE, msg, thrown);
+  }
+
+  /** Like {@link Logger#log(Level, String, Object)}, except with a throwable arg */
+  public void log(String msg, Object param1, @Nullable Throwable thrown) {
+    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    LogRecord lr = new LogRecord(Level.FINE, msg);
+    Object params[] = {param1};
+    lr.setParameters(params);
+    if (thrown != null) lr.setThrown(thrown);
+    LOG.log(lr);
   }
 
   /** Attempt to match the host runtime to a capable Platform implementation. */
@@ -108,7 +102,7 @@ public abstract class Platform {
   public abstract long randomLong();
 
   /**
-   * Returns the high 8-bytes for use in {@link Tracing.Builder#traceId128Bit 128-bit trace IDs}.
+   * Returns the high 8-bytes for {@link brave.Tracing.Builder#traceId128Bit 128-bit trace IDs}.
    *
    * <p>The upper 4-bytes are epoch seconds and the lower 4-bytes are random. This makes it
    * convertible to <a href="http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html"></a>Amazon

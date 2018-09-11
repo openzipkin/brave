@@ -6,6 +6,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
+import java.util.function.Supplier;
 import org.apache.log4j.MDC;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -14,10 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext newCurrentTraceContext() {
-    return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(MDCScopeDecorator.create())
-        .build();
+  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
+    return CurrentSupplier.class;
+  }
+
+  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
+    @Override public CurrentTraceContext get() {
+      return ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(MDCScopeDecorator.create())
+          .build();
+    }
   }
 
   @Test(expected = ComparisonFailure.class) // Log4J 1.2.x MDC is inheritable by default

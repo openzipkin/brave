@@ -31,6 +31,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   // Used when flushing spans
+  final MutableSpanConverter converter = new MutableSpanConverter();
   final Endpoint localEndpoint;
   final Clock clock;
   final Reporter<zipkin2.Span> reporter;
@@ -127,7 +128,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           .localEndpoint(localEndpoint)
           .addAnnotation(flushTime, "brave.flush");
 
-      MutableSpanConverter.convert(value.state, builderWithContextData);
+      converter.convert(value.state, builderWithContextData);
       reporter.report(builderWithContextData.build());
     }
   }
@@ -230,10 +231,11 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   public List<Span> snapshot() {
     List<zipkin2.Span> result = new ArrayList<>();
     zipkin2.Span.Builder spanBuilder = zipkin2.Span.newBuilder();
+    MutableSpanConverter converter = new MutableSpanConverter();
     for (Map.Entry<Object, PendingSpan> entry : delegate.entrySet()) {
       PendingSpans.RealKey contextKey = (PendingSpans.RealKey) entry.getKey();
       spanBuilder.clear().traceId(contextKey.traceIdHigh, contextKey.traceId).id(contextKey.spanId);
-      MutableSpanConverter.convert(entry.getValue().state, spanBuilder);
+      converter.convert(entry.getValue().state, spanBuilder);
       result.add(spanBuilder.build());
       spanBuilder.clear();
     }

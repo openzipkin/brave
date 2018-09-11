@@ -59,6 +59,13 @@ public class TracerTest {
     Tracing.current().close();
   }
 
+  @Test public void reporter_hasNiceToString() {
+    tracer = Tracing.newBuilder().build().tracer();
+
+    assertThat(tracer.spanReporter)
+        .hasToString("LoggingReporter{name=brave.Tracer}");
+  }
+
   @Test public void sampler() {
     Sampler sampler = new Sampler() {
       @Override public boolean isSampled(long traceId) {

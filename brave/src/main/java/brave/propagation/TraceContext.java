@@ -1,11 +1,10 @@
 package brave.propagation;
 
 import brave.internal.Nullable;
+import brave.internal.Platform;
 import brave.internal.TraceContexts;
 import java.util.Collections;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
@@ -25,8 +24,6 @@ import static brave.internal.TraceContexts.FLAG_SHARED;
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
-  static final Logger LOG = Logger.getLogger(TraceContext.class.getName());
-
   /**
    * Used to send the trace context downstream. For example, as http headers.
    *
@@ -298,7 +295,7 @@ public final class TraceContext extends SamplingFlags {
       if (traceIdIndex > 0) {
         traceIdHigh = lenientLowerHexToUnsignedLong(traceIdString, 0, traceIdIndex);
         if (traceIdHigh == 0) {
-          maybeLogNotLowerHex(key, traceIdString);
+          maybeLogNotLowerHex(traceIdString);
           return false;
         }
       }
@@ -306,7 +303,7 @@ public final class TraceContext extends SamplingFlags {
       // right-most up to 16 characters are the low bits
       traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
       if (traceId == 0) {
-        maybeLogNotLowerHex(key, traceIdString);
+        maybeLogNotLowerHex(traceIdString);
         return false;
       }
       return true;
@@ -321,7 +318,7 @@ public final class TraceContext extends SamplingFlags {
 
       parentId = lenientLowerHexToUnsignedLong(parentIdString, 0, length);
       if (parentId != 0) return true;
-      maybeLogNotLowerHex(key, parentIdString);
+      maybeLogNotLowerHex(parentIdString);
       return false;
     }
 
@@ -334,7 +331,7 @@ public final class TraceContext extends SamplingFlags {
 
       spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
       if (spanId == 0) {
-        maybeLogNotLowerHex(key, spanIdString);
+        maybeLogNotLowerHex(spanIdString);
         return false;
       }
       return true;
@@ -342,22 +339,23 @@ public final class TraceContext extends SamplingFlags {
 
     boolean invalidIdLength(Object key, int length, int max) {
       if (length > 1 && length <= max) return false;
-      if (LOG.isLoggable(Level.FINE)) {
-        LOG.fine(key + " should be a 1 to " + max + " character lower-hex string with no prefix");
-      }
+
+      assert max == 32 || max == 16;
+      Platform.get().log(max == 32
+          ? "{0} should be a 1 to 32 character lower-hex string with no prefix"
+          : "{0} should be a 1 to 16 character lower-hex string with no prefix", key, null);
+
       return true;
     }
 
     boolean isNull(Object key, String maybeNull) {
       if (maybeNull != null) return false;
-      if (LOG.isLoggable(Level.FINE)) LOG.fine(key + " was null");
+      Platform.get().log("{0} was null", key, null);
       return true;
     }
 
-    void maybeLogNotLowerHex(Object key, String notLowerHex) {
-      if (LOG.isLoggable(Level.FINE)) {
-        LOG.fine(key + ": " + notLowerHex + " is not a lower-hex string");
-      }
+    void maybeLogNotLowerHex(String notLowerHex) {
+      Platform.get().log("{0} is not a lower-hex string", notLowerHex, null);
     }
 
     public final TraceContext build() {

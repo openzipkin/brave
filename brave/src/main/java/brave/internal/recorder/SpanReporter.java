@@ -1,18 +1,16 @@
 package brave.internal.recorder;
 
+import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 public final class SpanReporter implements Reporter<Span> {
-  static final Logger logger = Logger.getLogger(SpanReporter.class.getName());
-
   final Endpoint localEndpoint;
   final Reporter<zipkin2.Span> delegate;
+  final MutableSpanConverter converter = new MutableSpanConverter();
   final AtomicBoolean noop;
 
   public SpanReporter(Endpoint localEndpoint, Reporter<zipkin2.Span> delegate, AtomicBoolean noop) {
@@ -29,7 +27,7 @@ public final class SpanReporter implements Reporter<Span> {
         .debug(context.debug())
         .localEndpoint(localEndpoint);
 
-    MutableSpanConverter.convert(span, builderWithContextData);
+    converter.convert(span, builderWithContextData);
     report(builderWithContextData.build());
   }
 
@@ -38,9 +36,7 @@ public final class SpanReporter implements Reporter<Span> {
     try {
       delegate.report(span);
     } catch (RuntimeException e) {
-      if (logger.isLoggable(Level.FINE)) { // fine level to not fill logs
-        logger.log(Level.FINE, "error reporting " + span, e);
-      }
+      Platform.get().log("error reporting {0}", span, e);
     }
   }
 

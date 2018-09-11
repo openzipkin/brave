@@ -41,6 +41,7 @@ import static brave.internal.recorder.MutableSpanBenchmarks.newServerMutableSpan
 @State(Scope.Thread)
 @Threads(1)
 public class MutableSpanConverterBenchmarks {
+  final MutableSpanConverter converter = new MutableSpanConverter();
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 
@@ -50,13 +51,13 @@ public class MutableSpanConverterBenchmarks {
    */
   @Benchmark public Span.Builder convertServerSpan() {
     Span.Builder builder = Span.newBuilder();
-    MutableSpanConverter.convert(serverMutableSpan, builder);
+    converter.convert(serverMutableSpan, builder);
     return builder;
   }
 
   @Benchmark public Span.Builder convertBigClientSpan() {
     Span.Builder builder = Span.newBuilder();
-    MutableSpanConverter.convert(bigClientMutableSpan, builder);
+    converter.convert(bigClientMutableSpan, builder);
     return builder;
   }
 
