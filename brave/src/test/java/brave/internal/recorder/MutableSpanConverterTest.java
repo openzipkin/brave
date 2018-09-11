@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanConverterTest {
+  final MutableSpanConverter converter = new MutableSpanConverter();
+
   @Test public void minimumDurationIsOne() {
     MutableSpan span = new MutableSpan();
 
@@ -152,16 +154,16 @@ public class MutableSpanConverterTest {
     MutableSpan finishWithTimestamp = new MutableSpan();
     finishWithTimestamp.finishTimestamp(2L);
     Span.Builder finishWithTimestampBuilder = Span.newBuilder();
-    MutableSpanConverter.convert(finishWithTimestamp, finishWithTimestampBuilder);
+    converter.convert(finishWithTimestamp, finishWithTimestampBuilder);
 
     MutableSpan finishWithNoTimestamp = new MutableSpan();
     finishWithNoTimestamp.finishTimestamp(0L);
     Span.Builder finishWithNoTimestampBuilder = Span.newBuilder();
-    MutableSpanConverter.convert(finishWithNoTimestamp, finishWithNoTimestampBuilder);
+    converter.convert(finishWithNoTimestamp, finishWithNoTimestampBuilder);
 
     MutableSpan flush = new MutableSpan();
     Span.Builder flushBuilder = Span.newBuilder();
-    MutableSpanConverter.convert(flush, flushBuilder);
+    converter.convert(flush, flushBuilder);
 
     assertThat(finishWithTimestampBuilder)
         .isEqualToComparingFieldByFieldRecursively(finishWithNoTimestampBuilder)
@@ -170,7 +172,7 @@ public class MutableSpanConverterTest {
 
   Span convert(MutableSpan span) {
     Span.Builder result = Span.newBuilder().traceId(0L, 1L).id(1L);
-    MutableSpanConverter.convert(span, result);
+    converter.convert(span, result);
     return result.build();
   }
 }

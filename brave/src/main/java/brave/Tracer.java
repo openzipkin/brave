@@ -9,6 +9,7 @@ import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.internal.recorder.SpanReporter;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -441,7 +442,7 @@ public class Tracer {
     if (parent == null) parent = currentTraceContext.get();
     TraceContext context = parent != null ? nextContext(parent) : newRootContext();
 
-    CurrentTraceContext.Scope scope = currentTraceContext.newScope(context);
+    Scope scope = currentTraceContext.newScope(context);
     if (isNoop(context)) return new NoopScopedSpan(context, scope);
 
     PendingSpan pendingSpan = pendingSpans.getOrCreate(context, true);
@@ -454,10 +455,10 @@ public class Tracer {
 
   /** A span remains in the scope it was bound to until close is called. */
   public static final class SpanInScope implements Closeable {
-    final CurrentTraceContext.Scope scope;
+    final Scope scope;
 
     // This type hides the SPI type and allows us to double-check the SPI didn't return null.
-    SpanInScope(CurrentTraceContext.Scope scope) {
+    SpanInScope(Scope scope) {
       if (scope == null) throw new NullPointerException("scope == null");
       this.scope = scope;
     }

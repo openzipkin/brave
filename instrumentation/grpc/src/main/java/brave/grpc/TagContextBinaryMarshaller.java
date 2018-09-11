@@ -1,12 +1,10 @@
 package brave.grpc;
 
+import brave.internal.Platform;
 import io.grpc.Metadata.BinaryMarshaller;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.FINE;
 
 /**
  * This logs instead of throwing exceptions.
@@ -15,7 +13,6 @@ import static java.util.logging.Level.FINE;
  * https://github.com/census-instrumentation/opencensus-java/blob/master/impl_core/src/main/java/io/opencensus/implcore/tags/propagation/SerializationUtils.java
  */
 final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, String>> {
-  static final Logger logger = Logger.getLogger(TagContextBinaryMarshaller.class.getName());
   static final byte VERSION = 0, TAG_FIELD_ID = 0;
   static final byte[] EMPTY_BYTES = {};
 
@@ -43,7 +40,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
     Buffer bytes = new Buffer(buf);
     byte version = bytes.readByte();
     if (version != VERSION) {
-      logger.log(FINE, "Invalid input: unsupported version {0}", version);
+      Platform.get().log("Invalid input: unsupported version {0}", version, null);
       return null;
     }
 
@@ -56,7 +53,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
         if (val == null) break;
         result.put(key, val);
       } else {
-        logger.log(FINE, "Invalid input: expected TAG_FIELD_ID at offset {0}", bytes.pos);
+        Platform.get().log("Invalid input: expected TAG_FIELD_ID at offset {0}", bytes.pos, null);
         break;
       }
     }
@@ -132,7 +129,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
     private int readVarint(byte b1) {
       int b2 = buf[pos++];
       if ((b2 & 0xf0) != 0) {
-        logger.log(FINE, "Greater than 14-bit varint at position {0}", pos);
+        Platform.get().log("Greater than 14-bit varint at position {0}", pos, null);
         return -1;
       }
       return b1 & 0x7f | b2 << 28;

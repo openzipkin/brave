@@ -1,21 +1,17 @@
 package brave.propagation;
 
 import brave.test.propagation.CurrentTraceContextTest;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.function.Supplier;
 
 public class ThreadLocalCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext newCurrentTraceContext() {
-    return CurrentTraceContext.Default.create();
+  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
+    return CurrentSupplier.class;
   }
 
-  @Test public void is_inheritable() throws Exception {
-    super.is_inheritable(CurrentTraceContext.Default.inheritable());
-  }
-
-  @Before public void ensureNoOtherTestsTaint() {
-    CurrentTraceContext.Default.INHERITABLE.set(null);
-    CurrentTraceContext.Default.DEFAULT.set(null);
+  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
+    @Override public CurrentTraceContext get() {
+      return ThreadLocalCurrentTraceContext.newBuilder().build();
+    }
   }
 }

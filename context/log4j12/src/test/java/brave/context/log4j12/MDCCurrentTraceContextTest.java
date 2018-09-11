@@ -5,6 +5,7 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
+import java.util.function.Supplier;
 import org.apache.log4j.MDC;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -13,8 +14,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
 
-  @Override protected CurrentTraceContext newCurrentTraceContext() {
-    return MDCCurrentTraceContext.create();
+  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
+    return CurrentSupplier.class;
+  }
+
+  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
+    @Override public CurrentTraceContext get() {
+      return MDCCurrentTraceContext.create();
+    }
   }
 
   @Test public void is_inheritable() throws Exception {

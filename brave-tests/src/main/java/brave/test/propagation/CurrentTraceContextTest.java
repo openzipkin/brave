@@ -4,6 +4,7 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
+import brave.test.util.ClassLoaders;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -14,11 +15,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.junit.Test;
 
+import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
+import static brave.test.util.ClassLoaders.newInstance;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
-
-  protected abstract CurrentTraceContext newCurrentTraceContext();
 
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context =
@@ -26,8 +28,10 @@ public abstract class CurrentTraceContextTest {
   protected final TraceContext context2 =
       context.toBuilder().parentId(context.spanId()).spanId(-2L).build();
 
+  protected abstract Class<? extends Supplier<CurrentTraceContext>> currentSupplier();
+
   protected CurrentTraceContextTest() {
-    currentTraceContext = newCurrentTraceContext();
+    currentTraceContext = newInstance(currentSupplier(), getClass().getClassLoader()).get();
   }
 
   protected void verifyImplicitContext(@Nullable TraceContext context) {
@@ -141,12 +145,12 @@ public abstract class CurrentTraceContextTest {
 
     // submitting a job grows the pool, attaching the context to its thread
     try (Scope scope = inheritableCurrentTraceContext.newScope(context)) {
-      assertThat(service.submit(() -> inheritableCurrentTraceContext.get()).get())
+      assertThat(service.submit(inheritableCurrentTraceContext::get).get())
           .isEqualTo(context);
     }
 
     // same thread executes the next job and still has the same context (leaked and not cleaned up)
-    assertThat(service.submit(() -> inheritableCurrentTraceContext.get()).get())
+    assertThat(service.submit(inheritableCurrentTraceContext::get).get())
         .isEqualTo(context);
 
     service.shutdownNow();
@@ -165,7 +169,7 @@ public abstract class CurrentTraceContextTest {
       throw (Exception) e.getCause();
     }
 
-    assertThat(service.submit(() -> currentTraceContext.get()).get())
+    assertThat(service.submit(currentTraceContext::get).get())
         .isNull();
     verifyImplicitContext(null);
 
@@ -242,6 +246,47 @@ public abstract class CurrentTraceContextTest {
       assertThat(currentTraceContext.get())
           .isEqualTo(context0);
       verifyImplicitContext(context0);
+    }
+  }
+
+  @Test public void unloadable_unused() {
+    assertRunIsUnloadableWithSupplier(Unused.class, currentSupplier());
+  }
+
+  static class Unused extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
+    @Override public void accept(CurrentTraceContext currentTraceContext) {
+    }
+  }
+
+  @Test public void unloadable_afterScopeClose() {
+    assertRunIsUnloadableWithSupplier(ClosedScope.class, currentSupplier());
+  }
+
+  static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
+    @Override public void accept(CurrentTraceContext current) {
+      try (Scope ws = current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build())) {
+      }
+    }
+  }
+
+  /**
+   * TODO: While it is an instrumentation bug to not close a scope, we should be tolerant. For
+   * example, considering weak references or similar.
+   */
+  @SuppressWarnings("CheckReturnValue")
+  @Test public void notUnloadable_whenScopeLeaked() {
+    try {
+      assertRunIsUnloadableWithSupplier(LeakedScope.class, currentSupplier());
+      failBecauseExceptionWasNotThrown(AssertionError.class);
+    } catch (AssertionError e) {
+      // clear the leaked scope so other tests don't break
+      currentTraceContext.newScope(null);
+    }
+  }
+
+  static class LeakedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
+    @Override public void accept(CurrentTraceContext current) {
+      current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
     }
   }
 }

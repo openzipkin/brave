@@ -1,23 +1,14 @@
 package brave.internal.recorder;
 
+import brave.internal.recorder.MutableSpan.AnnotationConsumer;
+import brave.internal.recorder.MutableSpan.TagConsumer;
 import zipkin2.Span;
 
 // internal until we figure out how the api should sit.
-public final class MutableSpanConverter {
-  static final MutableSpan.TagConsumer TAG_CONSUMER = new MutableSpan.TagConsumer<Span.Builder>() {
-    @Override public void accept(Span.Builder target, String key, String value) {
-      target.putTag(key, value);
-    }
-  };
+final class MutableSpanConverter
+    implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
 
-  static final MutableSpan.AnnotationConsumer ANNOTATION_CONSUMER =
-      new MutableSpan.AnnotationConsumer<Span.Builder>() {
-        @Override public void accept(Span.Builder target, long timestamp, String value) {
-          target.addAnnotation(timestamp, value);
-        }
-      };
-
-  public static void convert(MutableSpan span, Span.Builder result) {
+  void convert(MutableSpan span, Span.Builder result) {
     result.name(span.name());
 
     long start = span.startTimestamp(), finish = span.finishTimestamp();
@@ -38,8 +29,16 @@ public final class MutableSpanConverter {
           .port(span.remotePort())
           .build());
     }
-    span.forEachTag(TAG_CONSUMER, result);
-    span.forEachAnnotation(ANNOTATION_CONSUMER, result);
+    span.forEachTag(this, result);
+    span.forEachAnnotation(this, result);
     if (span.shared()) result.shared(true);
+  }
+
+  @Override public void accept(Span.Builder target, String key, String value) {
+    target.putTag(key, value);
+  }
+
+  @Override public void accept(Span.Builder target, long timestamp, String value) {
+    target.addAnnotation(timestamp, value);
   }
 }

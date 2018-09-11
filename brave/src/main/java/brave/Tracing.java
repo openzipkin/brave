@@ -13,6 +13,8 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 import zipkin2.reporter.Sender;
@@ -302,11 +304,25 @@ public abstract class Tracing implements Closeable {
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
       if (localIp == null) localIp = Platform.get().linkLocalIp();
-      if (reporter == null) reporter = Platform.get().reporter();
+      if (reporter == null) reporter = new LoggingReporter();
       return new Default(this);
     }
 
     Builder() {
+    }
+  }
+
+  static final class LoggingReporter implements Reporter<zipkin2.Span> {
+    final Logger logger = Logger.getLogger(Tracer.class.getName());
+
+    @Override public void report(zipkin2.Span span) {
+      if (span == null) throw new NullPointerException("span == null");
+      if (!logger.isLoggable(Level.INFO)) return;
+      logger.info(span.toString());
+    }
+
+    @Override public String toString() {
+      return "LoggingReporter{name=" + logger.getName() + "}";
     }
   }
 

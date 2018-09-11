@@ -6,15 +6,19 @@ import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.test.util.ClassLoaders;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.junit.Test;
 
+import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
+import static brave.test.util.ClassLoaders.newInstance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class PropagationTest<K> {
 
-  protected abstract Propagation<K> propagation();
+  protected abstract Class<? extends Supplier<Propagation<K>>> propagationSupplier();
 
   protected abstract void inject(Map<K, String> map, @Nullable String traceId,
       @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
@@ -36,6 +40,12 @@ public abstract class PropagationTest<K> {
   TraceContext childSpan = rootSpan.toBuilder()
       .parentId(rootSpan.spanId())
       .spanId(2).build();
+
+  protected final Propagation<K> propagation;
+
+  protected PropagationTest() {
+    propagation = newInstance(propagationSupplier(), getClass().getClassLoader()).get();
+  }
 
   @Test public void verifyRoundTrip_rootSpan() throws Exception {
     inject(map, "0000000000000001", null, "0000000000000001", true, null);
@@ -93,7 +103,8 @@ public abstract class PropagationTest<K> {
   }
 
   /**
-   * When the caller propagates IDs, but not a sampling decision, the current process should decide.
+   * When the caller propagates IDs, but not a sampling decision, the current process should
+   * decide.
    */
   @Test public void verifyRoundTrip_externallyProvidedIds() {
     inject(map, "0000000000000001", null, "0000000000000001", null, null);
@@ -102,14 +113,14 @@ public abstract class PropagationTest<K> {
   }
 
   void verifyRoundTrip(TraceContextOrSamplingFlags expected) {
-    TraceContextOrSamplingFlags extracted = propagation().extractor(mapEntry).extract(map);
+    TraceContextOrSamplingFlags extracted = propagation.extractor(mapEntry).extract(map);
 
     assertThat(extracted)
         .isEqualTo(expected);
 
     Map<K, String> injected = new LinkedHashMap<>();
     if (expected.context() != null) {
-      propagation().injector(mapEntry).inject(expected.context(), injected);
+      propagation.injector(mapEntry).inject(expected.context(), injected);
     } else {
       inject(injected, expected.samplingFlags());
     }
@@ -120,7 +131,7 @@ public abstract class PropagationTest<K> {
   protected static class MapEntry<K> implements
       Propagation.Getter<Map<K, String>, K>,
       Propagation.Setter<Map<K, String>, K> {
-    public MapEntry(){
+    public MapEntry() {
     }
 
     @Override public void put(Map<K, String> carrier, K key, String value) {
@@ -129,6 +140,33 @@ public abstract class PropagationTest<K> {
 
     @Override public String get(Map<K, String> carrier, K key) {
       return carrier.get(key);
+    }
+  }
+
+  @Test public void unloadable_unused() {
+    assertRunIsUnloadableWithSupplier(Unused.class, propagationSupplier());
+  }
+
+  static class Unused extends ClassLoaders.ConsumerRunnable<Propagation<?>> {
+    @Override public void accept(Propagation<?> propagation) {
+    }
+  }
+
+  @Test public void unloadable_afterBasicUsage() {
+    assertRunIsUnloadableWithSupplier(BasicUsage.class, propagationSupplier());
+  }
+
+  static class BasicUsage extends ClassLoaders.ConsumerRunnable<Propagation<?>> {
+    @Override public void accept(Propagation<?> propagation) {
+      TraceContext.Injector<Map<Object, String>> injector = propagation.injector(Map::put);
+      TraceContext.Extractor<Map<Object, String>> extractor = propagation.extractor(Map::get);
+
+      TraceContext ctx = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false).build();
+      Map<Object, String> map = new LinkedHashMap<>();
+      injector.inject(ctx, map);
+
+      assertThat(extractor.extract(map).context())
+          .isEqualToComparingFieldByField(ctx);
     }
   }
 }

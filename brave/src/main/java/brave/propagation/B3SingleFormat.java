@@ -2,15 +2,14 @@ package brave.propagation;
 
 import brave.internal.HexCodec;
 import brave.internal.Nullable;
+import brave.internal.Platform;
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.logging.Logger;
 
 import static brave.internal.HexCodec.writeHexLong;
 import static brave.internal.TraceContexts.FLAG_DEBUG;
 import static brave.internal.TraceContexts.FLAG_SAMPLED;
 import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
-import static java.util.logging.Level.FINE;
 
 /**
  * This format corresponds to the propagation key "b3" (or "B3"), which delimits fields in the
@@ -43,7 +42,6 @@ import static java.util.logging.Level.FINE;
  * <p>See <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3SingleFormat {
-  static final Logger logger = Logger.getLogger(B3SingleFormat.class.getName());
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 2 + 16; // traceid128-spanid-1-parentid
 
   /**
@@ -136,7 +134,7 @@ public final class B3SingleFormat {
   public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3, int beginIndex,
       int endIndex) {
     if (beginIndex == endIndex) {
-      logger.log(FINE, "Invalid input: empty");
+      Platform.get().log("Invalid input: empty", null);
       return null;
     }
 
@@ -147,10 +145,10 @@ public final class B3SingleFormat {
 
     // At this point we minimally expect a traceId-spanId pair
     if (endIndex < 16 + 1 + 16 /* traceid64-spanid */) {
-      logger.fine("Invalid input: truncated");
+      Platform.get().log("Invalid input: truncated", null);
       return null;
     } else if (endIndex > FORMAT_MAX_LENGTH) {
-      logger.fine("Invalid input: too long");
+      Platform.get().log("Invalid input: too long", null);
       return null;
     }
 
@@ -167,13 +165,13 @@ public final class B3SingleFormat {
     if (!checkHyphen(b3, pos++)) return null;
 
     if (traceIdHigh == 0L && traceId == 0L) {
-      logger.fine("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0");
+      Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
       return null;
     }
 
     long spanId = tryParse16HexCharacters(b3, pos, endIndex);
     if (spanId == 0L) {
-      logger.log(FINE, "Invalid input: expected a 16 lower hex span ID at offset {0}", pos);
+      Platform.get().log("Invalid input: expected a 16 lower hex span ID at offset {0}", pos, null);
       return null;
     }
     pos += 16; // spanid
@@ -186,7 +184,7 @@ public final class B3SingleFormat {
       // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
       // Therefore, if we have less than two characters, the input is truncated.
       if (endIndex == pos + 1) {
-        logger.fine("Invalid input: truncated");
+        Platform.get().log("Invalid input: truncated", null);
         return null;
       }
       if (!checkHyphen(b3, pos++)) return null;
@@ -202,14 +200,15 @@ public final class B3SingleFormat {
       if (endIndex > pos) {
         // If we are at this point, we should have a parent ID, encoded as "-[0-9a-f]{16}"
         if (endIndex != pos + 17) {
-          logger.fine("Invalid input: truncated");
+          Platform.get().log("Invalid input: truncated", null);
           return null;
         }
 
         if (!checkHyphen(b3, pos++)) return null;
         parentId = tryParse16HexCharacters(b3, pos, endIndex);
         if (parentId == 0L) {
-          logger.log(FINE, "Invalid input: expected a 16 lower hex parent ID at offset {0}", pos);
+          Platform.get()
+              .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
           return null;
         }
       }
@@ -233,7 +232,7 @@ public final class B3SingleFormat {
 
   static boolean checkHyphen(CharSequence b3, int pos) {
     if (b3.charAt(pos) == '-') return true;
-    logger.log(FINE, "Invalid input: expected a hyphen(-) delimiter offset {0}", pos);
+    Platform.get().log("Invalid input: expected a hyphen(-) delimiter offset {0}", pos, null);
     return false;
   }
 
@@ -264,7 +263,7 @@ public final class B3SingleFormat {
   }
 
   static void logInvalidSampled(int pos) {
-    logger.log(FINE, "Invalid input: expected 0, 1 or d for sampled at offset {0}", pos);
+    Platform.get().log("Invalid input: expected 0, 1 or d for sampled at offset {0}", pos, null);
   }
 
   static byte[] asciiToNewByteArray(char[] buffer, int length) {

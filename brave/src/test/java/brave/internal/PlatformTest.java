@@ -43,11 +43,6 @@ public class PlatformTest {
         .hasToString("Clock.systemUTC().instant()");
   }
 
-  @Test public void reporter_hasNiceToString() {
-    assertThat(platform.reporter())
-        .hasToString("LoggingReporter{name=brave.Tracer}");
-  }
-
   // example from X-Amzn-Trace-Id: Root=1-5759e988-bd862e3fe1be46a994272793;Sampled=1
   @Test public void randomLong_epochSecondsPlusRandom() {
     mockStatic(System.class);

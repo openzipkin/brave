@@ -2,12 +2,11 @@ package brave.grpc;
 
 import brave.grpc.GrpcPropagation.Tags;
 import brave.internal.Nullable;
+import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.Collections;
-import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.logging.Level.FINE;
 
 /**
  * This logs instead of throwing exceptions.
@@ -16,7 +15,6 @@ import static java.util.logging.Level.FINE;
  * https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md
  */
 final class TraceContextBinaryFormat {
-  static final Logger logger = Logger.getLogger(TraceContextBinaryFormat.class.getName());
   static final byte VERSION = 0,
       TRACE_ID_FIELD_ID = 0,
       SPAN_ID_FIELD_ID = 1,
@@ -45,11 +43,11 @@ final class TraceContextBinaryFormat {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {
-      logger.log(FINE, "Invalid input: unsupported version {0}", bytes[0]);
+      Platform.get().log("Invalid input: unsupported version {0}", bytes[0], null);
       return null;
     }
     if (bytes.length < FORMAT_LENGTH - 2 /* sampled field + bit is optional */) {
-      logger.fine("Invalid input: truncated");
+      Platform.get().log("Invalid input: truncated", null);
       return null;
     }
     long traceIdHigh, traceId, spanId;
@@ -60,7 +58,7 @@ final class TraceContextBinaryFormat {
       traceId = readLong(bytes, pos + 8);
       pos += 16;
     } else {
-      logger.log(FINE, "Invalid input: expected trace ID at offset {0}", pos);
+      Platform.get().log("Invalid input: expected trace ID at offset {0}", pos, null);
       return null;
     }
     if (bytes[pos] == SPAN_ID_FIELD_ID) {
@@ -68,7 +66,7 @@ final class TraceContextBinaryFormat {
       spanId = readLong(bytes, pos);
       pos += 8;
     } else {
-      logger.log(FINE, "Invalid input: expected span ID at offset {0}", pos);
+      Platform.get().log("Invalid input: expected span ID at offset {0}", pos, null);
       return null;
     }
     // The trace options field is optional. However, when present, it should be valid.
@@ -76,7 +74,7 @@ final class TraceContextBinaryFormat {
     if (bytes.length > pos && bytes[pos] == TRACE_OPTION_FIELD_ID) {
       pos++;
       if (bytes.length < pos + 1) {
-        logger.log(FINE, "Invalid input: truncated");
+        Platform.get().log("Invalid input: truncated", null);
         return null;
       }
       sampled = bytes[pos] == 1;
