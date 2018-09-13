@@ -1,6 +1,7 @@
 package brave.test.util;
 
 import java.lang.ref.WeakReference;
+import java.util.logging.Logger;
 import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
@@ -66,5 +67,22 @@ public class ClassLoadersTest {
   @Test public void assertRunIsUnloadable_threadLocalWithWeakRefToOurClassIsUnloadable() {
     assertRunIsUnloadable(PresentThreadLocalWithWeakRefToApplicationType.class,
         getClass().getClassLoader());
+  }
+
+  /**
+   * Mainly tests the internals of the assertion. Certain log managers can hold a reference to the
+   * class that looked up a logger. Ensuring log manager implementation is out-of-scope. This
+   * assertion is only here to avoid distraction of java logging interfering with class unloading.
+   */
+  @Test public void assertRunIsUnloadable_javaLoggerUnloadable() {
+    assertRunIsUnloadable(JavaLogger.class, getClass().getClassLoader());
+  }
+
+  static class JavaLogger implements Runnable {
+    final Logger javaLogger = Logger.getLogger(JavaLogger.class.getName());
+
+    @Override public void run() {
+      javaLogger.fine("foo");
+    }
   }
 }
