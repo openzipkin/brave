@@ -1,12 +1,14 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.TraceContexts;
 import brave.propagation.TraceContext;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,16 +51,10 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     this.noop = noop;
   }
 
-  @Nullable PendingSpan get(TraceContext context) {
+  public PendingSpan getOrCreate(TraceContext context, boolean start) {
     if (context == null) throw new NullPointerException("context == null");
     reportOrphanedSpans();
-    LookupKey lookupKey = getLookupKey();
-    lookupKey.set(context);
-    return delegate.get(lookupKey);
-  }
-
-  public PendingSpan getOrCreate(TraceContext context, boolean start) {
-    PendingSpan result = get(context);
+    PendingSpan result = delegate.get(context);
     if (result != null) return result;
 
     MutableSpan data = new MutableSpan();
@@ -85,10 +81,15 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // server can share the same ID. Essentially, a shared span is similar to a child.
     PendingSpan parent = null;
     if (context.shared() || parentId != 0L) {
-      LookupKey lookupKey = getLookupKey();
       long spanId = parentId != 0L ? parentId : context.spanId();
-      lookupKey.set(context.traceIdHigh(), context.traceId(), spanId, false);
-      parent = delegate.get(lookupKey);
+      parent = delegate.get(InternalPropagation.instance.newTraceContext(
+          0,
+          context.traceIdHigh(),
+          context.traceId(),
+          0,
+          spanId,
+          Collections.emptyList()
+      ));
     }
     return parent != null ? parent.clock : null;
   }
@@ -96,9 +97,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   /** @see brave.Span#abandon() */
   public boolean remove(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    LookupKey lookupKey = getLookupKey();
-    lookupKey.set(context);
-    PendingSpan last = delegate.remove(lookupKey);
+    PendingSpan last = delegate.remove(context);
     reportOrphanedSpans(); // also clears the reference relating to the recent remove
     return last != null;
   }
@@ -244,16 +243,5 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
   @Override public String toString() {
     return "PendingSpans" + delegate.keySet();
-  }
-
-  static final ThreadLocal<LookupKey> LOOKUP_KEY = new ThreadLocal<>();
-
-  static LookupKey getLookupKey() {
-    LookupKey lookupKey = LOOKUP_KEY.get();
-    if (lookupKey == null) {
-      lookupKey = new LookupKey();
-      LOOKUP_KEY.set(lookupKey);
-    }
-    return lookupKey;
   }
 }

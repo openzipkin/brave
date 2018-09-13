@@ -3,6 +3,7 @@ package brave.propagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.TraceContexts;
+import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 
@@ -399,6 +400,8 @@ public final class TraceContext extends SamplingFlags {
    */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
+    // Hack that allows PendingSpans to lookup without allocating a new object.
+    if (o instanceof WeakReference) o = ((WeakReference) o).get();
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;
     return (traceIdHigh == that.traceIdHigh)
