@@ -66,16 +66,19 @@ enum PropertyFilter {
 
   static void doFilterProperties(JMSProducer producer, Set<String> namesToClear,
       ArrayList<Object> retainedProperties) {
+    boolean filtered = false;
     for (String name : producer.getPropertyNames()) {
       Object value = producer.getObjectProperty(name);
       if (!namesToClear.contains(name) && value != null) {
         retainedProperties.add(name);
         retainedProperties.add(value);
+      } else {
+        filtered = true;
       }
     }
 
     // a producer doesn't need to mark things mutable via clearProperties
-    if (producer.getPropertyNames().size() == retainedProperties.size()) return;
+    if (!filtered) return;
 
     // redo the properties to keep
     producer.clearProperties();
