@@ -1,6 +1,10 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
+import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.StrictScopeDecorator;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapExtractAdapter;
@@ -17,16 +21,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 
 /**
- * This shows how one might make an OpenTracing adapter for Brave, and how to navigate in and out
- * of the core concepts.
+ * This shows how one might make an OpenTracing adapter for Brave, and how to navigate in and out of
+ * the core concepts.
  */
 public class OpenTracingAdapterTest {
   List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing brave = Tracing.newBuilder().spanReporter(spans::add).build();
+  Tracing brave = Tracing.newBuilder()
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
+      .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
+      .spanReporter(spans::add).build();
+
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
   @After public void close() {
-    Tracing.current().close();
+    brave.close();
   }
 
   @Test public void startWithOpenTracingAndFinishWithBrave() {
@@ -61,6 +71,7 @@ public class OpenTracingAdapterTest {
     map.put("X-B3-TraceId", "0000000000000001");
     map.put("X-B3-SpanId", "0000000000000002");
     map.put("X-B3-Sampled", "1");
+    map.put("Client-Id", "sammy");
 
     BraveSpanContext openTracingContext =
         opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapExtractAdapter(map));
@@ -71,6 +82,9 @@ public class OpenTracingAdapterTest {
             .spanId(2L)
             .shared(true)
             .sampled(true).build());
+
+    assertThat(openTracingContext.baggageItems())
+        .containsExactly(entry("client-id", "sammy"));
   }
 
   @Test

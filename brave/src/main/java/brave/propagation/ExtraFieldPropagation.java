@@ -70,7 +70,7 @@ import java.util.Map;
  */
 public final class ExtraFieldPropagation<K> implements Propagation<K> {
   /** Wraps an underlying propagation implementation, pushing one or more fields */
-  public static Propagation.Factory newFactory(Propagation.Factory delegate, String... fieldNames) {
+  public static Factory newFactory(Propagation.Factory delegate, String... fieldNames) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
     String[] validated = ensureLowerCase(Arrays.asList(fieldNames));
@@ -78,7 +78,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   /** Wraps an underlying propagation implementation, pushing one or more fields */
-  public static Propagation.Factory newFactory(Propagation.Factory delegate,
+  public static Factory newFactory(Propagation.Factory delegate,
       Collection<String> fieldNames) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
@@ -219,7 +219,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     PropagationFields.put(context, lowercase(name), value, Extra.class);
   }
 
-  static final class Factory extends Propagation.Factory {
+  public static final class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
     final String[] fieldNames;
     final String[] keyNames;
@@ -240,7 +240,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       return delegate.requires128BitTraceId();
     }
 
-    @Override public final <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+    @Override
+    public final <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
       int length = fieldNames.length;
       List<K> keys = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
@@ -265,6 +266,16 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     this.extraFactory = factory.extraFactory;
     this.fieldNames = factory.fieldNames;
     this.keys = keys;
+  }
+
+  /**
+   * Returns the extra keys this component can extract. This result is lowercase and does not
+   * include any {@link #keys() trace context keys}.
+   */
+  // This is here to support extraction from carriers missing a get field by name function. The only
+  // known example is OpenTracing TextMap https://github.com/opentracing/opentracing-java/issues/305
+  public List<K> extraKeys() {
+    return keys;
   }
 
   /**
