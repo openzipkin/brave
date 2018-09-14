@@ -16,7 +16,7 @@ public class ExtraFieldPropagationTest {
   String awsTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   String uuid = "f4308d05-2228-4468-80f6-92a8377ba193";
-  Propagation.Factory factory = ExtraFieldPropagation.newFactory(
+  ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(
       B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
   );
 
@@ -42,6 +42,14 @@ public class ExtraFieldPropagationTest {
   @Test public void keysDontIncludeExtra() {
     assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
         .isEqualTo(Propagation.B3_STRING.keys());
+  }
+
+  /**
+   * Ensures OpenTracing 0.31 can read the extra keys, as its TextMap has no get by name function.
+   */
+  @Test public void extraKeysDontIncludeTraceContextKeys() {
+    assertThat(factory.create(Propagation.KeyFactory.STRING).extraKeys())
+        .containsExactly("x-vcap-request-id", "x-amzn-trace-id");
   }
 
   @Test public void downcasesNames() {
