@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import java.util.Map;
 import org.junit.Test;
@@ -47,5 +48,54 @@ public class B3PropagationTest extends PropagationTest<String> {
 
     assertThat(result)
         .isEqualTo(SamplingFlags.NOT_SAMPLED);
+  }
+
+
+  @Test public void extractTraceContext_malformed() {
+    MapEntry<String> mapEntry = new MapEntry<>();
+    map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
+    map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
+    map.put("X-B3-ParentSpanId", "-"); // not ok
+
+    SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
+
+    assertThat(result)
+        .isEqualTo(SamplingFlags.EMPTY);
+  }
+
+  @Test public void extractTraceContext_malformed_sampled() {
+    MapEntry<String> mapEntry = new MapEntry<>();
+    map.put("X-B3-TraceId", "-"); // not ok
+    map.put("X-B3-Sampled", "1"); // ok
+
+    SamplingFlags result = propagation().extractor(mapEntry).extract(map).samplingFlags();
+
+    assertThat(result)
+        .isEqualTo(SamplingFlags.EMPTY);
+  }
+
+  @Test public void extractTraceContext_debug_with_ids() {
+    MapEntry<String> mapEntry = new MapEntry<>();
+    map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
+    map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
+    map.put("X-B3-Flags", "1"); // accidentally missing sampled flag
+
+    TraceContext result = propagation().extractor(mapEntry).extract(map).context();
+
+    assertThat(result.sampled())
+        .isTrue();
+  }
+
+  @Test public void extractTraceContext_singleHeaderFormat() {
+    MapEntry<String> mapEntry = new MapEntry<>();
+
+    map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7");
+
+    TraceContext result = propagation().extractor(mapEntry).extract(map).context();
+
+    assertThat(result.traceIdString())
+        .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
+    assertThat(HexCodec.toLowerHex(result.spanId()))
+        .isEqualTo("00f067aa0ba902b7");
   }
 }

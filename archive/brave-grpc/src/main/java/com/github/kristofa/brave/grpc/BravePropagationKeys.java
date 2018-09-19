@@ -7,6 +7,8 @@ import io.grpc.Metadata;
 /** Metadata keys that allow a span to join across process boundaries. */
 class BravePropagationKeys {
 
+    static final Metadata.Key<String> b3 =
+        Metadata.Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
     public static Metadata.Key<String> ParentSpanId =
         Metadata.Key.of(BraveHttpHeaders.ParentSpanId.getName(), Metadata.ASCII_STRING_MARSHALLER);
     public static Metadata.Key<String> SpanId =

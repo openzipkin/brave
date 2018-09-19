@@ -1,10 +1,14 @@
 package brave.propagation;
 
+import brave.Tracer;
 import brave.internal.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
 
 /**
@@ -18,6 +22,7 @@ import static brave.internal.HexCodec.writeHexLong;
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
+  static final Logger LOG = Logger.getLogger(Tracer.class.getName());
 
   /**
    * Used to send the trace context downstream. For example, as http headers.
@@ -43,7 +48,7 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Used to join an incoming trace. For example, by reading http headers.
+   * Used to continue an incoming trace. For example, by reading http headers.
    *
    * @see brave.Tracer#nextSpan(TraceContextOrSamplingFlags)
    */
@@ -121,8 +126,8 @@ public final class TraceContext extends SamplingFlags {
    * example implementation could be storing a class containing a correlation value, which is
    * extracted from incoming requests and injected as-is onto outgoing requests.
    *
-   * <p>Implementations are responsible for scoping any data stored here. This can be performed when
-   * {@link Propagation.Factory#decorate(TraceContext)} is called.
+   * <p>Implementations are responsible for scoping any data stored here. This can be performed
+   * when {@link Propagation.Factory#decorate(TraceContext)} is called.
    */
   public List<Object> extra() {
     return extra;
@@ -228,7 +233,7 @@ public final class TraceContext extends SamplingFlags {
     /** @see TraceContext#debug() */
     public Builder debug(boolean debug) {
       if (debug) {
-        flags |= FLAG_DEBUG;
+        flags |= (FLAG_DEBUG | FLAG_SAMPLED_SET | FLAG_SAMPLED);
       } else {
         flags &= ~FLAG_DEBUG;
       }
@@ -245,6 +250,101 @@ public final class TraceContext extends SamplingFlags {
     public Builder extra(List<Object> extra) {
       this.extra = ensureImmutable(extra);
       return this;
+    }
+
+    /**
+     * Returns true when {@link TraceContext#traceId()} and potentially also {@link
+     * TraceContext#traceIdHigh()} were parsed from the input. This assumes the input is valid, an
+     * up to 32 character lower-hex string.
+     *
+     * <p>Returns boolean, not this, for conditional, exception free parsing:
+     *
+     * <p>Example use:
+     * <pre>{@code
+     * // Attempt to parse the trace ID or break out if unsuccessful for any reason
+     * String traceIdString = getter.get(carrier, key);
+     * if (!builder.parseTraceId(traceIdString, propagation.traceIdKey)) {
+     *   return TraceContextOrSamplingFlags.EMPTY;
+     * }
+     * }</pre>
+     *
+     * @param traceIdString the 1-32 character lowerhex string
+     * @param key the name of the propagation field representing the trace ID; only using in
+     * logging
+     * @return false if the input is null or malformed
+     */
+    // temporarily package protected until we figure out if this is reusable enough to expose
+    final boolean parseTraceId(String traceIdString, Object key) {
+      if (isNull(key, traceIdString)) return false;
+      int length = traceIdString.length();
+      if (invalidIdLength(key, length, 32)) return false;
+
+      // left-most characters, if any, are the high bits
+      int traceIdIndex = Math.max(0, length - 16);
+      if (traceIdIndex > 0) {
+        traceIdHigh = lenientLowerHexToUnsignedLong(traceIdString, 0, traceIdIndex);
+        if (traceIdHigh == 0) {
+          maybeLogNotLowerHex(traceIdString);
+          return false;
+        }
+      }
+
+      // right-most up to 16 characters are the low bits
+      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
+      if (traceId == 0) {
+        maybeLogNotLowerHex(traceIdString);
+        return false;
+      }
+      return true;
+    }
+
+    /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
+    final <C, K> boolean parseParentId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String parentIdString = getter.get(carrier, key);
+      if (parentIdString == null) return true; // absent parent is ok
+      int length = parentIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      parentId = lenientLowerHexToUnsignedLong(parentIdString, 0, length);
+      if (parentId != 0) return true;
+      maybeLogNotLowerHex(parentIdString);
+      return false;
+    }
+
+    /** Parses the span id from the input string. Returns true if the ID is valid. */
+    final <C, K> boolean parseSpanId(Propagation.Getter<C, K> getter, C carrier, K key) {
+      String spanIdString = getter.get(carrier, key);
+      if (isNull(key, spanIdString)) return false;
+      int length = spanIdString.length();
+      if (invalidIdLength(key, length, 16)) return false;
+
+      spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
+      if (spanId == 0) {
+        maybeLogNotLowerHex(spanIdString);
+        return false;
+      }
+      return true;
+    }
+
+    boolean invalidIdLength(Object key, int length, int max) {
+      if (length > 1 && length <= max) return false;
+
+      assert max == 32 || max == 16;
+      LOG.log(Level.FINE, max == 32
+          ? "{0} should be a 1 to 32 character lower-hex string with no prefix"
+          : "{0} should be a 1 to 16 character lower-hex string with no prefix", key);
+
+      return true;
+    }
+
+    boolean isNull(Object key, String maybeNull) {
+      if (maybeNull != null) return false;
+      LOG.log(Level.FINE, "{0} was null", key);
+      return true;
+    }
+
+    void maybeLogNotLowerHex(String notLowerHex) {
+      LOG.log(Level.FINE, "{0} is not a lower-hex string", notLowerHex);
     }
 
     public final TraceContext build() {

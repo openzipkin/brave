@@ -22,16 +22,24 @@ public final class HexCodec {
    * specified index.
    */
   public static long lowerHexToUnsignedLong(CharSequence lowerHex, int index) {
+    int endIndex = Math.min(index + 16, lowerHex.length());
+    long result = lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
+    if (result == 0) throw isntLowerHexLong(lowerHex);
+    return result;
+  }
+
+  /** Like {@link #lowerHexToUnsignedLong(CharSequence, int)}, but returns zero on invalid input */
+  public static long lenientLowerHexToUnsignedLong(CharSequence lowerHex, int index, int endIndex) {
     long result = 0;
-    for (int endIndex = Math.min(index + 16, lowerHex.length()); index < endIndex; index++) {
-      char c = lowerHex.charAt(index);
+    while (index < endIndex) {
+      char c = lowerHex.charAt(index++);
       result <<= 4;
       if (c >= '0' && c <= '9') {
         result |= c - '0';
       } else if (c >= 'a' && c <= 'f') {
         result |= c - 'a' + 10;
       } else {
-        throw isntLowerHexLong(lowerHex);
+        return 0;
       }
     }
     return result;

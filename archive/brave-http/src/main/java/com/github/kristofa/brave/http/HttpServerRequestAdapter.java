@@ -24,6 +24,13 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
 
     @Override
     public TraceData getTraceData() {
+        // try to extract single-header format
+        String b3String = request.getHttpHeaderValue("b3");
+        if (b3String != null) {
+            TraceData extracted = B3SingleFormat.parseB3SingleFormat(b3String);
+            if (extracted != null) return extracted;
+        }
+
         String sampled = request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
         String parentSpanId = request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
         String traceId = request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
@@ -38,9 +45,8 @@ public class HttpServerRequestAdapter implements ServerRequestAdapter {
             return TraceData.create(getSpanId(traceId, spanId, parentSpanId, parsedSampled));
         } else if (parsedSampled == null) {
             return TraceData.EMPTY;
-        } else if (parsedSampled.booleanValue()) {
-            // Invalid: The caller requests the trace to be sampled, but didn't pass IDs
-            return TraceData.EMPTY;
+        } else if (parsedSampled) {
+            return TraceData.SAMPLED;
         } else {
             return TraceData.NOT_SAMPLED;
         }

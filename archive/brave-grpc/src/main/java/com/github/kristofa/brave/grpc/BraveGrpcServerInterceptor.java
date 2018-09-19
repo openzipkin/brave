@@ -13,6 +13,7 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
 
+import com.github.kristofa.brave.http.B3SingleFormat;
 import com.github.kristofa.brave.internal.Util;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
@@ -102,6 +103,13 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
 
         @Override
         public TraceData getTraceData() {
+            // try to extract single-header format
+            String b3String = requestHeaders.get(BravePropagationKeys.b3);
+            if (b3String != null) {
+                TraceData extracted = B3SingleFormat.parseB3SingleFormat(b3String);
+                if (extracted != null) return extracted;
+            }
+
             String sampled = requestHeaders.get(BravePropagationKeys.Sampled);
             String parentSpanId = requestHeaders.get(BravePropagationKeys.ParentSpanId);
             String traceId = requestHeaders.get(BravePropagationKeys.TraceId);
@@ -116,9 +124,8 @@ public final class BraveGrpcServerInterceptor implements ServerInterceptor {
                 return TraceData.create(getSpanId(traceId, spanId, parentSpanId, parsedSampled));
             } else if (parsedSampled == null) {
                 return TraceData.EMPTY;
-            } else if (parsedSampled.booleanValue()) {
-                // Invalid: The caller requests the trace to be sampled, but didn't pass IDs
-                return TraceData.EMPTY;
+            } else if (parsedSampled) {
+                return TraceData.SAMPLED;
             } else {
                 return TraceData.NOT_SAMPLED;
             }
