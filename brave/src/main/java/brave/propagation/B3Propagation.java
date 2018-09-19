@@ -1,11 +1,12 @@
 package brave.propagation;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static brave.internal.HexCodec.toLowerHex;
+import static java.util.Arrays.asList;
 
 /**
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
@@ -47,21 +48,18 @@ public final class B3Propagation<K> implements Propagation<K> {
    * "1" implies sampled and is a request to override collection-tier sampling policy.
    */
   static final String FLAGS_NAME = "X-B3-Flags";
-  final K traceIdKey;
-  final K spanIdKey;
-  final K parentSpanIdKey;
-  final K sampledKey;
-  final K debugKey;
+  final K b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
 
   B3Propagation(KeyFactory<K> keyFactory) {
+    this.b3Key = keyFactory.create("b3");
     this.traceIdKey = keyFactory.create(TRACE_ID_NAME);
     this.spanIdKey = keyFactory.create(SPAN_ID_NAME);
     this.parentSpanIdKey = keyFactory.create(PARENT_SPAN_ID_NAME);
     this.sampledKey = keyFactory.create(SAMPLED_NAME);
     this.debugKey = keyFactory.create(FLAGS_NAME);
     this.fields = Collections.unmodifiableList(
-        Arrays.asList(traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+        asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
   }
 
@@ -100,50 +98,57 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
-    return new B3Extractor(this, getter);
+    return new B3Extractor<>(this, getter);
   }
 
   static final class B3Extractor<C, K> implements TraceContext.Extractor<C> {
     final B3Propagation<K> propagation;
     final Getter<C, K> getter;
+    final K b3Key;
 
     B3Extractor(B3Propagation<K> propagation, Getter<C, K> getter) {
       this.propagation = propagation;
+      this.b3Key = propagation.b3Key;
       this.getter = getter;
     }
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       if (carrier == null) throw new NullPointerException("carrier == null");
 
-      String traceId = getter.get(carrier, propagation.traceIdKey);
-      String sampled = getter.get(carrier, propagation.sampledKey);
-      String debug = getter.get(carrier, propagation.debugKey);
-      if (traceId == null && sampled == null && debug == null) {
-        return TraceContextOrSamplingFlags.EMPTY;
+      // try to extract single-header format
+      String b3String = getter.get(carrier, b3Key);
+      if (b3String != null) {
+        TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3String);
+        if (extracted != null) return extracted;
       }
 
+      // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
+      String sampled = getter.get(carrier, propagation.sampledKey);
       Boolean sampledV = sampled != null
           ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
           : null;
-      boolean debugV = "1".equals(debug);
+      boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
 
-      String spanId = getter.get(carrier, propagation.spanIdKey);
-      if (spanId == null) { // return early if there's no span ID
-        return TraceContextOrSamplingFlags.create(
-            debugV ? SamplingFlags.DEBUG : SamplingFlags.Builder.build(sampledV)
-        );
+      String traceIdString = getter.get(carrier, propagation.traceIdKey);
+      // It is ok to go without a trace ID, if sampling or debug is set
+      if (traceIdString == null) {
+        if (!debug && sampledV == null) return TraceContextOrSamplingFlags.EMPTY;
+        SamplingFlags flags = debug ? SamplingFlags.DEBUG
+            : sampledV ? SamplingFlags.SAMPLED : SamplingFlags.NOT_SAMPLED;
+        return TraceContextOrSamplingFlags.create(flags);
       }
 
-      TraceContext.Builder result = TraceContext.newBuilder().sampled(sampledV).debug(debugV);
-      result.traceIdHigh(
-          traceId.length() == 32 ? lowerHexToUnsignedLong(traceId, 0) : 0
-      );
-      result.traceId(lowerHexToUnsignedLong(traceId));
-      result.spanId(lowerHexToUnsignedLong(spanId));
-      String parentSpanIdString = getter.get(carrier, propagation.parentSpanIdKey);
-      if (parentSpanIdString != null) result.parentId(lowerHexToUnsignedLong(parentSpanIdString));
-      return TraceContextOrSamplingFlags.create(result.build());
+      // Try to parse the trace IDs into the context
+      TraceContext.Builder result = TraceContext.newBuilder();
+      if (result.parseTraceId(traceIdString, propagation.traceIdKey)
+          && result.parseSpanId(getter, carrier, propagation.spanIdKey)
+          && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
+        if (sampledV != null) result.sampled(sampledV.booleanValue());
+        if (debug) result.debug(true);
+        return TraceContextOrSamplingFlags.create(result.build());
+      }
+      return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
     }
   }
 }

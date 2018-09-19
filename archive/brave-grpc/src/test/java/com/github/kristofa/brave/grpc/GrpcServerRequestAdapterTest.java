@@ -76,12 +76,32 @@ public class GrpcServerRequestAdapterTest {
   }
 
   @Test
+  public void getTraceDataSampledZero_b3() {
+    metadata.put(BravePropagationKeys.b3, "0");
+
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertFalse(traceData.getSample());
+    assertNull(traceData.getSpanId());
+  }
+
+  @Test
   public void getTraceDataSampledTrueNoOtherTraceHeaders() {
     metadata.put(BravePropagationKeys.Sampled, "1");
 
     TraceData traceData = adapter.getTraceData();
     assertNotNull(traceData);
-    assertNull(traceData.getSample());
+    assertTrue(traceData.getSample());
+    assertNull(traceData.getSpanId());
+  }
+
+  @Test
+  public void getTraceDataSampledTrueNoOtherTraceHeaders_b3() {
+    metadata.put(BravePropagationKeys.b3, "1");
+
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertTrue(traceData.getSample());
     assertNull(traceData.getSpanId());
   }
 
@@ -120,6 +140,19 @@ public class GrpcServerRequestAdapterTest {
   }
 
   @Test
+  public void getTraceDataSampledOneNoParentId_b3() {
+    metadata.put(BravePropagationKeys.b3, TRACE_ID + "-" + SPAN_ID + "-1");
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertTrue(traceData.getSample());
+    SpanId spanId = traceData.getSpanId();
+    assertNotNull(spanId);
+    assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+    assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+    assertNull(spanId.nullableParentId());
+  }
+
+  @Test
   public void supports128BitTraceIdHeader() {
     String upper64Bits = "48485a3953bb6124";
     String lower64Bits = "48485a3953bb6124";
@@ -127,6 +160,23 @@ public class GrpcServerRequestAdapterTest {
     metadata.put(BravePropagationKeys.Sampled, "1");
     metadata.put(BravePropagationKeys.TraceId, hex128Bits);
     metadata.put(BravePropagationKeys.SpanId, lower64Bits);
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertTrue(traceData.getSample());
+    SpanId spanId = traceData.getSpanId();
+    assertNotNull(spanId);
+    assertEquals(IdConversion.convertToLong(upper64Bits), spanId.traceIdHigh);
+    assertEquals(IdConversion.convertToLong(lower64Bits), spanId.traceId);
+    assertEquals(IdConversion.convertToLong(lower64Bits), spanId.spanId);
+    assertNull(spanId.nullableParentId());
+  }
+
+  @Test
+  public void supports128BitTraceIdHeader_b3() {
+    String upper64Bits = "48485a3953bb6124";
+    String lower64Bits = "48485a3953bb6124";
+    String hex128Bits = upper64Bits + lower64Bits;
+    metadata.put(BravePropagationKeys.b3, hex128Bits + "-" + lower64Bits + "-1");
     TraceData traceData = adapter.getTraceData();
     assertNotNull(traceData);
     assertTrue(traceData.getSample());
@@ -155,6 +205,20 @@ public class GrpcServerRequestAdapterTest {
     assertEquals(IdConversion.convertToLong(PARENT_SPAN_ID), spanId.parentId);
   }
 
+  @Test
+  public void getTraceDataSampledOneWithParentId_b3() {
+    metadata.put(BravePropagationKeys.b3, TRACE_ID + "-" + SPAN_ID + "-1-" + PARENT_SPAN_ID);
+
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertTrue(traceData.getSample());
+    SpanId spanId = traceData.getSpanId();
+    assertNotNull(spanId);
+    assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+    assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+    assertEquals(IdConversion.convertToLong(PARENT_SPAN_ID), spanId.parentId);
+  }
+
   /**
    * When the caller propagates IDs, but not a sampling decision, the local process should decide.
    */
@@ -162,6 +226,20 @@ public class GrpcServerRequestAdapterTest {
   public void getTraceData_externallyProvidedIds() {
     metadata.put(BravePropagationKeys.TraceId, TRACE_ID);
     metadata.put(BravePropagationKeys.SpanId, SPAN_ID);
+    TraceData traceData = adapter.getTraceData();
+    assertNotNull(traceData);
+    assertNull(traceData.getSample());
+    SpanId spanId = traceData.getSpanId();
+    assertNotNull(spanId);
+    assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+    assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+    assertNull(spanId.nullableParentId());
+  }
+
+  @Test
+  public void getTraceData_externallyProvidedIds_b3() {
+    metadata.put(BravePropagationKeys.b3, TRACE_ID + "-" + SPAN_ID);
+
     TraceData traceData = adapter.getTraceData();
     assertNotNull(traceData);
     assertNull(traceData.getSample());

@@ -1,18 +1,19 @@
 package com.github.kristofa.brave.http;
 
-
-import java.net.URI;
-import java.util.Collection;
-
 import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.TraceData;
+import java.net.URI;
+import java.util.Collection;
 import org.junit.Before;
 import org.junit.Test;
 
 import static junit.framework.Assert.assertNull;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -73,13 +74,22 @@ public class HttpServerRequestAdapterTest {
     }
 
     @Test
+    public void getTraceDataSampledZero_b3() {
+        when(serverRequest.getHttpHeaderValue("b3")).thenReturn("0");
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertFalse(traceData.getSample());
+        assertNull(traceData.getSpanId());
+    }
+
+    @Test
     public void getTraceDataSampledTrueNoOtherTraceHeaders() {
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("true");
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(null);
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(null);
         TraceData traceData = adapter.getTraceData();
         assertNotNull(traceData);
-        assertNull(traceData.getSample());
+        assertNotNull(traceData.getSample());
         assertNull(traceData.getSpanId());
     }
 
@@ -117,6 +127,19 @@ public class HttpServerRequestAdapterTest {
     }
 
     @Test
+    public void getTraceDataSampledOneNoParentId_b3() {
+        when(serverRequest.getHttpHeaderValue("b3")).thenReturn(TRACE_ID + "-" + SPAN_ID + "-1");
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertTrue(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertNull(spanId.nullableParentId());
+    }
+
+    @Test
     public void supports128BitTraceIdHeader() {
         String upper64Bits = "48485a3953bb6124";
         String lower64Bits = "48485a3953bb6124";
@@ -124,6 +147,23 @@ public class HttpServerRequestAdapterTest {
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName())).thenReturn("1");
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(hex128Bits);
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(lower64Bits);
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertTrue(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(upper64Bits), spanId.traceIdHigh);
+        assertEquals(IdConversion.convertToLong(lower64Bits), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(lower64Bits), spanId.spanId);
+        assertNull(spanId.nullableParentId());
+    }
+
+    @Test
+    public void supports128BitTraceIdHeader_b3() {
+        String upper64Bits = "48485a3953bb6124";
+        String lower64Bits = "48485a3953bb6124";
+        String hex128Bits = upper64Bits + lower64Bits;
+        when(serverRequest.getHttpHeaderValue("b3")).thenReturn(hex128Bits + "-" + lower64Bits + "-1");
         TraceData traceData = adapter.getTraceData();
         assertNotNull(traceData);
         assertTrue(traceData.getSample());
@@ -153,6 +193,21 @@ public class HttpServerRequestAdapterTest {
     }
 
     @Test
+    public void getTraceDataSampledTrueWithParentId_b3() {
+        when(serverRequest.getHttpHeaderValue("b3")).thenReturn(
+            TRACE_ID + "-" + SPAN_ID + "-1-" + PARENT_SPAN_ID);
+
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertTrue(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertEquals(IdConversion.convertToLong(PARENT_SPAN_ID), spanId.parentId);
+    }
+
+    @Test
     public void fullUriAnnotation() throws Exception {
         when(serverRequest.getUri()).thenReturn(new URI("http://youruri.com/a/b?myquery=you"));
         Collection<KeyValueAnnotation> annotations = adapter.requestAnnotations();
@@ -169,6 +224,19 @@ public class HttpServerRequestAdapterTest {
     public void getTraceData_externallyProvidedIds() {
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName())).thenReturn(TRACE_ID);
         when(serverRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName())).thenReturn(SPAN_ID);
+        TraceData traceData = adapter.getTraceData();
+        assertNotNull(traceData);
+        assertNull(traceData.getSample());
+        SpanId spanId = traceData.getSpanId();
+        assertNotNull(spanId);
+        assertEquals(IdConversion.convertToLong(TRACE_ID), spanId.traceId);
+        assertEquals(IdConversion.convertToLong(SPAN_ID), spanId.spanId);
+        assertNull(spanId.nullableParentId());
+    }
+
+    @Test
+    public void getTraceData_externallyProvidedIds_b3() {
+        when(serverRequest.getHttpHeaderValue("b3")).thenReturn(TRACE_ID + "-" + SPAN_ID);
         TraceData traceData = adapter.getTraceData();
         assertNotNull(traceData);
         assertNull(traceData.getSample());

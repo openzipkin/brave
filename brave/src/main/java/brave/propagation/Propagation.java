@@ -3,6 +3,8 @@ package brave.propagation;
 import brave.internal.Nullable;
 import java.util.List;
 
+import static brave.propagation.Propagation.KeyFactory.STRING;
+
 /**
  * Injects and extracts {@link TraceContext trace identifiers} as text into carriers that travel
  * in-band across process boundaries. Identifiers are often encoded as messaging or RPC request
@@ -18,13 +20,9 @@ import java.util.List;
  * @param <K> Usually, but not always a String
  */
 public interface Propagation<K> {
-  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(Propagation.KeyFactory.STRING);
+  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(STRING);
 
   abstract class Factory {
-    /** @deprecated use {@link B3Propagation#FACTORY} to avoid initialization race condition */
-    @Deprecated
-    public static final Factory B3 = B3Propagation.FACTORY;
-
     /**
      * Does the propagation implementation support sharing client and server span IDs. For example,
      * should an RPC server span share the same identifiers extracted from an incoming request?
@@ -51,11 +49,13 @@ public interface Propagation<K> {
      * Decorates the input such that it can propagate extra data, such as a timestamp or a carrier
      * for extra fields.
      *
-     * <p>Implementations should be idempotent, returning the same instance where needed.
-     * Implementations are responsible for data scoping, if relevant. For example, if only global
-     * configuration is present, it could suffice to simply ensure that data is present. If data
-     * is span-scoped, an implementation might compare the context to its last span ID, copying on
-     * write or otherwise to ensure writes to one context don't affect another.
+     * <p>Implementations are responsible for data scoping, if relevant. For example, if only
+     * global configuration is present, it could suffice to simply ensure that data is present. If
+     * data is span-scoped, an implementation might compare the context to its last span ID, copying
+     * on write or otherwise to ensure writes to one context don't affect another.
+     *
+     * <p>Implementations should be idempotent, returning the same instance instead of re-applying
+     * change.
      *
      * @see TraceContext#extra()
      */
@@ -91,6 +91,10 @@ public interface Propagation<K> {
    * <p>For example, if the carrier is a single-use or immutable request object, you don't need to
    * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
    * successive calls should clear these fields first.
+   *
+   * <p><em>Note:</em> If your implementation carries "extra fields", such as correlation IDs, do
+   * not return the names of those fields here. If you do, they will be deleted, which can interfere
+   * with user headers.
    */
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata

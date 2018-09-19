@@ -13,6 +13,7 @@ import com.google.auto.value.AutoValue;
 public abstract class TraceData {
     /** Indicates an uninstrumented caller. */
     public static final TraceData EMPTY = new AutoValue_TraceData(null, null);
+    public static final TraceData SAMPLED = new AutoValue_TraceData(null, true);
     /** An caller didn't report this trace, and neither should this hop. */
     public static final TraceData NOT_SAMPLED = new AutoValue_TraceData(null, false);
 

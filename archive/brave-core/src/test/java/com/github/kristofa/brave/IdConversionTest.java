@@ -26,15 +26,6 @@ public class IdConversionTest {
   }
 
   @Test
-  public void testZeroId() {
-    final long longId = 0;
-    // Zipkin prepends 0's but conversion without those zeros also works.
-    final String expectedId = "0";
-    assertEquals(expectedId, IdConversion.convertToString(longId));
-    assertEquals(longId, IdConversion.convertToLong(expectedId));
-  }
-
-  @Test
   public void testMinValueId() {
     final long longId = Long.MIN_VALUE;
     // This id was generated using the zipkin code.

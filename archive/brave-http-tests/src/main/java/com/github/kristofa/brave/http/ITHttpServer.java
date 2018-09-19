@@ -72,6 +72,29 @@ public abstract class ITHttpServer {
   }
 
   @Test
+  public void usesExistingTraceId_b3() throws Exception {
+    String path = "/foo";
+
+    final String traceId = "463ac35c9f6413ad";
+    final String parentId = traceId;
+    final String spanId = "48485a3953bb6124";
+
+    Request request = new Request.Builder().url(url(path))
+        .header("b3", traceId + "-" + spanId + "-1-" + parentId)
+        .build();
+
+    try (Response response = client.newCall(request).execute()) {
+      assertThat(response.isSuccessful()).isTrue();
+    }
+
+    assertThat(collectedSpans()).allSatisfy(s -> {
+      assertThat(s.traceId()).isEqualTo(traceId);
+      assertThat(s.parentId()).isEqualTo(parentId);
+      assertThat(s.id()).isEqualTo(spanId);
+    });
+  }
+
+  @Test
   public void samplingDisabled() throws Exception {
     init(brave = braveBuilder(Sampler.NEVER_SAMPLE).build());
 
