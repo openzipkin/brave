@@ -120,7 +120,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   * When zero, {@link Firehose.Factory#create(String, String, int) default} will be used.
    *
    * @see brave.Tracing.Builder#localPort(int)
    */
