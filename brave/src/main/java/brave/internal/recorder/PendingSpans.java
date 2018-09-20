@@ -6,13 +6,9 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Span;
 
 /**
@@ -30,18 +26,12 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   // Used when flushing spans
-  final SpanReporter reporter;
+  final FirehoseDispatcher firehoseDispatcher;
   final Clock clock;
-  final AtomicBoolean noop;
 
-  public PendingSpans(
-      Clock clock,
-      SpanReporter reporter,
-      AtomicBoolean noop
-  ) {
+  public PendingSpans(Clock clock, FirehoseDispatcher firehoseDispatcher) {
     this.clock = clock;
-    this.reporter = reporter;
-    this.noop = noop;
+    this.firehoseDispatcher = firehoseDispatcher;
   }
 
   public PendingSpan getOrCreate(TraceContext context, boolean start) {
@@ -50,7 +40,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     PendingSpan result = delegate.get(context);
     if (result != null) return result;
 
-    MutableSpan data = reporter.newMutableSpan();
+    MutableSpan data = new MutableSpan();
     if (context.shared()) data.setShared();
 
     // save overhead calculating time if the parent is in-progress (usually is)
@@ -104,9 +94,10 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // currentTimeMicroseconds N times
     Span.Builder builder = null;
     long flushTime = 0L;
+    boolean noop = firehoseDispatcher.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
-      if (value == null || noop.get() || !contextKey.sampled) continue;
+      if (value == null || noop || !contextKey.sampled) continue;
       if (builder != null) {
         builder.clear();
       } else {
@@ -119,7 +110,8 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           .id(contextKey.spanId)
           .addAnnotation(flushTime, "brave.flush");
 
-      reporter.report(value.state, builderWithContextData);
+      // do not forward incomplete data to the normal firehose
+      firehoseDispatcher.reportIncompleteToZipkin(value.state, builderWithContextData);
     }
   }
 
@@ -215,21 +207,6 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           && (spanId == thatContext.spanId())
           && shared == thatContext.shared();
     }
-  }
-
-  /** Exposes which spans are in-flight, mostly for testing. */
-  public List<Span> snapshot() {
-    List<zipkin2.Span> result = new ArrayList<>();
-    zipkin2.Span.Builder spanBuilder = zipkin2.Span.newBuilder();
-    for (Map.Entry<Object, PendingSpan> entry : delegate.entrySet()) {
-      PendingSpans.RealKey contextKey = (PendingSpans.RealKey) entry.getKey();
-      spanBuilder.clear().traceId(contextKey.traceIdHigh, contextKey.traceId).id(contextKey.spanId);
-      reporter.converter.convert(entry.getValue().state, spanBuilder);
-      spanBuilder.localEndpoint(null); // prevents huge toString
-      result.add(spanBuilder.build());
-      spanBuilder.clear();
-    }
-    return result;
   }
 
   @Override public String toString() {

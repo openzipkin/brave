@@ -149,7 +149,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
-        .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*")
+        .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*(onlySampledLocalServer_get|tracedServer_get)")
         .build();
 
     new Runner(opt).run();

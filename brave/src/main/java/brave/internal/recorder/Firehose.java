@@ -5,12 +5,27 @@ import brave.Tracing;
 import brave.propagation.TraceContext;
 
 public interface Firehose {
+  /** Use to avoid comparing against null references */
+  Firehose NOOP = new Firehose() {
+    @Override public void accept(TraceContext context, MutableSpan span) {
+    }
+
+    @Override public String toString() {
+      return "NoopFirehose{}";
+    }
+  };
 
   abstract class Factory {
+
     /**
      * Creates a firehose given the local endpoint of {@link Tracing}.
      *
-     * <p>This is used to cache data to reduce object allocations.
+     * <p>When {@link Firehose#accept(TraceContext, MutableSpan) accepting} into streams such as
+     * Zipkin, these values should be used when not specified in the {@link MutableSpan}.
+     *
+     * @param serviceName default value for {@link MutableSpan#localServiceName()}
+     * @param ip default value for {@link MutableSpan#localIp()}
+     * @param port default value for {@link MutableSpan#localPort()}
      */
     public abstract Firehose create(String serviceName, String ip, int port);
 

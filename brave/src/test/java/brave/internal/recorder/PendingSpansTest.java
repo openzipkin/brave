@@ -1,15 +1,15 @@
 package brave.internal.recorder;
 
-import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Span;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,10 +17,20 @@ public class PendingSpansTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   AtomicInteger clock = new AtomicInteger();
-  AtomicBoolean noop = new AtomicBoolean();
-  MutableSpanConverter converter = new MutableSpanConverter("unknown", "127.0.0.1", 0);
-  PendingSpans pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L,
-      new SpanReporter(converter, spans::add, noop), noop);
+  PendingSpans pendingSpans;
+
+  @Before public void init() {
+    init(spans::add);
+  }
+
+  void init(Reporter<Span> spanReporter) {
+    FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
+      @Override public Firehose create(String serviceName, String ip, int port) {
+        return Firehose.NOOP;
+      }
+    }, spanReporter, "favistar", "1.2.3.4", 0);
+    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, firehoseDispatcher);
+  }
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
@@ -198,7 +208,7 @@ public class PendingSpansTest {
 
     int initialClockVal = clock.get();
 
-    pendingSpans.noop.set(true);
+    pendingSpans.firehoseDispatcher.noop.set(true);
 
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
@@ -224,25 +234,25 @@ public class PendingSpansTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() throws Exception {
-    PendingSpans map = new PendingSpans(() -> 0, new SpanReporter(converter, s -> {
+    init(s -> {
       throw new RuntimeException();
-    }, noop), noop);
+    });
 
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    map.getOrCreate(context.toBuilder().build(), false);
+    pendingSpans.getOrCreate(context.toBuilder().build(), false);
 
     blockOnGC();
 
     // Sanity check that the referent trace context cleared due to GC
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .hasSize(1)
         .containsNull();
 
     // The innocent caller isn't killed due to the exception in implicitly reporting GC'd spans
-    map.remove(context);
+    pendingSpans.remove(context);
 
     // However, the reference queue has been cleared.
-    assertThat(map.delegate.keySet())
+    assertThat(pendingSpans.delegate.keySet())
         .isEmpty();
   }
 
@@ -315,21 +325,6 @@ public class PendingSpansTest {
     assertThat(lookupKey.equals(key)).isTrue();
     key = new PendingSpans.RealKey(context.toBuilder().shared(false).build(), pendingSpans);
     assertThat(lookupKey.equals(key)).isFalse();
-  }
-
-  @Test public void reportOrphanedSpans_DoesntCrashOnReporterError() throws Exception {
-    PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new SpanReporter(converter,
-        s -> {
-          throw new RuntimeException();
-        }, noop), noop);
-
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
-    pendingSpans.getOrCreate(context, true);
-    context = null; // orphan the context
-
-    blockOnGC();
-
-    pendingSpans.reportOrphanedSpans();
   }
 
   /** In reality, this clears a reference even if it is strongly held by the test! */

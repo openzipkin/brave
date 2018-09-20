@@ -3,10 +3,10 @@ package brave;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.recorder.Firehose;
 import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
-import brave.internal.recorder.SpanReporter;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -72,7 +72,7 @@ public class Tracer {
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final SpanReporter spanReporter; // for toString
+  final Firehose firehose; // for toString
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final ErrorParser errorParser;
@@ -83,7 +83,7 @@ public class Tracer {
   Tracer(
       Clock clock,
       Propagation.Factory propagationFactory,
-      SpanReporter spanReporter,
+      Firehose firehose,
       PendingSpans pendingSpans,
       Sampler sampler,
       ErrorParser errorParser,
@@ -95,7 +95,7 @@ public class Tracer {
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
-    this.spanReporter = spanReporter;
+    this.firehose = firehose;
     this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.errorParser = errorParser;
@@ -123,7 +123,7 @@ public class Tracer {
     return new Tracer(
         clock,
         propagationFactory,
-        spanReporter,
+        firehose,
         pendingSpans,
         sampler,
         errorParser,
@@ -332,7 +332,7 @@ public class Tracer {
         pendingSpans,
         pendingSpan.state(),
         pendingSpan.clock(),
-        spanReporter,
+        firehose,
         errorParser
     );
   }
@@ -463,8 +463,7 @@ public class Tracer {
     Clock clock = pendingSpan.clock();
     MutableSpan state = pendingSpan.state();
     state.name(name);
-    return new RealScopedSpan(context, scope, state, clock, pendingSpans, spanReporter,
-        errorParser);
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans, firehose, errorParser);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -489,12 +488,10 @@ public class Tracer {
 
   @Override public String toString() {
     TraceContext currentSpan = currentTraceContext.get();
-    List<zipkin2.Span> inFlight = pendingSpans.snapshot();
     return "Tracer{"
         + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
-        + (inFlight.size() > 0 ? ("inFlight=" + inFlight + ", ") : "")
         + (noop.get() ? "noop=true, " : "")
-        + "reporter=" + spanReporter
+        + "firehose=" + firehose
         + "}";
   }
 

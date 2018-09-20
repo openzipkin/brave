@@ -1,13 +1,12 @@
 package brave.internal.recorder;
 
 import brave.propagation.TraceContext;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class SpanReporterClassLoaderTest {
+public class FirehoseDispatcherClassLoaderTest {
 
   @Test public void unloadable_afterBasicUsage() {
     assertRunIsUnloadable(BasicUsage.class, getClass().getClassLoader());
@@ -15,8 +14,11 @@ public class SpanReporterClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      MutableSpanConverter converter = new MutableSpanConverter("unknown", "127.0.0.1", 0);
-      SpanReporter reporter = new SpanReporter(converter, Reporter.NOOP, new AtomicBoolean());
+      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
+        @Override public Firehose create(String serviceName, String ip, int port) {
+          return Firehose.NOOP;
+        }
+      }, Reporter.NOOP, "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       MutableSpan span = new MutableSpan();
@@ -27,7 +29,7 @@ public class SpanReporterClassLoaderTest {
       span.annotate(2L, "cache.miss");
       span.finishTimestamp(3L);
 
-      reporter.accept(context, span);
+      firehoseDispatcher.firehose().accept(context, span);
     }
   }
 
@@ -37,13 +39,16 @@ public class SpanReporterClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      MutableSpanConverter converter = new MutableSpanConverter("unknown", "127.0.0.1", 0);
-      SpanReporter reporter = new SpanReporter(converter, s -> {
+      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
+        @Override public Firehose create(String serviceName, String ip, int port) {
+          return Firehose.NOOP;
+        }
+      }, s -> {
         throw new RuntimeException();
-      }, new AtomicBoolean());
+      }, "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
-      reporter.accept(context, new MutableSpan());
+      firehoseDispatcher.firehose().accept(context, new MutableSpan());
     }
   }
 }

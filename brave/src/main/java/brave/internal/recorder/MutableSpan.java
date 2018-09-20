@@ -45,23 +45,6 @@ public final class MutableSpan implements Cloneable {
     // lazy initialize annotations
   }
 
-  /** Copy constructor */
-  public MutableSpan(MutableSpan source) {
-    kind = source.kind;
-    shared = source.shared;
-    startTimestamp = source.startTimestamp;
-    finishTimestamp = source.finishTimestamp;
-    name = source.name;
-    localServiceName = source.localServiceName;
-    localIp = source.localIp;
-    remoteServiceName = source.remoteServiceName;
-    remoteIp = source.remoteIp;
-    localPort = source.localPort;
-    remotePort = source.remotePort;
-    tags = source.tags.isEmpty() ? new ArrayList<>() : new ArrayList<>(source.tags);
-    annotations = source.annotations == null ? null : new ArrayList<>(source.annotations);
-  }
-
   /** Returns the {@link brave.Span#name(String) span name} or null */
   @Nullable public String name() {
     return name;
@@ -104,7 +87,11 @@ public final class MutableSpan implements Cloneable {
     this.kind = kind;
   }
 
-  /** @see brave.Tracing.Builder#localServiceName(String) */
+  /**
+   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localServiceName(String)
+   */
   @Nullable public String localServiceName() {
     return localServiceName;
   }
@@ -117,7 +104,11 @@ public final class MutableSpan implements Cloneable {
     this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
   }
 
-  /** @see brave.Tracing.Builder#localIp(String) */
+  /**
+   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localIp(String)
+   */
   @Nullable public String localIp() {
     return localIp;
   }
@@ -128,7 +119,11 @@ public final class MutableSpan implements Cloneable {
     return true;
   }
 
-  /** @see brave.Tracing.Builder#localPort(int) */
+  /**
+   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localPort(int)
+   */
   public int localPort() {
     return localPort;
   }

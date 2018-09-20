@@ -34,12 +34,7 @@ public class TracingTest {
         assertThat(serviceName).isEqualTo(expectedLocalServiceName);
         assertThat(ip).isEqualTo(expectedLocalIp);
         assertThat(port).isEqualTo(expectedLocalPort);
-        return (context, span) -> {
-          assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
-          assertThat(span.localIp()).isEqualTo(expectedLocalIp);
-          assertThat(span.localPort()).isEqualTo(expectedLocalPort);
-          mutableSpans.add(span);
-        };
+        return (context, span) -> mutableSpans.add(span);
       }
     };
 

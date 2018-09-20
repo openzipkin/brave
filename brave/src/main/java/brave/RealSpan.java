@@ -3,7 +3,6 @@ package brave;
 import brave.internal.recorder.Firehose;
 import brave.internal.recorder.MutableSpan;
 import brave.internal.recorder.PendingSpans;
-import brave.internal.recorder.SpanReporter;
 import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
@@ -21,7 +20,7 @@ final class RealSpan extends Span {
       PendingSpans pendingSpans,
       MutableSpan state,
       Clock clock,
-      SpanReporter firehose,
+      Firehose firehose,
       ErrorParser errorParser) {
     this.context = context;
     this.pendingSpans = pendingSpans;

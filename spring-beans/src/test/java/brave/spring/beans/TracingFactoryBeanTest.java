@@ -3,6 +3,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.internal.recorder.Firehose;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
@@ -15,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class TracingFactoryBeanTest {
-  public static Clock CLOCK = mock(Clock.class);
-  public static ErrorParser ERROR_PARSER = mock(ErrorParser.class);
+  public static final Clock CLOCK = mock(Clock.class);
+  public static final ErrorParser ERROR_PARSER = mock(ErrorParser.class);
 
   XmlBeans context;
 
@@ -49,7 +50,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.spanReporter.converter.localEndpoint")
+        .extracting("tracer.firehose.delegate.converter.localEndpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
   }
@@ -68,7 +69,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.spanReporter.converter.localEndpoint")
+        .extracting("tracer.firehose.delegate.converter.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -89,7 +90,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.spanReporter.converter.localEndpoint")
+        .extracting("tracer.firehose.delegate.converter.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -106,8 +107,29 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.spanReporter.delegate")
+        .extracting("tracer.firehose.delegate.spanReporter")
         .containsExactly(Reporter.CONSOLE);
+  }
+
+  public static final Firehose FIREHOSE = mock(Firehose.class);
+  public static final Firehose.Factory FIREHOSE_FACTORY = new Firehose.Factory() {
+    @Override public Firehose create(String serviceName, String ip, int port) {
+      return FIREHOSE;
+    }
+  };
+
+  @Test public void firehoseFactory() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"firehoseFactory\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_FACTORY\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.firehose.delegate.first")
+        .containsExactly(FIREHOSE);
   }
 
   @Test public void clock() {

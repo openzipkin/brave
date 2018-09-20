@@ -11,6 +11,10 @@ import java.util.List;
  * <p>Inspired by {@code okhttp3.internal.Internal}.
  */
 public abstract class InternalPropagation {
+  /**
+   * A flags bitfield is used internally inside {@link TraceContext} as opposed to several booleans.
+   * This reduces the size of the object and allows us to set or check a couple states at once.
+   */
   public static final int FLAG_SAMPLED = 1 << 1;
   public static final int FLAG_SAMPLED_SET = 1 << 2;
   public static final int FLAG_DEBUG = 1 << 3;

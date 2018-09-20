@@ -3,6 +3,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.internal.recorder.Firehose;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.sampler.Sampler;
@@ -17,6 +18,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
   Endpoint localEndpoint, endpoint;
   Reporter<Span> spanReporter;
+  Firehose.Factory firehoseFactory;
   Clock clock;
   Sampler sampler;
   ErrorParser errorParser;
@@ -31,6 +33,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (localEndpoint != null) builder.endpoint(localEndpoint);
     if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
+    if (firehoseFactory != null) builder.firehoseFactory(firehoseFactory);
     if (errorParser != null) builder.errorParser(errorParser);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
@@ -67,6 +70,14 @@ public class TracingFactoryBean extends AbstractFactoryBean {
 
   public void setSpanReporter(Reporter<Span> spanReporter) {
     this.spanReporter = spanReporter;
+  }
+
+  public Firehose.Factory getFirehoseFactory() {
+    return firehoseFactory;
+  }
+
+  public void setFirehoseFactory(Firehose.Factory firehoseFactory) {
+    this.firehoseFactory = firehoseFactory;
   }
 
   public void setClock(Clock clock) {

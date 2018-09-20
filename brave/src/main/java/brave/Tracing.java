@@ -4,8 +4,8 @@ import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.recorder.Firehose;
+import brave.internal.recorder.FirehoseDispatcher;
 import brave.internal.recorder.PendingSpans;
-import brave.internal.recorder.SpanReporter;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -91,17 +91,13 @@ public abstract class Tracing implements Closeable {
     return tracing != null ? tracing.tracer() : null;
   }
 
-  final AtomicBoolean noop = new AtomicBoolean(false);
-
   /**
    * When true, no recording is done and nothing is reported to zipkin. However, trace context is
    * still injected into outgoing requests.
    *
    * @see Span#isNoop()
    */
-  public boolean isNoop() {
-    return noop.get();
-  }
+  public abstract boolean isNoop();
 
   /**
    * Set true to drop data and only return {@link Span#isNoop() noop spans} regardless of sampling
@@ -109,9 +105,7 @@ public abstract class Tracing implements Closeable {
    *
    * @see #isNoop()
    */
-  public void setNoop(boolean noop) {
-    this.noop.set(noop);
-  }
+  public abstract void setNoop(boolean noop);
 
   /**
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
@@ -128,14 +122,18 @@ public abstract class Tracing implements Closeable {
   public static final class Builder {
     String localServiceName = "unknown", localIp;
     int localPort; // zero means null
-    Reporter<zipkin2.Span> reporter;
+    Reporter<zipkin2.Span> spanReporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    Firehose.Factory firehoseFactory;
+    Firehose.Factory firehoseFactory = new Firehose.Factory() {
+      @Override public Firehose create(String serviceName, String ip, int port) {
+        return Firehose.NOOP;
+      }
+    };
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -214,9 +212,9 @@ public abstract class Tracing implements Closeable {
      *
      * <p>See https://github.com/openzipkin/zipkin-reporter-java
      */
-    public Builder spanReporter(Reporter<zipkin2.Span> reporter) {
-      if (reporter == null) throw new NullPointerException("spanReporter == null");
-      this.reporter = reporter;
+    public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
+      if (spanReporter == null) throw new NullPointerException("spanReporter == null");
+      this.spanReporter = spanReporter;
       return this;
     }
 
@@ -315,7 +313,7 @@ public abstract class Tracing implements Closeable {
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
       if (localIp == null) localIp = Platform.get().linkLocalIp();
-      if (reporter == null) reporter = new LoggingReporter();
+      if (spanReporter == null) spanReporter = new LoggingReporter();
       return new Default(this);
     }
 
@@ -345,6 +343,7 @@ public abstract class Tracing implements Closeable {
     final Sampler sampler;
     final Clock clock;
     final ErrorParser errorParser;
+    final AtomicBoolean noop;
 
     Default(Builder builder) {
       this.clock = builder.clock;
@@ -354,22 +353,25 @@ public abstract class Tracing implements Closeable {
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
 
-      Firehose.Factory firehose = builder.firehoseFactory;
-      SpanReporter reporter = new SpanReporter.Factory(firehose, builder.reporter, noop)
-          .create(builder.localServiceName, builder.localIp, builder.localPort);
+      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
+          builder.firehoseFactory,
+          builder.spanReporter,
+          builder.localServiceName, builder.localIp, builder.localPort
+      );
 
+      this.noop = firehoseDispatcher.noop();
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
-          reporter,
-          new PendingSpans(clock, reporter, noop),
+          firehoseDispatcher.firehose(),
+          new PendingSpans(clock, firehoseDispatcher),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
           builder.supportsJoin && propagationFactory.supportsJoin(),
-          firehose != null && firehose.alwaysSampleLocal(),
-          noop
+          builder.firehoseFactory != null && builder.firehoseFactory.alwaysSampleLocal(),
+          firehoseDispatcher.noop()
       );
       maybeSetCurrent();
     }
@@ -396,6 +398,14 @@ public abstract class Tracing implements Closeable {
 
     @Override public ErrorParser errorParser() {
       return errorParser;
+    }
+
+    @Override public boolean isNoop() {
+      return noop.get();
+    }
+
+    @Override public void setNoop(boolean noop) {
+      this.noop.set(noop);
     }
 
     private void maybeSetCurrent() {

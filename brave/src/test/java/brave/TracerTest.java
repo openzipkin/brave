@@ -62,7 +62,7 @@ public class TracerTest {
   @Test public void reporter_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.spanReporter)
+    assertThat(tracer.firehose)
         .hasToString("LoggingReporter{name=brave.Tracer}");
   }
 
@@ -95,14 +95,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("spanReporter.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("firehose.delegate.converter.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("spanReporter.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("firehose.delegate.converter.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -110,7 +110,7 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("spanReporter.converter.localEndpoint")
+    assertThat(tracer).extracting("firehose.delegate.converter.localEndpoint")
         .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
   }
 
@@ -506,32 +506,16 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\"}], reporter=MyReporter{}}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, firehose=MyReporter{}}"
       );
     }
-  }
-
-  @Test public void toString_withSpanInFlight() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
-    Span span = tracer.toSpan(context);
-    span.start(1L); // didn't set anything else! this is to help ensure no NPE
-
-    assertThat(tracer).hasToString(
-        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1}], reporter=MyReporter{}}"
-    );
-
-    span.finish();
-
-    assertThat(tracer).hasToString(
-        "Tracer{reporter=MyReporter{}}"
-    );
   }
 
   @Test public void toString_whenNoop() {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-        "Tracer{noop=true, reporter=MyReporter{}}"
+        "Tracer{noop=true, firehose=MyReporter{}}"
     );
   }
 
