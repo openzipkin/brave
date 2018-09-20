@@ -1,5 +1,7 @@
 package brave.internal.recorder;
 
+import brave.firehose.Firehose;
+import brave.firehose.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;

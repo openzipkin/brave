@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.firehose.Firehose;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import org.junit.Test;

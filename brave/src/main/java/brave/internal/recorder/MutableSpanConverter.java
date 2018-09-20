@@ -1,8 +1,9 @@
 package brave.internal.recorder;
 
+import brave.firehose.MutableSpan;
+import brave.firehose.MutableSpan.AnnotationConsumer;
+import brave.firehose.MutableSpan.TagConsumer;
 import brave.internal.Nullable;
-import brave.internal.recorder.MutableSpan.AnnotationConsumer;
-import brave.internal.recorder.MutableSpan.TagConsumer;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
@@ -37,7 +38,7 @@ final class MutableSpanConverter
       result.kind(Span.Kind.values()[kind.ordinal()]);
     }
 
-    addLocalEndpoint(span.localServiceName, span.localIp, span.localPort, result);
+    addLocalEndpoint(span.localServiceName(), span.localIp(), span.localPort(), result);
     String remoteServiceName = span.remoteServiceName(), remoteIp = span.remoteIp();
     if (remoteServiceName != null || remoteIp != null) {
       result.remoteEndpoint(zipkin2.Endpoint.newBuilder()

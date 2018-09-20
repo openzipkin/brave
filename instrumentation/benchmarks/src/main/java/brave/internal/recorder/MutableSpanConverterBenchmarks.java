@@ -13,6 +13,7 @@
  */
 package brave.internal.recorder;
 
+import brave.firehose.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;

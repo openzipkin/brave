@@ -1,7 +1,7 @@
 package brave;
 
-import brave.internal.recorder.Firehose;
-import brave.internal.recorder.MutableSpan;
+import brave.firehose.Firehose;
+import brave.firehose.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;

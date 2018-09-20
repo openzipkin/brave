@@ -1,4 +1,4 @@
-package brave.internal.recorder;
+package brave.firehose;
 
 import brave.Span.Kind;
 import brave.Tracer;

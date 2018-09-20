@@ -1,5 +1,7 @@
 package brave.internal.recorder;
 
+import brave.firehose.Firehose;
+import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;

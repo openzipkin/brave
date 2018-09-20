@@ -3,7 +3,7 @@ package brave;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.recorder.Firehose;
+import brave.firehose.Firehose;
 import brave.internal.recorder.FirehoseDispatcher;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;

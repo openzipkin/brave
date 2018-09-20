@@ -1,9 +1,20 @@
-package brave.internal.recorder;
+package brave.firehose;
 
 import brave.Span;
 import brave.Tracing;
 import brave.propagation.TraceContext;
 
+/**
+ * Triggered on each finished span except when spans that are {@link Span#isNoop() no-op}.
+ *
+ * <p>{@link TraceContext#sampled() Sampled spans} hit this stage before reporting to Zipkin.
+ * This means changes to the mutable span will reflect in reported data.
+ *
+ * <p>When Zipkin's reporter is {@link zipkin2.reporter.Reporter#NOOP} or the context is
+ * unsampled, this will still receive spans where {@link TraceContext#sampledLocal()} is true.
+ *
+ * @see Factory#alwaysSampleLocal()
+ */
 public interface Firehose {
   /** Use to avoid comparing against null references */
   Firehose NOOP = new Firehose() {
@@ -43,15 +54,12 @@ public interface Firehose {
   }
 
   /**
-   * Triggered on each finished span except when spans that are {@link Span#isNoop() no-op}.
+   * Changes to the input span are visible by later firehose handlers. One reason to change the
+   * input is to align tags, so that correlation occurs. For example, some may clean the tag
+   * "http.path" knowing downstream handlers such as zipkin reporting have the same value.
    *
-   * <p>{@link TraceContext#sampled() Sampled spans} hit this stage before reporting to Zipkin.
-   * This means changes to the mutable span will reflect in reported data.
-   *
-   * <p>When Zipkin's reporter is {@link zipkin2.reporter.Reporter#NOOP} or the context is
-   * unsampled, this will still receive spans where {@link TraceContext#sampledLocal()} is true.
-   *
-   * @see Factory#alwaysSampleLocal()
+   * <p>Implementations should not hold a reference to it after this method returns. This is to
+   * allow object recycling.
    */
   void accept(TraceContext context, MutableSpan span);
 }

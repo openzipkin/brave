@@ -1,7 +1,7 @@
 package brave;
 
 import brave.http.HttpServerBenchmarks;
-import brave.internal.recorder.Firehose;
+import brave.firehose.Firehose;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;

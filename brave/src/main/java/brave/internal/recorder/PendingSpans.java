@@ -1,6 +1,7 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.firehose.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;

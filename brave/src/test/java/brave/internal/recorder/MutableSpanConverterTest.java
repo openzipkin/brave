@@ -1,6 +1,7 @@
 package brave.internal.recorder;
 
 import brave.Span.Kind;
+import brave.firehose.MutableSpan;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;

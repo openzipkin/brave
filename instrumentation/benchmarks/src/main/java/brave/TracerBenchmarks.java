@@ -1,6 +1,6 @@
 package brave;
 
-import brave.internal.recorder.Firehose;
+import brave.firehose.Firehose;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;

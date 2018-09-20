@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.firehose.Firehose;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
