@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.Firehose;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
@@ -20,7 +21,7 @@ public class PendingSpansClassLoaderTest {
         @Override public Firehose create(String serviceName, String ip, int port) {
           return Firehose.NOOP;
         }
-      }, Reporter.NOOP, "favistar", "1.2.3.4", 0);
+      }, new ErrorParser(), Reporter.NOOP, "favistar", "1.2.3.4", 0);
       PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
@@ -39,7 +40,7 @@ public class PendingSpansClassLoaderTest {
         @Override public Firehose create(String serviceName, String ip, int port) {
           return Firehose.NOOP;
         }
-      }, s -> {
+      }, new ErrorParser(), s -> {
         throw new RuntimeException();
       }, "favistar", "1.2.3.4", 0);
       PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);

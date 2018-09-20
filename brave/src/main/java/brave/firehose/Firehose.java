@@ -27,7 +27,6 @@ public interface Firehose {
   };
 
   abstract class Factory {
-
     /**
      * Creates a firehose given the local endpoint of {@link Tracing}.
      *

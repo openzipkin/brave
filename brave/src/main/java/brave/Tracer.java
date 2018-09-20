@@ -1,10 +1,10 @@
 package brave;
 
+import brave.firehose.Firehose;
+import brave.firehose.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.firehose.Firehose;
-import brave.firehose.MutableSpan;
 import brave.internal.recorder.PendingSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext;
@@ -75,7 +75,6 @@ public class Tracer {
   final Firehose firehose; // for toString
   final PendingSpans pendingSpans;
   final Sampler sampler;
-  final ErrorParser errorParser;
   final CurrentTraceContext currentTraceContext;
   final boolean traceId128Bit, supportsJoin, alwaysSampleLocal;
   final AtomicBoolean noop;
@@ -86,7 +85,6 @@ public class Tracer {
       Firehose firehose,
       PendingSpans pendingSpans,
       Sampler sampler,
-      ErrorParser errorParser,
       CurrentTraceContext currentTraceContext,
       boolean traceId128Bit,
       boolean supportsJoin,
@@ -98,7 +96,6 @@ public class Tracer {
     this.firehose = firehose;
     this.pendingSpans = pendingSpans;
     this.sampler = sampler;
-    this.errorParser = errorParser;
     this.currentTraceContext = currentTraceContext;
     this.traceId128Bit = traceId128Bit;
     this.supportsJoin = supportsJoin;
@@ -126,7 +123,6 @@ public class Tracer {
         firehose,
         pendingSpans,
         sampler,
-        errorParser,
         currentTraceContext,
         traceId128Bit,
         supportsJoin,
@@ -328,13 +324,8 @@ public class Tracer {
     if (isNoop(decorated)) return new NoopSpan(decorated);
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
     PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated, false);
-    return new RealSpan(decorated,
-        pendingSpans,
-        pendingSpan.state(),
-        pendingSpan.clock(),
-        firehose,
-        errorParser
-    );
+    return new RealSpan(decorated, pendingSpans, pendingSpan.state(), pendingSpan.clock(),
+        firehose);
   }
 
   /**
@@ -463,7 +454,7 @@ public class Tracer {
     Clock clock = pendingSpan.clock();
     MutableSpan state = pendingSpan.state();
     state.name(name);
-    return new RealScopedSpan(context, scope, state, clock, pendingSpans, firehose, errorParser);
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans, firehose);
   }
 
   /** A span remains in the scope it was bound to until close is called. */

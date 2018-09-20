@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.Firehose;
 import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
@@ -42,7 +43,7 @@ public class FirehoseDispatcherTest {
   }
 
   void init(Firehose.Factory delegate, Reporter<Span> spanReporter) {
-    firehoseDispatcher = new FirehoseDispatcher(delegate, spanReporter,
+    firehoseDispatcher = new FirehoseDispatcher(delegate, new ErrorParser(), spanReporter,
         "favistar", "1.2.3.4", 0);
     firehose = firehoseDispatcher.firehose();
     localEndpoint = firehoseDispatcher.zipkinFirehose != null

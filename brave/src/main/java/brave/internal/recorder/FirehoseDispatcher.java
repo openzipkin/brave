@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.Firehose;
 import brave.firehose.MutableSpan;
 import brave.internal.Platform;
@@ -18,11 +19,12 @@ public final class FirehoseDispatcher {
   final AtomicBoolean noop = new AtomicBoolean();
   final SampledToZipkinFirehose zipkinFirehose;
 
-  public FirehoseDispatcher(Firehose.Factory firehoseFactory, Reporter<Span> spanReporter,
-      String serviceName, String ip, int port) {
+  public FirehoseDispatcher(Firehose.Factory firehoseFactory, ErrorParser errorParser,
+      Reporter<Span> spanReporter, String serviceName, String ip, int port) {
     Firehose firehose = firehoseFactory.create(serviceName, ip, port);
     if (spanReporter != Reporter.NOOP) {
-      zipkinFirehose = new SampledToZipkinFirehose(spanReporter, serviceName, ip, port);
+      zipkinFirehose =
+          new SampledToZipkinFirehose(errorParser, spanReporter, serviceName, ip, port);
       if (firehose != Firehose.NOOP) {
         firehose = new SplitFirehose(firehose, zipkinFirehose);
       } else {
@@ -94,9 +96,10 @@ public final class FirehoseDispatcher {
     final Reporter<zipkin2.Span> spanReporter;
     final MutableSpanConverter converter;
 
-    SampledToZipkinFirehose(Reporter<Span> spanReporter, String serviceName, String ip, int port) {
+    SampledToZipkinFirehose(ErrorParser errorParser, Reporter<Span> spanReporter,
+        String serviceName, String ip, int port) {
       this.spanReporter = spanReporter;
-      this.converter = new MutableSpanConverter(serviceName, ip, port);
+      this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
     }
 
     @Override public void accept(TraceContext context, MutableSpan span) {

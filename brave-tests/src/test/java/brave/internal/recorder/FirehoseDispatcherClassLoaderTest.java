@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.Firehose;
 import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
@@ -20,7 +21,7 @@ public class FirehoseDispatcherClassLoaderTest {
         @Override public Firehose create(String serviceName, String ip, int port) {
           return Firehose.NOOP;
         }
-      }, Reporter.NOOP, "favistar", "1.2.3.4", 0);
+      }, new ErrorParser(), Reporter.NOOP, "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       MutableSpan span = new MutableSpan();
@@ -45,7 +46,7 @@ public class FirehoseDispatcherClassLoaderTest {
         @Override public Firehose create(String serviceName, String ip, int port) {
           return Firehose.NOOP;
         }
-      }, s -> {
+      }, new ErrorParser(), s -> {
         throw new RuntimeException();
       }, "favistar", "1.2.3.4", 0);
 

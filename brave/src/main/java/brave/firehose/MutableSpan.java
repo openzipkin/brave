@@ -38,6 +38,7 @@ public final class MutableSpan implements Cloneable {
   ArrayList<String> tags;
   /** Also use pair indexing for annotations, but type object to store (startTimestamp, value). */
   ArrayList<Object> annotations;
+  Throwable error;
 
   public MutableSpan() {
     // this cheats because it will not need to grow unless there are more than 5 tags
@@ -186,6 +187,27 @@ public final class MutableSpan implements Cloneable {
     if (annotations == null) annotations = new ArrayList<>();
     annotations.add(timestamp);
     annotations.add(value);
+  }
+
+  /** @see brave.Span#error(Throwable) */
+  public Throwable error() {
+    return error;
+  }
+
+  /** @see brave.Span#error(Throwable) */
+  public void error(Throwable error) {
+    this.error = error;
+  }
+
+  /** Returns the last value associated with the key or null */
+  @Nullable public String tag(String key) {
+    if (key == null) throw new NullPointerException("key == null");
+    if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
+    String result = null;
+    for (int i = 0, length = tags.size(); i < length; i += 2) {
+      if (key.equals(tags.get(i))) result = tags.get(i + i);
+    }
+    return result;
   }
 
   /** @see brave.Span#tag(String, String) */

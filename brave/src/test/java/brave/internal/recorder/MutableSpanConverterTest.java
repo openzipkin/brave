@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.Span.Kind;
 import brave.firehose.MutableSpan;
 import org.junit.Test;
@@ -13,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanConverterTest {
-  MutableSpanConverter  converter = new MutableSpanConverter("fooService", "1.2.3.4", 80);
+  MutableSpanConverter converter =
+      new MutableSpanConverter(new ErrorParser(), "fooService", "1.2.3.4", 80);
 
   @Test public void localEndpoint_default() {
     // When span doesn't set local endpoint info
@@ -31,7 +33,7 @@ public class MutableSpanConverterTest {
   }
 
   @Test public void localEndpoint_default_whenIpNull() {
-    converter = new MutableSpanConverter("fooService", null, 80);
+    converter = new MutableSpanConverter(new ErrorParser(), "fooService", null, 80);
 
     // When span doesn't set local endpoint info
     assertThat(convert(new MutableSpan()).localEndpoint())

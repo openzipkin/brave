@@ -1,5 +1,7 @@
 package brave;
 
+import brave.firehose.MutableSpan;
+
 /** This is a simplified type used for parsing errors. It only allows annotations or tags. */
 // This implementation works with SpanCustomizer and ScopedSpan which don't share a common interface
 // yet both support tag and annotations.
@@ -20,9 +22,14 @@ public class ErrorParser {
     error(error, (Object) customizer);
   }
 
+  /** Used to parse errors on a subtype of {@linkplain SpanCustomizer} */
+  public final void error(Throwable error, MutableSpan span) {
+    error(error, (Object) span);
+  }
+
   /**
-   * Override to change what data from the error are parsed into the span modeling it. By
-   * default, this tags "error" as the message or simple name of the type.
+   * Override to change what data from the error are parsed into the span modeling it. By default,
+   * this tags "error" as the message or simple name of the type.
    */
   protected void error(Throwable error, Object span) {
     String message = error.getMessage();
@@ -45,6 +52,8 @@ public class ErrorParser {
       ((SpanCustomizer) span).tag(key, message);
     } else if (span instanceof ScopedSpan) {
       ((ScopedSpan) span).tag(key, message);
+    } else if (span instanceof MutableSpan) {
+      ((MutableSpan) span).tag(key, message);
     }
   }
 }

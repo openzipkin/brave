@@ -1,9 +1,9 @@
 package brave;
 
+import brave.firehose.Firehose;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.firehose.Firehose;
 import brave.internal.recorder.FirehoseDispatcher;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
@@ -355,6 +355,7 @@ public abstract class Tracing implements Closeable {
 
       FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
           builder.firehoseFactory,
+          builder.errorParser,
           builder.spanReporter,
           builder.localServiceName, builder.localIp, builder.localPort
       );
@@ -366,7 +367,6 @@ public abstract class Tracing implements Closeable {
           firehoseDispatcher.firehose(),
           new PendingSpans(clock, firehoseDispatcher),
           builder.sampler,
-          builder.errorParser,
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
           builder.supportsJoin && propagationFactory.supportsJoin(),

@@ -15,7 +15,6 @@ final class RealScopedSpan extends ScopedSpan {
   final Clock clock;
   final PendingSpans pendingSpans;
   final Firehose firehose;
-  final ErrorParser errorParser;
 
   RealScopedSpan(
       TraceContext context,
@@ -23,8 +22,7 @@ final class RealScopedSpan extends ScopedSpan {
       MutableSpan state,
       Clock clock,
       PendingSpans pendingSpans,
-      Firehose firehose,
-      ErrorParser errorParser
+      Firehose firehose
   ) {
     this.context = context;
     this.scope = scope;
@@ -32,7 +30,6 @@ final class RealScopedSpan extends ScopedSpan {
     this.state = state;
     this.clock = clock;
     this.firehose = firehose;
-    this.errorParser = errorParser;
   }
 
   @Override public boolean isNoop() {
@@ -54,7 +51,7 @@ final class RealScopedSpan extends ScopedSpan {
   }
 
   @Override public ScopedSpan error(Throwable throwable) {
-    errorParser.error(throwable, this);
+    state.error(throwable);
     return this;
   }
 

@@ -13,22 +13,20 @@ final class RealSpan extends Span {
   final MutableSpan state;
   final Clock clock;
   final Firehose firehose;
-  final ErrorParser errorParser;
   final RealSpanCustomizer customizer;
 
   RealSpan(TraceContext context,
       PendingSpans pendingSpans,
       MutableSpan state,
       Clock clock,
-      Firehose firehose,
-      ErrorParser errorParser) {
+      Firehose firehose
+  ) {
     this.context = context;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
     this.customizer = new RealSpanCustomizer(context, state, clock);
     this.firehose = firehose;
-    this.errorParser = errorParser;
   }
 
   @Override public boolean isNoop() {
@@ -111,7 +109,9 @@ final class RealSpan extends Span {
   }
 
   @Override public Span error(Throwable throwable) {
-    errorParser.error(throwable, customizer());
+    synchronized (state) {
+      state.error(throwable);
+    }
     return this;
   }
 

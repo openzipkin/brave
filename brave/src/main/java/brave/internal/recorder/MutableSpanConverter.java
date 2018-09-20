@@ -1,5 +1,6 @@
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.MutableSpan;
 import brave.firehose.MutableSpan.AnnotationConsumer;
 import brave.firehose.MutableSpan.TagConsumer;
@@ -11,12 +12,16 @@ import zipkin2.Span;
 final class MutableSpanConverter
     implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
 
+  final ErrorParser errorParser;
   final String localServiceName;
   @Nullable final String localIp;
   final int localPort;
   final Endpoint localEndpoint;
 
-  MutableSpanConverter(String localServiceName, String localIp, int localPort) {
+  MutableSpanConverter(ErrorParser errorParser, String localServiceName, String localIp,
+      int localPort) {
+    if (errorParser == null) throw new NullPointerException("errorParser == null");
+    this.errorParser = errorParser;
     if (localServiceName == null) throw new NullPointerException("localServiceName == null");
     this.localServiceName = localServiceName;
     this.localIp = localIp;
@@ -47,6 +52,12 @@ final class MutableSpanConverter
           .port(span.remotePort())
           .build());
     }
+
+    String errorTag = span.tag("error");
+    if (errorTag == null && span.error() != null) {
+      errorParser.error(span.error(), span);
+    }
+
     span.forEachTag(this, result);
     span.forEachAnnotation(this, result);
     if (span.shared()) result.shared(true);
