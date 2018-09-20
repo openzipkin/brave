@@ -1,18 +1,19 @@
 package brave.propagation;
 
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.TraceContexts;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_SHARED;
 import static brave.internal.Lists.ensureImmutable;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
-import static brave.internal.TraceContexts.FLAG_SHARED;
 
 /**
  * Contains trace identifiers and sampling data propagated in and out-of-process.
@@ -223,9 +224,19 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
+    /** @see TraceContext#sampledLocal() */
+    public Builder sampledLocal(boolean sampledLocal) {
+      if (sampledLocal) {
+        flags |= FLAG_SAMPLED_LOCAL;
+      } else {
+        flags &= ~FLAG_SAMPLED_LOCAL;
+      }
+      return this;
+    }
+
     /** @see TraceContext#sampled() */
     public Builder sampled(boolean sampled) {
-      flags = TraceContexts.sampled(sampled, flags);
+      flags = InternalPropagation.sampled(sampled, flags);
       return this;
     }
 
@@ -371,6 +382,14 @@ public final class TraceContext extends SamplingFlags {
 
     Builder() { // no external implementations
     }
+  }
+
+  TraceContext withExtra(List<Object> extra) {
+    return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+  }
+
+  TraceContext withFlags(int flags) {
+    return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
   }
 
   final long traceIdHigh, traceId, parentId, spanId;

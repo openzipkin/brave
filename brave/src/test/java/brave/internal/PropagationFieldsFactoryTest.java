@@ -11,7 +11,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.List;
 import org.junit.Test;
 
-import static brave.internal.TraceContexts.contextWithExtra;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -304,5 +303,9 @@ public abstract class PropagationFieldsFactoryTest {
 
     assertThat(fields.toString())
         .contains("{foo=1, bar=a}");
+  }
+
+  static TraceContext contextWithExtra(TraceContext context, List<Object> extra){
+    return InternalPropagation.instance.withExtra(context, extra);
   }
 }

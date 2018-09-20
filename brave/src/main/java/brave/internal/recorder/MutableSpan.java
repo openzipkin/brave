@@ -31,8 +31,8 @@ public final class MutableSpan implements Cloneable {
   Kind kind;
   boolean shared;
   long startTimestamp, finishTimestamp;
-  String name, remoteServiceName, remoteIp;
-  int remotePort;
+  String name, localServiceName, localIp, remoteServiceName, remoteIp;
+  int localPort, remotePort;
 
   /** To reduce the amount of allocation use a pair-indexed list for tag (key, value). */
   ArrayList<String> tags;
@@ -43,6 +43,23 @@ public final class MutableSpan implements Cloneable {
     // this cheats because it will not need to grow unless there are more than 5 tags
     tags = new ArrayList<>();
     // lazy initialize annotations
+  }
+
+  /** Copy constructor */
+  public MutableSpan(MutableSpan source) {
+    kind = source.kind;
+    shared = source.shared;
+    startTimestamp = source.startTimestamp;
+    finishTimestamp = source.finishTimestamp;
+    name = source.name;
+    localServiceName = source.localServiceName;
+    localIp = source.localIp;
+    remoteServiceName = source.remoteServiceName;
+    remoteIp = source.remoteIp;
+    localPort = source.localPort;
+    remotePort = source.remotePort;
+    tags = source.tags.isEmpty() ? new ArrayList<>() : new ArrayList<>(source.tags);
+    annotations = source.annotations == null ? null : new ArrayList<>(source.annotations);
   }
 
   /** Returns the {@link brave.Span#name(String) span name} or null */
@@ -85,6 +102,42 @@ public final class MutableSpan implements Cloneable {
   public void kind(Kind kind) {
     if (kind == null) throw new NullPointerException("kind == null");
     this.kind = kind;
+  }
+
+  /** @see brave.Tracing.Builder#localServiceName(String) */
+  @Nullable public String localServiceName() {
+    return localServiceName;
+  }
+
+  /** @see brave.Tracing.Builder#localServiceName(String) */
+  public void localServiceName(String localServiceName) {
+    if (localServiceName == null || localServiceName.isEmpty()) {
+      throw new NullPointerException("localServiceName is empty");
+    }
+    this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
+  }
+
+  /** @see brave.Tracing.Builder#localIp(String) */
+  @Nullable public String localIp() {
+    return localIp;
+  }
+
+  /** @see #localIp() */
+  public boolean localIp(@Nullable String localIp) {
+    this.localIp = IpLiteral.ipOrNull(localIp);
+    return true;
+  }
+
+  /** @see brave.Tracing.Builder#localPort(int) */
+  public int localPort() {
+    return localPort;
+  }
+
+  /** @see #localPort() */
+  public void localPort(int localPort) {
+    if (localPort > 0xffff) throw new IllegalArgumentException("invalid port " + localPort);
+    if (localPort < 0) localPort = 0;
+    this.localPort = localPort;
   }
 
   /** @see brave.Span#remoteServiceName(String) */

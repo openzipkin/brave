@@ -3,6 +3,7 @@ package brave;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.recorder.Firehose;
 import brave.internal.recorder.PendingSpans;
 import brave.internal.recorder.SpanReporter;
 import brave.propagation.B3Propagation;
@@ -131,10 +132,10 @@ public abstract class Tracing implements Closeable {
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
-    boolean traceId128Bit = false;
-    boolean supportsJoin = true;
+    boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
+    Firehose.Factory firehoseFactory;
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -301,6 +302,16 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
+    /**
+     * Handles all spans {@link TraceContext#sampled() sampled remotely} or {@link
+     * TraceContext#sampledLocal() locally}.
+     */
+    public Builder firehoseFactory(Firehose.Factory firehoseFactory) {
+      if (firehoseFactory == null) throw new NullPointerException("firehoseFactory == null");
+      this.firehoseFactory = firehoseFactory;
+      return this;
+    }
+
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
       if (localIp == null) localIp = Platform.get().linkLocalIp();
@@ -342,22 +353,22 @@ public abstract class Tracing implements Closeable {
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
-      zipkin2.Endpoint localEndpoint = zipkin2.Endpoint.newBuilder()
-          .serviceName(builder.localServiceName)
-          .ip(builder.localIp)
-          .port(builder.localPort)
-          .build();
-      SpanReporter reporter = new SpanReporter(localEndpoint, builder.reporter, noop);
+
+      Firehose.Factory firehose = builder.firehoseFactory;
+      SpanReporter reporter = new SpanReporter.Factory(firehose, builder.reporter, noop)
+          .create(builder.localServiceName, builder.localIp, builder.localPort);
+
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
           reporter,
-          new PendingSpans(localEndpoint, clock, reporter, noop),
+          new PendingSpans(clock, reporter, noop),
           builder.sampler,
           builder.errorParser,
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
           builder.supportsJoin && propagationFactory.supportsJoin(),
+          firehose != null && firehose.alwaysSampleLocal(),
           noop
       );
       maybeSetCurrent();

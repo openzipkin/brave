@@ -2,9 +2,11 @@ package brave.propagation;
 
 import org.junit.Test;
 
-import static brave.internal.TraceContexts.FLAG_DEBUG;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_DEBUG;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static brave.propagation.SamplingFlags.toSamplingFlags;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SamplingFlagsTest {
@@ -59,5 +61,35 @@ public class SamplingFlagsTest {
     assertThat(SamplingFlags.debug(false, SamplingFlags.DEBUG.flags))
         .isEqualTo(SamplingFlags.SAMPLED.flags)
         .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED);
+  }
+
+  /** Ensures constants are used */
+  @Test public void toSamplingFlags_returnsConstants() {
+    assertThat(toSamplingFlags(SamplingFlags.EMPTY.flags))
+        .isSameAs(SamplingFlags.EMPTY);
+    assertThat(toSamplingFlags(SamplingFlags.NOT_SAMPLED.flags))
+        .isSameAs(SamplingFlags.NOT_SAMPLED);
+    assertThat(toSamplingFlags(SamplingFlags.SAMPLED.flags))
+        .isSameAs(SamplingFlags.SAMPLED);
+    assertThat(toSamplingFlags(SamplingFlags.DEBUG.flags))
+        .isSameAs(SamplingFlags.DEBUG);
+    assertThat(toSamplingFlags(SamplingFlags.EMPTY.flags | FLAG_SAMPLED_LOCAL))
+        .isSameAs(SamplingFlags.EMPTY_SAMPLED_LOCAL);
+    assertThat(toSamplingFlags(SamplingFlags.NOT_SAMPLED.flags | FLAG_SAMPLED_LOCAL))
+        .isSameAs(SamplingFlags.NOT_SAMPLED_SAMPLED_LOCAL);
+    assertThat(toSamplingFlags(SamplingFlags.SAMPLED.flags | FLAG_SAMPLED_LOCAL))
+        .isSameAs(SamplingFlags.SAMPLED_SAMPLED_LOCAL);
+    assertThat(toSamplingFlags(SamplingFlags.DEBUG.flags | FLAG_SAMPLED_LOCAL))
+        .isSameAs(SamplingFlags.DEBUG_SAMPLED_LOCAL);
+  }
+
+  @Test public void sampledLocal() {
+    SamplingFlags.Builder flagsBuilder = new SamplingFlags.Builder();
+    flagsBuilder.flags |= FLAG_SAMPLED_LOCAL;
+    SamplingFlags flags = flagsBuilder.build();
+
+    assertThat(flags).isSameAs(SamplingFlags.EMPTY_SAMPLED_LOCAL);
+    assertThat(flags.sampledLocal()).isTrue();
+    assertThat(flags.sampled()).isNull();
   }
 }

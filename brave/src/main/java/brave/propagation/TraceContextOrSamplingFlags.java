@@ -1,17 +1,15 @@
 package brave.propagation;
 
 import brave.Tracer;
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.internal.TraceContexts;
 import java.util.ArrayList;
 import java.util.List;
 
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.Lists.concatImmutableLists;
 import static brave.internal.Lists.ensureImmutable;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
-import static brave.internal.TraceContexts.contextWithExtra;
-import static brave.internal.TraceContexts.contextWithFlags;
 import static java.util.Collections.emptyList;
 
 /**
@@ -63,8 +61,8 @@ public final class TraceContextOrSamplingFlags {
       case 1:
         // use bitwise as trace context can have other flags like shared
         int flags = value.flags & ~(FLAG_SAMPLED_SET | FLAG_SAMPLED);
-        TraceContext traceContext = contextWithFlags((TraceContext) value, flags);
-        return new TraceContextOrSamplingFlags(type, traceContext, extra);
+        TraceContext context = InternalPropagation.instance.withFlags((TraceContext) value, flags);
+        return new TraceContextOrSamplingFlags(type, context, extra);
       case 2:
         return new TraceContextOrSamplingFlags(type, idContextWithFlags(0), extra);
       case 3:
@@ -75,13 +73,13 @@ public final class TraceContextOrSamplingFlags {
   }
 
   public TraceContextOrSamplingFlags sampled(boolean sampled) {
-    int flags = TraceContexts.sampled(sampled, value.flags);
+    int flags = InternalPropagation.sampled(sampled, value.flags);
     if (flags == value.flags) return this; // save effort if no change
 
     switch (type) {
       case 1:
-        TraceContext traceContext = contextWithFlags((TraceContext) value, flags);
-        return new TraceContextOrSamplingFlags(type, traceContext, extra);
+        TraceContext context = InternalPropagation.instance.withFlags((TraceContext) value, flags);
+        return new TraceContextOrSamplingFlags(type, context, extra);
       case 2:
         TraceIdContext traceIdContext = idContextWithFlags(flags);
         return new TraceContextOrSamplingFlags(type, traceIdContext, extra);
@@ -214,9 +212,9 @@ public final class TraceContextOrSamplingFlags {
       if (!extra.isEmpty() && type == 1) { // move extra to the trace context
         TraceContext context = (TraceContext) value;
         if (context.extra().isEmpty()) {
-          context = contextWithExtra(context, ensureImmutable(extra));
+          context = InternalPropagation.instance.withExtra(context, ensureImmutable(extra));
         } else {
-          context = contextWithExtra(context, concatImmutableLists(context.extra(), extra));
+          context = InternalPropagation.instance.withExtra(context, concatImmutableLists(context.extra(), extra));
         }
         return new TraceContextOrSamplingFlags(type, context, emptyList());
       }

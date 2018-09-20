@@ -3,7 +3,6 @@ package brave.internal.recorder;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
-import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
@@ -16,20 +15,19 @@ public class SpanReporterClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      SpanReporter reporter = new SpanReporter(
-          Endpoint.newBuilder().serviceName("unknown").build(),
-          Reporter.NOOP,
-          new AtomicBoolean());
+      MutableSpanConverter converter = new MutableSpanConverter("unknown", "127.0.0.1", 0);
+      SpanReporter reporter = new SpanReporter(converter, Reporter.NOOP, new AtomicBoolean());
 
-      TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+      TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       MutableSpan span = new MutableSpan();
       span.name("get /users/{userId}");
+      span.kind(brave.Span.Kind.CLIENT);
       span.startTimestamp(1L);
       span.tag("http.method", "GET");
       span.annotate(2L, "cache.miss");
       span.finishTimestamp(3L);
 
-      reporter.report(context, span);
+      reporter.accept(context, span);
     }
   }
 
@@ -39,14 +37,13 @@ public class SpanReporterClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      SpanReporter reporter = new SpanReporter(
-          Endpoint.newBuilder().serviceName("unknown").build(),
-          s -> {
-            throw new RuntimeException();
-          },
-          new AtomicBoolean());
+      MutableSpanConverter converter = new MutableSpanConverter("unknown", "127.0.0.1", 0);
+      SpanReporter reporter = new SpanReporter(converter, s -> {
+        throw new RuntimeException();
+      }, new AtomicBoolean());
 
-      reporter.report(TraceContext.newBuilder().traceId(1).spanId(2).build(), new MutableSpan());
+      TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
+      reporter.accept(context, new MutableSpan());
     }
   }
 }

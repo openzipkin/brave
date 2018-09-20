@@ -12,7 +12,46 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanConverterTest {
-  final MutableSpanConverter converter = new MutableSpanConverter();
+  MutableSpanConverter  converter = new MutableSpanConverter("fooService", "1.2.3.4", 80);
+
+  @Test public void localEndpoint_default() {
+    // When span doesn't set local endpoint info
+    assertThat(convert(new MutableSpan()).localEndpoint())
+        .isEqualTo(converter.localEndpoint);
+
+    // When span sets to the same values
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.localServiceName);
+    span.localIp(converter.localIp);
+    span.localPort(converter.localPort);
+
+    assertThat(convert(span).localEndpoint())
+        .isEqualTo(converter.localEndpoint);
+  }
+
+  @Test public void localEndpoint_default_whenIpNull() {
+    converter = new MutableSpanConverter("fooService", null, 80);
+
+    // When span doesn't set local endpoint info
+    assertThat(convert(new MutableSpan()).localEndpoint())
+        .isEqualTo(converter.localEndpoint);
+
+    // When span sets to the same values
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.localServiceName);
+    span.localPort(converter.localPort);
+
+    assertThat(convert(span).localEndpoint())
+        .isEqualTo(converter.localEndpoint);
+  }
+
+  @Test public void localEndpoint_override() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName("barService");
+
+    assertThat(convert(span).localEndpoint())
+        .isEqualTo(Endpoint.newBuilder().serviceName("barService").ip("1.2.3.4").port(80).build());
+  }
 
   @Test public void minimumDurationIsOne() {
     MutableSpan span = new MutableSpan();

@@ -95,14 +95,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
+    assertThat(tracer).extracting("spanReporter.converter.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
+    assertThat(tracer).extracting("spanReporter.converter.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -110,7 +110,7 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint")
+    assertThat(tracer).extracting("spanReporter.converter.localEndpoint")
         .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
   }
 
@@ -257,6 +257,14 @@ public class TracerTest {
 
     assertThat(tracer.toSpan(context))
         .isInstanceOf(NoopSpan.class);
+  }
+
+  @Test public void toSpan_sampledLocalIsNotNoop() {
+    TraceContext sampledLocal = tracer.newTrace().context()
+        .toBuilder().sampled(false).sampledLocal(true).build();
+
+    assertThat(tracer.toSpan(sampledLocal))
+        .isInstanceOf(RealSpan.class);
   }
 
   @Test public void toSpan_unsampledIsNoop() {

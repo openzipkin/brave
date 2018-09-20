@@ -1,6 +1,7 @@
 package brave;
 
 import brave.http.HttpServerBenchmarks;
+import brave.internal.recorder.Firehose;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
@@ -73,6 +74,25 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class OnlySampledLocal extends ForwardingTracingFilter {
+    public OnlySampledLocal() {
+      super(Tracing.newBuilder()
+          .firehoseFactory(new Firehose.Factory() {
+            @Override public Firehose create(String serviceName, String ip, int port) {
+              return (context, span) -> {
+              };
+            }
+
+            @Override public boolean alwaysSampleLocal() {
+              return true;
+            }
+          })
+          .sampler(Sampler.NEVER_SAMPLE)
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
+    }
+  }
+
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
@@ -107,6 +127,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
         .addFilterUrlMapping("Unsampled", "/unsampled/api", REQUEST)
+        .addFilter(new FilterInfo("OnlySampledLocal", OnlySampledLocal.class))
+        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal", REQUEST)
+        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal/api", REQUEST)
         .addFilter(new FilterInfo("Traced", Traced.class))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
         .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
