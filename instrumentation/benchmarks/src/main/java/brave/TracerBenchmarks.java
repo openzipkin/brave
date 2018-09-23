@@ -60,7 +60,7 @@ public class TracerBenchmarks {
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
-        .firehoseFactory(new FirehoseHandler.Factory() {
+        .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
           @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
             };
@@ -70,7 +70,7 @@ public class TracerBenchmarks {
     tracerExtra = Tracing.newBuilder()
         .propagationFactory(ExtraFieldPropagation.newFactory(
             B3Propagation.FACTORY, "x-vcap-request-id"))
-        .firehoseFactory(new FirehoseHandler.Factory() {
+        .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
           @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
             };

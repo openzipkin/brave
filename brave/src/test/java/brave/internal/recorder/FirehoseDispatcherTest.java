@@ -5,6 +5,7 @@ import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,15 +36,11 @@ public class FirehoseDispatcherTest {
   Endpoint localEndpoint;
 
   @Before public void init() {
-    init(new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        return FirehoseHandler.NOOP;
-      }
-    }, spans::add);
+    init(Collections.emptyList(), spans::add);
   }
 
-  void init(FirehoseHandler.Factory delegate, Reporter<Span> spanReporter) {
-    firehoseDispatcher = new FirehoseDispatcher(delegate, new ErrorParser(), spanReporter,
+  void init(List<FirehoseHandler.Factory> factories, Reporter<Span> spanReporter) {
+    firehoseDispatcher = new FirehoseDispatcher(factories, new ErrorParser(), spanReporter,
         "favistar", "1.2.3.4", 0);
     firehoseHandler = firehoseDispatcher.firehose();
     localEndpoint = firehoseDispatcher.zipkinFirehose != null
@@ -82,11 +79,7 @@ public class FirehoseDispatcherTest {
   }
 
   @Test public void noopWhenBothFirehoseAreNoop() {
-    init(new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        return FirehoseHandler.NOOP;
-      }
-    }, Reporter.NOOP);
+    init(Collections.emptyList(), Reporter.NOOP);
 
     assertThat(firehoseHandler).hasToString("NoopFirehoseHandler{}");
 
@@ -95,7 +88,7 @@ public class FirehoseDispatcherTest {
   }
 
   @Test public void splitWhenFirehosePresent() {
-    init(testFirehoseFactory, new Reporter<Span>() {
+    init(Collections.singletonList(testFirehoseFactory), new Reporter<Span>() {
       @Override public void report(Span span) {
         spans.add(span);
       }
@@ -116,9 +109,9 @@ public class FirehoseDispatcherTest {
   }
 
   @Test public void notSplitWhenZipkinIsNoop() {
-    init(testFirehoseFactory, Reporter.NOOP);
+    init(Collections.singletonList(testFirehoseFactory), Reporter.NOOP);
 
-    assertThat(firehoseHandler).hasToString("TestFirehose{}");
+    assertThat(firehoseHandler).hasToString("TestFirehoseHandler{}");
 
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
     firehoseHandler.accept(context, new MutableSpan());
@@ -136,13 +129,13 @@ public class FirehoseDispatcherTest {
   }
 
   @Test public void doesntCrashOnFirehoseDispatcherError() {
-    init(new FirehoseHandler.Factory() {
+    init(Collections.singletonList(new FirehoseHandler.Factory() {
       @Override public FirehoseHandler create(String serviceName, String ip, int port) {
         return (c, s) -> {
           throw new RuntimeException();
         };
       }
-    }, spans::add);
+    }), spans::add);
 
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
     firehoseHandler.accept(context, new MutableSpan());
@@ -152,11 +145,11 @@ public class FirehoseDispatcherTest {
 
   @Test public void doesntCrashOnReporterError() {
     List<MutableSpan> mutableSpans = new ArrayList<>();
-    init(new FirehoseHandler.Factory() {
+    init(Collections.singletonList(new FirehoseHandler.Factory() {
       @Override public FirehoseHandler create(String serviceName, String ip, int port) {
         return (c, s) -> mutableSpans.add(s);
       }
-    }, s -> {
+    }), s -> {
       throw new RuntimeException();
     });
 

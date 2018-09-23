@@ -5,6 +5,7 @@ import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
@@ -17,11 +18,20 @@ public final class FirehoseDispatcher {
 
   final FirehoseHandler firehoseHandler;
   final AtomicBoolean noop = new AtomicBoolean();
+  final boolean alwaysSampleLocal;
   final SampledToZipkinFirehose zipkinFirehose;
 
-  public FirehoseDispatcher(FirehoseHandler.Factory firehoseFactory, ErrorParser errorParser,
-      Reporter<Span> spanReporter, String serviceName, String ip, int port) {
-    FirehoseHandler firehoseHandler = firehoseFactory.create(serviceName, ip, port);
+  public FirehoseDispatcher(List<FirehoseHandler.Factory> firehoseHandlerFactories,
+      ErrorParser errorParser, Reporter<Span> spanReporter, String serviceName, String ip,
+      int port) {
+    boolean alwaysSampleLocal = false;
+    for (FirehoseHandler.Factory factory : firehoseHandlerFactories) {
+      if (factory.alwaysSampleLocal()) alwaysSampleLocal = true;
+    }
+    this.alwaysSampleLocal = alwaysSampleLocal;
+
+    FirehoseHandler firehoseHandler =
+        newFirehoseHandler(firehoseHandlerFactories, serviceName, ip, port);
     if (spanReporter != Reporter.NOOP) {
       zipkinFirehose =
           new SampledToZipkinFirehose(errorParser, spanReporter, serviceName, ip, port);
@@ -42,8 +52,14 @@ public final class FirehoseDispatcher {
     return firehoseHandler;
   }
 
-  /** Internal method. do not use */
-  public void reportIncompleteToZipkin(MutableSpan state, Span.Builder builderWithContextData) {
+  /** @see FirehoseHandler.Factory#alwaysSampleLocal() */
+  public boolean alwaysSampleLocal() {
+    return alwaysSampleLocal;
+  }
+
+  // NOTE: this is a special method which accepts zipkin2.Span.Builder which is not normal, but
+  // needed for flushing incomplete data. Revisit at some point.
+  void reportIncompleteToZipkin(MutableSpan state, Span.Builder builderWithContextData) {
     if (zipkinFirehose == null) return;
     zipkinFirehose.report(state, builderWithContextData);
   }
@@ -88,7 +104,7 @@ public final class FirehoseDispatcher {
     }
 
     @Override public String toString() {
-      return "SplitFirehose(" + first + ", " + second + ")";
+      return "SplitFirehoseHandler(" + first + ", " + second + ")";
     }
   }
 
@@ -135,5 +151,23 @@ public final class FirehoseDispatcher {
 
   @Override public String toString() {
     return firehoseHandler.toString();
+  }
+
+  static FirehoseHandler newFirehoseHandler(List<FirehoseHandler.Factory> firehoseHandlerFactories,
+      String serviceName, String ip, int port) {
+    FirehoseHandler firehoseHandler = FirehoseHandler.NOOP;
+    for (FirehoseHandler.Factory factory : firehoseHandlerFactories) {
+      FirehoseHandler next = factory.create(serviceName, ip, port);
+      if (next == FirehoseHandler.NOOP) continue;
+      if (firehoseHandler == FirehoseHandler.NOOP) {
+        firehoseHandler = next;
+      } else if (!(firehoseHandler instanceof SplitFirehose)) {
+        firehoseHandler = new SplitFirehose(firehoseHandler, next);
+      } else {
+        throw new UnsupportedOperationException(
+            "more than two firehose handlers aren't yet supported");
+      }
+    }
+    return firehoseHandler;
   }
 }

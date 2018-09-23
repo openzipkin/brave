@@ -77,7 +77,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-          .firehoseFactory(new FirehoseHandler.Factory() {
+          .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
             @Override public FirehoseHandler create(String serviceName, String ip, int port) {
               return (context, span) -> {
               };

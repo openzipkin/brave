@@ -12,6 +12,7 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -129,11 +130,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    FirehoseHandler.Factory firehoseFactory = new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        return FirehoseHandler.NOOP;
-      }
-    };
+    ArrayList<FirehoseHandler.Factory> firehoseHandlerFactories = new ArrayList<>();
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -304,9 +301,11 @@ public abstract class Tracing implements Closeable {
      * Handles all spans {@link TraceContext#sampled() sampled remotely} or {@link
      * TraceContext#sampledLocal() locally}.
      */
-    public Builder firehoseFactory(FirehoseHandler.Factory firehoseFactory) {
-      if (firehoseFactory == null) throw new NullPointerException("firehoseFactory == null");
-      this.firehoseFactory = firehoseFactory;
+    public Builder addFirehoseHandlerFactory(FirehoseHandler.Factory firehoseHandlerFactory) {
+      if (firehoseHandlerFactory == null) {
+        throw new NullPointerException("firehoseHandlerFactory == null");
+      }
+      this.firehoseHandlerFactories.add(firehoseHandlerFactory);
       return this;
     }
 
@@ -354,7 +353,7 @@ public abstract class Tracing implements Closeable {
       this.sampler = builder.sampler;
 
       FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
-          builder.firehoseFactory,
+          builder.firehoseHandlerFactories,
           builder.errorParser,
           builder.spanReporter,
           builder.localServiceName, builder.localIp, builder.localPort
@@ -370,7 +369,7 @@ public abstract class Tracing implements Closeable {
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
           builder.supportsJoin && propagationFactory.supportsJoin(),
-          builder.firehoseFactory != null && builder.firehoseFactory.alwaysSampleLocal(),
+          firehoseDispatcher.alwaysSampleLocal(),
           firehoseDispatcher.noop()
       );
       maybeSetCurrent();

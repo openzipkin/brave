@@ -50,7 +50,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.firehose.delegate.converter.localEndpoint")
+        .extracting("tracer.firehoseHandler.delegate.converter.localEndpoint")
         .extracting("serviceName")
         .containsExactly("brave-webmvc-example");
   }
@@ -69,7 +69,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.firehose.delegate.converter.localEndpoint")
+        .extracting("tracer.firehoseHandler.delegate.converter.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -90,7 +90,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.firehose.delegate.converter.localEndpoint")
+        .extracting("tracer.firehoseHandler.delegate.converter.localEndpoint")
         .containsExactly(Endpoint.newBuilder()
             .serviceName("brave-webmvc-example")
             .ip("1.2.3.4")
@@ -107,7 +107,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.firehose.delegate.spanReporter")
+        .extracting("tracer.firehoseHandler.delegate.spanReporter")
         .containsExactly(Reporter.CONSOLE);
   }
 
@@ -118,17 +118,17 @@ public class TracingFactoryBeanTest {
     }
   };
 
-  @Test public void firehoseFactory() {
+  @Test public void firehoseHandlerFactories() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-        + "  <property name=\"firehoseFactory\">\n"
+        + "  <property name=\"firehoseHandlerFactories\">\n"
         + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_FACTORY\"/>\n"
         + "  </property>\n"
         + "</bean>"
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-        .extracting("tracer.firehose.delegate.first")
+        .extracting("tracer.firehoseHandler.delegate.first")
         .containsExactly(FIREHOSE_HANDLER);
   }
 

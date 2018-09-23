@@ -1,9 +1,9 @@
 package brave.internal.recorder;
 
 import brave.ErrorParser;
-import brave.firehose.FirehoseHandler;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
+import java.util.Collections;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
@@ -17,11 +17,9 @@ public class PendingSpansClassLoaderTest {
 
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
-        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-          return FirehoseHandler.NOOP;
-        }
-      }, new ErrorParser(), Reporter.NOOP, "favistar", "1.2.3.4", 0);
+      FirehoseDispatcher firehoseDispatcher =
+          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), Reporter.NOOP,
+              "favistar", "1.2.3.4", 0);
       PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
@@ -36,13 +34,10 @@ public class PendingSpansClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
-        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-          return FirehoseHandler.NOOP;
-        }
-      }, new ErrorParser(), s -> {
-        throw new RuntimeException();
-      }, "favistar", "1.2.3.4", 0);
+      FirehoseDispatcher firehoseDispatcher =
+          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), s -> {
+            throw new RuntimeException();
+          }, "favistar", "1.2.3.4", 0);
       PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();

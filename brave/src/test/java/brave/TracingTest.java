@@ -43,7 +43,7 @@ public class TracingTest {
         .localIp(expectedLocalIp)
         .localPort(expectedLocalPort)
         .spanReporter(Reporter.NOOP)
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .build()) {
       tracing.tracer().newTrace().start().finish();
     }
@@ -65,7 +65,7 @@ public class TracingTest {
 
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .build()) {
       tracing.tracer().newTrace().start().finish();
     }
@@ -76,7 +76,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -92,7 +92,7 @@ public class TracingTest {
   @Test public void firehose_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
@@ -105,7 +105,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(Reporter.NOOP)
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -117,7 +117,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .firehoseFactory(new FirehoseHandler.Factory() {
+        .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
           @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
               mutableSpans.add(span);
@@ -151,7 +151,7 @@ public class TracingTest {
             return context.toBuilder().sampledLocal(true).build();
           }
         })
-        .firehoseFactory(factory)
+        .addFirehoseHandlerFactory(factory)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("one").finish();

@@ -1,9 +1,9 @@
 package brave.internal.recorder;
 
 import brave.ErrorParser;
-import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
+import java.util.Collections;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
@@ -17,11 +17,9 @@ public class FirehoseDispatcherClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
-        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-          return FirehoseHandler.NOOP;
-        }
-      }, new ErrorParser(), Reporter.NOOP, "favistar", "1.2.3.4", 0);
+      FirehoseDispatcher firehoseDispatcher =
+          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), Reporter.NOOP,
+              "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       MutableSpan span = new MutableSpan();
@@ -42,13 +40,10 @@ public class FirehoseDispatcherClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
-        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-          return FirehoseHandler.NOOP;
-        }
-      }, new ErrorParser(), s -> {
-        throw new RuntimeException();
-      }, "favistar", "1.2.3.4", 0);
+      FirehoseDispatcher firehoseDispatcher =
+          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), s -> {
+            throw new RuntimeException();
+          }, "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       firehoseDispatcher.firehose().accept(context, new MutableSpan());
