@@ -24,7 +24,7 @@ public class FirehoseDispatcherTest {
         }
 
         @Override public String toString() {
-          return "TestFirehose{}";
+          return "TestFirehoseHandler{}";
         }
       };
     }
@@ -88,7 +88,7 @@ public class FirehoseDispatcherTest {
       }
     }, Reporter.NOOP);
 
-    assertThat(firehoseHandler).hasToString("NoopFirehose{}");
+    assertThat(firehoseHandler).hasToString("NoopFirehoseHandler{}");
 
     assertThat(firehoseDispatcher.firehose())
         .isSameAs(FirehoseHandler.NOOP);
@@ -105,7 +105,8 @@ public class FirehoseDispatcherTest {
       }
     });
 
-    assertThat(firehoseHandler).hasToString("SplitFirehose(TestFirehose{}, TestReporter())");
+    assertThat(firehoseHandler)
+        .hasToString("SplitFirehoseHandler(TestFirehoseHandler{}, TestReporter())");
 
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
     firehoseHandler.accept(context, new MutableSpan());
