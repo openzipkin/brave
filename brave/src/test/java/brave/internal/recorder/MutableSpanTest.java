@@ -10,8 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MutableSpanTest {
 
   /** This just proves it is possible to not allocate anything while copying tags into a map */
-  @Test
-  public void showMapCanTakeTags() {
+  @Test public void showMapCanTakeTags() {
     MutableSpan span = new MutableSpan();
     span.tag("http.path", "/api");
 
@@ -19,5 +18,15 @@ public class MutableSpanTest {
     span.forEachTag(Map::put, map);
 
     assertThat(map).containsEntry("http.path", "/api");
+  }
+
+  @Test public void accessorScansTags() {
+    MutableSpan span = new MutableSpan();
+    span.tag("http.method", "GET");
+    span.tag("error", "500");
+    span.tag("http.path", "/api");
+
+    assertThat(span.tag("error")).isEqualTo("500");
+    assertThat(span.tag("whoops")).isNull();
   }
 }

@@ -205,7 +205,7 @@ public final class MutableSpan implements Cloneable {
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
     String result = null;
     for (int i = 0, length = tags.size(); i < length; i += 2) {
-      if (key.equals(tags.get(i))) result = tags.get(i + i);
+      if (key.equals(tags.get(i))) result = tags.get(i + 1);
     }
     return result;
   }

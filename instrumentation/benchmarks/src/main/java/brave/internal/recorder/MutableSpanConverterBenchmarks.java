@@ -13,6 +13,7 @@
  */
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.firehose.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -42,7 +43,8 @@ import static brave.internal.recorder.MutableSpanBenchmarks.newServerMutableSpan
 @State(Scope.Thread)
 @Threads(1)
 public class MutableSpanConverterBenchmarks {
-  final MutableSpanConverter converter = new MutableSpanConverter(errorParser, "unknown", "127.0.0.1", 0);
+  final MutableSpanConverter converter =
+      new MutableSpanConverter(new ErrorParser(), "unknown", "127.0.0.1", 0);
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 
