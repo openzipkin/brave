@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
 import brave.ErrorParser;
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -26,9 +26,9 @@ public class PendingSpansTest {
   }
 
   void init(Reporter<Span> spanReporter) {
-    FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
-      @Override public Firehose create(String serviceName, String ip, int port) {
-        return Firehose.NOOP;
+    FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
+      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
+        return FirehoseHandler.NOOP;
       }
     }, new ErrorParser(), spanReporter, "favistar", "1.2.3.4", 0);
     pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, firehoseDispatcher);

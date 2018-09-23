@@ -111,7 +111,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           .id(contextKey.spanId)
           .addAnnotation(flushTime, "brave.flush");
 
-      // do not forward incomplete data to the normal firehose
+      // do not forward incomplete data to the normal firehoseHandler
       firehoseDispatcher.reportIncompleteToZipkin(value.state, builderWithContextData);
     }
   }

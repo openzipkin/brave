@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
 import brave.ErrorParser;
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
@@ -11,34 +11,35 @@ import zipkin2.reporter.Reporter;
 
 /**
  * Dispatches {@link TraceContext#sampled() sampled} spans to Zipkin after forwarding to any default
- * firehose.
+ * firehoseHandler.
  */
 public final class FirehoseDispatcher {
 
-  final Firehose firehose;
+  final FirehoseHandler firehoseHandler;
   final AtomicBoolean noop = new AtomicBoolean();
   final SampledToZipkinFirehose zipkinFirehose;
 
-  public FirehoseDispatcher(Firehose.Factory firehoseFactory, ErrorParser errorParser,
+  public FirehoseDispatcher(FirehoseHandler.Factory firehoseFactory, ErrorParser errorParser,
       Reporter<Span> spanReporter, String serviceName, String ip, int port) {
-    Firehose firehose = firehoseFactory.create(serviceName, ip, port);
+    FirehoseHandler firehoseHandler = firehoseFactory.create(serviceName, ip, port);
     if (spanReporter != Reporter.NOOP) {
       zipkinFirehose =
           new SampledToZipkinFirehose(errorParser, spanReporter, serviceName, ip, port);
-      if (firehose != Firehose.NOOP) {
-        firehose = new SplitFirehose(firehose, zipkinFirehose);
+      if (firehoseHandler != FirehoseHandler.NOOP) {
+        firehoseHandler = new SplitFirehose(firehoseHandler, zipkinFirehose);
       } else {
-        firehose = zipkinFirehose;
+        firehoseHandler = zipkinFirehose;
       }
     } else {
       zipkinFirehose = null;
     }
-    this.firehose = firehose == Firehose.NOOP ? firehose : new NoopAwareFirehose(firehose, noop);
+    this.firehoseHandler = firehoseHandler == FirehoseHandler.NOOP ? firehoseHandler
+        : new NoopAwareFirehose(firehoseHandler, noop);
   }
 
-  /** Returns a firehose that accepts data according to configuration */
-  public Firehose firehose() {
-    return firehose;
+  /** Returns a firehoseHandler that accepts data according to configuration */
+  public FirehoseHandler firehose() {
+    return firehoseHandler;
   }
 
   /** Internal method. do not use */
@@ -48,13 +49,13 @@ public final class FirehoseDispatcher {
   }
 
   /**
-   * logs exceptions instead of raising an error, as the supplied firehose could have bugs
+   * logs exceptions instead of raising an error, as the supplied firehoseHandler could have bugs
    */
-  static final class NoopAwareFirehose implements Firehose {
-    final Firehose delegate;
+  static final class NoopAwareFirehose implements FirehoseHandler {
+    final FirehoseHandler delegate;
     final AtomicBoolean noop;
 
-    NoopAwareFirehose(Firehose delegate, AtomicBoolean noop) {
+    NoopAwareFirehose(FirehoseHandler delegate, AtomicBoolean noop) {
       this.delegate = delegate;
       this.noop = noop;
     }
@@ -73,10 +74,10 @@ public final class FirehoseDispatcher {
     }
   }
 
-  static final class SplitFirehose implements Firehose {
-    final Firehose first, second;
+  static final class SplitFirehose implements FirehoseHandler {
+    final FirehoseHandler first, second;
 
-    SplitFirehose(Firehose first, Firehose second) {
+    SplitFirehose(FirehoseHandler first, FirehoseHandler second) {
       this.first = first;
       this.second = second;
     }
@@ -92,7 +93,7 @@ public final class FirehoseDispatcher {
   }
 
   /** logs exceptions instead of raising an error, as the supplied reporter could have bugs */
-  static final class SampledToZipkinFirehose implements Firehose {
+  static final class SampledToZipkinFirehose implements FirehoseHandler {
     final Reporter<zipkin2.Span> spanReporter;
     final MutableSpanConverter converter;
 
@@ -133,6 +134,6 @@ public final class FirehoseDispatcher {
   }
 
   @Override public String toString() {
-    return firehose.toString();
+    return firehoseHandler.toString();
   }
 }

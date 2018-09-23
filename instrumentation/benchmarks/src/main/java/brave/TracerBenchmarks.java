@@ -1,6 +1,6 @@
 package brave;
 
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -60,8 +60,8 @@ public class TracerBenchmarks {
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
-        .firehoseFactory(new Firehose.Factory() {
-          @Override public Firehose create(String serviceName, String ip, int port) {
+        .firehoseFactory(new FirehoseHandler.Factory() {
+          @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
             };
           }
@@ -70,8 +70,8 @@ public class TracerBenchmarks {
     tracerExtra = Tracing.newBuilder()
         .propagationFactory(ExtraFieldPropagation.newFactory(
             B3Propagation.FACTORY, "x-vcap-request-id"))
-        .firehoseFactory(new Firehose.Factory() {
-          @Override public Firehose create(String serviceName, String ip, int port) {
+        .firehoseFactory(new FirehoseHandler.Factory() {
+          @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
             };
           }

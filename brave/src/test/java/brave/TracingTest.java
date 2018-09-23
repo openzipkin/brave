@@ -1,6 +1,6 @@
 package brave;
 
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
@@ -17,8 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TracingTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   List<MutableSpan> mutableSpans = new ArrayList<>();
-  Firehose.Factory factory = new Firehose.Factory() {
-    @Override public Firehose create(String serviceName, String ip, int port) {
+  FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
+    @Override public FirehoseHandler create(String serviceName, String ip, int port) {
       return (context, span) -> {
         mutableSpans.add(span);
       };
@@ -29,8 +29,8 @@ public class TracingTest {
     String expectedLocalServiceName = "favistar", expectedLocalIp = "1.2.3.4";
     int expectedLocalPort = 80;
 
-    Firehose.Factory factory = new Firehose.Factory() {
-      @Override public Firehose create(String serviceName, String ip, int port) {
+    FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
+      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
         assertThat(serviceName).isEqualTo(expectedLocalServiceName);
         assertThat(ip).isEqualTo(expectedLocalIp);
         assertThat(port).isEqualTo(expectedLocalPort);
@@ -54,8 +54,8 @@ public class TracingTest {
   @Test public void firehose_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
-    Firehose.Factory factory = new Firehose.Factory() {
-      @Override public Firehose create(String serviceName, String ip, int port) {
+    FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
+      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
         assertThat(serviceName).isNotEqualTo(serviceNameOverride);
         return (context, span) -> {
           span.localServiceName(serviceNameOverride);
@@ -117,8 +117,8 @@ public class TracingTest {
   @Test public void firehose_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .firehoseFactory(new Firehose.Factory() {
-          @Override public Firehose create(String serviceName, String ip, int port) {
+        .firehoseFactory(new FirehoseHandler.Factory() {
+          @Override public FirehoseHandler create(String serviceName, String ip, int port) {
             return (context, span) -> {
               mutableSpans.add(span);
             };

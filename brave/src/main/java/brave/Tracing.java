@@ -1,6 +1,6 @@
 package brave;
 
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -129,9 +129,9 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    Firehose.Factory firehoseFactory = new Firehose.Factory() {
-      @Override public Firehose create(String serviceName, String ip, int port) {
-        return Firehose.NOOP;
+    FirehoseHandler.Factory firehoseFactory = new FirehoseHandler.Factory() {
+      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
+        return FirehoseHandler.NOOP;
       }
     };
 
@@ -304,7 +304,7 @@ public abstract class Tracing implements Closeable {
      * Handles all spans {@link TraceContext#sampled() sampled remotely} or {@link
      * TraceContext#sampledLocal() locally}.
      */
-    public Builder firehoseFactory(Firehose.Factory firehoseFactory) {
+    public Builder firehoseFactory(FirehoseHandler.Factory firehoseFactory) {
       if (firehoseFactory == null) throw new NullPointerException("firehoseFactory == null");
       this.firehoseFactory = firehoseFactory;
       return this;

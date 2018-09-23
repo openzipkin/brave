@@ -15,14 +15,14 @@ import brave.propagation.TraceContext;
  *
  * @see Factory#alwaysSampleLocal()
  */
-public interface Firehose {
+public interface FirehoseHandler {
   /** Use to avoid comparing against null references */
-  Firehose NOOP = new Firehose() {
+  FirehoseHandler NOOP = new FirehoseHandler() {
     @Override public void accept(TraceContext context, MutableSpan span) {
     }
 
     @Override public String toString() {
-      return "NoopFirehose{}";
+      return "NoopFirehoseHandler{}";
     }
   };
 
@@ -30,14 +30,14 @@ public interface Firehose {
     /**
      * Creates a firehose given the local endpoint of {@link Tracing}.
      *
-     * <p>When {@link Firehose#accept(TraceContext, MutableSpan) accepting} into streams such as
-     * Zipkin, these values should be used when not specified in the {@link MutableSpan}.
+     * <p>When {@link FirehoseHandler#accept(TraceContext, MutableSpan) accepting} into streams such
+     * as Zipkin, these values should be used when not specified in the {@link MutableSpan}.
      *
      * @param serviceName default value for {@link MutableSpan#localServiceName()}
      * @param ip default value for {@link MutableSpan#localIp()}
      * @param port default value for {@link MutableSpan#localPort()}
      */
-    public abstract Firehose create(String serviceName, String ip, int port);
+    public abstract FirehoseHandler create(String serviceName, String ip, int port);
 
     /**
      * When true, all spans become real spans even if they aren't sampled remotely. This allows
@@ -45,7 +45,7 @@ public interface Firehose {
      * before-the-fact, such as http paths. Defaults to false and affects {@link
      * TraceContext#sampledLocal()}.
      *
-     * @see Firehose#accept(TraceContext, MutableSpan)
+     * @see FirehoseHandler#accept(TraceContext, MutableSpan)
      */
     public boolean alwaysSampleLocal() {
       return false;

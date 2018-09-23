@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
 import brave.ErrorParser;
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import org.junit.Test;
@@ -17,9 +17,9 @@ public class PendingSpansClassLoaderTest {
 
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
-        @Override public Firehose create(String serviceName, String ip, int port) {
-          return Firehose.NOOP;
+      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
+        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
+          return FirehoseHandler.NOOP;
         }
       }, new ErrorParser(), Reporter.NOOP, "favistar", "1.2.3.4", 0);
       PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
@@ -36,9 +36,9 @@ public class PendingSpansClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new Firehose.Factory() {
-        @Override public Firehose create(String serviceName, String ip, int port) {
-          return Firehose.NOOP;
+      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(new FirehoseHandler.Factory() {
+        @Override public FirehoseHandler create(String serviceName, String ip, int port) {
+          return FirehoseHandler.NOOP;
         }
       }, new ErrorParser(), s -> {
         throw new RuntimeException();

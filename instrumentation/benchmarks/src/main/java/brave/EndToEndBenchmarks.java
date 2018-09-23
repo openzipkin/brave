@@ -1,7 +1,7 @@
 package brave;
 
 import brave.http.HttpServerBenchmarks;
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
@@ -77,8 +77,8 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-          .firehoseFactory(new Firehose.Factory() {
-            @Override public Firehose create(String serviceName, String ip, int port) {
+          .firehoseFactory(new FirehoseHandler.Factory() {
+            @Override public FirehoseHandler create(String serviceName, String ip, int port) {
               return (context, span) -> {
               };
             }

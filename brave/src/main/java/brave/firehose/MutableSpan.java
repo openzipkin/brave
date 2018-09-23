@@ -89,7 +89,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   * When null, {@link FirehoseHandler.Factory#create(String, String, int) default} will be used.
    *
    * @see brave.Tracing.Builder#localServiceName(String)
    */
@@ -106,7 +106,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When null, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   * When null, {@link FirehoseHandler.Factory#create(String, String, int) default} will be used.
    *
    * @see brave.Tracing.Builder#localIp(String)
    */
@@ -121,7 +121,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When zero, {@link Firehose.Factory#create(String, String, int) default} will be used.
+   * When zero, {@link FirehoseHandler.Factory#create(String, String, int) default} will be used.
    *
    * @see brave.Tracing.Builder#localPort(int)
    */

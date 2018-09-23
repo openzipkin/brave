@@ -3,7 +3,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
-import brave.firehose.Firehose;
+import brave.firehose.FirehoseHandler;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
@@ -111,10 +111,10 @@ public class TracingFactoryBeanTest {
         .containsExactly(Reporter.CONSOLE);
   }
 
-  public static final Firehose FIREHOSE = mock(Firehose.class);
-  public static final Firehose.Factory FIREHOSE_FACTORY = new Firehose.Factory() {
-    @Override public Firehose create(String serviceName, String ip, int port) {
-      return FIREHOSE;
+  public static final FirehoseHandler FIREHOSE_HANDLER = mock(FirehoseHandler.class);
+  public static final FirehoseHandler.Factory FIREHOSE_FACTORY = new FirehoseHandler.Factory() {
+    @Override public FirehoseHandler create(String serviceName, String ip, int port) {
+      return FIREHOSE_HANDLER;
     }
   };
 
@@ -129,7 +129,7 @@ public class TracingFactoryBeanTest {
 
     assertThat(context.getBean("tracing", Tracing.class))
         .extracting("tracer.firehose.delegate.first")
-        .containsExactly(FIREHOSE);
+        .containsExactly(FIREHOSE_HANDLER);
   }
 
   @Test public void clock() {
