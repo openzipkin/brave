@@ -16,7 +16,6 @@ package brave.internal.firehose;
 import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -74,7 +73,7 @@ public class FirehoseHandlersBenchmarks {
 
   final FirehoseHandler composite = FirehoseHandlers.compose(asList(one, two, three));
   final FirehoseHandler listIndexComposite = new FirehoseHandler() {
-    List<FirehoseHandler> delegates = new ArrayList<>();
+    List<FirehoseHandler> delegates = asList(one, two, three);
 
     @Override public void handle(TraceContext context, MutableSpan span) {
       for (int i = 0, length = delegates.size(); i < length; i++) {
@@ -83,7 +82,7 @@ public class FirehoseHandlersBenchmarks {
     }
   };
   final FirehoseHandler listIteratorComposite = new FirehoseHandler() {
-    List<FirehoseHandler> delegates = new ArrayList<>();
+    List<FirehoseHandler> delegates = asList(one, two, three);
 
     @Override public void handle(TraceContext context, MutableSpan span) {
       for (FirehoseHandler delegate : delegates) {
