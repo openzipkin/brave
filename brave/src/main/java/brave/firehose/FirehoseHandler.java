@@ -18,7 +18,7 @@ import brave.propagation.TraceContext;
 public interface FirehoseHandler {
   /** Use to avoid comparing against null references */
   FirehoseHandler NOOP = new FirehoseHandler() {
-    @Override public void accept(TraceContext context, MutableSpan span) {
+    @Override public void handle(TraceContext context, MutableSpan span) {
     }
 
     @Override public String toString() {
@@ -30,12 +30,14 @@ public interface FirehoseHandler {
     /**
      * Creates a firehose given the local endpoint of {@link Tracing}.
      *
-     * <p>When {@link FirehoseHandler#accept(TraceContext, MutableSpan) accepting} into streams such
-     * as Zipkin, these values should be used when not specified in the {@link MutableSpan}.
+     * <p>When {@link FirehoseHandler#handle(TraceContext, MutableSpan) accepting} into streams
+     * such as Zipkin, these values should be used when not specified in the {@link MutableSpan}.
      *
      * @param serviceName default value for {@link MutableSpan#localServiceName()}
      * @param ip default value for {@link MutableSpan#localIp()}
      * @param port default value for {@link MutableSpan#localPort()}
+     * @return non-null handler that uses the input as defaults when local information such as
+     * {@link MutableSpan#localServiceName()} are absent.
      */
     public abstract FirehoseHandler create(String serviceName, String ip, int port);
 
@@ -45,7 +47,7 @@ public interface FirehoseHandler {
      * before-the-fact, such as http paths. Defaults to false and affects {@link
      * TraceContext#sampledLocal()}.
      *
-     * @see FirehoseHandler#accept(TraceContext, MutableSpan)
+     * @see FirehoseHandler#handle(TraceContext, MutableSpan)
      */
     public boolean alwaysSampleLocal() {
       return false;
@@ -60,5 +62,5 @@ public interface FirehoseHandler {
    * <p>Implementations should not hold a reference to it after this method returns. This is to
    * allow object recycling.
    */
-  void accept(TraceContext context, MutableSpan span);
+  void handle(TraceContext context, MutableSpan span);
 }

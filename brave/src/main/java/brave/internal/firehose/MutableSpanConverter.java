@@ -1,4 +1,4 @@
-package brave.internal.recorder;
+package brave.internal.firehose;
 
 import brave.ErrorParser;
 import brave.firehose.MutableSpan;
@@ -9,8 +9,7 @@ import zipkin2.Endpoint;
 import zipkin2.Span;
 
 // internal until we figure out how the api should sit.
-final class MutableSpanConverter
-    implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
+public final class MutableSpanConverter {
 
   final ErrorParser errorParser;
   final String localServiceName;
@@ -18,7 +17,7 @@ final class MutableSpanConverter
   final int localPort;
   final Endpoint localEndpoint;
 
-  MutableSpanConverter(ErrorParser errorParser, String localServiceName, String localIp,
+  public MutableSpanConverter(ErrorParser errorParser, String localServiceName, String localIp,
       int localPort) {
     if (errorParser == null) throw new NullPointerException("errorParser == null");
     this.errorParser = errorParser;
@@ -58,8 +57,8 @@ final class MutableSpanConverter
       errorParser.error(span.error(), span);
     }
 
-    span.forEachTag(this, result);
-    span.forEachAnnotation(this, result);
+    span.forEachTag(Consumer.INSTANCE, result);
+    span.forEachAnnotation(Consumer.INSTANCE, result);
     if (span.shared()) result.shared(true);
   }
 
@@ -77,11 +76,15 @@ final class MutableSpanConverter
     }
   }
 
-  @Override public void accept(Span.Builder target, String key, String value) {
-    target.putTag(key, value);
-  }
+  enum Consumer implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
+    INSTANCE;
 
-  @Override public void accept(Span.Builder target, long timestamp, String value) {
-    target.addAnnotation(timestamp, value);
+    @Override public void accept(Span.Builder target, String key, String value) {
+      target.putTag(key, value);
+    }
+
+    @Override public void accept(Span.Builder target, long timestamp, String value) {
+      target.addAnnotation(timestamp, value);
+    }
   }
 }

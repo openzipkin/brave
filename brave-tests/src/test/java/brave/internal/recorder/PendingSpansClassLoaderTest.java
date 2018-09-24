@@ -1,11 +1,9 @@
 package brave.internal.recorder;
 
-import brave.ErrorParser;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
-import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
@@ -17,10 +15,8 @@ public class PendingSpansClassLoaderTest {
 
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher =
-          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), Reporter.NOOP,
-              "favistar", "1.2.3.4", 0);
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
+      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), (context, span) -> {
+      }, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);
@@ -34,11 +30,9 @@ public class PendingSpansClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      FirehoseDispatcher firehoseDispatcher =
-          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), s -> {
-            throw new RuntimeException();
-          }, "favistar", "1.2.3.4", 0);
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), firehoseDispatcher);
+      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), (context, span) -> {
+        throw new RuntimeException();
+      }, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);

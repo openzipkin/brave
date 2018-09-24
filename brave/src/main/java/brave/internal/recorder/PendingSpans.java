@@ -1,16 +1,18 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
+import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import zipkin2.Span;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Similar to Finagle's deadline span map, except this is GC pressure as opposed to timeout driven.
@@ -26,13 +28,14 @@ import zipkin2.Span;
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
-  // Used when flushing spans
-  final FirehoseDispatcher firehoseDispatcher;
   final Clock clock;
+  @Nullable final FirehoseHandler zipkinHandler; // Used when flushing spans
+  final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FirehoseDispatcher firehoseDispatcher) {
+  public PendingSpans(Clock clock, FirehoseHandler zipkinHandler, AtomicBoolean noop) {
     this.clock = clock;
-    this.firehoseDispatcher = firehoseDispatcher;
+    this.zipkinHandler = zipkinHandler;
+    this.noop = noop;
   }
 
   public PendingSpan getOrCreate(TraceContext context, boolean start) {
@@ -93,26 +96,26 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // careful to not penalize the performance of the caller. It is better to cache time when
     // flushing a span than hurt performance of unrelated operations by calling
     // currentTimeMicroseconds N times
-    Span.Builder builder = null;
     long flushTime = 0L;
-    boolean noop = firehoseDispatcher.noop.get();
+    boolean noop = zipkinHandler == null || this.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
-      if (value == null || noop || !contextKey.sampled) continue;
-      if (builder != null) {
-        builder.clear();
-      } else {
-        builder = Span.newBuilder();
-        flushTime = clock.currentTimeMicroseconds();
+      if (noop || value == null || !contextKey.sampled) continue;
+      if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
+
+      TraceContext context = InternalPropagation.instance.newTraceContext(
+          InternalPropagation.FLAG_SAMPLED,
+          contextKey.traceIdHigh, contextKey.traceId,
+          0L, contextKey.spanId,
+          Collections.emptyList()
+      );
+      value.state.annotate(flushTime, "brave.flush");
+
+      try {
+        zipkinHandler.handle(context, value.state);
+      } catch (RuntimeException e) {
+        Platform.get().log("error reporting {0}", context, e);
       }
-
-      zipkin2.Span.Builder builderWithContextData = zipkin2.Span.newBuilder()
-          .traceId(contextKey.traceIdHigh, contextKey.traceId)
-          .id(contextKey.spanId)
-          .addAnnotation(flushTime, "brave.flush");
-
-      // do not forward incomplete data to the normal firehoseHandler
-      firehoseDispatcher.reportIncompleteToZipkin(value.state, builderWithContextData);
     }
   }
 

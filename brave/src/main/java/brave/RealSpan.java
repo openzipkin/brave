@@ -137,7 +137,7 @@ final class RealSpan extends Span {
     synchronized (state) {
       state.finishTimestamp(timestamp);
     }
-    firehoseHandler.accept(context, state);
+    firehoseHandler.handle(context, state);
   }
 
   @Override public void abandon() {
@@ -146,7 +146,7 @@ final class RealSpan extends Span {
 
   @Override public void flush() {
     abandon();
-    firehoseHandler.accept(context, state);
+    firehoseHandler.handle(context, state);
   }
 
   @Override public String toString() {

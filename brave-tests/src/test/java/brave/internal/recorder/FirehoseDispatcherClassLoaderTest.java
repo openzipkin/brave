@@ -1,11 +1,10 @@
 package brave.internal.recorder;
 
-import brave.ErrorParser;
 import brave.firehose.MutableSpan;
+import brave.internal.firehose.FirehoseHandlers;
 import brave.propagation.TraceContext;
-import java.util.Collections;
+import java.util.Arrays;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
@@ -18,8 +17,8 @@ public class FirehoseDispatcherClassLoaderTest {
   static class BasicUsage implements Runnable {
     @Override public void run() {
       FirehoseDispatcher firehoseDispatcher =
-          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), Reporter.NOOP,
-              "favistar", "1.2.3.4", 0);
+          new FirehoseDispatcher(Arrays.asList(FirehoseHandlers.constantFactory((c, s) -> {
+          })), "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
       MutableSpan span = new MutableSpan();
@@ -30,7 +29,7 @@ public class FirehoseDispatcherClassLoaderTest {
       span.annotate(2L, "cache.miss");
       span.finishTimestamp(3L);
 
-      firehoseDispatcher.firehose().accept(context, span);
+      firehoseDispatcher.firehoseHandler().handle(context, span);
     }
   }
 
@@ -41,12 +40,12 @@ public class FirehoseDispatcherClassLoaderTest {
   static class ErrorReporting implements Runnable {
     @Override public void run() {
       FirehoseDispatcher firehoseDispatcher =
-          new FirehoseDispatcher(Collections.emptyList(), new ErrorParser(), s -> {
+          new FirehoseDispatcher(Arrays.asList(FirehoseHandlers.constantFactory((c, s) -> {
             throw new RuntimeException();
-          }, "favistar", "1.2.3.4", 0);
+          })), "favistar", "1.2.3.4", 0);
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
-      firehoseDispatcher.firehose().accept(context, new MutableSpan());
+      firehoseDispatcher.firehoseHandler().handle(context, new MutableSpan());
     }
   }
 }

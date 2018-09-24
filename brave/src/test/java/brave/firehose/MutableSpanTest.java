@@ -1,6 +1,5 @@
-package brave.internal.recorder;
+package brave.firehose;
 
-import brave.firehose.MutableSpan;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;

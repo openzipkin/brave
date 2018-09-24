@@ -216,6 +216,15 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void join_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext fromIncomingRequest = tracer.newTrace().context();
+
+    assertThat(tracer.joinSpan(fromIncomingRequest))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void join_ensuresSampling() {
     TraceContext notYetSampled =
         tracer.newTrace().context().toBuilder().sampled(null).build();
@@ -256,6 +265,15 @@ public class TracerTest {
     tracer.noop.set(true);
 
     assertThat(tracer.toSpan(context))
+        .isInstanceOf(NoopSpan.class);
+  }
+
+  @Test public void toSpan_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext context = tracer.newTrace().context();
+
+    assertThat(tracer.toSpan(context))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
         .isInstanceOf(NoopSpan.class);
   }
 
@@ -303,6 +321,15 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void newChild_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext parent = tracer.newTrace().context();
+
+    assertThat(tracer.newChild(parent))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void newChild_unsampledIsNoop() {
     TraceContext unsampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -318,6 +345,18 @@ public class TracerTest {
 
   @Test public void currentSpanCustomizer_noop_when_unsampled() {
     ScopedSpan parent = tracer.withSampler(Sampler.NEVER_SAMPLE).startScopedSpan("parent");
+    try {
+      assertThat(tracer.currentSpanCustomizer())
+          .isSameAs(NoopSpanCustomizer.INSTANCE);
+    } finally {
+      parent.finish();
+    }
+  }
+
+  @Test public void currentSpanCustomizer_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+
+    ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
       assertThat(tracer.currentSpanCustomizer())
           .isSameAs(NoopSpanCustomizer.INSTANCE);

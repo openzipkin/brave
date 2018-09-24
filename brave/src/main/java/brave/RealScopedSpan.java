@@ -59,7 +59,7 @@ final class RealScopedSpan extends ScopedSpan {
     scope.close();
     if (!pendingSpans.remove(context)) return; // don't double-report
     state.finishTimestamp(clock.currentTimeMicroseconds());
-    firehoseHandler.accept(context, state);
+    firehoseHandler.handle(context, state);
   }
 
   @Override public boolean equals(Object o) {

@@ -72,7 +72,7 @@ public class Tracer {
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final FirehoseHandler firehoseHandler; // for toString
+  final FirehoseHandler firehoseHandler;
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -487,7 +487,7 @@ public class Tracer {
   }
 
   boolean isNoop(TraceContext context) {
-    if (noop.get()) return true;
+    if (firehoseHandler == FirehoseHandler.NOOP || noop.get()) return true;
     int flags = InternalPropagation.instance.flags(context);
     if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) return false;
     return (flags & FLAG_SAMPLED) != FLAG_SAMPLED;

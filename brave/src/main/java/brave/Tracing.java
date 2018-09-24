@@ -4,6 +4,8 @@ import brave.firehose.FirehoseHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.firehose.FirehoseHandlers;
+import brave.internal.firehose.ZipkinFirehoseHandler;
 import brave.internal.recorder.FirehoseDispatcher;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
@@ -13,6 +15,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -130,7 +133,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    ArrayList<FirehoseHandler.Factory> firehoseHandlerFactories = new ArrayList<>();
+    List<FirehoseHandler.Factory> firehoseHandlerFactories = new ArrayList<>();
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -298,8 +301,24 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Handles all spans {@link TraceContext#sampled() sampled remotely} or {@link
-     * TraceContext#sampledLocal() locally}.
+     * Similar to {@link #spanReporter(Reporter)} except it can read the trace context and create
+     * more efficient or completely different data structures. Importantly, the input is mutable for
+     * customization purposes.
+     *
+     * <p>These handlers execute before the {@link #spanReporter(Reporter) span reporter}, which
+     * means any mutations occur prior to Zipkin.
+     *
+     * <h3>Advanced notes</h3>
+     *
+     * <p>This is named firehose as it can receive data even when spans are not sampled remotely.
+     * For example, {@link FirehoseHandler.Factory#alwaysSampleLocal()} will generate data for all
+     * traced requests while not affecting headers. This setting is often used for metrics
+     * aggregation.
+     *
+     *
+     * <p>Your handler can also be a custom span transport. When this is the case, set the {@link
+     * #spanReporter(Reporter) span reporter} to {@link Reporter#NOOP} to avoid redundant conversion
+     * overhead.
      */
     public Builder addFirehoseHandlerFactory(FirehoseHandler.Factory firehoseHandlerFactory) {
       if (firehoseHandlerFactory == null) {
@@ -352,19 +371,28 @@ public abstract class Tracing implements Closeable {
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
 
+      List<FirehoseHandler.Factory> firehoseHandlerFactories = builder.firehoseHandlerFactories;
+
+      final FirehoseHandler zipkinFirehose;
+      if (builder.spanReporter != Reporter.NOOP) {
+        zipkinFirehose = new ZipkinFirehoseHandler(builder.spanReporter, errorParser,
+            builder.localServiceName, builder.localIp, builder.localPort);
+        firehoseHandlerFactories = new ArrayList<>(firehoseHandlerFactories);
+        firehoseHandlerFactories.add(FirehoseHandlers.constantFactory(zipkinFirehose));
+      } else {
+        zipkinFirehose = null;
+      }
+
       FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
-          builder.firehoseHandlerFactories,
-          builder.errorParser,
-          builder.spanReporter,
-          builder.localServiceName, builder.localIp, builder.localPort
+          firehoseHandlerFactories, builder.localServiceName, builder.localIp, builder.localPort
       );
 
       this.noop = firehoseDispatcher.noop();
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
-          firehoseDispatcher.firehose(),
-          new PendingSpans(clock, firehoseDispatcher),
+          firehoseDispatcher.firehoseHandler(),
+          new PendingSpans(clock, zipkinFirehose, firehoseDispatcher.noop()),
           builder.sampler,
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),

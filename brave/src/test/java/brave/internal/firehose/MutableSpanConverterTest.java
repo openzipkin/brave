@@ -1,4 +1,4 @@
-package brave.internal.recorder;
+package brave.internal.firehose;
 
 import brave.ErrorParser;
 import brave.Span.Kind;

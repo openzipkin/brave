@@ -1,17 +1,16 @@
 package brave.internal.recorder;
 
-import brave.ErrorParser;
+import brave.firehose.FirehoseHandler;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Span;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,13 +21,16 @@ public class PendingSpansTest {
   PendingSpans pendingSpans;
 
   @Before public void init() {
-    init(spans::add);
+    init((c, s) -> {
+      Span.Builder span = Span.newBuilder().traceId(c.traceIdString()).id(c.traceIdString());
+      s.forEachAnnotation(Span.Builder::addAnnotation, span);
+      spans.add(span.build());
+    });
   }
 
-  void init(Reporter<Span> spanReporter) {
-    FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
-        Collections.emptyList(), new ErrorParser(), spanReporter, "favistar", "1.2.3.4", 0);
-    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, firehoseDispatcher);
+  void init(FirehoseHandler zipkinFirehoseHandler) {
+    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, zipkinFirehoseHandler,
+        new AtomicBoolean());
   }
 
   @Test
@@ -155,13 +157,13 @@ public class PendingSpansTest {
    */
   @Test
   public void reportOrphanedSpans_afterGC() throws Exception {
-    TraceContext context1 = context.toBuilder().spanId(1).build();
+    TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
     pendingSpans.getOrCreate(context1, false);
-    TraceContext context2 = context.toBuilder().spanId(2).build();
+    TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
     pendingSpans.getOrCreate(context2, false);
-    TraceContext context3 = context.toBuilder().spanId(3).build();
+    TraceContext context3 = context.toBuilder().traceId(3).spanId(3).build();
     pendingSpans.getOrCreate(context3, false);
-    TraceContext context4 = context.toBuilder().spanId(4).build();
+    TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
     pendingSpans.getOrCreate(context4, false);
     // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
     TraceContext context5 = context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
@@ -207,7 +209,7 @@ public class PendingSpansTest {
 
     int initialClockVal = clock.get();
 
-    pendingSpans.firehoseDispatcher.noop.set(true);
+    pendingSpans.noop.set(true);
 
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
@@ -233,7 +235,7 @@ public class PendingSpansTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() throws Exception {
-    init(s -> {
+    init((c, s) -> {
       throw new RuntimeException();
     });
 

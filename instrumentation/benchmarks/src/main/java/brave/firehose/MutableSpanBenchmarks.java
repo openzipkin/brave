@@ -11,10 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.recorder;
+package brave.firehose;
 
 import brave.Span;
-import brave.firehose.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -44,7 +43,7 @@ public class MutableSpanBenchmarks {
     return newServerMutableSpan();
   }
 
-  static MutableSpan newServerMutableSpan() {
+  public static MutableSpan newServerMutableSpan() {
     MutableSpan span = new MutableSpan();
     span.name("get /");
     span.kind(Span.Kind.SERVER);
@@ -62,7 +61,7 @@ public class MutableSpanBenchmarks {
     return newBigClientMutableSpan();
   }
 
-  static MutableSpan newBigClientMutableSpan() {
+  public static MutableSpan newBigClientMutableSpan() {
     MutableSpan span = new MutableSpan();
     span.name("getuserinfobyaccesstoken");
     span.kind(Span.Kind.CLIENT);
