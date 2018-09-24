@@ -4,6 +4,7 @@ import brave.ErrorParser;
 import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.internal.Platform;
+import brave.internal.firehose.FirehoseHandlers;
 import brave.propagation.TraceContext;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,12 +32,12 @@ public final class FirehoseDispatcher {
     this.alwaysSampleLocal = alwaysSampleLocal;
 
     FirehoseHandler firehoseHandler =
-        newFirehoseHandler(firehoseHandlerFactories, serviceName, ip, port);
+        FirehoseHandlers.compose(firehoseHandlerFactories, serviceName, ip, port);
     if (spanReporter != Reporter.NOOP) {
       zipkinFirehose =
           new SampledToZipkinFirehose(errorParser, spanReporter, serviceName, ip, port);
       if (firehoseHandler != FirehoseHandler.NOOP) {
-        firehoseHandler = new SplitFirehose(firehoseHandler, zipkinFirehose);
+        firehoseHandler = FirehoseHandlers.compose(firehoseHandler, zipkinFirehose);
       } else {
         firehoseHandler = zipkinFirehose;
       }
@@ -44,7 +45,7 @@ public final class FirehoseDispatcher {
       zipkinFirehose = null;
     }
     this.firehoseHandler = firehoseHandler == FirehoseHandler.NOOP ? firehoseHandler
-        : new NoopAwareFirehose(firehoseHandler, noop);
+        : FirehoseHandlers.noopAware(firehoseHandler, noop);
   }
 
   /** Returns a firehoseHandler that accepts data according to configuration */
@@ -62,50 +63,6 @@ public final class FirehoseDispatcher {
   void reportIncompleteToZipkin(MutableSpan state, Span.Builder builderWithContextData) {
     if (zipkinFirehose == null) return;
     zipkinFirehose.report(state, builderWithContextData);
-  }
-
-  /**
-   * logs exceptions instead of raising an error, as the supplied firehoseHandler could have bugs
-   */
-  static final class NoopAwareFirehose implements FirehoseHandler {
-    final FirehoseHandler delegate;
-    final AtomicBoolean noop;
-
-    NoopAwareFirehose(FirehoseHandler delegate, AtomicBoolean noop) {
-      this.delegate = delegate;
-      this.noop = noop;
-    }
-
-    @Override public void accept(TraceContext context, MutableSpan span) {
-      if (noop.get()) return;
-      try {
-        delegate.accept(context, span);
-      } catch (RuntimeException e) {
-        Platform.get().log("error accepting {0}", context, e);
-      }
-    }
-
-    @Override public String toString() {
-      return delegate.toString();
-    }
-  }
-
-  static final class SplitFirehose implements FirehoseHandler {
-    final FirehoseHandler first, second;
-
-    SplitFirehose(FirehoseHandler first, FirehoseHandler second) {
-      this.first = first;
-      this.second = second;
-    }
-
-    @Override public void accept(TraceContext context, MutableSpan span) {
-      first.accept(context, span);
-      second.accept(context, span);
-    }
-
-    @Override public String toString() {
-      return "SplitFirehoseHandler(" + first + ", " + second + ")";
-    }
   }
 
   /** logs exceptions instead of raising an error, as the supplied reporter could have bugs */
@@ -151,23 +108,5 @@ public final class FirehoseDispatcher {
 
   @Override public String toString() {
     return firehoseHandler.toString();
-  }
-
-  static FirehoseHandler newFirehoseHandler(List<FirehoseHandler.Factory> firehoseHandlerFactories,
-      String serviceName, String ip, int port) {
-    FirehoseHandler firehoseHandler = FirehoseHandler.NOOP;
-    for (FirehoseHandler.Factory factory : firehoseHandlerFactories) {
-      FirehoseHandler next = factory.create(serviceName, ip, port);
-      if (next == FirehoseHandler.NOOP) continue;
-      if (firehoseHandler == FirehoseHandler.NOOP) {
-        firehoseHandler = next;
-      } else if (!(firehoseHandler instanceof SplitFirehose)) {
-        firehoseHandler = new SplitFirehose(firehoseHandler, next);
-      } else {
-        throw new UnsupportedOperationException(
-            "more than two firehose handlers aren't yet supported");
-      }
-    }
-    return firehoseHandler;
   }
 }
