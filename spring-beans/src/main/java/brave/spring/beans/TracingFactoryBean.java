@@ -77,11 +77,11 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.spanReporter = spanReporter;
   }
 
-  public List<FirehoseHandler> getFirehoseHandlerFactories() {
+  public List<FirehoseHandler> getFirehoseHandlers() {
     return firehoseHandlers;
   }
 
-  public void setFirehoseHandlerFactories(List<FirehoseHandler> firehoseHandlers) {
+  public void setFirehoseHandlers(List<FirehoseHandler> firehoseHandlers) {
     this.firehoseHandlers = firehoseHandlers;
   }
 

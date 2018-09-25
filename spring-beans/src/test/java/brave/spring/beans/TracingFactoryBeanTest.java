@@ -117,7 +117,7 @@ public class TracingFactoryBeanTest {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"firehoseHandlers\">\n"
-        + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_FACTORY\"/>\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_HANDLER\"/>\n"
         + "  </property>\n"
         + "</bean>"
     );
