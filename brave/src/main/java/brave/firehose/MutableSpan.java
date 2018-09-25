@@ -17,11 +17,31 @@ import java.util.Locale;
 public final class MutableSpan implements Cloneable {
 
   public interface TagConsumer<T> {
+    /** @see brave.Span#tag(String, String) */
     void accept(T target, String key, String value);
   }
 
   public interface AnnotationConsumer<T> {
+    /** @see brave.Span#annotate(long, String) */
     void accept(T target, long timestamp, String value);
+  }
+
+  public interface TagUpdater {
+    /**
+     * Returns the same value, an updated one, or null to drop the tag.
+     *
+     * @see brave.Span#tag(String, String)
+     */
+    @Nullable String update(String key, String value);
+  }
+
+  public interface AnnotationUpdater {
+    /**
+     * Returns the same value, an updated one, or null to drop the annotation.
+     *
+     * @see brave.Span#annotate(long, String)
+     */
+    @Nullable String update(long timestamp, String value);
   }
 
   /*
@@ -231,12 +251,52 @@ public final class MutableSpan implements Cloneable {
     }
   }
 
+  /** Allows you to update values for redaction purposes */
+  public void forEachTag(TagUpdater tagUpdater) {
+    for (int i = 0, length = tags.size(); i < length; i += 2) {
+      String value = tags.get(i + 1);
+      String newValue = tagUpdater.update(tags.get(i), value);
+      if (updateOrRemove(tags, i, value, newValue)) {
+        length -= 2;
+        i -= 2;
+      }
+    }
+  }
+
+  /**
+   * Allows you to copy all data into a different target, such as a different span model or logs.
+   */
   public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
     if (annotations == null) return;
     for (int i = 0, length = annotations.size(); i < length; i += 2) {
       long timestamp = (long) annotations.get(i);
       annotationConsumer.accept(target, timestamp, annotations.get(i + 1).toString());
     }
+  }
+
+  /** Allows you to update values for redaction purposes */
+  public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
+    if (annotations == null) return;
+    for (int i = 0, length = annotations.size(); i < length; i += 2) {
+      String value = annotations.get(i + 1).toString();
+      String newValue = annotationUpdater.update((long) annotations.get(i), value);
+      if (updateOrRemove(annotations, i, value, newValue)) {
+        length -= 2;
+        i -= 2;
+      }
+    }
+  }
+
+  /** Returns true if the key/value was removed from the pair-indexed list at index {@code i} */
+  static boolean updateOrRemove(ArrayList list, int i, Object value, @Nullable Object newValue) {
+    if (newValue == null) {
+      list.remove(i);
+      list.remove(i);
+      return true;
+    } else if (!value.equals(newValue)) {
+      list.set(i + 1, newValue);
+    }
+    return false;
   }
 
   /** Returns true if the span ID is {@link #setShared() shared} with a remote client. */
