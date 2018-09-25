@@ -1,4 +1,4 @@
-package brave.firehose;
+package brave.handler;
 
 import brave.Span;
 import brave.propagation.TraceContext;
@@ -14,15 +14,15 @@ import brave.propagation.TraceContext;
  *
  * @see #alwaysSampleLocal()
  */
-public abstract class FirehoseHandler {
+public abstract class FinishedSpanHandler {
   /** Use to avoid comparing against null references */
-  public static final FirehoseHandler NOOP = new FirehoseHandler() {
+  public static final FinishedSpanHandler NOOP = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       return true;
     }
 
     @Override public String toString() {
-      return "NoopFirehoseHandler{}";
+      return "NoopFinishedSpanHandler{}";
     }
   };
 
@@ -30,7 +30,7 @@ public abstract class FirehoseHandler {
    * This is invoked after a span is finished, allowing data to be modified or reported out of
    * process. A return value of false means the span should be dropped completely from the stream.
    *
-   * <p>Changes to the input span are visible by later firehose handlers. One reason to change the
+   * <p>Changes to the input span are visible by later finished span handlers. One reason to change the
    * input is to align tags, so that correlation occurs. For example, some may clean the tag
    * "http.path" knowing downstream handlers such as zipkin reporting have the same value.
    *

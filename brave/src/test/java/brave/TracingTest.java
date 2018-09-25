@@ -1,7 +1,7 @@
 package brave;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TracingTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   List<MutableSpan> mutableSpans = new ArrayList<>();
-  FirehoseHandler firehoseHandler = new FirehoseHandler() {
+  FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       mutableSpans.add(span);
       return true;
@@ -52,7 +52,7 @@ public class TracingTest {
   @Test public void firehose_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
-    FirehoseHandler firehoseHandler = new FirehoseHandler() {
+    FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext context, MutableSpan span) {
         span.localServiceName(serviceNameOverride);
         return true;
@@ -61,7 +61,7 @@ public class TracingTest {
 
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandler(firehoseHandler)
+        .addFinishedSpanHandler(finishedSpanHandler)
         .build()) {
       tracing.tracer().newTrace().start().finish();
     }
@@ -72,7 +72,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandler(firehoseHandler)
+        .addFinishedSpanHandler(finishedSpanHandler)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -88,7 +88,7 @@ public class TracingTest {
   @Test public void firehose_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandler(firehoseHandler)
+        .addFinishedSpanHandler(finishedSpanHandler)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
@@ -101,7 +101,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(Reporter.NOOP)
-        .addFirehoseHandler(firehoseHandler)
+        .addFinishedSpanHandler(finishedSpanHandler)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -113,7 +113,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandler(new FirehoseHandler() {
+        .addFinishedSpanHandler(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             mutableSpans.add(span);
             return true;
@@ -146,7 +146,7 @@ public class TracingTest {
             return context.toBuilder().sampledLocal(true).build();
           }
         })
-        .addFirehoseHandler(firehoseHandler)
+        .addFinishedSpanHandler(finishedSpanHandler)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("one").finish();

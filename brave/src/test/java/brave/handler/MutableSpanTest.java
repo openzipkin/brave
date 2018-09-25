@@ -1,4 +1,4 @@
-package brave.firehose;
+package brave.handler;
 
 import brave.propagation.TraceContext;
 import java.util.ArrayList;

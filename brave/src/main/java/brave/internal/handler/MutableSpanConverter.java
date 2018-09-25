@@ -1,9 +1,9 @@
-package brave.internal.firehose;
+package brave.internal.handler;
 
 import brave.ErrorParser;
-import brave.firehose.MutableSpan;
-import brave.firehose.MutableSpan.AnnotationConsumer;
-import brave.firehose.MutableSpan.TagConsumer;
+import brave.handler.MutableSpan;
+import brave.handler.MutableSpan.AnnotationConsumer;
+import brave.handler.MutableSpan.TagConsumer;
 import brave.internal.Nullable;
 import zipkin2.Endpoint;
 import zipkin2.Span;

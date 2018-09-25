@@ -11,10 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.firehose;
+package brave.internal.handler;
 
 import brave.ErrorParser;
-import brave.firehose.MutableSpan;
+import brave.handler.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -32,8 +32,8 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.Span;
 
-import static brave.firehose.MutableSpanBenchmarks.newBigClientMutableSpan;
-import static brave.firehose.MutableSpanBenchmarks.newServerMutableSpan;
+import static brave.handler.MutableSpanBenchmarks.newBigClientMutableSpan;
+import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)

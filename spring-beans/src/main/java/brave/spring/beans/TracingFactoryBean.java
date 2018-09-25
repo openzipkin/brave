@@ -3,7 +3,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
-import brave.firehose.FirehoseHandler;
+import brave.handler.FinishedSpanHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.sampler.Sampler;
@@ -19,7 +19,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
   Endpoint localEndpoint, endpoint;
   Reporter<Span> spanReporter;
-  List<FirehoseHandler> firehoseHandlers;
+  List<FinishedSpanHandler> finishedSpanHandlers;
   Clock clock;
   Sampler sampler;
   ErrorParser errorParser;
@@ -34,9 +34,9 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (localEndpoint != null) builder.endpoint(localEndpoint);
     if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
-    if (firehoseHandlers != null) {
-      for (FirehoseHandler firehoseHandler : firehoseHandlers) {
-        builder.addFirehoseHandler(firehoseHandler);
+    if (finishedSpanHandlers != null) {
+      for (FinishedSpanHandler finishedSpanHandler : finishedSpanHandlers) {
+        builder.addFinishedSpanHandler(finishedSpanHandler);
       }
     }
     if (errorParser != null) builder.errorParser(errorParser);
@@ -77,12 +77,12 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.spanReporter = spanReporter;
   }
 
-  public List<FirehoseHandler> getFirehoseHandlers() {
-    return firehoseHandlers;
+  public List<FinishedSpanHandler> getFinishedSpanHandlers() {
+    return finishedSpanHandlers;
   }
 
-  public void setFirehoseHandlers(List<FirehoseHandler> firehoseHandlers) {
-    this.firehoseHandlers = firehoseHandlers;
+  public void setFinishedSpanHandlers(List<FinishedSpanHandler> finishedSpanHandlers) {
+    this.finishedSpanHandlers = finishedSpanHandlers;
   }
 
   public void setClock(Clock clock) {

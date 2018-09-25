@@ -11,10 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.firehose;
+package brave.internal.handler;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +42,8 @@ import static java.util.Arrays.asList;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(1)
-public class FirehoseHandlersBenchmarks {
-  FirehoseHandler one = new FirehoseHandler() {
+public class FinishedSpanHandlersBenchmarks {
+  FinishedSpanHandler one = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("one", "");
       return true;
@@ -53,7 +53,7 @@ public class FirehoseHandlersBenchmarks {
       return "one";
     }
   };
-  FirehoseHandler two = new FirehoseHandler() {
+  FinishedSpanHandler two = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("two", "");
       return true;
@@ -63,7 +63,7 @@ public class FirehoseHandlersBenchmarks {
       return "two";
     }
   };
-  FirehoseHandler three = new FirehoseHandler() {
+  FinishedSpanHandler three = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("three", "");
       return true;
@@ -74,9 +74,9 @@ public class FirehoseHandlersBenchmarks {
     }
   };
 
-  final FirehoseHandler composite = FirehoseHandlers.compose(asList(one, two, three));
-  final FirehoseHandler listIndexComposite = new FirehoseHandler() {
-    List<FirehoseHandler> delegates = asList(one, two, three);
+  final FinishedSpanHandler composite = FinishedSpanHandlers.compose(asList(one, two, three));
+  final FinishedSpanHandler listIndexComposite = new FinishedSpanHandler() {
+    List<FinishedSpanHandler> delegates = asList(one, two, three);
 
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       for (int i = 0, length = delegates.size(); i < length; i++) {
@@ -85,11 +85,11 @@ public class FirehoseHandlersBenchmarks {
       return true;
     }
   };
-  final FirehoseHandler listIteratorComposite = new FirehoseHandler() {
-    List<FirehoseHandler> delegates = asList(one, two, three);
+  final FinishedSpanHandler listIteratorComposite = new FinishedSpanHandler() {
+    List<FinishedSpanHandler> delegates = asList(one, two, three);
 
     @Override public boolean handle(TraceContext context, MutableSpan span) {
-      for (FirehoseHandler delegate : delegates) {
+      for (FinishedSpanHandler delegate : delegates) {
         if (!delegate.handle(context, span)) return false;
       }
       return true;
@@ -113,7 +113,7 @@ public class FirehoseHandlersBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
         .addProfiler("gc")
-        .include(".*" + FirehoseHandlersBenchmarks.class.getSimpleName() + ".*")
+        .include(".*" + FinishedSpanHandlersBenchmarks.class.getSimpleName() + ".*")
         .build();
 
     new Runner(opt).run();

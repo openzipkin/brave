@@ -1,7 +1,7 @@
 package brave;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -72,7 +72,7 @@ public class Tracer {
 
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final FirehoseHandler firehoseHandler;
+  final FinishedSpanHandler finishedSpanHandler;
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -82,7 +82,7 @@ public class Tracer {
   Tracer(
       Clock clock,
       Propagation.Factory propagationFactory,
-      FirehoseHandler firehoseHandler,
+      FinishedSpanHandler finishedSpanHandler,
       PendingSpans pendingSpans,
       Sampler sampler,
       CurrentTraceContext currentTraceContext,
@@ -93,7 +93,7 @@ public class Tracer {
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
-    this.firehoseHandler = firehoseHandler;
+    this.finishedSpanHandler = finishedSpanHandler;
     this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.currentTraceContext = currentTraceContext;
@@ -120,7 +120,7 @@ public class Tracer {
     return new Tracer(
         clock,
         propagationFactory,
-        firehoseHandler,
+        finishedSpanHandler,
         pendingSpans,
         sampler,
         currentTraceContext,
@@ -325,7 +325,7 @@ public class Tracer {
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
     PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated, false);
     return new RealSpan(decorated, pendingSpans, pendingSpan.state(), pendingSpan.clock(),
-        firehoseHandler);
+        finishedSpanHandler);
   }
 
   /**
@@ -454,7 +454,7 @@ public class Tracer {
     Clock clock = pendingSpan.clock();
     MutableSpan state = pendingSpan.state();
     state.name(name);
-    return new RealScopedSpan(context, scope, state, clock, pendingSpans, firehoseHandler);
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans, finishedSpanHandler);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -482,12 +482,12 @@ public class Tracer {
     return "Tracer{"
         + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
         + (noop.get() ? "noop=true, " : "")
-        + "firehoseHandler=" + firehoseHandler
+        + "finishedSpanHandler=" + finishedSpanHandler
         + "}";
   }
 
   boolean isNoop(TraceContext context) {
-    if (firehoseHandler == FirehoseHandler.NOOP || noop.get()) return true;
+    if (finishedSpanHandler == FinishedSpanHandler.NOOP || noop.get()) return true;
     int flags = InternalPropagation.instance.flags(context);
     if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) return false;
     return (flags & FLAG_SAMPLED) != FLAG_SAMPLED;

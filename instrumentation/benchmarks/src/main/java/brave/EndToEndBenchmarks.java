@@ -1,7 +1,7 @@
 package brave;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
@@ -79,7 +79,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-          .addFirehoseHandler(new FirehoseHandler() {
+          .addFinishedSpanHandler(new FinishedSpanHandler() {
             @Override public boolean handle(TraceContext context, MutableSpan span) {
               return true;
             }

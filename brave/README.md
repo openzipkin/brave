@@ -479,19 +479,19 @@ implementations have extra data, here's how they handle it.
 * If a `TraceContext` was extracted, add the extra data as `TraceContext.extra()`
 * Otherwise, add it as `TraceContextOrSamplingFlags.extra()`, which `Tracer.nextSpan` handles.
 
-## Firehose Handling
-While most only send spans as they were recorded to Zipkin, some
-applications need to customize tracing data beforehand. `FirehoseHandler`
+## Handling Finished Spans
+By default, data recorded before (`Span.finish()`) are reported to Zipkin
+via what's passed to `Tracing.Builder.spanReporter`. `FinishedSpanHandler`
 can modify or drop data before it goes to Zipkin. It can even intercept
 data that is not sampled for Zipkin.
 
-`FirehoseHandler` can return false to drop spans that you never want to
-see in Zipkin. This should be used carefully as the spans dropped should
-not have children.
+`FinishedSpanHandler` can return false to drop spans that you never want
+to see in Zipkin. This should be used carefully as the spans dropped
+should not have children.
 
 Here's an example of SQL COMMENT spans so they don't clutter Zipkin.
 ```java
-tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     return !"comment".equals(span.name());
   }
@@ -501,7 +501,7 @@ tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
 Another example is redaction: you may need to scrub tags to ensure no
 personal information like social security numbers end up in Zipkin.
 ```java
-tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     span.forEachTag((key, value) ->
       value.replaceAll("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}", "xxx-xx-xxxx")
@@ -510,7 +510,7 @@ tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
   }
 });
 ```
-An example of redaction is [here](src/test/java/brave/features/firehose/RedactingFirehoseHandlerTest.java)
+An example of redaction is [here](src/test/java/brave/features/handler/RedactingFinishedSpanHandlerTest.java)
 
 ### Sampling locally
 While Brave defaults to report 100% of data to Zipkin, many will use a
@@ -519,13 +519,13 @@ maintained throughout the trace, across requests consistently. Sampling
 has disadvantages. For example, statistics on sampled data is usually
 misleading by nature of not observing all durations.
 
-`FirehoseHandler` returns `alwaysSampleLocal()` to indicate whether it
-should see all data, or just all data sent to Zipkin. You can override
+`FinishedSpanHandler` returns `alwaysSampleLocal()` to indicate whether
+it should see all data, or just all data sent to Zipkin. You can override
 this to true to observe all operations.
 
 Here's an example of metrics handling:
 ```java
-tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
   @Override public boolean alwaysSampleLocal() {
     return true; // since we want to always see timestamps, we have to always record
   }
@@ -539,7 +539,7 @@ tracingBuilder.addFirehoseHandler(new FirehoseHandler() {
   }
 });
 ```
-An example of metrics handling is [here](src/test/java/brave/features/firehose/MetricsFirehoseHandler.java)
+An example of metrics handling is [here](src/test/java/brave/features/handler/MetricsFinishedSpanHandler.java)
 
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
