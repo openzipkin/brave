@@ -1,6 +1,7 @@
 package brave.internal.recorder;
 
 import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -21,10 +22,13 @@ public class PendingSpansTest {
   PendingSpans pendingSpans;
 
   @Before public void init() {
-    init((c, s) -> {
-      Span.Builder span = Span.newBuilder().traceId(c.traceIdString()).id(c.traceIdString());
-      s.forEachAnnotation(Span.Builder::addAnnotation, span);
-      spans.add(span.build());
+    init(new FirehoseHandler() {
+      @Override public boolean handle(TraceContext ctx, MutableSpan span) {
+        Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
+        span.forEachAnnotation(Span.Builder::addAnnotation, b);
+        spans.add(b.build());
+        return true;
+      }
     });
   }
 
@@ -46,7 +50,8 @@ public class PendingSpansTest {
     TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
     TraceContext traceJoin = trace.toBuilder().shared(true).build();
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
-    TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
+    TraceContext traceChild =
+        TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
     PendingSpan traceSpan = pendingSpans.getOrCreate(trace, false);
     PendingSpan traceJoinSpan = pendingSpans.getOrCreate(traceJoin, false);
@@ -166,7 +171,8 @@ public class PendingSpansTest {
     TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
     pendingSpans.getOrCreate(context4, false);
     // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
-    TraceContext context5 = context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
+    TraceContext context5 =
+        context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
     pendingSpans.getOrCreate(context5, false);
 
     int initialClockVal = clock.get();
@@ -235,8 +241,10 @@ public class PendingSpansTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() throws Exception {
-    init((c, s) -> {
-      throw new RuntimeException();
+    init(new FirehoseHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        throw new RuntimeException();
+      }
     });
 
     // We drop the reference to the context, which means the next GC should attempt to flush it

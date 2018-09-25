@@ -8,7 +8,7 @@ import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 /** logs exceptions instead of raising an error, as the supplied reporter could have bugs */
-public final class ZipkinFirehoseHandler implements FirehoseHandler {
+public final class ZipkinFirehoseHandler extends FirehoseHandler {
   final Reporter<zipkin2.Span> spanReporter;
   final MutableSpanConverter converter;
 
@@ -18,8 +18,8 @@ public final class ZipkinFirehoseHandler implements FirehoseHandler {
     this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
   }
 
-  @Override public void handle(TraceContext context, MutableSpan span) {
-    if (!Boolean.TRUE.equals(context.sampled())) return;
+  @Override public boolean handle(TraceContext context, MutableSpan span) {
+    if (!Boolean.TRUE.equals(context.sampled())) return true;
 
     Span.Builder builderWithContextData = Span.newBuilder()
         .traceId(context.traceIdHigh(), context.traceId())
@@ -29,6 +29,7 @@ public final class ZipkinFirehoseHandler implements FirehoseHandler {
 
     converter.convert(span, builderWithContextData);
     spanReporter.report(builderWithContextData.build());
+    return true;
   }
 
   @Override public String toString() {

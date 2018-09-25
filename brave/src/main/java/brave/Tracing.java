@@ -6,7 +6,6 @@ import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.firehose.FirehoseHandlers;
 import brave.internal.firehose.ZipkinFirehoseHandler;
-import brave.internal.recorder.FirehoseDispatcher;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
@@ -133,7 +132,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    List<FirehoseHandler.Factory> firehoseHandlerFactories = new ArrayList<>();
+    List<FirehoseHandler> firehoseHandlers = new ArrayList<>();
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -311,20 +310,19 @@ public abstract class Tracing implements Closeable {
      * <h3>Advanced notes</h3>
      *
      * <p>This is named firehose as it can receive data even when spans are not sampled remotely.
-     * For example, {@link FirehoseHandler.Factory#alwaysSampleLocal()} will generate data for all
-     * traced requests while not affecting headers. This setting is often used for metrics
-     * aggregation.
+     * For example, {@link FirehoseHandler#alwaysSampleLocal()} will generate data for all traced
+     * requests while not affecting headers. This setting is often used for metrics aggregation.
      *
      *
      * <p>Your handler can also be a custom span transport. When this is the case, set the {@link
      * #spanReporter(Reporter) span reporter} to {@link Reporter#NOOP} to avoid redundant conversion
      * overhead.
      */
-    public Builder addFirehoseHandlerFactory(FirehoseHandler.Factory firehoseHandlerFactory) {
-      if (firehoseHandlerFactory == null) {
-        throw new NullPointerException("firehoseHandlerFactory == null");
+    public Builder addFirehoseHandler(FirehoseHandler firehoseHandler) {
+      if (firehoseHandler == null) {
+        throw new NullPointerException("firehoseHandler == null");
       }
-      this.firehoseHandlerFactories.add(firehoseHandlerFactory);
+      this.firehoseHandlers.add(firehoseHandler);
       return this;
     }
 
@@ -370,35 +368,34 @@ public abstract class Tracing implements Closeable {
       this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
+      this.noop = new AtomicBoolean();
 
-      List<FirehoseHandler.Factory> firehoseHandlerFactories = builder.firehoseHandlerFactories;
+      List<FirehoseHandler> firehoseHandlers = builder.firehoseHandlers;
 
-      final FirehoseHandler zipkinFirehose;
+      // If a Zipkin reporter is present, it is invoked after the user-supplied firehose handlers.
+      FirehoseHandler zipkinFirehose = FirehoseHandler.NOOP;
       if (builder.spanReporter != Reporter.NOOP) {
         zipkinFirehose = new ZipkinFirehoseHandler(builder.spanReporter, errorParser,
             builder.localServiceName, builder.localIp, builder.localPort);
-        firehoseHandlerFactories = new ArrayList<>(firehoseHandlerFactories);
-        firehoseHandlerFactories.add(FirehoseHandlers.constantFactory(zipkinFirehose));
-      } else {
-        zipkinFirehose = null;
+        firehoseHandlers = new ArrayList<>(firehoseHandlers);
+        firehoseHandlers.add(zipkinFirehose);
       }
 
-      FirehoseDispatcher firehoseDispatcher = new FirehoseDispatcher(
-          firehoseHandlerFactories, builder.localServiceName, builder.localIp, builder.localPort
-      );
+      // Compose the handlers into one which honors Tracing.noop
+      FirehoseHandler firehoseHandler =
+          FirehoseHandlers.noopAware(FirehoseHandlers.compose(firehoseHandlers), noop);
 
-      this.noop = firehoseDispatcher.noop();
       this.tracer = new Tracer(
           builder.clock,
           builder.propagationFactory,
-          firehoseDispatcher.firehoseHandler(),
-          new PendingSpans(clock, zipkinFirehose, firehoseDispatcher.noop()),
+          firehoseHandler,
+          new PendingSpans(clock, zipkinFirehose, noop),
           builder.sampler,
           builder.currentTraceContext,
           builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
           builder.supportsJoin && propagationFactory.supportsJoin(),
-          firehoseDispatcher.alwaysSampleLocal(),
-          firehoseDispatcher.noop()
+          firehoseHandler.alwaysSampleLocal(),
+          noop
       );
       maybeSetCurrent();
     }

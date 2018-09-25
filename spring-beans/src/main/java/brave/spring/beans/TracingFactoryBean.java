@@ -19,7 +19,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
   Endpoint localEndpoint, endpoint;
   Reporter<Span> spanReporter;
-  List<FirehoseHandler.Factory> firehoseHandlerFactories;
+  List<FirehoseHandler> firehoseHandlers;
   Clock clock;
   Sampler sampler;
   ErrorParser errorParser;
@@ -34,9 +34,9 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (localEndpoint != null) builder.endpoint(localEndpoint);
     if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
-    if (firehoseHandlerFactories != null) {
-      for (FirehoseHandler.Factory factory : firehoseHandlerFactories) {
-        builder.addFirehoseHandlerFactory(factory);
+    if (firehoseHandlers != null) {
+      for (FirehoseHandler firehoseHandler : firehoseHandlers) {
+        builder.addFirehoseHandler(firehoseHandler);
       }
     }
     if (errorParser != null) builder.errorParser(errorParser);
@@ -77,12 +77,12 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.spanReporter = spanReporter;
   }
 
-  public List<FirehoseHandler.Factory> getFirehoseHandlerFactories() {
-    return firehoseHandlerFactories;
+  public List<FirehoseHandler> getFirehoseHandlerFactories() {
+    return firehoseHandlers;
   }
 
-  public void setFirehoseHandlerFactories(List<FirehoseHandler.Factory> firehoseHandlerFactories) {
-    this.firehoseHandlerFactories = firehoseHandlerFactories;
+  public void setFirehoseHandlerFactories(List<FirehoseHandler> firehoseHandlers) {
+    this.firehoseHandlers = firehoseHandlers;
   }
 
   public void setClock(Clock clock) {

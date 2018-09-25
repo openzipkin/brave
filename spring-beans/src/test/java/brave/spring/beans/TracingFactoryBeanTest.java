@@ -112,16 +112,11 @@ public class TracingFactoryBeanTest {
   }
 
   public static final FirehoseHandler FIREHOSE_HANDLER = mock(FirehoseHandler.class);
-  public static final FirehoseHandler.Factory FIREHOSE_FACTORY = new FirehoseHandler.Factory() {
-    @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-      return FIREHOSE_HANDLER;
-    }
-  };
 
-  @Test public void firehoseHandlerFactories() {
+  @Test public void firehoseHandlers() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-        + "  <property name=\"firehoseHandlerFactories\">\n"
+        + "  <property name=\"firehoseHandlers\">\n"
         + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_FACTORY\"/>\n"
         + "  </property>\n"
         + "</bean>"

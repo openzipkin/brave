@@ -4,25 +4,10 @@ import brave.firehose.FirehoseHandler;
 import brave.firehose.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class FirehoseHandlers {
-  public static FirehoseHandler.Factory constantFactory(FirehoseHandler firehoseHandler) {
-    if (firehoseHandler == null) throw new NullPointerException("firehoseHandler == null");
-    return new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        return firehoseHandler;
-      }
-
-      @Override public String toString() {
-        return "FirehoseHandlerFactory(" + firehoseHandler + ")";
-      }
-    };
-  }
-
   public static FirehoseHandler compose(List<FirehoseHandler> firehoseHandlers) {
     if (firehoseHandlers == null) throw new NullPointerException("firehoseHandlers == null");
     int length = firehoseHandlers.size();
@@ -42,29 +27,16 @@ public final class FirehoseHandlers {
     return result;
   }
 
-  public static List<FirehoseHandler> create(List<FirehoseHandler.Factory> firehoseHandlerFactories,
-      String serviceName, String ip, int port) {
-    if (firehoseHandlerFactories.isEmpty()) return Collections.emptyList();
-
-    List<FirehoseHandler> result = new ArrayList<>();
-    for (FirehoseHandler.Factory factory : firehoseHandlerFactories) {
-      FirehoseHandler next = factory.create(serviceName, ip, port);
-      if (next == null) throw new NullPointerException(factory + " created null");
-      if (next == FirehoseHandler.NOOP) continue;
-      result.add(next);
-    }
-    return result;
-  }
-
   /**
-   * logs exceptions instead of raising an error, as the supplied firehoseHandler could have bugs
+   * When {@code noop}, this drops input spans by returning false. Otherwise, it logs exceptions
+   * instead of raising an error, as the supplied firehoseHandler could have bugs.
    */
   public static FirehoseHandler noopAware(FirehoseHandler handler, AtomicBoolean noop) {
     if (handler == FirehoseHandler.NOOP) return handler;
     return new NoopAwareFirehose(handler, noop);
   }
 
-  static final class NoopAwareFirehose implements FirehoseHandler {
+  static final class NoopAwareFirehose extends FirehoseHandler {
     final FirehoseHandler delegate;
     final AtomicBoolean noop;
 
@@ -74,13 +46,18 @@ public final class FirehoseHandlers {
       this.noop = noop;
     }
 
-    @Override public void handle(TraceContext context, MutableSpan span) {
-      if (noop.get()) return;
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      if (noop.get()) return false;
       try {
-        delegate.handle(context, span);
+        return delegate.handle(context, span);
       } catch (RuntimeException e) {
         Platform.get().log("error accepting {0}", context, e);
+        return false;
       }
+    }
+
+    @Override public boolean alwaysSampleLocal() {
+      return delegate.alwaysSampleLocal();
     }
 
     @Override public String toString() {
@@ -88,17 +65,22 @@ public final class FirehoseHandlers {
     }
   }
 
-  static final class CompositeFirehoseHandler implements FirehoseHandler {
+  static final class CompositeFirehoseHandler extends FirehoseHandler {
     final FirehoseHandler first, second;
+    final boolean alwaysSampleLocal;
 
     CompositeFirehoseHandler(FirehoseHandler first, FirehoseHandler second) {
       this.first = first;
       this.second = second;
+      this.alwaysSampleLocal = first.alwaysSampleLocal() || second.alwaysSampleLocal();
     }
 
-    @Override public void handle(TraceContext context, MutableSpan span) {
-      first.handle(context, span);
-      second.handle(context, span);
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      return first.handle(context, span) && second.handle(context, span);
+    }
+
+    @Override public boolean alwaysSampleLocal() {
+      return alwaysSampleLocal;
     }
 
     @Override public String toString() {

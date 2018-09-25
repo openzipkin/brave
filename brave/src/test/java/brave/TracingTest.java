@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
+import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,55 +18,50 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TracingTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   List<MutableSpan> mutableSpans = new ArrayList<>();
-  FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
-    @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-      return (context, span) -> {
-        mutableSpans.add(span);
-      };
+  FirehoseHandler firehoseHandler = new FirehoseHandler() {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      mutableSpans.add(span);
+      return true;
     }
   };
 
-  @Test public void firehose_getsLocalEndpointInfo() {
+  @Test public void spanReporter_getsLocalEndpointInfo() {
     String expectedLocalServiceName = "favistar", expectedLocalIp = "1.2.3.4";
     int expectedLocalPort = 80;
 
-    FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        assertThat(serviceName).isEqualTo(expectedLocalServiceName);
-        assertThat(ip).isEqualTo(expectedLocalIp);
-        assertThat(port).isEqualTo(expectedLocalPort);
-        return (context, span) -> mutableSpans.add(span);
-      }
+    List<Span> zipkinSpans = new ArrayList<>();
+    Reporter<Span> spanReporter = span -> {
+      assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
+      assertThat(span.localEndpoint().ipv4()).isEqualTo(expectedLocalIp);
+      assertThat(span.localEndpoint().portAsInt()).isEqualTo(expectedLocalPort);
+      zipkinSpans.add(span);
     };
 
     try (Tracing tracing = Tracing.newBuilder()
         .localServiceName(expectedLocalServiceName)
         .localIp(expectedLocalIp)
         .localPort(expectedLocalPort)
-        .spanReporter(Reporter.NOOP)
-        .addFirehoseHandlerFactory(factory)
+        .spanReporter(spanReporter)
         .build()) {
       tracing.tracer().newTrace().start().finish();
     }
 
-    assertThat(mutableSpans).isNotEmpty(); // ensures the assertions passed.
+    assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
   @Test public void firehose_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
-    FirehoseHandler.Factory factory = new FirehoseHandler.Factory() {
-      @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-        assertThat(serviceName).isNotEqualTo(serviceNameOverride);
-        return (context, span) -> {
-          span.localServiceName(serviceNameOverride);
-        };
+    FirehoseHandler firehoseHandler = new FirehoseHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        span.localServiceName(serviceNameOverride);
+        return true;
       }
     };
 
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandlerFactory(factory)
+        .addFirehoseHandler(firehoseHandler)
         .build()) {
       tracing.tracer().newTrace().start().finish();
     }
@@ -76,7 +72,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandlerFactory(factory)
+        .addFirehoseHandler(firehoseHandler)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -92,7 +88,7 @@ public class TracingTest {
   @Test public void firehose_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandlerFactory(factory)
+        .addFirehoseHandler(firehoseHandler)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
@@ -105,7 +101,7 @@ public class TracingTest {
   @Test public void firehose_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(Reporter.NOOP)
-        .addFirehoseHandlerFactory(factory)
+        .addFirehoseHandler(firehoseHandler)
         .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -117,11 +113,10 @@ public class TracingTest {
   @Test public void firehose_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
         .spanReporter(spans::add)
-        .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
-          @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-            return (context, span) -> {
-              mutableSpans.add(span);
-            };
+        .addFirehoseHandler(new FirehoseHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            mutableSpans.add(span);
+            return true;
           }
 
           @Override public boolean alwaysSampleLocal() {
@@ -151,7 +146,7 @@ public class TracingTest {
             return context.toBuilder().sampledLocal(true).build();
           }
         })
-        .addFirehoseHandlerFactory(factory)
+        .addFirehoseHandler(firehoseHandler)
         .sampler(Sampler.NEVER_SAMPLE)
         .build()) {
       tracing.tracer().newTrace().start().name("one").finish();

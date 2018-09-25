@@ -29,7 +29,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
-  @Nullable final FirehoseHandler zipkinHandler; // Used when flushing spans
+  final FirehoseHandler zipkinHandler; // Used when flushing spans
   final AtomicBoolean noop;
 
   public PendingSpans(Clock clock, FirehoseHandler zipkinHandler, AtomicBoolean noop) {
@@ -97,7 +97,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // flushing a span than hurt performance of unrelated operations by calling
     // currentTimeMicroseconds N times
     long flushTime = 0L;
-    boolean noop = zipkinHandler == null || this.noop.get();
+    boolean noop = zipkinHandler == FirehoseHandler.NOOP || this.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
       if (noop || value == null || !contextKey.sampled) continue;

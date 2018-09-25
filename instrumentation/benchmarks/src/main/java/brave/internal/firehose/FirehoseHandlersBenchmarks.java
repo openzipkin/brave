@@ -44,8 +44,9 @@ import static java.util.Arrays.asList;
 @Threads(1)
 public class FirehoseHandlersBenchmarks {
   FirehoseHandler one = new FirehoseHandler() {
-    @Override public void handle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("one", "");
+      return true;
     }
 
     @Override public String toString() {
@@ -53,8 +54,9 @@ public class FirehoseHandlersBenchmarks {
     }
   };
   FirehoseHandler two = new FirehoseHandler() {
-    @Override public void handle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("two", "");
+      return true;
     }
 
     @Override public String toString() {
@@ -62,8 +64,9 @@ public class FirehoseHandlersBenchmarks {
     }
   };
   FirehoseHandler three = new FirehoseHandler() {
-    @Override public void handle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("three", "");
+      return true;
     }
 
     @Override public String toString() {
@@ -75,19 +78,21 @@ public class FirehoseHandlersBenchmarks {
   final FirehoseHandler listIndexComposite = new FirehoseHandler() {
     List<FirehoseHandler> delegates = asList(one, two, three);
 
-    @Override public void handle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       for (int i = 0, length = delegates.size(); i < length; i++) {
-        delegates.get(i).handle(context, span);
+        if (!delegates.get(i).handle(context, span)) return false;
       }
+      return true;
     }
   };
   final FirehoseHandler listIteratorComposite = new FirehoseHandler() {
     List<FirehoseHandler> delegates = asList(one, two, three);
 
-    @Override public void handle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       for (FirehoseHandler delegate : delegates) {
-        delegate.handle(context, span);
+        if (!delegate.handle(context, span)) return false;
       }
+      return true;
     }
   };
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();

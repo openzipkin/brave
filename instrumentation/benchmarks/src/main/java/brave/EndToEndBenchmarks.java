@@ -1,10 +1,12 @@
 package brave;
 
-import brave.http.HttpServerBenchmarks;
 import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
+import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
@@ -77,10 +79,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-          .addFirehoseHandlerFactory(new FirehoseHandler.Factory() {
-            @Override public FirehoseHandler create(String serviceName, String ip, int port) {
-              return (context, span) -> {
-              };
+          .addFirehoseHandler(new FirehoseHandler() {
+            @Override public boolean handle(TraceContext context, MutableSpan span) {
+              return true;
             }
 
             @Override public boolean alwaysSampleLocal() {
@@ -149,7 +150,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
-        .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*(onlySampledLocalServer_get|tracedServer_get)")
+        .include(".*"
+            + EndToEndBenchmarks.class.getSimpleName()
+            + ".*(onlySampledLocalServer_get|tracedServer_get)")
         .build();
 
     new Runner(opt).run();
