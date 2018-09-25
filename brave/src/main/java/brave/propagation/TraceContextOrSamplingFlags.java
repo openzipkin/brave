@@ -117,9 +117,12 @@ public final class TraceContextOrSamplingFlags {
   }
 
   public static TraceContextOrSamplingFlags create(SamplingFlags flags) {
-    if (flags == SamplingFlags.DEBUG) return DEBUG;
+    // reuses constants to avoid excess allocation
+    if (flags == SamplingFlags.SAMPLED) return SAMPLED;
     if (flags == SamplingFlags.EMPTY) return EMPTY;
-    return flags == SamplingFlags.SAMPLED ? SAMPLED : NOT_SAMPLED;
+    if (flags == SamplingFlags.NOT_SAMPLED) return NOT_SAMPLED;
+    if (flags == SamplingFlags.DEBUG) return DEBUG;
+    return new TraceContextOrSamplingFlags(3, flags, emptyList());
   }
 
   public static TraceContextOrSamplingFlags create(@Nullable Boolean sampled, boolean debug) {

@@ -137,6 +137,31 @@ public class TraceContextOrSamplingFlagsTest {
         .isEqualTo(FLAG_SAMPLED_SET);
   }
 
+  @Test public void sampledLocal() {
+    assertThat(TraceContextOrSamplingFlags.create(base).sampledLocal())
+        .isFalse();
+    assertThat(new TraceContextOrSamplingFlags.Builder().context(base).sampledLocal().build().sampledLocal())
+        .isTrue();
+
+    TraceIdContext idContext = TraceIdContext.newBuilder().traceId(333L).build();
+    assertThat(TraceContextOrSamplingFlags.create(idContext).sampledLocal())
+        .isFalse();
+    assertThat(new TraceContextOrSamplingFlags.Builder().traceIdContext(idContext).sampledLocal().build().sampledLocal())
+        .isTrue();
+
+    assertThat(new TraceContextOrSamplingFlags.Builder().samplingFlags(SamplingFlags.SAMPLED).sampledLocal().build().sampledLocal())
+        .isTrue();
+
+    assertThat(TraceContextOrSamplingFlags.EMPTY.sampledLocal())
+        .isFalse();
+    assertThat(TraceContextOrSamplingFlags.SAMPLED.sampledLocal())
+        .isFalse();
+    assertThat(TraceContextOrSamplingFlags.NOT_SAMPLED.sampledLocal())
+        .isFalse();
+    assertThat(TraceContextOrSamplingFlags.DEBUG.sampledLocal())
+        .isFalse();
+  }
+
   @Test public void sampled_true_noop() {
     TraceContext context = base.toBuilder().sampled(true).build();
     TraceContextOrSamplingFlags toTest = TraceContextOrSamplingFlags.newBuilder().context(context)
