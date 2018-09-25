@@ -1,4 +1,4 @@
-package brave.features.firehose;
+package brave.features.handler;
 
 import brave.Tracing;
 import io.micrometer.core.instrument.search.MeterNotFoundException;
@@ -12,12 +12,12 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-public class MetricsFirehoseHandlerTest {
+public class MetricsFinishedSpanHandlerTest {
   SimpleMeterRegistry registry = new SimpleMeterRegistry();
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
-      .addFirehoseHandler(new MetricsFirehoseHandler(registry, "span", "foo"))
+      .addFinishedSpanHandler(new MetricsFinishedSpanHandler(registry, "span", "foo"))
       .build();
 
   @After public void after() {

@@ -4,8 +4,8 @@ import brave.Span;
 import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -24,13 +24,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SecondarySamplingTest {
   List<zipkin2.Span> zipkin = new ArrayList<>();
   List<MutableSpan> zeus = new ArrayList<>(), apollo = new ArrayList<>();
-  Map<String, FirehoseHandler> stateToFirehoseHandler = ImmutableMap.of(
-      "zeus", new FirehoseHandler() {
+  Map<String, FinishedSpanHandler> stateToFinishedSpanHandler = ImmutableMap.of(
+      "zeus", new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           return zeus.add(span);
         }
       },
-      "apollo", new FirehoseHandler() {
+      "apollo", new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           return apollo.add(span);
         }
@@ -38,9 +38,9 @@ public class SecondarySamplingTest {
   );
 
   Tracing tracing = Tracing.newBuilder()
-      .addFirehoseHandler(new SecondarySampling.FirehoseHandler(stateToFirehoseHandler))
+      .addFinishedSpanHandler(new SecondarySampling.FinishedSpanHandler(stateToFinishedSpanHandler))
       .propagationFactory(new SecondarySampling.PropagationFactory(
-          B3SinglePropagation.FACTORY, stateToFirehoseHandler.keySet()
+          B3SinglePropagation.FACTORY, stateToFinishedSpanHandler.keySet()
       ))
       .spanReporter(zipkin::add)
       .build();

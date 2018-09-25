@@ -62,7 +62,7 @@ public class TracerTest {
   @Test public void reporter_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.firehoseHandler)
+    assertThat(tracer.finishedSpanHandler)
         .hasToString("LoggingReporter{name=brave.Tracer}");
   }
 
@@ -95,14 +95,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -110,7 +110,7 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint")
+    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint")
         .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
   }
 
@@ -545,7 +545,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, firehoseHandler=MyReporter{}}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, finishedSpanHandler=MyReporter{}}"
       );
     }
   }
@@ -554,7 +554,7 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-        "Tracer{noop=true, firehoseHandler=MyReporter{}}"
+        "Tracer{noop=true, finishedSpanHandler=MyReporter{}}"
     );
   }
 

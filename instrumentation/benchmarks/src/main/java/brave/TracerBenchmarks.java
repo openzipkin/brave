@@ -1,7 +1,7 @@
 package brave;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -61,7 +61,7 @@ public class TracerBenchmarks {
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
-        .addFirehoseHandler(new FirehoseHandler() {
+        .addFinishedSpanHandler(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true; // anonymous subtype prevents all recording from being no-op
           }
@@ -70,7 +70,7 @@ public class TracerBenchmarks {
     tracerExtra = Tracing.newBuilder()
         .propagationFactory(ExtraFieldPropagation.newFactory(
             B3Propagation.FACTORY, "x-vcap-request-id"))
-        .addFirehoseHandler(new FirehoseHandler() {
+        .addFinishedSpanHandler(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true; // anonymous subtype prevents all recording from being no-op
           }

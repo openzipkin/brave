@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,7 +17,7 @@ public class PendingSpansClassLoaderTest {
 
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FirehoseHandler() {
+      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           return true;
         }
@@ -35,7 +35,7 @@ public class PendingSpansClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FirehoseHandler() {
+      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           throw new RuntimeException();
         }

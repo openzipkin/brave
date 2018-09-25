@@ -1,8 +1,8 @@
 package brave.internal.recorder;
 
 import brave.Clock;
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -29,10 +29,10 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
-  final FirehoseHandler zipkinHandler; // Used when flushing spans
+  final FinishedSpanHandler zipkinHandler; // Used when flushing spans
   final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FirehoseHandler zipkinHandler, AtomicBoolean noop) {
+  public PendingSpans(Clock clock, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
     this.clock = clock;
     this.zipkinHandler = zipkinHandler;
     this.noop = noop;
@@ -97,7 +97,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // flushing a span than hurt performance of unrelated operations by calling
     // currentTimeMicroseconds N times
     long flushTime = 0L;
-    boolean noop = zipkinHandler == FirehoseHandler.NOOP || this.noop.get();
+    boolean noop = zipkinHandler == FinishedSpanHandler.NOOP || this.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
       if (noop || value == null || !contextKey.sampled) continue;

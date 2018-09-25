@@ -1,7 +1,7 @@
 package brave;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -14,7 +14,7 @@ final class RealScopedSpan extends ScopedSpan {
   final MutableSpan state;
   final Clock clock;
   final PendingSpans pendingSpans;
-  final FirehoseHandler firehoseHandler;
+  final FinishedSpanHandler finishedSpanHandler;
 
   RealScopedSpan(
       TraceContext context,
@@ -22,14 +22,14 @@ final class RealScopedSpan extends ScopedSpan {
       MutableSpan state,
       Clock clock,
       PendingSpans pendingSpans,
-      FirehoseHandler firehoseHandler
+      FinishedSpanHandler finishedSpanHandler
   ) {
     this.context = context;
     this.scope = scope;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
-    this.firehoseHandler = firehoseHandler;
+    this.finishedSpanHandler = finishedSpanHandler;
   }
 
   @Override public boolean isNoop() {
@@ -59,7 +59,7 @@ final class RealScopedSpan extends ScopedSpan {
     scope.close();
     if (!pendingSpans.remove(context)) return; // don't double-report
     state.finishTimestamp(clock.currentTimeMicroseconds());
-    firehoseHandler.handle(context, state);
+    finishedSpanHandler.handle(context, state);
   }
 
   @Override public boolean equals(Object o) {

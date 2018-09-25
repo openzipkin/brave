@@ -1,8 +1,8 @@
-package brave.internal.firehose;
+package brave.internal.handler;
 
 import brave.ErrorParser;
 import brave.Span.Kind;
-import brave.firehose.MutableSpan;
+import brave.handler.MutableSpan;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;

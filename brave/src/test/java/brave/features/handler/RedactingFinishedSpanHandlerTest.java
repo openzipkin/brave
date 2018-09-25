@@ -1,11 +1,11 @@
-package brave.features.firehose;
+package brave.features.handler;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
-import brave.firehose.MutableSpan.AnnotationUpdater;
-import brave.firehose.MutableSpan.TagUpdater;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
+import brave.handler.MutableSpan.AnnotationUpdater;
+import brave.handler.MutableSpan.TagUpdater;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +19,8 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-/** One reason {@link brave.firehose.MutableSpan} is mutable is to support redaction */
-public class RedactingFirehoseHandlerTest {
+/** One reason {@link brave.handler.MutableSpan} is mutable is to support redaction */
+public class RedactingFinishedSpanHandlerTest {
   static final Pattern SSN = Pattern.compile("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}");
 
   enum ValueRedactor implements TagUpdater, AnnotationUpdater {
@@ -48,7 +48,7 @@ public class RedactingFirehoseHandlerTest {
 
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .addFirehoseHandler(new FirehoseHandler() {
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           span.forEachTag(ValueRedactor.INSTANCE);
           span.forEachAnnotation(ValueRedactor.INSTANCE);

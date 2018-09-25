@@ -1,7 +1,7 @@
 package brave.internal.recorder;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ public class PendingSpansTest {
   PendingSpans pendingSpans;
 
   @Before public void init() {
-    init(new FirehoseHandler() {
+    init(new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext ctx, MutableSpan span) {
         Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
         span.forEachAnnotation(Span.Builder::addAnnotation, b);
@@ -32,8 +32,9 @@ public class PendingSpansTest {
     });
   }
 
-  void init(FirehoseHandler zipkinFirehoseHandler) {
-    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, zipkinFirehoseHandler,
+  void init(FinishedSpanHandler zipkinFinishedSpanHandler) {
+    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L,
+        zipkinFinishedSpanHandler,
         new AtomicBoolean());
   }
 
@@ -241,7 +242,7 @@ public class PendingSpansTest {
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
   public void reportOrphanedSpans_whenReporterDies() throws Exception {
-    init(new FirehoseHandler() {
+    init(new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext context, MutableSpan span) {
         throw new RuntimeException();
       }

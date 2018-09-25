@@ -1,18 +1,18 @@
-package brave.internal.firehose;
+package brave.internal.handler;
 
 import brave.ErrorParser;
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 /** logs exceptions instead of raising an error, as the supplied reporter could have bugs */
-public final class ZipkinFirehoseHandler extends FirehoseHandler {
+public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   final Reporter<zipkin2.Span> spanReporter;
   final MutableSpanConverter converter;
 
-  public ZipkinFirehoseHandler(Reporter<zipkin2.Span> spanReporter,
+  public ZipkinFinishedSpanHandler(Reporter<zipkin2.Span> spanReporter,
       ErrorParser errorParser, String serviceName, String ip, int port) {
     this.spanReporter = spanReporter;
     this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);

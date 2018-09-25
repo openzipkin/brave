@@ -1,7 +1,7 @@
-package brave.features.firehose;
+package brave.features.handler;
 
-import brave.firehose.FirehoseHandler;
-import brave.firehose.MutableSpan;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
@@ -11,15 +11,15 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.springframework.util.StringUtils;
 
-/** Example firehose handler which emits metrics for each span with a given name */
-public class MetricsFirehoseHandler extends FirehoseHandler {
+/** Example finished span handler which emits metrics for each span with a given name */
+public class MetricsFinishedSpanHandler extends FinishedSpanHandler {
   static final Tag EXCEPTION_NONE = Tag.of("exception", "None");
 
   final MeterRegistry registry;
   final String metricName;
   final Map<String, Tag> nameToTag;
 
-  MetricsFirehoseHandler(MeterRegistry registry, String metricName, String... names) {
+  MetricsFinishedSpanHandler(MeterRegistry registry, String metricName, String... names) {
     Map<String, Tag> nameToTag = new LinkedHashMap<>();
     for (String name : names) {
       nameToTag.put(name, Tag.of("name", name));

@@ -479,6 +479,68 @@ implementations have extra data, here's how they handle it.
 * If a `TraceContext` was extracted, add the extra data as `TraceContext.extra()`
 * Otherwise, add it as `TraceContextOrSamplingFlags.extra()`, which `Tracer.nextSpan` handles.
 
+## Handling Finished Spans
+By default, data recorded before (`Span.finish()`) are reported to Zipkin
+via what's passed to `Tracing.Builder.spanReporter`. `FinishedSpanHandler`
+can modify or drop data before it goes to Zipkin. It can even intercept
+data that is not sampled for Zipkin.
+
+`FinishedSpanHandler` can return false to drop spans that you never want
+to see in Zipkin. This should be used carefully as the spans dropped
+should not have children.
+
+Here's an example of SQL COMMENT spans so they don't clutter Zipkin.
+```java
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
+  @Override public boolean handle(TraceContext context, MutableSpan span) {
+    return !"comment".equals(span.name());
+  }
+});
+```
+
+Another example is redaction: you may need to scrub tags to ensure no
+personal information like social security numbers end up in Zipkin.
+```java
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
+  @Override public boolean handle(TraceContext context, MutableSpan span) {
+    span.forEachTag((key, value) ->
+      value.replaceAll("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}", "xxx-xx-xxxx")
+    );
+    return true; // retain the span
+  }
+});
+```
+An example of redaction is [here](src/test/java/brave/features/handler/RedactingFinishedSpanHandlerTest.java)
+
+### Sampling locally
+While Brave defaults to report 100% of data to Zipkin, many will use a
+lower percentage like 1%. This is called sampling and the decision is
+maintained throughout the trace, across requests consistently. Sampling
+has disadvantages. For example, statistics on sampled data is usually
+misleading by nature of not observing all durations.
+
+`FinishedSpanHandler` returns `alwaysSampleLocal()` to indicate whether
+it should see all data, or just all data sent to Zipkin. You can override
+this to true to observe all operations.
+
+Here's an example of metrics handling:
+```java
+tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
+  @Override public boolean alwaysSampleLocal() {
+    return true; // since we want to always see timestamps, we have to always record
+  }
+
+  @Override public boolean handle(TraceContext context, MutableSpan span) {
+    if (namesToAlwaysTime.contains(span.name())) {
+      registry.timer("spans", "name", span.name())
+          .record(span.finishTimestamp() - span.startTimestamp(), MICROSECONDS);
+    }
+    return true; // retain the span
+  }
+});
+```
+An example of metrics handling is [here](src/test/java/brave/features/handler/MetricsFinishedSpanHandler.java)
+
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
 be used when you have no other means to get a reference. This was made

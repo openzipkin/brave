@@ -1,6 +1,6 @@
 package brave.features.propagation;
 
-import brave.firehose.MutableSpan;
+import brave.handler.MutableSpan;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.KeyFactory;
 import brave.propagation.Propagation.Setter;
@@ -15,10 +15,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class SecondarySampling {
-  public static final class FirehoseHandler extends brave.firehose.FirehoseHandler {
-    final Map<String, brave.firehose.FirehoseHandler> configuredHandlers;
+  public static final class FinishedSpanHandler extends brave.handler.FinishedSpanHandler {
+    final Map<String, brave.handler.FinishedSpanHandler> configuredHandlers;
 
-    public FirehoseHandler(Map<String, brave.firehose.FirehoseHandler> configuredHandlers) {
+    public FinishedSpanHandler(Map<String, brave.handler.FinishedSpanHandler> configuredHandlers) {
       this.configuredHandlers = configuredHandlers;
     }
 
@@ -26,7 +26,7 @@ public final class SecondarySampling {
       Extra extra = context.findExtra(Extra.class);
       if (extra == null) return true;
       for (String state : extra.states.keySet()) {
-        brave.firehose.FirehoseHandler handler = configuredHandlers.get(state);
+        brave.handler.FinishedSpanHandler handler = configuredHandlers.get(state);
         if (handler != null) handler.handle(context, span);
       }
       return true;

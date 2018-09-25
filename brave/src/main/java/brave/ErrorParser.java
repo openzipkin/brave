@@ -1,6 +1,6 @@
 package brave;
 
-import brave.firehose.MutableSpan;
+import brave.handler.MutableSpan;
 
 /** This is a simplified type used for parsing errors. It only allows annotations or tags. */
 // This implementation works with SpanCustomizer and ScopedSpan which don't share a common interface
