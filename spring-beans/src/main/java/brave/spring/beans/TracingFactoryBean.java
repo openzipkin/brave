@@ -3,9 +3,11 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.firehose.FirehoseHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.sampler.Sampler;
+import java.util.List;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import zipkin2.Endpoint;
 import zipkin2.Span;
@@ -17,6 +19,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
   Endpoint localEndpoint, endpoint;
   Reporter<Span> spanReporter;
+  List<FirehoseHandler> firehoseHandlers;
   Clock clock;
   Sampler sampler;
   ErrorParser errorParser;
@@ -31,6 +34,11 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (localEndpoint != null) builder.endpoint(localEndpoint);
     if (endpoint != null) builder.endpoint(endpoint);
     if (spanReporter != null) builder.spanReporter(spanReporter);
+    if (firehoseHandlers != null) {
+      for (FirehoseHandler firehoseHandler : firehoseHandlers) {
+        builder.addFirehoseHandler(firehoseHandler);
+      }
+    }
     if (errorParser != null) builder.errorParser(errorParser);
     if (clock != null) builder.clock(clock);
     if (sampler != null) builder.sampler(sampler);
@@ -67,6 +75,14 @@ public class TracingFactoryBean extends AbstractFactoryBean {
 
   public void setSpanReporter(Reporter<Span> spanReporter) {
     this.spanReporter = spanReporter;
+  }
+
+  public List<FirehoseHandler> getFirehoseHandlers() {
+    return firehoseHandlers;
+  }
+
+  public void setFirehoseHandlers(List<FirehoseHandler> firehoseHandlers) {
+    this.firehoseHandlers = firehoseHandlers;
   }
 
   public void setClock(Clock clock) {

@@ -5,7 +5,6 @@ import brave.internal.Nullable;
 import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
 import brave.internal.PropagationFieldsFactory;
-import brave.internal.TraceContexts;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
@@ -383,7 +382,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
 
     @Override protected TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
-      return TraceContexts.contextWithExtra(context, extra); // more efficient
+      return context.withExtra(extra); // more efficient
     }
   }
 

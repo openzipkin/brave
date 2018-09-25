@@ -1,6 +1,6 @@
 package brave;
 
-import brave.internal.recorder.MutableSpan;
+import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */

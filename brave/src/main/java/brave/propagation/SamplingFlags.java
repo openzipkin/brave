@@ -2,12 +2,12 @@ package brave.propagation;
 
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.internal.TraceContexts;
 import java.util.List;
 
-import static brave.internal.TraceContexts.FLAG_DEBUG;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_DEBUG;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 
 //@Immutable
 public class SamplingFlags {
@@ -26,6 +26,14 @@ public class SamplingFlags {
       public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId, long parentId,
           long spanId, List<Object> extra) {
         return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+      }
+
+      @Override public TraceContext withExtra(TraceContext context, List<Object> extra) {
+        return context.withExtra(extra);
+      }
+
+      @Override public TraceContext withFlags(TraceContext context, int flags) {
+        return context.withFlags(flags);
       }
     };
   }
@@ -62,14 +70,36 @@ public class SamplingFlags {
   }
 
   /**
-   * True is a request to store this span even if it overrides sampling policy. Defaults to false.
+   * True records this trace locally even if it is not {@link #sampled() sampled downstream}.
+   * Defaults to false.
+   *
+   * <p><em>Note:</em> Setting this does not affect {@link #sampled() remote sampled status}.
+   *
+   * <p>The use case for this is storing data at other sampling rates, or local aggregation of
+   * metrics or service aggregations. How to action this data may or may not require inspection of
+   * {@link TraceContext#extra() other propagated information}.
+   */
+  // Setting this on SamplingFlags object isn't currently supported as there's no obvious use case
+  public final boolean sampledLocal() {
+    return (flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL;
+  }
+
+  /**
+   * True implies {@link #sampled()}, and is additionally a request to override any storage or
+   * collector layer sampling. Defaults to false.
    */
   public final boolean debug() {
     return debug(flags);
   }
 
   @Override public String toString() {
-    return "SamplingFlags(sampled=" + sampled() + ", debug=" + debug() + ")";
+    return "SamplingFlags(sampled="
+        + sampled()
+        + ", sampledLocal="
+        + sampledLocal()
+        + ", debug="
+        + debug()
+        + ")";
   }
 
   /** @deprecated prefer using constants. This will be removed in Brave v6 */
@@ -81,16 +111,21 @@ public class SamplingFlags {
       // public constructor instead of static newBuilder which would clash with TraceContext's
     }
 
+    /** @see SamplingFlags#sampled() */
     public Builder sampled(@Nullable Boolean sampled) {
       if (sampled == null) {
         flags &= ~(FLAG_SAMPLED_SET | FLAG_SAMPLED);
         return this;
       }
-      flags = TraceContexts.sampled(sampled, flags);
+      flags = InternalPropagation.sampled(sampled, flags);
       return this;
     }
 
-    /** Ensures sampled is set when debug is */
+    /**
+     * Setting debug to true also sets sampled to true.
+     *
+     * @see SamplingFlags#debug()
+     */
     public Builder debug(boolean debug) {
       flags = SamplingFlags.debug(debug, flags);
       return this;
@@ -120,8 +155,35 @@ public class SamplingFlags {
     return flags;
   }
 
+  // Internal: not meant to be used directly by end users
+  static final SamplingFlags
+      EMPTY_SAMPLED_LOCAL = new SamplingFlags(FLAG_SAMPLED_LOCAL),
+      NOT_SAMPLED_SAMPLED_LOCAL = new SamplingFlags(NOT_SAMPLED.flags | FLAG_SAMPLED_LOCAL),
+      SAMPLED_SAMPLED_LOCAL = new SamplingFlags(SAMPLED.flags | FLAG_SAMPLED_LOCAL),
+      DEBUG_SAMPLED_LOCAL = new SamplingFlags(DEBUG.flags | FLAG_SAMPLED_LOCAL);
+
+  /** This ensures constants are always used, in order to reduce allocation overhead */
   static SamplingFlags toSamplingFlags(int flags) {
-    return flags == 0 ? EMPTY : SamplingFlags.debug(flags) ? DEBUG
-        : (flags & FLAG_SAMPLED) == FLAG_SAMPLED ? SAMPLED : NOT_SAMPLED;
+    switch (flags) {
+      case 0:
+        return EMPTY;
+      case FLAG_SAMPLED_SET:
+        return NOT_SAMPLED;
+      case FLAG_SAMPLED_SET | FLAG_SAMPLED:
+        return SAMPLED;
+      case FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG:
+        return DEBUG;
+      case FLAG_SAMPLED_LOCAL:
+        return EMPTY_SAMPLED_LOCAL;
+      case FLAG_SAMPLED_LOCAL | FLAG_SAMPLED_SET:
+        return NOT_SAMPLED_SAMPLED_LOCAL;
+      case FLAG_SAMPLED_LOCAL | FLAG_SAMPLED_SET | FLAG_SAMPLED:
+        return SAMPLED_SAMPLED_LOCAL;
+      case FLAG_SAMPLED_LOCAL | FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG:
+        return DEBUG_SAMPLED_LOCAL;
+      default:
+        assert false; // programming error, but build anyway
+        return new SamplingFlags(flags);
+    }
   }
 }

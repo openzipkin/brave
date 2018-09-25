@@ -3,8 +3,8 @@ package brave.propagation;
 import java.util.Collections;
 import org.junit.Test;
 
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextOrSamplingFlagsTest {

@@ -1,11 +1,11 @@
 package brave.propagation;
 
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.internal.TraceContexts;
 
 import static brave.internal.HexCodec.writeHexLong;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 
 /**
  * Contains inbound trace ID and sampling flags, used when users control the root trace ID, but not
@@ -67,7 +67,7 @@ public final class TraceIdContext extends SamplingFlags {
 
     /** @see TraceIdContext#sampled() */
     public Builder sampled(boolean sampled) {
-      flags = TraceContexts.sampled(sampled, flags);
+      flags = InternalPropagation.sampled(sampled, flags);
       return this;
     }
 

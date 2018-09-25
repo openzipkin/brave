@@ -62,7 +62,7 @@ public class TracerTest {
   @Test public void reporter_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.spanReporter)
+    assertThat(tracer.firehoseHandler)
         .hasToString("LoggingReporter{name=brave.Tracer}");
   }
 
@@ -95,14 +95,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
+    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint.serviceName")
+    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -110,7 +110,7 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("pendingSpans.localEndpoint")
+    assertThat(tracer).extracting("firehoseHandler.delegate.converter.localEndpoint")
         .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
   }
 
@@ -216,6 +216,15 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void join_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext fromIncomingRequest = tracer.newTrace().context();
+
+    assertThat(tracer.joinSpan(fromIncomingRequest))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void join_ensuresSampling() {
     TraceContext notYetSampled =
         tracer.newTrace().context().toBuilder().sampled(null).build();
@@ -259,6 +268,23 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void toSpan_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext context = tracer.newTrace().context();
+
+    assertThat(tracer.toSpan(context))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
+        .isInstanceOf(NoopSpan.class);
+  }
+
+  @Test public void toSpan_sampledLocalIsNotNoop() {
+    TraceContext sampledLocal = tracer.newTrace().context()
+        .toBuilder().sampled(false).sampledLocal(true).build();
+
+    assertThat(tracer.toSpan(sampledLocal))
+        .isInstanceOf(RealSpan.class);
+  }
+
   @Test public void toSpan_unsampledIsNoop() {
     TraceContext unsampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -295,6 +321,15 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
+  @Test public void newChild_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    TraceContext parent = tracer.newTrace().context();
+
+    assertThat(tracer.newChild(parent))
+        .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
+        .isInstanceOf(NoopSpan.class);
+  }
+
   @Test public void newChild_unsampledIsNoop() {
     TraceContext unsampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -310,6 +345,18 @@ public class TracerTest {
 
   @Test public void currentSpanCustomizer_noop_when_unsampled() {
     ScopedSpan parent = tracer.withSampler(Sampler.NEVER_SAMPLE).startScopedSpan("parent");
+    try {
+      assertThat(tracer.currentSpanCustomizer())
+          .isSameAs(NoopSpanCustomizer.INSTANCE);
+    } finally {
+      parent.finish();
+    }
+  }
+
+  @Test public void currentSpanCustomizer_noopReporter() {
+    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+
+    ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
       assertThat(tracer.currentSpanCustomizer())
           .isSameAs(NoopSpanCustomizer.INSTANCE);
@@ -498,32 +545,16 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\"}], reporter=MyReporter{}}"
+          "Tracer{currentSpan=0000000000000001/000000000000000a, firehoseHandler=MyReporter{}}"
       );
     }
-  }
-
-  @Test public void toString_withSpanInFlight() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
-    Span span = tracer.toSpan(context);
-    span.start(1L); // didn't set anything else! this is to help ensure no NPE
-
-    assertThat(tracer).hasToString(
-        "Tracer{inFlight=[{\"traceId\":\"0000000000000001\",\"id\":\"000000000000000a\",\"timestamp\":1}], reporter=MyReporter{}}"
-    );
-
-    span.finish();
-
-    assertThat(tracer).hasToString(
-        "Tracer{reporter=MyReporter{}}"
-    );
   }
 
   @Test public void toString_whenNoop() {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-        "Tracer{noop=true, reporter=MyReporter{}}"
+        "Tracer{noop=true, firehoseHandler=MyReporter{}}"
     );
   }
 

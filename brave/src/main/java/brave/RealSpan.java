@@ -1,8 +1,8 @@
 package brave;
 
-import brave.internal.recorder.MutableSpan;
+import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
 import brave.internal.recorder.PendingSpans;
-import brave.internal.recorder.SpanReporter;
 import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
@@ -12,23 +12,21 @@ final class RealSpan extends Span {
   final PendingSpans pendingSpans;
   final MutableSpan state;
   final Clock clock;
-  final SpanReporter spanReporter;
-  final ErrorParser errorParser;
+  final FirehoseHandler firehoseHandler;
   final RealSpanCustomizer customizer;
 
   RealSpan(TraceContext context,
       PendingSpans pendingSpans,
       MutableSpan state,
       Clock clock,
-      SpanReporter spanReporter,
-      ErrorParser errorParser) {
+      FirehoseHandler firehoseHandler
+  ) {
     this.context = context;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
     this.customizer = new RealSpanCustomizer(context, state, clock);
-    this.spanReporter = spanReporter;
-    this.errorParser = errorParser;
+    this.firehoseHandler = firehoseHandler;
   }
 
   @Override public boolean isNoop() {
@@ -111,7 +109,9 @@ final class RealSpan extends Span {
   }
 
   @Override public Span error(Throwable throwable) {
-    errorParser.error(throwable, customizer());
+    synchronized (state) {
+      state.error(throwable);
+    }
     return this;
   }
 
@@ -137,7 +137,7 @@ final class RealSpan extends Span {
     synchronized (state) {
       state.finishTimestamp(timestamp);
     }
-    spanReporter.report(context, state);
+    firehoseHandler.handle(context, state);
   }
 
   @Override public void abandon() {
@@ -146,7 +146,7 @@ final class RealSpan extends Span {
 
   @Override public void flush() {
     abandon();
-    spanReporter.report(context, state);
+    firehoseHandler.handle(context, state);
   }
 
   @Override public String toString() {

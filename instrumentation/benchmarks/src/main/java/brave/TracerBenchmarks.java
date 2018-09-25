@@ -1,5 +1,7 @@
 package brave;
 
+import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -42,6 +44,8 @@ public class TracerBenchmarks {
   TraceContext unsampledContext =
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
   TraceContext unsampledContextExtra = extraFactory.decorate(unsampledContext);
+  TraceContext sampledLocalContext = unsampledContext.toBuilder().sampledLocal(true).build();
+  TraceContext sampledLocalContextExtra = extraFactory.decorate(sampledLocalContext);
   TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
   TraceContextOrSamplingFlags extractedExtra = TraceContextOrSamplingFlags.create(contextExtra);
   TraceContextOrSamplingFlags unsampledExtracted =
@@ -56,10 +60,21 @@ public class TracerBenchmarks {
   Tracer tracerExtra;
 
   @Setup(Level.Trial) public void init() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+    tracer = Tracing.newBuilder()
+        .addFirehoseHandler(new FirehoseHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            return true; // anonymous subtype prevents all recording from being no-op
+          }
+        })
+        .spanReporter(Reporter.NOOP).build().tracer();
     tracerExtra = Tracing.newBuilder()
         .propagationFactory(ExtraFieldPropagation.newFactory(
             B3Propagation.FACTORY, "x-vcap-request-id"))
+        .addFirehoseHandler(new FirehoseHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            return true; // anonymous subtype prevents all recording from being no-op
+          }
+        })
         .spanReporter(Reporter.NOOP).build().tracer();
   }
 
@@ -81,6 +96,14 @@ public class TracerBenchmarks {
 
   @Benchmark public void startScopedSpanWithParent_unsampled_extra() {
     startScopedSpanWithParent(tracerExtra, unsampledContextExtra);
+  }
+
+  @Benchmark public void startScopedSpanWithParent_sampledLocal() {
+    startScopedSpanWithParent(tracer, sampledLocalContext);
+  }
+
+  @Benchmark public void startScopedSpanWithParent_sampledLocal_extra() {
+    startScopedSpanWithParent(tracerExtra, sampledLocalContextExtra);
   }
 
   void startScopedSpanWithParent(Tracer tracer, TraceContext context) {
@@ -109,6 +132,14 @@ public class TracerBenchmarks {
     newChildWithSpanInScope(tracerExtra, unsampledContextExtra);
   }
 
+  @Benchmark public void newChildWithSpanInScope_sampledLocal() {
+    newChildWithSpanInScope(tracer, sampledLocalContext);
+  }
+
+  @Benchmark public void newChildWithSpanInScope_sampledLocal_extra() {
+    newChildWithSpanInScope(tracerExtra, sampledLocalContextExtra);
+  }
+
   void newChildWithSpanInScope(Tracer tracer, TraceContext context) {
     Span span = tracer.newChild(context).name("encode").start();
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
@@ -133,6 +164,14 @@ public class TracerBenchmarks {
 
   @Benchmark public void joinWithSpanInScope_unsampled_extra() {
     joinWithSpanInScope(tracerExtra, unsampledContextExtra);
+  }
+
+  @Benchmark public void joinWithSpanInScope_sampledLocal() {
+    joinWithSpanInScope(tracer, sampledLocalContext);
+  }
+
+  @Benchmark public void joinWithSpanInScope_sampledLocal_extra() {
+    joinWithSpanInScope(tracerExtra, sampledLocalContextExtra);
   }
 
   void joinWithSpanInScope(Tracer tracer, TraceContext context) {

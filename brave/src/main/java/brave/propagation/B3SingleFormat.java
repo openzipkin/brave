@@ -7,9 +7,9 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 
 import static brave.internal.HexCodec.writeHexLong;
-import static brave.internal.TraceContexts.FLAG_DEBUG;
-import static brave.internal.TraceContexts.FLAG_SAMPLED;
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_DEBUG;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 
 /**
  * This format corresponds to the propagation key "b3" (or "B3"), which delimits fields in the

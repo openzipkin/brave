@@ -1,4 +1,4 @@
-package brave.internal.recorder;
+package brave.firehose;
 
 import brave.Span.Kind;
 import brave.Tracer;
@@ -17,11 +17,31 @@ import java.util.Locale;
 public final class MutableSpan implements Cloneable {
 
   public interface TagConsumer<T> {
+    /** @see brave.Span#tag(String, String) */
     void accept(T target, String key, String value);
   }
 
   public interface AnnotationConsumer<T> {
+    /** @see brave.Span#annotate(long, String) */
     void accept(T target, long timestamp, String value);
+  }
+
+  public interface TagUpdater {
+    /**
+     * Returns the same value, an updated one, or null to drop the tag.
+     *
+     * @see brave.Span#tag(String, String)
+     */
+    @Nullable String update(String key, String value);
+  }
+
+  public interface AnnotationUpdater {
+    /**
+     * Returns the same value, an updated one, or null to drop the annotation.
+     *
+     * @see brave.Span#annotate(long, String)
+     */
+    @Nullable String update(long timestamp, String value);
   }
 
   /*
@@ -31,13 +51,14 @@ public final class MutableSpan implements Cloneable {
   Kind kind;
   boolean shared;
   long startTimestamp, finishTimestamp;
-  String name, remoteServiceName, remoteIp;
-  int remotePort;
+  String name, localServiceName, localIp, remoteServiceName, remoteIp;
+  int localPort, remotePort;
 
   /** To reduce the amount of allocation use a pair-indexed list for tag (key, value). */
   ArrayList<String> tags;
   /** Also use pair indexing for annotations, but type object to store (startTimestamp, value). */
   ArrayList<Object> annotations;
+  Throwable error;
 
   public MutableSpan() {
     // this cheats because it will not need to grow unless there are more than 5 tags
@@ -85,6 +106,54 @@ public final class MutableSpan implements Cloneable {
   public void kind(Kind kind) {
     if (kind == null) throw new NullPointerException("kind == null");
     this.kind = kind;
+  }
+
+  /**
+   * When null, {@link FirehoseHandler#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localServiceName(String)
+   */
+  @Nullable public String localServiceName() {
+    return localServiceName;
+  }
+
+  /** @see brave.Tracing.Builder#localServiceName(String) */
+  public void localServiceName(String localServiceName) {
+    if (localServiceName == null || localServiceName.isEmpty()) {
+      throw new NullPointerException("localServiceName is empty");
+    }
+    this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * When null, {@link FirehoseHandler#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localIp(String)
+   */
+  @Nullable public String localIp() {
+    return localIp;
+  }
+
+  /** @see #localIp() */
+  public boolean localIp(@Nullable String localIp) {
+    this.localIp = IpLiteral.ipOrNull(localIp);
+    return true;
+  }
+
+  /**
+   * When zero, {@link FirehoseHandler#create(String, String, int) default} will be used.
+   *
+   * @see brave.Tracing.Builder#localPort(int)
+   */
+  public int localPort() {
+    return localPort;
+  }
+
+  /** @see #localPort() */
+  public void localPort(int localPort) {
+    if (localPort > 0xffff) throw new IllegalArgumentException("invalid port " + localPort);
+    if (localPort < 0) localPort = 0;
+    this.localPort = localPort;
   }
 
   /** @see brave.Span#remoteServiceName(String) */
@@ -140,6 +209,27 @@ public final class MutableSpan implements Cloneable {
     annotations.add(value);
   }
 
+  /** @see brave.Span#error(Throwable) */
+  public Throwable error() {
+    return error;
+  }
+
+  /** @see brave.Span#error(Throwable) */
+  public void error(Throwable error) {
+    this.error = error;
+  }
+
+  /** Returns the last value associated with the key or null */
+  @Nullable public String tag(String key) {
+    if (key == null) throw new NullPointerException("key == null");
+    if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
+    String result = null;
+    for (int i = 0, length = tags.size(); i < length; i += 2) {
+      if (key.equals(tags.get(i))) result = tags.get(i + 1);
+    }
+    return result;
+  }
+
   /** @see brave.Span#tag(String, String) */
   public void tag(String key, String value) {
     if (key == null) throw new NullPointerException("key == null");
@@ -161,12 +251,52 @@ public final class MutableSpan implements Cloneable {
     }
   }
 
+  /** Allows you to update values for redaction purposes */
+  public void forEachTag(TagUpdater tagUpdater) {
+    for (int i = 0, length = tags.size(); i < length; i += 2) {
+      String value = tags.get(i + 1);
+      String newValue = tagUpdater.update(tags.get(i), value);
+      if (updateOrRemove(tags, i, value, newValue)) {
+        length -= 2;
+        i -= 2;
+      }
+    }
+  }
+
+  /**
+   * Allows you to copy all data into a different target, such as a different span model or logs.
+   */
   public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
     if (annotations == null) return;
     for (int i = 0, length = annotations.size(); i < length; i += 2) {
       long timestamp = (long) annotations.get(i);
       annotationConsumer.accept(target, timestamp, annotations.get(i + 1).toString());
     }
+  }
+
+  /** Allows you to update values for redaction purposes */
+  public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
+    if (annotations == null) return;
+    for (int i = 0, length = annotations.size(); i < length; i += 2) {
+      String value = annotations.get(i + 1).toString();
+      String newValue = annotationUpdater.update((long) annotations.get(i), value);
+      if (updateOrRemove(annotations, i, value, newValue)) {
+        length -= 2;
+        i -= 2;
+      }
+    }
+  }
+
+  /** Returns true if the key/value was removed from the pair-indexed list at index {@code i} */
+  static boolean updateOrRemove(ArrayList list, int i, Object value, @Nullable Object newValue) {
+    if (newValue == null) {
+      list.remove(i);
+      list.remove(i);
+      return true;
+    } else if (!value.equals(newValue)) {
+      list.set(i + 1, newValue);
+    }
+    return false;
   }
 
   /** Returns true if the span ID is {@link #setShared() shared} with a remote client. */

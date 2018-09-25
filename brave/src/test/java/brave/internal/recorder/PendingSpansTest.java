@@ -1,29 +1,45 @@
 package brave.internal.recorder;
 
+import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
-import zipkin2.Endpoint;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PendingSpansTest {
-  Endpoint endpoint = Endpoint.newBuilder().serviceName("PendingSpansTest").build();
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   AtomicInteger clock = new AtomicInteger();
-  PendingSpans map = new PendingSpans(
-      endpoint, () -> clock.incrementAndGet() * 1000L, spans::add, new AtomicBoolean(false));
+  PendingSpans pendingSpans;
+
+  @Before public void init() {
+    init(new FirehoseHandler() {
+      @Override public boolean handle(TraceContext ctx, MutableSpan span) {
+        Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
+        span.forEachAnnotation(Span.Builder::addAnnotation, b);
+        spans.add(b.build());
+        return true;
+      }
+    });
+  }
+
+  void init(FirehoseHandler zipkinFirehoseHandler) {
+    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L, zipkinFirehoseHandler,
+        new AtomicBoolean());
+  }
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
-    PendingSpan span = map.getOrCreate(context, false);
+    PendingSpan span = pendingSpans.getOrCreate(context, false);
 
     assertThat(span).isNotNull();
   }
@@ -34,12 +50,13 @@ public class PendingSpansTest {
     TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
     TraceContext traceJoin = trace.toBuilder().shared(true).build();
     TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
-    TraceContext traceChild = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
+    TraceContext traceChild =
+        TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
-    PendingSpan traceSpan = map.getOrCreate(trace, false);
-    PendingSpan traceJoinSpan = map.getOrCreate(traceJoin, false);
-    PendingSpan trace2Span = map.getOrCreate(trace2, false);
-    PendingSpan traceChildSpan = map.getOrCreate(traceChild, false);
+    PendingSpan traceSpan = pendingSpans.getOrCreate(trace, false);
+    PendingSpan traceJoinSpan = pendingSpans.getOrCreate(traceJoin, false);
+    PendingSpan trace2Span = pendingSpans.getOrCreate(trace2, false);
+    PendingSpan traceChildSpan = pendingSpans.getOrCreate(traceChild, false);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
     assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
@@ -48,8 +65,8 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_cachesReference() {
-    PendingSpan span = map.getOrCreate(context, false);
-    assertThat(map.getOrCreate(context, false)).isSameAs(span);
+    PendingSpan span = pendingSpans.getOrCreate(context, false);
+    assertThat(pendingSpans.getOrCreate(context, false)).isSameAs(span);
   }
 
   @Test
@@ -62,36 +79,38 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    assertThat(map.getOrCreate(context1, false)).isNotEqualTo(map.getOrCreate(context2, false));
+    assertThat(pendingSpans.getOrCreate(context1, false)).isNotEqualTo(
+        pendingSpans.getOrCreate(context2, false));
   }
 
   @Test
   public void getOrCreate_splitsSharedServerDataFromClient() {
     TraceContext context2 = context.toBuilder().shared(true).build();
 
-    assertThat(map.getOrCreate(context, false)).isNotEqualTo(map.getOrCreate(context2, false));
+    assertThat(pendingSpans.getOrCreate(context, false)).isNotEqualTo(
+        pendingSpans.getOrCreate(context2, false));
   }
 
   @Test
   public void remove_clearsReference() {
-    map.getOrCreate(context, false);
-    map.remove(context);
+    pendingSpans.getOrCreate(context, false);
+    pendingSpans.remove(context);
 
-    assertThat(map.delegate).isEmpty();
-    assertThat(map.poll()).isNull();
+    assertThat(pendingSpans.delegate).isEmpty();
+    assertThat(pendingSpans.poll()).isNull();
   }
 
   @Test
   public void remove_doesntReport() {
-    map.getOrCreate(context, false);
-    map.remove(context);
+    pendingSpans.getOrCreate(context, false);
+    pendingSpans.remove(context);
 
     assertThat(spans).isEmpty();
   }
 
   @Test
   public void remove_okWhenDoesntExist() {
-    map.remove(context);
+    pendingSpans.remove(context);
   }
 
   @Test
@@ -104,35 +123,35 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    map.getOrCreate(context1, false);
-    map.getOrCreate(context2, false);
+    pendingSpans.getOrCreate(context1, false);
+    pendingSpans.getOrCreate(context2, false);
 
-    map.remove(context1);
+    pendingSpans.remove(context1);
 
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsOnly(context2);
   }
 
   /** mainly ensures internals aren't dodgy on null */
   @Test
   public void remove_whenSomeReferencesAreCleared() {
-    map.getOrCreate(context, false);
+    pendingSpans.getOrCreate(context, false);
     pretendGCHappened();
-    map.remove(context);
+    pendingSpans.remove(context);
 
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .hasSize(1)
         .containsNull();
   }
 
   @Test
   public void getOrCreate_whenSomeReferencesAreCleared() {
-    map.getOrCreate(context, false);
+    pendingSpans.getOrCreate(context, false);
     pretendGCHappened();
-    map.getOrCreate(context, false);
+    pendingSpans.getOrCreate(context, false);
 
     // we'd expect two distinct entries.. the span would be reported twice, but merged zipkin-side
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsExactlyInAnyOrder(null, context);
   }
 
@@ -142,39 +161,41 @@ public class PendingSpansTest {
    * <p>This is a customized version of https://github.com/raphw/weak-lock-free/blob/master/src/test/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMapTest.java
    */
   @Test
-  public void reportOrphanedSpans_afterGC() {
-    TraceContext context1 = context.toBuilder().spanId(1).build();
-    map.getOrCreate(context1, false);
-    TraceContext context2 = context.toBuilder().spanId(2).build();
-    map.getOrCreate(context2, false);
-    TraceContext context3 = context.toBuilder().spanId(3).build();
-    map.getOrCreate(context3, false);
-    TraceContext context4 = context.toBuilder().spanId(4).build();
-    map.getOrCreate(context4, false);
+  public void reportOrphanedSpans_afterGC() throws Exception {
+    TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
+    pendingSpans.getOrCreate(context1, false);
+    TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
+    pendingSpans.getOrCreate(context2, false);
+    TraceContext context3 = context.toBuilder().traceId(3).spanId(3).build();
+    pendingSpans.getOrCreate(context3, false);
+    TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
+    pendingSpans.getOrCreate(context4, false);
+    // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
+    TraceContext context5 =
+        context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
+    pendingSpans.getOrCreate(context5, false);
 
     int initialClockVal = clock.get();
 
     // By clearing strong references in this test, we are left with the weak ones in the map
-    context1 = context2 = null;
+    context1 = context2 = context5 = null;
     blockOnGC();
 
     // After GC, we expect that the weak references of context1 and context2 to be cleared
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
-        .containsExactlyInAnyOrder(null, null, context3, context4);
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
+        .containsExactlyInAnyOrder(null, null, context3, context4, null);
 
-    map.reportOrphanedSpans();
+    pendingSpans.reportOrphanedSpans();
 
     // After reporting, we expect no the weak references of null
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsExactlyInAnyOrder(context3, context4);
 
-    // We also expect the spans to have been reported
+    // We also expect only the sampled (remote) spans to have been reported with a flush annotation
+    assertThat(spans).flatExtracting(Span::id)
+        .containsExactlyInAnyOrder("0000000000000001", "0000000000000002");
     assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::value)
         .containsExactly("brave.flush", "brave.flush");
-
-    // We also expect the spans reported to have the endpoint of the tracer
-    assertThat(spans).extracting(Span::localEndpoint)
-        .containsExactly(endpoint, endpoint);
 
     // we also expect the clock to have been called only once
     assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::timestamp)
@@ -182,32 +203,32 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void noop_afterGC() {
+  public void noop_afterGC() throws Exception {
     TraceContext context1 = context.toBuilder().spanId(1).build();
-    map.getOrCreate(context1, false);
+    pendingSpans.getOrCreate(context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
-    map.getOrCreate(context2, false);
+    pendingSpans.getOrCreate(context2, false);
     TraceContext context3 = context.toBuilder().spanId(3).build();
-    map.getOrCreate(context3, false);
+    pendingSpans.getOrCreate(context3, false);
     TraceContext context4 = context.toBuilder().spanId(4).build();
-    map.getOrCreate(context4, false);
+    pendingSpans.getOrCreate(context4, false);
 
     int initialClockVal = clock.get();
 
-    map.noop.set(true);
+    pendingSpans.noop.set(true);
 
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
     blockOnGC();
 
     // After GC, we expect that the weak references of context1 and context2 to be cleared
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsExactlyInAnyOrder(null, null, context3, context4);
 
-    map.reportOrphanedSpans();
+    pendingSpans.reportOrphanedSpans();
 
     // After reporting, we expect no the weak references of null
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsExactlyInAnyOrder(context3, context4);
 
     // since this is noop, we don't expect any spans to be reported
@@ -219,50 +240,51 @@ public class PendingSpansTest {
 
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
-  public void reportOrphanedSpans_whenReporterDies() {
-    PendingSpans map = new PendingSpans(endpoint, () -> 0, span ->
-    {
-      throw new RuntimeException("die!");
-    }, new AtomicBoolean(true));
+  public void reportOrphanedSpans_whenReporterDies() throws Exception {
+    init(new FirehoseHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        throw new RuntimeException();
+      }
+    });
 
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    map.getOrCreate(context.toBuilder().build(), false);
+    pendingSpans.getOrCreate(context.toBuilder().build(), false);
 
     blockOnGC();
 
     // Sanity check that the referent trace context cleared due to GC
-    assertThat(map.delegate.keySet()).extracting(o -> ((Reference) o).get())
+    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .hasSize(1)
         .containsNull();
 
     // The innocent caller isn't killed due to the exception in implicitly reporting GC'd spans
-    map.remove(context);
+    pendingSpans.remove(context);
 
     // However, the reference queue has been cleared.
-    assertThat(map.delegate.keySet())
+    assertThat(pendingSpans.delegate.keySet())
         .isEmpty();
   }
 
   /** Debugging should show what the spans are, as well any references pending clear. */
   @Test
   public void toString_saysWhatReferentsAre() {
-    assertThat(map.toString())
+    assertThat(pendingSpans.toString())
         .isEqualTo("PendingSpans[]");
 
-    map.getOrCreate(context, false);
+    pendingSpans.getOrCreate(context, false);
 
-    assertThat(map.toString())
+    assertThat(pendingSpans.toString())
         .isEqualTo("PendingSpans[WeakReference(" + context + ")]");
 
     pretendGCHappened();
 
-    assertThat(map.toString())
+    assertThat(pendingSpans.toString())
         .isEqualTo("PendingSpans[ClearedReference()]");
   }
 
   @Test
   public void realKey_equalToItself() {
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
     assertThat(key).isEqualTo(key);
     key.clear();
     assertThat(key).isEqualTo(key);
@@ -284,8 +306,8 @@ public class PendingSpansTest {
 
   @Test
   public void realKey_equalToEquivalent() {
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
-    PendingSpans.RealKey key2 = new PendingSpans.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
+    PendingSpans.RealKey key2 = new PendingSpans.RealKey(context, pendingSpans);
     assertThat(key).isEqualTo(key2);
     key.clear();
     assertThat(key).isNotEqualTo(key2);
@@ -297,7 +319,7 @@ public class PendingSpansTest {
   public void lookupKey_equalToRealKey() {
     PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
     lookupKey.set(context);
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
     assertThat(lookupKey.equals(key)).isTrue();
     key.clear();
     assertThat(lookupKey.equals(key)).isFalse();
@@ -308,24 +330,19 @@ public class PendingSpansTest {
     context = context.toBuilder().shared(true).build();
     PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
     lookupKey.set(context);
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, map);
+    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
     assertThat(lookupKey.equals(key)).isTrue();
-    key = new PendingSpans.RealKey(context.toBuilder().shared(false).build(), map);
+    key = new PendingSpans.RealKey(context.toBuilder().shared(false).build(), pendingSpans);
     assertThat(lookupKey.equals(key)).isFalse();
   }
 
   /** In reality, this clears a reference even if it is strongly held by the test! */
   void pretendGCHappened() {
-    ((PendingSpans.RealKey) map.delegate.keySet().iterator().next()).clear();
+    ((PendingSpans.RealKey) pendingSpans.delegate.keySet().iterator().next()).clear();
   }
 
-  static void blockOnGC() {
+  static void blockOnGC() throws InterruptedException {
     System.gc();
-    try {
-      Thread.sleep(200L);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new AssertionError(e);
-    }
+    Thread.sleep(200L);
   }
 }

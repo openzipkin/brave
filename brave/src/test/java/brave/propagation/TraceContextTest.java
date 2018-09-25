@@ -1,10 +1,12 @@
 package brave.propagation;
 
 import brave.internal.HexCodec;
+import java.util.Arrays;
 import org.junit.Test;
 
-import static brave.internal.TraceContexts.FLAG_SAMPLED_SET;
-import static brave.internal.TraceContexts.FLAG_SHARED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static brave.internal.InternalPropagation.FLAG_SHARED;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextTest {
@@ -312,5 +314,19 @@ public class TraceContextTest {
         .isFalse();
     assertThat(builder.traceIdHigh).isZero();
     assertThat(builder.traceId).isZero();
+  }
+
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+
+  @Test public void withExtra_notEmpty() {
+    assertThat(context.withExtra(Arrays.asList(1L)))
+        .extracting("extra")
+        .containsExactly(Arrays.asList(1L));
+  }
+
+  @Test public void withExtra_empty() {
+    assertThat(context.toBuilder().extra(Arrays.asList(1L)).build().withExtra(emptyList()))
+        .extracting("extra")
+        .containsExactly(emptyList());
   }
 }

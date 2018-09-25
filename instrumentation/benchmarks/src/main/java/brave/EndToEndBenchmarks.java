@@ -1,9 +1,12 @@
 package brave;
 
+import brave.firehose.FirehoseHandler;
+import brave.firehose.MutableSpan;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
@@ -73,6 +76,24 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class OnlySampledLocal extends ForwardingTracingFilter {
+    public OnlySampledLocal() {
+      super(Tracing.newBuilder()
+          .addFirehoseHandler(new FirehoseHandler() {
+            @Override public boolean handle(TraceContext context, MutableSpan span) {
+              return true;
+            }
+
+            @Override public boolean alwaysSampleLocal() {
+              return true;
+            }
+          })
+          .sampler(Sampler.NEVER_SAMPLE)
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
+    }
+  }
+
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
@@ -107,6 +128,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
         .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
         .addFilterUrlMapping("Unsampled", "/unsampled/api", REQUEST)
+        .addFilter(new FilterInfo("OnlySampledLocal", OnlySampledLocal.class))
+        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal", REQUEST)
+        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal/api", REQUEST)
         .addFilter(new FilterInfo("Traced", Traced.class))
         .addFilterUrlMapping("Traced", "/traced", REQUEST)
         .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
@@ -126,7 +150,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
-        .include(".*" + EndToEndBenchmarks.class.getSimpleName() + ".*")
+        .include(".*"
+            + EndToEndBenchmarks.class.getSimpleName()
+            + ".*(onlySampledLocalServer_get|tracedServer_get)")
         .build();
 
     new Runner(opt).run();
