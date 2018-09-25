@@ -33,6 +33,12 @@ public class MutableSpanTest {
         this.name = name;
         this.value = value;
       }
+
+      @Override public boolean equals(Object o) {
+        if (!(o instanceof Tag)) return false;
+        Tag that = (Tag) o;
+        return name.equals(that.name) && value.equals(that.value);
+      }
     }
 
     // When exporting into a list, a lambda would usually need to close over the list, which results
