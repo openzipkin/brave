@@ -6,12 +6,6 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -33,6 +27,13 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaStreamsTracing {
@@ -44,14 +45,15 @@ public class ITKafkaStreamsTracing {
 
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
-  KafkaTracing kafkaTracing = KafkaTracing.create(Tracing.newBuilder()
+  Tracing tracing = Tracing.newBuilder()
       .localServiceName("streams-app")
       .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
           .addScopeDecorator(StrictScopeDecorator.create())
           .build())
       .spanReporter(spans::add)
-      .build());
-  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(kafkaTracing);
+      .build();
+  KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
+  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 
   Producer<String, String> producer;
   Consumer<String, String> consumer;

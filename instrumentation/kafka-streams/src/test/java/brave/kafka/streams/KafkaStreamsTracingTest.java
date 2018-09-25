@@ -11,8 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class KafkaStreamsTracingTest {
 
   Tracing tracing = Tracing.newBuilder().build();
-  KafkaStreamsTracing kafkaStreamsTracing =
-      KafkaStreamsTracing.create(KafkaTracing.create(tracing));
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 
   @Test public void kafkaClientSupplier_getProducer() {
     Map<String, Object> config = new LinkedHashMap<>();
