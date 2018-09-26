@@ -119,6 +119,7 @@
     <module>context</module>
     <module>instrumentation</module>
     <module>spring-beans</module>
+    <module>brave-extensions</module>
   </modules>
 
   <distributionManagement>
