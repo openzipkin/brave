@@ -120,7 +120,7 @@ public abstract class Span implements SpanCustomizer {
    */
   @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
     if (endpoint == null) return this;
-    remoteServiceName(endpoint.serviceName());
+    if (endpoint.serviceName() != null) remoteServiceName(endpoint.serviceName());
     String ip = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
     remoteIpAndPort(ip, endpoint.portAsInt());
     return this;

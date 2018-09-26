@@ -6,6 +6,7 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Annotation;
+import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -84,6 +85,13 @@ public class RealSpanTest {
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
         .extracting(Annotation::value)
         .containsExactly("foo");
+  }
+
+  @Test public void remoteEndpoint_nulls() {
+    span.remoteEndpoint(Endpoint.newBuilder().build());
+    span.flush();
+
+    assertThat(spans.get(0).remoteEndpoint()).isNull();
   }
 
   @Test public void annotate_timestamp() {

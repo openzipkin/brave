@@ -109,9 +109,8 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When null, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localServiceName(String)
+   * When null {@link brave.Tracing.Builder#localServiceName(String) default} will be used for
+   * zipkin.
    */
   @Nullable public String localServiceName() {
     return localServiceName;
@@ -125,11 +124,7 @@ public final class MutableSpan implements Cloneable {
     this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
   }
 
-  /**
-   * When null, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localIp(String)
-   */
+  /** When null {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
   @Nullable public String localIp() {
     return localIp;
   }
@@ -140,11 +135,7 @@ public final class MutableSpan implements Cloneable {
     return true;
   }
 
-  /**
-   * When zero, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localPort(int)
-   */
+  /** When zero {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
   public int localPort() {
     return localPort;
   }
