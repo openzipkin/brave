@@ -23,6 +23,10 @@ import brave.internal.Nullable;
  *
  * <p>If you want a different behavior, use a different subtype of {@link CurrentTraceContext},
  * possibly your own, or raise an issue and explain what your use case is.
+ *
+ * <p>This uses a mutable reference to avoid expensive operations implied by {@link ThreadLocal#set(Object)}.
+ * Credit to Trask Stalnaker from the FastThreadLocal library in glowroot. One small change is that
+ * we don't use an brave-defined holder object as that would prevent class unloading.
  */
 public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not final for backport
   public static CurrentTraceContext create() {
@@ -43,14 +47,14 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
     }
   }
 
-  static final ThreadLocal<TraceContext> DEFAULT = new ThreadLocal<>();
+  static final ThreadLocal<Object[]> DEFAULT = new ThreadLocal<>();
 
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
-  final ThreadLocal<TraceContext> local;
+  final ThreadLocal<Object[]> local;
 
   ThreadLocalCurrentTraceContext(
       CurrentTraceContext.Builder builder,
-      ThreadLocal<TraceContext> local
+      ThreadLocal<Object[]> local
   ) {
     super(builder);
     if (local == null) throw new NullPointerException("local == null");
@@ -58,18 +62,32 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   }
 
   @Override public TraceContext get() {
-    return local.get();
+    return (TraceContext) currentTraceContext()[0];
   }
 
   @Override public Scope newScope(@Nullable TraceContext currentSpan) {
-    final TraceContext previous = local.get();
-    local.set(currentSpan);
+    Object[] ref = currentTraceContext();
+    final TraceContext previous = (TraceContext) ref[0];
+    ref[0] = currentSpan;
     class ThreadLocalScope implements Scope {
       @Override public void close() {
-        local.set(previous);
+        ref[0] = previous;
       }
     }
     Scope result = new ThreadLocalScope();
     return decorateScope(currentSpan, result);
+  }
+
+  /**
+   * This uses an object array to avoid leaking a Brave type onto a thread local. If we used a Brave
+   * type, it would prevent unloading Brave classes.
+   */
+  Object[] currentTraceContext() {
+    Object[] ref = local.get();
+    if (ref == null) {
+      ref = new Object[1];
+      local.set(ref);
+    }
+    return ref;
   }
 }

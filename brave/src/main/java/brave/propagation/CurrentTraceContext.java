@@ -175,7 +175,8 @@ public abstract class CurrentTraceContext {
    */
   public static final class Default extends ThreadLocalCurrentTraceContext {
     // Inheritable as Brave 3's ThreadLocalServerClientAndLocalSpanState was inheritable
-    static final InheritableThreadLocal<TraceContext> INHERITABLE = new InheritableThreadLocal<>();
+    static final InheritableThreadLocal<Object[]> INHERITABLE =
+        new InheritableThreadLocal<>();
 
     /** Uses a non-inheritable static thread local */
     public static CurrentTraceContext create() {
