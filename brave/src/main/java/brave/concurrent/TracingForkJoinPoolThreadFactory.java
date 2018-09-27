@@ -1,4 +1,4 @@
-package brave.extensions.java7.propagation;
+package brave.concurrent;
 
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
