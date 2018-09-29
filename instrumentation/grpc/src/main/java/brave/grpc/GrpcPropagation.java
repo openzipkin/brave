@@ -42,23 +42,19 @@ final class GrpcPropagation<K> implements Propagation<K> {
       this.delegate = delegate;
     }
 
-    @Override
-    public boolean supportsJoin() {
+    @Override public boolean supportsJoin() {
       return false;
     }
 
-    @Override
-    public boolean requires128BitTraceId() {
+    @Override public boolean requires128BitTraceId() {
       return true;
     }
 
-    @Override
-    public final <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+    @Override public final <K> Propagation<K> create(KeyFactory<K> keyFactory) {
       return new GrpcPropagation<>(this, keyFactory);
     }
 
-    @Override
-    public TraceContext decorate(TraceContext context) {
+    @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegate.decorate(context);
       return tagsFactory.decorate(result);
     }
@@ -72,18 +68,15 @@ final class GrpcPropagation<K> implements Propagation<K> {
     this.extraFactory = factory.tagsFactory;
   }
 
-  @Override
-  public List<K> keys() {
+  @Override public List<K> keys() {
     return delegate.keys();
   }
 
-  @Override
-  public <C> Injector<C> injector(Setter<C, K> setter) {
+  @Override public <C> Injector<C> injector(Setter<C, K> setter) {
     return new GrpcInjector<>(this, setter);
   }
 
-  @Override
-  public <C> Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
     return new GrpcExtractor<>(this, getter);
   }
 
@@ -96,8 +89,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
       this.setter = setter;
     }
 
-    @Override
-    public void inject(TraceContext traceContext, C carrier) {
+    @Override public void inject(TraceContext traceContext, C carrier) {
       if (carrier instanceof Metadata) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(traceContext);
         ((Metadata) carrier).put(GRPC_TRACE_BIN, serialized);
@@ -117,13 +109,10 @@ final class GrpcPropagation<K> implements Propagation<K> {
       this.getter = getter;
     }
 
-    @Override
-    public TraceContextOrSamplingFlags extract(C carrier) {
+    @Override public TraceContextOrSamplingFlags extract(C carrier) {
       Tags tags = null;
       if (carrier instanceof Metadata) {
-        Map<String, String> extractedTags = ((Metadata) carrier).get(GRPC_TAGS_BIN);
-        // Remove the incoming RPC method as we should replace it with our current server method.
-        if (extractedTags != null) tags = new Tags(extractedTags, extractedTags.remove(RPC_METHOD));
+        tags = extractTags(((Metadata) carrier).get(GRPC_TAGS_BIN));
         byte[] bytes = ((Metadata) carrier).get(GRPC_TRACE_BIN);
         if (bytes != null) {
           TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
@@ -137,20 +126,24 @@ final class GrpcPropagation<K> implements Propagation<K> {
   }
 
   static final class TagsFactory extends PropagationFieldsFactory<Tags> {
-    @Override
-    protected Class type() {
+    @Override public Class<Tags> type() {
       return Tags.class;
     }
 
-    @Override
-    protected Tags create() {
+    @Override protected Tags create() {
       return new Tags();
     }
 
-    @Override
-    protected Tags create(Tags parent) {
+    @Override protected Tags create(Tags parent) {
       return new Tags(parent);
     }
+  }
+
+  static Tags extractTags(Map<String, String> extracted) {
+    if (extracted == null) return null;
+    // Remove the incoming RPC method as we should replace it with our current server method.
+    String parentMethod = extracted.remove(RPC_METHOD);
+    return new Tags(extracted, parentMethod);
   }
 
   static final class Tags extends MapPropagationFields {
@@ -162,7 +155,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
 
     Tags(Tags parent) {
       super(parent);
-      parentMethod = null;
+      parentMethod = parent.parentMethod;
     }
 
     Tags(Map<String, String> extracted, String parentMethod) {

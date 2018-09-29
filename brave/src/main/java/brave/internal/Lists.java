@@ -6,7 +6,7 @@ import java.util.List;
 
 public final class Lists {
 
-  static List<Object> ensureMutable(List<Object> list) {
+  public static List<Object> ensureMutable(List<Object> list) {
     if (list instanceof ArrayList) return list;
     int size = list.size();
     ArrayList<Object> mutable = new ArrayList<>(size);

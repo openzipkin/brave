@@ -6,10 +6,10 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest {
-  @Override PropagationFieldsFactory newFactory() {
+public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPropagationFields> {
+  @Override protected PropagationFieldsFactory<MapPropagationFields> newFactory() {
     return new PropagationFieldsFactory<MapPropagationFields>() {
-      @Override protected Class<MapPropagationFields> type() {
+      @Override public Class<MapPropagationFields> type() {
         return MapPropagationFields.class;
       }
 
@@ -24,7 +24,7 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest {
   }
 
   @Test public void put_allows_arbitrary_field() {
-    MapPropagationFields fields = (MapPropagationFields) factory.create();
+    MapPropagationFields fields = factory.create();
 
     fields.put("balloon-color", "red");
 
@@ -33,7 +33,7 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest {
   }
 
   @Test public void put_idempotent() {
-    MapPropagationFields fields = (MapPropagationFields) factory.create();
+    MapPropagationFields fields = factory.create();
 
     fields.put("balloon-color", "red");
     Map<String, String> fieldsMap = fields.values;
@@ -48,7 +48,7 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest {
   }
 
   @Test public void unmodifiable() {
-    MapPropagationFields fields = (MapPropagationFields) factory.create();
+    MapPropagationFields fields = factory.create();
 
     fields.put(FIELD1, "a");
 
