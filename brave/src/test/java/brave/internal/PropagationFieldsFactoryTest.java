@@ -2,42 +2,19 @@ package brave.internal;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.List;
 import org.junit.Test;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public abstract class PropagationFieldsFactoryTest {
+public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
+    extends ExtraFactoryTest<P, PropagationFieldsFactory<P>> {
   static final String FIELD1 = "foo";
   static final String FIELD2 = "bar";
-
-  PropagationFieldsFactory factory = newFactory();
-
-  abstract PropagationFieldsFactory newFactory();
-
-  Propagation.Factory propagationFactory = new Propagation.Factory() {
-    @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-      return B3Propagation.FACTORY.create(keyFactory);
-    }
-
-    @Override public TraceContext decorate(TraceContext context) {
-      return factory.decorate(context);
-    }
-  };
-
-  TraceContext context = propagationFactory.decorate(TraceContext.newBuilder()
-      .traceId(1L)
-      .spanId(2L)
-      .sampled(true)
-      .build());
 
   @Test public void contextsAreIndependent() {
     try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
@@ -51,8 +28,8 @@ public abstract class PropagationFieldsFactoryTest {
           .isNotSameAs(context2.findExtra(factory.type()));
 
       // But have the same values
-      assertThat(context1.<PropagationFields>findExtra(factory.type()).toMap())
-          .isEqualTo(context2.<PropagationFields>findExtra(factory.type()).toMap());
+      assertThat(context1.findExtra(factory.type()).toMap())
+          .isEqualTo(context2.findExtra(factory.type()).toMap());
       assertThat(PropagationFields.get(context1, FIELD1, factory.type()))
           .isEqualTo(PropagationFields.get(context2, FIELD1, factory.type()))
           .isEqualTo("1");
@@ -141,37 +118,6 @@ public abstract class PropagationFieldsFactoryTest {
     }
   }
 
-  @Test public void decorate_empty() {
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L))).extra())
-        .containsExactly(1L, factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, 2L))).extra())
-        .containsExactly(1L, 2L, factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(factory.create()))).extra())
-        .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(factory.create(), 1L))).extra())
-        .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, factory.create()))).extra())
-        .containsExactly(1L, factory.create());
-
-    PropagationFields claimedBySelf = factory.create();
-    claimedBySelf.tryToClaim(context.traceId(), context.spanId());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedBySelf))).extra())
-        .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedBySelf, 1L))).extra())
-        .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, claimedBySelf))).extra())
-        .containsExactly(1L, factory.create());
-
-    PropagationFields claimedByOther = factory.create();
-    claimedBySelf.tryToClaim(99L, 99L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedByOther))).extra())
-        .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedByOther, 1L))).extra())
-        .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, claimedByOther))).extra())
-        .containsExactly(1L, factory.create());
-  }
-
   @Test public void nextSpanExtraWithImplicitParent_butNoImplicitExtraFields() {
     try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
 
@@ -246,26 +192,10 @@ public abstract class PropagationFieldsFactoryTest {
         .isNull();
   }
 
-  @Test public void idempotent() {
-    List<Object> originalExtra = context.extra();
-    assertThat(propagationFactory.decorate(context).extra())
-        .isSameAs(originalExtra);
-  }
-
-  @Test public void toSpan_selfLinksContext() {
-    try (Tracing t = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
-      ScopedSpan parent = t.tracer().startScopedSpan("parent");
-      try {
-        PropagationFields.put(parent.context(), FIELD2, "a", factory.type());
-
-        PropagationFields fields = (PropagationFields) parent.context().extra().get(0);
-
-        assertThat(fields).extracting("traceId", "spanId")
-            .containsExactly(parent.context().traceId(), parent.context().spanId());
-      } finally {
-        parent.finish();
-      }
-    }
+  @Override
+  protected void assertAssociatedWith(PropagationFields extra, long traceId, long spanId) {
+    assertThat(extra.traceId).isEqualTo(traceId);
+    assertThat(extra.spanId).isEqualTo(spanId);
   }
 
   @Test public void toMap_one() {
@@ -303,9 +233,5 @@ public abstract class PropagationFieldsFactoryTest {
 
     assertThat(fields.toString())
         .contains("{foo=1, bar=a}");
-  }
-
-  static TraceContext contextWithExtra(TraceContext context, List<Object> extra){
-    return InternalPropagation.instance.withExtra(context, extra);
   }
 }

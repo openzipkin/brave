@@ -3,7 +3,14 @@ package brave.internal;
 import brave.propagation.TraceContext;
 import java.util.Map;
 
-/** Copy-on-write keeps propagation changes in a child context from affecting its parent */
+/**
+ * We need to retain propagation state extracted from headers. However, we don't know the trace
+ * identifiers, yet. In order to resolve this ordering concern, we create an object to hold extra
+ * state, and defer associating it with a span ID (via {@link PropagationFieldsFactory#decorate(TraceContext)}.
+ *
+ * <p>Implementations of this type should use copy-on-write semantics to prevent changes in a child
+ * context from affecting its parent.
+ */
 public abstract class PropagationFields {
   long traceId, spanId; // guarded by this
 

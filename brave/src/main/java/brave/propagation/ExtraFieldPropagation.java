@@ -369,7 +369,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       this.fieldNames = fieldNames;
     }
 
-    @Override protected Class<Extra> type() {
+    @Override public Class<Extra> type() {
       return Extra.class;
     }
 
