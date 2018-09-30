@@ -26,8 +26,8 @@ class TracingProcessorSupplier<K, V> implements ProcessorSupplier<K, V> {
         this.delegateProcessor = delegateProcessor;
     }
 
-    @Override
-    public Processor<K, V> get() {
+    /** This wraps transform method to add tracing. */
+    @Override public Processor<K, V> get() {
         return new Processor<K, V>() {
             ProcessorContext processorContext;
 

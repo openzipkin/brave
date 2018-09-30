@@ -149,7 +149,7 @@ public class ITKafkaStreamsTracing {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
         Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
-    return new KafkaStreams(topology, properties, kafkaStreamsTracing.kafkaClientSupplier());
+    return kafkaStreamsTracing.kafkaStreams(topology, properties);
   }
 
   Producer<String, String> createTracingProducer() {

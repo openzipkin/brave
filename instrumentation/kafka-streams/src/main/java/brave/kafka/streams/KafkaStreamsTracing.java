@@ -18,7 +18,7 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 
 import java.util.Properties;
 
-/**  */
+/** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
 
   public static KafkaStreamsTracing create(Tracing tracing) {
@@ -42,15 +42,6 @@ public final class KafkaStreamsTracing {
     }
   }
 
-  Span nextSpan(ProcessorContext context) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
-    Span result = tracing.tracer().nextSpan(extracted);
-    if (extracted.context() == null && !result.isNoop()) {
-      addTags(context, result);
-    }
-    return result;
-  }
-
   final Tracing tracing;
   final TraceContext.Extractor<Headers> extractor;
 
@@ -60,30 +51,22 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   *
-   * @param topology
-   * @param streamsConfig
-   * @return
+   * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}.
+   * All Topology Sources and Sinks (including internal Topics) will create a Spans on records processed.
    */
   public KafkaStreams kafkaStreams(Topology topology, Properties streamsConfig) {
     return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier());
   }
 
   /**
-   *
-   * @param name
-   * @param processor
-   * @return
+   * Create a tracing-decorated {@link ProcessorSupplier}
    */
   public <K, V> ProcessorSupplier<K, V> processorSupplier(String name, Processor<K, V> processor) {
     return new TracingProcessorSupplier<>(this, name, processor);
   }
 
   /**
-   *
-   * @param name
-   * @param transformer
-   * @return
+   * Create a tracing-decorated {@link TransformerSupplier}
    */
   public <K, V, R>TransformerSupplier<K, V, R> transformerSupplier(String name, Transformer<K, V, R> transformer) {
     return new TracingTransformerSupplier<>(this, name, transformer);
@@ -93,6 +76,15 @@ public final class KafkaStreamsTracing {
   KafkaClientSupplier kafkaClientSupplier() {
     KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
     return new TracingKafkaClientSupplier(kafkaTracing);
+  }
+
+  Span nextSpan(ProcessorContext context) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
+    Span result = tracing.tracer().nextSpan(extracted);
+    if (extracted.context() == null && !result.isNoop()) {
+      addTags(context, result);
+    }
+    return result;
   }
 
   static void addTags(ProcessorContext processorContext, SpanCustomizer result) {

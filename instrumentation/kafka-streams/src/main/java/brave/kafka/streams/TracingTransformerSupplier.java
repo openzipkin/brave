@@ -6,9 +6,6 @@ import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-/**
- *
- */
 class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R> {
     final KafkaStreamsTracing kafkaStreamsTracing;
     final Tracer tracer;
@@ -24,8 +21,8 @@ class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R
         this.delegateTransformer = delegateTransformer;
     }
 
-    @Override
-    public Transformer<K, V, R> get() {
+    /** This wraps transform method to add tracing. */
+    @Override public Transformer<K, V, R> get() {
         return new Transformer<K, V, R>() {
             ProcessorContext processorContext;
 
