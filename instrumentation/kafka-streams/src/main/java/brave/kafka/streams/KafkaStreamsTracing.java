@@ -25,10 +25,6 @@ public final class KafkaStreamsTracing {
     return new KafkaStreamsTracing.Builder(tracing).build();
   }
 
-  public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
-  }
-
   public static final class Builder {
     final Tracing tracing;
 
