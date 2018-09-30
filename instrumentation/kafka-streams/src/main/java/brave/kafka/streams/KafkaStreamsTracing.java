@@ -1,53 +1,102 @@
 package brave.kafka.streams;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 
-/** Use this class to decorate your Kafka Streams client. */
+import java.util.Properties;
+
+/**  */
 public final class KafkaStreamsTracing {
 
   public static KafkaStreamsTracing create(Tracing tracing) {
-    return new KafkaStreamsTracing(tracing);
+    return new KafkaStreamsTracing.Builder(tracing).build();
   }
 
-  final Tracing tracing;
-  final KafkaTracing kafkaTracing;
-  final TraceContext.Extractor<Headers> extractor;
-
-  KafkaStreamsTracing(Tracing tracing) { // intentionally hidden constructor
-    this.tracing = tracing;
-    this.extractor = tracing.propagation().extractor(KafkaStreamsPropagation.GETTER);
-    this.kafkaTracing = KafkaTracing.create(tracing);
+  public static Builder newBuilder(Tracing tracing) {
+    return new Builder(tracing);
   }
 
+  public static final class Builder {
+    final Tracing tracing;
 
-  public Span nextSpan(ProcessorContext context) {
+    Builder(Tracing tracing) {
+      if (tracing == null) throw new NullPointerException("tracing == null");
+      this.tracing = tracing;
+    }
+
+    public KafkaStreamsTracing build() {
+      return new KafkaStreamsTracing(this);
+    }
+  }
+
+  Span nextSpan(ProcessorContext context) {
     TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
     Span result = tracing.tracer().nextSpan(extracted);
+    if (extracted.context() == null && !result.isNoop()) {
+      addTags(context, result);
+    }
     return result;
   }
 
+  final Tracing tracing;
+  final TraceContext.Extractor<Headers> extractor;
+
+  KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
+    this.tracing = builder.tracing;
+    this.extractor = tracing.propagation().extractor(KafkaStreamsPropagation.GETTER);
+  }
+
+  /**
+   *
+   * @param topology
+   * @param streamsConfig
+   * @return
+   */
+  public KafkaStreams kafkaStreams(Topology topology, Properties streamsConfig) {
+    return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier());
+  }
+
+  /**
+   *
+   * @param name
+   * @param processor
+   * @return
+   */
   public <K, V> ProcessorSupplier<K, V> processorSupplier(String name, Processor<K, V> processor) {
     return new TracingProcessorSupplier<>(this, name, processor);
   }
 
+  /**
+   *
+   * @param name
+   * @param transformer
+   * @return
+   */
   public <K, V, R>TransformerSupplier<K, V, R> transformerSupplier(String name, Transformer<K, V, R> transformer) {
     return new TracingTransformerSupplier<>(this, name, transformer);
   }
 
   /** Returns a client supplier which traces send and receive operations. */
-  public KafkaClientSupplier kafkaClientSupplier() {
+  KafkaClientSupplier kafkaClientSupplier() {
+    KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
     return new TracingKafkaClientSupplier(kafkaTracing);
+  }
+
+  static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, processorContext.applicationId());
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processorContext.taskId().toString());
   }
 }

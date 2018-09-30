@@ -6,13 +6,16 @@ import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-public class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R> {
+/**
+ *
+ */
+class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R> {
     final KafkaStreamsTracing kafkaStreamsTracing;
     final Tracer tracer;
     final String name;
     final Transformer<K, V, R> delegateTransformer;
 
-    public TracingTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
+    TracingTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
                                       String name,
                                       Transformer<K, V, R> delegateTransformer) {
         this.kafkaStreamsTracing = kafkaStreamsTracing;
@@ -38,7 +41,7 @@ public class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<
                 if (!span.isNoop()) {
                     span.name(name);
                     if (k instanceof String && !"".equals(k)) {
-                        span.tag(KafkaStreamsTags.KAFKA_KEY_TAG, k.toString());
+                        span.tag(KafkaStreamsTags.KAFKA_STREAMS_KEY_TAG, k.toString());
                     }
                     span.start();
                 }
@@ -46,8 +49,10 @@ public class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<
                 try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
                     return delegateTransformer.transform(k, v);
                 } catch (RuntimeException | Error e) {
-                    span.error(e).finish(); // finish as an exception means the callback won't finish the span
+                    span.error(e); // finish as an exception means the callback won't finish the span
                     throw e;
+                } finally {
+                    span.finish();
                 }
             }
 

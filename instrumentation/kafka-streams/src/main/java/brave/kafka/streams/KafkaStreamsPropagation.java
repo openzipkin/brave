@@ -17,20 +17,6 @@ final class KafkaStreamsPropagation {
 
   static final Charset UTF_8 = Charset.forName("UTF-8");
 
-  static final TraceContext TEST_CONTEXT = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
-  static final Headers B3_SINGLE_TEST_HEADERS =
-      new RecordHeaders().add("b3", writeB3SingleFormat(TEST_CONTEXT).getBytes(UTF_8));
-
-  static final Injector<Headers> B3_SINGLE_INJECTOR = new Injector<Headers>() {
-    @Override public void inject(TraceContext traceContext, Headers carrier) {
-      carrier.add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
-    }
-
-    @Override public String toString() {
-      return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
-    }
-  };
-
   static final Getter<Headers, String> GETTER = (carrier, key) -> {
     Header header = carrier.lastHeader(key);
     if (header == null) return null;
