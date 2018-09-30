@@ -4,10 +4,11 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTest {
-  @Override PropagationFieldsFactory newFactory() {
+public class PredefinedPropagationFieldsTest
+    extends PropagationFieldsFactoryTest<PredefinedPropagationFields> {
+  @Override protected PropagationFieldsFactory newFactory() {
     return new PropagationFieldsFactory<PredefinedPropagationFields>() {
-      @Override protected Class<PredefinedPropagationFields> type() {
+      @Override public Class<PredefinedPropagationFields> type() {
         return PredefinedPropagationFields.class;
       }
 
@@ -29,7 +30,7 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void put_ignore_if_not_defined_index() {
-    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+    PredefinedPropagationFields fields = factory.create();
 
     fields.put(4, "red");
 
@@ -38,7 +39,7 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void put_idempotent() {
-    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+    PredefinedPropagationFields fields = factory.create();
 
     fields.put("foo", "red");
     String[] fieldsArray = fields.values;
@@ -53,14 +54,14 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void get_ignore_if_not_defined_index() {
-    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+    PredefinedPropagationFields fields = factory.create();
 
     assertThat(fields.get(4))
         .isNull();
   }
 
   @Test public void toMap_one_index() {
-    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+    PredefinedPropagationFields fields = factory.create();
     fields.put(1, "a");
 
     assertThat(fields.toMap())
@@ -69,7 +70,7 @@ public class PredefinedPropagationFieldsTest extends PropagationFieldsFactoryTes
   }
 
   @Test public void toMap_two_index() {
-    PredefinedPropagationFields fields = (PredefinedPropagationFields) factory.create();
+    PredefinedPropagationFields fields = factory.create();
     fields.put(0, "1");
     fields.put(1, "a");
 

@@ -952,6 +952,41 @@ Propagating a trace context instead of a span is a right fit for several reasons
 * Common tasks like making child spans and staining log context only need the context
 * Brave's recorder is keyed on context, so there's no feature loss in this choice
 
+### Local Sampling flag
+The [Census](https://opencensus.io/) project has a concept of a[SampledSpanStore](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SampledSpanStore.java).
+Typically, you configure a span name pattern or choose [individual spans](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/api/src/main/java/io/opencensus/trace/EndSpanOptions.java#L65)
+for local (in-process) storage. This storage is used to power
+administrative pages named zPages. For example, [Tracez](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/contrib/zpages/src/main/java/io/opencensus/contrib/zpages/TracezZPageHandler.java#L220)
+displays spans sampled locally which have errors or crossed a latency
+threshold.
+
+The "sample local" vocab in Census was re-used in Brave to describe the
+act of keeping data that isn't going to necessarily end up in Zipkin.
+
+The main difference in Brave is implementation. For example, the `sampledLocal`
+flag in Brave is a part of the TraceContext and so can be triggered when
+headers are parsed. This is needed to provide custom sampling mechanisms.
+Also, Brave has a small core library and doesn't package any specific
+storage abstraction, admin pages or latency processors. As such, we can't
+define specifically what sampled local means as Census' could. All it
+means is that `FinishedSpanHandler` will see data for that trace context.
+
+### FinishedSpanHandler Api
+Brave had for a long time re-used zipkin's Reporter library, which is
+like Census' SpanExporter in so far that they both allow pushing a specific
+format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
+is a little more like Census' [SpanExporter.Handler](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SpanExporter.java)
+in so far as the structure includes the trace context.. something we need
+access to in order to do things like advanced sampling.
+
+Where it differs is that the `MutableSpan` in Brave is.. well.. mutable,
+and this allows you to cheaply change data. Also, it isn't a struct based
+on a proto, so it can hold references to objects like `Exception`. This
+allows us to render data into different formats such as [Amazon's stack frames](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-segmentdocuments.html)
+without having to guess what will be needed by parsing up front. As
+error parsing is deferred, overhead is less in cases where errors are not
+recorded (such as is the case on spans intentionally dropped).
+
 ### Public namespace
 Brave 4's public namespace is more defensive that the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).

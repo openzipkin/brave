@@ -1,5 +1,6 @@
 package brave.grpc;
 
+import brave.ScopedSpan;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
@@ -28,7 +29,6 @@ import io.opencensus.testing.export.TestHandler;
 import io.opencensus.trace.config.TraceParams;
 import io.opencensus.trace.export.SpanData;
 import io.opencensus.trace.samplers.Samplers;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -44,6 +44,7 @@ import static io.opencensus.trace.AttributeValue.stringAttributeValue;
 import static io.opencensus.trace.Tracing.getExportComponent;
 import static io.opencensus.trace.Tracing.getTraceConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class ITCensusInterop {
 
@@ -70,15 +71,27 @@ public class ITCensusInterop {
       // Read in-process tags from brave's grpc hooks and write to both span apis
       TraceContext currentTraceContext =
           tracing != null ? tracing.currentTraceContext().get() : null;
-      Map<String, String> braveTags =
-          currentTraceContext != null
-              ? currentTraceContext.findExtra(brave.grpc.GrpcPropagation.Tags.class).toMap()
-              : Collections.emptyMap();
-      for (Map.Entry<String, String> entry : braveTags.entrySet()) {
-        spanCustomizer.tag(entry.getKey(), entry.getValue());
-        censusSpan.putAttribute(entry.getKey(), stringAttributeValue(entry.getValue()));
+      if (currentTraceContext == null) {
+        super.sayHello(req, responseObserver);
+        return;
       }
-      super.sayHello(req, responseObserver);
+      ScopedSpan child = tracing.tracer().startScopedSpanWithParent("child", currentTraceContext);
+      try {
+        GrpcPropagation.Tags tags = child.context().findExtra(GrpcPropagation.Tags.class);
+
+        if (tags.parentMethod != null) {
+          child.tag("parentMethod", tags.parentMethod);
+          censusSpan.putAttribute("parentMethod", stringAttributeValue(tags.parentMethod));
+        }
+
+        for (Map.Entry<String, String> entry : tags.toMap().entrySet()) {
+          child.tag(entry.getKey(), entry.getValue());
+          censusSpan.putAttribute(entry.getKey(), stringAttributeValue(entry.getValue()));
+        }
+        super.sayHello(req, responseObserver);
+      } finally {
+        child.finish();
+      }
     }
   }
 
@@ -142,12 +155,19 @@ public class ITCensusInterop {
     // this takes 5 seconds due to hard-coding in ExportComponentImpl
     SpanData clientSpan = testHandler.waitForExport(1).get(0);
 
-    Span serverSpan = takeSpan();
+    Span serverSpan = takeSpan(), childSpan = takeSpan();
     assertThat(clientSpan.getContext().getTraceId().toLowerBase16())
         .isEqualTo(serverSpan.traceId());
     assertThat(clientSpan.getContext().getSpanId().toLowerBase16())
         .isEqualTo(serverSpan.parentId());
-    assertThat(serverSpan.tags()).containsEntry("method", "helloworld.Greeter/SayHello");
+    assertThat(serverSpan.tags()).containsExactly(
+        entry("method", "helloworld.Greeter/SayHello")
+    );
+
+    // Show that parentMethod inherits in-process
+    assertThat(childSpan.tags()).containsExactly(
+        entry("parentMethod", "edge.Ingress/InitialRoute")
+    );
   }
 
   @Test

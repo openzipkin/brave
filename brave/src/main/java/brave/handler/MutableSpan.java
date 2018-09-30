@@ -109,9 +109,8 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * When null, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localServiceName(String)
+   * When null {@link brave.Tracing.Builder#localServiceName(String) default} will be used for
+   * zipkin.
    */
   @Nullable public String localServiceName() {
     return localServiceName;
@@ -125,11 +124,7 @@ public final class MutableSpan implements Cloneable {
     this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
   }
 
-  /**
-   * When null, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localIp(String)
-   */
+  /** When null {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
   @Nullable public String localIp() {
     return localIp;
   }
@@ -140,11 +135,7 @@ public final class MutableSpan implements Cloneable {
     return true;
   }
 
-  /**
-   * When zero, {@link FinishedSpanHandler#create(String, String, int) default} will be used.
-   *
-   * @see brave.Tracing.Builder#localPort(int)
-   */
+  /** When zero {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
   public int localPort() {
     return localPort;
   }
@@ -234,7 +225,7 @@ public final class MutableSpan implements Cloneable {
   public void tag(String key, String value) {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
-    if (value == null) throw new NullPointerException("value == null");
+    if (value == null) throw new NullPointerException("value of " + key + " == null");
     for (int i = 0, length = tags.size(); i < length; i += 2) {
       if (key.equals(tags.get(i))) {
         tags.set(i + 1, value);
