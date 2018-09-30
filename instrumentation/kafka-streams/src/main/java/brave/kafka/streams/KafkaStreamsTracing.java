@@ -81,7 +81,7 @@ public final class KafkaStreamsTracing {
   Span nextSpan(ProcessorContext context) {
     TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
     Span result = tracing.tracer().nextSpan(extracted);
-    if (extracted.context() == null && !result.isNoop()) {
+    if (!result.isNoop()) {
       addTags(context, result);
     }
     return result;

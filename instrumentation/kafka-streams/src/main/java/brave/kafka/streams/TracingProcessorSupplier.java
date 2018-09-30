@@ -2,14 +2,10 @@ package brave.kafka.streams;
 
 import brave.Span;
 import brave.Tracer;
-import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 
-/**
- *
- */
 class TracingProcessorSupplier<K, V> implements ProcessorSupplier<K, V> {
 
     final KafkaStreamsTracing kafkaStreamsTracing;
@@ -18,8 +14,8 @@ class TracingProcessorSupplier<K, V> implements ProcessorSupplier<K, V> {
     final Processor<K, V> delegateProcessor;
 
     TracingProcessorSupplier(KafkaStreamsTracing kafkaStreamsTracing,
-                                    String name,
-                                    Processor<K, V> delegateProcessor) {
+                             String name,
+                             Processor<K, V> delegateProcessor) {
         this.kafkaStreamsTracing = kafkaStreamsTracing;
         this.tracer = kafkaStreamsTracing.tracing.tracer();
         this.name = name;
