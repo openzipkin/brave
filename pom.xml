@@ -502,6 +502,9 @@
               <artifactId>${main.signature.artifact}</artifactId>
               <version>1.0</version>
             </signature>
+            <ignores>
+              <ignore>java.util.concurrent.ForkJoin*</ignore>
+            </ignores>
           </configuration>
           <executions>
             <execution>
