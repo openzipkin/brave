@@ -1,5 +1,7 @@
 package brave.internal;
 
+import brave.ScopedSpan;
+import brave.Span;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import java.util.List;
@@ -20,6 +22,7 @@ public abstract class InternalPropagation {
   public static final int FLAG_DEBUG = 1 << 3;
   public static final int FLAG_SHARED = 1 << 4;
   public static final int FLAG_SAMPLED_LOCAL = 1 << 5;
+  public static final int FLAG_LOCAL_ROOT = 1 << 6;
 
   public static InternalPropagation instance;
 
@@ -35,10 +38,14 @@ public abstract class InternalPropagation {
     return flags;
   }
 
+  /**
+   * @param localRootId must be non-zero prior to instantiating {@link Span} or {@link ScopedSpan}
+   */
   public abstract TraceContext newTraceContext(
       int flags,
       long traceIdHigh,
       long traceId,
+      long localRootId,
       long parentId,
       long spanId,
       List<Object> extra

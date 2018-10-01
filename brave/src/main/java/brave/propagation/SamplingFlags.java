@@ -23,9 +23,9 @@ public class SamplingFlags {
       }
 
       @Override
-      public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId, long parentId,
-          long spanId, List<Object> extra) {
-        return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+      public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId,
+          long localRootId, long parentId, long spanId, List<Object> extra) {
+        return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
       }
 
       @Override public TraceContext withExtra(TraceContext context, List<Object> extra) {

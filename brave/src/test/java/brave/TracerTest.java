@@ -1,6 +1,9 @@
 package brave;
 
+import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -11,7 +14,10 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
@@ -95,14 +101,16 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting(
+        "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting(
+        "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
         .containsExactly("unknown");
   }
 
@@ -127,7 +135,7 @@ public class TracerTest {
         .isNotZero();
   }
 
-  @Test public void newTrace_unsampled_tracer() {
+  @Test public void newTrace_notSampled_tracer() {
     tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
 
     assertThat(tracer.newTrace())
@@ -150,8 +158,8 @@ public class TracerTest {
    * other for the server.
    */
   @Test public void join_sharedDataIsSeparate() {
-    Span clientSide = tracer.newTrace().kind(Span.Kind.CLIENT).start(1L);
-    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Span.Kind.SERVER).start(2L);
+    Span clientSide = tracer.newTrace().kind(Kind.CLIENT).start(1L);
+    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Kind.SERVER).start(2L);
     serverSide.finish(3L);
     clientSide.finish(4L);
 
@@ -285,11 +293,11 @@ public class TracerTest {
         .isInstanceOf(RealSpan.class);
   }
 
-  @Test public void toSpan_unsampledIsNoop() {
-    TraceContext unsampled =
+  @Test public void toSpan_notSampledIsNoop() {
+    TraceContext notSampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
 
-    assertThat(tracer.toSpan(unsampled))
+    assertThat(tracer.toSpan(notSampled))
         .isInstanceOf(NoopSpan.class);
   }
 
@@ -330,11 +338,11 @@ public class TracerTest {
         .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void newChild_unsampledIsNoop() {
-    TraceContext unsampled =
+  @Test public void newChild_notSampledIsNoop() {
+    TraceContext notSampled =
         tracer.newTrace().context().toBuilder().sampled(false).build();
 
-    assertThat(tracer.newChild(unsampled))
+    assertThat(tracer.newChild(notSampled))
         .isInstanceOf(NoopSpan.class);
   }
 
@@ -343,7 +351,7 @@ public class TracerTest {
         .isSameAs(NoopSpanCustomizer.INSTANCE);
   }
 
-  @Test public void currentSpanCustomizer_noop_when_unsampled() {
+  @Test public void currentSpanCustomizer_noop_when_notSampled() {
     ScopedSpan parent = tracer.withSampler(Sampler.NEVER_SAMPLE).startScopedSpan("parent");
     try {
       assertThat(tracer.currentSpanCustomizer())
@@ -667,5 +675,139 @@ public class TracerTest {
         .isEqualTo("foo");
     assertThat(spans.get(0).durationAsLong())
         .isPositive();
+  }
+
+  @Test public void localRootId_joinSpan_notYetSampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).build();
+    localRootId(context1, context2, ctx -> tracer.joinSpan(ctx.context()));
+  }
+
+  @Test public void localRootId_joinSpan_notSampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).sampled(false).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build();
+    localRootId(context1, context2, ctx -> tracer.joinSpan(ctx.context()));
+  }
+
+  @Test public void localRootId_joinSpan_sampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).sampled(true).build();
+    localRootId(context1, context2, ctx -> tracer.joinSpan(ctx.context()));
+  }
+
+  @Test public void localRootId_nextSpan_notYetSampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_notSampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).sampled(false).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_sampled() {
+    TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
+    TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).sampled(true).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_ids_notYetSampled() {
+    TraceIdContext context1 = TraceIdContext.newBuilder().traceId(1).build();
+    TraceIdContext context2 = TraceIdContext.newBuilder().traceId(2).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_ids_notSampled() {
+    TraceIdContext context1 = TraceIdContext.newBuilder().traceId(1).sampled(false).build();
+    TraceIdContext context2 = TraceIdContext.newBuilder().traceId(2).sampled(false).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_ids_sampled() {
+    TraceIdContext context1 = TraceIdContext.newBuilder().traceId(1).sampled(true).build();
+    TraceIdContext context2 = TraceIdContext.newBuilder().traceId(2).sampled(true).build();
+    localRootId(context1, context2, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_flags_empty() {
+    TraceContextOrSamplingFlags flags = TraceContextOrSamplingFlags.EMPTY;
+    localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_flags_notSampled() {
+    TraceContextOrSamplingFlags flags = TraceContextOrSamplingFlags.NOT_SAMPLED;
+    localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_flags_sampled() {
+    TraceContextOrSamplingFlags flags = TraceContextOrSamplingFlags.SAMPLED;
+    localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void localRootId_nextSpan_flags_debug() {
+    TraceContextOrSamplingFlags flags = TraceContextOrSamplingFlags.DEBUG;
+    localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
+  }
+
+  void localRootId(TraceContext c1, TraceContext c2, Function<TraceContextOrSamplingFlags, Span> fn) {
+    localRootId(TraceContextOrSamplingFlags.create(c1), TraceContextOrSamplingFlags.create(c2), fn);
+  }
+
+  void localRootId(TraceIdContext c1, TraceIdContext c2,
+      Function<TraceContextOrSamplingFlags, Span> fn) {
+    localRootId(TraceContextOrSamplingFlags.create(c1), TraceContextOrSamplingFlags.create(c2), fn);
+  }
+
+  void localRootId(TraceContextOrSamplingFlags ctx1, TraceContextOrSamplingFlags ctx2,
+      Function<TraceContextOrSamplingFlags, Span> ctxFn
+  ) {
+    Map<Long, List<String>> reportedNames = tracerThatPartitionsNamesOnlocalRootId();
+    Span server1 = ctxFn.apply(ctx1).name("server1").kind(Kind.SERVER).start();
+    Span server2 = ctxFn.apply(ctx2).name("server2").kind(Kind.SERVER).start();
+    try {
+      Span client1 = tracer.newChild(server1.context()).name("client1").kind(Kind.CLIENT).start();
+      ScopedSpan processor1 = tracer.startScopedSpanWithParent("processor1", server1.context());
+      try {
+        try {
+          ScopedSpan processor2 = tracer.startScopedSpanWithParent("processor2", server2.context());
+          try {
+            tracer.nextSpan().name("client2").kind(Kind.CLIENT).start().finish();
+            tracer.nextSpan().name("client3").kind(Kind.CLIENT).start().finish();
+          } finally {
+            processor2.finish();
+          }
+        } finally {
+          server2.finish();
+        }
+      } finally {
+        client1.finish();
+        processor1.finish();
+      }
+    } finally {
+      server1.finish();
+    }
+
+    assertThat(reportedNames).hasSize(2).containsValues(
+        asList("client1", "processor1", "server1"),
+        asList("client2", "client3", "processor2", "server2")
+    );
+  }
+
+  Map<Long, List<String>> tracerThatPartitionsNamesOnlocalRootId() {
+    Map<Long, List<String>> reportedNames = new LinkedHashMap<>();
+    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        assertThat(context.localRootId()).isNotZero();
+        reportedNames.computeIfAbsent(context.localRootId(), k -> new ArrayList<>()).add(span.name());
+        return true; // retain
+      }
+
+      @Override public boolean alwaysSampleLocal() {
+        return true;
+      }
+    }).spanReporter(Reporter.NOOP).build().tracer();
+    return reportedNames;
   }
 }
