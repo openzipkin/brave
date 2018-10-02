@@ -15,7 +15,7 @@ To add a Tracing Processor to your application use the `TracingProcessorSupplier
 ```java
 builder.stream(inputTopic)
        .processor(kafkaStreamsTracing.processorSupplier(
-            "processor-1",
+            "forward-1",
             new AbstractProcessor<String, String>() {
               @Override
               public void process(String key, String value) {
