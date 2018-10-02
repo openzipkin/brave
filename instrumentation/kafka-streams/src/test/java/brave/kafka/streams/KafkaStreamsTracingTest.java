@@ -3,6 +3,8 @@ package brave.kafka.streams;
 import brave.Span;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
@@ -11,9 +13,6 @@ import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.Test;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -39,11 +38,11 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     Span child;
     try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-            .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+        .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
       child = kafkaStreamsTracing.nextSpan(fakeProcessorContext);
     }
     assertThat(child.context().parentId())
-            .isEqualTo(1L);
+        .isEqualTo(1L);
   }
 
   @Test
@@ -58,10 +57,10 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     kafkaStreamsTracing.nextSpan(fakeProcessorContext).start().finish();
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
@@ -71,11 +70,11 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.process(TEST_KEY, TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID),
-                    entry("kafka.streams.key", TEST_KEY));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID),
+            entry("kafka.streams.key", TEST_KEY));
   }
 
   @Test
@@ -85,33 +84,33 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.process(null, TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
   public void processorSupplier_should_tag_key_if_binary() {
     ProcessorSupplier<byte[], String> fakeProcessorSupplier =
-            kafkaStreamsTracing.processorSupplier(
-                    "processor-1",
-                    new AbstractProcessor<byte[], String>() {
-                      @Override
-                      public void process(byte[] key, String value) {
-                        context().forward(key, value);
-                      }
-                    });
+        kafkaStreamsTracing.processorSupplier(
+            "processor-1",
+            new AbstractProcessor<byte[], String>() {
+              @Override
+              public void process(byte[] key, String value) {
+                context().forward(key, value);
+              }
+            });
 
     Processor<byte[], String> processor = fakeProcessorSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(new byte[1], TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
@@ -121,11 +120,11 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.transform(TEST_KEY, TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID),
-                    entry("kafka.streams.key", TEST_KEY));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID),
+            entry("kafka.streams.key", TEST_KEY));
   }
 
   @Test
@@ -135,42 +134,43 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.transform(null, TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
   public void transformSupplier_should_not_tag_key_if_binary() {
     TransformerSupplier<byte[], String, String> fakeTransformerSupplier =
-            kafkaStreamsTracing.transformerSupplier(
-                    "transformer-1",
-                    new Transformer<byte[], String, String>() {
-                      ProcessorContext context;
-                      @Override
-                      public void init(ProcessorContext context) {
-                        this.context = context;
-                      }
+        kafkaStreamsTracing.transformerSupplier(
+            "transformer-1",
+            new Transformer<byte[], String, String>() {
+              ProcessorContext context;
 
-                      @Override
-                      public String transform(byte[] key, String value) {
-                        return "transformed";
-                      }
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
 
-                      @Override
-                      public void close() {
-                      }
-                    });
+              @Override
+              public String transform(byte[] key, String value) {
+                return "transformed";
+              }
+
+              @Override
+              public void close() {
+              }
+            });
 
     Transformer processor = fakeTransformerSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(new byte[1], TEST_VALUE);
 
     assertThat(spans)
-            .flatExtracting(s -> s.tags().entrySet())
-            .containsOnly(
-                    entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-                    entry("kafka.streams.task.id", TEST_TASK_ID));
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(
+            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 }

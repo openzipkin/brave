@@ -6,6 +6,12 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -14,7 +20,11 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Transformer;
@@ -32,13 +42,6 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaStreamsTracing {
@@ -49,19 +52,6 @@ public class ITKafkaStreamsTracing {
   String TEST_VALUE = "bar";
 
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-
-  Tracing tracing = Tracing.newBuilder()
-      .localServiceName("streams-app")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(spans::add)
-      .build();
-  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
-
-  Producer<String, String> producer;
-  Consumer<String, String> consumer;
-
   @Rule public TestRule assertSpansEmpty = new TestWatcher() {
     // only check success path to avoid masking assertion errors or exceptions
     @Override protected void succeeded(Description description) {
@@ -74,6 +64,16 @@ public class ITKafkaStreamsTracing {
       }
     }
   };
+  Tracing tracing = Tracing.newBuilder()
+      .localServiceName("streams-app")
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
+      .spanReporter(spans::add)
+      .build();
+  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
+  Producer<String, String> producer;
+  Consumer<String, String> consumer;
 
   @After public void close() {
     if (producer != null) producer.close();
@@ -137,24 +137,24 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
-            kafkaStreamsTracing.processorSupplier(
-                    "processor-1",
-                    new AbstractProcessor<String, String>() {
-                      @Override
-                      public void process(String key, String value) {
-                        try {
-                          Thread.sleep(100L);
-                        } catch (InterruptedException e) {
-                          e.printStackTrace();
-                        }
-                      }
-                    });
+        kafkaStreamsTracing.processorSupplier(
+            "forward-1",
+            new AbstractProcessor<String, String>() {
+              @Override
+              public void process(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+            });
 
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-            .process(processorSupplier);
+        .process(processorSupplier);
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -176,38 +176,38 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
-            kafkaStreamsTracing.transformerSupplier(
-                    "transformer-1",
-                    new Transformer<String, String, KeyValue<String, String>>() {
-                      ProcessorContext context;
+        kafkaStreamsTracing.transformerSupplier(
+            "transformer-1",
+            new Transformer<String, String, KeyValue<String, String>>() {
+              ProcessorContext context;
 
-                      @Override
-                      public void init(ProcessorContext context) {
-                        this.context = context;
-                      }
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
 
-                      @Override
-                      public KeyValue<String, String> transform(String key, String value) {
-                        try {
-                          Thread.sleep(100L);
-                        } catch (InterruptedException e) {
-                          e.printStackTrace();
-                        }
-                        return KeyValue.pair(key, value);
-                      }
+              @Override
+              public KeyValue<String, String> transform(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return KeyValue.pair(key, value);
+              }
 
-                      @Override
-                      public void close() {
-                      }
-                    });
+              @Override
+              public void close() {
+              }
+            });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-            .transform(transformerSupplier)
-            .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+        .transform(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);

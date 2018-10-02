@@ -1,17 +1,9 @@
 package brave.kafka.streams;
 
 import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContext.Injector;
+import java.nio.charset.Charset;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeaders;
-
-import java.nio.charset.Charset;
-
-import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
 
 final class KafkaStreamsPropagation {
 
