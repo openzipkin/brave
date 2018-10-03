@@ -16,12 +16,7 @@ To add a Tracing Processor to your application use the `TracingProcessorSupplier
 builder.stream(inputTopic)
        .processor(kafkaStreamsTracing.processorSupplier(
             "forward-1",
-            new AbstractProcessor<String, String>() {
-              @Override
-              public void process(String key, String value) {
-                ...
-              }
-            }));
+            customProcessor));
 ```
 
 To add a Tracing Transformer to your Stream, use the `TracingTransformerSupplier` provided by instrumentation:
@@ -29,8 +24,7 @@ To add a Tracing Transformer to your Stream, use the `TracingTransformerSupplier
 builder.stream(inputTopic)
        .transform(kafkaStreamsTracing.transformerSupplier(
            "transformer-1",
-           new Transformer<String, String, KeyValue<String, String>>() { ... }
-           }))
+           customTransformer))
        .to(outputTopic);
 ```
 
