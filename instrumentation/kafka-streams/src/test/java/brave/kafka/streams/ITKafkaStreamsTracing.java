@@ -137,7 +137,7 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
-        kafkaStreamsTracing.processorSupplier(
+        kafkaStreamsTracing.processor(
             "forward-1",
             new AbstractProcessor<String, String>() {
               @Override
@@ -174,9 +174,46 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
+  public void should_create_spans_from_stream_without_tracing_and_tracing_processor() throws Exception {
+    ProcessorSupplier<String, String> processorSupplier =
+        kafkaStreamsTracing.processor(
+            "forward-1",
+            new AbstractProcessor<String, String>() {
+              @Override
+              public void process(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .process(processorSupplier);
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanProcessor.tags()).containsEntry("kafka.streams.key", TEST_KEY);
+
+    streams.close();
+    streams.cleanUp();
+  }
+  @Test
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
-        kafkaStreamsTracing.transformerSupplier(
+        kafkaStreamsTracing.transformer(
             "transformer-1",
             new Transformer<String, String, KeyValue<String, String>>() {
               ProcessorContext context;
@@ -228,6 +265,58 @@ public class ITKafkaStreamsTracing {
     streams.cleanUp();
   }
 
+  @Test
+  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer() throws Exception {
+    TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
+        kafkaStreamsTracing.transformer(
+            "transformer-1",
+            new Transformer<String, String, KeyValue<String, String>>() {
+              ProcessorContext context;
+
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
+
+              @Override
+              public KeyValue<String, String> transform(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return KeyValue.pair(key, value);
+              }
+
+              @Override
+              public void close() {
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanProcessor.tags()).containsEntry("kafka.streams.key", TEST_KEY);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
   private void waitForStreamToRun(KafkaStreams streams) throws InterruptedException {
     streams.start();
 
@@ -245,6 +334,17 @@ public class ITKafkaStreamsTracing {
     properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
         Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     return kafkaStreamsTracing.kafkaStreams(topology, properties);
+  }
+
+  KafkaStreams buildKafkaStreamsWithoutTracing(Topology topology) {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
+        kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
+    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+        Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    return new KafkaStreams(topology, properties);
   }
 
   Producer<String, String> createTracingProducer() {

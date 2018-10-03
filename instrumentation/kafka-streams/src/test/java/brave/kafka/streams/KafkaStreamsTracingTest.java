@@ -93,7 +93,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   @Test
   public void processorSupplier_should_tag_key_if_binary() {
     ProcessorSupplier<byte[], String> fakeProcessorSupplier =
-        kafkaStreamsTracing.processorSupplier(
+        kafkaStreamsTracing.processor(
             "processor-1",
             new AbstractProcessor<byte[], String>() {
               @Override
@@ -143,7 +143,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   @Test
   public void transformSupplier_should_not_tag_key_if_binary() {
     TransformerSupplier<byte[], String, String> fakeTransformerSupplier =
-        kafkaStreamsTracing.transformerSupplier(
+        kafkaStreamsTracing.transformer(
             "transformer-1",
             new Transformer<byte[], String, String>() {
               ProcessorContext context;

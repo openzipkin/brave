@@ -148,7 +148,7 @@ abstract class BaseTracingTest {
   KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 
   ProcessorSupplier<String, String> fakeProcessorSupplier =
-      kafkaStreamsTracing.processorSupplier(
+      kafkaStreamsTracing.processor(
           "forward-1",
           new AbstractProcessor<String, String>() {
             @Override
@@ -158,7 +158,7 @@ abstract class BaseTracingTest {
           });
 
   TransformerSupplier<String, String, KeyValue<String, String>> fakeTransformerSupplier =
-      kafkaStreamsTracing.transformerSupplier(
+      kafkaStreamsTracing.transformer(
           "transformer-1",
           new Transformer<String, String, KeyValue<String, String>>() {
             ProcessorContext context;

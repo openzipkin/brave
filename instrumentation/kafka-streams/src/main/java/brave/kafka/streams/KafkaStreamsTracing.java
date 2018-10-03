@@ -49,14 +49,14 @@ public final class KafkaStreamsTracing {
   /**
    * Create a tracing-decorated {@link ProcessorSupplier}
    */
-  public <K, V> ProcessorSupplier<K, V> processorSupplier(String name, Processor<K, V> processor) {
+  public <K, V> ProcessorSupplier<K, V> processor(String name, Processor<K, V> processor) {
     return new TracingProcessorSupplier<>(this, name, processor);
   }
 
   /**
    * Create a tracing-decorated {@link TransformerSupplier}
    */
-  public <K, V, R> TransformerSupplier<K, V, R> transformerSupplier(String name,
+  public <K, V, R> TransformerSupplier<K, V, R> transformer(String name,
       Transformer<K, V, R> transformer) {
     return new TracingTransformerSupplier<>(this, name, transformer);
   }
