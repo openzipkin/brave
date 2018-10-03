@@ -29,7 +29,6 @@ abstract class BaseTracingTest {
 
   Function<Headers, ProcessorContext> processorContextSupplier =
       (Headers headers) ->
-
       {
         ProcessorContext processorContext = mock(ProcessorContext.class);
         when(processorContext.applicationId()).thenReturn(TEST_APPLICATION_ID);

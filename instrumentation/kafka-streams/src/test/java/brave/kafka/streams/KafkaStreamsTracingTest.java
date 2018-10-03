@@ -6,6 +6,7 @@ import brave.propagation.TraceContext;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
@@ -94,7 +95,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   public void processorSupplier_should_tag_key_if_binary() {
     ProcessorSupplier<byte[], String> fakeProcessorSupplier =
         kafkaStreamsTracing.processor(
-            "processor-1",
+            "forward-1",
             new AbstractProcessor<byte[], String>() {
               @Override
               public void process(byte[] key, String value) {
@@ -142,10 +143,10 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
 
   @Test
   public void transformSupplier_should_not_tag_key_if_binary() {
-    TransformerSupplier<byte[], String, String> fakeTransformerSupplier =
+    TransformerSupplier<byte[], String, KeyValue<byte[], String>> fakeTransformerSupplier =
         kafkaStreamsTracing.transformer(
             "transformer-1",
-            new Transformer<byte[], String, String>() {
+            new Transformer<byte[], String, KeyValue<byte[], String>>() {
               ProcessorContext context;
 
               @Override
@@ -154,8 +155,8 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
               }
 
               @Override
-              public String transform(byte[] key, String value) {
-                return "transformed";
+              public KeyValue<byte[], String> transform(byte[] key, String value) {
+                return KeyValue.pair(key, value);
               }
 
               @Override
