@@ -126,9 +126,11 @@ public class ITKafkaStreamsTracing {
 
     Span spanInput = takeSpan(), spanOutput = takeSpan();
 
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertThat(spanOutput.kind().name()).isEqualTo(brave.Span.Kind.PRODUCER.name());
 
     streams.close();
     streams.cleanUp();
@@ -166,6 +168,7 @@ public class ITKafkaStreamsTracing {
 
     Span spanInput = takeSpan(), spanProcessor = takeSpan();
 
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
@@ -256,6 +259,7 @@ public class ITKafkaStreamsTracing {
 
     Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
 
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
     assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
