@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 @Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
-// http://dubbo.io/books/dubbo-dev-book-en/impls/filter.html
+// http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
 
@@ -58,8 +58,8 @@ public final class TracingFilter implements Filter {
     } else {
       TraceContextOrSamplingFlags extracted = extractor.extract(invocation.getAttachments());
       span = extracted.context() != null
-          ? tracer.joinSpan(extracted.context())
-          : tracer.nextSpan(extracted);
+              ? tracer.joinSpan(extracted.context())
+              : tracer.nextSpan(extracted);
     }
 
     if (!span.isNoop()) {
@@ -110,30 +110,30 @@ public final class TracingFilter implements Filter {
   }
 
   static final Propagation.Getter<Map<String, String>, String> GETTER =
-      new Propagation.Getter<Map<String, String>, String>() {
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-          return carrier.get(key);
-        }
+          new Propagation.Getter<Map<String, String>, String>() {
+            @Override
+            public String get(Map<String, String> carrier, String key) {
+              return carrier.get(key);
+            }
 
-        @Override
-        public String toString() {
-          return "Map::get";
-        }
-      };
+            @Override
+            public String toString() {
+              return "Map::get";
+            }
+          };
 
   static final Propagation.Setter<Map<String, String>, String> SETTER =
-      new Propagation.Setter<Map<String, String>, String>() {
-        @Override
-        public void put(Map<String, String> carrier, String key, String value) {
-          carrier.put(key, value);
-        }
+          new Propagation.Setter<Map<String, String>, String>() {
+            @Override
+            public void put(Map<String, String> carrier, String key, String value) {
+              carrier.put(key, value);
+            }
 
-        @Override
-        public String toString() {
-          return "Map::set";
-        }
-      };
+            @Override
+            public String toString() {
+              return "Map::set";
+            }
+          };
 
   static final class FinishSpanCallback implements ResponseCallback {
     final Span span;
