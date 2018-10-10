@@ -33,9 +33,6 @@ public class TracingProcessor<K, V> implements Processor<K, V> {
     Span span = kafkaStreamsTracing.nextSpan(processorContext);
     if (!span.isNoop()) {
       span.name(name);
-      if (k instanceof String && !"".equals(k)) {
-        span.tag(KafkaStreamsTags.KAFKA_STREAMS_KEY_TAG, k.toString());
-      }
       span.start();
     }
 
