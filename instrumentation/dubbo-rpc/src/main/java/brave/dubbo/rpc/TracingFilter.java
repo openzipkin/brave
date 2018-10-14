@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 @Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
-// http://dubbo.io/books/dubbo-dev-book-en/impls/filter.html
+// http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
 

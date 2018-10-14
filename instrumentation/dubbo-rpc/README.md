@@ -1,5 +1,5 @@
 # brave-instrumentation-dubbo-rpc
-This is a tracing filter for RPC providers and consumers in [Dubbo 2.6+](http://dubbo.io/books/dubbo-dev-book-en/impls/filter.html)
+This is a tracing filter for RPC providers and consumers in [Dubbo 2.6+](http://dubbo.apache.org/en-us/docs/dev/impls/filter.html)
 
 When used on a consumer, `TracingFilter` adds trace state as attachments
 to outgoing requests. When a provider, it extracts trace state from
@@ -14,7 +14,7 @@ The filter "tracing" requires an extension of type `brave.Tracing` named
 "tracing" configured. Once that's configured, you assign the filter to
 your providers and consumers like so:
 
-Here's an example of with Spring 2.5+ [XML](http://dubbo.io/books/dubbo-user-book-en/references/xml/dubbo-consumer.html)
+Here's an example of with Spring 2.5+ [XML](http://dubbo.apache.org/en-us/docs/user/references/xml/dubbo-consumer.html)
 ```xml
 <!-- default to trace all services -->
 <dubbo:consumer filter="tracing" />
