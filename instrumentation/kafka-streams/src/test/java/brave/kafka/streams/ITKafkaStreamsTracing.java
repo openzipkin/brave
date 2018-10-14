@@ -177,7 +177,8 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_and_tracing_processor() throws Exception {
+  public void should_create_spans_from_stream_without_tracing_and_tracing_processor()
+      throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
         kafkaStreamsTracing.processor(
             "forward-1",
@@ -208,11 +209,13 @@ public class ITKafkaStreamsTracing {
 
     Span spanProcessor = takeSpan();
 
-    assertThat(spanProcessor.tags()).containsEntry("kafka.streams.key", TEST_KEY);
+    assertThat(spanProcessor.tags().size()).isEqualTo(2);
+    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
   }
+
   @Test
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
@@ -270,7 +273,8 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer() throws Exception {
+  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer()
+      throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
         kafkaStreamsTracing.transformer(
             "transformer-1",
@@ -315,7 +319,8 @@ public class ITKafkaStreamsTracing {
 
     Span spanProcessor = takeSpan();
 
-    assertThat(spanProcessor.tags()).containsEntry("kafka.streams.key", TEST_KEY);
+    assertThat(spanProcessor.tags().size()).isEqualTo(2);
+    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();

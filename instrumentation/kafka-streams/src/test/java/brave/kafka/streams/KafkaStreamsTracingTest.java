@@ -74,8 +74,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
         .flatExtracting(s -> s.tags().entrySet())
         .containsOnly(
             entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-            entry("kafka.streams.task.id", TEST_TASK_ID),
-            entry("kafka.streams.key", TEST_KEY));
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
@@ -124,8 +123,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
         .flatExtracting(s -> s.tags().entrySet())
         .containsOnly(
             entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-            entry("kafka.streams.task.id", TEST_TASK_ID),
-            entry("kafka.streams.key", TEST_KEY));
+            entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
   @Test
