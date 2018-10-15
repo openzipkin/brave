@@ -3,20 +3,20 @@ package brave.context.rxjava2;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.internal.fuseable.ConditionalSubscriber;
-import io.reactivex.internal.subscriptions.SubscriptionHelper;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.internal.disposables.DisposableHelper;
 import io.reactivex.plugins.RxJavaPlugins;
-import org.reactivestreams.Subscription;
 
-final class TraceContextConditionalSubscriber<T> implements ConditionalSubscriber<T> {
-  final ConditionalSubscriber<T> downstream;
+final class TraceContextObserver<T> implements Observer<T> {
+  final Observer<T> downstream;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
-  Subscription upstream;
+  Disposable upstream;
   boolean done;
 
-  TraceContextConditionalSubscriber(
-      ConditionalSubscriber downstream,
+  TraceContextObserver(
+      Observer<T> downstream,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
     this.downstream = downstream;
@@ -24,18 +24,9 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
     this.assemblyContext = assemblyContext;
   }
 
-  @Override public final void onSubscribe(Subscription s) {
-    if (SubscriptionHelper.validate(upstream, s)) {
-      downstream.onSubscribe((upstream = s));
-    }
-  }
-
-  @Override public boolean tryOnNext(T t) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
-    try { // retrolambda can't resolve this try/finally
-      return downstream.tryOnNext(t);
-    } finally {
-      scope.close();
+  @Override public final void onSubscribe(Disposable d) {
+    if (DisposableHelper.validate(upstream, d)) {
+      downstream.onSubscribe((upstream = d));
     }
   }
 
@@ -48,8 +39,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
     }
   }
 
-  @Override
-  public void onError(Throwable t) {
+  @Override public void onError(Throwable t) {
     if (done) {
       RxJavaPlugins.onError(t);
       return;

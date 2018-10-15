@@ -1,6 +1,5 @@
 package brave.context.rxjava2;
 
-import brave.context.rxjava2.TraceContextObservable.Observer;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -26,7 +25,7 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
   protected void subscribeActual(io.reactivex.Observer s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<T>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextObserver<T>(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
