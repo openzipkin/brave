@@ -13,7 +13,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
-    <undertow.version>1.4.25.Final</undertow.version>
+    <undertow.version>1.4.26.Final</undertow.version>
     <spring.version>${spring4.version}</spring.version>
   </properties>
 
