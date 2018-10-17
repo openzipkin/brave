@@ -36,6 +36,12 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final Tracing tracing;
   final Injector<Headers> injector;
   final String remoteServiceName;
+  // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
+  static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
+      new ConsumerRebalanceListener() {
+        @Override public void onPartitionsRevoked(Collection<TopicPartition> partitions) {}
+        @Override public void onPartitionsAssigned(Collection<TopicPartition> partitions) {}
+      };
 
   TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
@@ -125,12 +131,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   // Do not use @Override annotation to avoid compatibility issue version < 1.0
   public void subscribe(Pattern pattern) {
-    // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
-    delegate.subscribe(pattern, new ConsumerRebalanceListener() {
-      @Override public void onPartitionsRevoked(Collection<TopicPartition> partitions) {}
-
-      @Override public void onPartitionsAssigned(Collection<TopicPartition> partitions) {}
-    });
+    delegate.subscribe(pattern, NO_OP_CONSUMER_REBALANCE_LISTENER);
   }
 
   @Override public void unsubscribe() {
