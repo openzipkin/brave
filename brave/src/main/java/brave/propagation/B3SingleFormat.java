@@ -42,7 +42,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
  * <p>See <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3SingleFormat {
-  static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 2 + 16; // traceid128-spanid-1-parentid
+  static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
   /**
    * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
