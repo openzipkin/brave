@@ -17,7 +17,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/openjdk:10-jdk
+      - image: circleci/openjdk:11-jdk
         environment:
           # Quiet Maven invoker logs (Downloading... when running /src/it)
           MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
