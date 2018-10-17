@@ -50,8 +50,22 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
-      <version>4.2.0</version>
+      <version>4.2.1</version>
       <scope>test</scope>
+    </dependency>
+
+    <!-- allows mockito to mock types with implicit dependencies -->
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- when running in Java 9, we also need this -->
+    <dependency>
+      <groupId>javax.activation</groupId>
+      <artifactId>activation</artifactId>
+      <version>1.1.1</version>
     </dependency>
   </dependencies>
 
@@ -79,17 +93,10 @@
       <build>
         <plugins>
           <plugin>
-            <artifactId>maven-failsafe-plugin</artifactId>
-            <!-- to prevent class not found in tests -->
-            <configuration>
-              <argLine>--add-modules java.xml.bind</argLine>
-            </configuration>
-          </plugin>
-          <plugin>
             <artifactId>maven-surefire-plugin</artifactId>
-            <!-- to prevent class not found in tests -->
             <configuration>
-              <argLine>--add-modules java.xml.bind</argLine>
+              <!-- prevent corrupt stream writing in JDK 11 -->
+              <forkCount>0</forkCount>
             </configuration>
           </plugin>
         </plugins>

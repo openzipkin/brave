@@ -1,6 +1,5 @@
 package brave.context.rxjava2;
 
-import brave.context.rxjava2.TraceContextObservable.Observer;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -27,7 +26,7 @@ final class TraceContextScalarCallableObservable<T> extends Observable<T>
   protected void subscribeActual(io.reactivex.Observer<? super T> s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextObserver<>(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
