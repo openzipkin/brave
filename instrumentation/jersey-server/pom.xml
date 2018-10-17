@@ -60,6 +60,13 @@
       <artifactId>jaxb-api</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- when running in Java 9, we also need this -->
+    <dependency>
+      <groupId>javax.activation</groupId>
+      <artifactId>activation</artifactId>
+      <version>1.1.1</version>
+    </dependency>
   </dependencies>
 
   <build>
