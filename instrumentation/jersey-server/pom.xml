@@ -53,6 +53,13 @@
       <version>4.2.1</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- allows mockito to mock types with implicit dependencies -->
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -79,17 +86,10 @@
       <build>
         <plugins>
           <plugin>
-            <artifactId>maven-failsafe-plugin</artifactId>
-            <!-- to prevent class not found in tests -->
-            <configuration>
-              <argLine>--add-modules java.xml.bind</argLine>
-            </configuration>
-          </plugin>
-          <plugin>
             <artifactId>maven-surefire-plugin</artifactId>
-            <!-- to prevent class not found in tests -->
             <configuration>
-              <argLine>--add-modules java.xml.bind</argLine>
+              <!-- prevent corrupt stream writing in JDK 11 -->
+              <forkCount>0</forkCount>
             </configuration>
           </plugin>
         </plugins>
