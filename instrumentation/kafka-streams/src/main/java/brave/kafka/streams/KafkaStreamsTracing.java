@@ -10,6 +10,7 @@ import java.util.Properties;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
@@ -61,6 +62,10 @@ public final class KafkaStreamsTracing {
     return new TracingTransformerSupplier<>(this, name, transformer);
   }
 
+  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> annotate(String annotation) {
+    return new TracingAnnotationTransformerSupplier<>(this, annotation);
+  }
+
   /** Returns a client supplier which traces send and receive operations. */
   KafkaClientSupplier kafkaClientSupplier() {
     KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
@@ -74,6 +79,11 @@ public final class KafkaStreamsTracing {
       addTags(context, result);
     }
     return result;
+  }
+
+  void annotateSpan(ProcessorContext context, String value) {
+    TraceContextOrSamplingFlags extract = extractor.extract(context.headers());
+    tracing.tracer().toSpan(extract.context()).annotate(value);
   }
 
   public static final class Builder {
