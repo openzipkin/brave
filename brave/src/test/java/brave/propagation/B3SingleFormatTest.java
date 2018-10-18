@@ -11,6 +11,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class B3SingleFormatTest {
+  String traceIdHigh = "0000000000000009";
   String traceId = "0000000000000001";
   String parentId = "0000000000000002";
   String spanId = "0000000000000003";
@@ -27,7 +28,7 @@ public class B3SingleFormatTest {
     TraceContext context = TraceContext.newBuilder().traceIdHigh(9).traceId(1).spanId(3).build();
 
     assertThat(writeB3SingleFormat(context))
-        .isEqualTo("0000000000000009" + traceId + "-" + spanId)
+        .isEqualTo(traceIdHigh + traceId + "-" + spanId)
         .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
   }
 
@@ -62,6 +63,35 @@ public class B3SingleFormatTest {
     assertThat(writeB3SingleFormat(context))
         .isEqualTo(traceId + "-" + spanId + "-1-" + parentId)
         .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
+  }
+
+  @Test public void writeB3SingleFormat_largest() {
+    TraceContext context =
+        TraceContext.newBuilder()
+            .traceIdHigh(9)
+            .traceId(1)
+            .parentId(2)
+            .spanId(3)
+            .sampled(true)
+            .build();
+
+    assertThat(writeB3SingleFormat(context))
+        .isEqualTo(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId)
+        .isEqualTo(new String(writeB3SingleFormatAsBytes(context), UTF_8));
+  }
+
+  @Test public void parseB3SingleFormat_largest() {
+    assertThat(
+        parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId)
+    ).extracting(TraceContextOrSamplingFlags::context).isEqualToComparingFieldByField(
+        TraceContext.newBuilder()
+            .traceIdHigh(9)
+            .traceId(1)
+            .parentId(2)
+            .spanId(3)
+            .sampled(true)
+            .build()
+    );
   }
 
   @Test public void writeB3SingleFormatWithoutParent_notYetSampled() {
@@ -244,5 +274,9 @@ public class B3SingleFormatTest {
     // overall length is not ok
     assertThat(parseB3SingleFormat(traceId + traceId + traceId + "-" + spanId + "-" + traceId))
         .isNull();
+    // one character too long is not ok
+    assertThat(
+        parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId + "a")
+    ).isNull();
   }
 }

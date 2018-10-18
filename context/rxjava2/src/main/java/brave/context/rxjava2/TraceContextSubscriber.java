@@ -3,27 +3,39 @@ package brave.context.rxjava2;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.internal.fuseable.QueueSubscription;
-import io.reactivex.internal.subscribers.BasicFuseableSubscriber;
+import io.reactivex.internal.subscriptions.SubscriptionHelper;
+import io.reactivex.plugins.RxJavaPlugins;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
-final class TraceContextSubscriber<T> extends BasicFuseableSubscriber<T, T> {
+final class TraceContextSubscriber<T> implements Subscriber<T> {
+  final Subscriber<T> downstream;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
 
+  Subscription upstream;
+  boolean done;
+
   TraceContextSubscriber(
-      org.reactivestreams.Subscriber actual,
+      org.reactivestreams.Subscriber<T> downstream,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
-    super(actual);
+    this.downstream = downstream;
     this.currentTraceContext = currentTraceContext;
     this.assemblyContext = assemblyContext;
+  }
+
+  @Override public final void onSubscribe(Subscription s) {
+    if (SubscriptionHelper.validate(upstream, s)) {
+      downstream.onSubscribe((upstream = s));
+    }
   }
 
   @Override
   public void onNext(T t) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      actual.onNext(t);
+      downstream.onNext(t);
     } finally {
       scope.close();
     }
@@ -31,9 +43,15 @@ final class TraceContextSubscriber<T> extends BasicFuseableSubscriber<T, T> {
 
   @Override
   public void onError(Throwable t) {
+    if (done) {
+      RxJavaPlugins.onError(t);
+      return;
+    }
+    done = true;
+
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      actual.onError(t);
+      downstream.onError(t);
     } finally {
       scope.close();
     }
@@ -41,27 +59,14 @@ final class TraceContextSubscriber<T> extends BasicFuseableSubscriber<T, T> {
 
   @Override
   public void onComplete() {
+    if (done) return;
+    done = true;
+
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      actual.onComplete();
+      downstream.onComplete();
     } finally {
       scope.close();
     }
-  }
-
-  @Override
-  public int requestFusion(int mode) {
-    QueueSubscription<T> qs = this.qs;
-    if (qs != null) {
-      int m = qs.requestFusion(mode);
-      sourceMode = m;
-      return m;
-    }
-    return NONE;
-  }
-
-  @Override
-  public T poll() throws Exception {
-    return qs.poll();
   }
 }

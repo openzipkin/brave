@@ -52,6 +52,12 @@
       <artifactId>log4j-1.2-api</artifactId>
       <version>@log4j.version@</version>
     </dependency>
+    <!-- for Generated annotation in tests -->
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>1.3.2</version>
+    </dependency>
   </dependencies>
 
   <build>
