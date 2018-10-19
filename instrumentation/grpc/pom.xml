@@ -69,13 +69,6 @@
     </extensions>
     <plugins>
       <plugin>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <!-- Try to prevent flakes in circleci -->
-        <configuration>
-          <reuseForks>false</reuseForks>
-        </configuration>
-      </plugin>
-      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>
           <archive>
