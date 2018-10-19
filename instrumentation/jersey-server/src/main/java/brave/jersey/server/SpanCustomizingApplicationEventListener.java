@@ -6,7 +6,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ExtendedUriInfo;
-import org.glassfish.jersey.server.internal.routing.RoutingContext;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -67,8 +66,9 @@ public class SpanCustomizingApplicationEventListener
    * This returns the matched template as defined by a base URL and path expressions.
    *
    * <p>Matched templates are pairs of (resource path, method path) added with
-   * {@link RoutingContext#pushTemplates(UriTemplate, UriTemplate)}.
-   * This code skips redundant slashes from either source caused by Path("/") or Path("").
+   * {@link org.glassfish.jersey.server.internal.routing.RoutingContext#pushTemplates(UriTemplate,
+   * UriTemplate)}. This code skips redundant slashes from either source caused by Path("/") or
+   * Path("").
    */
   static String route(ContainerRequest request) {
     ExtendedUriInfo uriInfo = request.getUriInfo();
