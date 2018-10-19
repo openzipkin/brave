@@ -1,21 +1,21 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
-import brave.context.rxjava2.TraceContextMaybe.Observer;
+import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.Maybe;
-import io.reactivex.MaybeObserver;
-import io.reactivex.MaybeSource;
-import io.reactivex.internal.fuseable.ScalarCallable;
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.CompletableSource;
+import java.util.concurrent.Callable;
 
-final class TraceContextScalarCallableMaybe<T> extends Maybe<T> implements ScalarCallable<T> {
-  final MaybeSource<T> source;
+final class TraceContextCallableCompletable<T> extends Completable implements Callable<T> {
+  final CompletableSource source;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
 
-  TraceContextScalarCallableMaybe(
-      MaybeSource<T> source,
+  TraceContextCallableCompletable(
+      CompletableSource source,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
     this.source = source;
@@ -23,22 +23,20 @@ final class TraceContextScalarCallableMaybe<T> extends Maybe<T> implements Scala
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(MaybeObserver<? super T> s) {
+  @Override protected void subscribeActual(CompletableObserver s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
-  @Override
-  public T call() {
+  @Override public T call() throws Exception {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      return ((ScalarCallable<T>) source).call();
+      return ((Callable<T>) source).call();
     } finally {
       scope.close();
     }
