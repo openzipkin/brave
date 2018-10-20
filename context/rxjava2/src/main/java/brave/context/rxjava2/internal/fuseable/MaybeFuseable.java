@@ -68,12 +68,19 @@ public abstract class MaybeFuseable {
    * approach to keep supporting the rxjava 2.x versions where these types were internal.
    */
   private static MaybeFuseable detectFuseable() {
-    // Find fuseable classes
+    // Find fuseable classes. If they don't exist in this package or don't look right, we skip.
     try {
+      // ScalarCallable only overrides Callable to remove exceptions. Assume this isn't reverted.
       Class.forName("io.reactivex.internal.fuseable.ScalarCallable");
-      Class.forName("io.reactivex.internal.fuseable.ConditionalSubscriber");
-      return new Present();
-    } catch (ClassNotFoundException e) {
+
+      // ConditionalSubscriber has a single method. Assume the signature hasn't changed.
+      Class<?> conditionalClass =
+          Class.forName("io.reactivex.internal.fuseable.ConditionalSubscriber");
+      if (conditionalClass.getMethod("tryOnNext", Object.class)
+          .getReturnType().equals(boolean.class)) {
+        return new Present();
+      }
+    } catch (Exception e) {
       // Maybe fuseable is no longer internal
     }
 
