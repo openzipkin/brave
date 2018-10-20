@@ -19,7 +19,6 @@ import io.reactivex.SingleObserver;
 import io.reactivex.flowables.ConnectableFlowable;
 import io.reactivex.functions.Predicate;
 import io.reactivex.internal.fuseable.ConditionalSubscriber;
-import io.reactivex.internal.fuseable.QueueFuseable;
 import io.reactivex.internal.fuseable.ScalarCallable;
 import io.reactivex.internal.operators.completable.CompletableEmpty;
 import io.reactivex.internal.operators.completable.CompletableFromCallable;
@@ -46,7 +45,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -298,45 +296,45 @@ public class CurrentTraceContextAssemblyTrackingTest {
   }
 
   /**
-   * {@link Flowable#distinctUntilChanged()} implicitly uses the currently internal type {@link
-   * ConditionalSubscriber}, a fuseable type.
+   * This is an example of "micro fusion" where use use a source that supports fusion: {@link
+   * Flowable#range(int, int)} with an intermediate operator which supports transitive fusion:
+   * {@link Flowable#filter(Predicate)}.
+   *
+   * <p>We are looking for the assembly trace context to be visible, but specifically inside
+   * {@link ConditionalSubscriber#tryOnNext(Object)}, as if we wired things correctly, this will be
+   * called instead of {@link Subscriber#onNext(Object)}.
    */
   @Test public void fuseable_distinctUntilChanged() {
     Flowable<Integer> fuseable = Flowable.range(1, 3);
     try (Scope scope1 = currentTraceContext.newScope(context1)) {
-      fuseable = fuseable.distinctUntilChanged();
+      // we want the fitering to occur in the assembly context
+      fuseable = fuseable.filter(i -> {
+        assertContext1();
+        return i < 3;
+      });
     }
 
-    class ConditionalTestSubscriber extends TestSubscriber<Integer>
-        implements ConditionalSubscriber<Integer> {
-      /** distinctUntilChanged results in a QueueSubscription, unless we have a bug. */
-      @Override public void onSubscribe(Subscription s) {
-        assertThat(s)
-            .withFailMessage(
-                "Possible internal drift in RxJava since 2.2.2, or bug in MaybeFuseable")
-            .isInstanceOf(QueueFuseable.class); // we need to explicitly request fusion
-        ((QueueFuseable) s).requestFusion(QueueFuseable.SYNC);
-        super.onSubscribe(s);
-      }
-
-      /** distinctUntilChanged uses onNext when fusion is NONE: we changed it to SYNC */
-      @Override public boolean tryOnNext(Integer integer) {
-        assertContext1(); // ensure we have instrumented tryOnNext
-        super.onNext(integer);
-        return true;
-      }
-
-      @Override public void onNext(Integer integer) {
-        throw new AssertionError("unexpected call to onNext: check assumptions");
-      }
-    }
-
-    ConditionalTestSubscriber testSubscriber = new ConditionalTestSubscriber();
+    ConditionalTestSubscriber<Integer> testSubscriber = new ConditionalTestSubscriber<>();
     try (Scope scope2 = currentTraceContext.newScope(context2)) {
+      // subscribing in a different scope shouldn't affect the assembly context
       fuseable.subscribe(testSubscriber);
     }
 
-    testSubscriber.assertValues(1, 2, 3);
+    testSubscriber.assertValues(1, 2).assertNoErrors();
+  }
+
+  /** This ensures we don't accidentally think we tested tryOnNext */
+  static class ConditionalTestSubscriber<T> extends TestSubscriber<T>
+      implements ConditionalSubscriber<T> {
+
+    @Override public boolean tryOnNext(T value) {
+      super.onNext(value);
+      return true;
+    }
+
+    @Override public void onNext(T value) {
+      throw new AssertionError("unexpected call to onNext: check assumptions");
+    }
   }
 
   @Test
