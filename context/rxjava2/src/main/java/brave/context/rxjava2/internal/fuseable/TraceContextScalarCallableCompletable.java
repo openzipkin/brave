@@ -35,11 +35,7 @@ public final class TraceContextScalarCallableCompletable<T> extends Completable
 
   @SuppressWarnings("unchecked")
   @Override public T call() {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
-    try { // retrolambda can't resolve this try/finally
-      return ((ScalarCallable<T>) source).call();
-    } finally {
-      scope.close();
-    }
+    // Instrumentation overhead does not make sense when returning a scalar (constant) value.
+    return ((ScalarCallable<T>) source).call();
   }
 }
