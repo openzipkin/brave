@@ -33,9 +33,13 @@ public final class TraceContextScalarCallableCompletable<T> extends Completable
     }
   }
 
-  @SuppressWarnings("unchecked")
-  @Override public T call() {
-    // Instrumentation overhead does not make sense when returning a scalar (constant) value.
+  /**
+   * A scalar value is computed at assembly time. Since call() is at runtime, we shouldn't add
+   * overhead of scoping, only to return a constant!
+   *
+   * <p>See https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0#callable-and-scalarcallable
+   */
+  @Override @SuppressWarnings("unchecked") public T call() {
     return ((ScalarCallable<T>) source).call();
   }
 }
