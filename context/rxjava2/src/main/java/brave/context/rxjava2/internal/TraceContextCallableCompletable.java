@@ -1,20 +1,19 @@
-package brave.context.rxjava2.internal.fuseable;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import io.reactivex.Observable;
-import io.reactivex.ObservableSource;
-import io.reactivex.Observer;
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.CompletableSource;
 import java.util.concurrent.Callable;
 
-final class TraceContextCallableObservable<T> extends Observable<T> implements Callable<T> {
-  final ObservableSource<T> source;
+final class TraceContextCallableCompletable<T> extends Completable implements Callable<T> {
+  final CompletableSource source;
   final CurrentTraceContext contextScoper;
   final TraceContext assembled;
 
-  TraceContextCallableObservable(
-      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+  TraceContextCallableCompletable(
+      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;
@@ -24,8 +23,8 @@ final class TraceContextCallableObservable<T> extends Observable<T> implements C
    * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
    * subscription callbacks.
    */
-  @Override protected void subscribeActual(Observer<? super T> o) {
-    source.subscribe(Internal.instance.wrap(o, contextScoper, assembled));
+  @Override protected void subscribeActual(CompletableObserver s) {
+    source.subscribe(Wrappers.wrap(s, contextScoper, assembled));
   }
 
   /**

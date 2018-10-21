@@ -1,24 +1,19 @@
 package brave.context.rxjava2;
 
 import brave.context.rxjava2.internal.Util;
-import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
+import brave.context.rxjava2.internal.Wrappers;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Completable;
-import io.reactivex.CompletableObserver;
 import io.reactivex.Flowable;
 import io.reactivex.Maybe;
-import io.reactivex.MaybeObserver;
 import io.reactivex.Observable;
-import io.reactivex.Observer;
 import io.reactivex.Single;
-import io.reactivex.SingleObserver;
 import io.reactivex.flowables.ConnectableFlowable;
 import io.reactivex.functions.Function;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.parallel.ParallelFlowable;
 import io.reactivex.plugins.RxJavaPlugins;
-import java.util.concurrent.Callable;
 
 /**
  * Prevents traces from breaking during RxJava operations by scoping trace context that existed at
@@ -28,7 +23,6 @@ import java.util.concurrent.Callable;
  * https://github.com/akarnokd/RxJava2Extensions
  */
 public final class CurrentTraceContextAssemblyTracking {
-
   public interface SavedHooks {
 
     /** Restores the previous set of hooks. */
@@ -81,10 +75,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnCompletableAssembly(
         new ConditionalOnCurrentTraceContextFunction<Completable>(oldCompletable) {
           @Override Completable applyActual(Completable c, TraceContext assembled) {
-            if (!(c instanceof Callable)) {
-              return new TraceContextCompletable(c, currentTraceContext, assembled);
-            }
-            return MaybeFuseable.get().wrap(c, currentTraceContext, assembled);
+            return Wrappers.wrap(c, currentTraceContext, assembled);
           }
         });
 
@@ -97,10 +88,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnMaybeAssembly(
         new ConditionalOnCurrentTraceContextFunction<Maybe>(oldMaybe) {
           @Override Maybe applyActual(Maybe m, TraceContext assembled) {
-            if (!(m instanceof Callable)) {
-              return new TraceContextMaybe(m, currentTraceContext, assembled);
-            }
-            return MaybeFuseable.get().wrap(m, currentTraceContext, assembled);
+            return Wrappers.wrap(m, currentTraceContext, assembled);
           }
         });
 
@@ -113,10 +101,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnSingleAssembly(
         new ConditionalOnCurrentTraceContextFunction<Single>(oldSingle) {
           @Override Single applyActual(Single s, TraceContext assembled) {
-            if (!(s instanceof Callable)) {
-              return new TraceContextSingle(s, currentTraceContext, assembled);
-            }
-            return MaybeFuseable.get().wrap(s, currentTraceContext, assembled);
+            return Wrappers.wrap(s, currentTraceContext, assembled);
           }
         });
 
@@ -130,10 +115,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnObservableAssembly(
         new ConditionalOnCurrentTraceContextFunction<Observable>(oldObservable) {
           @Override Observable applyActual(Observable o, TraceContext assembled) {
-            if (!(o instanceof Callable)) {
-              return new TraceContextObservable(o, currentTraceContext, assembled);
-            }
-            return MaybeFuseable.get().wrap(o, currentTraceContext, assembled);
+            return Wrappers.wrap(o, currentTraceContext, assembled);
           }
         });
 
@@ -147,10 +129,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnFlowableAssembly(
         new ConditionalOnCurrentTraceContextFunction<Flowable>(oldFlowable) {
           @Override Flowable applyActual(Flowable f, TraceContext assembled) {
-            if (!(f instanceof Callable)) {
-              return new TraceContextFlowable(f, currentTraceContext, assembled);
-            }
-            return MaybeFuseable.get().wrap(f, currentTraceContext, assembled);
+            return Wrappers.wrap(f, currentTraceContext, assembled);
           }
         });
 
@@ -165,7 +144,7 @@ public final class CurrentTraceContextAssemblyTracking {
         new ConditionalOnCurrentTraceContextFunction<ConnectableFlowable>(oldConnFlow) {
           @Override ConnectableFlowable applyActual(ConnectableFlowable cf,
               TraceContext assembled) {
-            return new TraceContextConnectableFlowable(cf, currentTraceContext, assembled);
+            return Wrappers.wrap(cf, currentTraceContext, assembled);
           }
         });
 
@@ -180,7 +159,7 @@ public final class CurrentTraceContextAssemblyTracking {
         new ConditionalOnCurrentTraceContextFunction<ConnectableObservable>(oldConnObs) {
           @Override ConnectableObservable applyActual(ConnectableObservable co,
               TraceContext assembled) {
-            return new TraceContextConnectableObservable(co, currentTraceContext, assembled);
+            return Wrappers.wrap(co, currentTraceContext, assembled);
           }
         });
 
@@ -194,7 +173,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnParallelAssembly(
         new ConditionalOnCurrentTraceContextFunction<ParallelFlowable>(oldParFlow) {
           @Override ParallelFlowable applyActual(ParallelFlowable pf, TraceContext assembled) {
-            return new TraceContextParallelFlowable(pf, currentTraceContext, assembled);
+            return Wrappers.wrap(pf, currentTraceContext, assembled);
           }
         });
 
@@ -213,6 +192,8 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.setOnConnectableFlowableAssembly(saveCF);
 
         RxJavaPlugins.setOnParallelAssembly(savePF);
+
+        enabled = false;
       }
     };
   }
@@ -229,6 +210,7 @@ public final class CurrentTraceContextAssemblyTracking {
     RxJavaPlugins.setOnConnectableFlowableAssembly(null);
 
     RxJavaPlugins.setOnParallelAssembly(null);
+
     enabled = false;
   }
 
@@ -249,35 +231,11 @@ public final class CurrentTraceContextAssemblyTracking {
     }
 
     @Override public final T apply(T t) throws Exception {
-      TraceContext assembled = currentTraceContext.get();
-      if (assembled == null) return oldFn.apply(t); // less overhead when there's no current trace
-      return applyActual(oldFn.apply(t), assembled);
+      TraceContext assembly = currentTraceContext.get();
+      if (assembly == null) return oldFn.apply(t); // less overhead when there's no current trace
+      return applyActual(oldFn.apply(t), assembly);
     }
 
     abstract T applyActual(T t, TraceContext assembled);
-  }
-
-  static {
-    Internal.instance = new Internal() {
-      @Override public <T> Observer<T> wrap(Observer<T> downstream,
-          CurrentTraceContext contextScoper, TraceContext assembled) {
-        return new TraceContextObserver<>(downstream, contextScoper, assembled);
-      }
-
-      @Override public <T> SingleObserver<T> wrap(SingleObserver<T> downstream,
-          CurrentTraceContext contextScoper, TraceContext assembled) {
-        return new TraceContextSingleObserver<>(downstream, contextScoper, assembled);
-      }
-
-      @Override public <T> MaybeObserver<T> wrap(MaybeObserver<T> downstream,
-          CurrentTraceContext contextScoper, TraceContext assembled) {
-        return new TraceContextMaybeObserver<>(downstream, contextScoper, assembled);
-      }
-
-      @Override public CompletableObserver wrap(CompletableObserver downstream,
-          CurrentTraceContext contextScoper, TraceContext assembled) {
-        return new TraceContextCompletableObserver(downstream, contextScoper, assembled);
-      }
-    };
   }
 }

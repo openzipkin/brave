@@ -1,20 +1,19 @@
-package brave.context.rxjava2.internal.fuseable;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import io.reactivex.Maybe;
-import io.reactivex.MaybeObserver;
-import io.reactivex.MaybeSource;
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.SingleSource;
 import java.util.concurrent.Callable;
 
-final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T> {
-  final MaybeSource<T> source;
+final class TraceContextCallableSingle<T> extends Single<T> implements Callable<T> {
+  final SingleSource<T> source;
   final CurrentTraceContext contextScoper;
   final TraceContext assembled;
 
-  TraceContextCallableMaybe(
-      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+  TraceContextCallableSingle(
+      SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;
@@ -24,8 +23,8 @@ final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T>
    * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
    * subscription callbacks.
    */
-  @Override protected void subscribeActual(MaybeObserver<? super T> o) {
-    source.subscribe(Internal.instance.wrap(o, contextScoper, assembled));
+  @Override protected void subscribeActual(SingleObserver<? super T> o) {
+    source.subscribe(Wrappers.wrap(o, contextScoper, assembled));
   }
 
   /**

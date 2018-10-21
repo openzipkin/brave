@@ -1,4 +1,4 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -19,8 +19,8 @@ final class TraceContextSingle<T> extends Single<T> {
   }
 
   /**
-   * Wraps the observer so that its callbacks run in the assembly context. This does not affect
-   * any subscription callbacks.
+   * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
+   * subscription callbacks.
    */
   @Override protected void subscribeActual(SingleObserver<? super T> o) {
     source.subscribe(new TraceContextSingleObserver<>(o, contextScoper, assembled));

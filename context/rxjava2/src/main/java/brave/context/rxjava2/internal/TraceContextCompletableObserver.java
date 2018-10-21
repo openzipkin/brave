@@ -1,20 +1,19 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.internal.Util;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.SingleObserver;
+import io.reactivex.CompletableObserver;
 import io.reactivex.disposables.Disposable;
 
-final class TraceContextSingleObserver<T> implements SingleObserver<T>, Disposable {
-  final SingleObserver<T> downstream;
+final class TraceContextCompletableObserver implements CompletableObserver, Disposable {
+  final CompletableObserver downstream;
   final CurrentTraceContext contextScoper;
   final TraceContext assembled;
   Disposable upstream;
 
-  TraceContextSingleObserver(
-      SingleObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+  TraceContextCompletableObserver(
+      CompletableObserver downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;
@@ -35,10 +34,10 @@ final class TraceContextSingleObserver<T> implements SingleObserver<T>, Disposab
     }
   }
 
-  @Override public void onSuccess(T value) {
+  @Override public void onComplete() {
     Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      downstream.onSuccess(value);
+      downstream.onComplete();
     } finally {
       scope.close();
     }
