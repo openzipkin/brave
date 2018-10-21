@@ -20,13 +20,12 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
     this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(Observer s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextObserver<T>(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+  /**
+   * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
+   * subscription callbacks.
+   */
+  @Override protected void subscribeActual(Observer o) {
+    source.subscribe(new TraceContextObserver<T>(o, contextScoper, assembled));
   }
 
   @Override public void connect(Consumer<? super Disposable> connection) {

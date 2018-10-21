@@ -23,12 +23,7 @@ final class TraceContextCompletableObserver implements CompletableObserver, Disp
   @Override public void onSubscribe(Disposable d) {
     if (!Util.validate(upstream, d)) return;
     upstream = d;
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      downstream.onSubscribe(this);
-    } finally {
-      scope.close();
-    }
+    downstream.onSubscribe(this);
   }
 
   @Override public void onError(Throwable t) {

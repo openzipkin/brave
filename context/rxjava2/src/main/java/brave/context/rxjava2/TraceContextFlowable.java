@@ -2,7 +2,6 @@ package brave.context.rxjava2;
 
 import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Flowable;
 import org.reactivestreams.Publisher;
@@ -20,12 +19,11 @@ final class TraceContextFlowable<T> extends Flowable<T> {
     this.assembled = assembled;
   }
 
+  /**
+   * Wraps the subscriber so that its callbacks run in the assembly context. This does not affect
+   * any subscription callbacks.
+   */
   @Override protected void subscribeActual(Subscriber s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+    source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
   }
 }

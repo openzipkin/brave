@@ -7,6 +7,7 @@ import brave.propagation.TraceContext;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.flowables.ConnectableFlowable;
 import io.reactivex.functions.Consumer;
+import org.reactivestreams.Subscriber;
 
 final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
   final ConnectableFlowable<T> source;
@@ -20,13 +21,12 @@ final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
     this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(org.reactivestreams.Subscriber<? super T> s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+  /**
+   * Wraps the subscriber so that its callbacks run in the assembly context. This does not affect
+   * any subscription callbacks.
+   */
+  @Override protected void subscribeActual(Subscriber<? super T> s) {
+    source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
   }
 
   @Override public void connect(Consumer<? super Disposable> connection) {

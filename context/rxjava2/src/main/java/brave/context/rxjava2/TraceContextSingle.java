@@ -1,7 +1,6 @@
 package brave.context.rxjava2;
 
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
@@ -19,12 +18,11 @@ final class TraceContextSingle<T> extends Single<T> {
     this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(SingleObserver<? super T> s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextSingleObserver<>(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+  /**
+   * Wraps the observer so that its callbacks run in the assembly context. This does not affect
+   * any subscription callbacks.
+   */
+  @Override protected void subscribeActual(SingleObserver<? super T> o) {
+    source.subscribe(new TraceContextSingleObserver<>(o, contextScoper, assembled));
   }
 }

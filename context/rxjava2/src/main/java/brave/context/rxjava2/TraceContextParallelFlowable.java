@@ -2,7 +2,6 @@ package brave.context.rxjava2;
 
 import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.parallel.ParallelFlowable;
 import org.reactivestreams.Subscriber;
@@ -23,6 +22,10 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
     return source.parallelism();
   }
 
+  /**
+   * Wraps the subscribers so that their callbacks run in the assembly context. This does not affect
+   * any subscription callbacks.
+   */
   @Override public void subscribe(Subscriber<? super T>[] s) {
     if (!validate(s)) return;
     int n = s.length;
@@ -32,11 +35,6 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
       Subscriber<? super T> z = s[i];
       parents[i] = MaybeFuseable.get().wrap(z, contextScoper, assembled);
     }
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(parents);
-    } finally {
-      scope.close();
-    }
+    source.subscribe(parents);
   }
 }

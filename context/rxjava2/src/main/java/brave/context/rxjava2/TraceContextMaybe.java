@@ -1,7 +1,6 @@
 package brave.context.rxjava2;
 
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Maybe;
 import io.reactivex.MaybeObserver;
@@ -19,12 +18,11 @@ final class TraceContextMaybe<T> extends Maybe<T> {
     this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(MaybeObserver<? super T> s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextMaybeObserver<>(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+  /**
+   * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
+   * subscription callbacks.
+   */
+  @Override protected void subscribeActual(MaybeObserver<? super T> o) {
+    source.subscribe(new TraceContextMaybeObserver<>(o, contextScoper, assembled));
   }
 }

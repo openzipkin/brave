@@ -1,9 +1,9 @@
 package brave.context.rxjava2.internal.fuseable;
 
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Flowable;
+import io.reactivex.functions.Function;
 import io.reactivex.internal.fuseable.ScalarCallable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -21,18 +21,18 @@ public final class TraceContextScalarCallableFlowable<T> extends Flowable<T>
     this.assembled = assembled;
   }
 
+  /**
+   * Wraps the subscriber so that its callbacks run in the assembly context. This does not affect
+   * any subscription callbacks.
+   */
   @Override protected void subscribeActual(Subscriber<? super T> s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+    source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
   }
 
   /**
-   * A scalar value is computed at assembled time. Since call() is at runtime, we shouldn't add
-   * overhead of scoping, only to return a constant!
+   * The value retained in the source is computed at assembly time. It is intended to be evaluated
+   * during assembly functions such as {@link Flowable#switchMap(Function)}. We don't scope around
+   * this call because it is reading a constant.
    *
    * <p>See https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0#callable-and-scalarcallable
    */

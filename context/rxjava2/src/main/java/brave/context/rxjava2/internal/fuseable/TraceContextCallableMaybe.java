@@ -2,7 +2,6 @@ package brave.context.rxjava2.internal.fuseable;
 
 import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Maybe;
 import io.reactivex.MaybeObserver;
@@ -21,22 +20,21 @@ final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T>
     this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(MaybeObserver<? super T> s) {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      source.subscribe(Internal.instance.wrap(s, contextScoper, assembled));
-    } finally {
-      scope.close();
-    }
+  /**
+   * Wraps the observer so that its callbacks run in the assembly context. This does not affect any
+   * subscription callbacks.
+   */
+  @Override protected void subscribeActual(MaybeObserver<? super T> o) {
+    source.subscribe(Internal.instance.wrap(o, contextScoper, assembled));
   }
 
-  @SuppressWarnings("unchecked")
-  @Override public T call() throws Exception {
-    Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
-      return ((Callable<T>) source).call();
-    } finally {
-      scope.close();
-    }
+  /**
+   * The value in the source is computed synchronously, at subscription time. We don't re-scope this
+   * call because it would interfere with the subscription context.
+   *
+   * <p>See https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0#callable-and-scalarcallable
+   */
+  @Override @SuppressWarnings("unchecked") public T call() throws Exception {
+    return ((Callable<T>) source).call();
   }
 }
