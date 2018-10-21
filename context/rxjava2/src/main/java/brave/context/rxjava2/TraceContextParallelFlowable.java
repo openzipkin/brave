@@ -9,16 +9,14 @@ import org.reactivestreams.Subscriber;
 
 final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
   final ParallelFlowable<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextParallelFlowable(
-      ParallelFlowable<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      ParallelFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override public int parallelism() {
@@ -32,9 +30,9 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
     Subscriber<? super T>[] parents = new Subscriber[n];
     for (int i = 0; i < n; i++) {
       Subscriber<? super T> z = s[i];
-      parents[i] = MaybeFuseable.get().wrap(z, currentTraceContext, assemblyContext);
+      parents[i] = MaybeFuseable.get().wrap(z, contextScoper, assembled);
     }
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       source.subscribe(parents);
     } finally {

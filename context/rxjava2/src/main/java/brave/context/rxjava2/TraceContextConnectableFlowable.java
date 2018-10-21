@@ -10,29 +10,27 @@ import io.reactivex.functions.Consumer;
 
 final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
   final ConnectableFlowable<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextConnectableFlowable(
-      ConnectableFlowable<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      ConnectableFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(org.reactivestreams.Subscriber<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(MaybeFuseable.get().wrap(s, currentTraceContext, assemblyContext));
+      source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
     } finally {
       scope.close();
     }
   }
 
   @Override public void connect(Consumer<? super Disposable> connection) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       source.connect(connection);
     } finally {

@@ -3,13 +3,17 @@ package brave.context.rxjava2.internal.fuseable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Completable;
+import io.reactivex.CompletableSource;
 import io.reactivex.Flowable;
 import io.reactivex.Maybe;
+import io.reactivex.MaybeSource;
 import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
 import io.reactivex.Single;
 import io.reactivex.SingleSource;
 import io.reactivex.internal.fuseable.ConditionalSubscriber;
 import io.reactivex.internal.fuseable.ScalarCallable;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
 /**
@@ -22,39 +26,22 @@ public abstract class MaybeFuseable {
   private static final MaybeFuseable INSTANCE = detectFuseable();
 
   public abstract <T> Subscriber<T> wrap(
-      Subscriber<T> downstream,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext);
+      Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract Completable wrap(
-      Completable actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> Maybe<T> wrap(
-      Maybe<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> Single<T> wrap(
-      SingleSource<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> Observable<T> wrap(
-      Observable<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> Flowable<T> wrap(
-      Flowable<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled);
 
   MaybeFuseable() {
   }
@@ -88,88 +75,85 @@ public abstract class MaybeFuseable {
   }
 
   static final class Present extends MaybeFuseable {
-    @Override public <T> Subscriber<T> wrap(Subscriber<T> downstream,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+    @Override public <T> Subscriber<T> wrap(
+        Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
       if (downstream instanceof ConditionalSubscriber) {
         return new TraceContextConditionalSubscriber<>((ConditionalSubscriber<T>) downstream,
-            currentTraceContext, assemblyContext);
+            contextScoper, assembled);
       }
-      return new TraceContextSubscriber<>(downstream, currentTraceContext, assemblyContext);
+      return new TraceContextSubscriber<>(downstream, contextScoper, assembled);
     }
 
-    @Override public Completable wrap(Completable actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      if (actual instanceof ScalarCallable) {
-        return new TraceContextScalarCallableCompletable<>(actual, currentTraceContext,
-            assemblyContext);
+    @Override public Completable wrap(
+        CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      if (source instanceof ScalarCallable) {
+        return new TraceContextScalarCallableCompletable<>(source, contextScoper, assembled);
       }
-      return new TraceContextCallableCompletable<>(actual, currentTraceContext, assemblyContext);
+      return new TraceContextCallableCompletable<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Maybe<T> wrap(Maybe<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      if (actual instanceof ScalarCallable) {
-        return new TraceContextScalarCallableMaybe<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Maybe<T> wrap(
+        MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      if (source instanceof ScalarCallable) {
+        return new TraceContextScalarCallableMaybe<>(source, contextScoper, assembled);
       }
-      return new TraceContextCallableMaybe<>(actual, currentTraceContext, assemblyContext);
+      return new TraceContextCallableMaybe<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Single<T> wrap(SingleSource<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      if (actual instanceof ScalarCallable) {
-        return new TraceContextScalarCallableSingle<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Single<T> wrap(
+        SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      if (source instanceof ScalarCallable) {
+        return new TraceContextScalarCallableSingle<>(source, contextScoper, assembled);
       }
-      return new TraceContextCallableSingle<>(actual, currentTraceContext, assemblyContext);
+      return new TraceContextCallableSingle<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Observable<T> wrap(Observable<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      if (actual instanceof ScalarCallable) {
-        return new TraceContextScalarCallableObservable<>(actual, currentTraceContext,
-            assemblyContext);
+    @Override public <T> Observable<T> wrap(
+        ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      if (source instanceof ScalarCallable) {
+        return new TraceContextScalarCallableObservable<>(source, contextScoper, assembled);
       }
-      return new TraceContextCallableObservable<>(actual, currentTraceContext, assemblyContext);
+      return new TraceContextCallableObservable<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Flowable<T> wrap(Flowable<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      if (actual instanceof ScalarCallable) {
-        return new TraceContextScalarCallableFlowable<>(actual, currentTraceContext,
-            assemblyContext);
+    @Override public <T> Flowable<T> wrap(
+        Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      if (source instanceof ScalarCallable) {
+        return new TraceContextScalarCallableFlowable<>(source, contextScoper, assembled);
       }
-      return new TraceContextCallableFlowable<>(actual, currentTraceContext, assemblyContext);
+      return new TraceContextCallableFlowable<>(source, contextScoper, assembled);
     }
   }
 
   static final class Absent extends MaybeFuseable {
-    @Override public <T> Subscriber<T> wrap(Subscriber<T> downstream,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextSubscriber<>(downstream, currentTraceContext, assemblyContext);
+    @Override public <T> Subscriber<T> wrap
+        (Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextSubscriber<>(downstream, contextScoper, assembled);
     }
 
-    @Override public Completable wrap(Completable actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextCallableCompletable<>(actual, currentTraceContext, assemblyContext);
+    @Override public Completable wrap(
+        CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextCallableCompletable<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Maybe<T> wrap(Maybe<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextCallableMaybe<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Maybe<T> wrap(
+        MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextCallableMaybe<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Single<T> wrap(SingleSource<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextCallableSingle<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Single<T> wrap(
+        SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextCallableSingle<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Observable<T> wrap(Observable<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextCallableObservable<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Observable<T> wrap(
+        ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextCallableObservable<>(source, contextScoper, assembled);
     }
 
-    @Override public <T> Flowable<T> wrap(Flowable<T> actual,
-        CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
-      return new TraceContextCallableFlowable<>(actual, currentTraceContext, assemblyContext);
+    @Override public <T> Flowable<T> wrap(
+        Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+      return new TraceContextCallableFlowable<>(source, contextScoper, assembled);
     }
   }
 }

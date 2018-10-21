@@ -9,23 +9,21 @@ import io.reactivex.CompletableSource;
 
 final class TraceContextCompletable extends Completable {
   final CompletableSource source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextCompletable(
-      CompletableSource source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override
   protected void subscribeActual(CompletableObserver s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextCompletableObserver(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextCompletableObserver(s, contextScoper, assembled));
     } finally {
       scope.close();
     }

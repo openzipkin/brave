@@ -3,35 +3,34 @@ package brave.context.rxjava2;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
+import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 import io.reactivex.observables.ConnectableObservable;
 
 final class TraceContextConnectableObservable<T> extends ConnectableObservable<T> {
   final ConnectableObservable<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextConnectableObservable(
-      ConnectableObservable<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      ConnectableObservable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(io.reactivex.Observer s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+  @Override protected void subscribeActual(Observer s) {
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextObserver<T>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextObserver<T>(s, contextScoper, assembled));
     } finally {
       scope.close();
     }
   }
 
   @Override public void connect(Consumer<? super Disposable> connection) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       source.connect(connection);
     } finally {

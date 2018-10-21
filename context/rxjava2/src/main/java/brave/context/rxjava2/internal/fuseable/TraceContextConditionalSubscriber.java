@@ -10,18 +10,16 @@ import org.reactivestreams.Subscription;
 
 final class TraceContextConditionalSubscriber<T> implements ConditionalSubscriber<T> {
   final ConditionalSubscriber<T> downstream;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
   Subscription upstream;
   boolean done;
 
-  TraceContextConditionalSubscriber(
-      ConditionalSubscriber<T> downstream,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+  TraceContextConditionalSubscriber(ConditionalSubscriber<T> downstream,
+      CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override public final void onSubscribe(Subscription s) {
@@ -31,7 +29,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
   }
 
   @Override public boolean tryOnNext(T t) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       return downstream.tryOnNext(t);
     } finally {
@@ -40,7 +38,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
   }
 
   @Override public void onNext(T t) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onNext(t);
     } finally {
@@ -55,7 +53,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
     }
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onError(t);
     } finally {
@@ -67,7 +65,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
     if (done) return;
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onComplete();
     } finally {
