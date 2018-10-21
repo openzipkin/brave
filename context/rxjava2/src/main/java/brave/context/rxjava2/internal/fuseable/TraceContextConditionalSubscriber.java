@@ -1,10 +1,10 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
+import brave.context.rxjava2.internal.Util;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.internal.fuseable.ConditionalSubscriber;
-import io.reactivex.internal.subscriptions.SubscriptionHelper;
 import io.reactivex.plugins.RxJavaPlugins;
 import org.reactivestreams.Subscription;
 
@@ -16,7 +16,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
   boolean done;
 
   TraceContextConditionalSubscriber(
-      ConditionalSubscriber downstream,
+      ConditionalSubscriber<T> downstream,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
     this.downstream = downstream;
@@ -25,7 +25,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
   }
 
   @Override public final void onSubscribe(Subscription s) {
-    if (SubscriptionHelper.validate(upstream, s)) {
+    if (Util.validate(upstream, s)) {
       downstream.onSubscribe((upstream = s));
     }
   }
@@ -48,8 +48,7 @@ final class TraceContextConditionalSubscriber<T> implements ConditionalSubscribe
     }
   }
 
-  @Override
-  public void onError(Throwable t) {
+  @Override public void onError(Throwable t) {
     if (done) {
       RxJavaPlugins.onError(t);
       return;

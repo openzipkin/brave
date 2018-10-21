@@ -18,6 +18,7 @@ import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.flowables.ConnectableFlowable;
 import io.reactivex.functions.Predicate;
+import io.reactivex.internal.fuseable.ConditionalSubscriber;
 import io.reactivex.internal.fuseable.ScalarCallable;
 import io.reactivex.internal.operators.completable.CompletableEmpty;
 import io.reactivex.internal.operators.completable.CompletableFromCallable;
@@ -292,6 +293,48 @@ public class CurrentTraceContextAssemblyTrackingTest {
             .doOnError(t -> assertContext2());
 
     subscribesAndRunsInScope2(source, errorSource).assertResult(1, 2, 3);
+  }
+
+  /**
+   * This is an example of "micro fusion" where use use a source that supports fusion: {@link
+   * Flowable#range(int, int)} with an intermediate operator which supports transitive fusion:
+   * {@link Flowable#filter(Predicate)}.
+   *
+   * <p>We are looking for the assembly trace context to be visible, but specifically inside
+   * {@link ConditionalSubscriber#tryOnNext(Object)}, as if we wired things correctly, this will be
+   * called instead of {@link Subscriber#onNext(Object)}.
+   */
+  @Test public void fuseable_distinctUntilChanged() {
+    Flowable<Integer> fuseable = Flowable.range(1, 3);
+    try (Scope scope1 = currentTraceContext.newScope(context1)) {
+      // we want the fitering to occur in the assembly context
+      fuseable = fuseable.filter(i -> {
+        assertContext1();
+        return i < 3;
+      });
+    }
+
+    ConditionalTestSubscriber<Integer> testSubscriber = new ConditionalTestSubscriber<>();
+    try (Scope scope2 = currentTraceContext.newScope(context2)) {
+      // subscribing in a different scope shouldn't affect the assembly context
+      fuseable.subscribe(testSubscriber);
+    }
+
+    testSubscriber.assertValues(1, 2).assertNoErrors();
+  }
+
+  /** This ensures we don't accidentally think we tested tryOnNext */
+  static class ConditionalTestSubscriber<T> extends TestSubscriber<T>
+      implements ConditionalSubscriber<T> {
+
+    @Override public boolean tryOnNext(T value) {
+      super.onNext(value);
+      return true;
+    }
+
+    @Override public void onNext(T value) {
+      throw new AssertionError("unexpected call to onNext: check assumptions");
+    }
   }
 
   @Test

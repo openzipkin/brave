@@ -1,9 +1,9 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
+import brave.context.rxjava2.internal.Util;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.internal.subscriptions.SubscriptionHelper;
 import io.reactivex.plugins.RxJavaPlugins;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -26,13 +26,12 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
   }
 
   @Override public final void onSubscribe(Subscription s) {
-    if (SubscriptionHelper.validate(upstream, s)) {
+    if (Util.validate(upstream, s)) {
       downstream.onSubscribe((upstream = s));
     }
   }
 
-  @Override
-  public void onNext(T t) {
+  @Override public void onNext(T t) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       downstream.onNext(t);
@@ -41,8 +40,7 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
     }
   }
 
-  @Override
-  public void onError(Throwable t) {
+  @Override public void onError(Throwable t) {
     if (done) {
       RxJavaPlugins.onError(t);
       return;
@@ -57,8 +55,7 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
     }
   }
 
-  @Override
-  public void onComplete() {
+  @Override public void onComplete() {
     if (done) return;
     done = true;
 

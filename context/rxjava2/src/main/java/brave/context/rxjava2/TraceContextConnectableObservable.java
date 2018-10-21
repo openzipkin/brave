@@ -21,8 +21,7 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(io.reactivex.Observer s) {
+  @Override protected void subscribeActual(io.reactivex.Observer s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       source.subscribe(new TraceContextObserver<T>(s, currentTraceContext, assemblyContext));
@@ -31,8 +30,7 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
     }
   }
 
-  @Override
-  public void connect(Consumer<? super Disposable> connection) {
+  @Override public void connect(Consumer<? super Disposable> connection) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       source.connect(connection);

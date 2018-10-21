@@ -4,65 +4,58 @@ import brave.context.rxjava2.internal.Util;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.Observer;
+import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.plugins.RxJavaPlugins;
 
-final class TraceContextObserver<T> implements Observer<T> {
-  final Observer<T> downstream;
+final class TraceContextSingleObserver<T> implements SingleObserver<T>, Disposable {
+  final SingleObserver<T> actual;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
-  Disposable upstream;
-  boolean done;
+  Disposable d;
 
-  TraceContextObserver(
-      Observer<T> downstream,
+  TraceContextSingleObserver(
+      SingleObserver<T> actual,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
-    this.downstream = downstream;
+    this.actual = actual;
     this.currentTraceContext = currentTraceContext;
     this.assemblyContext = assemblyContext;
   }
 
-  @Override public final void onSubscribe(Disposable d) {
-    if (Util.validate(upstream, d)) {
-      downstream.onSubscribe((upstream = d));
-    }
-  }
-
-  @Override public void onNext(T t) {
+  @Override public void onSubscribe(Disposable d) {
+    if (!Util.validate(this.d, d)) return;
+    this.d = d;
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      downstream.onNext(t);
+      actual.onSubscribe(this);
     } finally {
       scope.close();
     }
   }
 
   @Override public void onError(Throwable t) {
-    if (done) {
-      RxJavaPlugins.onError(t);
-      return;
-    }
-    done = true;
-
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      downstream.onError(t);
+      actual.onError(t);
     } finally {
       scope.close();
     }
   }
 
-  @Override public void onComplete() {
-    if (done) return;
-    done = true;
-
+  @Override public void onSuccess(T value) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      downstream.onComplete();
+      actual.onSuccess(value);
     } finally {
       scope.close();
     }
+  }
+
+  @Override public boolean isDisposed() {
+    return d.isDisposed();
+  }
+
+  @Override public void dispose() {
+    d.dispose();
   }
 }

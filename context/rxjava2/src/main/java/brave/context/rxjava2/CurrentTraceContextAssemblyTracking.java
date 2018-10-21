@@ -1,16 +1,20 @@
 package brave.context.rxjava2;
 
+import brave.context.rxjava2.internal.Util;
+import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
 import io.reactivex.Flowable;
 import io.reactivex.Maybe;
+import io.reactivex.MaybeObserver;
 import io.reactivex.Observable;
+import io.reactivex.Observer;
 import io.reactivex.Single;
+import io.reactivex.SingleObserver;
 import io.reactivex.flowables.ConnectableFlowable;
 import io.reactivex.functions.Function;
-import io.reactivex.internal.functions.Functions;
-import io.reactivex.internal.fuseable.ScalarCallable;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.parallel.ParallelFlowable;
 import io.reactivex.plugins.RxJavaPlugins;
@@ -72,7 +76,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnCompletableAssembly();
     Function<? super Completable, ? extends Completable> oldCompletable = saveC;
     if (oldCompletable == null || !chain) {
-      oldCompletable = Functions.identity();
+      oldCompletable = Util.identity();
     }
     final Function<? super Completable, ? extends Completable> oldC = oldCompletable;
 
@@ -83,10 +87,7 @@ public final class CurrentTraceContextAssemblyTracking {
             if (!(c instanceof Callable)) {
               return new TraceContextCompletable(c, currentTraceContext, ctx);
             }
-            if (c instanceof ScalarCallable) {
-              return new TraceContextScalarCallableCompletable(c, currentTraceContext, ctx);
-            }
-            return new TraceContextCallableCompletable(c, currentTraceContext, ctx);
+            return MaybeFuseable.get().wrap(c, currentTraceContext, ctx);
           }
         });
 
@@ -95,7 +96,7 @@ public final class CurrentTraceContextAssemblyTracking {
     final Function<? super Maybe, ? extends Maybe> saveM = RxJavaPlugins.getOnMaybeAssembly();
     Function<? super Maybe, ? extends Maybe> oldMaybe = saveM;
     if (oldMaybe == null || !chain) {
-      oldMaybe = Functions.identity();
+      oldMaybe = Util.identity();
     }
     final Function<? super Maybe, ? extends Maybe> oldM = oldMaybe;
 
@@ -106,10 +107,7 @@ public final class CurrentTraceContextAssemblyTracking {
             if (!(m instanceof Callable)) {
               return new TraceContextMaybe(m, currentTraceContext, ctx);
             }
-            if (m instanceof ScalarCallable) {
-              return new TraceContextScalarCallableMaybe(m, currentTraceContext, ctx);
-            }
-            return new TraceContextCallableMaybe(m, currentTraceContext, ctx);
+            return MaybeFuseable.get().wrap(m, currentTraceContext, ctx);
           }
         });
 
@@ -118,7 +116,7 @@ public final class CurrentTraceContextAssemblyTracking {
     final Function<? super Single, ? extends Single> saveS = RxJavaPlugins.getOnSingleAssembly();
     Function<? super Single, ? extends Single> oldSingle = saveS;
     if (oldSingle == null || !chain) {
-      oldSingle = Functions.identity();
+      oldSingle = Util.identity();
     }
     final Function<? super Single, ? extends Single> oldS = oldSingle;
 
@@ -129,10 +127,7 @@ public final class CurrentTraceContextAssemblyTracking {
             if (!(s instanceof Callable)) {
               return new TraceContextSingle(s, currentTraceContext, ctx);
             }
-            if (s instanceof ScalarCallable) {
-              return new TraceContextScalarCallableSingle(s, currentTraceContext, ctx);
-            }
-            return new TraceContextCallableSingle(s, currentTraceContext, ctx);
+            return MaybeFuseable.get().wrap(s, currentTraceContext, ctx);
           }
         });
 
@@ -142,7 +137,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnObservableAssembly();
     Function<? super Observable, ? extends Observable> oldObservable = saveO;
     if (oldObservable == null || !chain) {
-      oldObservable = Functions.identity();
+      oldObservable = Util.identity();
     }
     final Function<? super Observable, ? extends Observable> oldO = oldObservable;
 
@@ -153,10 +148,7 @@ public final class CurrentTraceContextAssemblyTracking {
             if (!(o instanceof Callable)) {
               return new TraceContextObservable(o, currentTraceContext, ctx);
             }
-            if (o instanceof ScalarCallable) {
-              return new TraceContextScalarCallableObservable(o, currentTraceContext, ctx);
-            }
-            return new TraceContextCallableObservable(o, currentTraceContext, ctx);
+            return MaybeFuseable.get().wrap(o, currentTraceContext, ctx);
           }
         });
 
@@ -166,7 +158,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnFlowableAssembly();
     Function<? super Flowable, ? extends Flowable> oldFlowable = saveF;
     if (oldFlowable == null || !chain) {
-      oldFlowable = Functions.identity();
+      oldFlowable = Util.identity();
     }
     final Function<? super Flowable, ? extends Flowable> oldF = oldFlowable;
 
@@ -177,10 +169,7 @@ public final class CurrentTraceContextAssemblyTracking {
             if (!(f instanceof Callable)) {
               return new TraceContextFlowable(f, currentTraceContext, ctx);
             }
-            if (f instanceof ScalarCallable) {
-              return new TraceContextScalarCallableFlowable(f, currentTraceContext, ctx);
-            }
-            return new TraceContextCallableFlowable(f, currentTraceContext, ctx);
+            return MaybeFuseable.get().wrap(f, currentTraceContext, ctx);
           }
         });
 
@@ -190,7 +179,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnConnectableFlowableAssembly();
     Function<? super ConnectableFlowable, ? extends ConnectableFlowable> oldConnFlow = saveCF;
     if (oldConnFlow == null || !chain) {
-      oldConnFlow = Functions.identity();
+      oldConnFlow = Util.identity();
     }
     final Function<? super ConnectableFlowable, ? extends ConnectableFlowable> oldCF = oldConnFlow;
 
@@ -208,7 +197,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnConnectableObservableAssembly();
     Function<? super ConnectableObservable, ? extends ConnectableObservable> oldConnObs = saveCO;
     if (oldConnObs == null || !chain) {
-      oldConnObs = Functions.identity();
+      oldConnObs = Util.identity();
     }
     final Function<? super ConnectableObservable, ? extends ConnectableObservable> oldCO =
         oldConnObs;
@@ -227,7 +216,7 @@ public final class CurrentTraceContextAssemblyTracking {
         RxJavaPlugins.getOnParallelAssembly();
     Function<? super ParallelFlowable, ? extends ParallelFlowable> oldParFlow = savePF;
     if (oldParFlow == null || !chain) {
-      oldParFlow = Functions.identity();
+      oldParFlow = Util.identity();
     }
     final Function<? super ParallelFlowable, ? extends ParallelFlowable> oldPF = oldParFlow;
 
@@ -287,5 +276,29 @@ public final class CurrentTraceContextAssemblyTracking {
     }
 
     abstract T applyActual(T t, TraceContext ctx);
+  }
+
+  static {
+    Internal.instance = new Internal() {
+      @Override public <T> Observer<T> wrap(Observer<T> actual,
+          CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+        return new TraceContextObserver<>(actual, currentTraceContext, assemblyContext);
+      }
+
+      @Override public <T> SingleObserver<T> wrap(SingleObserver<T> actual,
+          CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+        return new TraceContextSingleObserver<>(actual, currentTraceContext, assemblyContext);
+      }
+
+      @Override public <T> MaybeObserver<T> wrap(MaybeObserver<T> actual,
+          CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+        return new TraceContextMaybeObserver<>(actual, currentTraceContext, assemblyContext);
+      }
+
+      @Override public CompletableObserver wrap(CompletableObserver actual,
+          CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+        return new TraceContextCompletableObserver(actual, currentTraceContext, assemblyContext);
+      }
+    };
   }
 }

@@ -1,21 +1,21 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
-import brave.context.rxjava2.TraceContextSingle.Observer;
+import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
-import io.reactivex.SingleSource;
+import io.reactivex.Maybe;
+import io.reactivex.MaybeObserver;
+import io.reactivex.MaybeSource;
 import java.util.concurrent.Callable;
 
-final class TraceContextCallableSingle<T> extends Single<T> implements Callable<T> {
-  final SingleSource<T> source;
+final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T> {
+  final MaybeSource<T> source;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
 
-  TraceContextCallableSingle(
-      SingleSource<T> source,
+  TraceContextCallableMaybe(
+      MaybeSource<T> source,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
     this.source = source;
@@ -23,19 +23,17 @@ final class TraceContextCallableSingle<T> extends Single<T> implements Callable<
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(SingleObserver<? super T> s) {
+  @Override protected void subscribeActual(MaybeObserver<? super T> s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
-  @Override
-  public T call() throws Exception {
+  @Override public T call() throws Exception {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();

@@ -1,20 +1,20 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
-import brave.context.rxjava2.TraceContextMaybe.Observer;
+import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Maybe;
 import io.reactivex.MaybeObserver;
 import io.reactivex.MaybeSource;
-import java.util.concurrent.Callable;
+import io.reactivex.internal.fuseable.ScalarCallable;
 
-final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T> {
+final class TraceContextScalarCallableMaybe<T> extends Maybe<T> implements ScalarCallable<T> {
   final MaybeSource<T> source;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
 
-  TraceContextCallableMaybe(
+  TraceContextScalarCallableMaybe(
       MaybeSource<T> source,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
@@ -23,22 +23,20 @@ final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T>
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(MaybeObserver<? super T> s) {
+  @Override protected void subscribeActual(MaybeObserver<? super T> s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
-  @Override
-  public T call() throws Exception {
+  @Override public T call() {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      return ((Callable<T>) source).call();
+      return ((ScalarCallable<T>) source).call();
     } finally {
       scope.close();
     }

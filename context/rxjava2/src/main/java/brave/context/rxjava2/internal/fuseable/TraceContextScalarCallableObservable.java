@@ -1,21 +1,21 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal.fuseable;
 
-import brave.context.rxjava2.TraceContextSingle.Observer;
+import brave.context.rxjava2.Internal;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
-import io.reactivex.SingleSource;
+import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
 import io.reactivex.internal.fuseable.ScalarCallable;
 
-final class TraceContextScalarCallableSingle<T> extends Single<T> implements ScalarCallable<T> {
-  final SingleSource<T> source;
+final class TraceContextScalarCallableObservable<T> extends Observable<T>
+    implements ScalarCallable<T> {
+  final ObservableSource<T> source;
   final CurrentTraceContext currentTraceContext;
   final TraceContext assemblyContext;
 
-  TraceContextScalarCallableSingle(
-      SingleSource<T> source,
+  TraceContextScalarCallableObservable(
+      ObservableSource<T> source,
       CurrentTraceContext currentTraceContext,
       TraceContext assemblyContext) {
     this.source = source;
@@ -23,19 +23,17 @@ final class TraceContextScalarCallableSingle<T> extends Single<T> implements Sca
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(SingleObserver<? super T> s) {
+  @Override protected void subscribeActual(io.reactivex.Observer<? super T> s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new Observer<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
     } finally {
       scope.close();
     }
   }
 
   @SuppressWarnings("unchecked")
-  @Override
-  public T call() {
+  @Override public T call() {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       return ((ScalarCallable<T>) source).call();

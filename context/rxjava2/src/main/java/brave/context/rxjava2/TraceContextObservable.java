@@ -20,8 +20,7 @@ final class TraceContextObservable<T> extends Observable<T> {
     this.assemblyContext = assemblyContext;
   }
 
-  @Override
-  protected void subscribeActual(io.reactivex.Observer<? super T> s) {
+  @Override protected void subscribeActual(io.reactivex.Observer<? super T> s) {
     Scope scope = currentTraceContext.maybeScope(assemblyContext);
     try { // retrolambda can't resolve this try/finally
       source.subscribe(new TraceContextObserver<>(s, currentTraceContext, assemblyContext));
