@@ -32,13 +32,13 @@ final class TraceContextScalarCallableMaybe<T> extends Maybe<T> implements Scala
     }
   }
 
-  @SuppressWarnings("unchecked")
-  @Override public T call() {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
-    try { // retrolambda can't resolve this try/finally
-      return ((ScalarCallable<T>) source).call();
-    } finally {
-      scope.close();
-    }
+  /**
+   * A scalar value is computed at assembly time. Since call() is at runtime, we shouldn't add
+   * overhead of scoping, only to return a constant!
+   *
+   * <p>See https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0#callable-and-scalarcallable
+   */
+  @Override @SuppressWarnings("unchecked") public T call() {
+    return ((ScalarCallable<T>) source).call();
   }
 }

@@ -53,8 +53,15 @@ public class CurrentTraceContextAssemblyTrackingTest {
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
       .addScopeDecorator(StrictScopeDecorator.create())
       .build();
-  CurrentTraceContextAssemblyTracking contextTracking =
-      CurrentTraceContextAssemblyTracking.create(currentTraceContext);
+  CurrentTraceContext throwingCurrentTraceContext = new CurrentTraceContext() {
+    @Override public TraceContext get() {
+      return null;
+    }
+
+    @Override public Scope newScope(TraceContext currentSpan) {
+      throw new AssertionError();
+    }
+  };
   TraceContext context1 = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
   TraceContext context2 = context1.toBuilder().parentId(1L).spanId(2L).build();
   Predicate<Integer> lessThanThreeInContext1 =
@@ -71,12 +78,12 @@ public class CurrentTraceContextAssemblyTrackingTest {
   @Before
   public void setup() {
     RxJavaPlugins.reset();
-    contextTracking.enable();
+    CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
   }
 
   @After
   public void tearDown() {
-    contextTracking.disable();
+    CurrentTraceContextAssemblyTracking.disable();
   }
 
   @Test
@@ -885,35 +892,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
   }
 
   @Test
-  public void scalarcallable_completable() throws Exception {
-    Completable source, errorSource;
-    try (Scope scope = currentTraceContext.newScope(context1)) {
-      source =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableCompletable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  return 1;
-                }
-              });
-      errorSource =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableCompletable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  throw new IllegalStateException();
-                }
-              });
-    }
-
-    subscribesInScope1RunsInScope2(source.toObservable(), errorSource.toObservable())
-        .assertResult();
-    callUnderScope2((Callable) source, (Callable) errorSource);
-  }
-
-  @Test
   public void scalarcallable_completable_subscribesUnderScope() throws Exception {
     Completable source =
         RxJavaPlugins.onAssembly(
@@ -946,35 +924,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
                   }
                 }))
         .call();
-  }
-
-  @Test
-  public void scalarcallable_flowable() throws Exception {
-    Flowable<Integer> source, errorSource;
-    try (Scope scope = currentTraceContext.newScope(context1)) {
-      source =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableFlowable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  return 1;
-                }
-              });
-      errorSource =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableFlowable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  throw new IllegalStateException();
-                }
-              });
-    }
-
-    subscribesInScope1RunsInScope2(source.toObservable(), errorSource.toObservable())
-        .assertResult(1);
-    callUnderScope2((Callable) source, (Callable) errorSource);
   }
 
   @Test
@@ -1069,35 +1018,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
   }
 
   @Test
-  public void scalarcallable_maybe() throws Exception {
-    Maybe<Integer> source, errorSource;
-    try (Scope scope = currentTraceContext.newScope(context1)) {
-      source =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableMaybe<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  return 1;
-                }
-              });
-      errorSource =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableMaybe<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  throw new IllegalStateException();
-                }
-              });
-    }
-
-    subscribesInScope1RunsInScope2(source.toObservable(), errorSource.toObservable())
-        .assertResult(1);
-    callUnderScope2((Callable) source, (Callable) errorSource);
-  }
-
-  @Test
   public void scalarcallable_maybe_subscribesUnderScope() throws Exception {
     Maybe<Integer> source =
         RxJavaPlugins.onAssembly(
@@ -1130,34 +1050,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
                   }
                 }))
         .call();
-  }
-
-  @Test
-  public void scalarcallable_observable() throws Exception {
-    Observable<Integer> source, errorSource;
-    try (Scope scope = currentTraceContext.newScope(context1)) {
-      source =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableObservable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  return 1;
-                }
-              });
-      errorSource =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableObservable<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  throw new IllegalStateException();
-                }
-              });
-    }
-
-    subscribesInScope1RunsInScope2(source, errorSource).assertResult(1);
-    callUnderScope2((Callable) source, (Callable) errorSource);
   }
 
   @Test
@@ -1196,35 +1088,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
   }
 
   @Test
-  public void scalarcallable_single() throws Exception {
-    Single<Integer> source, errorSource;
-    try (Scope scope = currentTraceContext.newScope(context1)) {
-      source =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableSingle<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  return 1;
-                }
-              });
-      errorSource =
-          RxJavaPlugins.onAssembly(
-              new ScalarCallableSingle<Integer>() {
-                @Override
-                public Integer call() {
-                  assertContext1();
-                  throw new IllegalStateException();
-                }
-              });
-    }
-
-    subscribesInScope1RunsInScope2(source.toObservable(), errorSource.toObservable())
-        .assertResult(1);
-    callUnderScope2((Callable) source, (Callable) errorSource);
-  }
-
-  @Test
   public void scalarcallable_single_subscribesUnderScope() throws Exception {
     Single<Integer> source =
         RxJavaPlugins.onAssembly(
@@ -1259,6 +1122,62 @@ public class CurrentTraceContextAssemblyTrackingTest {
         .call();
   }
 
+  // ScalarCallable is a constant value: ensure we *don't* instrument ScalarCallable.call()
+  @Test public void scalarcallable_completable_callUninstrumented() {
+    currentTraceContext = throwingCurrentTraceContext;
+    setup();
+
+    RxJavaPlugins.onAssembly(new ScalarCallableCompletable<Integer>() {
+      @Override public Integer call() {
+        return 1;
+      }
+    }).test().assertComplete();
+  }
+
+  @Test public void scalarcallable_maybe_callUninstrumented() {
+    currentTraceContext = throwingCurrentTraceContext;
+    setup();
+
+    RxJavaPlugins.onAssembly(new ScalarCallableMaybe<Integer>() {
+      @Override public Integer call() {
+        return 1;
+      }
+    }).test().assertComplete();
+  }
+
+  @Test public void scalarcallable_flowable_callUninstrumented() {
+    currentTraceContext = throwingCurrentTraceContext;
+    setup();
+
+    RxJavaPlugins.onAssembly(new ScalarCallableFlowable<Integer>() {
+      @Override public Integer call() {
+        return 1;
+      }
+    }).test().assertComplete();
+  }
+
+  @Test public void scalarcallable_single_callUninstrumented() {
+    currentTraceContext = throwingCurrentTraceContext;
+    setup();
+
+    RxJavaPlugins.onAssembly(new ScalarCallableSingle<Integer>() {
+      @Override public Integer call() {
+        return 1;
+      }
+    }).test().assertComplete();
+  }
+
+  @Test public void scalarcallable_observable_callUninstrumented() {
+    currentTraceContext = throwingCurrentTraceContext;
+    setup();
+
+    RxJavaPlugins.onAssembly(new ScalarCallableObservable<Integer>() {
+      @Override public Integer call() {
+        return 1;
+      }
+    }).test().assertComplete();
+  }
+
   @Test
   public void withAssemblyTracking() {
     RxJavaAssemblyTracking.enable();
@@ -1272,7 +1191,8 @@ public class CurrentTraceContextAssemblyTrackingTest {
       Object o7 = RxJavaPlugins.getOnConnectableObservableAssembly();
       Object o8 = RxJavaPlugins.getOnParallelAssembly();
 
-      SavedHooks h = contextTracking.enableAndChain();
+      SavedHooks h =
+          CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
 
       h.restore();
 
@@ -1293,7 +1213,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
   public void withAssemblyTrackingOverride() {
     RxJavaAssemblyTracking.enable();
     try {
-      contextTracking.enable();
+      CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
 
       CurrentTraceContextAssemblyTracking.disable();
 
