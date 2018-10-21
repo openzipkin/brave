@@ -13,6 +13,10 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -59,6 +63,16 @@ public final class KafkaStreamsTracing {
   public <K, V, R> TransformerSupplier<K, V, R> transformer(String name,
       Transformer<K, V, R> transformer) {
     return new TracingTransformerSupplier<>(this, name, transformer);
+  }
+
+  public <V, VR> ValueTransformerSupplier<V, VR> valueTransformer(String name,
+      ValueTransformer<V, VR> valueTransformer) {
+    return new TracingValueTransformerSupplier<>(this, name, valueTransformer);
+  }
+
+  public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(String name,
+      ValueTransformerWithKey<K, V, VR> valueTransformerWithKey) {
+    return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
   }
 
   /** Returns a client supplier which traces send and receive operations. */

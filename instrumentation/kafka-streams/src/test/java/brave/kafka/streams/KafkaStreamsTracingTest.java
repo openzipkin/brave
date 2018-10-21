@@ -9,10 +9,12 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
-import org.apache.kafka.streams.processor.AbstractProcessor;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,7 +67,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   }
 
   @Test
-  public void processorSupplier_should_tag_key_if_string() {
+  public void processorSupplier_should_tag_app_id_and_task_id() {
     Processor<String, String> processor = fakeProcessorSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(TEST_KEY, TEST_VALUE);
@@ -78,44 +80,8 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   }
 
   @Test
-  public void processorSupplier_should_tag_key_if_null() {
-    Processor<String, String> processor = fakeProcessorSupplier.get();
-    processor.init(processorContextSupplier.apply(new RecordHeaders()));
-    processor.process(null, TEST_VALUE);
-
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(
-            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-            entry("kafka.streams.task.id", TEST_TASK_ID));
-  }
-
-  @Test
-  public void processorSupplier_should_tag_key_if_binary() {
-    ProcessorSupplier<byte[], String> fakeProcessorSupplier =
-        kafkaStreamsTracing.processor(
-            "forward-1",
-            new AbstractProcessor<byte[], String>() {
-              @Override
-              public void process(byte[] key, String value) {
-                context().forward(key, value);
-              }
-            });
-
-    Processor<byte[], String> processor = fakeProcessorSupplier.get();
-    processor.init(processorContextSupplier.apply(new RecordHeaders()));
-    processor.process(new byte[1], TEST_VALUE);
-
-    assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(
-            entry("kafka.streams.application.id", TEST_APPLICATION_ID),
-            entry("kafka.streams.task.id", TEST_TASK_ID));
-  }
-
-  @Test
-  public void transformSupplier_should_tag_key_if_string() {
-    Transformer processor = fakeTransformerSupplier.get();
+  public void transformSupplier_should_tag_app_id_and_task_id() {
+    Transformer<String, String, KeyValue<String, String>> processor = fakeTransformerSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
 
@@ -127,10 +93,10 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   }
 
   @Test
-  public void transformSupplier_should_not_tag_key_if_null() {
-    Transformer processor = fakeTransformerSupplier.get();
+  public void valueTransformSupplier_should_tag_app_id_and_task_id() {
+    ValueTransformer<String, String> processor = fakeValueTransformerSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
-    processor.transform(null, TEST_VALUE);
+    processor.transform(TEST_VALUE);
 
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
@@ -140,31 +106,11 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
   }
 
   @Test
-  public void transformSupplier_should_not_tag_key_if_binary() {
-    TransformerSupplier<byte[], String, KeyValue<byte[], String>> fakeTransformerSupplier =
-        kafkaStreamsTracing.transformer(
-            "transformer-1",
-            new Transformer<byte[], String, KeyValue<byte[], String>>() {
-              ProcessorContext context;
-
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
-
-              @Override
-              public KeyValue<byte[], String> transform(byte[] key, String value) {
-                return KeyValue.pair(key, value);
-              }
-
-              @Override
-              public void close() {
-              }
-            });
-
-    Transformer processor = fakeTransformerSupplier.get();
+  public void valueTransformWithKeySupplier_should_tag_app_id_and_task_id() {
+    ValueTransformerWithKey<String, String, String> processor =
+        fakeValueTransformerWithKeySupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
-    processor.transform(new byte[1], TEST_VALUE);
+    processor.transform(TEST_KEY, TEST_VALUE);
 
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())

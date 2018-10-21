@@ -29,6 +29,10 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -307,6 +311,226 @@ public class ITKafkaStreamsTracing {
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .transform(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanProcessor.tags().size()).isEqualTo(2);
+    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id", "kafka.streams.task.id");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_valueTransformer() throws Exception {
+    ValueTransformerSupplier<String, String> transformerSupplier =
+        kafkaStreamsTracing.valueTransformer(
+            "transformer-1",
+            new ValueTransformer<String, String>() {
+              ProcessorContext context;
+
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
+
+              @Override
+              public String transform(String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return value;
+              }
+
+              @Override
+              public void close() {
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transformValues(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer()
+      throws Exception {
+    ValueTransformerSupplier<String, String> transformerSupplier =
+        kafkaStreamsTracing.valueTransformer(
+            "transformer-1",
+            new ValueTransformer<String, String>() {
+              ProcessorContext context;
+
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
+
+              @Override
+              public String transform(String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return value;
+              }
+
+              @Override
+              public void close() {
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transformValues(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanProcessor.tags().size()).isEqualTo(2);
+    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id", "kafka.streams.task.id");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey() throws Exception {
+    ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
+        kafkaStreamsTracing.valueTransformerWithKey(
+            "transformer-1",
+            new ValueTransformerWithKey<String, String, String>() {
+              ProcessorContext context;
+
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
+
+              @Override
+              public String transform(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return value;
+              }
+
+              @Override
+              public void close() {
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transformValues(transformerSupplier)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey()
+      throws Exception {
+    ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
+        kafkaStreamsTracing.valueTransformerWithKey(
+            "transformer-1",
+            new ValueTransformerWithKey<String, String, String>() {
+              ProcessorContext context;
+
+              @Override
+              public void init(ProcessorContext context) {
+                this.context = context;
+              }
+
+              @Override
+              public String transform(String key, String value) {
+                try {
+                  Thread.sleep(100L);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                return value;
+              }
+
+              @Override
+              public void close() {
+              }
+            });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transformValues(transformerSupplier)
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 

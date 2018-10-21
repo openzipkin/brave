@@ -9,6 +9,10 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -71,6 +75,48 @@ abstract class BaseTracingTest {
             @Override
             public KeyValue<String, String> transform(String key, String value) {
               return KeyValue.pair(key, value);
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+  ValueTransformerSupplier<String, String> fakeValueTransformerSupplier =
+      kafkaStreamsTracing.valueTransformer(
+          "value-transformer-1",
+          new ValueTransformer<String, String>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public String transform(String value) {
+              return value;
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+  ValueTransformerWithKeySupplier<String, String, String> fakeValueTransformerWithKeySupplier =
+      kafkaStreamsTracing.valueTransformerWithKey(
+          "value-transformer-1",
+          new ValueTransformerWithKey<String, String, String>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public String transform(String key, String value) {
+              return value;
             }
 
             @Override

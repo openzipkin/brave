@@ -14,16 +14,32 @@ kafkaStreamsTracing = KafkaStreamsTracing.create(kafkaTracing);
 To add a Tracing Processor to your application use the `TracingProcessorSupplier` provided by instrumentation:
 ```java
 builder.stream(inputTopic)
-       .processor(kafkaStreamsTracing.processorSupplier(
+       .processor(kafkaStreamsTracing.processor(
             "forward-1",
             customProcessor));
 ```
 
-To add a Tracing Transformer to your Stream, use the `TracingTransformerSupplier` provided by instrumentation:
+To add a Tracing Transformer to your Stream, use the `TracingTransformerSupplier`, `TracingValueTransformerSupplier`, and `TracingValueTransformerWithValueSupplier` provided by instrumentation:
 ```java
 builder.stream(inputTopic)
-       .transform(kafkaStreamsTracing.transformerSupplier(
+       .transform(kafkaStreamsTracing.transformer(
            "transformer-1",
+           customTransformer))
+       .to(outputTopic);
+```
+
+```java
+builder.stream(inputTopic)
+       .transformValue(kafkaStreamsTracing.valueTransformer(
+           "value-transformer-1",
+           customTransformer))
+       .to(outputTopic);
+```
+
+```java
+builder.stream(inputTopic)
+       .transformValueWithKey(kafkaStreamsTracing.valueTransformerWithKey(
+           "value-transformer-with-key-1",
            customTransformer))
        .to(outputTopic);
 ```
