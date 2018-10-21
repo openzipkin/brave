@@ -6,6 +6,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
+import hu.akarnokd.rxjava2.debug.RxJavaAssemblyException;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyTracking;
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
@@ -38,6 +39,7 @@ import io.reactivex.observers.TestObserver;
 import io.reactivex.parallel.ParallelFlowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.subscribers.TestSubscriber;
+import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import org.junit.After;
@@ -1178,8 +1180,59 @@ public class CurrentTraceContextAssemblyTrackingTest {
     }).test().assertComplete();
   }
 
-  @Test
-  public void withAssemblyTracking() {
+  /** This spot-checks Observable to ensure that our chaining works properly. */
+  @Test public void enableAndChain_runsOldHooks() {
+    RxJavaPlugins.reset();
+
+    // Sanity check that RxJavaAssemblyTracking is not already enabled
+    TestObserver<Integer> to = newObservableThatErrs().test()
+        .assertFailure(IOException.class, 1, 2, 3, 4, 5);
+
+    assertThat(RxJavaAssemblyException.find(to.errors().get(0))).isNull();
+
+    RxJavaAssemblyTracking.enable();
+    try {
+
+      SavedHooks h =
+          CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
+
+      to = newObservableThatErrs().test().assertFailure(IOException.class, 1, 2, 3, 4, 5);
+
+      // Old hooks run when there is no current trace context.
+      Throwable error = to.errors().get(0);
+      assertThat(error).hasMessage(null); // our hook didn't run as there was no trace context
+      assertThat(RxJavaAssemblyException.find(error)).isNotNull(); // old hook ran
+
+      try (Scope scope = currentTraceContext.newScope(context1)) {
+        to = newObservableThatErrs().test().assertFailure(IOException.class, 1, 2, 3, 4, 5);
+      }
+
+      // Our hook and the old hooks run when there is a current trace context.
+      error = to.errors().get(0);
+      assertThat(error).hasMessage(context1.traceIdString()); // our hook ran
+      assertThat(RxJavaAssemblyException.find(error)).isNotNull(); // old hook ran
+
+      h.restore();
+    } finally {
+      RxJavaAssemblyTracking.disable();
+    }
+  }
+
+  /** If we have a span in scope, the message will be the current trace ID */
+  Observable<Integer> newObservableThatErrs() {
+    return Observable.range(1, 5)
+        .concatWith(RxJavaPlugins.onAssembly(new CallableObservable<Integer>() {
+          @Override public Integer call() throws Exception {
+            TraceContext ctx = currentTraceContext.get();
+            String message = ctx != null ? ctx.traceIdString() : null;
+            throw new IOException(message);
+          }
+        }));
+  }
+
+  @Test public void enableAndChain_restoresSavedHooks() {
+    RxJavaPlugins.reset();
+
     RxJavaAssemblyTracking.enable();
     try {
       Object o1 = RxJavaPlugins.getOnCompletableAssembly();
@@ -1209,8 +1262,9 @@ public class CurrentTraceContextAssemblyTrackingTest {
     }
   }
 
-  @Test
-  public void withAssemblyTrackingOverride() {
+  @Test public void enable_restoresSavedHooks() {
+    RxJavaPlugins.reset();
+
     RxJavaAssemblyTracking.enable();
     try {
       CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
