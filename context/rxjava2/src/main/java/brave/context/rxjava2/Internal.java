@@ -17,28 +17,16 @@ public abstract class Internal {
   public static Internal instance;
 
   public abstract <T> Observer<T> wrap(
-      Observer<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      Observer<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> SingleObserver<T> wrap(
-      SingleObserver<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      SingleObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract <T> MaybeObserver<T> wrap(
-      MaybeObserver<T> actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      MaybeObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled);
 
   public abstract CompletableObserver wrap(
-      CompletableObserver actual,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext
-  );
+      CompletableObserver downstream, CurrentTraceContext contextScoper, TraceContext assembled);
 
   Internal() {
   }

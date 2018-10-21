@@ -8,22 +8,20 @@ import io.reactivex.ObservableSource;
 
 final class TraceContextObservable<T> extends Observable<T> {
   final ObservableSource<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextObservable(
-      ObservableSource<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(io.reactivex.Observer<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextObserver<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextObserver<>(s, contextScoper, assembled));
     } finally {
       scope.close();
     }

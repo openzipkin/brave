@@ -10,20 +10,20 @@ import org.reactivestreams.Subscriber;
 
 final class TraceContextFlowable<T> extends Flowable<T> {
   final Publisher<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextFlowable(
-      Publisher<T> source, CurrentTraceContext currentTraceContext, TraceContext assemblyContext) {
+      Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(Subscriber s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(MaybeFuseable.get().wrap(s, currentTraceContext, assemblyContext));
+      source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
     } finally {
       scope.close();
     }

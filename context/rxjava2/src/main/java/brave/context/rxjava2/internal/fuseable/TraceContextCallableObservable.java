@@ -6,26 +6,25 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
 import java.util.concurrent.Callable;
 
 final class TraceContextCallableObservable<T> extends Observable<T> implements Callable<T> {
   final ObservableSource<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextCallableObservable(
-      ObservableSource<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
-  @Override protected void subscribeActual(io.reactivex.Observer<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+  @Override protected void subscribeActual(Observer<? super T> s) {
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, contextScoper, assembled));
     } finally {
       scope.close();
     }
@@ -33,7 +32,7 @@ final class TraceContextCallableObservable<T> extends Observable<T> implements C
 
   @SuppressWarnings("unchecked")
   @Override public T call() throws Exception {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();
     } finally {

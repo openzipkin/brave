@@ -10,19 +10,17 @@ import org.reactivestreams.Subscription;
 
 final class TraceContextSubscriber<T> implements Subscriber<T> {
   final Subscriber<T> downstream;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   Subscription upstream;
   boolean done;
 
   TraceContextSubscriber(
-      org.reactivestreams.Subscriber<T> downstream,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override public final void onSubscribe(Subscription s) {
@@ -32,7 +30,7 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
   }
 
   @Override public void onNext(T t) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onNext(t);
     } finally {
@@ -47,7 +45,7 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
     }
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onError(t);
     } finally {
@@ -59,7 +57,7 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
     if (done) return;
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onComplete();
     } finally {

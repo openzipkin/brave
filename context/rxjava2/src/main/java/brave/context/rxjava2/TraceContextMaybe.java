@@ -9,22 +9,20 @@ import io.reactivex.MaybeSource;
 
 final class TraceContextMaybe<T> extends Maybe<T> {
   final MaybeSource<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextMaybe(
-      MaybeSource<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(MaybeObserver<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextMaybeObserver<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextMaybeObserver<>(s, contextScoper, assembled));
     } finally {
       scope.close();
     }

@@ -9,22 +9,20 @@ import io.reactivex.SingleSource;
 
 final class TraceContextSingle<T> extends Single<T> {
   final SingleSource<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextSingle(
-      SingleSource<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(SingleObserver<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(new TraceContextSingleObserver<>(s, currentTraceContext, assemblyContext));
+      source.subscribe(new TraceContextSingleObserver<>(s, contextScoper, assembled));
     } finally {
       scope.close();
     }

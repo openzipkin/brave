@@ -10,18 +10,16 @@ import io.reactivex.plugins.RxJavaPlugins;
 
 final class TraceContextObserver<T> implements Observer<T> {
   final Observer<T> downstream;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
   Disposable upstream;
   boolean done;
 
   TraceContextObserver(
-      Observer<T> downstream,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      Observer<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override public final void onSubscribe(Disposable d) {
@@ -31,7 +29,7 @@ final class TraceContextObserver<T> implements Observer<T> {
   }
 
   @Override public void onNext(T t) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onNext(t);
     } finally {
@@ -46,7 +44,7 @@ final class TraceContextObserver<T> implements Observer<T> {
     }
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onError(t);
     } finally {
@@ -58,7 +56,7 @@ final class TraceContextObserver<T> implements Observer<T> {
     if (done) return;
     done = true;
 
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       downstream.onComplete();
     } finally {

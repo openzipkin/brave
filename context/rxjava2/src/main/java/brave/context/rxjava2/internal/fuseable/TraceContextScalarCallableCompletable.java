@@ -12,29 +12,27 @@ import io.reactivex.internal.fuseable.ScalarCallable;
 public final class TraceContextScalarCallableCompletable<T> extends Completable
     implements ScalarCallable<T> {
   final CompletableSource source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextScalarCallableCompletable(
-      CompletableSource source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(CompletableObserver s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, contextScoper, assembled));
     } finally {
       scope.close();
     }
   }
 
   /**
-   * A scalar value is computed at assembly time. Since call() is at runtime, we shouldn't add
+   * A scalar value is computed at assembled time. Since call() is at runtime, we shouldn't add
    * overhead of scoping, only to return a constant!
    *
    * <p>See https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0#callable-and-scalarcallable

@@ -11,22 +11,20 @@ import java.util.concurrent.Callable;
 
 final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T> {
   final MaybeSource<T> source;
-  final CurrentTraceContext currentTraceContext;
-  final TraceContext assemblyContext;
+  final CurrentTraceContext contextScoper;
+  final TraceContext assembled;
 
   TraceContextCallableMaybe(
-      MaybeSource<T> source,
-      CurrentTraceContext currentTraceContext,
-      TraceContext assemblyContext) {
+      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
-    this.currentTraceContext = currentTraceContext;
-    this.assemblyContext = assemblyContext;
+    this.contextScoper = contextScoper;
+    this.assembled = assembled;
   }
 
   @Override protected void subscribeActual(MaybeObserver<? super T> s) {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
-      source.subscribe(Internal.instance.wrap(s, currentTraceContext, assemblyContext));
+      source.subscribe(Internal.instance.wrap(s, contextScoper, assembled));
     } finally {
       scope.close();
     }
@@ -34,7 +32,7 @@ final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T>
 
   @SuppressWarnings("unchecked")
   @Override public T call() throws Exception {
-    Scope scope = currentTraceContext.maybeScope(assemblyContext);
+    Scope scope = contextScoper.maybeScope(assembled);
     try { // retrolambda can't resolve this try/finally
       return ((Callable<T>) source).call();
     } finally {
