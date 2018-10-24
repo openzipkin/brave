@@ -202,16 +202,16 @@ public final class B3SingleFormat {
 
       // If our position is at the end of the string, or another delimiter is one character past our
       // position, try to read sampled status.
-      boolean notHexFollowsPos = notHexFollowsPos(b3, pos, endIndex);
-      if (endIndex == pos + 1 || notHexFollowsPos) {
+      boolean afterSampledField = notHexFollowsPos(b3, pos, endIndex);
+      if (endIndex == pos + 1 || afterSampledField) {
         flags = parseFlags(b3, pos);
         if (flags == 0) return null;
         pos++; // consume the sampled status
-        if (notHexFollowsPos && !checkHyphen(b3, pos++)) return null; // consume the delimiter
+        if (afterSampledField && !checkHyphen(b3, pos++)) return null; // consume the delimiter
       }
 
-      // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
-      if (endIndex > pos || notHexFollowsPos) {
+      if (endIndex > pos || afterSampledField) {
+        // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
         parentId = tryParseParentId(b3, pos, endIndex);
         if (parentId == 0L) return null;
       }
