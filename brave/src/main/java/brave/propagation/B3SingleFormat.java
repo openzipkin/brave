@@ -162,12 +162,18 @@ public final class B3SingleFormat {
       traceId = tryParse16HexCharacters(b3, pos, endIndex);
     }
     pos += 16; // traceId
-    if (!checkHyphen(b3, pos++)) return null;
 
     if (traceIdHigh == 0L && traceId == 0L) {
       Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
       return null;
     }
+
+    if (isLowerHex(b3.charAt(pos))) {
+      Platform.get().log("Invalid input: trace ID is too long", null);
+      return null;
+    }
+
+    if (!checkHyphen(b3, pos++)) return null;
 
     long spanId = tryParse16HexCharacters(b3, pos, endIndex);
     if (spanId == 0L) {
@@ -179,6 +185,11 @@ public final class B3SingleFormat {
     int flags = 0;
     long parentId = 0L;
     if (endIndex > pos) {
+      if (isLowerHex(b3.charAt(pos))) {
+        Platform.get().log("Invalid input: span ID is too long", null);
+        return null;
+      }
+
       // If we are at this point, we have more than just traceId-spanId.
       // If the sampling field is present, we'll have a delimiter 2 characters from now. Ex "-1"
       // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
@@ -191,26 +202,18 @@ public final class B3SingleFormat {
 
       // If our position is at the end of the string, or another delimiter is one character past our
       // position, try to read sampled status.
-      if (endIndex == pos + 1 || delimiterFollowsPos(b3, pos, endIndex)) {
+      boolean afterSampledField = notHexFollowsPos(b3, pos, endIndex);
+      if (endIndex == pos + 1 || afterSampledField) {
         flags = parseFlags(b3, pos);
         if (flags == 0) return null;
         pos++; // consume the sampled status
+        if (afterSampledField && !checkHyphen(b3, pos++)) return null; // consume the delimiter
       }
 
-      if (endIndex > pos) {
-        // If we are at this point, we should have a parent ID, encoded as "-[0-9a-f]{16}"
-        if (endIndex != pos + 17) {
-          Platform.get().log("Invalid input: truncated", null);
-          return null;
-        }
-
-        if (!checkHyphen(b3, pos++)) return null;
-        parentId = tryParse16HexCharacters(b3, pos, endIndex);
-        if (parentId == 0L) {
-          Platform.get()
-              .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
-          return null;
-        }
+      if (endIndex > pos || afterSampledField) {
+        // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
+        parentId = tryParseParentId(b3, pos, endIndex);
+        if (parentId == 0L) return null;
       }
     }
 
@@ -224,6 +227,28 @@ public final class B3SingleFormat {
     ));
   }
 
+  /** Returns zero if truncated, malformed, or too big after logging */
+  static long tryParseParentId(CharSequence b3, int pos, int endIndex) {
+    if (endIndex < pos + 16) {
+      Platform.get().log("Invalid input: truncated", null);
+      return 0L;
+    }
+
+    long parentId = tryParse16HexCharacters(b3, pos, endIndex);
+    if (parentId == 0L) {
+      Platform.get()
+          .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
+      return 0L;
+    }
+
+    pos += 16;
+    if (endIndex != pos) {
+      Platform.get().log("Invalid input: parent ID is too long", null);
+      return 0L;
+    }
+    return parentId;
+  }
+
   static TraceContextOrSamplingFlags tryParseSamplingFlags(CharSequence b3, int pos) {
     int flags = parseFlags(b3, pos);
     if (flags == 0) return null;
@@ -232,12 +257,12 @@ public final class B3SingleFormat {
 
   static boolean checkHyphen(CharSequence b3, int pos) {
     if (b3.charAt(pos) == '-') return true;
-    Platform.get().log("Invalid input: expected a hyphen(-) delimiter offset {0}", pos, null);
+    Platform.get().log("Invalid input: expected a hyphen(-) delimiter at offset {0}", pos, null);
     return false;
   }
 
-  static boolean delimiterFollowsPos(CharSequence b3, int pos, int end) {
-    return (end >= pos + 2) && b3.charAt(pos + 1) == '-';
+  static boolean notHexFollowsPos(CharSequence b3, int pos, int end) {
+    return (end >= pos + 2) && !isLowerHex(b3.charAt(pos + 1));
   }
 
   static long tryParse16HexCharacters(CharSequence lowerHex, int index, int end) {
@@ -283,6 +308,10 @@ public final class B3SingleFormat {
       CHAR_BUFFER.set(charBuffer);
     }
     return charBuffer;
+  }
+
+  static boolean isLowerHex(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
   }
 
   B3SingleFormat() {
