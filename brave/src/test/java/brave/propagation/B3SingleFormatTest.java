@@ -298,7 +298,7 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("b970dafd-0d95-40aa-95d8-1d8725aebe40"))
         .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a hyphen(-) delimiter at offset {0}", 16, null);
+    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
   }
 
   @Test public void parseB3SingleFormat_empty() {
@@ -334,26 +334,24 @@ public class B3SingleFormatTest {
     }
   }
 
-  @Test public void parseB3SingleFormat_tooBig() {
-    // overall length is ok, but it is malformed as parent is too long
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + traceId + traceId))
+  @Test public void parseB3SingleFormat_traceIdTooLong() {
+    assertThat(parseB3SingleFormat(traceId + traceId + "a" + "-" + spanId))
         .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: extra characters at offset {0}", 50, null);
-    reset(platform);
+    verify(platform).log("Invalid input: trace ID is too long", null);
+  }
 
-    // overall length is not ok
-    assertThat(parseB3SingleFormat(traceId + traceId + traceId + "-" + spanId + "-" + traceId))
-        .isNull();
+  @Test public void parseB3SingleFormat_spanIdTooLong() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "a"))
+        .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: too long", null);
-    reset(platform);
+    verify(platform).log("Invalid input: span ID is too long", null);
+  }
 
-    // one character too long is not ok
-    assertThat(
-        parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId + "a")
-    ).isNull();
+  @Test public void parseB3SingleFormat_parentIdTooLong() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId + "a"))
+        .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: too long", null);
+    verify(platform).log("Invalid input: parent ID is too long", null);
   }
 }

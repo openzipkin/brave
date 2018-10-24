@@ -162,12 +162,18 @@ public final class B3SingleFormat {
       traceId = tryParse16HexCharacters(b3, pos, endIndex);
     }
     pos += 16; // traceId
-    if (!checkHyphen(b3, pos++)) return null;
 
     if (traceIdHigh == 0L && traceId == 0L) {
       Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
       return null;
     }
+
+    if (isLowerHex(b3.charAt(pos))) {
+      Platform.get().log("Invalid input: trace ID is too long", null);
+      return null;
+    }
+
+    if (!checkHyphen(b3, pos++)) return null;
 
     long spanId = tryParse16HexCharacters(b3, pos, endIndex);
     if (spanId == 0L) {
@@ -179,6 +185,11 @@ public final class B3SingleFormat {
     int flags = 0;
     long parentId = 0L;
     if (endIndex > pos) {
+      if (isLowerHex(b3.charAt(pos))) {
+        Platform.get().log("Invalid input: span ID is too long", null);
+        return null;
+      }
+
       // If we are at this point, we have more than just traceId-spanId.
       // If the sampling field is present, we'll have a delimiter 2 characters from now. Ex "-1"
       // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
@@ -232,7 +243,7 @@ public final class B3SingleFormat {
 
     pos += 16;
     if (endIndex != pos) {
-      Platform.get().log("Invalid input: extra characters at offset {0}", pos, null);
+      Platform.get().log("Invalid input: parent ID is too long", null);
       return 0L;
     }
     return parentId;
