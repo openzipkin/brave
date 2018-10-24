@@ -5,7 +5,7 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-public class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
+class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
@@ -14,7 +14,7 @@ public class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
 
   ProcessorContext processorContext;
 
-  public TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String name,
+  TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String name,
       Transformer<K, V, R> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();

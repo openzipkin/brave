@@ -36,18 +36,15 @@ public final class KafkaStreamsTracing {
     return new KafkaStreamsTracing.Builder(tracing).build();
   }
 
-  static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, processorContext.applicationId());
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processorContext.taskId().toString());
-  }
-
   /**
    * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}. All
    * Topology Sources and Sinks (including internal Topics) will create a Spans on records
    * processed.
    */
   public KafkaStreams kafkaStreams(Topology topology, Properties streamsConfig) {
-    return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier());
+    final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
+    final KafkaClientSupplier kafkaClientSupplier = new TracingKafkaClientSupplier(kafkaTracing);
+    return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier);
   }
 
   /**
@@ -75,10 +72,9 @@ public final class KafkaStreamsTracing {
     return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
   }
 
-  /** Returns a client supplier which traces send and receive operations. */
-  KafkaClientSupplier kafkaClientSupplier() {
-    KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
-    return new TracingKafkaClientSupplier(kafkaTracing);
+  static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, processorContext.applicationId());
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processorContext.taskId().toString());
   }
 
   Span nextSpan(ProcessorContext context) {

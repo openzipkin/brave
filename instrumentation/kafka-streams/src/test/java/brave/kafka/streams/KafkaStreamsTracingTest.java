@@ -3,16 +3,11 @@ package brave.kafka.streams;
 import brave.Span;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformer;
-import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.junit.Test;
@@ -21,20 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class KafkaStreamsTracingTest extends BaseTracingTest {
-
-  @Test
-  public void kafkaClientSupplier_should_return_producer() {
-    Map<String, Object> config = new LinkedHashMap<>();
-    config.put("bootstrap.servers", "localhost:9092");
-    assertThat(kafkaStreamsTracing.kafkaClientSupplier().getProducer(config)).isNotNull();
-  }
-
-  @Test
-  public void kafkaClientSupplier_should_return_consumer() {
-    Map<String, Object> config = new LinkedHashMap<>();
-    config.put("bootstrap.servers", "localhost:9092");
-    assertThat(kafkaStreamsTracing.kafkaClientSupplier().getConsumer(config)).isNotNull();
-  }
 
   @Test
   public void nextSpan_uses_current_context() {

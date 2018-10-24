@@ -5,7 +5,7 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-public class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKey<K, V, VR> {
+class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKey<K, V, VR> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
@@ -14,7 +14,7 @@ public class TracingValueTransformerWithKey<K, V, VR> implements ValueTransforme
 
   ProcessorContext processorContext;
 
-  public TracingValueTransformerWithKey(KafkaStreamsTracing kafkaStreamsTracing, String name,
+  TracingValueTransformerWithKey(KafkaStreamsTracing kafkaStreamsTracing, String name,
       ValueTransformerWithKey<K, V, VR> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
