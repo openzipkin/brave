@@ -1,9 +1,9 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Flowable;
+import io.reactivex.FlowableSubscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -22,8 +22,11 @@ final class TraceContextFlowable<T> extends Flowable<T> {
   /**
    * Wraps the subscriber so that its callbacks run in the assembly context. This does not affect
    * any subscription callbacks.
+   *
+   * <p>Note: per {@link #subscribe(Subscriber)} only calls this with a {@link FlowableSubscriber}
    */
-  @Override protected void subscribeActual(Subscriber s) {
-    source.subscribe(MaybeFuseable.get().wrap(s, contextScoper, assembled));
+  @Override protected void subscribeActual(Subscriber<? super T> s) {
+    assert s instanceof FlowableSubscriber : "!(s instanceof FlowableSubscriber)";
+    source.subscribe(Wrappers.wrap(s, contextScoper, assembled));
   }
 }

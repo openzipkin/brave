@@ -1,6 +1,5 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.internal.fuseable.MaybeFuseable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.parallel.ParallelFlowable;
@@ -33,7 +32,7 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
     Subscriber<? super T>[] parents = new Subscriber[n];
     for (int i = 0; i < n; i++) {
       Subscriber<? super T> z = s[i];
-      parents[i] = MaybeFuseable.get().wrap(z, contextScoper, assembled);
+      parents[i] = Wrappers.wrap(z, contextScoper, assembled);
     }
     source.subscribe(parents);
   }

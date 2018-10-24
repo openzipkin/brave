@@ -1,4 +1,4 @@
-package brave.context.rxjava2;
+package brave.context.rxjava2.internal;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;

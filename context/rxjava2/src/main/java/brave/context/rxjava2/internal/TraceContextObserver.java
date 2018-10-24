@@ -1,32 +1,33 @@
-package brave.context.rxjava2.internal.fuseable;
+package brave.context.rxjava2.internal;
 
-import brave.context.rxjava2.internal.Util;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.plugins.RxJavaPlugins;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
-final class TraceContextSubscriber<T> implements Subscriber<T> {
-  final Subscriber<T> downstream;
+final class TraceContextObserver<T> implements Observer<T>, Disposable {
+  final Observer<T> downstream;
   final CurrentTraceContext contextScoper;
   final TraceContext assembled;
-
-  Subscription upstream;
+  Disposable upstream;
   boolean done;
 
-  TraceContextSubscriber(
-      Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+  TraceContextObserver(
+      Observer<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;
   }
 
-  @Override public final void onSubscribe(Subscription s) {
-    if (Util.validate(upstream, s)) {
-      downstream.onSubscribe((upstream = s));
-    }
+  @Override public final void onSubscribe(Disposable d) {
+    if (!Util.validate(upstream, d)) return;
+    upstream = d;
+
+    // Operators need to detect the fuseable feature of their immediate upstream. We pass "this"
+    // to ensure downstream don't interface with the wrong operator (s).
+    downstream.onSubscribe(this);
   }
 
   @Override public void onNext(T t) {
@@ -63,5 +64,13 @@ final class TraceContextSubscriber<T> implements Subscriber<T> {
     } finally {
       scope.close();
     }
+  }
+
+  @Override public void dispose() {
+    upstream.dispose();
+  }
+
+  @Override public boolean isDisposed() {
+    return upstream.isDisposed();
   }
 }

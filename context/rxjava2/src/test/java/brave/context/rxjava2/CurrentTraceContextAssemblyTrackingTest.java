@@ -8,19 +8,14 @@ import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyException;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyTracking;
-import io.reactivex.Flowable;
 import io.reactivex.Observable;
-import io.reactivex.functions.Predicate;
-import io.reactivex.internal.fuseable.ConditionalSubscriber;
 import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
-import io.reactivex.subscribers.TestSubscriber;
 import java.io.IOException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.reactivestreams.Subscriber;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,25 +23,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
       .addScopeDecorator(StrictScopeDecorator.create())
       .build();
-  CurrentTraceContext throwingCurrentTraceContext = new CurrentTraceContext() {
-    @Override public TraceContext get() {
-      return subscribeContext;
-    }
-
-    @Override public Scope newScope(TraceContext currentSpan) {
-      throw new AssertionError();
-    }
-  };
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
-  TraceContext subscribeContext = assemblyContext.toBuilder().parentId(1L).spanId(2L).build();
-  Predicate<Integer> lessThanThreeInAssemblyContext = i -> {
-    assertInAssemblyContext();
-    return i < 3;
-  };
-  Predicate<Integer> lessThanThreeInSubscribeContext = i -> {
-    assertInSubscribeContext();
-    return i < 3;
-  };
 
   @Before public void setup() {
     RxJavaPlugins.reset();
@@ -55,47 +32,6 @@ public class CurrentTraceContextAssemblyTrackingTest {
 
   @After public void tearDown() {
     CurrentTraceContextAssemblyTracking.disable();
-  }
-
-  /**
-   * This is an example of "conditional micro fusion" where use use a source that supports fusion:
-   * {@link Flowable#range(int, int)} with an intermediate operator which supports transitive
-   * fusion: {@link Flowable#filter(Predicate)}.
-   *
-   * <p>We are looking for the assembly trace context to be visible, but specifically inside
-   * {@link ConditionalSubscriber#tryOnNext(Object)}, as if we wired things correctly, this will be
-   * called instead of {@link Subscriber#onNext(Object)}.
-   */
-  @Test public void fuseable_filter() {
-    Flowable<Integer> fuseable;
-    try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
-      // we want the fitering to occur in the assembly context
-      fuseable = Flowable.range(1, 3).filter(i -> {
-        assertInAssemblyContext();
-        return i < 3;
-      });
-    }
-
-    ConditionalTestSubscriber<Integer> testSubscriber = new ConditionalTestSubscriber<>();
-    try (Scope scope2 = currentTraceContext.newScope(subscribeContext)) {
-      // subscribing in a different scope shouldn't affect the assembly context
-      fuseable.subscribe(testSubscriber);
-    }
-
-    testSubscriber.assertValues(1, 2).assertNoErrors();
-  }
-
-  /** This ensures we don't accidentally think we tested tryOnNext */
-  class ConditionalTestSubscriber<T> extends TestSubscriber<T> implements ConditionalSubscriber<T> {
-
-    @Override public boolean tryOnNext(T value) {
-      super.onNext(value);
-      return true;
-    }
-
-    @Override public void onNext(T value) {
-      throw new AssertionError("unexpected call to onNext: check assumptions");
-    }
   }
 
   /** This spot-checks Observable to ensure that our chaining works properly. */
@@ -197,13 +133,5 @@ public class CurrentTraceContextAssemblyTrackingTest {
     } finally {
       RxJavaAssemblyTracking.disable();
     }
-  }
-
-  void assertInAssemblyContext() {
-    assertThat(currentTraceContext.get()).isEqualTo(assemblyContext);
-  }
-
-  void assertInSubscribeContext() {
-    assertThat(currentTraceContext.get()).isEqualTo(subscribeContext);
   }
 }

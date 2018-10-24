@@ -29,3 +29,9 @@ SavedHooks hooks = contextTracking.enableAndChain();
 // then, later you can restore like this
 hooks.restore();
 ```
+
+## Notes on Fusion
+Fuseable types, such as `ConditionalSubscriber` and `ScalarCallable` are
+not currently supported. Use of these hooks will mask that functionality.
+
+This is done because the types are internal and subject to code drift.
