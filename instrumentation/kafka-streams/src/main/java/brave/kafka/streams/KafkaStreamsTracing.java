@@ -38,8 +38,18 @@ public final class KafkaStreamsTracing {
 
   /**
    * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}. All
-   * Topology Sources and Sinks (including internal Topics) will create a Spans on records
-   * processed.
+   * Topology Sources and Sinks (including internal Topics) will create Spans on records
+   * processed (i.e. send or consumed).
+   *
+   * Use this instead of {@link KafkaStreams} constructor.
+   *
+   * <p>Simple example:
+   * <pre>{@code
+   * // KafkaStreams with tracing-enabled KafkaClientSupplier
+   * KafkaStreams kafkaStreams = kafkaStreamsTracing.kafkaStreams(topology, streamsConfig);
+   * }</pre>
+   *
+   * @see TracingKafkaClientSupplier
    */
   public KafkaStreams kafkaStreams(Topology topology, Properties streamsConfig) {
     final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
@@ -49,6 +59,15 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a tracing-decorated {@link ProcessorSupplier}
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .process(kafkaStreamsTracing.processor("my-processor", myProcessor);
+   * }</pre>
+   *
+   * @see TracingKafkaClientSupplier
    */
   public <K, V> ProcessorSupplier<K, V> processor(String name, Processor<K, V> processor) {
     return new TracingProcessorSupplier<>(this, name, processor);
@@ -56,17 +75,47 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a tracing-decorated {@link TransformerSupplier}
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStreamsTracing.transformer("my-transformer", myTransformer)
+   *        .to(outputTopic);
+   * }</pre>
    */
   public <K, V, R> TransformerSupplier<K, V, R> transformer(String name,
       Transformer<K, V, R> transformer) {
     return new TracingTransformerSupplier<>(this, name, transformer);
   }
 
+  /**
+   * Create a tracing-decorated {@link ValueTransformerSupplier}
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transformValues(kafkaStreamsTracing.valueTransformer("my-transformer", myTransformer)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <V, VR> ValueTransformerSupplier<V, VR> valueTransformer(String name,
       ValueTransformer<V, VR> valueTransformer) {
     return new TracingValueTransformerSupplier<>(this, name, valueTransformer);
   }
 
+  /**
+   * Create a tracing-decorated {@link ValueTransformerWithKeySupplier}
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transformValues(kafkaStreamsTracing.valueTransformerWithKey("my-transformer", myTransformer)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(String name,
       ValueTransformerWithKey<K, V, VR> valueTransformerWithKey) {
     return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
