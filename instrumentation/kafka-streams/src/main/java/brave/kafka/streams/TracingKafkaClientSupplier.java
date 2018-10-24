@@ -11,6 +11,11 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.streams.KafkaClientSupplier;
 
+/**
+ * Provides tracing-enabled {@link Consumer} and {@link Producer}
+ *
+ * @see KafkaTracing
+ */
 final class TracingKafkaClientSupplier implements KafkaClientSupplier {
 
   final KafkaTracing kafkaTracing;
