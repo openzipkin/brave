@@ -1,6 +1,5 @@
 package brave.concurrent;
 
-import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,7 +9,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
-import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -21,27 +19,27 @@ public class TracingForkJoinPool extends ForkJoinPool {
    *
    * @return A new ForkJoinPool
    */
-  public static ForkJoinPool wrap(Tracing tracing, Integer parallelism,
+  public static ForkJoinPool wrap(CurrentTraceContext currentTraceContext, Integer parallelism,
       ForkJoinWorkerThreadFactory factory, Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
       boolean asyncmode) {
     if (parallelism == null) {
-      return new TracingForkJoinPool(tracing);
+      return new TracingForkJoinPool(currentTraceContext);
     }
-    return new TracingForkJoinPool(tracing, parallelism, factory, uncaughtExceptionHandler, asyncmode);
+    return new TracingForkJoinPool(currentTraceContext, parallelism, factory, uncaughtExceptionHandler, asyncmode);
   }
 
   private CurrentTraceContext currentTraceContext;
 
-  private TracingForkJoinPool(Tracing tracing) {
+  private TracingForkJoinPool(CurrentTraceContext currentTraceContext) {
     super();
-    this.currentTraceContext = tracing.currentTraceContext();
+    this.currentTraceContext = currentTraceContext;
   }
 
-  private TracingForkJoinPool(Tracing tracing, int parallelism,
+  private TracingForkJoinPool(CurrentTraceContext currentTraceContext, int parallelism,
       ForkJoinWorkerThreadFactory factory, Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
       boolean asyncmode) {
     super(parallelism, factory, uncaughtExceptionHandler, asyncmode);
-    this.currentTraceContext = tracing.currentTraceContext();
+    this.currentTraceContext = currentTraceContext;
   }
 
   @Override public <T> T invoke(ForkJoinTask<T> task) {
@@ -52,12 +50,12 @@ public class TracingForkJoinPool extends ForkJoinPool {
     super.execute(task);
   }
 
-  @Override public void execute(Runnable task) {
-    super.execute(currentTraceContext.wrap(task));
-  }
-
   @Override public <T> ForkJoinTask<T> submit(ForkJoinTask<T> task) {
     return super.submit(task);
+  }
+
+  @Override public void execute(Runnable task) {
+    super.execute(currentTraceContext.wrap(task));
   }
 
   @Override public <T> ForkJoinTask<T> submit(Callable<T> task) {
@@ -74,14 +72,6 @@ public class TracingForkJoinPool extends ForkJoinPool {
 
   @Override public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
     return super.invokeAll(wrapCallables(tasks));
-  }
-
-  @Override protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
-    return super.newTaskFor(currentTraceContext.wrap(runnable), value);
-  }
-
-  @Override protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-    return super.newTaskFor(currentTraceContext.wrap(callable));
   }
 
   @Override public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
