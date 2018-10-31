@@ -5,7 +5,8 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Based on https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java
  *
- * Uses only Java 6 APIs to be compatible with Brave Core requirements
+ * Uses only Java 6 APIs to be compatible with Brave Core requirements. Accounts for nanoTime()
+ * overflow, as unlikely as that might be.
  */
 public class RateLimitingSampler extends Sampler {
   public static Sampler create(int tracesPerSecond) {
@@ -15,6 +16,8 @@ public class RateLimitingSampler extends Sampler {
     return new RateLimitingSampler(tracesPerSecond);
   }
 
+  private static long NANOS_PER_SECOND = 1_000_000_000;
+
   private int tracesPerSecond;
   private AtomicLong usage;
   private AtomicLong nextUpdate;
@@ -22,22 +25,33 @@ public class RateLimitingSampler extends Sampler {
   RateLimitingSampler(int tracesPerSecond) {
     this.tracesPerSecond = tracesPerSecond;
     this.usage = new AtomicLong(0);
-    this.nextUpdate = new AtomicLong(getNextUpdateValue());
+    this.nextUpdate = new AtomicLong(getNextUpdateValue(System.nanoTime()));
   }
 
 
   @Override public boolean isSampled(long traceId) {
     long now = System.nanoTime();
-    if ((now < 0 && nextUpdate.get() > 0) // nanoTime wrapped since the last sample
-        || now >= nextUpdate.get()) {
+    long updateAt = nextUpdate.get();
+
+    // now is past update time OR
+    //      (update time is positive (near Long.MAX_VALUE) AND now is negative (long overflow))
+    if (now > updateAt || (updateAt > 0 && now < 0)) {
       usage.set(1);
-      nextUpdate.set(getNextUpdateValue());
+      nextUpdate.set(getNextUpdateValue(updateAt));
       return true;
     }
     return usage.getAndIncrement() < tracesPerSecond;
   }
 
-  private long getNextUpdateValue() {
-    return ((System.nanoTime() / 1_000_000_000) + 1) * 1_000_000_000;
+  private long getNextUpdateValue(long previous) {
+    long now = System.nanoTime();
+    long next = previous + NANOS_PER_SECOND;
+    // no traces in the last second, so restart the buckets
+    // now is past the next update time already OR
+    //      next update is positive (near Long.MAX_VALUE) AND now is negative (due to long overflow)
+    if (next < now || (next > 0 && now < 0)) {
+      return now + NANOS_PER_SECOND;
+    }
+    return next;
   }
 }
