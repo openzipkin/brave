@@ -38,6 +38,7 @@ public class RateLimitingSampler extends Sampler {
     if (now > updateAt || (updateAt > 0 && now < 0)) {
       if (nextUpdate.compareAndSet(updateAt, getNextUpdateValue(updateAt))) {
         usage.set(1);
+        return true;
       }
     }
     return usage.getAndIncrement() < tracesPerSecond;
