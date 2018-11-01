@@ -29,7 +29,7 @@ public class RateLimitingSampler extends Sampler {
   }
 
 
-  @Override public boolean isSampled(long traceId) {
+  @Override public boolean isSampled(long ignoredTraceId) {
     long now = System.nanoTime();
     long updateAt = nextUpdate.get();
 
