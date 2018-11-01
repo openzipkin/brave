@@ -36,9 +36,9 @@ public class RateLimitingSampler extends Sampler {
     // now is past update time OR
     //      (update time is positive (near Long.MAX_VALUE) AND now is negative (long overflow))
     if (now > updateAt || (updateAt > 0 && now < 0)) {
-      usage.set(1);
-      nextUpdate.set(getNextUpdateValue(updateAt));
-      return true;
+      if (nextUpdate.compareAndSet(updateAt, getNextUpdateValue(updateAt))) {
+        usage.set(1);
+      }
     }
     return usage.getAndIncrement() < tracesPerSecond;
   }
