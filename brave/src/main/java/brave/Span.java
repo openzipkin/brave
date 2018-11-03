@@ -106,6 +106,13 @@ public abstract class Span implements SpanCustomizer {
    */
   public abstract Span annotate(long timestamp, String value);
 
+  /**
+   * Like {@link #annotate(String)}, except with a relative timestamp from the start of the span,
+   * in microseconds. This method can only be called after {@link #start()} or {@link #start(long)}
+   * has been called.
+   */
+  public abstract Span annotateRelative(long microsFromStart, String value);
+
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
 

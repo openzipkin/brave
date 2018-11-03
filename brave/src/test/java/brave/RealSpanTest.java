@@ -9,6 +9,7 @@ import zipkin2.Annotation;
 import zipkin2.Endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanTest {
@@ -100,6 +101,21 @@ public class RealSpanTest {
 
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
         .containsExactly(Annotation.create(2L, "foo"));
+  }
+
+  @Test public void annotate_relative() {
+    span.start(5);
+
+    span.annotateRelative(2, "foo");
+    span.flush();
+
+    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
+        .containsExactly(Annotation.create(7L, "foo"));
+  }
+
+  @Test public void annotate_relative_not_started() {
+    assertThatThrownBy(() -> span.annotateRelative(2, "foo"))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test public void tag() {

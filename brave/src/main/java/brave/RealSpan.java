@@ -101,6 +101,16 @@ final class RealSpan extends Span {
     return this;
   }
 
+  @Override public Span annotateRelative(long microsFromStart, String value) {
+    synchronized (state) {
+      long startTimestamp = state.startTimestamp();
+      if (startTimestamp == 0) {
+        throw new IllegalStateException("Span.annotateRelative must be called after Span.start.");
+      }
+      return annotate(startTimestamp + microsFromStart, value);
+    }
+  }
+
   @Override public Span tag(String key, String value) {
     synchronized (state) {
       state.tag(key, value);

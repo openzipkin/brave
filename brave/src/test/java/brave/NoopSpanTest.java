@@ -41,6 +41,7 @@ public class NoopSpanTest {
     span.start(1L);
     span.annotate("foo");
     span.annotate(2L, "foo");
+    span.annotateRelative(5L, "cat");
     span.tag("bar", "baz");
     span.remoteServiceName("aloha");
     span.remoteIpAndPort("1.2.3.4", 9000);

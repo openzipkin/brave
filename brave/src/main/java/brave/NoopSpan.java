@@ -46,6 +46,10 @@ final class NoopSpan extends Span {
     return this;
   }
 
+  @Override public Span annotateRelative(long microsFromStart, String value) {
+    return this;
+  }
+
   @Override public Span remoteServiceName(String remoteServiceName) {
     return this;
   }
