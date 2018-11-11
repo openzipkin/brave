@@ -25,7 +25,8 @@ public class RateLimitingSampler extends Sampler {
   RateLimitingSampler(int tracesPerSecond) {
     this.tracesPerSecond = tracesPerSecond;
     this.usage = new AtomicLong(0);
-    this.nextUpdate = new AtomicLong(getNextUpdateValue(System.nanoTime()));
+    long now = System.nanoTime();
+    this.nextUpdate = new AtomicLong(getNextUpdateValue(now, now));
   }
 
 
@@ -36,16 +37,14 @@ public class RateLimitingSampler extends Sampler {
     // now is past update time OR
     //      (update time is positive (near Long.MAX_VALUE) AND now is negative (long overflow))
     if (now > updateAt || (updateAt > 0 && now < 0)) {
-      if (nextUpdate.compareAndSet(updateAt, getNextUpdateValue(updateAt))) {
-        usage.set(1);
-        return true;
+      if (nextUpdate.compareAndSet(updateAt, getNextUpdateValue(updateAt, now))) {
+        usage.set(0);
       }
     }
-    return usage.getAndIncrement() < tracesPerSecond;
+    return usage.incrementAndGet() <= tracesPerSecond;
   }
 
-  private long getNextUpdateValue(long previous) {
-    long now = System.nanoTime();
+  private static long getNextUpdateValue(long previous, long now) {
     long next = previous + NANOS_PER_SECOND;
     // no traces in the last second, so restart the buckets
     // now is past the next update time already OR
