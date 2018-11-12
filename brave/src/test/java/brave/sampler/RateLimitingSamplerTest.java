@@ -1,64 +1,86 @@
 package brave.sampler;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+import static brave.sampler.RateLimitingSampler.NANOS_PER_SECOND;
+import static brave.sampler.SamplerTest.INPUT_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.when;
 
+@RunWith(PowerMockRunner.class)
+// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
+@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
+@PrepareForTest(RateLimitingSampler.class)
 public class RateLimitingSamplerTest {
 
-  private Sampler sampler;
-
-  @Before public void setup() {
-    sampler = RateLimitingSampler.create(1);
-  }
-
   @Test public void samplesOnlySpecifiedNumber() {
-    List<Boolean> sampleDecisions = Arrays.asList(
-        sampler.isSampled(0),
-        sampler.isSampled(1),
-        sampler.isSampled(2),
-        sampler.isSampled(3),
-        sampler.isSampled(4));
+    mockStatic(System.class);
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
+    Sampler sampler = RateLimitingSampler.create(2);
 
-    // Sampled
-    assertThat(sampleDecisions.stream().filter(d -> d).count()).isEqualTo(1);
-    // Not Sampled
-    assertThat(sampleDecisions.stream().filter(d -> !d).count()).isEqualTo(4);
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + 1);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + 2);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + 2);
+    assertThat(sampler.isSampled(0L)).isFalse();
   }
 
-  @Test public void resetsAfterASecond() throws InterruptedException {
-    List<Boolean> sampleDecisions = new ArrayList<>(Arrays.asList(
-        sampler.isSampled(0),
-        sampler.isSampled(1),
-        sampler.isSampled(2),
-        sampler.isSampled(3),
-        sampler.isSampled(4)));
+  @Test public void resetsAfterASecond() {
+    mockStatic(System.class);
 
-    Thread.sleep(Duration.of(1, ChronoUnit.SECONDS).plusMillis(1).toMillis());
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
+    Sampler sampler = RateLimitingSampler.create(1);
+    assertThat(sampler.isSampled(0L)).isTrue();
 
-    sampleDecisions.addAll(Arrays.asList(
-        sampler.isSampled(5),
-        sampler.isSampled(6),
-        sampler.isSampled(7),
-        sampler.isSampled(8),
-        sampler.isSampled(9)));
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_SECOND / 2);
+    assertThat(sampler.isSampled(0L)).isFalse();
 
-    // Sampled
-    assertThat(sampleDecisions.stream().filter(d -> d).count()).isEqualTo(2);
-    // Not Sampled
-    assertThat(sampleDecisions.stream().filter(d -> !d).count()).isEqualTo(8);
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_SECOND);
+    assertThat(sampler.isSampled(0L)).isTrue();
   }
 
-  @Test public void specifiedNumberWithLotsOfTraces() {
-    long passed = new Random().longs(100000).parallel().filter(sampler::isSampled).count();
+  @Test public void worksOnRollover() {
+    mockStatic(System.class);
+    when(System.nanoTime()).thenReturn(-NANOS_PER_SECOND);
+    Sampler sampler = RateLimitingSampler.create(2);
+    assertThat(sampler.isSampled(0L)).isTrue();
 
-    assertThat(passed).isEqualTo(1);
+    when(System.nanoTime()).thenReturn(-NANOS_PER_SECOND / 2);
+    assertThat(sampler.isSampled(0L)).isTrue(); // second request
+
+    when(System.nanoTime()).thenReturn(-NANOS_PER_SECOND / 4);
+    assertThat(sampler.isSampled(0L)).isFalse();
+
+    when(System.nanoTime()).thenReturn(0L); // reset
+    assertThat(sampler.isSampled(0L)).isTrue();
+  }
+
+  @DataPoints public static final int[] SAMPLE_RESERVOIRS = {1, 10, 100};
+
+  @Theory public void retainsPerSampleRate(int reservoir) {
+    Sampler sampler = RateLimitingSampler.create(reservoir);
+
+    // parallel to ensure there aren't any unsynchronized race conditions
+    long passed = new Random().longs(INPUT_SIZE).parallel().filter(sampler::isSampled).count();
+
+    assertThat(passed).isEqualTo(reservoir);
+  }
+
+  @Test public void zeroMeansDropAllTraces() {
+    assertThat(RateLimitingSampler.create(0)).isSameAs(Sampler.NEVER_SAMPLE);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void tracesPerSecond_cantBeNegative() {
+    RateLimitingSampler.create(-1);
   }
 }
