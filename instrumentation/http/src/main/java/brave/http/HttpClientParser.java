@@ -11,12 +11,16 @@ public class HttpClientParser extends HttpParser {
 
   /**
    * Customizes the span based on the request that will be sent to the server.
+   * Add "http.url" default tag with requested URL.
    *
    * <p>{@inheritDoc}
    */
   @Override public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
       SpanCustomizer customizer) {
     super.request(adapter, req, customizer);
+
+    String url = adapter.url(req);
+    if (url != null) customizer.tag("http.url", url);
   }
 
   /**
