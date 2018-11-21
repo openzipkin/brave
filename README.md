@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/openzipkin/brave.svg?branch=master)](https://travis-ci.org/openzipkin/brave)
 [![Maven Central](https://img.shields.io/maven-central/v/io.zipkin.brave/brave.svg)](https://maven-badges.herokuapp.com/maven-central/io.zipkin.brave/brave)
 [![Gitter chat](http://img.shields.io/badge/gitter-join%20chat%20%E2%86%92-brightgreen.svg)](https://gitter.im/openzipkin/zipkin)
+[![Code Quality: Java](https://img.shields.io/lgtm/grade/java/g/openzipkin/brave.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/openzipkin/brave/context:java)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/openzipkin/brave.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/openzipkin/brave/alerts)
 
 # Brave
 Brave is a library used to capture latency information about distributed
