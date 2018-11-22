@@ -104,7 +104,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
       TraceContext context = InternalPropagation.instance.newTraceContext(
-          InternalPropagation.FLAG_SAMPLED,
+          InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
           contextKey.traceIdHigh, contextKey.traceId,
           0L, contextKey.spanId,
           Collections.emptyList()
