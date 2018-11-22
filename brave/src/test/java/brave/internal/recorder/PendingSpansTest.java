@@ -24,6 +24,8 @@ public class PendingSpansTest {
   @Before public void init() {
     init(new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext ctx, MutableSpan span) {
+        if (!Boolean.TRUE.equals(ctx.sampled())) return true;
+
         Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
         span.forEachAnnotation(Span.Builder::addAnnotation, b);
         spans.add(b.build());
