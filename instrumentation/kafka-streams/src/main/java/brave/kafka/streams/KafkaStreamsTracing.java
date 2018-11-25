@@ -127,10 +127,27 @@ public final class KafkaStreamsTracing {
     return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
   }
 
-  public <K, V> ProcessorSupplier<K, V> foreach(String name, ForeachAction<K, V> foreachAction) {
+  public <K, V> ProcessorSupplier<K, V> foreach(String name, ForeachAction<K, V> action) {
     return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
       @Override public void process(K key, V value) {
-        foreachAction.apply(key, value);
+        action.apply(key, value);
+      }
+    });
+  }
+
+  public <K, V> ProcessorSupplier<K, V> peek(String name, ForeachAction<K, V> action) {
+    return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
+      @Override public void process(K key, V value) {
+        action.apply(key, value);
+        context().forward(key, value);
+      }
+    });
+  }
+
+  public <K, V> ProcessorSupplier<K, V> mark(String name) {
+    return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
+      @Override public void process(K key, V value) {
+        context().forward(key, value);
       }
     });
   }
