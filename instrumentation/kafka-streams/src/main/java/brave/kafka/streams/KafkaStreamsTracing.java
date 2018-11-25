@@ -7,16 +7,22 @@ import brave.kafka.clients.KafkaTracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Properties;
+import java.util.function.BiConsumer;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.ForeachAction;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
+import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -38,8 +44,8 @@ public final class KafkaStreamsTracing {
 
   /**
    * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}. All
-   * Topology Sources and Sinks (including internal Topics) will create Spans on records
-   * processed (i.e. send or consumed).
+   * Topology Sources and Sinks (including internal Topics) will create Spans on records processed
+   * (i.e. send or consumed).
    *
    * Use this instead of {@link KafkaStreams} constructor.
    *
@@ -119,6 +125,42 @@ public final class KafkaStreamsTracing {
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(String name,
       ValueTransformerWithKey<K, V, VR> valueTransformerWithKey) {
     return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
+  }
+
+  public <K, V> ProcessorSupplier<K, V> foreach(String name, ForeachAction<K, V> foreachAction) {
+    return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
+      @Override public void process(K key, V value) {
+        foreachAction.apply(key, value);
+      }
+    });
+  }
+
+  public <K, V, KR, VR> TransformerSupplier<K, V, KeyValue<KR, VR>> map(String name,
+      KeyValueMapper<K, V, KeyValue<KR, VR>> mapper) {
+    return new TracingTransformerSupplier<>(this, name,
+        new AbstractTracingTransformer<K, V, KeyValue<KR, VR>>() {
+          @Override public KeyValue<KR, VR> transform(K key, V value) {
+            return mapper.apply(key, value);
+          }
+        });
+  }
+
+  public <K, V, VR> ValueTransformerWithKey<K, V, VR> mapValues(String name,
+      KeyValueMapper<K, V, VR> mapper) {
+    return new TracingValueTransformerWithKey<>(this, name,
+        new AbstractTracingValueTransformerWithKey<K, V, VR>() {
+          @Override public VR transform(K readOnlyKey, V value) {
+            return mapper.apply(readOnlyKey, value);
+          }
+        });
+  }
+
+  public <V, VR> ValueTransformer<V, VR> mapValues(String name, ValueMapper<V, VR> mapper) {
+    return new TracingValueTransformer<>(this, name, new AbstractTracingValueTransformer<V, VR>() {
+      @Override public VR transform(V value) {
+        return mapper.apply(value);
+      }
+    });
   }
 
   static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
