@@ -8,6 +8,7 @@ import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -44,6 +45,7 @@ import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -184,6 +186,8 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_peek() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
 
+    long now = System.currentTimeMillis();
+
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .process(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
@@ -192,6 +196,7 @@ public class ITKafkaStreamsTracing {
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
+          tracing.tracer().currentSpan().annotate(now, "test");
         }));
     Topology topology = builder.build();
 
@@ -207,6 +212,7 @@ public class ITKafkaStreamsTracing {
     assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.annotations()).contains(Annotation.create(now, "test"));
 
     streams.close();
     streams.cleanUp();
