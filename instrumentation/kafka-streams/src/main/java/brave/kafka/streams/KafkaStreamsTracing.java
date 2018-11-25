@@ -162,9 +162,9 @@ public final class KafkaStreamsTracing {
         });
   }
 
-  public <K, V, VR> ValueTransformerWithKey<K, V, VR> mapValues(String name,
+  public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> mapValues(String name,
       KeyValueMapper<K, V, VR> mapper) {
-    return new TracingValueTransformerWithKey<>(this, name,
+    return new TracingValueTransformerWithKeySupplier<>(this, name,
         new AbstractTracingValueTransformerWithKey<K, V, VR>() {
           @Override public VR transform(K readOnlyKey, V value) {
             return mapper.apply(readOnlyKey, value);
@@ -172,8 +172,8 @@ public final class KafkaStreamsTracing {
         });
   }
 
-  public <V, VR> ValueTransformer<V, VR> mapValues(String name, ValueMapper<V, VR> mapper) {
-    return new TracingValueTransformer<>(this, name, new AbstractTracingValueTransformer<V, VR>() {
+  public <V, VR> ValueTransformerSupplier<V, VR> mapValues(String name, ValueMapper<V, VR> mapper) {
+    return new TracingValueTransformerSupplier<>(this, name, new AbstractTracingValueTransformer<V, VR>() {
       @Override public VR transform(V value) {
         return mapper.apply(value);
       }
