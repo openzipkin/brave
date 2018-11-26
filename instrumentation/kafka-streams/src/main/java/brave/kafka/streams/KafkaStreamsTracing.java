@@ -14,10 +14,12 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.ForeachAction;
+import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueMapper;
+import org.apache.kafka.streams.kstream.ValueMapperWithKey;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -127,6 +129,17 @@ public final class KafkaStreamsTracing {
     return new TracingValueTransformerWithKeySupplier<>(this, name, valueTransformerWithKey);
   }
 
+  /**
+   * Create a foreach processor, similar to {@link KStream#foreach(ForeachAction)}, where its action
+   * will be traced.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .process(kafkaStraemsTracing.foreach("myForeach", (k, v) -> ...);
+   * }</pre>
+   */
   public <K, V> ProcessorSupplier<K, V> foreach(String name, ForeachAction<K, V> action) {
     return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
       @Override public void process(K key, V value) {
@@ -135,6 +148,18 @@ public final class KafkaStreamsTracing {
     });
   }
 
+  /**
+   * Create a peek transformer, similar to {@link KStream#peek(ForeachAction)}, where its action
+   * will be traced.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStraemsTracing.peek("myPeek", (k, v) -> ...)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> peek(String name, ForeachAction<K, V> action) {
     return new TracingTransformerSupplier<>(this, name, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
       @Override public KeyValue<K, V> transform(K key, V value) {
@@ -144,6 +169,20 @@ public final class KafkaStreamsTracing {
     });
   }
 
+  /**
+   * Create a mark transformer, similar to {@link KStream#peek(ForeachAction)}, but no action is executed.
+   * Instead only a span is created to mark the beginning or end of a task.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStraemsTracing.mark("beginning")
+   *        .map(mapper)
+   *        .transform(kafkaStreamsTracing.mark("end")
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> mark(String name) {
     return new TracingTransformerSupplier<>(this, name, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
       @Override public KeyValue<K, V> transform(K key, V value) {
@@ -152,6 +191,18 @@ public final class KafkaStreamsTracing {
     });
   }
 
+  /**
+   * Create a map transformer, similar to {@link KStream#map(KeyValueMapper)}, where its mapper action
+   * will be traced.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStraemsTracing.map("myMap", (k, v) -> ...)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <K, V, KR, VR> TransformerSupplier<K, V, KeyValue<KR, VR>> map(String name,
       KeyValueMapper<K, V, KeyValue<KR, VR>> mapper) {
     return new TracingTransformerSupplier<>(this, name,
@@ -162,8 +213,20 @@ public final class KafkaStreamsTracing {
         });
   }
 
+  /**
+   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
+   * will be traced.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStraemsTracing.mapValues("myMapValues", (k, v) -> ...)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> mapValues(String name,
-      KeyValueMapper<K, V, VR> mapper) {
+      ValueMapperWithKey<K, V, VR> mapper) {
     return new TracingValueTransformerWithKeySupplier<>(this, name,
         new AbstractTracingValueTransformerWithKey<K, V, VR>() {
           @Override public VR transform(K readOnlyKey, V value) {
@@ -172,6 +235,18 @@ public final class KafkaStreamsTracing {
         });
   }
 
+  /**
+   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapper)}, where its mapper action
+   * will be traced.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .transform(kafkaStraemsTracing.mapValues("myMapValues", v -> ...)
+   *        .to(outputTopic);
+   * }</pre>
+   */
   public <V, VR> ValueTransformerSupplier<V, VR> mapValues(String name, ValueMapper<V, VR> mapper) {
     return new TracingValueTransformerSupplier<>(this, name, new AbstractTracingValueTransformer<V, VR>() {
       @Override public VR transform(V value) {
