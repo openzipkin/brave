@@ -14,7 +14,7 @@ import java.util.Random;
  * defend against nodes in the same cluster sampling exactly the same subset of trace ids. The goal
  * was full 64-bit coverage of trace IDs on multi-host deployments.
  *
- * <p>Based on https://github.com/twitter/finagle/blob/develop/finagle-zipkin/src/main/scala/com/twitter/finagle/zipkin/thrift/Sampler.scala#L68
+ * <p>Based on https://github.com/twitter/finagle/blob/b6b1d0414fa24ed0c8bb5112985a4e9c9bcd3c9e/finagle-zipkin-core/src/main/scala/com/twitter/finagle/zipkin/core/Sampler.scala#L68
  */
 public final class BoundarySampler extends Sampler {
   static final long SALT = new Random().nextLong();
