@@ -135,19 +135,19 @@ public final class KafkaStreamsTracing {
     });
   }
 
-  public <K, V> ProcessorSupplier<K, V> peek(String name, ForeachAction<K, V> action) {
-    return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
-      @Override public void process(K key, V value) {
+  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> peek(String name, ForeachAction<K, V> action) {
+    return new TracingTransformerSupplier<>(this, name, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
+      @Override public KeyValue<K, V> transform(K key, V value) {
         action.apply(key, value);
-        context().forward(key, value);
+        return KeyValue.pair(key, value);
       }
     });
   }
 
-  public <K, V> ProcessorSupplier<K, V> mark(String name) {
-    return new TracingProcessorSupplier<>(this, name, new AbstractProcessor<K, V>() {
-      @Override public void process(K key, V value) {
-        context().forward(key, value);
+  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> mark(String name) {
+    return new TracingTransformerSupplier<>(this, name, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
+      @Override public KeyValue<K, V> transform(K key, V value) {
+        return KeyValue.pair(key, value);
       }
     });
   }
