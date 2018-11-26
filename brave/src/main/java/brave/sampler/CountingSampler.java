@@ -7,7 +7,6 @@ import java.util.Random;
  * This sampler is appropriate for low-traffic instrumentation (ex servers that each receive <100K
  * requests), or those who do not provision random trace ids. It is not appropriate for collectors
  * as the sampling decision isn't idempotent (consistent based on trace id).
- * the sampling decision isn't idempotent (consistent based on trace id).
  *
  * <h3>Implementation</h3>
  *
