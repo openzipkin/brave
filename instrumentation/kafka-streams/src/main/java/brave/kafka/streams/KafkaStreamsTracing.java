@@ -137,7 +137,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .process(kafkaStraemsTracing.foreach("myForeach", (k, v) -> ...);
+   *        .process(kafkaStreamsTracing.foreach("myForeach", (k, v) -> ...);
    * }</pre>
    */
   public <K, V> ProcessorSupplier<K, V> foreach(String name, ForeachAction<K, V> action) {
