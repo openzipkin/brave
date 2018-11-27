@@ -156,7 +156,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.peek("myPeek", (k, v) -> ...)
+   *        .transform(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
