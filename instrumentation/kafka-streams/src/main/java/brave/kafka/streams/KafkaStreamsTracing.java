@@ -177,7 +177,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.mark("beginning")
+   *        .transform(kafkaStreamsTracing.mark("beginning")
    *        .map(mapper)
    *        .transform(kafkaStreamsTracing.mark("end")
    *        .to(outputTopic);
