@@ -193,7 +193,7 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a map transformer, similar to {@link KStream#map(KeyValueMapper)}, where its mapper action
-   * will be traced.
+   * will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
