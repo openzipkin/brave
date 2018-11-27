@@ -221,7 +221,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.mapValues("myMapValues", (k, v) -> ...)
+   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
