@@ -9,16 +9,16 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
-  final String name;
+  final String spanName;
   final Transformer<K, V, R> delegateTransformer;
 
   ProcessorContext processorContext;
 
-  TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String name,
+  TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
       Transformer<K, V, R> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
-    this.name = name;
+    this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
 
@@ -32,7 +32,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
   public R transform(K k, V v) {
     Span span = kafkaStreamsTracing.nextSpan(processorContext);
     if (!span.isNoop()) {
-      span.name(name);
+      span.name(spanName);
       span.start();
     }
 

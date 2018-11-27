@@ -9,16 +9,16 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
-  final String name;
+  final String spanName;
   final ValueTransformer<V, VR> delegateTransformer;
 
   ProcessorContext processorContext;
 
-  TracingValueTransformer(KafkaStreamsTracing kafkaStreamsTracing, String name,
+  TracingValueTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
       ValueTransformer<V, VR> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
-    this.name = name;
+    this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
 
@@ -32,7 +32,7 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
   public VR transform(V v) {
     Span span = kafkaStreamsTracing.nextSpan(processorContext);
     if (!span.isNoop()) {
-      span.name(name);
+      span.name(spanName);
       span.start();
     }
 

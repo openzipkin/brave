@@ -9,16 +9,16 @@ class TracingProcessor<K, V> implements Processor<K, V> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
-  final String name;
+  final String spanName;
   final Processor<K, V> delegateProcessor;
 
   ProcessorContext processorContext;
 
   TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-      String name, Processor<K, V> delegateProcessor) {
+      String spanName, Processor<K, V> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
-    this.name = name;
+    this.spanName = spanName;
     this.delegateProcessor = delegateProcessor;
   }
 
@@ -32,7 +32,7 @@ class TracingProcessor<K, V> implements Processor<K, V> {
   public void process(K k, V v) {
     Span span = kafkaStreamsTracing.nextSpan(processorContext);
     if (!span.isNoop()) {
-      span.name(name);
+      span.name(spanName);
       span.start();
     }
 
