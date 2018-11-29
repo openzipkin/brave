@@ -137,7 +137,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .process(kafkaStraemsTracing.foreach("myForeach", (k, v) -> ...);
+   *        .process(kafkaStreamsTracing.foreach("myForeach", (k, v) -> ...);
    * }</pre>
    */
   public <K, V> ProcessorSupplier<K, V> foreach(String spanName, ForeachAction<K, V> action) {
@@ -156,7 +156,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.peek("myPeek", (k, v) -> ...)
+   *        .transform(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
@@ -180,7 +180,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.mark("beginning-complex-map")
+   *        .transform(kafkaStreamsTracing.mark("beginning-complex-map")
    *        .map(complexTransformation1)
    *        .filter(predicate)
    *        .map(complexTransformation2)
@@ -204,7 +204,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.map("myMap", (k, v) -> ...)
+   *        .transform(kafkaStreamsTracing.map("myMap", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
@@ -226,7 +226,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.mapValues("myMapValues", (k, v) -> ...)
+   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
@@ -248,7 +248,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStraemsTracing.mapValues("myMapValues", v -> ...)
+   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
