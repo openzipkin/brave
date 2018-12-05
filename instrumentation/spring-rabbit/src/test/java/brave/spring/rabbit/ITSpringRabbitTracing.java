@@ -144,7 +144,7 @@ public class ITSpringRabbitTracing {
     allSpans.add(takeConsumerSpan());
     allSpans.add(takeConsumerSpan());
 
-    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
+    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
         tuple("spring-amqp-producer", "rabbitmq"),
         tuple("rabbitmq", "spring-amqp-consumer")

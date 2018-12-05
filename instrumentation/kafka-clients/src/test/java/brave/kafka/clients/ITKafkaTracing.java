@@ -168,7 +168,7 @@ public class ITKafkaTracing {
     allSpans.add(takeConsumerSpan());
     allSpans.add(takeProducerSpan());
 
-    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans.iterator()).link();
+    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
         tuple("producer", "kafka"),
         tuple("kafka", "consumer")
