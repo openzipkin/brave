@@ -9,6 +9,7 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import static brave.sampler.RateLimitingSampler.NANOS_PER_DECISECOND;
 import static brave.sampler.RateLimitingSampler.NANOS_PER_SECOND;
 import static brave.sampler.SamplerTest.INPUT_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,14 +39,41 @@ public class RateLimitingSamplerTest {
     mockStatic(System.class);
 
     when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
-    Sampler sampler = RateLimitingSampler.create(1);
+    Sampler sampler = RateLimitingSampler.create(10);
     assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isFalse();
 
-    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_SECOND / 2);
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_DECISECOND);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isFalse();
+
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_DECISECOND * 9);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue();
     assertThat(sampler.isSampled(0L)).isFalse();
 
     when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_SECOND);
     assertThat(sampler.isSampled(0L)).isTrue();
+  }
+
+  @Test public void allowsOddRates() {
+    mockStatic(System.class);
+
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
+    Sampler sampler = RateLimitingSampler.create(11);
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_DECISECOND * 9);
+    for (int i = 0; i < 11; i++) {
+      assertThat(sampler.isSampled(0L))
+          .withFailMessage("failed after " + (i + 1))
+          .isTrue();
+    }
+    assertThat(sampler.isSampled(0L)).isFalse();
   }
 
   @Test public void worksOnRollover() {
