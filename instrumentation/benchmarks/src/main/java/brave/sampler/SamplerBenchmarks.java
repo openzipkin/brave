@@ -1,5 +1,6 @@
 package brave.sampler;
 
+import com.amazonaws.xray.strategy.sampling.reservoir.Reservoir;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -102,6 +103,18 @@ public class SamplerBenchmarks {
   }
 
   static final Sampler SAMPLER_RATE_LIMITED_100 = RateLimitingSampler.create(100);
+
+  @Benchmark public boolean sampler_rateLimited_1_xray(Args args) {
+    return RESERVOIR_RATE_LIMITED.take();
+  }
+
+  static final Reservoir RESERVOIR_RATE_LIMITED = new Reservoir(SAMPLE_RESERVOIR);
+
+  @Benchmark public boolean sampler_rateLimited_100_xray(Args args) {
+    return RESERVOIR_RATE_LIMITED_100.take();
+  }
+
+  static final Reservoir RESERVOIR_RATE_LIMITED_100 = new Reservoir(100);
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {

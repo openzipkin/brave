@@ -5,10 +5,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Inspired by on https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java
+ * The rate-limited sampler allows you to choose an amount of traces to accept on a per-second
+ * interval. The minimum number is 1 and there is no maximum.
  *
- * Uses only Java 6 APIs to be compatible with Brave Core requirements. Accounts for nanoTime()
- * overflow, as unlikely as that might be.
+ * <p>For example, to allow 10 traces per second, you'd initialize the following:
+ * <pre>{@code
+ * tracingBuilder.sampler(RateLimitingSampler.create(10));
+ * }</pre>
+ *
+ * <h3>Appropriate Usage</h3>
+ *
+ * <p>If the rate is 10 or more traces per second, an attempt is made to distribute the accept
+ * decisions equally across the second. For example, if the rate is 100, 10 will pass every
+ * decisecond as opposed to bunching all pass decisions at the beginning of the second.
+ *
+ * <p>This sampler is efficient, but not as efficient as the {@link brave.sampler.BoundarySampler}.
+ * However, this sampler is insensitive to the trace ID and will operate correctly even if they are
+ * not perfectly random.
+ *
+ * <h3>Implementation</h3>
+ *
+ * <p>The implementation uses {@link System#nanoTime} and tracks how many yes decisions occur
+ * across a second window. When the rate is at least 10/s, the yes decisions are equally split over
+ * 10 deciseconds, allowing a roll-over of unused yes decisions up until the end of the second.
  */
 public class RateLimitingSampler extends Sampler {
   public static Sampler create(int tracesPerSecond) {
