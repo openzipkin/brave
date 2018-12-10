@@ -33,7 +33,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(2)
@@ -91,16 +91,23 @@ public class SamplerBenchmarks {
 
   static final Sampler SAMPLER_RATE = CountingSampler.create(SAMPLE_RATE);
 
-  @Benchmark public boolean sampler_rateLimited(Args args) {
+  @Benchmark public boolean sampler_rateLimited_1(Args args) {
     return SAMPLER_RATE_LIMITED.isSampled(args.traceId);
   }
 
   static final Sampler SAMPLER_RATE_LIMITED = RateLimitingSampler.create(SAMPLE_RESERVOIR);
 
+  @Benchmark public boolean sampler_rateLimited_100(Args args) {
+    return SAMPLER_RATE_LIMITED_100.isSampled(args.traceId);
+  }
+
+  static final Sampler SAMPLER_RATE_LIMITED_100 = RateLimitingSampler.create(100);
+
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + SamplerBenchmarks.class.getSimpleName())
+        .addProfiler("gc")
+        .include(".*" + SamplerBenchmarks.class.getSimpleName() + ".*rate.*")
         .build();
 
     new Runner(opt).run();
