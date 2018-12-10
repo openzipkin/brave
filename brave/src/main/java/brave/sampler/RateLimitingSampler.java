@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The rate-limited sampler allows you to choose an amount of traces to accept on a per-second
- * interval. The minimum number is 1 and there is no maximum.
+ * interval. The minimum number is 1 and the max is 2,147,483,647 (max int).
  *
  * <p>For example, to allow 10 traces per second, you'd initialize the following:
  * <pre>{@code
