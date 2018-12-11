@@ -10,7 +10,7 @@ cache:
 language: java
 
 jdk:
-  - oraclejdk11
+  - openjdk11
 
 before_install:
   # Parameters used during release

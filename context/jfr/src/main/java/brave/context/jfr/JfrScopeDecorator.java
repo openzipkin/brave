@@ -55,8 +55,6 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     class JfrCurrentTraceContextScope implements Scope {
       @Override public void close() {
         scope.close();
-        if (!event.shouldCommit()) return;
-        event.end();
         event.commit();
       }
     }
