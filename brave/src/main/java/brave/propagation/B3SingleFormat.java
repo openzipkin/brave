@@ -221,6 +221,7 @@ public final class B3SingleFormat {
         flags,
         traceIdHigh,
         traceId,
+        0L, // localRootId is the first ID used in process, not necessarily the one extracted
         parentId,
         spanId,
         Collections.emptyList()

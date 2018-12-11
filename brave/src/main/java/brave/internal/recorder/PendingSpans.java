@@ -74,6 +74,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           context.traceIdHigh(),
           context.traceId(),
           0,
+          0,
           spanId,
           Collections.emptyList()
       ));
@@ -106,7 +107,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       TraceContext context = InternalPropagation.instance.newTraceContext(
           InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
           contextKey.traceIdHigh, contextKey.traceId,
-          0L, contextKey.spanId,
+          contextKey.localRootId, 0L, contextKey.spanId,
           Collections.emptyList()
       );
       value.state.annotate(flushTime, "brave.flush");
@@ -130,7 +131,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     final int hashCode;
 
     // Copy the identity fields from the trace context, so we can use them when the reference clears
-    final long traceIdHigh, traceId, spanId;
+    final long traceIdHigh, traceId, localRootId, spanId;
     final boolean sampled;
 
     RealKey(TraceContext context, ReferenceQueue<TraceContext> queue) {
@@ -138,6 +139,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       hashCode = context.hashCode();
       traceIdHigh = context.traceIdHigh();
       traceId = context.traceId();
+      localRootId = context.localRootId();
       spanId = context.spanId();
       sampled = Boolean.TRUE.equals(context.sampled());
     }

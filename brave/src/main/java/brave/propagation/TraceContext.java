@@ -1,5 +1,6 @@
 package brave.propagation;
 
+import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -9,6 +10,7 @@ import java.util.List;
 
 import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
@@ -77,6 +79,32 @@ public final class TraceContext extends SamplingFlags {
   /** Unique 8-byte identifier for a trace, set on all spans within it. */
   public long traceId() {
     return traceId;
+  }
+
+  /**
+   * Returns the first {@link #spanId()} in a partition of a trace: otherwise known as an entry
+   * span. This could be a root span or a span representing incoming work (ex {@link
+   * Span.Kind#SERVER} or {@link Span.Kind#CONSUMER}. Unlike {@link #parentIdAsLong()}, this value
+   * is inherited to child contexts until the trace exits the process. This value is inherited for
+   * all child spans until the trace exits the process. This could also be described as an entry
+   * span.
+   *
+   * <p>When {@link #isLocalRoot()}, this ID will be the same as the {@link #spanId() span ID}.
+   *
+   * <p>The local root ID can be used for dependency link processing, skipping data or partitioning
+   * purposes. For example, one processor could skip all intermediate (local) spans between an
+   * incoming service call and any outgoing ones.
+   *
+   * <p>This does not group together multiple points of entry in the same trace. For example,
+   * repetitive consumption of the same incoming message results in different local roots.
+   */
+  // This is the first span ID that became a Span or ScopedSpan
+  public long localRootId() {
+    return localRootId;
+  }
+
+  public boolean isLocalRoot() {
+    return (flags & FLAG_LOCAL_ROOT) == FLAG_LOCAL_ROOT;
   }
 
   /**
@@ -181,12 +209,14 @@ public final class TraceContext extends SamplingFlags {
 
   public static final class Builder {
     long traceIdHigh, traceId, parentId, spanId;
+    long localRootId; // intentionally only mutable by the copy constructor in order to control usage.
     int flags;
     List<Object> extra = Collections.emptyList();
 
     Builder(TraceContext context) { // no external implementations
       traceIdHigh = context.traceIdHigh;
       traceId = context.traceId;
+      localRootId = context.localRootId;
       parentId = context.parentId;
       spanId = context.spanId;
       flags = context.flags;
@@ -376,7 +406,7 @@ public final class TraceContext extends SamplingFlags {
       if (spanId == 0L) missing += " spanId";
       if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
       return new TraceContext(
-          flags, traceIdHigh, traceId, parentId, spanId, ensureImmutable(extra)
+          flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
       );
     }
 
@@ -385,20 +415,21 @@ public final class TraceContext extends SamplingFlags {
   }
 
   TraceContext withExtra(List<Object> extra) {
-    return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
   }
 
   TraceContext withFlags(int flags) {
-    return new TraceContext(flags, traceIdHigh, traceId, parentId, spanId, extra);
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
   }
 
-  final long traceIdHigh, traceId, parentId, spanId;
+  final long traceIdHigh, traceId, localRootId, parentId, spanId;
   final List<Object> extra;
 
   TraceContext(
       int flags,
       long traceIdHigh,
       long traceId,
+      long localRootId,
       long parentId,
       long spanId,
       List<Object> extra
@@ -406,6 +437,7 @@ public final class TraceContext extends SamplingFlags {
     super(flags);
     this.traceIdHigh = traceIdHigh;
     this.traceId = traceId;
+    this.localRootId = localRootId;
     this.parentId = parentId;
     this.spanId = spanId;
     this.extra = extra;

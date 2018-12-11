@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
@@ -178,11 +179,20 @@ public class Tracer {
     // If the sampled flag was left unset, we need to make the decision here
     if ((flags & FLAG_SAMPLED_SET) != FLAG_SAMPLED_SET) { // cheap check for not yet sampled
       // then the caller didn't contribute data
-      context = sampleContext(context, flags);
+      flags = InternalPropagation.sampled(sampler.isSampled(context.traceId()), flags);
     } else if ((flags & FLAG_SAMPLED) == FLAG_SAMPLED) {
       // we are recording and contributing to the same span ID
-      context = InternalPropagation.instance.withFlags(context, flags | FLAG_SHARED);
+      flags = flags | FLAG_SHARED;
     }
+    context = InternalPropagation.instance.newTraceContext(
+        flags | FLAG_LOCAL_ROOT,
+        context.traceIdHigh(),
+        context.traceId(),
+        context.spanId(), // local root
+        context.parentIdAsLong(),
+        context.spanId(),
+        context.extra()
+    );
     return _toSpan(propagationFactory.decorate(context));
   }
 
@@ -199,14 +209,21 @@ public class Tracer {
   }
 
   TraceContext newRootContext() {
-    return nextContext(0, 0L, 0L, 0L, Collections.emptyList());
+    return nextContext(FLAG_LOCAL_ROOT, 0L, 0L, 0L, 0L, Collections.emptyList());
   }
 
+  /**
+   * Called by methods which can accept externally supplied parent trace contexts: Ex. {@link
+   * #newChild(TraceContext)} and {@link #startScopedSpanWithParent(String, TraceContext)}. This
+   * implies the {@link TraceContext#localRootId()} could be zero, if the context was manually
+   * created.
+   */
   TraceContext nextContext(TraceContext parent) {
     return nextContext(
         InternalPropagation.instance.flags(parent),
         parent.traceIdHigh(),
         parent.traceId(),
+        parent.localRootId(),
         parent.spanId(),
         parent.extra()
     );
@@ -216,6 +233,7 @@ public class Tracer {
       int flags,
       long traceIdHigh,
       long traceId,
+      long localRootId,
       long parentId,
       List<Object> extra
   ) {
@@ -227,16 +245,19 @@ public class Tracer {
       traceIdHigh = traceId128Bit ? Platform.get().nextTraceIdHigh() : 0L;
       traceId = nextId;
     } else { // child of an existing span. ensure the shared flag is unset
-      flags &= ~FLAG_SHARED;
+      flags &= ~(FLAG_SHARED | FLAG_LOCAL_ROOT);
     }
     long spanId = nextId;
     if ((flags & FLAG_SAMPLED_SET) != FLAG_SAMPLED_SET) { // cheap check for not yet sampled
       flags = InternalPropagation.sampled(sampler.isSampled(traceId), flags);
     }
+    // Zero when root or an externally managed context was passed to newChild or scopedWithParent
+    if (localRootId == 0L) localRootId = spanId;
     return propagationFactory.decorate(InternalPropagation.instance.newTraceContext(
         flags,
         traceIdHigh,
         traceId,
+        localRootId,
         parentId,
         spanId,
         extra
@@ -283,6 +304,7 @@ public class Tracer {
           traceIdContext.traceIdHigh(),
           traceIdContext.traceId(),
           0L,
+          0L,
           extracted.extra()
       ));
     }
@@ -292,19 +314,20 @@ public class Tracer {
 
     TraceContext implicitParent = currentTraceContext.get();
     int flags;
-    long traceIdHigh = 0L, traceId = 0L, spanId = 0L;
+    long traceIdHigh = 0L, traceId = 0L, localRootId = 0L, spanId = 0L;
     if (implicitParent != null) {
       // At this point, we didn't extract trace IDs, but do have a trace in progress. Since typical
       // trace sampling is up front, we retain the decision from the parent.
       flags = InternalPropagation.instance.flags(implicitParent);
       traceIdHigh = implicitParent.traceIdHigh();
       traceId = implicitParent.traceId();
+      localRootId = implicitParent.localRootId();
       spanId = implicitParent.spanId();
       extra = concatImmutableLists(extra, implicitParent.extra());
     } else {
       flags = InternalPropagation.instance.flags(samplingFlags);
     }
-    return _toSpan(nextContext(flags, traceIdHigh, traceId, spanId, extra));
+    return _toSpan(nextContext(flags, traceIdHigh, traceId, localRootId, spanId, extra));
   }
 
   /** Converts the context to a Span object after decorating it for propagation */
@@ -500,10 +523,5 @@ public class Tracer {
       nextId = Platform.get().randomLong();
     }
     return nextId;
-  }
-
-  TraceContext sampleContext(TraceContext context, int flags) {
-    flags = InternalPropagation.sampled(sampler.isSampled(context.traceId()), flags);
-    return InternalPropagation.instance.withFlags(context, flags);
   }
 }
