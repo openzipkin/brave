@@ -98,7 +98,7 @@ public class MutableSpanTest {
     span.forEachAnnotation((target, timestamp, value) -> {
       LogRecord record = new LogRecord(Level.FINE, value);
       record.setParameters(
-          new Object[] {context.traceIdString(), Long.toHexString(context.spanId())});
+          new Object[] {context.traceIdString(), context.spanIdString()});
       record.setMillis(timestamp / 1000L);
       target.log(record);
     }, logger);

@@ -150,7 +150,7 @@ public class TracerTest {
     assertThat(joined.shared())
         .isTrue();
     assertThat(joined)
-        .isEqualToComparingFieldByField(fromIncomingRequest.toBuilder().shared(true).build());
+        .isEqualToIgnoringGivenFields(fromIncomingRequest.toBuilder().shared(true).build(), "hashCode");
   }
 
   /**
@@ -307,7 +307,7 @@ public class TracerTest {
     assertThat(tracer.newChild(parent))
         .satisfies(c -> {
           assertThat(c.context().traceIdString()).isEqualTo(parent.traceIdString());
-          assertThat(c.context().parentId()).isEqualTo(parent.spanId());
+          assertThat(c.context().parentIdString()).isEqualTo(parent.spanIdString());
         })
         .isInstanceOf(RealSpan.class);
   }

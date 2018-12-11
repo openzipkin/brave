@@ -22,9 +22,9 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
     if (!Boolean.TRUE.equals(context.sampled())) return true;
 
     Span.Builder builderWithContextData = Span.newBuilder()
-        .traceId(context.traceIdHigh(), context.traceId())
-        .parentId(context.parentIdAsLong())
-        .id(context.spanId());
+        .traceId(context.traceIdString())
+        .parentId(context.parentIdString())
+        .id(context.spanIdString());
     if (context.debug()) builderWithContextData.debug(true);
 
     converter.convert(span, builderWithContextData);

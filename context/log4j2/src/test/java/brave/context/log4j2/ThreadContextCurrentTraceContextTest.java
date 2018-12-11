@@ -1,6 +1,5 @@
 package brave.context.log4j2;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -26,11 +25,10 @@ public class ThreadContextCurrentTraceContextTest extends CurrentTraceContextTes
     if (context != null) {
       assertThat(ThreadContext.get("traceId"))
           .isEqualTo(context.traceIdString());
-      long parentId = context.parentIdAsLong();
       assertThat(ThreadContext.get("parentId"))
-          .isEqualTo(parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
+          .isEqualTo(context.parentIdString());
       assertThat(ThreadContext.get("spanId"))
-          .isEqualTo(HexCodec.toLowerHex(context.spanId()));
+          .isEqualTo(context.spanIdString());
     } else {
       assertThat(ThreadContext.get("traceId"))
           .isNull();

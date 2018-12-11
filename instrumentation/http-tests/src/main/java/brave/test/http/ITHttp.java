@@ -2,7 +2,6 @@ package brave.test.http;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
-import brave.internal.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
@@ -143,7 +142,7 @@ public abstract class ITHttp {
           boolean contextLeak = false;
           if (current != null) {
             // add annotation in addition to throwing, in case we are off the main thread
-            if (HexCodec.toLowerHex(current.spanId()).equals(s.id())) {
+            if (current.spanIdString().equals(s.id())) {
               s = s.toBuilder().addAnnotation(s.timestampAsLong(), CONTEXT_LEAK).build();
               contextLeak = true;
             }

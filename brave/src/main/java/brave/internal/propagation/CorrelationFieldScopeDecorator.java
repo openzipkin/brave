@@ -1,13 +1,9 @@
 package brave.internal.propagation;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
-
-import static brave.internal.HexCodec.lowerHexEqualsTraceId;
-import static brave.internal.HexCodec.lowerHexEqualsUnsignedLong;
 
 /**
  * Adds correlation properties "traceId", "parentId" and "spanId" when a {@link
@@ -55,19 +51,19 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
       @Nullable String previousParentId,
       String previousSpanId
   ) {
-    boolean sameTraceId = lowerHexEqualsTraceId(previousTraceId, currentSpan);
-    if (!sameTraceId) put("traceId", currentSpan.traceIdString());
+    String traceId = currentSpan.traceIdString();
+    if (!traceId.equals(previousTraceId)) put("traceId", currentSpan.traceIdString());
 
-    long parentId = currentSpan.parentIdAsLong();
-    if (parentId == 0L) {
+    String parentId = currentSpan.parentIdString();
+    if (parentId == null) {
       remove("parentId");
     } else {
-      boolean sameParentId = lowerHexEqualsUnsignedLong(previousParentId, parentId);
-      if (!sameParentId) put("parentId", HexCodec.toLowerHex(parentId));
+      boolean sameParentId = parentId.equals(previousParentId);
+      if (!sameParentId) put("parentId", parentId);
     }
 
-    boolean sameSpanId = lowerHexEqualsUnsignedLong(previousSpanId, currentSpan.spanId());
-    if (!sameSpanId) put("spanId", HexCodec.toLowerHex(currentSpan.spanId()));
+    String spanId = currentSpan.spanIdString();
+    if (!spanId.equals(previousSpanId)) put("spanId", spanId);
   }
 
   /**

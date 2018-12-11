@@ -7,7 +7,6 @@ import brave.http.HttpAdapter;
 import brave.http.HttpClientParser;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpTracing;
-import brave.internal.HexCodec;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import java.util.Arrays;
@@ -76,7 +75,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeader("x-b3-traceId"))
         .isEqualTo(parent.context().traceIdString());
     assertThat(request.getHeader("x-b3-parentspanid"))
-        .isEqualTo(HexCodec.toLowerHex(parent.context().spanId()));
+        .isEqualTo(parent.context().spanIdString());
 
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
         .extracting(Span::kind)

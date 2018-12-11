@@ -44,9 +44,9 @@ public class SkeletalSpansTest {
       if (span.kind() == null) return false; // skip local spans
 
       zipkin2.Span.Builder builder = zipkin2.Span.newBuilder()
-          .traceId(context.traceIdHigh(), context.traceId())
-          .parentId(context.isLocalRoot() ? 0L : context.localRootId()) // rewrite the parent ID
-          .id(context.spanId())
+          .traceId(context.traceIdString())
+          .parentId(context.isLocalRoot() ? null : context.localRootIdString()) // rewrite the parent ID
+          .id(context.spanIdString())
           .name(span.name())
           .kind(zipkin2.Span.Kind.valueOf(span.kind().name()))
           .localEndpoint(Endpoint.newBuilder().serviceName(localServiceName).build());
