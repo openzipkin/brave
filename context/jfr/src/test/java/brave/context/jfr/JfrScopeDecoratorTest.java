@@ -55,7 +55,7 @@ public class JfrScopeDecoratorTest {
 
     List<RecordedEvent> events = RecordingFile.readAllEvents(destination);
     assertThat(events).extracting(e ->
-        tuple(e.getString("traceId"), e.getString("parentSpanId"), e.getString("spanId")))
+        tuple(e.getString("traceId"), e.getString("parentId"), e.getString("spanId")))
         .containsExactlyInAnyOrder(
             tuple("0000000000000001", null, "0000000000000001"),
             tuple("0000000000000001", null, "0000000000000001"),

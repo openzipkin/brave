@@ -13,7 +13,7 @@ import jdk.jfr.Label;
 /**
  * Adds {@linkplain Event} properties "traceId", "parentId" and "spanId" when a {@link
  * brave.Tracer#currentSpan() span is current}. These can be used to correlate JDK Flight recorder
- * events with logs or Zipkin data correlation.
+ * events with logs or Zipkin.
  *
  * <p>Ex.
  * <pre>{@code
@@ -33,7 +33,7 @@ public final class JfrScopeDecorator implements ScopeDecorator {
   @Description("Zipkin event representing a span being placed in scope")
   static final class ScopeEvent extends Event {
     @Label("Trace Id") String traceId;
-    @Label("Parent Span Id") String parentSpanId;
+    @Label("Parent Id") String parentId;
     @Label("Span Id") String spanId;
   }
 
@@ -48,7 +48,7 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     if (currentSpan != null) {
       event.traceId = currentSpan.traceIdString();
       long parentId = currentSpan.parentIdAsLong();
-      if (parentId != 0L) event.parentSpanId = HexCodec.toLowerHex(parentId);
+      if (parentId != 0L) event.parentId = HexCodec.toLowerHex(parentId);
       event.spanId = HexCodec.toLowerHex(currentSpan.spanId());
     }
 
