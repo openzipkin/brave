@@ -248,8 +248,7 @@ public final class TraceContext extends SamplingFlags {
 
   public static final class Builder {
     long traceIdHigh, traceId, parentId, spanId;
-    long localRootId;
-        // intentionally only mutable by the copy constructor in order to control usage.
+    long localRootId; // intentionally only mutable by the copy constructor to control usage.
     int flags;
     List<Object> extra = Collections.emptyList();
 
