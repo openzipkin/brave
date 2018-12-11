@@ -28,9 +28,9 @@ import jdk.jfr.Label;
 public final class JfrScopeDecorator implements ScopeDecorator {
 
   @Category("Zipkin")
-  @Label("Span In Scope")
+  @Label("Scope")
   @Description("Zipkin event representing a span being placed in scope")
-  static final class SpanInScope extends Event {
+  static final class ScopeEvent extends Event {
     @Label("Trace Id") String traceId;
     @Label("Parent Id") String parentId;
     @Label("Span Id") String spanId;
@@ -41,7 +41,7 @@ public final class JfrScopeDecorator implements ScopeDecorator {
   }
 
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
-    SpanInScope event = new SpanInScope();
+    ScopeEvent event = new ScopeEvent();
     if (!event.isEnabled()) return scope;
 
     if (currentSpan != null) {
