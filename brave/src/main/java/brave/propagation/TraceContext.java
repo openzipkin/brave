@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
+import static brave.internal.HexCodec.toLowerHex;
 import static brave.internal.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -177,22 +178,60 @@ public final class TraceContext extends SamplingFlags {
     return new Builder(this);
   }
 
+  volatile String traceIdString; // Lazily initialized and cached.
+
   /** Returns the hex representation of the span's trace ID */
   public String traceIdString() {
-    if (traceIdHigh != 0) {
-      char[] result = new char[32];
-      writeHexLong(result, 0, traceIdHigh);
-      writeHexLong(result, 16, traceId);
-      return new String(result);
+    String r = traceIdString;
+    if (r == null) {
+      if (traceIdHigh != 0) {
+        char[] result = new char[32];
+        writeHexLong(result, 0, traceIdHigh);
+        writeHexLong(result, 16, traceId);
+        r = new String(result);
+      } else {
+        r = toLowerHex(traceId);
+      }
+      traceIdString = r;
     }
-    char[] result = new char[16];
-    writeHexLong(result, 0, traceId);
-    return new String(result);
+    return r;
+  }
+
+  volatile String parentIdString; // Lazily initialized and cached.
+
+  /** Returns the hex representation of the span's parent ID */
+  @Nullable public String parentIdString() {
+    String r = parentIdString;
+    if (r == null && parentId != 0L) {
+      r = parentIdString = toLowerHex(parentId);
+    }
+    return r;
+  }
+
+  volatile String localRootIdString; // Lazily initialized and cached.
+
+  /** Returns the hex representation of the span's local root ID */
+  @Nullable public String localRootIdString() {
+    String r = localRootIdString;
+    if (r == null && localRootId != 0L) {
+      r = localRootIdString = toLowerHex(localRootId);
+    }
+    return r;
+  }
+
+  volatile String spanIdString; // Lazily initialized and cached.
+
+  /** Returns the hex representation of the span's ID */
+  public String spanIdString() {
+    String r = spanIdString;
+    if (r == null) {
+      r = spanIdString = toLowerHex(spanId);
+    }
+    return r;
   }
 
   /** Returns {@code $traceId/$spanId} */
-  @Override
-  public String toString() {
+  @Override public String toString() {
     boolean traceHi = traceIdHigh != 0;
     char[] result = new char[((traceHi ? 3 : 2) * 16) + 1]; // 2 ids and the delimiter
     int pos = 0;
@@ -209,7 +248,7 @@ public final class TraceContext extends SamplingFlags {
 
   public static final class Builder {
     long traceIdHigh, traceId, parentId, spanId;
-    long localRootId; // intentionally only mutable by the copy constructor in order to control usage.
+    long localRootId; // intentionally only mutable by the copy constructor to control usage.
     int flags;
     List<Object> extra = Collections.emptyList();
 
@@ -461,6 +500,8 @@ public final class TraceContext extends SamplingFlags {
         && ((flags & FLAG_SHARED) == (that.flags & FLAG_SHARED));
   }
 
+  volatile int hashCode; // Lazily initialized and cached.
+
   /**
    * Includes mandatory fields {@link #traceIdHigh()}, {@link #traceId()}, {@link #spanId()} and the
    * {@link #shared() shared flag}.
@@ -470,15 +511,18 @@ public final class TraceContext extends SamplingFlags {
    * side.
    */
   @Override public int hashCode() {
-    int h = 1;
-    h *= 1000003;
-    h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
-    h *= 1000003;
-    h ^= (int) ((traceId >>> 32) ^ traceId);
-    h *= 1000003;
-    h ^= (int) ((spanId >>> 32) ^ spanId);
-    h *= 1000003;
-    h ^= flags & FLAG_SHARED;
+    int h = hashCode;
+    if (h == 0) {
+      h = 1000003;
+      h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
+      h *= 1000003;
+      h ^= (int) ((traceId >>> 32) ^ traceId);
+      h *= 1000003;
+      h ^= (int) ((spanId >>> 32) ^ spanId);
+      h *= 1000003;
+      h ^= flags & FLAG_SHARED;
+      hashCode = h;
+    }
     return h;
   }
 

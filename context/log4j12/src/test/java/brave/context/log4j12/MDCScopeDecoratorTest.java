@@ -1,6 +1,5 @@
 package brave.context.log4j12;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
@@ -57,11 +56,10 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     if (context != null) {
       assertThat(MDC.get("traceId"))
           .isEqualTo(context.traceIdString());
-      long parentId = context.parentIdAsLong();
       assertThat(MDC.get("parentId"))
-          .isEqualTo(parentId != 0L ? HexCodec.toLowerHex(parentId) : null);
+          .isEqualTo(context.parentIdString());
       assertThat(MDC.get("spanId"))
-          .isEqualTo(HexCodec.toLowerHex(context.spanId()));
+          .isEqualTo(context.spanIdString());
     } else {
       assertThat(MDC.get("traceId"))
           .isNull();

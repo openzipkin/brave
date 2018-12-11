@@ -91,6 +91,10 @@ public abstract class HttpServerBenchmarks {
     get("/tracedextra");
   }
 
+  @Benchmark public void tracedCorrelatedServer_get() throws Exception {
+    get("/tracedcorrelated");
+  }
+
   @Benchmark public void tracedExtraServer_get_request_id() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/tracedextra")
         .header("x-vcap-request-id", "216a2aea45d08fc9")

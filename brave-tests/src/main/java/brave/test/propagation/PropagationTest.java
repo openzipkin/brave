@@ -166,7 +166,7 @@ public abstract class PropagationTest<K> {
       injector.inject(ctx, map);
 
       assertThat(extractor.extract(map).context())
-          .isEqualToComparingFieldByField(ctx);
+          .isEqualToIgnoringGivenFields(ctx, "traceIdString", "spanIdString");
     }
   }
 }

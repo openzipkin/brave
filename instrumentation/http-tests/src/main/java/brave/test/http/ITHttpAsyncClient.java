@@ -2,7 +2,6 @@ package brave.test.http;
 
 import brave.ScopedSpan;
 import brave.Tracer;
-import brave.internal.HexCodec;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
@@ -40,7 +39,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
         assertThat(request.getHeader("x-b3-traceId"))
             .isEqualTo(parent.context().traceIdString());
         assertThat(request.getHeader("x-b3-parentspanid"))
-            .isEqualTo(HexCodec.toLowerHex(parent.context().spanId()));
+            .isEqualTo(parent.context().spanIdString());
       }
     } finally {
       otherSpan.finish();

@@ -329,4 +329,75 @@ public class TraceContextTest {
         .extracting("extra")
         .containsExactly(emptyList());
   }
+
+  @Test public void caches_hashCode() {
+    TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
+
+    assertThat(context.hashCode).isZero();
+    assertThat(context.hashCode())
+        .isNotZero()
+        .isEqualTo(TraceContext.newBuilder().traceId(333L).spanId(3L).build().hashCode());
+  }
+
+  @Test public void traceIdString_caches() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+
+    assertThat(context.traceIdString).isNull();
+    assertThat(context.traceIdString())
+        .isNotNull()
+        .isEqualTo("0000000000000001");
+    assertThat(context.traceIdString)
+        .isEqualTo("0000000000000001");
+  }
+
+  @Test public void parentIdString_caches() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
+
+    assertThat(context.parentIdString).isNull();
+    assertThat(context.parentIdString())
+        .isNotNull()
+        .isEqualTo("0000000000000002");
+    assertThat(context.parentIdString)
+        .isEqualTo("0000000000000002");
+  }
+
+  @Test public void parentIdString_doesNotCacheNull() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(3L).build();
+
+    assertThat(context.parentIdString).isNull();
+    assertThat(context.parentIdString()).isNull();
+    assertThat(context.parentIdString).isNull();
+  }
+
+  @Test public void localRootIdString_caches() {
+    TraceContext.Builder builder = TraceContext.newBuilder().traceId(1L);
+    builder.localRootId = 2L;
+    TraceContext context = builder.spanId(3L).build();
+
+    assertThat(context.localRootIdString).isNull();
+    assertThat(context.localRootIdString())
+        .isNotNull()
+        .isEqualTo("0000000000000002");
+    assertThat(context.localRootIdString)
+        .isEqualTo("0000000000000002");
+  }
+
+  @Test public void localRootIdString_doesNotCacheNull() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(3L).build();
+
+    assertThat(context.localRootIdString).isNull();
+    assertThat(context.localRootIdString()).isNull();
+    assertThat(context.localRootIdString).isNull();
+  }
+
+  @Test public void spanIdString_caches() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+
+    assertThat(context.spanIdString).isNull();
+    assertThat(context.spanIdString())
+        .isNotNull()
+        .isEqualTo("0000000000000002");
+    assertThat(context.spanIdString)
+        .isEqualTo("0000000000000002");
+  }
 }

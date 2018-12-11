@@ -1,6 +1,5 @@
 package brave.propagation;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.test.propagation.PropagationTest;
 import java.util.Map;
@@ -103,7 +102,7 @@ public class B3PropagationTest extends PropagationTest<String> {
 
     assertThat(result.traceIdString())
         .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
-    assertThat(HexCodec.toLowerHex(result.spanId()))
+    assertThat(result.spanIdString())
         .isEqualTo("00f067aa0ba902b7");
   }
 }
