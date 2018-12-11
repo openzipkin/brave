@@ -243,6 +243,14 @@ By default, there's a global sampler that applies a single rate to all
 traced operations. `Tracing.Builder.sampler` is how you indicate this,
 and it defaults to trace every request.
 
+For example, to choose 10 traces every second, you'd initialize like so:
+```java
+tracing = Tracing.newBuilder()
+                 .sampler(RateLimitingSampler.create(10))
+--snip--
+                 .build();
+```
+
 ### Declarative sampling
 
 Some need to sample based on the type or annotations of a java method.
@@ -990,3 +998,9 @@ recorded (such as is the case on spans intentionally dropped).
 ### Public namespace
 Brave 4's public namespace is more defensive that the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).
+
+### Rate-limiting sampler
+`RateLimitingSampler` was made to allow Amazon X-Ray rules to be
+expressed in Brave. We considered their [Reservoir design](https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java).
+Our implementation differs as it removes a race condition and attempts
+to be more fair by distributing accept decisions every decisecond.

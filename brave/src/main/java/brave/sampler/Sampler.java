@@ -34,7 +34,11 @@ public abstract class Sampler {
     }
   };
 
-  /** Returns true if the trace ID should be measured. */
+  /**
+   * Returns true if the trace ID should be measured.
+   *
+   * @param traceId The trace ID to be decided on, can be ignored
+   */
   public abstract boolean isSampled(long traceId);
 
   /**
