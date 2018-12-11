@@ -1,6 +1,5 @@
 package brave.context.jfr;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
@@ -47,9 +46,8 @@ public final class JfrScopeDecorator implements ScopeDecorator {
 
     if (currentSpan != null) {
       event.traceId = currentSpan.traceIdString();
-      long parentId = currentSpan.parentIdAsLong();
-      if (parentId != 0L) event.parentId = HexCodec.toLowerHex(parentId);
-      event.spanId = HexCodec.toLowerHex(currentSpan.spanId());
+      event.parentId = currentSpan.parentIdString();
+      event.spanId = currentSpan.spanIdString();
     }
 
     event.begin();
