@@ -29,7 +29,7 @@ import jdk.jfr.Label;
 public final class JfrScopeDecorator implements ScopeDecorator {
 
   @Category("Zipkin")
-  @Label("Scope Event")
+  @Label("Span In Scope")
   @Description("Zipkin event representing a span being placed in scope")
   static final class ScopeEvent extends Event {
     @Label("Trace Id") String traceId;

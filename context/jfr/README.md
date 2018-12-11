@@ -1,6 +1,6 @@
 # brave-context-jfr
-This adds trace and span IDs to JDK Flight Recorder "Scope Events" so
-that you can correlate with Zipkin UI or logs accordingly.
+This adds trace and span IDs to JDK Flight Recorder "Span In Scope"
+events so that you can correlate with Zipkin UI or logs accordingly.
 
 This currently requires JDK 11. JVMs that use this need to add the below
 to their VM start arguments:
@@ -23,7 +23,7 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-After a flight is recorded, you can look for "Zipkin/Scope Event" in the
+After a flight is recorded, you can look for "Zipkin/Span In Scope" in the
 Event browser like so:
 
 <img width="1021" alt="flight recording" src="https://user-images.githubusercontent.com/64215/49773912-f0328b00-fd2d-11e8-9acd-26b82694aea9.png">
