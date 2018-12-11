@@ -18,8 +18,10 @@ import brave.propagation.CurrentTraceContext;
 import org.slf4j.MDC;
 
 /**
- * Adds {@linkplain MDC} properties "traceId", "parentId" and "spanId" when a {@link
- * brave.Tracer#currentSpan() span is current}. These can be used in log correlation.
+ * Adds {@linkplain MDC} properties "traceId", "parentId", "spanId" and "sampled" when a {@link
+ * brave.Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log correlation.
+ * "parentId" is used for scenarios such as log parsing that reconstructs the trace tree. "sampled"
+ * is used as a hint that a span found in logs might be in Zipkin.
  *
  * <p>Ex.
  * <pre>{@code
