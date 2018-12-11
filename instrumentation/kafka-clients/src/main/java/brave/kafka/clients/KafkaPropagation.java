@@ -39,7 +39,7 @@ final class KafkaPropagation {
 
   static final Getter<Headers, String> GETTER = (carrier, key) -> {
     Header header = carrier.lastHeader(key);
-    if (header == null) return null;
+    if (header == null || header.value() == null) return null;
     return new String(header.value(), UTF_8);
   };
 
