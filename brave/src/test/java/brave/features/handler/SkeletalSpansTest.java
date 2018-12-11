@@ -136,7 +136,7 @@ public class SkeletalSpansTest {
   /** Executes the linker for each collected trace */
   static List<DependencyLink> link(Map<String, List<zipkin2.Span>> spans) {
     DependencyLinker linker = new DependencyLinker();
-    spans.values().forEach(trace -> linker.putTrace(trace.iterator()));
+    spans.values().forEach(trace -> linker.putTrace(trace));
     return linker.link();
   }
 
