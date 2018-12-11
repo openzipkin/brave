@@ -1,11 +1,13 @@
 package brave;
 
+import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
@@ -102,6 +104,19 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
   }
 
+  public static class TracedCorrelated extends ForwardingTracingFilter {
+    public TracedCorrelated() {
+      super(Tracing.newBuilder()
+          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+              // intentionally added twice to test overhead of multiple correlations
+              .addScopeDecorator(ThreadContextScopeDecorator.create())
+              .addScopeDecorator(ThreadContextScopeDecorator.create())
+              .build())
+          .spanReporter(AsyncReporter.create(new NoopSender()))
+          .build());
+    }
+  }
+
   public static class TracedExtra extends ForwardingTracingFilter {
     public TracedExtra() {
       super(Tracing.newBuilder()
@@ -137,6 +152,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
         .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
         .addFilterUrlMapping("TracedExtra", "/tracedextra/api", REQUEST)
+        .addFilter(new FilterInfo("TracedCorrelated", TracedCorrelated.class))
+        .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated", REQUEST)
+        .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated/api", REQUEST)
         .addFilter(new FilterInfo("Traced128", Traced128.class))
         .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
         .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
@@ -150,9 +168,10 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
+        .addProfiler("gc")
         .include(".*"
             + EndToEndBenchmarks.class.getSimpleName()
-            + ".*(onlySampledLocalServer_get|tracedServer_get)")
+            + ".*(tracedCorrelatedServer_get|tracedServer_get)$")
         .build();
 
     new Runner(opt).run();
