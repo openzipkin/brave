@@ -26,3 +26,12 @@ Once a flight is recorded, look for "Zipkin/Scope" in the Event browser:
 
 You can then copy/paste the trace ID into the zipkin UI, or use log
 correlation to further debug a problem.
+
+## Credits
+
+This work was inspired by https://github.com/opentracing-contrib/java-jfr-tracer by @thegreystone,
+who also helped review this implementation. This implementation takes advantage of Brave's scope
+decorator design, which led to it being comparatively small (<50 lines of code including imports).
+Other factors that allow this to be small are constraints such as no attempts to work pre Java 11,
+and no attempts to copy span data to JFR besides trace identifiers. Finally, this uses namespace
+"Zipkin/Scope" to avoid clash with others.
