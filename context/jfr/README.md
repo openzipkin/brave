@@ -20,10 +20,9 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-After a flight is recorded, you can look for "Zipkin/Scope" in the Event
-browser like so:
+Once a flight is recorded, look for "Zipkin/Scope" in the Event browser:
 
-<img width="1021" alt="flight recording" src="https://user-images.githubusercontent.com/64215/49773912-f0328b00-fd2d-11e8-9acd-26b82694aea9.png">
+<img width="1020" alt="flight recording" src="https://user-images.githubusercontent.com/64215/49850602-1b45d900-fe19-11e8-83fd-14b498128f09.png">
 
-Users could then copy/paste the trace ID into the zipkin UI, or use log
+You can then copy/paste the trace ID into the zipkin UI, or use log
 correlation to further debug a problem.
