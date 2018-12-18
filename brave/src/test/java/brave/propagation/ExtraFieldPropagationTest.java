@@ -274,14 +274,16 @@ public class ExtraFieldPropagationTest {
 
   @Test public void extract_field_multiple_prefixes() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-        .addField("country-code")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
-        .addPrefixedFields("baggage_", Arrays.asList("country-code"))
+        .addField("userId")
+        .addField("sessionId")
+        .addPrefixedFields("baggage-", Arrays.asList("userId", "sessionId"))
+        .addPrefixedFields("baggage_", Arrays.asList("userId", "sessionId"))
         .build();
     initialize();
 
     injector.inject(context, carrier);
-    carrier.put("baggage-country-code", "FO");
+    carrier.put("baggage-userId", "bob");
+    carrier.put("baggage-sessionId", "12345");
 
     TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
@@ -291,7 +293,8 @@ public class ExtraFieldPropagationTest {
 
     PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
     assertThat(fields.toMap())
-        .containsEntry("country-code", "FO");
+        .containsEntry("userId", "bob")
+        .containsEntry("sessionId", "12345");
   }
 
   @Test public void inject_field_multiple_prefixes() {
