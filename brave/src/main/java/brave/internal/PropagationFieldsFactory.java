@@ -29,7 +29,8 @@ public abstract class PropagationFieldsFactory<P extends PropagationFields> exte
   }
 
   // TODO: this is internal. If we ever expose it otherwise, we should use Lists.ensureImmutable
-  protected TraceContext contextWithExtra(TraceContext context, List<Object> immutableExtra) {
+  @Override protected TraceContext contextWithExtra(TraceContext context,
+      List<Object> immutableExtra) {
     return InternalPropagation.instance.withExtra(context, immutableExtra);
   }
 }

@@ -3,6 +3,7 @@ package brave.propagation;
 import brave.Tracing;
 import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
+import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -133,7 +134,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
 
     injector.inject(context, carrier);
@@ -142,7 +143,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("x-amzn-trace-id", awsTraceId);
 
@@ -160,7 +161,7 @@ public class ExtraFieldPropagationTest {
         .build();
     initialize();
 
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("country-code", "FO");
 
@@ -275,7 +276,7 @@ public class ExtraFieldPropagationTest {
 
   @Test public void extract_field_multiple_prefixes() {
     // switch to case insensitive as this example is about http :P
-    carrier =  new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("userId")
         .addField("sessionId")
@@ -304,8 +305,8 @@ public class ExtraFieldPropagationTest {
         .build();
     initialize();
 
-    PredefinedPropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
-    fields.put(1, "FO");
+    PredefinedPropagationFields fields = context.findExtra(Extra.class);
+    fields.put(0, "FO");
 
     injector.inject(context, carrier);
 
