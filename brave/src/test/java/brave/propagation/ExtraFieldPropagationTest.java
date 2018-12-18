@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -273,6 +274,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void extract_field_multiple_prefixes() {
+    // switch to case insensitive as this example is about http :P
+    carrier =  new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("userId")
         .addField("sessionId")
@@ -285,16 +288,12 @@ public class ExtraFieldPropagationTest {
     carrier.put("baggage-userId", "bob");
     carrier.put("baggage-sessionId", "12345");
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
-    assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
-        .isEqualTo(context);
-    assertThat(extracted.context().extra())
-        .hasSize(1);
+    context = extractor.extract(carrier).context();
 
-    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
-    assertThat(fields.toMap())
-        .containsEntry("userId", "bob")
-        .containsEntry("sessionId", "12345");
+    assertThat(ExtraFieldPropagation.get(context, "userId"))
+        .isEqualTo("bob");
+    assertThat(ExtraFieldPropagation.get(context, "sessionId"))
+        .isEqualTo("12345");
   }
 
   @Test public void inject_field_multiple_prefixes() {
