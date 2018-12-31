@@ -135,7 +135,6 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
         return new Factory(delegate, validated, validated);
       }
       List<String> fields = new ArrayList<>(), keys = new ArrayList<>();
-      ;
       List<Integer> keyToFieldList = new ArrayList<>();
       if (!fieldNames.isEmpty()) {
         List<String> validated = Arrays.asList(ensureLowerCase(fieldNames));
@@ -249,6 +248,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       this(delegate, fieldNames, keyNames, keyToField(keyNames));
     }
 
+    /**
+     * We have a key to field mapping as there may be multiple propagation keys that reference the
+     * same field. For example, "baggage-userid" and "baggage_userid".
+     */
     static int[] keyToField(String[] keyNames) {
       int[] result = new int[keyNames.length];
       for (int i = 0; i < result.length; i++) result[i] = i;

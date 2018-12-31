@@ -4,7 +4,6 @@ import brave.Tracing;
 import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
 import brave.propagation.ExtraFieldPropagation.Extra;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -13,14 +12,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static brave.propagation.Propagation.KeyFactory.STRING;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class ExtraFieldPropagationTest {
   String awsTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   String uuid = "f4308d05-2228-4468-80f6-92a8377ba193";
   ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(
-      B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
+      B3SinglePropagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
   );
 
   Map<String, String> carrier = new LinkedHashMap<>();
@@ -44,7 +45,7 @@ public class ExtraFieldPropagationTest {
    */
   @Test public void keysDontIncludeExtra() {
     assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
-        .isEqualTo(Propagation.B3_STRING.keys());
+        .isEqualTo(Propagation.B3_SINGLE_STRING.keys());
   }
 
   /**
@@ -157,7 +158,7 @@ public class ExtraFieldPropagationTest {
   @Test public void inject_prefixed() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("x-vcap-request-id")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .addPrefixedFields("baggage-", asList("country-code"))
         .build();
     initialize();
 
@@ -207,7 +208,7 @@ public class ExtraFieldPropagationTest {
   @Test public void extract_prefixed() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("x-vcap-request-id")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .addPrefixedFields("baggage-", asList("country-code"))
         .build();
     initialize();
 
@@ -280,8 +281,8 @@ public class ExtraFieldPropagationTest {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("userId")
         .addField("sessionId")
-        .addPrefixedFields("baggage-", Arrays.asList("userId", "sessionId"))
-        .addPrefixedFields("baggage_", Arrays.asList("userId", "sessionId"))
+        .addPrefixedFields("baggage-", asList("userId", "sessionId"))
+        .addPrefixedFields("baggage_", asList("userId", "sessionId"))
         .build();
     initialize();
 
@@ -298,20 +299,44 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_field_multiple_prefixes() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-        .addField("country-code")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
-        .addPrefixedFields("baggage_", Arrays.asList("country-code"))
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+        .addField("userId")
+        .addField("sessionId")
+        .addPrefixedFields("baggage-", asList("userId", "sessionId"))
+        .addPrefixedFields("baggage_", asList("userId", "sessionId"))
         .build();
     initialize();
 
-    PredefinedPropagationFields fields = context.findExtra(Extra.class);
-    fields.put(0, "FO");
+    ExtraFieldPropagation.set(context, "userId", "bob");
+    ExtraFieldPropagation.set(context, "sessionId", "12345");
 
     injector.inject(context, carrier);
 
-    assertThat(carrier)
-        .containsEntry("baggage-country-code", "FO");
+    // NOTE: the labels are downcased
+    assertThat(carrier).containsExactly(
+        entry("b3", B3SingleFormat.writeB3SingleFormat(context)),
+        entry("userid", "bob"),
+        entry("sessionid", "12345"),
+        entry("baggage-userid", "bob"),
+        entry("baggage-sessionid", "12345"),
+        entry("baggage_userid", "bob"),
+        entry("baggage_sessionid", "12345")
+    );
+  }
+
+  @Test public void deduplicates() {
+    assertThat(ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+        .addField("country-code")
+        .addPrefixedFields("baggage-", asList("country-code"))
+        .addPrefixedFields("baggage_", asList("country-code"))
+        .build())
+        .isEqualToComparingFieldByFieldRecursively(
+            ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+                .addField("country-code").addField("country-code")
+                .addPrefixedFields("baggage-", asList("country-code", "country-code"))
+                .addPrefixedFields("baggage_", asList("country-code", "country-code"))
+                .build()
+        );
   }
 
   TraceContext extractWithAmazonTraceId() {
