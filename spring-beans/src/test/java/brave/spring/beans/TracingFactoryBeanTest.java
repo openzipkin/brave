@@ -203,7 +203,7 @@ public class TracingFactoryBeanTest {
 
     assertThat(context.getBean("tracing", Tracing.class).propagation())
         .isInstanceOf(ExtraFieldPropagation.class)
-        .extracting("fieldNames")
+        .extracting("factory.fieldNames")
         .allSatisfy(m -> assertThat((String[]) m)
             .containsExactly("x-vcap-request-id", "x-amzn-trace-id"));
   }

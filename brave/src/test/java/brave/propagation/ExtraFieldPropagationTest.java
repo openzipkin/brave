@@ -1,23 +1,27 @@
 package brave.propagation;
 
 import brave.Tracing;
+import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
-import java.util.Arrays;
+import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import org.junit.Before;
 import org.junit.Test;
 
 import static brave.propagation.Propagation.KeyFactory.STRING;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class ExtraFieldPropagationTest {
   String awsTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   String uuid = "f4308d05-2228-4468-80f6-92a8377ba193";
   ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(
-      B3Propagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
+      B3SinglePropagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
   );
 
   Map<String, String> carrier = new LinkedHashMap<>();
@@ -41,7 +45,7 @@ public class ExtraFieldPropagationTest {
    */
   @Test public void keysDontIncludeExtra() {
     assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
-        .isEqualTo(Propagation.B3_STRING.keys());
+        .isEqualTo(Propagation.B3_SINGLE_STRING.keys());
   }
 
   /**
@@ -131,7 +135,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
 
     injector.inject(context, carrier);
@@ -140,7 +144,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("x-amzn-trace-id", awsTraceId);
 
@@ -154,11 +158,11 @@ public class ExtraFieldPropagationTest {
   @Test public void inject_prefixed() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("x-vcap-request-id")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .addPrefixedFields("baggage-", asList("country-code"))
         .build();
     initialize();
 
-    PropagationFields fields = context.findExtra(ExtraFieldPropagation.Extra.class);
+    PropagationFields fields = context.findExtra(Extra.class);
     fields.put("x-vcap-request-id", uuid);
     fields.put("country-code", "FO");
 
@@ -204,7 +208,7 @@ public class ExtraFieldPropagationTest {
   @Test public void extract_prefixed() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .addField("x-vcap-request-id")
-        .addPrefixedFields("baggage-", Arrays.asList("country-code"))
+        .addPrefixedFields("baggage-", asList("country-code"))
         .build();
     initialize();
 
@@ -269,6 +273,70 @@ public class ExtraFieldPropagationTest {
   @Test public void getAll_empty_if_no_extraField() {
     assertThat(ExtraFieldPropagation.getAll(context))
         .isEmpty();
+  }
+
+  @Test public void extract_field_multiple_prefixes() {
+    // switch to case insensitive as this example is about http :P
+    carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+        .addField("userId")
+        .addField("sessionId")
+        .addPrefixedFields("baggage-", asList("userId", "sessionId"))
+        .addPrefixedFields("baggage_", asList("userId", "sessionId"))
+        .build();
+    initialize();
+
+    injector.inject(context, carrier);
+    carrier.put("baggage-userId", "bob");
+    carrier.put("baggage-sessionId", "12345");
+
+    context = extractor.extract(carrier).context();
+
+    assertThat(ExtraFieldPropagation.get(context, "userId"))
+        .isEqualTo("bob");
+    assertThat(ExtraFieldPropagation.get(context, "sessionId"))
+        .isEqualTo("12345");
+  }
+
+  @Test public void inject_field_multiple_prefixes() {
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+        .addField("userId")
+        .addField("sessionId")
+        .addPrefixedFields("baggage-", asList("userId", "sessionId"))
+        .addPrefixedFields("baggage_", asList("userId", "sessionId"))
+        .build();
+    initialize();
+
+    ExtraFieldPropagation.set(context, "userId", "bob");
+    ExtraFieldPropagation.set(context, "sessionId", "12345");
+
+    injector.inject(context, carrier);
+
+    // NOTE: the labels are downcased
+    assertThat(carrier).containsExactly(
+        entry("b3", B3SingleFormat.writeB3SingleFormat(context)),
+        entry("userid", "bob"),
+        entry("sessionid", "12345"),
+        entry("baggage-userid", "bob"),
+        entry("baggage-sessionid", "12345"),
+        entry("baggage_userid", "bob"),
+        entry("baggage_sessionid", "12345")
+    );
+  }
+
+  @Test public void deduplicates() {
+    assertThat(ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+        .addField("country-code")
+        .addPrefixedFields("baggage-", asList("country-code"))
+        .addPrefixedFields("baggage_", asList("country-code"))
+        .build())
+        .isEqualToComparingFieldByFieldRecursively(
+            ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+                .addField("country-code").addField("country-code")
+                .addPrefixedFields("baggage-", asList("country-code", "country-code"))
+                .addPrefixedFields("baggage_", asList("country-code", "country-code"))
+                .build()
+        );
   }
 
   TraceContext extractWithAmazonTraceId() {
