@@ -1,6 +1,7 @@
 package brave.sampler;
 
 import com.amazonaws.xray.strategy.sampling.reservoir.Reservoir;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -90,7 +91,8 @@ public class SamplerBenchmarks {
     return SAMPLER_RATE.isSampled(args.traceId);
   }
 
-  static final Sampler SAMPLER_RATE = CountingSampler.create(SAMPLE_RATE);
+  // Use fixed-seed Random so performance of runs can be compared.
+  static final Sampler SAMPLER_RATE = new CountingSampler(SAMPLE_RATE, new Random(1000));
 
   @Benchmark public boolean sampler_rateLimited_1(Args args) {
     return SAMPLER_RATE_LIMITED.isSampled(args.traceId);
