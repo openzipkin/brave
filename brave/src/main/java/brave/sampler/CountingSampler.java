@@ -2,6 +2,7 @@ package brave.sampler;
 
 import java.util.BitSet;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This sampler is appropriate for low-traffic instrumentation (ex servers that each receive <100K
@@ -29,26 +30,40 @@ public final class CountingSampler extends Sampler {
     return new CountingSampler(rate);
   }
 
-  private int i; // guarded by this
+  private final AtomicInteger counter;
   private final BitSet sampleDecisions;
 
   /** Fills a bitset with decisions according to the supplied rate. */
   CountingSampler(float rate) {
+    this(rate, new Random());
+  }
+
+  /**
+   * Fills a bitset with decisions according to the supplied rate with the supplied {@link Random}.
+   */
+  CountingSampler(float rate, Random random) {
+    counter = new AtomicInteger();
     int outOf100 = (int) (rate * 100.0f);
-    this.sampleDecisions = randomBitSet(100, outOf100, new Random());
+    this.sampleDecisions = randomBitSet(100, outOf100, random);
   }
 
   /** loops over the pre-canned decisions, resetting to zero when it gets to the end. */
   @Override
-  public synchronized boolean isSampled(long traceIdIgnored) {
-    boolean result = sampleDecisions.get(i++);
-    if (i == 100) i = 0;
-    return result;
+  public boolean isSampled(long traceIdIgnored) {
+    return sampleDecisions.get(mod(counter.getAndIncrement(), 100));
   }
 
   @Override
   public String toString() {
     return "CountingSampler()";
+  }
+
+  /**
+   * Returns a non-negative mod.
+   */
+  static int mod(int dividend, int divisor) {
+    int result = dividend % divisor;
+    return result >= 0 ? result : divisor + result;
   }
 
   /**
