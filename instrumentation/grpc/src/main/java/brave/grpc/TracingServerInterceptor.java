@@ -137,9 +137,11 @@ final class TracingServerInterceptor implements ServerInterceptor {
       try { // retrolambda can't resolve this try/finally
         delegate().onHalfClose();
       } catch (RuntimeException | Error e) {
-          span.error(e);
-          span.finish();
-          throw e;
+        // If there was an exception executing onHalfClose, we don't expect other lifecycle
+        // commands to succeed. Accordingly, we close the span
+        span.error(e);
+        span.finish();
+        throw e;
       } finally {
         scope.close();
       }
