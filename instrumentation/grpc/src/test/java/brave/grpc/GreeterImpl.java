@@ -31,6 +31,9 @@ class GreeterImpl extends GreeterGrpc.GreeterImplBase {
       responseObserver.onError(new IllegalArgumentException());
       return;
     }
+    if (req.getName().equals("testerror")) {
+      throw new RuntimeException("testerror");
+    }
     String message = currentTraceContext != null ? currentTraceContext.traceIdString() : "";
     HelloReply reply = HelloReply.newBuilder().setMessage(message).build();
     responseObserver.onNext(reply);
