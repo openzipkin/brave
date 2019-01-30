@@ -136,6 +136,10 @@ final class TracingServerInterceptor implements ServerInterceptor {
       SpanInScope scope = tracer.withSpanInScope(span);
       try { // retrolambda can't resolve this try/finally
         delegate().onHalfClose();
+      } catch (RuntimeException | Error e) {
+          span.error(e);
+          span.finish();
+          throw e;
       } finally {
         scope.close();
       }

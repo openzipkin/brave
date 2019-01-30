@@ -254,6 +254,19 @@ public class ITTracingServerInterceptor {
       );
     }
   }
+  
+  @Test public void addsErrorTagOnRuntimeException() throws Exception {
+    try {
+      GreeterGrpc.newBlockingStub(client)
+          .sayHello(HelloRequest.newBuilder().setName("testerror").build());
+      failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
+    } catch (StatusRuntimeException e) {
+      Span span = takeSpan();
+      assertThat(span.tags()).containsExactly(
+          entry("error", "testerror")
+      );
+    }
+  }
 
   @Test
   public void serverParserTest() throws Exception {
