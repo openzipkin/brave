@@ -89,11 +89,14 @@ public abstract class Span implements SpanCustomizer {
   @Override public abstract Span name(String name);
 
   /**
-   * The kind of span is optional. When set, it affects how a span is reported. For example, if the
-   * kind is {@link Kind#SERVER}, the span's start timestamp is implicitly annotated as "sr" and
-   * that plus its duration as "ss".
+   * When present, the span is remote. This value clarifies how to interpret
+   * {@link #remoteServiceName(String)} and {@link #remoteIpAndPort(String, int)}.
+   *
+   * <p>Note: This affects Zipkin v1 format even if that format does not have a "kind" field. For
+   * example, if kind is {@link Kind#SERVER} and reported in v1 Zipkin format, the span's start
+   * timestamp is implicitly annotated as "sr" and that plus its duration as "ss".
    */
-  public abstract Span kind(Kind kind);
+  public abstract Span kind(@Nullable Kind kind);
 
   /** {@inheritDoc} */
   @Override public abstract Span annotate(String value);
