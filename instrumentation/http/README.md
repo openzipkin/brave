@@ -126,7 +126,7 @@ reasons including sharing the span name as a metrics correlation field.
 
 # Developing new instrumentation
 
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
+Check for [instrumentation written here](../) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
 before rolling your own Http instrumentation! Besides documentation here,
 you should look at the [core library documentation](../../brave/README.md) as it
 covers topics including propagation. You may find our [feature tests](src/test/java/brave/http/features) helpful, too.
