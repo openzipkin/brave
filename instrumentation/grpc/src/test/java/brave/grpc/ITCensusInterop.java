@@ -21,7 +21,7 @@ import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.opencensus.common.Scope;
 import io.opencensus.contrib.grpc.metrics.RpcMeasureConstants;
-import io.opencensus.implcore.tags.TagContextImpl;
+import io.opencensus.implcore.tags.TagMapImpl;
 import io.opencensus.tags.TagKey;
 import io.opencensus.tags.TagValue;
 import io.opencensus.tags.Tags;
@@ -57,7 +57,7 @@ public class ITCensusInterop {
     @Override
     public void sayHello(HelloRequest req, StreamObserver<HelloReply> responseObserver) {
       Map<TagKey, TagValue> censusTags =
-          ((TagContextImpl) Tags.getTagger().getCurrentTagContext()).getTags();
+          ((TagMapImpl) Tags.getTagger().getCurrentTagContext()).getTags();
 
       // Read in-process tags from census and write to both span apis
       io.opencensus.trace.Span censusSpan =

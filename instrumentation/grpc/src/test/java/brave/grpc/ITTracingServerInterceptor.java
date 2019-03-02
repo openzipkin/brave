@@ -314,7 +314,7 @@ public class ITTracingServerInterceptor {
 
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
         .sayHelloWithManyReplies(HELLO_REQUEST);
-    assertThat(replies).hasSize(10);
+    assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
     Span span = takeSpan();
     assertThat(span.tags()).hasSize(10);
