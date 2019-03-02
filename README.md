@@ -94,8 +94,7 @@ instrumentation. Also any indirect use will have versions aligned:
 </dependency>
 ```
 
-With the above in place, you can use the properties `brave.version`,
-`zipkin-reporter.version` or `zipkin.version` to override dependency
+With the above in place, you can use the property `brave.version` to override dependency
 versions coherently. This is most commonly to test a new feature or fix.
 
 Note: If you override a version, always double check that your version
