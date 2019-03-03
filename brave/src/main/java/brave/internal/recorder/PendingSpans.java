@@ -58,6 +58,11 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     PendingSpan newSpan = new PendingSpan(data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
+
+    if (Platform.get().logEnabled()) {
+      newSpan.caller =
+          new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
+    }
     return newSpan;
   }
 
@@ -111,6 +116,11 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           Collections.emptyList()
       );
       value.state.annotate(flushTime, "brave.flush");
+
+      Throwable caller = value.caller;
+      if (caller != null) {
+        Platform.get().log("Span " + context + " neither finished nor flushed before GC", caller);
+      }
 
       try {
         zipkinHandler.handle(context, value.state);

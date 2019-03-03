@@ -62,6 +62,10 @@ public abstract class Platform {
     return PLATFORM;
   }
 
+  public boolean logEnabled() {
+    return LOG.isLoggable(Level.FINE);
+  }
+
   /** Like {@link Logger#log(Level, String) */
   public void log(String msg, @Nullable Throwable thrown) {
     if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
