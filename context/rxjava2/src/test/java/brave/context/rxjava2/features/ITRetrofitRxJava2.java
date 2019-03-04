@@ -14,8 +14,6 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.subscribers.TestSubscriber;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Type;
 import java.util.function.BiConsumer;
 import okhttp3.ResponseBody;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,7 +24,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import retrofit2.Call;
 import retrofit2.CallAdapter;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
@@ -115,7 +112,7 @@ public class ITRetrofitRxJava2 extends ITHttp {
   private void rxjava_createAsync_success(BiConsumer<Service, TestObserver<Object>> subscriber) {
     TestObserver<Object> observer = new TestObserver<>(currentTraceContextObserver);
 
-    Service service = service(retrofit2716(RxJava2CallAdapterFactory.createAsync()));
+    Service service = service(RxJava2CallAdapterFactory.createAsync());
     subscriber.accept(service, observer);
 
     // enqueue later
@@ -139,7 +136,7 @@ public class ITRetrofitRxJava2 extends ITHttp {
   private void rx_createAsync_success(BiConsumer<Service, TestSubscriber<Object>> subscriber) {
     TestSubscriber<Object> observer = new TestSubscriber<>(currentTraceContextObserver);
 
-    Service service = service(retrofit2716(RxJava2CallAdapterFactory.createAsync()));
+    Service service = service(RxJava2CallAdapterFactory.createAsync());
     subscriber.accept(service, observer);
 
     // enqueue later
@@ -148,32 +145,6 @@ public class ITRetrofitRxJava2 extends ITHttp {
     observer.awaitTerminalEvent(1, SECONDS);
     observer.assertComplete();
     assertThat(currentTraceContextObserver.onComplete).isEqualTo(context1);
-  }
-
-  // TODO remove on retrofit 2.4.1 or 2.5.0
-  // https://github.com/square/retrofit/issues/2716
-  static CallAdapter.Factory retrofit2716(RxJava2CallAdapterFactory factory) {
-    return new CallAdapter.Factory() {
-      @Override
-      public CallAdapter<?, ?> get(Type type, Annotation[] annotations, Retrofit retrofit) {
-        CallAdapter<?, ?> delegate = factory.get(type, annotations, retrofit);
-        return new CallAdapter<Object, Object>() {
-          @Override
-          public Type responseType() {
-            return delegate.responseType();
-          }
-
-          @Override
-          public Object adapt(Call call) {
-            Object result = delegate.adapt(call);
-            if (result instanceof Observable) {
-              return RxJavaPlugins.onAssembly((Observable) result);
-            }
-            return result;
-          }
-        };
-      }
-    };
   }
 
   Service service(CallAdapter.Factory callAdapterFactory) {

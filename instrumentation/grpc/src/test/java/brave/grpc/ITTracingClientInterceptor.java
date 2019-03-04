@@ -333,7 +333,7 @@ public class ITTracingClientInterceptor {
 
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
         .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
-    assertThat(replies).hasSize(10);
+    assertThat(replies).toIterable().hasSize(10);
 
     Span span = takeSpan();
     // all response messages are tagged to the same span
