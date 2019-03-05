@@ -773,6 +773,19 @@ Unlike previous implementations, Brave 4 only needs one timestamp per
 span. All annotations are recorded on an offset basis, using the less
 expensive and more precise `System.nanoTime()` function.
 
+## Troubleshooting instrumentation
+Instrumentation problems can lead to scope leaks and orphaned data. When
+testing instrumentation, use [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java), as it will throw
+errors on known scoping problems.
+
+If you see data with the annotation `brave.flush`, you may have an
+instrumentation bug. To see more information, set the Java logger named
+`brave.internal.recorder.PendingSpans` to FINE level. Do not do this in
+production as tracking abandoned data incurs higher overhead.
+
+Note: When using log4j2, set the following to ensure log settings apply:
+`-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager`
+
 ## Unit testing instrumentation
 
 When writing unit tests, there are a few tricks that will make bugs

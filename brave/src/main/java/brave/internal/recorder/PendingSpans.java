@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Similar to Finagle's deadline span map, except this is GC pressure as opposed to timeout driven.
@@ -26,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
  */
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
+  private static final Logger LOG = Logger.getLogger(PendingSpans.class.getName());
+
   // Eventhough we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
@@ -58,6 +62,11 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     PendingSpan newSpan = new PendingSpan(data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
+
+    if (LOG.isLoggable(Level.FINE)) {
+      newSpan.caller =
+          new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
+    }
     return newSpan;
   }
 
@@ -111,6 +120,11 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           Collections.emptyList()
       );
       value.state.annotate(flushTime, "brave.flush");
+
+      Throwable caller = value.caller;
+      if (caller != null) {
+        LOG.log(Level.FINE, "Span " + context + " neither finished nor flushed before GC", caller);
+      }
 
       try {
         zipkinHandler.handle(context, value.state);

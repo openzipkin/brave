@@ -6,6 +6,7 @@ import brave.handler.MutableSpan;
 public final class PendingSpan {
   final MutableSpan state;
   final TickClock clock;
+  volatile Throwable caller;
 
   PendingSpan(MutableSpan state, TickClock clock) {
     this.state = state;
