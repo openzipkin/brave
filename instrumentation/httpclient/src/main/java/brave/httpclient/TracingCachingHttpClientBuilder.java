@@ -1,9 +1,13 @@
 package brave.httpclient;
 
+import brave.Span;
 import brave.Tracing;
 import brave.http.HttpTracing;
+import org.apache.http.client.cache.CacheResponseStatus;
+import org.apache.http.client.cache.HttpCacheContext;
 import org.apache.http.impl.client.cache.CachingHttpClientBuilder;
 import org.apache.http.impl.execchain.ClientExecChain;
+import org.apache.http.protocol.HttpContext;
 
 public final class TracingCachingHttpClientBuilder extends CachingHttpClientBuilder {
 
@@ -27,6 +31,19 @@ public final class TracingCachingHttpClientBuilder extends CachingHttpClientBuil
   }
 
   @Override protected ClientExecChain decorateMainExec(ClientExecChain exec) {
-    return new TracingMainExec(httpTracing, exec);
+    return new LocalIfFromCacheTracingMainExec(httpTracing, super.decorateMainExec(exec));
+  }
+
+  static final class LocalIfFromCacheTracingMainExec extends TracingMainExec {
+    LocalIfFromCacheTracingMainExec(HttpTracing httpTracing, ClientExecChain mainExec) {
+      super(httpTracing, mainExec);
+    }
+
+    @Override boolean isRemote(HttpContext context, Span span) {
+      boolean cacheHit = CacheResponseStatus.CACHE_HIT.equals(
+          context.getAttribute(HttpCacheContext.CACHE_RESPONSE_STATUS));
+      if (cacheHit) span.tag("http.cache_hit", "");
+      return !cacheHit;
+    }
   }
 }
