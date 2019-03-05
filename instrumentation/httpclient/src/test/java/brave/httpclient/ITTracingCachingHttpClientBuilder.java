@@ -33,5 +33,6 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
     assertThat(first.kind()).isEqualTo(Span.Kind.CLIENT);
     Span second = takeSpan();
     assertThat(second.kind()).isNull();
+    assertThat(second.tags()).containsKey("http.cache_hit");
   }
 }

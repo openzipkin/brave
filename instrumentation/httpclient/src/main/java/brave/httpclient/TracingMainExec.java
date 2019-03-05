@@ -65,7 +65,7 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
       span.start();
     }
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
-    if (span != null && isRemote(context)) {
+    if (span != null && isRemote(context, span)) {
       parseRemote(request, span);
     }
     return response;
@@ -89,7 +89,7 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     if (serverName != null) span.remoteServiceName(serverName);
   }
 
-  boolean isRemote(HttpContext context) {
+  boolean isRemote(HttpContext context, Span span) {
     return true;
   }
 }
