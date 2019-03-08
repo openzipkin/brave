@@ -64,8 +64,8 @@
     <errorprone.version>2.3.2</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.12.3</zipkin.version>
-    <zipkin-reporter.version>2.8.0</zipkin-reporter.version>
+    <zipkin.version>2.12.5</zipkin.version>
+    <zipkin-reporter.version>2.8.1</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.22.RELEASE</spring4.version>
