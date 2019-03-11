@@ -61,6 +61,16 @@ public class HttpParserTest {
     verify(customizer, never()).tag("error", "0");
   }
 
+  // Ensures "HTTP/1.1 101 Switching Protocols" aren't classified as error spans
+  @Test public void response_status101IsNotAnError() {
+    when(adapter.statusCodeAsInt(response)).thenReturn(101);
+
+    parser.response(adapter, response, null, customizer);
+
+    verify(customizer).tag("http.status_code", "101");
+    verify(customizer, never()).tag("error", "101");
+  }
+
   @Test public void response_tagsErrorFromException() {
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
