@@ -66,8 +66,8 @@ public class HttpParser {
    * possible (ex "get /users/:userId").
    *
    * <p>If routing is supported, and a GET didn't match due to 404, the span name will be
-   * "get not_found". If it didn't match due to redirect, the span name will be "get redirected".
-   * If routing is not supported, the span name is left alone.
+   * "get not_found". If it didn't match due to redirect, the span name will be "get redirected". If
+   * routing is not supported, the span name is left alone.
    *
    * <p>If you only want to change how exceptions are parsed, override {@link #error(Integer,
    * Throwable, SpanCustomizer)} instead.
@@ -91,6 +91,14 @@ public class HttpParser {
     error(statusCode, error, customizer);
   }
 
+  /** The intent of this is to by default add "http.status_code", when not a success code */
+  @Nullable String maybeStatusAsString(int statusCode, int upperRange) {
+    if (statusCode != 0 && (statusCode < 200 || statusCode > upperRange)) {
+      return String.valueOf(statusCode);
+    }
+    return null;
+  }
+
   static <Resp> String spanNameFromRoute(HttpAdapter<?, Resp> adapter, Resp res, int statusCode) {
     String method = adapter.methodFromResponse(res);
     if (method == null) return null; // don't undo a valid name elsewhere
@@ -104,7 +112,8 @@ public class HttpParser {
 
   /**
    * Override to change what data from the http error are parsed into the span modeling it. By
-   * default, this tags "error" as the exception or the status code if it is neither 2xx nor 3xx.
+   * default, this tags "error" as the exception or the status code if it is below 1xx or above
+   * 3xx.
    *
    * <p>Note: Either the httpStatus or error parameters may be null, but not both
    *
@@ -116,16 +125,24 @@ public class HttpParser {
       SpanCustomizer customizer) {
     if (error != null) {
       errorParser().error(error, customizer);
-    } else if (httpStatus != null) {
-      String maybeErrorStatus = maybeStatusAsString(httpStatus, 399);
-      if (maybeErrorStatus != null) customizer.tag("error", maybeErrorStatus);
+      return;
     }
-  }
+    if (httpStatus == null) return;
+    // Unlike success path tagging, we only want to indicate something as error if it is not in a
+    // success range. 1xx-3xx are not errors. It is endpoint-specific if client codes like 404 are
+    // in fact errors. That's why this is overridable.
+    int httpStatusInt = httpStatus;
 
-  @Nullable String maybeStatusAsString(int statusCode, int upperRange) {
-    if (statusCode != 0 && (statusCode < 200 || statusCode > upperRange)) {
-      return String.valueOf(statusCode);
+    // Instrumentation error should not make span errors. We don't know the difference between a
+    // library being unable to get the http status and a bad status (0). We don't classify zero as
+    // error in case instrumentation cannot read the status. This prevents tagging every response as
+    // error.
+    if (httpStatusInt == 0) return;
+
+    // 1xx, 2xx, and 3xx codes are not all valid, but the math is good enough vs drift and opinion
+    // about individual codes in the range.
+    if (httpStatusInt < 100 || httpStatusInt > 399) {
+      customizer.tag("error", String.valueOf(httpStatusInt));
     }
-    return null;
   }
 }
