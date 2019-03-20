@@ -95,11 +95,4 @@ public class ITTracingStatementFilterTest {
                 .sampler(sampler);
     }
 
-    static int envOr(String key, int fallback) {
-        return System.getenv(key) != null ? Integer.parseInt(System.getenv(key)) : fallback;
-    }
-
-    static String envOr(String key, String fallback) {
-        return System.getenv(key) != null ? System.getenv(key) : fallback;
-    }
 }
