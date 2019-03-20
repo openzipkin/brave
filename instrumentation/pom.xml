@@ -41,7 +41,7 @@
     <module>kafka-streams</module>
     <module>netty-codec-http</module>
     <module>vertx-web</module>
-    <module>druid</module>
+    <module>alibaba-druid</module>
   </modules>
 
   <!-- ${project.groupId}:brave version is set in the root pom.
