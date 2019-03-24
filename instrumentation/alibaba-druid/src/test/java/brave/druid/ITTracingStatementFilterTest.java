@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class TracingStatementFilterTest {
+public class ITTracingStatementFilterTest {
 
     static final String CREATE = " create table tbl_test (id int, name varchar(20))";
 
