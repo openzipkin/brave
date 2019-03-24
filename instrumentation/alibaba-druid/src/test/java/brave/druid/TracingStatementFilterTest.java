@@ -83,7 +83,6 @@ public class TracingStatementFilterTest {
             while (resultSet.next()) {
                 resultSet.getString(1);
             }
-
         }catch (Exception e){
         }
     }

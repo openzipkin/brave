@@ -31,12 +31,7 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteUpdateBefore(statement,sql);
 
-        try {
-            Before(statement,sql);
-        }catch (Exception e){
-
-        }
-
+        Before(statement,sql);
 
     }
 
@@ -45,13 +40,7 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteUpdateAfter(statement,sql,updateCount);
 
-        try {
-            After(statement,sql);
-        }catch (Exception e){
-
-        }
-
-
+        After(statement,sql);
 
     }
 
@@ -60,11 +49,7 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteQueryBefore(statement,sql);
 
-        try {
-            Before(statement,sql);
-        }catch (Exception e){
-
-        }
+        Before(statement,sql);
 
     }
 
@@ -73,11 +58,7 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteQueryAfter(statement,sql,resultSet);
 
-        try {
-            After(statement,sql);
-        }catch (Exception e){
-
-        }
+        After(statement,sql);
 
 
     }
@@ -86,12 +67,7 @@ public class TracingStatementFilter extends FilterEventAdapter {
     protected void statementExecuteBefore(StatementProxy statement, String sql) {
 
         super.statementExecuteBefore(statement,sql);
-
-        try {
-            Before(statement,sql);
-        }catch (Exception e){
-
-        }
+        Before(statement,sql);
 
     }
 
@@ -100,11 +76,8 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteAfter(statement,sql,result);
 
-        try {
-            After(statement,sql);
-        }catch (Exception e){
+        After(statement,sql);
 
-        }
 
 
 
@@ -115,87 +88,85 @@ public class TracingStatementFilter extends FilterEventAdapter {
 
         super.statementExecuteBatchBefore(statement);
 
-        try {
-            Before(statement , null);
-        }catch (Exception e){
+        Before(statement , null);
 
-        }
 
 
     }
 
     @Override
     protected void statementExecuteBatchAfter(StatementProxy statement, int[] result) {
+
         super.statementExecuteBatchAfter(statement , result);
-
-        try {
-            After(statement , null);
-        }catch (Exception e){
-
-        }
-
+        After(statement , null);
     }
 
     @Override
     protected void statement_executeErrorAfter(StatementProxy statement, String sql, Throwable error) {
 
         super.statement_executeErrorAfter(statement , sql , error);
-
-        try {
-            ErrorAfter(statement , sql , error);
-        }catch (Exception e){
-
-        }
+        ErrorAfter(statement , sql , error);
 
     }
 
 
     protected void Before(StatementProxy statement, String sql) {
 
-        Span span = ThreadLocalSpan.CURRENT_TRACER.next();
-        if (span == null || span.isNoop()) {
-            return;
+        try {
+            Span span = ThreadLocalSpan.CURRENT_TRACER.next();
+            if (span == null || span.isNoop()) {
+                return;
+            }
+
+            if(sql == null){
+                sql = statement.getLastExecuteSql();
+            }
+            // Allow span names of single-word statements like COMMIT
+
+            int spaceIndex = sql.indexOf(' ');
+            span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
+            span.tag("sql.query", sql);
+
+            parseServerIpAndPort(statement,span);
+            span.start();
+        }catch (Exception e){
+
         }
-
-        if(sql == null){
-            sql = statement.getLastExecuteSql();
-        }
-        // Allow span names of single-word statements like COMMIT
-
-        int spaceIndex = sql.indexOf(' ');
-        span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
-        span.tag("sql.query", sql);
-
-        parseServerIpAndPort(statement,span);
-        span.start();
 
     }
 
     protected void After(StatementProxy statement, String sql) {
 
-        Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
-        if (span == null || span.isNoop()) {
-            return;
+        try {
+            Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+            if (span == null || span.isNoop()) {
+                return;
+            }
+            span.finish();
+            return ;
+        }catch (Exception e){
+
         }
 
-        span.finish();
-
-        return ;
     }
 
     protected void ErrorAfter(StatementProxy statement, String sql, Throwable error) {
 
-        Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
-        if (span == null || span.isNoop()) {
-            return;
-        }
+        try {
+            Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+            if (span == null || span.isNoop()) {
+                return;
+            }
 
-        if (error instanceof SQLException) {
-            span.tag("error", Integer.toString(((SQLException) error).getErrorCode()));
-        }
-        span.finish();
+            if (error instanceof SQLException) {
+                span.tag("error", Integer.toString(((SQLException) error).getErrorCode()));
+            }
+            span.finish();
 
-        return ;
+            return ;
+        }catch (Exception e){
+
+        }
 
     }
 

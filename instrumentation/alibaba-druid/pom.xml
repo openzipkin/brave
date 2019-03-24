@@ -20,6 +20,8 @@
         <!-- mysql-connector-java < v6 requires Java 6 -->
         <main.java.version>1.6</main.java.version>
         <main.signature.artifact>java16</main.signature.artifact>
+        <druid.version>1.1.14</druid.version>
+        <derby.version>10.14.2.0</derby.version>
     </properties>
 
 
@@ -28,7 +30,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid</artifactId>
-            <version>1.1.14</version>
+            <version>${druid.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -36,7 +38,7 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.47</version>
-            <scope>provided</scope>
+            <scope>test</scope>
         </dependency>
 
 
@@ -44,13 +46,19 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.2.5</version>
-            <scope>provided</scope>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.derby</groupId>
             <artifactId>derby</artifactId>
-            <version>10.10.2.0</version>
+            <version>${derby.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.derby</groupId>
+            <artifactId>derbyclient</artifactId>
+            <version>${derby.version}</version>
             <scope>test</scope>
         </dependency>
 
