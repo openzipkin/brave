@@ -6,20 +6,23 @@ Add decorators for Kafka Streams to enable tracing.
 * `TracingTransformerSupplier` completes a span on `transform`
 
 ## Setup
+
 First, setup the generic Kafka Streams component like this:
 ```java
-kafkaStreamsTracing = KafkaStreamsTracing.create(kafkaTracing);
+kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 ```
 
-To add a Tracing Processor to your application use the `TracingProcessorSupplier` provided by instrumentation:
+To trace a processor in your application use `TracingProcessorSupplier`, provided by instrumentation API:
+
 ```java
 builder.stream(inputTopic)
        .processor(kafkaStreamsTracing.processor(
-            "forward-1",
+            "process",
             customProcessor));
 ```
 
-To add a Tracing Transformer to your Stream, use the `TracingTransformerSupplier`, `TracingValueTransformerSupplier`, and `TracingValueTransformerWithValueSupplier` provided by instrumentation:
+To trace a transformer, use `TracingTransformerSupplier`, `TracingValueTransformerSupplier`, or `TracingValueTransformerWithValueSupplier` provided by instrumentation API:
+
 ```java
 builder.stream(inputTopic)
        .transform(kafkaStreamsTracing.transformer(
@@ -31,7 +34,7 @@ builder.stream(inputTopic)
 ```java
 builder.stream(inputTopic)
        .transformValue(kafkaStreamsTracing.valueTransformer(
-           "value-transformer-1",
+           "transform-value",
            customTransformer))
        .to(outputTopic);
 ```
@@ -39,12 +42,23 @@ builder.stream(inputTopic)
 ```java
 builder.stream(inputTopic)
        .transformValueWithKey(kafkaStreamsTracing.valueTransformerWithKey(
-           "value-transformer-with-key-1",
+           "transform-value-with-key",
            customTransformer))
        .to(outputTopic);
 ```
 
+Additional transformer has been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`).
+
+```java
+builder.stream(inputTopic)
+       .transform(kafkaStreamsTracing.map("map", mapper))
+       .to(outputTopic);
+```
+
+For more details, [see here](https://github.com/openzipkin/brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
+
 To create a Kafka Streams with Tracing Client Supplier enabled pass your topology and configuration like this:
+
 ```java
 KafkaStreams kafkaStreams = kafkaStreamsTracing.kafkaStreams(topology, streamsConfig);
 ```
