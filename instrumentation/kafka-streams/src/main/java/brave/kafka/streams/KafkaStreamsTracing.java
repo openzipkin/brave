@@ -46,6 +46,10 @@ public final class KafkaStreamsTracing {
   /**
    * Provides a {@link KafkaClientSupplier} with tracing enabled, hence Producer and Consumer
    * operations will be traced.
+   *
+   * This is mean to be used in scenarios {@link KafkaStreams} creation is not controlled by the
+   * user but framework (e.g. Spring Kafka Streams) creates it, and {@link KafkaClientSupplier} is
+   * accepted.
    */
   public KafkaClientSupplier kafkaClientSupplier() {
     final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
