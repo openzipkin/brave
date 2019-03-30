@@ -67,9 +67,9 @@ public class RateLimitingSampler extends Sampler {
   }
 
   @Override public boolean isSampled(long ignoredTraceId) {
-    long now = System.nanoTime();
-    long updateAt = nextReset.get();
+    long now = System.nanoTime(), updateAt = nextReset.get();
 
+    // First task is to determine if this request is later than the one second sampling window
     long nanosUntilReset = -(now - updateAt); // because nanoTime can be negative
     if (nanosUntilReset <= 0) {
       // Attempt to move into the next sampling interval.
@@ -81,6 +81,7 @@ public class RateLimitingSampler extends Sampler {
       return isSampled(ignoredTraceId);
     }
 
+    // Now, we determine the amount of samples allowed for this interval, and sample accordingly
     int max = maxFunction.max(nanosUntilReset);
     int prev, next;
     do { // same form as java 8 AtomicLong.getAndUpdate
