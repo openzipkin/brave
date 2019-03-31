@@ -113,6 +113,32 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
+  public void should_create_span_from_stream_input_topic_using_kafka_client_supplier()
+      throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic).foreach((k, v) -> {
+    });
+    Topology topology = builder.build();
+
+    KafkaStreams streams =
+        new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier());
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span span = takeSpan();
+
+    assertThat(span.tags()).containsEntry("kafka.topic", inputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
   public void should_create_spans_from_stream_input_and_output_topics() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -772,17 +798,11 @@ public class ITKafkaStreamsTracing {
   }
 
   KafkaStreams buildKafkaStreams(Topology topology) {
-    Properties properties = new Properties();
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-        kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
-    properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
-    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-        Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    Properties properties = streamsProperties();
     return kafkaStreamsTracing.kafkaStreams(topology, properties);
   }
 
-  KafkaStreams buildKafkaStreamsWithoutTracing(Topology topology) {
+  Properties streamsProperties() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
         kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
@@ -790,6 +810,11 @@ public class ITKafkaStreamsTracing {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
         Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    return properties;
+  }
+
+  KafkaStreams buildKafkaStreamsWithoutTracing(Topology topology) {
+    Properties properties = streamsProperties();
     return new KafkaStreams(topology, properties);
   }
 

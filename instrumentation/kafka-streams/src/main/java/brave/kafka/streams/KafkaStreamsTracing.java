@@ -7,7 +7,6 @@ import brave.kafka.clients.KafkaTracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Properties;
-import java.util.function.BiConsumer;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
@@ -45,6 +44,19 @@ public final class KafkaStreamsTracing {
   }
 
   /**
+   * Provides a {@link KafkaClientSupplier} with tracing enabled, hence Producer and Consumer
+   * operations will be traced.
+   *
+   * This is mean to be used in scenarios {@link KafkaStreams} creation is not controlled by the
+   * user but framework (e.g. Spring Kafka Streams) creates it, and {@link KafkaClientSupplier} is
+   * accepted.
+   */
+  public KafkaClientSupplier kafkaClientSupplier() {
+    final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
+    return new TracingKafkaClientSupplier(kafkaTracing);
+  }
+
+  /**
    * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}. All
    * Topology Sources and Sinks (including internal Topics) will create Spans on records processed
    * (i.e. send or consumed).
@@ -60,9 +72,7 @@ public final class KafkaStreamsTracing {
    * @see TracingKafkaClientSupplier
    */
   public KafkaStreams kafkaStreams(Topology topology, Properties streamsConfig) {
-    final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
-    final KafkaClientSupplier kafkaClientSupplier = new TracingKafkaClientSupplier(kafkaTracing);
-    return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier);
+    return new KafkaStreams(topology, streamsConfig, kafkaClientSupplier());
   }
 
   /**
