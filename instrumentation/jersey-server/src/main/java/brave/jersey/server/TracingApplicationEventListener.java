@@ -98,7 +98,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       return response.getStatus();
     }
 
-    // NOTE: this currently lacks remote socket parsing eventhough some platforms might work. For
+    // NOTE: this currently lacks remote socket parsing even though some platforms might work. For
     // example, org.glassfish.grizzly.http.server.Request.getRemoteAddr or
     // HttpServletRequest.getRemoteAddr
   }
