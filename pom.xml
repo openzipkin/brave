@@ -79,7 +79,7 @@
 
     <kafka.version>2.2.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.1.5-SNAPSHOT</kafka-junit.version>
+    <kafka-junit.version>4.1.5</kafka-junit.version>
     <activemq.version>5.15.8</activemq.version>
     <spring-rabbit.version>1.7.12.RELEASE</spring-rabbit.version>
 
