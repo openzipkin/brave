@@ -131,7 +131,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     delegate.close(timeout, unit);
   }
 
-  @Override public void close(Duration duration) {
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void close(Duration duration) {
     delegate.close(duration);
   }
 
