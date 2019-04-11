@@ -7,6 +7,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -128,6 +129,11 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   @Override public void close(long timeout, TimeUnit unit) {
     delegate.close(timeout, unit);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void close(Duration duration) {
+    delegate.close(duration);
   }
 
   @Override

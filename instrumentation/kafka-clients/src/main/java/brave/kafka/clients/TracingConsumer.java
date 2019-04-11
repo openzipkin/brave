@@ -173,6 +173,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.seek(partition, offset);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.0
+  public void seek(TopicPartition topicPartition, OffsetAndMetadata offsetAndMetadata) {
+    delegate.seek(topicPartition, offsetAndMetadata);
+  }
+
   @Override public void seekToBeginning(Collection<TopicPartition> partitions) {
     delegate.seekToBeginning(partitions);
   }

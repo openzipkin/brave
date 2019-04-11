@@ -2,6 +2,7 @@ package brave.kafka.clients;
 
 import brave.Tracing;
 import com.google.common.util.concurrent.Futures;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -121,6 +122,9 @@ public class TracingProducerBenchmarks {
     }
 
     @Override public void close(long l, TimeUnit timeUnit) {
+    }
+
+    @Override public void close(Duration duration) {
     }
   }
 }
