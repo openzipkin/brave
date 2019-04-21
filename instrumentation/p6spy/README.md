@@ -42,3 +42,11 @@ jdbc:mysql://127.0.0.1:3306/mydatabase?zipkinServiceName=myServiceName
 This will override the `remoteServiceName` set in `spy.properties`.
 
 The current tracing component is used at runtime. Until you have instantiated `brave.Tracing`, no traces will appear.
+
+### Filtering spans
+
+By default, all statements are recorded as client spans. 
+You may wish to exclude statements like `set session` from tracing. This library reuses p6spy's log filtering for this purpose.
+Filtering options are picked up from `spy.properties`, so you can blacklist/whitelist what type of statements to record as spans.
+
+For configuration details please see p6spy's log filtering documentation.

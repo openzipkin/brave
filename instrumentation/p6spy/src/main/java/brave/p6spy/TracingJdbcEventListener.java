@@ -18,6 +18,8 @@ import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
+import com.p6spy.engine.logging.P6LogLoadableOptions;
+
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -31,10 +33,13 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   @Nullable final String remoteServiceName;
   final boolean includeParameterValues;
+  final P6LogLoadableOptions logOptions;
 
-  TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues) {
+  TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues,
+      P6LogLoadableOptions logOptions) {
     this.remoteServiceName = remoteServiceName;
     this.includeParameterValues = includeParameterValues;
+    this.logOptions = logOptions;
   }
 
   /**
@@ -45,8 +50,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
    */
   @Override public void onBeforeAnyExecute(StatementInformation info) {
     String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
-    // don't start a span unless there is SQL as we cannot choose a relevant name without it
-    if (sql == null || sql.isEmpty()) return;
+    if (!isLoggable(sql)) return;
 
     // Gets the next span (and places it in scope) so code between here and postProcess can read it
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
@@ -68,7 +72,24 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     span.finish();
   }
 
-  /**
+  boolean isLoggable(String sql) {
+    // don't start a span unless there is SQL as we cannot choose a relevant name without it
+    // empty batches and connection commits/rollbacks
+    if (sql == null || sql.isEmpty()) {
+      return false;
+    }
+    if (!logOptions.getFilter()) {
+      return true;
+    }
+
+    final Pattern sqlExpressionPattern = logOptions.getSQLExpressionPattern();
+    final Pattern includeExcludePattern = logOptions.getIncludeExcludePattern();
+
+    return (sqlExpressionPattern == null || sqlExpressionPattern.matcher(sql).matches())
+        && (includeExcludePattern == null || includeExcludePattern.matcher(sql).matches());
+  }
+
+    /**
    * This attempts to get the ip and port from the JDBC URL. Ex. localhost and 5555 from {@code
    * jdbc:mysql://localhost:5555/mydatabase}.
    */
