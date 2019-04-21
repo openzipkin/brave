@@ -13,25 +13,47 @@
  */
 package brave.p6spy;
 
+import com.p6spy.engine.logging.P6LogLoadableOptions;
+import com.p6spy.engine.logging.P6LogOptions;
 import com.p6spy.engine.spy.P6SpyOptions;
 import com.p6spy.engine.spy.option.P6OptionsRepository;
+
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 final class TracingP6SpyOptions extends P6SpyOptions {
+
   static final String REMOTE_SERVICE_NAME = "remoteServiceName";
   static final String INCLUDE_PARAMETER_VALUES = "includeParameterValues";
 
-  final P6OptionsRepository optionsRepository;
+  private final P6OptionsRepository optionsRepository;
+  private final P6LogLoadableOptions logLoadableOptions;
 
   TracingP6SpyOptions(P6OptionsRepository optionsRepository) {
     super(optionsRepository);
+    logLoadableOptions = new P6LogOptions(optionsRepository);
     this.optionsRepository = optionsRepository;
   }
 
-  @Override public void load(Map<String, String> options) {
+  @Override
+  public void load(Map<String, String> options) {
     super.load(options);
+    logLoadableOptions.load(options);
     optionsRepository.set(String.class, REMOTE_SERVICE_NAME, options.get(REMOTE_SERVICE_NAME));
-    optionsRepository.set(Boolean.class, INCLUDE_PARAMETER_VALUES, options.get(INCLUDE_PARAMETER_VALUES));
+    optionsRepository.set(Boolean.class, INCLUDE_PARAMETER_VALUES,
+        options.get(INCLUDE_PARAMETER_VALUES));
+  }
+
+  @Override
+  public Map<String, String> getDefaults() {
+    Map<String, String> allDefaults = new LinkedHashMap(super.getDefaults());
+    allDefaults.putAll(logLoadableOptions.getDefaults());
+    allDefaults.put(INCLUDE_PARAMETER_VALUES, Boolean.FALSE.toString());
+    return allDefaults;
+  }
+
+  P6LogLoadableOptions getLogOptions() {
+    return logLoadableOptions;
   }
 
   String remoteServiceName() {
@@ -39,7 +61,6 @@ final class TracingP6SpyOptions extends P6SpyOptions {
   }
 
   Boolean includeParameterValues() {
-    Boolean logParameterValues = optionsRepository.get(Boolean.class, INCLUDE_PARAMETER_VALUES);
-    return logParameterValues == null ? false : logParameterValues;
+    return optionsRepository.get(Boolean.class, INCLUDE_PARAMETER_VALUES);
   }
 }
