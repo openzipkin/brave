@@ -41,6 +41,34 @@ public class TracingTest {
     }
   };
 
+  /**
+   * This behavior could be problematic as downstream services may report spans based on
+   * propagated sampled status, and be missing a parent when their parent tracer is in noop.
+   */
+  @Test public void setNoop_dropsDataButDoesntAffectSampling() {
+    try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
+      ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
+
+      tracing.setNoop(true);
+
+      // a new child retains sampled from parent even in noop
+      brave.Span child = tracing.tracer().newChild(parent.context());
+      assertThat(child.context().sampled()).isTrue();
+      assertThat(child.isNoop()).isTrue();
+      child.finish();
+
+      parent.finish();
+
+      // a new trace is sampled from even when noop
+      brave.Span root = tracing.tracer().newTrace();
+      assertThat(root.context().sampled()).isTrue();
+      assertThat(root.isNoop()).isTrue();
+      root.finish();
+    }
+
+    assertThat(spans).isEmpty();
+  }
+
   @Test public void spanReporter_getsLocalEndpointInfo() {
     String expectedLocalServiceName = "favistar", expectedLocalIp = "1.2.3.4";
     int expectedLocalPort = 80;
@@ -116,9 +144,9 @@ public class TracingTest {
 
   @Test public void firehose_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(Reporter.NOOP)
-        .addFinishedSpanHandler(finishedSpanHandler)
-        .build()) {
+      .spanReporter(Reporter.NOOP)
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
