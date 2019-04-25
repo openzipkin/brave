@@ -15,6 +15,7 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
+import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueMapper;
@@ -226,6 +227,22 @@ public final class KafkaStreamsTracing {
             return mapper.apply(key, value);
           }
         });
+  }
+
+  /**
+   * Create a filter transformer.
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transform(kafkaStreamsTracing.filter("myFilter", (k, v) -> ...)
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filter(String spanName,
+      Predicate<K, V> predicate) {
+    return new TracingTransformerSupplier<>(this, spanName,
+        new TracingPredicate<>(this, spanName, predicate));
   }
 
   /**

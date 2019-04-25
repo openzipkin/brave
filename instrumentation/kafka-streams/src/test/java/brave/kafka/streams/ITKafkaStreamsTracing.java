@@ -1,5 +1,7 @@
 package brave.kafka.streams;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
 import brave.propagation.StrictScopeDecorator;
@@ -47,8 +49,6 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import zipkin2.Annotation;
 import zipkin2.Span;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaStreamsTracing {
   @ClassRule public static KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
@@ -209,6 +209,37 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
+  public void should_create_spans_from_stream_with_tracing_filter() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(kafkaStreamsTracing.filter("filter-1", (key, value) -> false))
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.annotations().stream().map(annotation -> annotation.value()))
+        .containsExactly(KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
   public void should_create_spans_from_stream_with_tracing_peek() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -225,7 +256,7 @@ public class ITKafkaStreamsTracing {
           }
           tracing.tracer().currentSpan().annotate(now, "test");
         }))
-        .to(outputTopic);
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -255,7 +286,7 @@ public class ITKafkaStreamsTracing {
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .transform(kafkaStreamsTracing.mark("mark-1"))
-        .to(outputTopic);
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);

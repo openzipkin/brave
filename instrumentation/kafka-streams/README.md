@@ -47,7 +47,7 @@ builder.stream(inputTopic)
        .to(outputTopic);
 ```
 
-Additional transformer has been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`).
+Additional transformer has been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`, `filter`).
 
 ```java
 builder.stream(inputTopic)
