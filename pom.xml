@@ -602,7 +602,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[1.8,12)</version>
+                  <version>[11,12)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
