@@ -14,8 +14,9 @@ class KafkaStreamsTags {
   static final String KAFKA_STREAMS_APPLICATION_ID_TAG = "kafka.streams.application.id";
   static final String KAFKA_STREAMS_TASK_ID_TAG = "kafka.streams.task.id";
   /**
-   * Added on {@link KafkaStreamsTracing#nextSpan(ProcessorContext)} when the message is filtered
-   * out by the {@link KafkaStreamsTracing#filter(String, Predicate)} transformer.
+   * Added on {@link KafkaStreamsTracing#nextSpan(ProcessorContext)} by the {@link
+   * KafkaStreamsTracing#filter(String, Predicate)} transformer. The tag value is <code>true</code>
+   * when the message is filtered out, <code>false</code> otherwise.
    */
   static final String KAFKA_STREAMS_FILTERED_TAG = "kafka.streams.filtered";
 }

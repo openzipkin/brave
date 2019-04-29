@@ -242,7 +242,23 @@ public final class KafkaStreamsTracing {
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filter(String spanName,
       Predicate<K, V> predicate) {
     return new TracingTransformerSupplier<>(this, spanName,
-        new TracingPredicate<>(this, spanName, predicate));
+        new TracingFilterTransformer<>(this, spanName, predicate, false));
+  }
+
+  /**
+   * Create a filterNot transformer.
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transform(kafkaStreamsTracing.filterNot("myFilter", (k, v) -> ...)
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filterNot(String spanName,
+      Predicate<K, V> predicate) {
+    return new TracingTransformerSupplier<>(this, spanName,
+        new TracingFilterTransformer<>(this, spanName, predicate, true));
   }
 
   /**
