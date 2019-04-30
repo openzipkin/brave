@@ -241,8 +241,7 @@ public final class KafkaStreamsTracing {
    */
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filter(String spanName,
       Predicate<K, V> predicate) {
-    return new TracingTransformerSupplier<>(this, spanName,
-        new TracingFilterTransformer<>(this, spanName, predicate, false));
+    return new TracingFilterTransformerSupplier<>(this, spanName, predicate, false);
   }
 
   /**
@@ -257,8 +256,7 @@ public final class KafkaStreamsTracing {
    */
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filterNot(String spanName,
       Predicate<K, V> predicate) {
-    return new TracingTransformerSupplier<>(this, spanName,
-        new TracingFilterTransformer<>(this, spanName, predicate, true));
+    return new TracingFilterTransformerSupplier<>(this, spanName, predicate, true);
   }
 
   /**

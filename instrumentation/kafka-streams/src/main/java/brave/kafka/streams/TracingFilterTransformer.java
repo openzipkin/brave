@@ -26,7 +26,8 @@ class TracingFilterTransformer<K, V> extends AbstractTracingTransformer<K, V, Ke
     this.filterNot = filterNot;
   }
 
-  @Override public void init(ProcessorContext context) {
+  @Override
+  public void init(ProcessorContext context) {
     processorContext = context;
   }
 

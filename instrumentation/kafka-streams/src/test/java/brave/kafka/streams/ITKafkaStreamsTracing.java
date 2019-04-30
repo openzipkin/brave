@@ -227,6 +227,7 @@ public class ITKafkaStreamsTracing {
 
     waitForStreamToRun(streams);
 
+    // the filter transformer returns true so record is not dropped
     Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
 
     assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
@@ -257,11 +258,11 @@ public class ITKafkaStreamsTracing {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+    // the filter transformer returns false so record is dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan();
 
     assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -287,11 +288,11 @@ public class ITKafkaStreamsTracing {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+    // the filterNot transformer returns true so record is dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan();
 
     assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
     assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -317,6 +318,7 @@ public class ITKafkaStreamsTracing {
 
     waitForStreamToRun(streams);
 
+    // the filterNot transformer returns true so record is not dropped
     Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
 
     assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
