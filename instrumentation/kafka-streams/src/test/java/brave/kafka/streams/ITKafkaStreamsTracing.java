@@ -48,6 +48,7 @@ import org.junit.runner.Description;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
+import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaStreamsTracing {
@@ -209,6 +210,128 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
+  public void should_create_spans_from_stream_with_tracing_filter_predicate_true() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(kafkaStreamsTracing.filter("filter-1", (key, value) -> true))
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    // the filter transformer returns true so record is not dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_filter_predicate_false() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(kafkaStreamsTracing.filter("filter-2", (key, value) -> false))
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    // the filter transformer returns false so record is dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_filternot_predicate_true() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    // the filterNot transformer returns true so record is dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_filternot_predicate_false() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+        .transform(kafkaStreamsTracing.filterNot("filterNot-2", (key, value) -> false))
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createTracingProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    // the filterNot transformer returns true so record is not dropped
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
   public void should_create_spans_from_stream_with_tracing_peek() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -225,7 +348,7 @@ public class ITKafkaStreamsTracing {
           }
           tracing.tracer().currentSpan().annotate(now, "test");
         }))
-        .to(outputTopic);
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -255,7 +378,7 @@ public class ITKafkaStreamsTracing {
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .transform(kafkaStreamsTracing.mark("mark-1"))
-        .to(outputTopic);
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
