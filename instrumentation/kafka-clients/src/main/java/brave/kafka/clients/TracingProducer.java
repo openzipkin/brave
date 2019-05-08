@@ -16,11 +16,8 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Tracer;
 import brave.internal.Nullable;
-import brave.messaging.MessagingAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContext.Injector;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +39,6 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   final KafkaTracing kafkaTracing;
   final CurrentTraceContext current;
   final Tracer tracer;
-  final Injector<ProducerRecord> injector;
-  final Extractor<ProducerRecord> extractor;
   @Nullable final String remoteServiceName;
   final MessagingProducerHandler handler;
 
@@ -52,17 +47,8 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     this.kafkaTracing = kafkaTracing;
     this.current = kafkaTracing.msgTracing.tracing().currentTraceContext();
     this.tracer = kafkaTracing.msgTracing.tracing().tracer();
-    this.injector = kafkaTracing.writeB3SingleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_PRODUCER
-        : kafkaTracing.msgTracing.tracing()
-            .propagation()
-            .injector(KafkaPropagation.PRODUCER_RECORD_SETTER);
-    this.extractor = kafkaTracing.msgTracing.tracing()
-        .propagation()
-        .extractor(KafkaPropagation.PRODUCER_RECORD_GETTER);
     this.remoteServiceName = kafkaTracing.remoteServiceName;
-    handler =
-        MessagingProducerHandler.create(kafkaTracing.msgTracing, KafkaProducerAdapter.create(),
-            extractor, injector);
+    this.handler = kafkaTracing.producerHandler;
   }
 
   @Override public void initTransactions() {
@@ -100,32 +86,6 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   @Override
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     Span span = handler.handleProduce(record);
-    //TraceContext maybeParent = current.get();
-    //// Unlike message consumers, we try current span before trying extraction. This is the proper
-    //// order because the span in scope should take precedence over a potentially stale header entry.
-    ////
-    //// NOTE: Brave instrumentation used properly does not result in stale header entries, as we
-    //// always clear message headers after reading.
-    //Span span;
-    //if (maybeParent == null) {
-    //  span = tracer.nextSpan(
-    //      kafkaTracing.msgTracing.parser().extractAndClearHeaders(record.headers()));
-    //} else {
-    //  // If we have a span in scope assume headers were cleared before
-    //  span = tracer.newChild(maybeParent);
-    //}
-    //
-    //if (!span.isNoop()) {
-    //  span.kind(Span.Kind.PRODUCER).name("send");
-    //  if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-    //  if (record.key() instanceof String && !"".equals(record.key())) {
-    //    span.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
-    //  }
-    //  span.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
-    //  span.start();
-    //}
-    //
-    //injector.inject(span.context(), record.headers());
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return delegate.send(record, TracingCallback.create(callback, span, current));
@@ -211,34 +171,33 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     }
   }
 
-  static final class KafkaProducerAdapter extends MessagingAdapter<ProducerRecord> {
-
-    static KafkaProducerAdapter create() {
-      return new KafkaProducerAdapter();
+  static final class KafkaProducerAdapter extends KafkaTracing.KafkaAdapter<ProducerRecord> {
+    KafkaProducerAdapter(String baseRemoteServiceName, List<String> propagationKeys) {
+      super(baseRemoteServiceName, propagationKeys);
     }
 
-    @Override public String protocol(ProducerRecord message) {
-      return null;
+    static KafkaProducerAdapter create(KafkaTracing kafkaTracing) {
+      return new KafkaProducerAdapter(kafkaTracing.remoteServiceName, kafkaTracing.propagationKeys);
     }
 
-    @Override public MessagingAdapter.Channel channel(ProducerRecord message) {
-      return null;
+    @Override public String channel(ProducerRecord message) {
+      return message.topic();
     }
 
     @Override public String operation(ProducerRecord message) {
-      return null;
+      return KafkaTracing.PRODUCER_OPERATION;
     }
 
     @Override public String identifier(ProducerRecord message) {
-      return null;
+      return recordKey(message.key());
     }
 
     @Override public String remoteServiceName(ProducerRecord message) {
-      return null;
+      return baseRemoteServiceName;
     }
 
-    @Override public void clearPropagation(ProducerRecord headers) {
-
+    @Override public void clearPropagation(ProducerRecord message) {
+      clearHeaders(message.headers());
     }
   }
 }
