@@ -15,17 +15,22 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.messaging.MessagingAdapter;
+import brave.messaging.MessagingConsumerHandler;
+import brave.messaging.MessagingProducerHandler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 import static brave.kafka.clients.KafkaPropagation.B3_SINGLE_TEST_HEADERS;
@@ -33,6 +38,10 @@ import static brave.kafka.clients.KafkaPropagation.TEST_CONTEXT;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
+
+  static final String PROTOCOL = "kafka";
+  static final String PRODUCER_OPERATION = "send";
+  static final String CONSUMER_OPERATION = "poll";
 
   public static KafkaTracing create(Tracing tracing) {
     return new Builder(tracing).build();
@@ -84,23 +93,48 @@ public final class KafkaTracing {
 
   final MessagingTracing msgTracing;
   final String remoteServiceName;
-  final boolean writeB3SingleFormat;
+  final List<String> propagationKeys;
+  final Extractor<ConsumerRecord> consumerRecordExtractor;
+  final Injector<ConsumerRecord> consumerRecordInjector;
+  final MessagingConsumerHandler<ConsumerRecord> consumerHandler;
+  final Extractor<ProducerRecord> producerRecordExtractor;
+  final Injector<ProducerRecord> producerRecordInjector;
+  final MessagingProducerHandler<ProducerRecord> producerHandler;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
     this.remoteServiceName = builder.remoteServiceName;
+    this.propagationKeys = msgTracing.tracing().propagation().keys();
     final Extractor<Headers> extractor = msgTracing.tracing().propagation().extractor(KafkaPropagation.HEADERS_GETTER);
     List<String> keyList = msgTracing.tracing().propagation().keys();
+    boolean singleFormat = false;
     if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
       TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
       if (!TEST_CONTEXT.equals(testExtraction)) {
         throw new IllegalArgumentException(
             "KafkaTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
       }
-      this.writeB3SingleFormat = true;
-    } else {
-      this.writeB3SingleFormat = false;
+      singleFormat = true;
     }
+    this.producerRecordInjector = singleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_PRODUCER
+        : msgTracing.tracing().propagation().injector(KafkaPropagation.PRODUCER_RECORD_SETTER);
+    this.producerRecordExtractor =
+        msgTracing.tracing().propagation().extractor(KafkaPropagation.PRODUCER_RECORD_GETTER);
+    this.producerHandler =
+        MessagingProducerHandler.create(msgTracing,
+            TracingProducer.KafkaProducerAdapter.create(this),
+            producerRecordExtractor, producerRecordInjector);
+    this.consumerRecordInjector = singleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_CONSUMER
+        : msgTracing.tracing()
+            .propagation()
+            .injector(KafkaPropagation.CONSUMER_RECORD_SETTER);
+    this.consumerRecordExtractor =
+        msgTracing.tracing().propagation().extractor(KafkaPropagation.CONSUMER_RECORD_GETTER);
+    this.consumerHandler =
+        MessagingConsumerHandler.create(msgTracing,
+            TracingConsumer.KafkaConsumerAdapter.create(this),
+            consumerRecordExtractor, consumerRecordInjector);
+
   }
 
   /**
@@ -124,41 +158,46 @@ public final class KafkaTracing {
    * <p>This creates a child from identifiers extracted from the record headers, or a new span if
    * one couldn't be extracted.
    */
-  //public Span nextSpan(ConsumerRecord<?, ?> record) {
-  //  TraceContextOrSamplingFlags extracted = extractAndClearHeaders(record.headers());
-  //  Span result = tracing.tracer().nextSpan(extracted);
-  //  if (extracted.context() == null && !result.isNoop()) {
-  //    addTags(record, result);
-  //  }
-  //  return result;
-  //}
+  public Span nextSpan(ConsumerRecord<?, ?> record) {
+    return consumerHandler.nextSpan(record);
+  }
 
-  //TraceContextOrSamplingFlags extractAndClearHeaders(Headers headers) {
-  //  TraceContextOrSamplingFlags extracted = extractor.extract(headers);
-  //  // clear propagation headers if we were able to extract a span
-  //  if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
-  //    clearHeaders(headers);
-  //  }
-  //  return extracted;
-  //}
 
-  // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
-  // this could prevent having to go back and clear them later. Another option is to encourage,
-  // then special-case single header propagation. When there's only 1 propagation key, you don't
-  // need to do a loop!
-  //void clearHeaders(Headers headers) {
-  //  // Headers::remove creates and consumes an iterator each time. This does one loop instead.
-  //  for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
-  //    Header next = i.next();
-  //    if (propagationKeys.contains(next.key())) i.remove();
-  //  }
-  //}
+  static abstract class KafkaAdapter<Record> extends MessagingAdapter<Record> {
+    final String baseRemoteServiceName;
+    final List<String> propagationKeys;
 
-  /** When an upstream context was not present, lookup keys are unlikely added */
-  //static void addTags(ConsumerRecord<?, ?> record, SpanCustomizer result) {
-  //  if (record.key() instanceof String && !"".equals(record.key())) {
-  //    result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
-  //  }
-  //  result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
-  //}
+    KafkaAdapter(String baseRemoteServiceName,
+        List<String> propagationKeys) {
+      this.baseRemoteServiceName = baseRemoteServiceName;
+      this.propagationKeys = propagationKeys;
+    }
+
+    @Override public String channelTagKey(Record record) {
+      return String.format("%s.topic", PROTOCOL);
+    }
+
+    String recordKey(Object key) {
+      if (key instanceof String && !"".equals(key)) {
+        return key.toString();
+      }
+      return null;
+    }
+
+    @Override public String identifierTagKey() {
+      return String.format("%s.key", PROTOCOL);
+    }
+
+    // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
+    // this could prevent having to go back and clear them later. Another option is to encourage,
+    // then special-case single header propagation. When there's only 1 propagation key, you don't
+    // need to do a loop!
+    void clearHeaders(Headers headers) {
+      // Headers::remove creates and consumes an iterator each time. This does one loop instead.
+      for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
+        Header next = i.next();
+        if (propagationKeys.contains(next.key())) i.remove();
+      }
+    }
+  }
 }
