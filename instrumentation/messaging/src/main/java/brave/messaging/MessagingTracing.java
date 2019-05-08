@@ -24,6 +24,10 @@ public class MessagingTracing {
     return tracing;
   }
 
+  public MessagingParser parser() {
+    return parser;
+  }
+
   public static class Builder {
     final Tracing tracing;
     MessagingParser parser = new MessagingParser();

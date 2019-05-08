@@ -17,6 +17,11 @@ public abstract class MessagingAdapter<Msg> {
     public abstract String operation(Msg message);
 
     /**
+     * Message identifier, e.g. kafka record key, jms message correlation id.
+     */
+    public abstract String identifier(Msg message);
+
+    /**
      * Messaging broker service, e.g. kafka-cluster, jms-server.
      */
     public abstract String remoteServiceName(Msg message);
@@ -29,7 +34,7 @@ public abstract class MessagingAdapter<Msg> {
     /**
      * Identifies a messaging channel.
      */
-    static class Channel {
+    protected static class Channel {
         final Type type;
         final String name;
 
