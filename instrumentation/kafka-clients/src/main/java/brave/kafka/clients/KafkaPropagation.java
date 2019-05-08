@@ -17,6 +17,7 @@ import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -42,16 +43,50 @@ final class KafkaPropagation {
     }
   };
 
-  static final Setter<Headers, String> SETTER = (carrier, key, value) -> {
+  static final Injector<ProducerRecord> B3_SINGLE_INJECTOR_PRODUCER = new Injector<ProducerRecord>() {
+    @Override public void inject(TraceContext traceContext, ProducerRecord carrier) {
+      carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
+    }
+
+    @Override public String toString() {
+      return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+    }
+  };
+
+  static final Injector<ConsumerRecord> B3_SINGLE_INJECTOR_CONSUMER = new Injector<ConsumerRecord>() {
+    @Override public void inject(TraceContext traceContext, ConsumerRecord carrier) {
+      carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
+    }
+
+    @Override public String toString() {
+      return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+    }
+  };
+
+  static final Setter<Headers, String> HEADERS_SETTER = (carrier, key, value) -> {
     carrier.remove(key);
     carrier.add(key, value.getBytes(UTF_8));
   };
 
-  static final Getter<Headers, String> GETTER = (carrier, key) -> {
+  static final Setter<ProducerRecord, String> PRODUCER_RECORD_SETTER = (record, key, value) -> {
+    HEADERS_SETTER.put(record.headers(), key, value);
+  };
+
+  static final Setter<ConsumerRecord, String> CONSUMER_RECORD_SETTER = (record, key, value) -> {
+    HEADERS_SETTER.put(record.headers(), key, value);
+  };
+
+  static final Getter<Headers, String> HEADERS_GETTER = (carrier, key) -> {
     Header header = carrier.lastHeader(key);
     if (header == null || header.value() == null) return null;
     return new String(header.value(), UTF_8);
   };
+
+  static final Getter<ProducerRecord, String> PRODUCER_RECORD_GETTER =
+      (record, key) -> HEADERS_GETTER.get(record.headers(), key);
+
+  static final Getter<ConsumerRecord, String> CONSUMER_RECORD_GETTER =
+      (record, key) -> HEADERS_GETTER.get(record.headers(), key);
 
   KafkaPropagation() {
   }

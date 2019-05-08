@@ -15,6 +15,9 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.messaging.MessagingAdapter;
+import brave.messaging.MessagingConsumerHandler;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.time.Duration;
@@ -36,7 +39,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Headers;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
@@ -47,8 +49,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final Consumer<K, V> delegate;
   final KafkaTracing kafkaTracing;
   final Tracing tracing;
-  final Injector<Headers> injector;
+  final Injector<ConsumerRecord> injector;
+  final Extractor<ConsumerRecord> extractor;
   final String remoteServiceName;
+  final MessagingConsumerHandler handler;
+
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
     new ConsumerRebalanceListener() {
@@ -62,9 +67,14 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
     this.kafkaTracing = kafkaTracing;
-    this.tracing = kafkaTracing.tracing;
-    this.injector = kafkaTracing.injector;
+    this.tracing = kafkaTracing.msgTracing.tracing();
+    this.injector = kafkaTracing.writeB3SingleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_CONSUMER
+        : kafkaTracing.msgTracing.tracing()
+            .propagation()
+            .injector(KafkaPropagation.CONSUMER_RECORD_SETTER);
+    this.extractor = kafkaTracing.msgTracing.tracing().propagation().extractor(KafkaPropagation.CONSUMER_RECORD_GETTER);
     this.remoteServiceName = kafkaTracing.remoteServiceName;
+    handler = MessagingConsumerHandler.create(kafkaTracing.msgTracing, KafkaConsumerAdapter.create(), extractor, injector);
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -85,7 +95,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
       for (int i = 0, length = recordsInPartition.size(); i < length; i++) {
         ConsumerRecord<K, V> record = recordsInPartition.get(i);
         TraceContextOrSamplingFlags extracted =
-          kafkaTracing.extractAndClearHeaders(record.headers());
+          null; //FIXME kafkaTracing.extractAndClearHeaders(record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // make or reuse a span for this topic
@@ -103,7 +113,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             consumerSpansForTopic.put(topic, span);
           }
-          injector.inject(span.context(), record.headers());
+          injector.inject(span.context(), record);
         } else { // we extracted request-scoped data, so cannot share a consumer span.
           Span span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
@@ -114,7 +124,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             span.start(timestamp).finish(timestamp); // span won't be shared by other records
           }
-          injector.inject(span.context(), record.headers());
+          injector.inject(span.context(), record);
         }
       }
     }
@@ -306,5 +316,36 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   void setConsumerSpan(String topic, Span span) {
     span.name("poll").kind(Span.Kind.CONSUMER).tag(KafkaTags.KAFKA_TOPIC_TAG, topic);
     if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+  }
+
+  static class KafkaConsumerAdapter extends MessagingAdapter<ConsumerRecord> {
+
+    static KafkaConsumerAdapter create() {
+      return new KafkaConsumerAdapter();
+    }
+
+    @Override public String protocol(ConsumerRecord message) {
+      return null;
+    }
+
+    @Override public Channel channel(ConsumerRecord message) {
+      return null;
+    }
+
+    @Override public String operation(ConsumerRecord message) {
+      return null;
+    }
+
+    @Override public String identifier(ConsumerRecord message) {
+      return null;
+    }
+
+    @Override public String remoteServiceName(ConsumerRecord message) {
+      return null;
+    }
+
+    @Override public void clearPropagation(ConsumerRecord headers) {
+
+    }
   }
 }
