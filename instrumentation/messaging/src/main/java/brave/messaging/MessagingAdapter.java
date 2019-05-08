@@ -1,6 +1,6 @@
 package brave.messaging;
 
-public abstract class MessagingAdapter<Msg, Headers> {
+public abstract class MessagingAdapter<Msg> {
     /**
      * Messaging protocol, e.g. kafka, jms, amqp, etc.
      */
@@ -22,9 +22,9 @@ public abstract class MessagingAdapter<Msg, Headers> {
     public abstract String remoteServiceName(Msg message);
 
     /**
-     * Removes propagation context from Message headers (context carrier).
+     * Removes propagation context from Message context carrier.
      */
-    public abstract void clearPropagation(Headers headers);
+    public abstract void clearPropagation(Msg headers);
 
     /**
      * Identifies a messaging channel.
@@ -38,9 +38,13 @@ public abstract class MessagingAdapter<Msg, Headers> {
             this.name = name;
         }
 
+        public String tagKey(String protocol) {
+            return String.format("%s:%s", protocol, type.name());
+        }
+
         /**
          * Message Channel types: queues and topics.
          */
-        enum Type { QUEUE, TOPIC }
+        enum Type {queue, topic}
     }
 }
