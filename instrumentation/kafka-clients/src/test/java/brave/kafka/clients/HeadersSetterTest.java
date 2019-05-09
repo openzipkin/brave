@@ -21,7 +21,7 @@ public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
   }
 
   @Override protected Propagation.Setter<Headers, String> setter() {
-    return null;//FIXME SETTER;
+    throw new AssertionError("FIXME SETTER");
   }
 
   @Override protected Iterable<String> read(Headers carrier, String key) {
