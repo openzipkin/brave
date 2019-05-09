@@ -140,7 +140,7 @@ public final class KafkaTracing {
   /**
    * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. This span is
    * injected onto each message so it becomes the parent when a processor later calls {@link
-   * // #nextSpan(ConsumerRecord)}.
+   * #nextSpan(ConsumerRecord)}.
    */
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
     return new TracingConsumer<>(consumer, this);
