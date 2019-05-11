@@ -185,7 +185,7 @@ public final class TraceContext extends SamplingFlags {
     String r = traceIdString;
     if (r == null) {
       if (traceIdHigh != 0) {
-        char[] result = new char[32];
+        char[] result = Platform.get().idBuffer();
         writeHexLong(result, 0, traceIdHigh);
         writeHexLong(result, 16, traceId);
         r = new String(result);

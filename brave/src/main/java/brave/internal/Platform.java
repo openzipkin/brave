@@ -23,6 +23,8 @@ public abstract class Platform {
   private static final Platform PLATFORM = findPlatform();
   private static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
 
+  private static final ThreadLocal<char[]> ID_BUFFER = new ThreadLocal<>();
+
   volatile String linkLocalIp;
 
   /** Guards {@link InetSocketAddress#getHostString()}, as it isn't available until Java 7 */
@@ -60,6 +62,20 @@ public abstract class Platform {
 
   public static Platform get() {
     return PLATFORM;
+  }
+
+  /**
+   * Returns a {@link ThreadLocal} reused {@code char[]} for use when decoding bytes into a hex
+   * string. The buffer should be immediately copied into a {@link String} after decoding within the
+   * same method.
+   */
+  public char[] idBuffer() {
+    char[] idBuffer = ID_BUFFER.get();
+    if (idBuffer == null) {
+      idBuffer = new char[32];
+      ID_BUFFER.set(idBuffer);
+    }
+    return idBuffer;
   }
 
   /** Like {@link Logger#log(Level, String) */
