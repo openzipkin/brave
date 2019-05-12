@@ -4,6 +4,7 @@ import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.RecyclableBuffers;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -185,7 +186,7 @@ public final class TraceContext extends SamplingFlags {
     String r = traceIdString;
     if (r == null) {
       if (traceIdHigh != 0) {
-        char[] result = new char[32];
+        char[] result = RecyclableBuffers.idBuffer();
         writeHexLong(result, 0, traceIdHigh);
         writeHexLong(result, 16, traceId);
         r = new String(result);

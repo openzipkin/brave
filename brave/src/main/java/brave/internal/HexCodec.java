@@ -52,9 +52,9 @@ public final class HexCodec {
 
   /** Inspired by {@code okio.Buffer.writeLong} */
   public static String toLowerHex(long v) {
-    char[] data = new char[16];
+    char[] data = RecyclableBuffers.idBuffer();
     writeHexLong(data, 0, v);
-    return new String(data);
+    return new String(data, 0, 16);
   }
 
   /** Inspired by {@code okio.Buffer.writeLong} */
