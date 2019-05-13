@@ -42,7 +42,7 @@ public class MessagingProducerHandler<Msg> extends MessagingHandler<Msg, Messagi
     }
 
     if (!span.isNoop()) {
-      span.kind(Span.Kind.PRODUCER).name("send");
+      span.kind(Span.Kind.PRODUCER).name(adapter.operation(message));
       parser.message(adapter, message, span);
       String remoteServiceName = adapter.remoteServiceName(message);
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);

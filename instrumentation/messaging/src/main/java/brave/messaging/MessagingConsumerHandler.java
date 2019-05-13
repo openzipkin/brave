@@ -38,11 +38,24 @@ public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, Messagi
     return result;
   }
 
-
   /** When an upstream context was not present, lookup keys are unlikely added */
   void addTags(Msg message, SpanCustomizer result) {
     parser.channel(adapter, message, result);
     parser.identifier(adapter, message, result);
+  }
+
+  public void handleConsume(Msg message) {
+    if (message == null || tracing.isNoop()) return;
+    // remove prior propagation headers from the message
+    Span span = nextSpan(message);
+    if (!span.isNoop()) {
+      parser.message(adapter, message, span);
+
+      // incur timestamp overhead only once
+      long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
+      span.start(timestamp).finish(timestamp);
+    }
+    injector.inject(span.context(), message);
   }
 
   public Map<String, Span> handleConsume(List<Msg> messages, Map<String, Span> spanForChannel) {
