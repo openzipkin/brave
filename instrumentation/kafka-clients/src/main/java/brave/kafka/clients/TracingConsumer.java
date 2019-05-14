@@ -15,6 +15,8 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.messaging.ChannelAdapter;
+import brave.messaging.MessageAdapter;
 import brave.messaging.MessagingConsumerHandler;
 import java.time.Duration;
 import java.util.Collection;
@@ -40,13 +42,13 @@ import org.apache.kafka.common.TopicPartition;
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
  * producers span if possible.
  */
-final class TracingConsumer<K, V> implements Consumer<K, V> {
+final class TracingConsumer<K, V>
+  extends MessagingConsumerHandler<Consumer<K, V>, ConsumerRecord<K, V>, ConsumerRecord<K, V>>
+  implements Consumer<K, V> {
 
-  final Consumer<K, V> delegate;
   final KafkaTracing kafkaTracing;
   final Tracing tracing;
   final String remoteServiceName;
-  final MessagingConsumerHandler handler;
 
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
@@ -59,11 +61,15 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     };
 
   TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
-    this.delegate = delegate;
+    super(delegate,
+      kafkaTracing.msgTracing,
+      KafkaConsumerAdapter.create(kafkaTracing),
+      KafkaConsumerAdapter.create(kafkaTracing),
+      kafkaTracing.consumerRecordExtractor(),
+      kafkaTracing.consumerRecordInjector());
     this.kafkaTracing = kafkaTracing;
     this.tracing = kafkaTracing.msgTracing.tracing();
     this.remoteServiceName = kafkaTracing.remoteServiceName;
-    this.handler = kafkaTracing.consumerHandler;
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -80,7 +86,9 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
     for (TopicPartition partition : records.partitions()) {
       List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
-      consumerSpansForTopic = handler.handleConsume(recordsInPartition, consumerSpansForTopic);
+      consumerSpansForTopic =
+        handleConsume(recordsInPartition.size() > 1 ? recordsInPartition.get(0) : null,
+          recordsInPartition, consumerSpansForTopic);
     }
     for (Span span : consumerSpansForTopic.values()) span.finish(timestamp);
     return records;
@@ -267,14 +275,16 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.wakeup();
   }
 
-  static class KafkaConsumerAdapter extends KafkaTracing.KafkaAdapter<ConsumerRecord> {
+  static class KafkaConsumerAdapter<K, V> implements MessageAdapter<ConsumerRecord<K, V>>,
+    ChannelAdapter<ConsumerRecord<K, V>> {
+    final KafkaTracing kafkaTracing;
 
-    KafkaConsumerAdapter(String baseRemoteServiceName, List<String> propagationKeys) {
-      super(baseRemoteServiceName, propagationKeys);
+    KafkaConsumerAdapter(KafkaTracing kafkaTracing) {
+      this.kafkaTracing = kafkaTracing;
     }
 
     static KafkaConsumerAdapter create(KafkaTracing kafkaTracing) {
-      return new KafkaConsumerAdapter(kafkaTracing.remoteServiceName, kafkaTracing.propagationKeys);
+      return new KafkaConsumerAdapter(kafkaTracing);
     }
 
     @Override public String channel(ConsumerRecord message) {
@@ -286,15 +296,23 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override public String identifier(ConsumerRecord message) {
-      return recordKey(message.key());
+      return kafkaTracing.recordKey(message.key());
     }
 
     @Override public String remoteServiceName(ConsumerRecord message) {
-      return baseRemoteServiceName;
+      return kafkaTracing.remoteServiceName;
     }
 
     @Override public void clearPropagation(ConsumerRecord message) {
-      clearHeaders(message.headers());
+      kafkaTracing.clearHeaders(message.headers());
+    }
+
+    @Override public String channelTagKey(ConsumerRecord<K, V> message) {
+      return kafkaTracing.channelTagKey(message);
+    }
+
+    @Override public String identifierTagKey() {
+      return kafkaTracing.identifierTagKey();
     }
   }
 }

@@ -17,6 +17,8 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.messaging.MessagingTracing;
+import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
@@ -93,12 +95,17 @@ public final class JmsTracing {
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final MessagingTracing msgTracing;
     String remoteServiceName = "jms";
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
-      this.tracing = tracing;
+      this.msgTracing = MessagingTracing.create(tracing);
+    }
+
+    Builder(MessagingTracing msgTracing) {
+      if (msgTracing == null) throw new NullPointerException("msgTracing == null");
+      this.msgTracing = msgTracing;
     }
 
     /**
@@ -114,7 +121,8 @@ public final class JmsTracing {
     }
   }
 
-  final Tracing tracing;
+  final MessagingTracing msgTracing;
+  final TraceContext.Injector<Message> injector;
   final Extractor<Message> extractor;
   final String remoteServiceName;
   final Set<String> propagationKeys;
@@ -123,10 +131,11 @@ public final class JmsTracing {
   static volatile Logger logger;
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(GETTER);
+    this.msgTracing = builder.msgTracing;
+    this.injector = msgTracing.tracing().propagation().injector(SETTER);
+    this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
-    this.propagationKeys = new LinkedHashSet<>(tracing.propagation().keys());
+    this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
   }
 
   public Connection connection(Connection connection) {
@@ -201,7 +210,7 @@ public final class JmsTracing {
    */
   public Span nextSpan(Message message) {
     TraceContextOrSamplingFlags extracted = extractAndClearMessage(message);
-    Span result = tracing.tracer().nextSpan(extracted);
+    Span result = msgTracing.tracing().tracer().nextSpan(extracted);
 
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
