@@ -15,9 +15,6 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
-import brave.messaging.MessagingAdapter;
-import brave.messaging.MessagingConsumerHandler;
-import brave.messaging.MessagingProducerHandler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.Propagation;
@@ -34,7 +31,10 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 import static brave.kafka.clients.KafkaPropagation.B3_SINGLE_TEST_HEADERS;
+import static brave.kafka.clients.KafkaPropagation.HEADERS_GETTER;
+import static brave.kafka.clients.KafkaPropagation.HEADERS_SETTER;
 import static brave.kafka.clients.KafkaPropagation.TEST_CONTEXT;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
@@ -94,20 +94,21 @@ public final class KafkaTracing {
   final MessagingTracing msgTracing;
   final String remoteServiceName;
   final List<String> propagationKeys;
-  final Extractor<ConsumerRecord> consumerRecordExtractor;
-  final Injector<ConsumerRecord> consumerRecordInjector;
-  final MessagingConsumerHandler<ConsumerRecord> consumerHandler;
-  final Extractor<ProducerRecord> producerRecordExtractor;
-  final Injector<ProducerRecord> producerRecordInjector;
-  final MessagingProducerHandler<ProducerRecord> producerHandler;
+
+  boolean singleFormat;
+  //final Extractor<ConsumerRecord<?, ?>> consumerRecordExtractor;
+  //final Injector<ConsumerRecord<?, ?>> consumerRecordInjector;
+  //final Extractor<ProducerRecord<?, ?>> producerRecordExtractor;
+  //final Injector<ProducerRecord<?, ?>> producerRecordInjector;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = msgTracing.tracing().propagation().keys();
-    final Extractor<Headers> extractor = msgTracing.tracing().propagation().extractor(KafkaPropagation.HEADERS_GETTER);
+    final Extractor<Headers> extractor =
+        msgTracing.tracing().propagation().extractor(HEADERS_GETTER);
     List<String> keyList = msgTracing.tracing().propagation().keys();
-    boolean singleFormat = false;
+    singleFormat = false;
     if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
       TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
       if (!TEST_CONTEXT.equals(testExtraction)) {
@@ -116,25 +117,50 @@ public final class KafkaTracing {
       }
       singleFormat = true;
     }
-    this.producerRecordInjector = singleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_PRODUCER
-        : msgTracing.tracing().propagation().injector(KafkaPropagation.PRODUCER_RECORD_SETTER);
-    this.producerRecordExtractor =
-        msgTracing.tracing().propagation().extractor(KafkaPropagation.PRODUCER_RECORD_GETTER);
-    this.producerHandler =
-        MessagingProducerHandler.create(msgTracing,
-            TracingProducer.KafkaProducerAdapter.create(this),
-            producerRecordExtractor, producerRecordInjector);
-    this.consumerRecordInjector = singleFormat ? KafkaPropagation.B3_SINGLE_INJECTOR_CONSUMER
-        : msgTracing.tracing()
-            .propagation()
-            .injector(KafkaPropagation.CONSUMER_RECORD_SETTER);
-    this.consumerRecordExtractor =
-        msgTracing.tracing().propagation().extractor(KafkaPropagation.CONSUMER_RECORD_GETTER);
-    this.consumerHandler =
-        MessagingConsumerHandler.create(msgTracing,
-            TracingConsumer.KafkaConsumerAdapter.create(this),
-            consumerRecordExtractor, consumerRecordInjector);
+  }
 
+  <K, V> Extractor<ProducerRecord<K, V>> producerRecordExtractor() {
+    return msgTracing.tracing()
+        .propagation()
+        .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
+  }
+
+  <K, V> Injector<ProducerRecord<K, V>> producerRecordInjector() {
+    return singleFormat ?
+        new Injector<ProducerRecord<K, V>>() {
+          @Override public void inject(TraceContext traceContext, ProducerRecord<K, V> carrier) {
+            carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
+          }
+
+          @Override public String toString() {
+            return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+          }
+        }
+        : msgTracing.tracing().propagation().injector((record, key, value) -> {
+          HEADERS_SETTER.put(record.headers(), key, value);
+        });
+  }
+
+  <K, V> Extractor<ConsumerRecord<K, V>> consumerRecordExtractor() {
+    return msgTracing.tracing()
+        .propagation()
+        .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
+  }
+
+  <K, V> Injector<ConsumerRecord<K, V>> consumerRecordInjector() {
+    return singleFormat ?
+        new Injector<ConsumerRecord<K, V>>() {
+          @Override public void inject(TraceContext traceContext, ConsumerRecord<K, V> carrier) {
+            carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
+          }
+
+          @Override public String toString() {
+            return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+          }
+        }
+        : msgTracing.tracing().propagation().injector((record, key, value) -> {
+          HEADERS_SETTER.put(record.headers(), key, value);
+        });
   }
 
   /**
@@ -159,45 +185,33 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    return consumerHandler.nextSpan(record);
+    return null;//FIXME consumerHandler.nextSpan(record);
   }
 
+  public <Record> String channelTagKey(Record record) {
+    return String.format("%s.topic", PROTOCOL);
+  }
 
-  static abstract class KafkaAdapter<Record> extends MessagingAdapter<Record> {
-    final String baseRemoteServiceName;
-    final List<String> propagationKeys;
-
-    KafkaAdapter(String baseRemoteServiceName,
-        List<String> propagationKeys) {
-      this.baseRemoteServiceName = baseRemoteServiceName;
-      this.propagationKeys = propagationKeys;
+  String recordKey(Object key) {
+    if (key instanceof String && !"".equals(key)) {
+      return key.toString();
     }
+    return null;
+  }
 
-    @Override public String channelTagKey(Record record) {
-      return String.format("%s.topic", PROTOCOL);
-    }
+  public String identifierTagKey() {
+    return String.format("%s.key", PROTOCOL);
+  }
 
-    String recordKey(Object key) {
-      if (key instanceof String && !"".equals(key)) {
-        return key.toString();
-      }
-      return null;
-    }
-
-    @Override public String identifierTagKey() {
-      return String.format("%s.key", PROTOCOL);
-    }
-
-    // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
-    // this could prevent having to go back and clear them later. Another option is to encourage,
-    // then special-case single header propagation. When there's only 1 propagation key, you don't
-    // need to do a loop!
-    void clearHeaders(Headers headers) {
-      // Headers::remove creates and consumes an iterator each time. This does one loop instead.
-      for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
-        Header next = i.next();
-        if (propagationKeys.contains(next.key())) i.remove();
-      }
+  // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
+  // this could prevent having to go back and clear them later. Another option is to encourage,
+  // then special-case single header propagation. When there's only 1 propagation key, you don't
+  // need to do a loop!
+  void clearHeaders(Headers headers) {
+    // Headers::remove creates and consumes an iterator each time. This does one loop instead.
+    for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
+      Header next = i.next();
+      if (propagationKeys.contains(next.key())) i.remove();
     }
   }
 }

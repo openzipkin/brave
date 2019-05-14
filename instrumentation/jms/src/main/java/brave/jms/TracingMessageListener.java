@@ -50,8 +50,8 @@ final class TracingMessageListener implements MessageListener {
   TracingMessageListener(MessageListener delegate, JmsTracing jmsTracing, boolean addConsumerSpan) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
-    this.tracing = jmsTracing.tracing;
-    this.tracer = jmsTracing.tracing.tracer();
+    this.tracing = jmsTracing.msgTracing.tracing();
+    this.tracer = jmsTracing.msgTracing.tracing().tracer();
     this.remoteServiceName = jmsTracing.remoteServiceName;
     this.addConsumerSpan = addConsumerSpan;
   }

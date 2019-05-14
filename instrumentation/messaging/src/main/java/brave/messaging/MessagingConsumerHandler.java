@@ -8,29 +8,40 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.List;
 import java.util.Map;
 
-public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, MessagingAdapter<Msg>> {
+public class MessagingConsumerHandler<C, Chan, Msg>
+    extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageAdapter<Msg>> {
 
-  static public <Msg> MessagingConsumerHandler<Msg> create(MessagingTracing tracing,
-      MessagingAdapter<Msg> adapter,
+  static public <C, Chan, Msg> MessagingConsumerHandler<C, Chan, Msg> create(
+      C delegate,
+      MessagingTracing tracing,
+      ChannelAdapter<Chan> channelAdapter,
+      MessageAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
-    return new MessagingConsumerHandler<>(tracing, adapter, extractor, injector);
+    return new MessagingConsumerHandler<>(delegate, tracing, channelAdapter, messageAdapter,
+        extractor, injector);
   }
 
+  public final C delegate;
   final Tracing tracing;
 
-  MessagingConsumerHandler(MessagingTracing messagingTracing,
-      MessagingAdapter<Msg> adapter,
+  public MessagingConsumerHandler(
+      C delegate,
+      MessagingTracing messagingTracing,
+      ChannelAdapter<Chan> channelAdapter,
+      MessageAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
-    super(messagingTracing.tracing.currentTraceContext(), adapter, messagingTracing.parser,
+    super(messagingTracing.tracing.currentTraceContext(), channelAdapter, messageAdapter,
+        messagingTracing.parser,
         extractor, injector);
+    this.delegate = delegate;
     this.tracing = messagingTracing.tracing;
   }
 
   public Span nextSpan(Msg message) {
     TraceContextOrSamplingFlags extracted =
-        parser.extractContextAndClearMessage(adapter, extractor, message);
+        parser.extractContextAndClearMessage(messageAdapter, extractor, message);
     Span result = tracing.tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(message, result);
@@ -40,8 +51,8 @@ public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, Messagi
 
   /** When an upstream context was not present, lookup keys are unlikely added */
   void addTags(Msg message, SpanCustomizer result) {
-    parser.channel(adapter, message, result);
-    parser.identifier(adapter, message, result);
+    parser.channel(messageAdapter, message, result);
+    parser.identifier(messageAdapter, message, result);
   }
 
   public void handleConsume(Msg message) {
@@ -49,7 +60,7 @@ public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, Messagi
     // remove prior propagation headers from the message
     Span span = nextSpan(message);
     if (!span.isNoop()) {
-      parser.message(adapter, message, span);
+      parser.message(messageAdapter, message, span);
 
       // incur timestamp overhead only once
       long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
@@ -58,24 +69,24 @@ public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, Messagi
     injector.inject(span.context(), message);
   }
 
-  public Map<String, Span> handleConsume(List<Msg> messages, Map<String, Span> spanForChannel) {
+  public Map<String, Span> handleConsume(Chan chan, List<Msg> messages, Map<String, Span> spanForChannel) {
     long timestamp = 0L;
     for (int i = 0, length = messages.size(); i < length; i++) {
       Msg message = messages.get(i);
       TraceContextOrSamplingFlags extracted =
-          parser.extractContextAndClearMessage(adapter, extractor, message);
+          parser.extractContextAndClearMessage(messageAdapter, extractor, message);
 
       // If we extracted neither a trace context, nor request-scoped data (extra),
       // make or reuse a span for this topic
       if (extracted.samplingFlags() != null && extracted.extra().isEmpty()) {
-        String channel = adapter.channel(message);
+        String channel = channelAdapter.channel(chan);
         Span span = spanForChannel.get(channel);
         if (span == null) {
           span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
-            span.name(adapter.operation(message)).kind(Span.Kind.CONSUMER);
-            parser.message(adapter, message, span);
-            String remoteServiceName = adapter.remoteServiceName(message);
+            span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
+            parser.message(messageAdapter, message, span);
+            String remoteServiceName = channelAdapter.remoteServiceName(chan);
             if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
             // incur timestamp overhead only once
             if (timestamp == 0L) {
@@ -89,9 +100,9 @@ public class MessagingConsumerHandler<Msg> extends MessagingHandler<Msg, Messagi
       } else { // we extracted request-scoped data, so cannot share a consumer span.
         Span span = tracing.tracer().nextSpan(extracted);
         if (!span.isNoop()) {
-          span.name(adapter.operation(message)).kind(Span.Kind.CONSUMER);
-          parser.message(adapter, message, span);
-          String remoteServiceName = adapter.remoteServiceName(message);
+          span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
+          parser.message(messageAdapter, message, span);
+          String remoteServiceName = channelAdapter.remoteServiceName(chan);
           if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
           // incur timestamp overhead only once
           if (timestamp == 0L) {

@@ -32,8 +32,8 @@ abstract class TracingProducer<P, M> {
   TracingProducer(P delegate, JmsTracing jmsTracing) {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
-    this.tracer = jmsTracing.tracing.tracer();
-    this.current = jmsTracing.tracing.currentTraceContext();
+    this.tracer = jmsTracing.msgTracing.tracing().tracer();
+    this.current = jmsTracing.msgTracing.tracing().currentTraceContext();
     this.remoteServiceName = jmsTracing.remoteServiceName;
   }
 

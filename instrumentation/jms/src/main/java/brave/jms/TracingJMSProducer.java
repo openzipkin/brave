@@ -46,7 +46,7 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
 
   TracingJMSProducer(JMSProducer delegate, JmsTracing jmsTracing) {
     super(delegate, jmsTracing);
-    this.extractor = jmsTracing.tracing.propagation().extractor(GETTER);
+    this.extractor = jmsTracing.msgTracing.tracing().propagation().extractor(GETTER);
   }
 
   @Override void addB3SingleHeader(JMSProducer message, TraceContext context) {
