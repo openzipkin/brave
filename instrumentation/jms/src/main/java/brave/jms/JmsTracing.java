@@ -14,7 +14,6 @@
 package brave.jms;
 
 import brave.Span;
-import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
@@ -30,16 +29,12 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
-import javax.jms.Queue;
 import javax.jms.QueueConnection;
-import javax.jms.Topic;
 import javax.jms.TopicConnection;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
 import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
-
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
@@ -61,19 +56,20 @@ public final class JmsTracing {
     }
   };
 
-  static final Propagation.Setter<Message, String> SETTER = new Propagation.Setter<Message, String>() {
-    @Override public void put(Message carrier, String key, String value) {
-      try {
-        carrier.setStringProperty(key, value);
-      } catch (JMSException e) {
-        // don't crash on wonky exceptions!
-      }
-    }
+  static final Propagation.Setter<Message, String> SETTER =
+      new Propagation.Setter<Message, String>() {
+        @Override public void put(Message carrier, String key, String value) {
+          try {
+            carrier.setStringProperty(key, value);
+          } catch (JMSException e) {
+            // don't crash on wonky exceptions!
+          }
+        }
 
-    @Override public String toString() {
-      return "Message::setStringProperty";
-    }
-  };
+        @Override public String toString() {
+          return "Message::setStringProperty";
+        }
+      };
 
   public static JmsTracing create(Tracing tracing) {
     return new Builder(tracing).build();
@@ -195,12 +191,17 @@ public final class JmsTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(Message message) {
-    TraceContextOrSamplingFlags extracted = extractAndClearMessage(message);
+    TraceContextOrSamplingFlags extracted = msgTracing.parser().extractContextAndClearMessage(
+        JmsAdapter.JmsMessageAdapter.create(this),
+        extractor,
+        message);
     Span result = msgTracing.tracing().tracer().nextSpan(extracted);
 
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
-      tagQueueOrTopic(message, result);
+        msgTracing.parser()
+            .channel(JmsAdapter.JmsChannelAdapter.create(this), queueOrTopic(message),
+                result);
     }
     return result;
   }
@@ -213,44 +214,24 @@ public final class JmsTracing {
     return extracted;
   }
 
-  /**
-   * We currently serialize the context as a "b3" message property. We can't add the context as an
-   * Object property because JMS only supports "primitive objects, String, Map and List types".
-   *
-   * <p>Using {@link MessageListener} is preferred where possible, as we can coordinate without
-   * writing "b3", which notably saves us from losing data in {@link TraceContext#extra()}.
-   */
-  void setNextParent(Message message, TraceContext context) {
-    addB3SingleHeader(message, context);
-  }
-
-  /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
-  static void addB3SingleHeader(Message message, TraceContext context) {
+  Destination queueOrTopic(Message message) {
     try {
-      message.setStringProperty("b3", writeB3SingleFormatWithoutParentId(context));
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
-    }
-  }
-
-  void tagQueueOrTopic(Message message, SpanCustomizer span) {
-    try {
-      Destination destination = message.getJMSDestination();
-      if (destination != null) tagQueueOrTopic(destination, span);
+      return message.getJMSDestination();
     } catch (JMSException e) {
       // don't crash on wonky exceptions!
     }
+    return null;
   }
 
-  void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
-    try {
-      if (destination instanceof Queue) {
-        span.tag(JMS_QUEUE, ((Queue) destination).getQueueName());
-      } else if (destination instanceof Topic) {
-        span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
-      }
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
-    }
-  }
+  //void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
+  //  try {
+  //    if (destination instanceof Queue) {
+  //      span.tag(JMS_QUEUE, ((Queue) destination).getQueueName());
+  //    } else if (destination instanceof Topic) {
+  //      span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
+  //    }
+  //  } catch (JMSException ignored) {
+  //    // don't crash on wonky exceptions!
+  //  }
+  //}
 }
