@@ -100,7 +100,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -126,7 +126,7 @@ public class ITKafkaStreamsTracing {
     KafkaStreams streams =
         new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier());
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -150,7 +150,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     consumer = createTracingConsumer(outputTopic);
@@ -194,7 +194,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -222,7 +222,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -253,7 +253,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -283,7 +283,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -313,7 +313,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -353,7 +353,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -383,7 +383,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -416,7 +416,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -457,7 +457,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -510,7 +510,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -567,7 +567,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -628,7 +628,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -681,7 +681,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -718,7 +718,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -755,7 +755,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -792,7 +792,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -849,7 +849,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -902,7 +902,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -959,7 +959,7 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createTracingProducer();
+    producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
@@ -1002,7 +1002,7 @@ public class ITKafkaStreamsTracing {
     return new KafkaStreams(topology, properties);
   }
 
-  Producer<String, String> createTracingProducer() {
+  Producer<String, String> createProducer() {
     return kafka.helper().createStringProducer();
   }
 
