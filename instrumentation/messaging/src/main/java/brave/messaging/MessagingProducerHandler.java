@@ -54,7 +54,7 @@ public class MessagingProducerHandler<P, Chan, Msg>
 
     if (!span.isNoop()) {
       span.kind(Span.Kind.PRODUCER).name(messageAdapter.operation(message));
-      parser.message(messageAdapter, message, span);
+      parser.message(channelAdapter, messageAdapter, channel, message, span);
       String remoteServiceName = channelAdapter.remoteServiceName(channel);
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       span.start();
