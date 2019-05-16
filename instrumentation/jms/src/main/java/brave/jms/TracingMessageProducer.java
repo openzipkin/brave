@@ -16,8 +16,6 @@ package brave.jms;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.messaging.ChannelAdapter;
-import brave.messaging.MessageAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import javax.jms.CompletionListener;
@@ -51,8 +49,8 @@ final class TracingMessageProducer
   TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
     super(delegate,
       jmsTracing.msgTracing,
-      JmsProducerAdapter.create(jmsTracing),
-      JmsProducerAdapter.create(jmsTracing),
+      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
+      JmsAdapter.JmsMessageAdapter.create(jmsTracing),
       jmsTracing.extractor, jmsTracing.injector);
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
@@ -401,47 +399,6 @@ final class TracingMessageProducer
   void checkTopicPublisher() {
     if ((types & TYPE_TOPIC) != TYPE_TOPIC) {
       throw new IllegalStateException(delegate + " is not a TopicPublisher");
-    }
-  }
-
-  static class JmsProducerAdapter implements ChannelAdapter<Destination>, MessageAdapter<Message> {
-
-    final JmsTracing jmsTracing;
-
-    JmsProducerAdapter(JmsTracing jmsTracing) {
-      this.jmsTracing = jmsTracing;
-    }
-
-    static JmsProducerAdapter create(JmsTracing jmsTracing) {
-      return new JmsProducerAdapter(jmsTracing);
-    }
-
-    @Override public String channel(Destination message) {
-      return null;
-    }
-
-    @Override public String channelTagKey(Destination message) {
-      return null;
-    }
-
-    @Override public String operation(Message message) {
-      return null;
-    }
-
-    @Override public String identifier(Message message) {
-      return null;
-    }
-
-    @Override public String remoteServiceName(Destination message) {
-      return null;
-    }
-
-    @Override public void clearPropagation(Message message) {
-
-    }
-
-    @Override public String identifierTagKey() {
-      return null;
     }
   }
 }
