@@ -21,9 +21,8 @@
 
   <dependencies>
     <dependency>
-      <groupId>io.zipkin.brave</groupId>
+      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-messaging</artifactId>
-      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
