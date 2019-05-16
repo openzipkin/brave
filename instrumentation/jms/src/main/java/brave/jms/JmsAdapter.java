@@ -7,6 +7,7 @@ import javax.jms.Message;
 
 class JmsAdapter {
 
+  //TODO
   static class JmsMessageAdapter implements MessageAdapter<Message> {
 
     final JmsTracing jmsTracing;
@@ -36,6 +37,7 @@ class JmsAdapter {
     }
   }
 
+  //TODO
   static class JmsChannelAdapter implements ChannelAdapter<Destination> {
 
     final JmsTracing jmsTracing;
