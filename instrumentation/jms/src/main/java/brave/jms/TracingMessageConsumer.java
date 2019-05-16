@@ -30,7 +30,8 @@ import static brave.jms.TracingConnection.TYPE_QUEUE;
 import static brave.jms.TracingConnection.TYPE_TOPIC;
 
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
-final class TracingMessageConsumer extends MessagingConsumerHandler<MessageConsumer, Destination, Message>
+final class TracingMessageConsumer
+    extends MessagingConsumerHandler<MessageConsumer, Destination, Message>
     implements QueueReceiver, TopicSubscriber {
 
   static TracingMessageConsumer create(MessageConsumer delegate, JmsTracing jmsTracing) {
@@ -38,6 +39,7 @@ final class TracingMessageConsumer extends MessagingConsumerHandler<MessageConsu
     return new TracingMessageConsumer(delegate, jmsTracing);
   }
 
+  final JmsTracing jmsTracing;
   final int types;
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
@@ -46,22 +48,14 @@ final class TracingMessageConsumer extends MessagingConsumerHandler<MessageConsu
         jmsTracing.msgTracing,
         JmsAdapter.JmsChannelAdapter.create(jmsTracing),
         JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-        null,
-        null);
+        null, //FIXME
+        null); //FIXME
+    this.jmsTracing = jmsTracing;
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
     if (delegate instanceof TopicPublisher) types |= TYPE_TOPIC;
     this.types = types;
   }
-
-  //@Override Destination destination(Message message) {
-  //  try {
-  //    return message.getJMSDestination();
-  //  } catch (JMSException ignored) {
-  //    // don't crash on wonky exceptions!
-  //  }
-  //  return null;
-  //}
 
   @Override public String getMessageSelector() throws JMSException {
     return delegate.getMessageSelector();
@@ -72,7 +66,7 @@ final class TracingMessageConsumer extends MessagingConsumerHandler<MessageConsu
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSException {
-    //FIXME delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
+    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
   }
 
   @Override public Message receive() throws JMSException {

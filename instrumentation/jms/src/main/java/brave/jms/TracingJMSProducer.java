@@ -358,6 +358,7 @@ import javax.jms.Message;
     return delegate.getJMSReplyTo();
   }
 
+  //TODO
   static class JmsProducerAdapter implements MessageAdapter<JMSProducer> {
     final JmsTracing jmsTracing;
 

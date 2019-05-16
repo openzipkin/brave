@@ -21,6 +21,7 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -96,10 +97,6 @@ public final class KafkaTracing {
   final List<String> propagationKeys;
 
   boolean singleFormat;
-  //final Extractor<ConsumerRecord<?, ?>> consumerRecordExtractor;
-  //final Injector<ConsumerRecord<?, ?>> consumerRecordInjector;
-  //final Extractor<ProducerRecord<?, ?>> producerRecordExtractor;
-  //final Injector<ProducerRecord<?, ?>> producerRecordInjector;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
@@ -184,11 +181,22 @@ public final class KafkaTracing {
    * <p>This creates a child from identifiers extracted from the record headers, or a new span if
    * one couldn't be extracted.
    */
-  public Span nextSpan(ConsumerRecord<?, ?> record) {
-    return null;//FIXME consumerHandler.nextSpan(record);
+  public <K, V> Span nextSpan(ConsumerRecord<K, V> record) {
+    final TracingConsumer.KafkaConsumerAdapter<K, V> adapter =
+        TracingConsumer.KafkaConsumerAdapter.create(this);
+    TraceContextOrSamplingFlags extracted =
+        msgTracing.parser().extractContextAndClearMessage(
+            adapter,
+            consumerRecordExtractor(),
+            record);
+    Span result = msgTracing.tracing().tracer().nextSpan(extracted);
+    if (extracted.context() == null && !result.isNoop()) {
+      msgTracing.parser().channel(adapter, record, result);
+    }
+    return result;
   }
 
-  public <Record> String channelTagKey(Record record) {
+  <Record> String channelTagKey(Record record) {
     return String.format("%s.topic", PROTOCOL);
   }
 
@@ -199,7 +207,7 @@ public final class KafkaTracing {
     return null;
   }
 
-  public String identifierTagKey() {
+  String identifierTagKey() {
     return String.format("%s.key", PROTOCOL);
   }
 
