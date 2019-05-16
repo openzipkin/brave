@@ -8,6 +8,7 @@ import javax.jms.Message;
 import javax.jms.MessageListener;
 
 @JMS2_0 final class TracingJMSConsumer extends MessagingConsumerHandler<JMSConsumer, Destination, Message> implements JMSConsumer {
+  final JmsTracing jmsTracing;
   final Destination destination;
 
   TracingJMSConsumer(JMSConsumer delegate, Destination destination, JmsTracing jmsTracing) {
@@ -16,14 +17,11 @@ import javax.jms.MessageListener;
         jmsTracing.msgTracing,
         JmsAdapter.JmsChannelAdapter.create(jmsTracing),
         JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-        null,
-        null);
+        null, //FIXME
+        null); //FIXME
     this.destination = destination;
+    this.jmsTracing = jmsTracing;
   }
-
-  //@Override Destination destination(Message message) {
-  //  return destination;
-  //}
 
   @Override public String getMessageSelector() {
     return delegate.getMessageSelector();
@@ -34,7 +32,7 @@ import javax.jms.MessageListener;
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSRuntimeException {
-    //FIXME delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
+    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
   }
 
   @Override public Message receive() {

@@ -187,7 +187,7 @@ public final class JmsTracing {
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
         msgTracing.parser()
-            .channel(JmsAdapter.JmsChannelAdapter.create(this), queueOrTopic(message),
+            .channel(JmsAdapter.JmsChannelAdapter.create(this), destination(message),
                 result);
     }
     return result;
@@ -201,7 +201,7 @@ public final class JmsTracing {
     return extracted;
   }
 
-  Destination queueOrTopic(Message message) {
+  Destination destination(Message message) {
     try {
       return message.getJMSDestination();
     } catch (JMSException e) {
@@ -210,6 +210,7 @@ public final class JmsTracing {
     return null;
   }
 
+  //TODO move to adapter
   //void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
   //  try {
   //    if (destination instanceof Queue) {
