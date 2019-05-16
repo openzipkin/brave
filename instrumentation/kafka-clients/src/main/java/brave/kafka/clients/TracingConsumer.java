@@ -283,8 +283,8 @@ final class TracingConsumer<K, V>
       this.kafkaTracing = kafkaTracing;
     }
 
-    static KafkaConsumerAdapter create(KafkaTracing kafkaTracing) {
-      return new KafkaConsumerAdapter(kafkaTracing);
+    static <K, V> KafkaConsumerAdapter<K, V> create(KafkaTracing kafkaTracing) {
+      return new KafkaConsumerAdapter<>(kafkaTracing);
     }
 
     @Override public String channel(ConsumerRecord message) {

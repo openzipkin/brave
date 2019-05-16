@@ -186,8 +186,8 @@ final class TracingProducer<K, V>
       this.kafkaTracing = kafkaTracing;
     }
 
-    static KafkaProducerAdapter create(KafkaTracing kafkaTracing) {
-      return new KafkaProducerAdapter(kafkaTracing);
+    static <K, V> KafkaProducerAdapter<K, V> create(KafkaTracing kafkaTracing) {
+      return new KafkaProducerAdapter<>(kafkaTracing);
     }
 
     @Override public String channel(ProducerRecord message) {

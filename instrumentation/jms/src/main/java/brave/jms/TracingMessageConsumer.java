@@ -39,30 +39,33 @@ final class TracingMessageConsumer
     return new TracingMessageConsumer(delegate, jmsTracing);
   }
 
+  final JmsTracing jmsTracing;
   final int types;
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
     super(
+      <<<<<<<HEAD
       delegate,
-      jmsTracing.msgTracing,
+    jmsTracing.msgTracing,
       JmsAdapter.JmsChannelAdapter.create(jmsTracing),
       JmsAdapter.JmsMessageAdapter.create(jmsTracing),
       null,
       null);
+=======
+    delegate,
+      jmsTracing.msgTracing,
+      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
+      JmsAdapter.JmsMessageAdapter.create(jmsTracing),
+      null, //FIXME
+      null); //FIXME
+    this.jmsTracing = jmsTracing;
+>>>>>>>fix:
+    null destination
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
     if (delegate instanceof TopicPublisher) types |= TYPE_TOPIC;
     this.types = types;
   }
-
-  //@Override Destination destination(Message message) {
-  //  try {
-  //    return message.getJMSDestination();
-  //  } catch (JMSException ignored) {
-  //    // don't crash on wonky exceptions!
-  //  }
-  //  return null;
-  //}
 
   @Override public String getMessageSelector() throws JMSException {
     return delegate.getMessageSelector();
@@ -73,7 +76,7 @@ final class TracingMessageConsumer
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSException {
-    //FIXME delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
+    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
   }
 
   @Override public Message receive() throws JMSException {
