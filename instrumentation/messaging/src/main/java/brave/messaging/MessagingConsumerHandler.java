@@ -39,28 +39,28 @@ public class MessagingConsumerHandler<C, Chan, Msg>
     this.tracing = messagingTracing.tracing;
   }
 
-  public Span nextSpan(Msg message) {
+  public Span nextSpan(Chan channel, Msg message) {
     TraceContextOrSamplingFlags extracted =
         parser.extractContextAndClearMessage(messageAdapter, extractor, message);
     Span result = tracing.tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
-      addTags(message, result);
+      addTags(channel, message, result);
     }
     return result;
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */
-  void addTags(Msg message, SpanCustomizer result) {
-    parser.channel(messageAdapter, message, result);
+  void addTags(Chan channel, Msg message, SpanCustomizer result) {
+    parser.channel(channelAdapter, channel, result);
     parser.identifier(messageAdapter, message, result);
   }
 
-  public void handleConsume(Msg message) {
+  public void handleConsume(Chan channel, Msg message) {
     if (message == null || tracing.isNoop()) return;
     // remove prior propagation headers from the message
-    Span span = nextSpan(message);
+    Span span = nextSpan(channel, message);
     if (!span.isNoop()) {
-      parser.message(messageAdapter, message, span);
+      parser.message(channelAdapter, messageAdapter, channel, message, span);
 
       // incur timestamp overhead only once
       long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();
@@ -85,7 +85,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
           span = tracing.tracer().nextSpan(extracted);
           if (!span.isNoop()) {
             span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
-            parser.message(messageAdapter, message, span);
+            parser.message(channelAdapter, messageAdapter, chan, message, span);
             String remoteServiceName = channelAdapter.remoteServiceName(chan);
             if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
             // incur timestamp overhead only once
@@ -101,7 +101,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
         Span span = tracing.tracer().nextSpan(extracted);
         if (!span.isNoop()) {
           span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
-          parser.message(messageAdapter, message, span);
+          parser.message(channelAdapter, messageAdapter, chan, message, span);
           String remoteServiceName = channelAdapter.remoteServiceName(chan);
           if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
           // incur timestamp overhead only once

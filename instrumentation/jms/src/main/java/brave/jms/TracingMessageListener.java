@@ -17,7 +17,9 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
+import brave.messaging.ChannelAdapter;
 import brave.propagation.TraceContextOrSamplingFlags;
+import javax.jms.Destination;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
@@ -46,6 +48,7 @@ final class TracingMessageListener implements MessageListener {
   final Tracer tracer;
   final String remoteServiceName;
   final boolean addConsumerSpan;
+  final ChannelAdapter<Destination> channelAdapter;
 
   TracingMessageListener(MessageListener delegate, JmsTracing jmsTracing, boolean addConsumerSpan) {
     this.delegate = delegate;
@@ -54,6 +57,7 @@ final class TracingMessageListener implements MessageListener {
     this.tracer = jmsTracing.msgTracing.tracing().tracer();
     this.remoteServiceName = jmsTracing.remoteServiceName;
     this.addConsumerSpan = addConsumerSpan;
+    channelAdapter = JmsAdapter.JmsChannelAdapter.create(jmsTracing);
   }
 
   @Override public void onMessage(Message message) {
@@ -80,7 +84,7 @@ final class TracingMessageListener implements MessageListener {
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
-      jmsTracing.tagQueueOrTopic(message, consumerSpan);
+      jmsTracing.msgTracing.parser().channel(channelAdapter, jmsTracing.queueOrTopic(message), consumerSpan);
       long consumerFinish = timestamp + 1L; // save a clock reading
       consumerSpan.finish(consumerFinish);
 
