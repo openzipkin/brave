@@ -20,7 +20,7 @@ import brave.messaging.MessageAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.TraceContext;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +28,8 @@ import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
+
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 @JMS2_0 final class TracingJMSProducer
   extends MessagingProducerHandler<JMSProducer, Destination, JMSProducer>
@@ -43,16 +45,6 @@ import javax.jms.Message;
     }
   };
 
-  static final Setter<JMSProducer, String> SETTER = new Setter<JMSProducer, String>() {
-    @Override public void put(JMSProducer carrier, String key, String value) {
-      carrier.setProperty(key, value);
-    }
-
-    @Override public String toString() {
-      return "JMSProducer::setStringProperty";
-    }
-  };
-
   final Tracer tracer;
   final CurrentTraceContext current;
 
@@ -63,28 +55,19 @@ import javax.jms.Message;
       jmsTracing.channelAdapter,
       JmsProducerAdapter.create(jmsTracing),
       jmsTracing.msgTracing.tracing().propagation().extractor(GETTER),
-      jmsTracing.msgTracing.tracing().propagation().injector(SETTER));
+      new TraceContext.Injector<JMSProducer>() {
+        @Override public void inject(TraceContext traceContext, JMSProducer carrier) {
+          carrier.setProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
+        }
+
+        @Override
+        public String toString() {
+          return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
+        }
+      });
     this.tracer = jmsTracing.msgTracing.tracing().tracer();
     this.current = jmsTracing.msgTracing.tracing().currentTraceContext();
   }
-
-  //@Override void addB3SingleHeader(JMSProducer message, TraceContext context) {
-  //  message.setProperty("b3", writeB3SingleFormatWithoutParentId(context));
-  //}
-  //
-  //@Override void clearPropagationHeaders(JMSProducer message) {
-  //  PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-  //}
-  //
-  //@Override TraceContextOrSamplingFlags extractAndClearMessage(JMSProducer message) {
-  //  TraceContextOrSamplingFlags extracted = extractor.extract(message);
-  //  PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-  //  return extracted;
-  //}
-
-  //@Override Destination destination(JMSProducer producer) {
-  //  return null; // there's no implicit destination
-  //}
 
   // Partial function pattern as this needs to work before java 8 method references
   enum Send {

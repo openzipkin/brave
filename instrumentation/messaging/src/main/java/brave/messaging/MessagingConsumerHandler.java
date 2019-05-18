@@ -60,6 +60,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
     // remove prior propagation headers from the message
     Span span = nextSpan(channel, message);
     if (!span.isNoop()) {
+      span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
       parser.message(channelAdapter, messageAdapter, channel, message, span);
 
       // incur timestamp overhead only once

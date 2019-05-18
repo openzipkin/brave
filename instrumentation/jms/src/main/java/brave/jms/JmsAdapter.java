@@ -39,7 +39,7 @@ class JmsAdapter {
     }
 
     @Override public void clearPropagation(Message message) {
-      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
+      PropertyFilter.MESSAGE.filterProperties(message, jmsTracing.propagationKeys);
     }
 
     @Override public String identifierTagKey() {
@@ -73,7 +73,7 @@ class JmsAdapter {
     }
 
     @Override public void clearPropagation(Message message) {
-      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
+      PropertyFilter.MESSAGE.filterProperties(message, jmsTracing.propagationKeys);
     }
 
     @Override public String identifierTagKey() {

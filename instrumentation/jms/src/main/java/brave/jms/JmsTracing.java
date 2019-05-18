@@ -17,7 +17,6 @@ import brave.Span;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.messaging.MessagingTracing;
-import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
@@ -42,6 +41,8 @@ import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
 import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
+
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
@@ -131,7 +132,21 @@ public final class JmsTracing {
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
-    this.injector = msgTracing.tracing().propagation().injector(SETTER);
+    this.injector = new Injector<Message>() {
+      @Override public void inject(TraceContext traceContext, Message carrier) {
+        try {
+          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
+        } catch (JMSException e) {
+          e.printStackTrace();
+          // don't crash on wonky exceptions!
+        }
+      }
+
+      @Override
+      public String toString(){
+        return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
+      }
+    };
     this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
