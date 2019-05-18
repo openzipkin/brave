@@ -28,10 +28,10 @@ import javax.jms.MessageListener;
     super(
         delegate,
         jmsTracing.msgTracing,
-        JmsAdapter.JmsChannelAdapter.create(jmsTracing),
-        JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-        null, //FIXME
-        null); //FIXME
+        jmsTracing.channelAdapter,
+        jmsTracing.consumerMessageAdapter,
+        jmsTracing.extractor,
+        jmsTracing.injector);
     this.destination = destination;
     this.jmsTracing = jmsTracing;
   }

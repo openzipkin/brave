@@ -46,10 +46,10 @@ final class TracingMessageConsumer
     super(
         delegate,
         jmsTracing.msgTracing,
-        JmsAdapter.JmsChannelAdapter.create(jmsTracing),
-        JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-        null, //FIXME
-        null); //FIXME
+        jmsTracing.channelAdapter,
+        jmsTracing.consumerMessageAdapter,
+        jmsTracing.extractor,
+        jmsTracing.injector);
     this.jmsTracing = jmsTracing;
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
