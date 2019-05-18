@@ -34,9 +34,10 @@ public class MessagingParser {
       Msg message) {
     TraceContextOrSamplingFlags extracted = extractor.extract(message);
     // clear propagation headers if we were able to extract a span
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    //TODO check if correct to not filter on empty flags. Diff between kafka and jms instrumentation
+    //if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
       adapter.clearPropagation(message);
-    }
+    //}
     return extracted;
   }
 }
