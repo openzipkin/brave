@@ -22,6 +22,7 @@ import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -117,8 +118,11 @@ public final class JmsTracing {
   }
 
   final MessagingTracing msgTracing;
-  final TraceContext.Injector<Message> injector;
   final Extractor<Message> extractor;
+  final Injector<Message> injector;
+  final JmsAdapter.JmsChannelAdapter channelAdapter;
+  final JmsAdapter.JmsConsumerMessageAdapter consumerMessageAdapter;
+  final JmsAdapter.JmsProducerMessageAdapter producerMessageAdapter;
   final String remoteServiceName;
   final Set<String> propagationKeys;
 
@@ -131,6 +135,9 @@ public final class JmsTracing {
     this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
+    this.consumerMessageAdapter = JmsAdapter.JmsConsumerMessageAdapter.create(this);
+    this.channelAdapter = JmsAdapter.JmsChannelAdapter.create(this);
+    this.producerMessageAdapter = JmsAdapter.JmsProducerMessageAdapter.create(this);
   }
 
   public Connection connection(Connection connection) {
@@ -205,7 +212,7 @@ public final class JmsTracing {
    */
   public Span nextSpan(Message message) {
     TraceContextOrSamplingFlags extracted = msgTracing.parser().extractContextAndClearMessage(
-        JmsAdapter.JmsMessageAdapter.create(this),
+        consumerMessageAdapter,
         extractor,
         message);
     Span result = msgTracing.tracing().tracer().nextSpan(extracted);
@@ -236,16 +243,33 @@ public final class JmsTracing {
     return null;
   }
 
-  //TODO move to adapter
-  //void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
-  //  try {
-  //    if (destination instanceof Queue) {
-  //      span.tag(JMS_QUEUE, ((Queue) destination).getQueueName());
-  //    } else if (destination instanceof Topic) {
-  //      span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
-  //    }
-  //  } catch (JMSException ignored) {
-  //    // don't crash on wonky exceptions!
-  //  }
-  //}
+  /**
+   * Avoids array allocation when logging a parameterized message when fine level is disabled. The
+   * second parameter is optional. This is used to pinpoint provider-specific problems that throw
+   * {@link JMSException} or {@link JMSRuntimeException}.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * try {
+   *    return message.getStringProperty(name);
+   *  } catch (JMSException e) {
+   *    log(e, "error getting property {0} from message {1}", name, message);
+   *    return null;
+   *  }
+   * }</pre>
+   *
+   * @param thrown the JMS exception that was caught
+   * @param msg the format string
+   * @param zero will end up as {@code {0}} in the format string
+   * @param one if present, will end up as {@code {1}} in the format string
+   */
+  static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
+    Logger logger = LoggerHolder.LOG;
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    LogRecord lr = new LogRecord(Level.FINE, msg);
+    Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
+    lr.setParameters(params);
+    lr.setThrown(thrown);
+    logger.log(lr);
+  }
 }

@@ -44,23 +44,13 @@ final class TracingMessageConsumer
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
     super(
-      <<<<<<<HEAD
       delegate,
-    jmsTracing.msgTracing,
-      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
-      JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-      null,
-      null);
-=======
-    delegate,
       jmsTracing.msgTracing,
-      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
-      JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-      null, //FIXME
-      null); //FIXME
+      jmsTracing.channelAdapter,
+      jmsTracing.consumerMessageAdapter,
+      jmsTracing.extractor,
+      jmsTracing.injector);
     this.jmsTracing = jmsTracing;
->>>>>>>fix:
-    null destination
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
     if (delegate instanceof TopicPublisher) types |= TYPE_TOPIC;

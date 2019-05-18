@@ -49,9 +49,10 @@ final class TracingMessageProducer
   TracingMessageProducer(MessageProducer delegate, JmsTracing jmsTracing) {
     super(delegate,
       jmsTracing.msgTracing,
-      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
-      JmsAdapter.JmsMessageAdapter.create(jmsTracing),
-      jmsTracing.extractor, jmsTracing.injector);
+      jmsTracing.channelAdapter,
+      jmsTracing.producerMessageAdapter,
+      jmsTracing.extractor,
+      jmsTracing.injector);
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
     if (delegate instanceof TopicPublisher) types |= TYPE_TOPIC;

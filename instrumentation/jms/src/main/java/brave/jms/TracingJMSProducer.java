@@ -60,11 +60,11 @@ import javax.jms.Message;
     super(
       delegate,
       jmsTracing.msgTracing,
-      JmsAdapter.JmsChannelAdapter.create(jmsTracing),
+      jmsTracing.channelAdapter,
       JmsProducerAdapter.create(jmsTracing),
       jmsTracing.msgTracing.tracing().propagation().extractor(GETTER),
       jmsTracing.msgTracing.tracing().propagation().injector(SETTER));
-    tracer = jmsTracing.msgTracing.tracing().tracer();
+    this.tracer = jmsTracing.msgTracing.tracing().tracer();
     this.current = jmsTracing.msgTracing.tracing().currentTraceContext();
   }
 
@@ -358,7 +358,6 @@ import javax.jms.Message;
     return delegate.getJMSReplyTo();
   }
 
-  //TODO
   static class JmsProducerAdapter implements MessageAdapter<JMSProducer> {
     final JmsTracing jmsTracing;
 
@@ -371,19 +370,19 @@ import javax.jms.Message;
     }
 
     @Override public String operation(JMSProducer message) {
-      return null;
+      return "send";
     }
 
     @Override public String identifier(JMSProducer message) {
-      return null;
+      return message.getJMSCorrelationID();
     }
 
     @Override public void clearPropagation(JMSProducer message) {
-
+      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
     }
 
     @Override public String identifierTagKey() {
-      return null;
+      return "jms.correlation_id";
     }
   }
 }

@@ -3,33 +3,77 @@ package brave.jms;
 import brave.messaging.ChannelAdapter;
 import brave.messaging.MessageAdapter;
 import javax.jms.Destination;
+import javax.jms.JMSException;
 import javax.jms.Message;
+import javax.jms.Queue;
+import javax.jms.Topic;
+
+import static brave.jms.JmsTracing.JMS_QUEUE;
+import static brave.jms.JmsTracing.JMS_TOPIC;
 
 class JmsAdapter {
 
-  //TODO
-  static class JmsMessageAdapter implements MessageAdapter<Message> {
+  static class JmsConsumerMessageAdapter implements MessageAdapter<Message> {
 
     final JmsTracing jmsTracing;
 
-    JmsMessageAdapter(JmsTracing jmsTracing) {
+    JmsConsumerMessageAdapter(JmsTracing jmsTracing) {
       this.jmsTracing = jmsTracing;
     }
 
-    static JmsMessageAdapter create(JmsTracing jmsTracing) {
-      return new JmsMessageAdapter(jmsTracing);
+    static JmsConsumerMessageAdapter create(JmsTracing jmsTracing) {
+      return new JmsConsumerMessageAdapter(jmsTracing);
     }
 
     @Override public String operation(Message message) {
-      return null;
+      return "receive";
     }
 
     @Override public String identifier(Message message) {
+      try {
+        return message.getJMSCorrelationID();
+      } catch (JMSException e) {
+        // don't crash on wonky exceptions!
+      }
       return null;
     }
 
     @Override public void clearPropagation(Message message) {
+      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
+    }
 
+    @Override public String identifierTagKey() {
+      return "jms.correlation_id";
+    }
+  }
+
+  static class JmsProducerMessageAdapter implements MessageAdapter<Message> {
+
+    final JmsTracing jmsTracing;
+
+    JmsProducerMessageAdapter(JmsTracing jmsTracing) {
+      this.jmsTracing = jmsTracing;
+    }
+
+    static JmsProducerMessageAdapter create(JmsTracing jmsTracing) {
+      return new JmsProducerMessageAdapter(jmsTracing);
+    }
+
+    @Override public String operation(Message message) {
+      return "send";
+    }
+
+    @Override public String identifier(Message message) {
+      try {
+        return message.getJMSCorrelationID();
+      } catch (JMSException e) {
+        // don't crash on wonky exceptions!
+      }
+      return null;
+    }
+
+    @Override public void clearPropagation(Message message) {
+      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
     }
 
     @Override public String identifierTagKey() {
@@ -37,7 +81,6 @@ class JmsAdapter {
     }
   }
 
-  //TODO
   static class JmsChannelAdapter implements ChannelAdapter<Destination> {
 
     final JmsTracing jmsTracing;
@@ -50,16 +93,30 @@ class JmsAdapter {
       return new JmsChannelAdapter(jmsTracing);
     }
 
-    @Override public String channel(Destination message) {
+    @Override public String channel(Destination destination) {
+      try {
+        if (destination instanceof Queue) {
+          return ((Queue) destination).getQueueName();
+        } else if (destination instanceof Topic) {
+          return ((Topic) destination).getTopicName();
+        }
+      } catch (JMSException ignored) {
+        // don't crash on wonky exceptions!
+      }
       return null;
     }
 
-    @Override public String channelTagKey(Destination message) {
+    @Override public String channelTagKey(Destination destination) {
+      if (destination instanceof Queue) {
+        return JMS_QUEUE;
+      } else if (destination instanceof Topic) {
+        return JMS_TOPIC;
+      }
       return null;
     }
 
     @Override public String remoteServiceName(Destination message) {
-      return null;
+      return jmsTracing.remoteServiceName;
     }
   }
 }
