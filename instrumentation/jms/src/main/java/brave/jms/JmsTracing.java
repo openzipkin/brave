@@ -16,8 +16,8 @@ package brave.jms;
 import brave.Span;
 import brave.Tracing;
 import brave.messaging.MessagingTracing;
-import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -35,6 +35,8 @@ import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
 import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
+
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
@@ -55,21 +57,6 @@ public final class JmsTracing {
       return "Message::getStringProperty";
     }
   };
-
-  static final Propagation.Setter<Message, String> SETTER =
-      new Propagation.Setter<Message, String>() {
-        @Override public void put(Message carrier, String key, String value) {
-          try {
-            carrier.setStringProperty(key, value);
-          } catch (JMSException e) {
-            // don't crash on wonky exceptions!
-          }
-        }
-
-        @Override public String toString() {
-          return "Message::setStringProperty";
-        }
-      };
 
   public static JmsTracing create(Tracing tracing) {
     return new Builder(tracing).build();
@@ -117,7 +104,21 @@ public final class JmsTracing {
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
-    this.injector = msgTracing.tracing().propagation().injector(SETTER);
+    this.injector = new Injector<Message>() {
+      @Override public void inject(TraceContext traceContext, Message carrier) {
+        try {
+          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
+        } catch (JMSException e) {
+          e.printStackTrace();
+          // don't crash on wonky exceptions!
+        }
+      }
+
+      @Override
+      public String toString(){
+        return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
+      }
+    };
     this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
