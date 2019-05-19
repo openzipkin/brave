@@ -192,6 +192,7 @@ public final class KafkaTracing {
     Span result = msgTracing.tracing().tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       msgTracing.parser().channel(adapter, record, result);
+      msgTracing.parser().identifier(adapter, record, result);
     }
     return result;
   }

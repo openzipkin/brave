@@ -101,7 +101,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
       } else { // we extracted request-scoped data, so cannot share a consumer span.
         Span span = tracing.tracer().nextSpan(extracted);
         if (!span.isNoop()) {
-          span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
+          span.kind(Span.Kind.CONSUMER);
           parser.message(channelAdapter, messageAdapter, chan, message, span);
           String remoteServiceName = channelAdapter.remoteServiceName(chan);
           if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
