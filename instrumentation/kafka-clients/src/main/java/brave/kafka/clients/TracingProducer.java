@@ -17,7 +17,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.messaging.ChannelAdapter;
-import brave.messaging.MessageAdapter;
+import brave.messaging.MessageProducerAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import java.time.Duration;
@@ -178,7 +178,8 @@ final class TracingProducer<K, V>
     }
   }
 
-  static final class KafkaProducerAdapter<K, V> implements MessageAdapter<ProducerRecord<K, V>>,
+  static final class KafkaProducerAdapter<K, V> implements
+      MessageProducerAdapter<ProducerRecord<K, V>>,
       ChannelAdapter<ProducerRecord<K, V>> {
     final KafkaTracing kafkaTracing;
 

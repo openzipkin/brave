@@ -16,7 +16,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.Tracing;
 import brave.messaging.ChannelAdapter;
-import brave.messaging.MessageAdapter;
+import brave.messaging.MessageConsumerAdapter;
 import brave.messaging.MessagingConsumerHandler;
 import java.time.Duration;
 import java.util.Collection;
@@ -275,7 +275,7 @@ final class TracingConsumer<K, V>
     delegate.wakeup();
   }
 
-  static class KafkaConsumerAdapter<K, V> implements MessageAdapter<ConsumerRecord<K, V>>,
+  static class KafkaConsumerAdapter<K, V> implements MessageConsumerAdapter<ConsumerRecord<K, V>>,
     ChannelAdapter<ConsumerRecord<K, V>> {
     final KafkaTracing kafkaTracing;
 
