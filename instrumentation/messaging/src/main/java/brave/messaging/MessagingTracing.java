@@ -13,33 +13,46 @@ public class MessagingTracing {
   }
 
   final Tracing tracing;
-  final MessagingParser parser;
+  final MessagingConsumerParser consumerParser;
+  final MessagingProducerParser producerParser;
 
   MessagingTracing(Builder builder) {
     this.tracing = builder.tracing;
-    this.parser = builder.parser;
+    this.consumerParser = builder.consumerParser;
+    this.producerParser = builder.producerParser;
   }
 
   public Tracing tracing() {
     return tracing;
   }
 
-  public MessagingParser parser() {
-    return parser;
+  public MessagingProducerParser producerParser() {
+    return producerParser;
+  }
+
+  public MessagingConsumerParser consumerParser() {
+    return consumerParser;
   }
 
   public static class Builder {
     final Tracing tracing;
-    MessagingParser parser = new MessagingParser();
+    MessagingConsumerParser consumerParser = new MessagingConsumerParser();
+    MessagingProducerParser producerParser = new MessagingProducerParser();
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
       this.tracing = tracing;
     }
 
-    public Builder parser(MessagingParser parser) {
-      if (parser == null) throw new NullPointerException("parser == null");
-      this.parser = parser;
+    public Builder consumerParser(MessagingConsumerParser consumerParser) {
+      if (producerParser == null) throw new NullPointerException("consumerParser == null");
+      this.consumerParser = consumerParser;
+      return this;
+    }
+
+    public Builder producerParser(MessagingProducerParser producerParser) {
+      if (producerParser == null) throw new NullPointerException("producerParser == null");
+      this.producerParser = producerParser;
       return this;
     }
 
