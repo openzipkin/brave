@@ -5,13 +5,13 @@ import brave.Tracer;
 import brave.propagation.TraceContext;
 
 public class MessagingProducerHandler<P, Chan, Msg>
-    extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageAdapter<Msg>> {
+    extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageProducerAdapter<Msg>> {
 
   public static <P, Chan, Msg> MessagingProducerHandler<P, Chan, Msg> create(
       P delegate,
       MessagingTracing tracing,
       ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
+      MessageProducerAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
     return new MessagingProducerHandler<>(delegate, tracing, channelAdapter, messageAdapter,
@@ -25,11 +25,11 @@ public class MessagingProducerHandler<P, Chan, Msg>
       P delegate,
       MessagingTracing messagingTracing,
       ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
+      MessageProducerAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
     super(messagingTracing.tracing.currentTraceContext(), channelAdapter, messageAdapter,
-        messagingTracing.parser, extractor, injector);
+        messagingTracing.producerParser, extractor, injector);
     this.delegate = delegate;
     this.tracer = messagingTracing.tracing.tracer();
   }
