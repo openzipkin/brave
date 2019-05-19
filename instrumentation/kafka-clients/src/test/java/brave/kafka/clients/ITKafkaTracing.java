@@ -308,7 +308,7 @@ public class ITKafkaTracing {
         .withFailMessage("Consumer span was not reported")
         .isNotNull();
     // ensure the span finished
-    assertThat(result.durationAsLong()).isPositive();
+    assertThat(result.durationAsLong()).isGreaterThanOrEqualTo(0);
     return result;
   }
 }
