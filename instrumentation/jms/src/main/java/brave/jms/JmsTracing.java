@@ -97,8 +97,8 @@ public final class JmsTracing {
   final Extractor<Message> extractor;
   final Injector<Message> injector;
   final JmsAdapter.JmsChannelAdapter channelAdapter;
-  final JmsAdapter.JmsConsumerMessageAdapter consumerMessageAdapter;
-  final JmsAdapter.JmsProducerMessageAdapter producerMessageAdapter;
+  final JmsAdapter.JmsMessageConsumerAdapter consumerMessageAdapter;
+  final JmsAdapter.JmsMessageProducerAdapter producerMessageAdapter;
   final String remoteServiceName;
   final Set<String> propagationKeys;
 
@@ -122,9 +122,9 @@ public final class JmsTracing {
     this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
-    this.consumerMessageAdapter = JmsAdapter.JmsConsumerMessageAdapter.create(this);
+    this.consumerMessageAdapter = JmsAdapter.JmsMessageConsumerAdapter.create(this);
     this.channelAdapter = JmsAdapter.JmsChannelAdapter.create(this);
-    this.producerMessageAdapter = JmsAdapter.JmsProducerMessageAdapter.create(this);
+    this.producerMessageAdapter = JmsAdapter.JmsMessageProducerAdapter.create(this);
   }
 
   public Connection connection(Connection connection) {
@@ -198,7 +198,7 @@ public final class JmsTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(Message message) {
-    TraceContextOrSamplingFlags extracted = msgTracing.parser().extractContextAndClearMessage(
+    TraceContextOrSamplingFlags extracted = msgTracing.consumerParser().extractContextAndClearMessage(
         consumerMessageAdapter,
         extractor,
         message);
@@ -206,7 +206,7 @@ public final class JmsTracing {
 
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
-        msgTracing.parser()
+        msgTracing.consumerParser()
             .channel(JmsAdapter.JmsChannelAdapter.create(this), destination(message),
                 result);
     }

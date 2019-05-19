@@ -16,7 +16,7 @@ package brave.jms;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.messaging.MessageAdapter;
+import brave.messaging.MessageProducerAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation.Getter;
@@ -341,7 +341,7 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     return delegate.getJMSReplyTo();
   }
 
-  static class JmsProducerAdapter implements MessageAdapter<JMSProducer> {
+  static class JmsProducerAdapter implements MessageProducerAdapter<JMSProducer> {
     final JmsTracing jmsTracing;
 
     JmsProducerAdapter(JmsTracing jmsTracing) {

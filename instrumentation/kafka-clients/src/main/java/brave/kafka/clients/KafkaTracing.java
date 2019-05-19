@@ -185,14 +185,14 @@ public final class KafkaTracing {
     final TracingConsumer.KafkaConsumerAdapter<K, V> adapter =
         TracingConsumer.KafkaConsumerAdapter.create(this);
     TraceContextOrSamplingFlags extracted =
-        msgTracing.parser().extractContextAndClearMessage(
+        msgTracing.consumerParser().extractContextAndClearMessage(
             adapter,
             consumerRecordExtractor(),
             record);
     Span result = msgTracing.tracing().tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
-      msgTracing.parser().channel(adapter, record, result);
-      msgTracing.parser().identifier(adapter, record, result);
+      msgTracing.consumerParser().channel(adapter, record, result);
+      msgTracing.consumerParser().identifier(adapter, record, result);
     }
     return result;
   }
