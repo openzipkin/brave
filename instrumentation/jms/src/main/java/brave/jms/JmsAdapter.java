@@ -1,7 +1,8 @@
 package brave.jms;
 
 import brave.messaging.ChannelAdapter;
-import brave.messaging.MessageAdapter;
+import brave.messaging.MessageConsumerAdapter;
+import brave.messaging.MessageProducerAdapter;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -13,16 +14,16 @@ import static brave.jms.JmsTracing.JMS_TOPIC;
 
 class JmsAdapter {
 
-  static class JmsConsumerMessageAdapter implements MessageAdapter<Message> {
+  static class JmsMessageConsumerAdapter implements MessageConsumerAdapter<Message> {
 
     final JmsTracing jmsTracing;
 
-    JmsConsumerMessageAdapter(JmsTracing jmsTracing) {
+    JmsMessageConsumerAdapter(JmsTracing jmsTracing) {
       this.jmsTracing = jmsTracing;
     }
 
-    static JmsConsumerMessageAdapter create(JmsTracing jmsTracing) {
-      return new JmsConsumerMessageAdapter(jmsTracing);
+    static JmsMessageConsumerAdapter create(JmsTracing jmsTracing) {
+      return new JmsMessageConsumerAdapter(jmsTracing);
     }
 
     @Override public String operation(Message message) {
@@ -31,7 +32,7 @@ class JmsAdapter {
 
     @Override public String identifier(Message message) {
       try {
-        return message.getJMSCorrelationID();
+        return message.getJMSMessageID();
       } catch (JMSException e) {
         // don't crash on wonky exceptions!
       }
@@ -43,20 +44,20 @@ class JmsAdapter {
     }
 
     @Override public String identifierTagKey() {
-      return "jms.correlation_id";
+      return "jms.message_id";
     }
   }
 
-  static class JmsProducerMessageAdapter implements MessageAdapter<Message> {
+  static class JmsMessageProducerAdapter implements MessageProducerAdapter<Message> {
 
     final JmsTracing jmsTracing;
 
-    JmsProducerMessageAdapter(JmsTracing jmsTracing) {
+    JmsMessageProducerAdapter(JmsTracing jmsTracing) {
       this.jmsTracing = jmsTracing;
     }
 
-    static JmsProducerMessageAdapter create(JmsTracing jmsTracing) {
-      return new JmsProducerMessageAdapter(jmsTracing);
+    static JmsMessageProducerAdapter create(JmsTracing jmsTracing) {
+      return new JmsMessageProducerAdapter(jmsTracing);
     }
 
     @Override public String operation(Message message) {
@@ -65,7 +66,7 @@ class JmsAdapter {
 
     @Override public String identifier(Message message) {
       try {
-        return message.getJMSCorrelationID();
+        return message.getJMSMessageID();
       } catch (JMSException e) {
         // don't crash on wonky exceptions!
       }
