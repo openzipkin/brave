@@ -15,7 +15,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
       C delegate,
       MessagingTracing tracing,
       ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
+      MessageConsumerAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
     return new MessagingConsumerHandler<>(delegate, tracing, channelAdapter, messageAdapter,
@@ -29,12 +29,11 @@ public class MessagingConsumerHandler<C, Chan, Msg>
       C delegate,
       MessagingTracing messagingTracing,
       ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
+      MessageConsumerAdapter<Msg> messageAdapter,
       TraceContext.Extractor<Msg> extractor,
       TraceContext.Injector<Msg> injector) {
     super(messagingTracing.tracing.currentTraceContext(), channelAdapter, messageAdapter,
-        messagingTracing.parser,
-        extractor, injector);
+        messagingTracing.consumerParser, extractor, injector);
     this.delegate = delegate;
     this.tracing = messagingTracing.tracing;
   }
@@ -70,7 +69,8 @@ public class MessagingConsumerHandler<C, Chan, Msg>
     injector.inject(span.context(), message);
   }
 
-  public Map<String, Span> handleConsume(Chan chan, List<Msg> messages, Map<String, Span> spanForChannel) {
+  public Map<String, Span> handleConsume(Chan chan, List<Msg> messages,
+      Map<String, Span> spanForChannel) {
     long timestamp = 0L;
     for (int i = 0, length = messages.size(); i < length; i++) {
       Msg message = messages.get(i);

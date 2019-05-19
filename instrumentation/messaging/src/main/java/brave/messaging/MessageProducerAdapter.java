@@ -1,6 +1,6 @@
 package brave.messaging;
 
-interface MessageAdapter<Msg> {
+public interface MessageProducerAdapter<Msg> extends MessageAdapter<Msg> {
   /**
    * Messaging operation semantics, e.g. pull, push, send, receive, etc.
    */
