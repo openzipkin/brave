@@ -20,6 +20,7 @@ import java.util.stream.StreamSupport;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import static brave.kafka.clients.KafkaPropagation.HEADERS_SETTER;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
@@ -34,7 +35,7 @@ public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
   }
 
   @Override protected Propagation.Setter<Headers, String> setter() {
-    throw new AssertionError("FIXME SETTER");
+    return HEADERS_SETTER;
   }
 
   @Override protected Iterable<String> read(Headers carrier, String key) {

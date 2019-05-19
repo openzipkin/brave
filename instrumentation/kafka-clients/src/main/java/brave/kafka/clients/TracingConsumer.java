@@ -87,7 +87,7 @@ final class TracingConsumer<K, V>
     for (TopicPartition partition : records.partitions()) {
       List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
       consumerSpansForTopic =
-        handleConsume(recordsInPartition.size() > 1 ? recordsInPartition.get(0) : null,
+        handleConsume(recordsInPartition.size() > 0 ? recordsInPartition.get(0) : null,
           recordsInPartition, consumerSpansForTopic);
     }
     for (Span span : consumerSpansForTopic.values()) span.finish(timestamp);
