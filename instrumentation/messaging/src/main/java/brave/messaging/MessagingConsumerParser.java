@@ -11,7 +11,7 @@ public class MessagingConsumerParser extends MessagingParser {
       Chan channel, Msg message, SpanCustomizer customizer) {
     customizer.name(messageAdapter.operation(message));
     channel(channelAdapter, channel, customizer);
-    identifier(messageAdapter, message, customizer);
+    //identifier(messageAdapter, message, customizer);
   }
 
   public <Msg> TraceContextOrSamplingFlags extractContextAndClearMessage(
@@ -22,7 +22,7 @@ public class MessagingConsumerParser extends MessagingParser {
     // clear propagation headers if we were able to extract a span
     //TODO check if correct to not filter on empty flags. Diff between kafka and jms instrumentation
     //if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
-      adapter.clearPropagation(message);
+    adapter.clearPropagation(message);
     //}
     return extracted;
   }
