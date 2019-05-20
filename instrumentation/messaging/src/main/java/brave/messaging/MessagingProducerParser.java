@@ -22,7 +22,7 @@ public class MessagingProducerParser extends MessagingParser {
     // clear propagation headers if we were able to extract a span
     //TODO check if correct to not filter on empty flags. Diff between kafka and jms instrumentation
     //if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
-      adapter.clearPropagation(message);
+    adapter.clearPropagation(message);
     //}
     return extracted;
   }

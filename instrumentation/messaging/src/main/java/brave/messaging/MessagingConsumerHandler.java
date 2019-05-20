@@ -43,15 +43,15 @@ public class MessagingConsumerHandler<C, Chan, Msg>
         parser.extractContextAndClearMessage(messageAdapter, extractor, message);
     Span result = tracing.tracer().nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
-      addTags(channel, message, result);
+      addTags(channel, result);
     }
     return result;
   }
 
   /** When an upstream context was not present, lookup keys are unlikely added */
-  void addTags(Chan channel, Msg message, SpanCustomizer result) {
+  void addTags(Chan channel, SpanCustomizer result) {
     parser.channel(channelAdapter, channel, result);
-    parser.identifier(messageAdapter, message, result);
+    //parser.identifier(messageAdapter, message, result);
   }
 
   public void handleConsume(Chan channel, Msg message) {
@@ -59,7 +59,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
     // remove prior propagation headers from the message
     Span span = nextSpan(channel, message);
     if (!span.isNoop()) {
-      span.name(messageAdapter.operation(message)).kind(Span.Kind.CONSUMER);
+      span.kind(Span.Kind.CONSUMER);
       parser.message(channelAdapter, messageAdapter, channel, message, span);
 
       // incur timestamp overhead only once

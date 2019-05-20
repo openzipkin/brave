@@ -51,7 +51,7 @@ public class TracingConsumerTest extends BaseTracingTest {
     // tags are correct
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"), entry("kafka.key", TEST_KEY));
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
@@ -76,7 +76,7 @@ public class TracingConsumerTest extends BaseTracingTest {
     // tags are correct
     assertThat(spans)
         .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"), entry("kafka.key", TEST_KEY));
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
@@ -130,6 +130,6 @@ public class TracingConsumerTest extends BaseTracingTest {
     assertThat(spans)
         .hasSize(1)
         .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"), entry("kafka.key", TEST_KEY));
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 }
