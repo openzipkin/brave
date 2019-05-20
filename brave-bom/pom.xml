@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.zipkin.brave</groupId>
+  <groupId>org.apache.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
   <version>5.6.4-SNAPSHOT</version>
   <name>Brave BOM</name>
@@ -18,8 +18,8 @@
   </properties>
 
   <organization>
-    <name>OpenZipkin</name>
-    <url>http://zipkin.io/</url>
+    <name>The Apache Software Foundation</name>
+    <url>http://www.apache.org/</url>
   </organization>
 
   <licenses>
@@ -31,9 +31,9 @@
   </licenses>
 
   <scm>
-    <url>https://github.com/openzipkin/brave</url>
-    <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
-    <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
+    <url>https://github.com/apache/incubator-zipkin-brave</url>
+    <connection>scm:git:https://github.com/apache/incubator-zipkin-brave.git</connection>
+    <developerConnection>scm:git:https://github.com/apache/incubator-zipkin-brave.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -45,21 +45,35 @@
       <url>https://gitter.im/openzipkin/zipkin</url>
     </developer>
   </developers>
+  <mailingLists>
+    <mailingList>
+      <name>Zipkin Developer List</name>
+      <post>dev@zipkin.apache.org</post>
+      <subscribe>dev-subscribe@zipkin.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@zipkin.apache.org</unsubscribe>
+    </mailingList>
+    <mailingList>
+      <name>Zipkin Commits</name>
+      <post>commits@zipkin.apache.org</post>
+      <subscribe>commits-subscribe@zipkin.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@zipkin.apache.org</unsubscribe>
+    </mailingList>
+  </mailingLists>
 
   <distributionManagement>
     <repository>
-      <id>bintray</id>
-      <url>https://api.bintray.com/maven/openzipkin/maven/brave/;publish=1</url>
+      <id>apache.releases.https</id>
+      <url>https://repository.apache.org/service/local/staging/deploy/maven2</url>
     </repository>
     <snapshotRepository>
-      <id>jfrog-snapshots</id>
-      <url>https://oss.jfrog.org/artifactory/oss-snapshot-local</url>
+      <id>apache.snapshots.https</id>
+      <url>https://repository.apache.org/content/repositories/snapshots/</url>
     </snapshotRepository>
   </distributionManagement>
 
   <issueManagement>
     <system>Github</system>
-    <url>https://github.com/openzipkin/brave/issues</url>
+    <url>https://github.com/apache/incubator-zipkin-brave/issues</url>
   </issueManagement>
 
   <dependencyManagement>
