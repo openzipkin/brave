@@ -24,7 +24,7 @@ public class MessagingParser {
       SpanCustomizer customizer) {
     String identifier = adapter.identifier(message);
     if (identifier != null) {
-      customizer.tag(adapter.identifierTagKey(), adapter.identifier(message));
+      customizer.tag(adapter.identifierTagKey(), identifier);
     }
   }
 
