@@ -57,6 +57,7 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
       jmsTracing.msgTracing.tracing().propagation().extractor(GETTER),
       new TraceContext.Injector<JMSProducer>() {
         @Override public void inject(TraceContext traceContext, JMSProducer carrier) {
+          PropertyFilter.JMS_PRODUCER.filterProperties(carrier, jmsTracing.propagationKeys);
           carrier.setProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
         }
 
@@ -360,9 +361,9 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
       return message.getJMSCorrelationID();
     }
 
-    @Override public void clearPropagation(JMSProducer message) {
-      PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-    }
+    //@Override public void clearPropagation(JMSProducer message) {
+    //  PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
+    //}
 
     @Override public String identifierTagKey() {
       return "jms.correlation_id";

@@ -207,10 +207,6 @@ final class TracingProducer<K, V>
       return kafkaTracing.remoteServiceName;
     }
 
-    @Override public void clearPropagation(ProducerRecord message) {
-      kafkaTracing.clearHeaders(message.headers());
-    }
-
     @Override public String channelTagKey(ProducerRecord<K, V> message) {
       return kafkaTracing.channelTagKey(message);
     }

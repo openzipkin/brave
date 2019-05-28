@@ -303,10 +303,6 @@ final class TracingConsumer<K, V>
       return kafkaTracing.remoteServiceName;
     }
 
-    @Override public void clearPropagation(ConsumerRecord message) {
-      kafkaTracing.clearHeaders(message.headers());
-    }
-
     @Override public String channelTagKey(ConsumerRecord<K, V> message) {
       return kafkaTracing.channelTagKey(message);
     }
