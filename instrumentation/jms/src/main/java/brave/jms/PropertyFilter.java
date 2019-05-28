@@ -14,6 +14,7 @@
 package brave.jms;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 import javax.jms.JMSException;

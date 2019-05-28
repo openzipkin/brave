@@ -74,7 +74,7 @@ final class TracingMessageListener implements MessageListener {
 
   Span startMessageListenerSpan(Message message) {
     if (!addConsumerSpan) return jmsTracing.nextSpan(message).name("on-message").start();
-    TraceContextOrSamplingFlags extracted = jmsTracing.extractAndClearMessage(message);
+    TraceContextOrSamplingFlags extracted = jmsTracing.extractor.extract(message);
 
     // JMS has no visibility of the incoming message, which incidentally could be local!
     Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("receive");

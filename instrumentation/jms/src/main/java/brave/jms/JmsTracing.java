@@ -20,7 +20,6 @@ import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import javax.jms.Connection;
@@ -104,27 +103,27 @@ public final class JmsTracing {
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.msgTracing = builder.msgTracing;
-    this.injector = new Injector<Message>() {
-      @Override public void inject(TraceContext traceContext, Message carrier) {
-        try {
-          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
-        } catch (JMSException e) {
-          e.printStackTrace();
-          // don't crash on wonky exceptions!
-        }
-      }
-
-      @Override
-      public String toString(){
-        return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
-      }
-    };
     this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
     this.consumerMessageAdapter = JmsAdapter.JmsMessageConsumerAdapter.create(this);
     this.channelAdapter = JmsAdapter.JmsChannelAdapter.create(this);
     this.producerMessageAdapter = JmsAdapter.JmsMessageProducerAdapter.create(this);
+    this.injector = new Injector<Message>() {
+      @Override public void inject(TraceContext traceContext, Message carrier) {
+        try {
+          PropertyFilter.MESSAGE.filterProperties(carrier, propagationKeys);
+          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
+        } catch (JMSException e) {
+          // don't crash on wonky exceptions!
+        }
+      }
+
+      @Override
+      public String toString() {
+        return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
+      }
+    };
   }
 
   public Connection connection(Connection connection) {
@@ -198,28 +197,17 @@ public final class JmsTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(Message message) {
-    TraceContextOrSamplingFlags extracted = msgTracing.consumerParser().extractContextAndClearMessage(
-        consumerMessageAdapter,
-        extractor,
-        message);
-    Span result = msgTracing.tracing().tracer().nextSpan(extracted);
-
-    // When an upstream context was not present, lookup keys are unlikely added
-    if (extracted.context() == null && !result.isNoop()) {
-        msgTracing.consumerParser()
-            .channel(JmsAdapter.JmsChannelAdapter.create(this), destination(message),
-                result);
-    }
-    return result;
+    return msgTracing.nextSpan(channelAdapter, consumerMessageAdapter, extractor, message,
+      destination(message));
   }
 
-  TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(message);
-    // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
-    // message writable
-    PropertyFilter.MESSAGE.filterProperties(message, propagationKeys);
-    return extracted;
-  }
+  //TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
+  //  TraceContextOrSamplingFlags extracted = extractor.extract(message);
+  //  // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
+  //  // message writable
+  //  PropertyFilter.MESSAGE.filterProperties(message, propagationKeys);
+  //  return extracted;
+  //}
 
   Destination destination(Message message) {
     try {
@@ -229,5 +217,4 @@ public final class JmsTracing {
     }
     return null;
   }
-
 }

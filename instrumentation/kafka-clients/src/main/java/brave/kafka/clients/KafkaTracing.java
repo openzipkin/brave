@@ -184,17 +184,7 @@ public final class KafkaTracing {
   public <K, V> Span nextSpan(ConsumerRecord<K, V> record) {
     final TracingConsumer.KafkaConsumerAdapter<K, V> adapter =
         TracingConsumer.KafkaConsumerAdapter.create(this);
-    TraceContextOrSamplingFlags extracted =
-        msgTracing.consumerParser().extractContextAndClearMessage(
-            adapter,
-            consumerRecordExtractor(),
-            record);
-    Span result = msgTracing.tracing().tracer().nextSpan(extracted);
-    if (extracted.context() == null && !result.isNoop()) {
-      msgTracing.consumerParser().channel(adapter, record, result);
-      msgTracing.consumerParser().identifier(adapter, record, result);
-    }
-    return result;
+    return msgTracing.nextSpan(adapter, adapter, consumerRecordExtractor(), record, record);
   }
 
   <Record> String channelTagKey(Record record) {
