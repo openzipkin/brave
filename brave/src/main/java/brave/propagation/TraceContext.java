@@ -1,9 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package brave.propagation;
 
 import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.RecyclableBuffers;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -185,7 +202,7 @@ public final class TraceContext extends SamplingFlags {
     String r = traceIdString;
     if (r == null) {
       if (traceIdHigh != 0) {
-        char[] result = new char[32];
+        char[] result = RecyclableBuffers.idBuffer();
         writeHexLong(result, 0, traceIdHigh);
         writeHexLong(result, 16, traceId);
         r = new String(result);

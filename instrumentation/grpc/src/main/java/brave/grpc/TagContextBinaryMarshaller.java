@@ -1,7 +1,24 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package brave.grpc;
 
 import brave.internal.Platform;
 import io.grpc.Metadata.BinaryMarshaller;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,6 +32,8 @@ import java.util.Map;
 final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, String>> {
   static final byte VERSION = 0, TAG_FIELD_ID = 0;
   static final byte[] EMPTY_BYTES = {};
+
+  static final Charset US_ASCII = Charset.forName("US-ASCII");
 
   @Override
   public byte[] toBytes(Map<String, String> tagContext) {
@@ -137,11 +156,10 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
 
     String readAsciiString(int length) {
       if (length == -1 || remaining() < length) return null;
-      char[] string = new char[length];
-      for (int i = 0; i < length; i++) {
-        string[i] = (char) buf[pos++];
-      }
-      return new String(string);
+
+      String result = new String(buf, pos, length, US_ASCII);
+      pos += length;
+      return result;
     }
   }
 }
