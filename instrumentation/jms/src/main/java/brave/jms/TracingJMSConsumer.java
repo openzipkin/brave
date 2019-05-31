@@ -13,25 +13,22 @@
  */
 package brave.jms;
 
-import brave.messaging.MessagingConsumerHandler;
+import brave.messaging.ConsumerHandler;
 import javax.jms.Destination;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
-@JMS2_0 final class TracingJMSConsumer extends MessagingConsumerHandler<JMSConsumer, Destination, Message> implements JMSConsumer {
+@JMS2_0 final class TracingJMSConsumer implements JMSConsumer {
+  final JMSConsumer delegate;
   final JmsTracing jmsTracing;
   final Destination destination;
+  final ConsumerHandler<Destination, Message, Message> handler;
 
   TracingJMSConsumer(JMSConsumer delegate, Destination destination, JmsTracing jmsTracing) {
-    super(
-        delegate,
-        jmsTracing.msgTracing,
-        jmsTracing.channelAdapter,
-        jmsTracing.consumerMessageAdapter,
-        jmsTracing.extractor,
-        jmsTracing.injector);
+    this.delegate = delegate;
+    this.handler = jmsTracing.consumerHandler;
     this.destination = destination;
     this.jmsTracing = jmsTracing;
   }
@@ -50,19 +47,19 @@ import javax.jms.MessageListener;
 
   @Override public Message receive() {
     Message message = delegate.receive();
-    handleConsume(destination, message);
+    handler.handleReceive(destination, message);
     return message;
   }
 
   @Override public Message receive(long timeout) {
     Message message = delegate.receive(timeout);
-    handleConsume(destination, message);
+    handler.handleReceive(destination, message);
     return message;
   }
 
   @Override public Message receiveNoWait() {
     Message message = delegate.receiveNoWait();
-    handleConsume(destination, message);
+    handler.handleReceive(destination, message);
     return message;
   }
 

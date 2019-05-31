@@ -15,9 +15,8 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
-import brave.messaging.ChannelAdapter;
-import brave.messaging.MessageConsumerAdapter;
-import brave.messaging.MessagingConsumerHandler;
+import brave.messaging.ConsumerHandler;
+import brave.messaging.MessagingAdapter;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -37,39 +36,31 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
  * producers span if possible.
  */
-final class TracingConsumer<K, V>
-    extends MessagingConsumerHandler<Consumer<K, V>, ConsumerRecord<K, V>, ConsumerRecord<K, V>>
-    implements Consumer<K, V> {
-
-  final KafkaTracing kafkaTracing;
-  final Tracing tracing;
-  final String remoteServiceName;
-
+final class TracingConsumer<K, V> implements Consumer<K, V> {
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
-      new ConsumerRebalanceListener() {
-        @Override public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        }
+    new ConsumerRebalanceListener() {
+      @Override public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+      }
 
-        @Override public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        }
-      };
+      @Override public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+      }
+    };
+
+  final Consumer<K, V> delegate;
+  final Tracing tracing;
+  final ConsumerHandler<String, ConsumerRecord, Headers> handler;
 
   TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
-    super(delegate,
-        kafkaTracing.msgTracing,
-        KafkaConsumerAdapter.create(kafkaTracing),
-        KafkaConsumerAdapter.create(kafkaTracing),
-        kafkaTracing.consumerRecordExtractor(),
-        kafkaTracing.consumerRecordInjector());
-    this.kafkaTracing = kafkaTracing;
-    this.tracing = kafkaTracing.msgTracing.tracing();
-    this.remoteServiceName = kafkaTracing.remoteServiceName;
+    this.delegate = delegate;
+    this.handler = kafkaTracing.consumerHandler;
+    this.tracing = kafkaTracing.messagingTracing.tracing();
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -81,15 +72,13 @@ final class TracingConsumer<K, V>
   @Override public ConsumerRecords<K, V> poll(long timeout) {
     ConsumerRecords<K, V> records = delegate.poll(timeout);
     if (records.isEmpty() || tracing.isNoop()) return records;
-    long timestamp = 0L;
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
     for (TopicPartition partition : records.partitions()) {
-      List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
+      List<? extends ConsumerRecord> recordsInPartition = records.records(partition);
       consumerSpansForTopic =
-          handleConsume(recordsInPartition.size() > 0 ? recordsInPartition.get(0) : null,
-              recordsInPartition, consumerSpansForTopic);
+        handler.startBulkReceive(partition.topic(), recordsInPartition, consumerSpansForTopic);
     }
-    for (Span span : consumerSpansForTopic.values()) span.finish(timestamp);
+    handler.finishBulkReceive(consumerSpansForTopic);
     return records;
   }
 
@@ -153,7 +142,7 @@ final class TracingConsumer<K, V>
   }
 
   @Override public void commitAsync(Map<TopicPartition, OffsetAndMetadata> offsets,
-      OffsetCommitCallback callback) {
+    OffsetCommitCallback callback) {
     delegate.commitAsync(offsets, callback);
   }
 
@@ -225,13 +214,13 @@ final class TracingConsumer<K, V>
   }
 
   @Override public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
-      Map<TopicPartition, Long> timestampsToSearch) {
+    Map<TopicPartition, Long> timestampsToSearch) {
     return delegate.offsetsForTimes(timestampsToSearch);
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
-      Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+    Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
     return delegate.offsetsForTimes(timestampsToSearch, timeout);
   }
 
@@ -242,7 +231,7 @@ final class TracingConsumer<K, V>
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions,
-      Duration timeout) {
+    Duration timeout) {
     return delegate.beginningOffsets(partitions, timeout);
   }
 
@@ -252,7 +241,7 @@ final class TracingConsumer<K, V>
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
-      Duration timeout) {
+    Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
   }
 
@@ -273,40 +262,36 @@ final class TracingConsumer<K, V>
     delegate.wakeup();
   }
 
-  static class KafkaConsumerAdapter<K, V> implements MessageConsumerAdapter<ConsumerRecord<K, V>>,
-      ChannelAdapter<ConsumerRecord<K, V>> {
-    final KafkaTracing kafkaTracing;
+  static final class ConsumerRecordAdapter
+    extends MessagingAdapter<String, ConsumerRecord, Headers> {
+    final String remoteServiceName;
 
-    KafkaConsumerAdapter(KafkaTracing kafkaTracing) {
-      this.kafkaTracing = kafkaTracing;
+    ConsumerRecordAdapter(String remoteServiceName) {
+      this.remoteServiceName = remoteServiceName;
     }
 
-    static <K, V> KafkaConsumerAdapter<K, V> create(KafkaTracing kafkaTracing) {
-      return new KafkaConsumerAdapter<>(kafkaTracing);
+    @Override public Headers carrier(ConsumerRecord message) {
+      return message.headers();
     }
 
-    @Override public String channel(ConsumerRecord message) {
-      return message.topic();
+    @Override public String channel(String topic) {
+      return topic;
     }
 
-    @Override public String operation(ConsumerRecord message) {
-      return KafkaTracing.CONSUMER_OPERATION;
+    @Override public String channelKind(String channel) {
+      return "topic";
     }
 
-    @Override public String identifier(ConsumerRecord message) {
-      return kafkaTracing.recordKey(message.key());
+    @Override public String messageKey(ConsumerRecord message) {
+      return KafkaTracing.recordKey(message.key());
     }
 
-    @Override public String remoteServiceName(ConsumerRecord message) {
-      return kafkaTracing.remoteServiceName;
+    @Override public String correlationId(ConsumerRecord message) {
+      return null;
     }
 
-    @Override public String channelTagKey(ConsumerRecord<K, V> message) {
-      return kafkaTracing.channelTagKey(message);
-    }
-
-    @Override public String identifierTagKey() {
-      return kafkaTracing.identifierTagKey();
+    @Override public String brokerName(String topic) {
+      return remoteServiceName;
     }
   }
 }

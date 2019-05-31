@@ -13,13 +13,9 @@
  */
 package brave.messaging;
 
-import brave.Span;
 import brave.Tracing;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 
 public class MessagingTracing {
-
   public static MessagingTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
@@ -29,66 +25,37 @@ public class MessagingTracing {
   }
 
   final Tracing tracing;
-  final MessagingConsumerParser consumerParser;
-  final MessagingProducerParser producerParser;
+  final MessagingParser parser;
 
   MessagingTracing(Builder builder) {
     this.tracing = builder.tracing;
-    this.consumerParser = builder.consumerParser;
-    this.producerParser = builder.producerParser;
+    this.parser = builder.parser;
   }
 
   public Tracing tracing() {
     return tracing;
   }
 
-  public MessagingProducerParser producerParser() {
-    return producerParser;
-  }
-
-  public MessagingConsumerParser consumerParser() {
-    return consumerParser;
-  }
-
-  public <Chan, Msg> Span nextSpan(ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      Msg message,
-      Chan channel) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(message);
-    Span result = tracing.tracer().nextSpan(extracted);
-
-    // When an upstream context was not present, lookup keys are unlikely added
-    if (extracted.context() == null && !result.isNoop()) {
-      consumerParser.channel(channelAdapter, channel, result);
-      consumerParser.identifier(messageAdapter, message, result);
-    }
-    return result;
+  public MessagingParser parser() {
+    return parser;
   }
 
   public static class Builder {
     final Tracing tracing;
-    MessagingConsumerParser consumerParser = new MessagingConsumerParser();
-    MessagingProducerParser producerParser = new MessagingProducerParser();
+    MessagingParser parser = new MessagingParser();
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
       this.tracing = tracing;
     }
 
-    public Builder consumerParser(MessagingConsumerParser consumerParser) {
-      if (producerParser == null) throw new NullPointerException("consumerParser == null");
-      this.consumerParser = consumerParser;
+    public Builder parser(MessagingParser parser) {
+      if (parser == null) throw new NullPointerException("parser == null");
+      this.parser = parser;
       return this;
     }
 
-    public Builder producerParser(MessagingProducerParser producerParser) {
-      if (producerParser == null) throw new NullPointerException("producerParser == null");
-      this.producerParser = producerParser;
-      return this;
-    }
-
-    MessagingTracing build() {
+    public MessagingTracing build() {
       return new MessagingTracing(this);
     }
   }

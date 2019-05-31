@@ -14,9 +14,18 @@
 package brave.jms;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.internal.Nullable;
+import brave.jms.JmsAdapter.MessageAdapter;
+import brave.messaging.ConsumerHandler;
+import brave.messaging.MessagingAdapter;
+import brave.messaging.MessagingParser;
 import brave.messaging.MessagingTracing;
+import brave.messaging.ProcessorHandler;
+import brave.messaging.ProducerHandler;
 import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -28,7 +37,9 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
+import javax.jms.Queue;
 import javax.jms.QueueConnection;
+import javax.jms.Topic;
 import javax.jms.TopicConnection;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
@@ -39,8 +50,19 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
-  static final String JMS_QUEUE = "jms.queue";
-  static final String JMS_TOPIC = "jms.topic";
+  static final Setter<Message, String> SETTER = new Setter<Message, String>() {
+    @Override public void put(Message carrier, String key, String value) {
+      try {
+        carrier.setStringProperty(key, value);
+      } catch (JMSException e) {
+        // don't crash on wonky exceptions!
+      }
+    }
+
+    @Override public String toString() {
+      return "Message::setStringProperty";
+    }
+  };
 
   static final Getter<Message, String> GETTER = new Getter<Message, String>() {
     @Override public String get(Message carrier, String key) {
@@ -66,17 +88,18 @@ public final class JmsTracing {
   }
 
   public static final class Builder {
-    final MessagingTracing msgTracing;
+    final MessagingTracing messageTracing;
     String remoteServiceName = "jms";
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
-      this.msgTracing = MessagingTracing.create(tracing);
+      this.messageTracing = MessagingTracing.newBuilder(tracing)
+        .parser(new LegacyMessagingParser()).build();
     }
 
-    Builder(MessagingTracing msgTracing) {
-      if (msgTracing == null) throw new NullPointerException("msgTracing == null");
-      this.msgTracing = msgTracing;
+    Builder(MessagingTracing messageTracing) {
+      if (messageTracing == null) throw new NullPointerException("messageTracing == null");
+      this.messageTracing = messageTracing;
     }
 
     /**
@@ -92,38 +115,28 @@ public final class JmsTracing {
     }
   }
 
-  final MessagingTracing msgTracing;
-  final Extractor<Message> extractor;
-  final Injector<Message> injector;
-  final JmsAdapter.JmsChannelAdapter channelAdapter;
-  final JmsAdapter.JmsMessageConsumerAdapter consumerMessageAdapter;
-  final JmsAdapter.JmsMessageProducerAdapter producerMessageAdapter;
+  final MessagingTracing messageTracing;
+  final ConsumerHandler<Destination, Message, Message> consumerHandler;
+  final ProcessorHandler<Destination, Message, Message> processorHandler;
+  final ProducerHandler<Destination, Message, Message> producerHandler;
+  final Extractor<Message> messageExtractor;
+  final Injector<Message> messageInjector;
+  final MessageAdapter messageAdapter;
   final String remoteServiceName;
   final Set<String> propagationKeys;
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
-    this.msgTracing = builder.msgTracing;
-    this.extractor = msgTracing.tracing().propagation().extractor(GETTER);
+    this.messageTracing = builder.messageTracing;
+    this.messageExtractor = messageTracing.tracing().propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
-    this.propagationKeys = new LinkedHashSet<>(msgTracing.tracing().propagation().keys());
-    this.consumerMessageAdapter = JmsAdapter.JmsMessageConsumerAdapter.create(this);
-    this.channelAdapter = JmsAdapter.JmsChannelAdapter.create(this);
-    this.producerMessageAdapter = JmsAdapter.JmsMessageProducerAdapter.create(this);
-    this.injector = new Injector<Message>() {
-      @Override public void inject(TraceContext traceContext, Message carrier) {
-        try {
-          PropertyFilter.MESSAGE.filterProperties(carrier, propagationKeys);
-          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
-        } catch (JMSException e) {
-          // don't crash on wonky exceptions!
-        }
-      }
-
-      @Override
-      public String toString() {
-        return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
-      }
-    };
+    this.propagationKeys = new LinkedHashSet<>(messageTracing.tracing().propagation().keys());
+    this.messageAdapter = new MessageAdapter(this);
+    this.messageInjector = new FilteringInjector<>(PropertyFilter.MESSAGE, propagationKeys, SETTER);
+    consumerHandler =
+      ConsumerHandler.create(messageTracing, messageAdapter, messageExtractor, messageInjector);
+    processorHandler = ProcessorHandler.create(messageTracing, consumerHandler);
+    producerHandler =
+      ProducerHandler.create(messageTracing, messageAdapter, messageExtractor, messageInjector);
   }
 
   public Connection connection(Connection connection) {
@@ -197,8 +210,7 @@ public final class JmsTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(Message message) {
-    return msgTracing.nextSpan(channelAdapter, consumerMessageAdapter, extractor, message,
-      destination(message));
+    return processorHandler.startProcessor(destination(message), message, false);
   }
 
   //TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
@@ -209,12 +221,47 @@ public final class JmsTracing {
   //  return extracted;
   //}
 
-  Destination destination(Message message) {
+  @Nullable static Destination destination(Message message) {
     try {
       return message.getJMSDestination();
     } catch (JMSException e) {
       // don't crash on wonky exceptions!
     }
     return null;
+  }
+
+  static class FilteringInjector<C> implements TraceContext.Injector<C> {
+    final PropertyFilter filter;
+    final Set<String> namesToClear;
+    final Setter<C, String> setter;
+
+    FilteringInjector(PropertyFilter filter, Set<String> namesToClear, Setter<C, String> setter) {
+      this.filter = filter;
+      this.namesToClear = namesToClear;
+      this.setter = setter;
+    }
+
+    @Override public void inject(TraceContext traceContext, C carrier) {
+      filter.filterProperties(carrier, namesToClear);
+      setter.put(carrier, "b3", writeB3SingleFormatWithoutParentId(traceContext));
+    }
+
+    @Override public String toString() {
+      return setter + "(\"b3\",singleHeaderFormatWithoutParent)";
+    }
+  }
+
+  static class LegacyMessagingParser extends MessagingParser {
+    @Override
+    protected <Chan, Msg, C> void addMessageTags(MessagingAdapter<Chan, Msg, C> adapter,
+      Chan channel, @Nullable Msg msg, TraceContext context, SpanCustomizer customizer) {
+      String channelName = adapter.channel(channel);
+      if (channelName == null) return;
+      if (channel instanceof Queue) {
+        customizer.tag("jms.queue", channelName);
+      } else if (channel instanceof Topic) {
+        customizer.tag("jms.topic", channelName);
+      }
+    }
   }
 }

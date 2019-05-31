@@ -35,6 +35,18 @@
     <errorprone.args>-Xep:MissingOverride:OFF</errorprone.args>
   </properties>
 
+  <dependencies>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sqs</artifactId>
+      <version>2.5.52</version>
+    </dependency>
+    <dependency>
+      <groupId>com.rabbitmq</groupId>
+      <artifactId>amqp-client</artifactId>
+      <version>5.7.1</version>
+    </dependency>
+  </dependencies>
   <build>
     <plugins>
       <plugin>

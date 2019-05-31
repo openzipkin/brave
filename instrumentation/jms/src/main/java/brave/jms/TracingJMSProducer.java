@@ -16,11 +16,10 @@ package brave.jms;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.messaging.MessageProducerAdapter;
-import brave.messaging.MessagingProducerHandler;
+import brave.messaging.ProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
+import brave.propagation.Propagation.Setter;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
@@ -29,45 +28,23 @@ import javax.jms.Destination;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
 
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
-
-@JMS2_0 final class TracingJMSProducer
-    extends MessagingProducerHandler<JMSProducer, Destination, JMSProducer>
-    implements JMSProducer {
-
-  static final Getter<JMSProducer, String> GETTER = new Getter<JMSProducer, String>() {
-    @Override public String get(JMSProducer carrier, String key) {
-      return carrier.getStringProperty(key);
-    }
-
-    @Override public String toString() {
-      return "JMSProducer::getStringProperty";
-    }
-  };
-
+@JMS2_0 final class TracingJMSProducer implements JMSProducer {
+  final JMSProducer delegate;
+  final ProducerHandler<Destination, JMSProducer, JMSProducer> handler;
   final Tracer tracer;
   final CurrentTraceContext current;
 
   TracingJMSProducer(JMSProducer delegate, JmsTracing jmsTracing) {
-    super(
-        delegate,
-        jmsTracing.msgTracing,
-        jmsTracing.channelAdapter,
-        JmsProducerAdapter.create(jmsTracing),
-        jmsTracing.msgTracing.tracing().propagation().extractor(GETTER),
-        new TraceContext.Injector<JMSProducer>() {
-          @Override public void inject(TraceContext traceContext, JMSProducer carrier) {
-            PropertyFilter.JMS_PRODUCER.filterProperties(carrier, jmsTracing.propagationKeys);
-            carrier.setProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
-          }
-
-          @Override
-          public String toString() {
-            return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
-          }
-        });
-    this.tracer = jmsTracing.msgTracing.tracing().tracer();
-    this.current = jmsTracing.msgTracing.tracing().currentTraceContext();
+    this.delegate = delegate;
+    this.handler = ProducerHandler.create(
+      jmsTracing.messageTracing,
+      new JMSProducerAdapter(jmsTracing),
+      jmsTracing.messageTracing.tracing().propagation().extractor(GETTER),
+      new JmsTracing.FilteringInjector<>(PropertyFilter.JMS_PRODUCER, jmsTracing.propagationKeys,
+        SETTER)
+    );
+    tracer = jmsTracing.messageTracing.tracing().tracer();
+    current = jmsTracing.messageTracing.tracing().currentTraceContext();
   }
 
   // Partial function pattern as this needs to work before java 8 method references
@@ -127,9 +104,13 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
   }
 
   void send(Send send, Destination destination, Object message) {
-    Span span = handleProduce(destination, this);
+    Span span = handler.startSend(destination, this);
+    // TODO: document what's going on with the getAsync dance here as it makes the lifecycle complex
+    // it isn't clear why a synchronous method would imply an async call, for example.
     final CompletionListener oldCompletionListener = getAsync();
+    boolean shouldFinish = true;
     if (oldCompletionListener != null) {
+      shouldFinish = false;
       delegate.setAsync(TracingCompletionListener.create(oldCompletionListener, span, current));
     }
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
@@ -137,14 +118,15 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
       send.apply(delegate, destination, message);
     } catch (RuntimeException | Error e) {
       span.error(e);
-      span.finish();
+      shouldFinish = true;
       throw e;
     } finally {
       ws.close();
-      if (oldCompletionListener != null) {
+      if (oldCompletionListener != null) { // TODO: why are we doing this
         delegate.setAsync(oldCompletionListener);
-      } else {
-        span.finish();
+      }
+      if (shouldFinish) {
+        handler.finishSend(destination, this, span);
       }
     }
   }
@@ -342,31 +324,34 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     return delegate.getJMSReplyTo();
   }
 
-  static class JmsProducerAdapter implements MessageProducerAdapter<JMSProducer> {
-    final JmsTracing jmsTracing;
-
-    JmsProducerAdapter(JmsTracing jmsTracing) {
-      this.jmsTracing = jmsTracing;
+  // helper types inlined here to avoid having JmsTracing access JMS 2.0 types
+  static final Getter<JMSProducer, String> GETTER = new Getter<JMSProducer, String>() {
+    @Override public String get(JMSProducer carrier, String key) {
+      return carrier.getStringProperty(key);
     }
 
-    static JmsProducerAdapter create(JmsTracing jmsTracing) {
-      return new JmsProducerAdapter(jmsTracing);
+    @Override public String toString() {
+      return "JMSProducer::getStringProperty";
+    }
+  };
+
+  static final Setter<JMSProducer, String> SETTER = new Setter<JMSProducer, String>() {
+    @Override public void put(JMSProducer carrier, String key, String value) {
+      carrier.setProperty(key, value);
     }
 
-    @Override public String operation(JMSProducer message) {
-      return "send";
+    @Override public String toString() {
+      return "JMSProducer::setProperty";
+    }
+  };
+
+  static final class JMSProducerAdapter extends JmsAdapter<JMSProducer> {
+    JMSProducerAdapter(JmsTracing jmsTracing) {
+      super(jmsTracing);
     }
 
-    @Override public String identifier(JMSProducer message) {
+    @Override public String correlationId(JMSProducer message) {
       return message.getJMSCorrelationID();
-    }
-
-    //@Override public void clearPropagation(JMSProducer message) {
-    //  PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-    //}
-
-    @Override public String identifierTagKey() {
-      return "jms.correlation_id";
     }
   }
 }

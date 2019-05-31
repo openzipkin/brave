@@ -14,8 +14,9 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import brave.sampler.Sampler;
 import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
@@ -25,19 +26,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class TracingCallbackTest extends BaseTracingTest {
-  @Test public void create_returns_input_on_noop() {
-    Span span = tracing.tracer().withSampler(Sampler.NEVER_SAMPLE).nextSpan();
-
-    Callback delegate = mock(Callback.class);
-    Callback tracingCallback = TracingProducer.TracingCallback.create(delegate, span, current);
-
-    assertThat(tracingCallback).isSameAs(delegate);
-  }
+  Producer<String, String> producer = mock(Producer.class);
+  ProducerRecord<String, String> record = mock(ProducerRecord.class);
+  TracingProducer<String, String> tracingProducer = new TracingProducer<>(producer, kafkaTracing);
 
   @Test public void on_completion_should_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
-    Callback tracingCallback = TracingProducer.TracingCallback.create(null, span, current);
+    Callback tracingCallback = tracingProducer.tracingCallback(record, null, span);
     tracingCallback.onCompletion(createRecordMetadata(), null);
 
     assertThat(spans.getFirst()).isNotNull();
@@ -46,18 +42,18 @@ public class TracingCallbackTest extends BaseTracingTest {
   @Test public void on_completion_should_tag_if_exception() {
     Span span = tracing.tracer().nextSpan().start();
 
-    Callback tracingCallback = TracingProducer.TracingCallback.create(null, span, current);
+    Callback tracingCallback = tracingProducer.tracingCallback(record, null, span);
     tracingCallback.onCompletion(null, new Exception("Test exception"));
 
     assertThat(spans.getFirst().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 
   @Test public void on_completion_should_forward_then_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);
-    Callback tracingCallback = TracingProducer.TracingCallback.create(delegate, span, current);
+    Callback tracingCallback = tracingProducer.tracingCallback(record, delegate, span);
     RecordMetadata md = createRecordMetadata();
     tracingCallback.onCompletion(md, null);
 
@@ -70,14 +66,16 @@ public class TracingCallbackTest extends BaseTracingTest {
 
     Callback delegate = (metadata, exception) -> assertThat(current.get()).isSameAs(span.context());
 
-    TracingProducer.TracingCallback.create(delegate, span, current).onCompletion(createRecordMetadata(), null);
+    Callback tracingCallback = tracingProducer.tracingCallback(record, delegate, span);
+
+    tracingCallback.onCompletion(createRecordMetadata(), null);
   }
 
   @Test public void on_completion_should_forward_then_tag_if_exception() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);
-    Callback tracingCallback = TracingProducer.TracingCallback.create(delegate, span, current);
+    Callback tracingCallback = tracingProducer.tracingCallback(record, delegate, span);
     RecordMetadata md = createRecordMetadata();
     Exception e = new Exception("Test exception");
     tracingCallback.onCompletion(md, e);
@@ -85,7 +83,7 @@ public class TracingCallbackTest extends BaseTracingTest {
     verify(delegate).onCompletion(md, e);
 
     assertThat(spans.getFirst().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 
   RecordMetadata createRecordMetadata() {

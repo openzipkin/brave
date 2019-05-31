@@ -13,7 +13,7 @@
  */
 package brave.jms;
 
-import brave.messaging.MessagingConsumerHandler;
+import brave.messaging.ConsumerHandler;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -26,30 +26,31 @@ import javax.jms.Topic;
 import javax.jms.TopicPublisher;
 import javax.jms.TopicSubscriber;
 
+import static brave.jms.JmsTracing.destination;
 import static brave.jms.TracingConnection.TYPE_QUEUE;
 import static brave.jms.TracingConnection.TYPE_TOPIC;
 
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
-final class TracingMessageConsumer
-    extends MessagingConsumerHandler<MessageConsumer, Destination, Message>
-    implements QueueReceiver, TopicSubscriber {
+final class TracingMessageConsumer implements QueueReceiver, TopicSubscriber {
 
   static TracingMessageConsumer create(MessageConsumer delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingMessageConsumer) return (TracingMessageConsumer) delegate;
     return new TracingMessageConsumer(delegate, jmsTracing);
   }
 
+  final MessageConsumer delegate;
   final JmsTracing jmsTracing;
+  final ConsumerHandler<Destination, Message, Message> handler;
   final int types;
 
   TracingMessageConsumer(MessageConsumer delegate, JmsTracing jmsTracing) {
-    super(
-        delegate,
-        jmsTracing.msgTracing,
-        jmsTracing.channelAdapter,
-        jmsTracing.consumerMessageAdapter,
-        jmsTracing.extractor,
-        jmsTracing.injector);
+    this.delegate = delegate;
+    this.handler = ConsumerHandler.create(
+      jmsTracing.messageTracing,
+      jmsTracing.messageAdapter,
+      jmsTracing.messageExtractor,
+      jmsTracing.messageInjector
+    );
     this.jmsTracing = jmsTracing;
     int types = 0;
     if (delegate instanceof QueueSender) types |= TYPE_QUEUE;
@@ -71,19 +72,19 @@ final class TracingMessageConsumer
 
   @Override public Message receive() throws JMSException {
     Message message = delegate.receive();
-    handleConsume(message.getJMSDestination(), message);
+    handler.handleReceive(destination(message), message);
     return message;
   }
 
   @Override public Message receive(long timeout) throws JMSException {
     Message message = delegate.receive(timeout);
-    handleConsume(message.getJMSDestination(), message);
+    handler.handleReceive(destination(message), message);
     return message;
   }
 
   @Override public Message receiveNoWait() throws JMSException {
     Message message = delegate.receiveNoWait();
-    handleConsume(message.getJMSDestination(), message);
+    handler.handleReceive(destination(message), message);
     return message;
   }
 
