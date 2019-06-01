@@ -53,7 +53,7 @@ public class RateLimitingSampler extends Sampler {
   }
 
   static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
-  static final int NANOS_PER_DECISECOND = (int) (NANOS_PER_SECOND / 10);
+  static final long NANOS_PER_DECISECOND = NANOS_PER_SECOND / 10;
 
   final MaxFunction maxFunction;
   final AtomicInteger usage = new AtomicInteger(0);
@@ -132,8 +132,11 @@ public class RateLimitingSampler extends Sampler {
     }
 
     @Override int max(long nanosUntilReset) {
-      assert nanosUntilReset != 0; // recursion ensures this is never zero
-      int decisecondsUntilReset = ((int) nanosUntilReset / NANOS_PER_DECISECOND);
+      // Check to see if we are in the first interval
+      if (nanosUntilReset > NANOS_PER_SECOND - NANOS_PER_DECISECOND) return max[0];
+
+      // Choose a slot based on the remaining deciseconds
+      int decisecondsUntilReset = (int) (nanosUntilReset / NANOS_PER_DECISECOND);
       return max[10 - decisecondsUntilReset];
     }
   }
