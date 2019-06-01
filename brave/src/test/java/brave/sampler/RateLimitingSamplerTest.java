@@ -17,6 +17,7 @@
 package brave.sampler;
 
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.Theory;
@@ -78,6 +79,19 @@ public class RateLimitingSamplerTest {
     assertThat(sampler.isSampled(0L)).isTrue();
   }
 
+  @Test public void resetsAfterALongGap() {
+    mockStatic(System.class);
+
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
+    Sampler sampler = RateLimitingSampler.create(10);
+
+    // Try a really long time later. Makes sure extra credit isn't given, and no recursion errors
+    long time = NANOS_PER_SECOND + TimeUnit.DAYS.toNanos(265);
+    when(System.nanoTime()).thenReturn(time);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isFalse(); // we took the credit of the 1st decisecond
+  }
+
   @Test public void allowsOddRates() {
     mockStatic(System.class);
 
@@ -86,8 +100,8 @@ public class RateLimitingSamplerTest {
     when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_DECISECOND * 9);
     for (int i = 0; i < 11; i++) {
       assertThat(sampler.isSampled(0L))
-          .withFailMessage("failed after " + (i + 1))
-          .isTrue();
+        .withFailMessage("failed after " + (i + 1))
+        .isTrue();
     }
     assertThat(sampler.isSampled(0L)).isFalse();
   }
