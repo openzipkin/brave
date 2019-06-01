@@ -92,7 +92,6 @@ public class RateLimitingSampler extends Sampler {
   }
 
   static abstract class MaxFunction {
-    /** @param nanosUntilReset zero if was just reset */
     abstract int max(long nanosUntilReset);
   }
 
@@ -104,7 +103,7 @@ public class RateLimitingSampler extends Sampler {
       this.tracesPerSecond = tracesPerSecond;
     }
 
-    @Override int max(long nanosUntilReset) {
+    @Override int max(long nanosUntilResetIgnored) {
       return tracesPerSecond;
     }
   }
@@ -133,9 +132,9 @@ public class RateLimitingSampler extends Sampler {
     }
 
     @Override int max(long nanosUntilReset) {
+      assert nanosUntilReset != 0; // recursion ensures this is never zero
       int decisecondsUntilReset = ((int) nanosUntilReset / NANOS_PER_DECISECOND);
-      int index = decisecondsUntilReset == 0 ? 0 : 10 - decisecondsUntilReset;
-      return max[index];
+      return max[10 - decisecondsUntilReset];
     }
   }
 }
