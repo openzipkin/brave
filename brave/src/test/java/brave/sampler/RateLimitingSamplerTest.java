@@ -98,15 +98,27 @@ public class RateLimitingSamplerTest {
     Sampler sampler = RateLimitingSampler.create(10);
 
     // try exact same nanosecond, however unlikely
-    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue(); // 1
 
     // Try a value smaller than a decisecond, to ensure edge cases are covered
     when(System.nanoTime()).thenReturn(1L);
-    assertThat(sampler.isSampled(0L)).isFalse();
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
 
     // Try exactly a decisecond later, which should be a reset condition
     when(System.nanoTime()).thenReturn(NANOS_PER_DECISECOND);
-    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isTrue(); // 2
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
+
+    // Try almost a second later
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND - 1);
+    assertThat(sampler.isSampled(0L)).isTrue(); // 3
+    assertThat(sampler.isSampled(0L)).isTrue(); // 4
+    assertThat(sampler.isSampled(0L)).isTrue(); // 5
+    assertThat(sampler.isSampled(0L)).isTrue(); // 6
+    assertThat(sampler.isSampled(0L)).isTrue(); // 7
+    assertThat(sampler.isSampled(0L)).isTrue(); // 8
+    assertThat(sampler.isSampled(0L)).isTrue(); // 9
+    assertThat(sampler.isSampled(0L)).isTrue(); // 10
     assertThat(sampler.isSampled(0L)).isFalse(); // credit used
 
     // Try exactly a second later, which should be a reset condition

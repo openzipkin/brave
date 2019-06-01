@@ -132,8 +132,9 @@ public class RateLimitingSampler extends Sampler {
     }
 
     @Override int max(long nanosUntilReset) {
-      // Check to see if we are in the first interval
+      // Check to see if we are in the first or last interval
       if (nanosUntilReset > NANOS_PER_SECOND - NANOS_PER_DECISECOND) return max[0];
+      if (nanosUntilReset < NANOS_PER_DECISECOND) return max[9];
 
       // Choose a slot based on the remaining deciseconds
       int decisecondsUntilReset = (int) (nanosUntilReset / NANOS_PER_DECISECOND);
