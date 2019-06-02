@@ -17,6 +17,7 @@
 package brave.sampler;
 
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.Theory;
@@ -78,6 +79,54 @@ public class RateLimitingSamplerTest {
     assertThat(sampler.isSampled(0L)).isTrue();
   }
 
+  @Test public void resetsAfterALongGap() {
+    mockStatic(System.class);
+
+    when(System.nanoTime()).thenReturn(0L);
+    Sampler sampler = RateLimitingSampler.create(10);
+
+    // Try a really long time later. Makes sure extra credit isn't given, and no recursion errors
+    when(System.nanoTime()).thenReturn(TimeUnit.DAYS.toNanos(365));
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isFalse(); // we took the credit of the 1st decisecond
+  }
+
+  @Test public void worksWithEdgeCases() {
+    mockStatic(System.class);
+
+    when(System.nanoTime()).thenReturn(0L);
+    Sampler sampler = RateLimitingSampler.create(10);
+
+    // try exact same nanosecond, however unlikely
+    assertThat(sampler.isSampled(0L)).isTrue(); // 1
+
+    // Try a value smaller than a decisecond, to ensure edge cases are covered
+    when(System.nanoTime()).thenReturn(1L);
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
+
+    // Try exactly a decisecond later, which should be a reset condition
+    when(System.nanoTime()).thenReturn(NANOS_PER_DECISECOND);
+    assertThat(sampler.isSampled(0L)).isTrue(); // 2
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
+
+    // Try almost a second later
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND - 1);
+    assertThat(sampler.isSampled(0L)).isTrue(); // 3
+    assertThat(sampler.isSampled(0L)).isTrue(); // 4
+    assertThat(sampler.isSampled(0L)).isTrue(); // 5
+    assertThat(sampler.isSampled(0L)).isTrue(); // 6
+    assertThat(sampler.isSampled(0L)).isTrue(); // 7
+    assertThat(sampler.isSampled(0L)).isTrue(); // 8
+    assertThat(sampler.isSampled(0L)).isTrue(); // 9
+    assertThat(sampler.isSampled(0L)).isTrue(); // 10
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
+
+    // Try exactly a second later, which should be a reset condition
+    when(System.nanoTime()).thenReturn(NANOS_PER_SECOND);
+    assertThat(sampler.isSampled(0L)).isTrue();
+    assertThat(sampler.isSampled(0L)).isFalse(); // credit used
+  }
+
   @Test public void allowsOddRates() {
     mockStatic(System.class);
 
@@ -86,8 +135,8 @@ public class RateLimitingSamplerTest {
     when(System.nanoTime()).thenReturn(NANOS_PER_SECOND + NANOS_PER_DECISECOND * 9);
     for (int i = 0; i < 11; i++) {
       assertThat(sampler.isSampled(0L))
-          .withFailMessage("failed after " + (i + 1))
-          .isTrue();
+        .withFailMessage("failed after " + (i + 1))
+        .isTrue();
     }
     assertThat(sampler.isSampled(0L)).isFalse();
   }

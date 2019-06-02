@@ -53,7 +53,7 @@ public class RateLimitingSampler extends Sampler {
   }
 
   static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
-  static final int NANOS_PER_DECISECOND = (int) (NANOS_PER_SECOND / 10);
+  static final long NANOS_PER_DECISECOND = NANOS_PER_SECOND / 10;
 
   final MaxFunction maxFunction;
   final AtomicInteger usage = new AtomicInteger(0);
@@ -61,7 +61,7 @@ public class RateLimitingSampler extends Sampler {
 
   RateLimitingSampler(int tracesPerSecond) {
     this.maxFunction =
-        tracesPerSecond < 10 ? new LessThan10(tracesPerSecond) : new AtLeast10(tracesPerSecond);
+      tracesPerSecond < 10 ? new LessThan10(tracesPerSecond) : new AtLeast10(tracesPerSecond);
     long now = System.nanoTime();
     this.nextReset = new AtomicLong(now + NANOS_PER_SECOND);
   }
@@ -71,14 +71,17 @@ public class RateLimitingSampler extends Sampler {
     long updateAt = nextReset.get();
 
     long nanosUntilReset = -(now - updateAt); // because nanoTime can be negative
-    boolean shouldReset = nanosUntilReset <= 0;
-    if (shouldReset) {
-      if (nextReset.compareAndSet(updateAt, updateAt + NANOS_PER_SECOND)) {
-        usage.set(0);
-      }
+    if (nanosUntilReset <= 0) {
+      // Attempt to move into the next sampling interval.
+      // nanosUntilReset is now invalid regardless of race winner, so we can't sample based on it.
+      if (nextReset.compareAndSet(updateAt, now + NANOS_PER_SECOND)) usage.set(0);
+
+      // recurse as it is simpler than resetting all the locals.
+      // reset happens once per second, this code doesn't take a second, so no infinite recursion.
+      return isSampled(ignoredTraceId);
     }
 
-    int max = maxFunction.max(shouldReset ? 0 : nanosUntilReset);
+    int max = maxFunction.max(nanosUntilReset);
     int prev, next;
     do { // same form as java 8 AtomicLong.getAndUpdate
       prev = usage.get();
@@ -89,7 +92,6 @@ public class RateLimitingSampler extends Sampler {
   }
 
   static abstract class MaxFunction {
-    /** @param nanosUntilReset zero if was just reset */
     abstract int max(long nanosUntilReset);
   }
 
@@ -101,7 +103,7 @@ public class RateLimitingSampler extends Sampler {
       this.tracesPerSecond = tracesPerSecond;
     }
 
-    @Override int max(long nanosUntilReset) {
+    @Override int max(long nanosUntilResetIgnored) {
       return tracesPerSecond;
     }
   }
@@ -130,9 +132,13 @@ public class RateLimitingSampler extends Sampler {
     }
 
     @Override int max(long nanosUntilReset) {
-      int decisecondsUntilReset = ((int) nanosUntilReset / NANOS_PER_DECISECOND);
-      int index = decisecondsUntilReset == 0 ? 0 : 10 - decisecondsUntilReset;
-      return max[index];
+      // Check to see if we are in the first or last interval
+      if (nanosUntilReset > NANOS_PER_SECOND - NANOS_PER_DECISECOND) return max[0];
+      if (nanosUntilReset < NANOS_PER_DECISECOND) return max[9];
+
+      // Choose a slot based on the remaining deciseconds
+      int decisecondsUntilReset = (int) (nanosUntilReset / NANOS_PER_DECISECOND);
+      return max[10 - decisecondsUntilReset];
     }
   }
 }
