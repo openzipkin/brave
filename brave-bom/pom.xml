@@ -14,7 +14,7 @@
 
     <!-- use the same values in ../pom.xml -->
     <zipkin.version>2.12.5</zipkin.version>
-    <zipkin-reporter.version>2.8.1</zipkin-reporter.version>
+    <zipkin-reporter.version>2.8.3</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -79,7 +79,7 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.zipkin.reporter2</groupId>
+        <groupId>org.apache.zipkin.reporter2</groupId>
         <artifactId>zipkin-reporter-bom</artifactId>
         <version>${zipkin-reporter.version}</version>
         <type>pom</type>
