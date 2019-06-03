@@ -18,14 +18,16 @@ package brave.features.opentracing;
 
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.SpanContext;
+import java.util.Collections;
 import java.util.Map;
 
-final class BraveSpanContext implements SpanContext {
-
-  static BraveSpanContext wrap(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    return new BraveSpanContext(context);
+class BraveSpanContext implements SpanContext {
+  static BraveSpanContext create(TraceContextOrSamplingFlags extractionResult) {
+    return extractionResult.context() != null
+      ? new BraveSpanContext(extractionResult.context())
+      : new BraveSpanContext.Incomplete(extractionResult);
   }
 
   final TraceContext context;
@@ -34,11 +36,31 @@ final class BraveSpanContext implements SpanContext {
     this.context = context;
   }
 
-  final TraceContext unwrap() {
-    return context;
+  @Override public String toTraceId() {
+    return context != null ? context.traceIdString() : null;
+  }
+
+  @Override public String toSpanId() {
+    return context != null ? context.spanIdString() : null;
   }
 
   @Override public Iterable<Map.Entry<String, String>> baggageItems() {
+    if (context == null) return Collections.emptyList();
     return ExtraFieldPropagation.getAll(context).entrySet();
+  }
+
+  static final class Complete extends BraveSpanContext {
+    Complete(TraceContext context) {
+      super(context);
+    }
+  }
+
+  static final class Incomplete extends BraveSpanContext {
+    final TraceContextOrSamplingFlags extractionResult;
+
+    Incomplete(TraceContextOrSamplingFlags extractionResult) {
+      super(extractionResult.context());
+      this.extractionResult = extractionResult;
+    }
   }
 }

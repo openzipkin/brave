@@ -105,7 +105,7 @@ public class FinagleContextInteropTest {
    * this detail to allow interop between finagle and {@link CurrentTraceContext}.
    */
   static class FinagleCurrentTraceContext extends CurrentTraceContext {
-    static final MarshalledContext.Key<TraceId> TRACE_ID_KEY = Trace$.MODULE$.idCtx();
+    static final MarshalledContext.Key<TraceId> TRACE_ID_KEY = Trace$.MODULE$.TraceIdContext();
 
     final Local broadcastLocal;
 
@@ -116,7 +116,7 @@ public class FinagleContextInteropTest {
     }
 
     @Override public TraceContext get() {
-      Option<TraceId> option = broadcast().get(Trace$.MODULE$.idCtx());
+      Option<TraceId> option = broadcast().get(Trace$.MODULE$.TraceIdContext());
       if (option.isEmpty()) return null;
       return toTraceContext(option.get());
     }

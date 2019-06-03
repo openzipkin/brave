@@ -238,9 +238,9 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       RealKey that = (RealKey) other;
       TraceContext thatContext = that.get();
       if (thatContext == null) return false;
-      return (traceIdHigh == thatContext.traceIdHigh())
-          && (traceId == thatContext.traceId())
-          && (spanId == thatContext.spanId())
+      return traceIdHigh == thatContext.traceIdHigh()
+          && traceId == thatContext.traceId()
+          && spanId == thatContext.spanId()
           && shared == thatContext.shared();
     }
   }

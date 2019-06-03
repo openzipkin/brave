@@ -33,13 +33,16 @@
     <!-- mysql-connector-java 8+ requires Java 8 -->
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
+
+    <!-- disable errorprone return type warning as we do not control the type QueryInterceptor -->
+    <errorprone.args>-Xep:TypeParameterUnusedInFormals:OFF</errorprone.args>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>8.0.15</version>
+      <version>8.0.16</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

@@ -17,7 +17,9 @@
 package brave.features.opentracing;
 
 import brave.propagation.ExtraFieldPropagation;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
+import io.opentracing.tag.Tag;
 import java.util.Map;
 
 final class BraveSpan implements io.opentracing.Span {
@@ -62,6 +64,13 @@ final class BraveSpan implements io.opentracing.Span {
 
   @Override public io.opentracing.Span setTag(String key, Number value) {
     return setTag(key, value.toString());
+  }
+
+  @Override public <T> Span setTag(Tag<T> tag, T t) {
+    if (t instanceof String) return setTag(tag.getKey(), (String) t);
+    if (t instanceof Number) return setTag(tag.getKey(), (Number) t);
+    if (t instanceof Boolean) return setTag(tag.getKey(), (Boolean) t);
+    throw new IllegalArgumentException("tag value not a string, number or boolean: " + tag);
   }
 
   @Override public io.opentracing.Span log(Map<String, ?> fields) {

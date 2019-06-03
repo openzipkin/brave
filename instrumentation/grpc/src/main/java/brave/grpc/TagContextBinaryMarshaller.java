@@ -76,7 +76,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
         break;
       }
     }
-    return result;
+    return result; // intentionally mutable
   }
 
   // like census, this currently assumes both key and value are ascii
@@ -125,7 +125,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
 
       if (length > 127) { // varint encode over 2 bytes
         buf[pos++] = (byte) ((length & 0x7f) | 0x80);
-        buf[pos++] = (byte) ((length >>> 7));
+        buf[pos++] = (byte) (length >>> 7);
       } else {
         buf[pos++] = (byte) length;
       }
@@ -151,7 +151,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
         Platform.get().log("Greater than 14-bit varint at position {0}", pos, null);
         return -1;
       }
-      return b1 & 0x7f | b2 << 28;
+      return (b1 & 0x7f) | b2 << 28;
     }
 
     String readAsciiString(int length) {

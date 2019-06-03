@@ -38,6 +38,7 @@ import io.grpc.stub.StreamObserver;
 import io.opencensus.common.Scope;
 import io.opencensus.contrib.grpc.metrics.RpcMeasureConstants;
 import io.opencensus.implcore.tags.TagMapImpl;
+import io.opencensus.implcore.tags.TagValueWithMetadata;
 import io.opencensus.tags.TagKey;
 import io.opencensus.tags.TagValue;
 import io.opencensus.tags.Tags;
@@ -72,16 +73,16 @@ public class ITCensusInterop {
     /** This verifies internal state by writing to both brave and census apis */
     @Override
     public void sayHello(HelloRequest req, StreamObserver<HelloReply> responseObserver) {
-      Map<TagKey, TagValue> censusTags =
+      Map<TagKey, TagValueWithMetadata> censusTags =
           ((TagMapImpl) Tags.getTagger().getCurrentTagContext()).getTags();
 
       // Read in-process tags from census and write to both span apis
       io.opencensus.trace.Span censusSpan =
           io.opencensus.trace.Tracing.getTracer().getCurrentSpan();
-      for (Map.Entry<TagKey, TagValue> entry : censusTags.entrySet()) {
-        spanCustomizer.tag(entry.getKey().getName(), entry.getValue().asString());
-        censusSpan.putAttribute(
-            entry.getKey().getName(), stringAttributeValue(entry.getValue().asString()));
+      for (Map.Entry<TagKey, TagValueWithMetadata> entry : censusTags.entrySet()) {
+        String stringValue = entry.getValue().getTagValue().asString();
+        spanCustomizer.tag(entry.getKey().getName(), stringValue);
+        censusSpan.putAttribute(entry.getKey().getName(), stringAttributeValue(stringValue));
       }
 
       // Read in-process tags from brave's grpc hooks and write to both span apis

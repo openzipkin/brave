@@ -112,7 +112,7 @@ public class PredefinedPropagationFields extends PropagationFields {
       if (maybeValue == null) continue;
       contents.put(fieldNames[i], maybeValue);
     }
-    return contents;
+    return Collections.unmodifiableMap(contents);
   }
 
   int indexOf(String name) {

@@ -245,9 +245,7 @@ public final class TraceContextOrSamplingFlags {
     if (o == this) return true;
     if (!(o instanceof TraceContextOrSamplingFlags)) return false;
     TraceContextOrSamplingFlags that = (TraceContextOrSamplingFlags) o;
-    return (this.type == that.type)
-        && (this.value.equals(that.value))
-        && (this.extra.equals(that.extra));
+    return type == that.type && value.equals(that.value) && extra.equals(that.extra);
   }
 
   @Override public int hashCode() {

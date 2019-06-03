@@ -21,9 +21,9 @@ import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Collections;
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,7 +35,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin2.storage.InMemoryStorage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -47,7 +46,7 @@ import static org.mockito.Mockito.mock;
 public class OneWaySpanTest {
   @Rule public MockWebServer server = new MockWebServer();
 
-  InMemoryStorage storage = InMemoryStorage.newBuilder().build();
+  BlockingQueue<zipkin2.Span> spans = new LinkedBlockingQueue<>();
 
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing clientTracing = Tracing.newBuilder()
@@ -55,12 +54,14 @@ public class OneWaySpanTest {
       .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
           .addScopeDecorator(StrictScopeDecorator.create())
           .build())
-      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .spanReporter(spans::add)
       .build();
   Tracing serverTracing = Tracing.newBuilder()
       .localServiceName("server")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(s -> storage.spanConsumer().accept(Collections.singletonList(s)))
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
+      .spanReporter(spans::add)
       .build();
 
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);
@@ -92,7 +93,7 @@ public class OneWaySpanTest {
     serverTracing.close();
   }
 
-  @Test
+  @Test(timeout = 1000L)
   public void startWithOneTracerAndStopWithAnother() throws Exception {
     // start a new span representing a request
     Span span = clientTracing.tracer().newTrace();
@@ -107,15 +108,8 @@ public class OneWaySpanTest {
     // start the client side and flush instead of processing a response
     span.kind(Span.Kind.CLIENT).start().flush();
 
-    // block on the server handling the request, so we can run assertions
-    flushedIncomingRequest.await();
-
-    //// zipkin doesn't backfill timestamp and duration when storing raw spans
-    List<zipkin2.Span> spans =
-        storage.spanStore().getTrace(span.context().traceIdString()).execute();
-
     // check that the client send arrived first
-    zipkin2.Span clientSpan = spans.get(0);
+    zipkin2.Span clientSpan = spans.take();
     assertThat(clientSpan.name()).isNull();
     assertThat(clientSpan.localServiceName())
         .isEqualTo("client");
@@ -123,7 +117,7 @@ public class OneWaySpanTest {
         .isEqualTo(zipkin2.Span.Kind.CLIENT);
 
     // check that the server receive arrived last
-    zipkin2.Span serverSpan = spans.get(1);
+    zipkin2.Span serverSpan = spans.take();
     assertThat(serverSpan.name()).isEqualTo("get");
     assertThat(serverSpan.localServiceName())
         .isEqualTo("server");

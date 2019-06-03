@@ -72,7 +72,7 @@ public abstract class ServletContainer {
       server.join();
       server = null;
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new AssertionError(e);
     }
   }
 }

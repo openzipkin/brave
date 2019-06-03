@@ -16,11 +16,14 @@
  */
 package brave.features.opentracing;
 
-import brave.internal.Nullable;
+import brave.Tracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import io.opentracing.Scope;
 import io.opentracing.ScopeManager;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -36,26 +39,21 @@ import java.util.Map;
 import java.util.Set;
 
 final class BraveTracer implements Tracer {
-
   static BraveTracer wrap(brave.Tracing tracing) {
     if (tracing == null) throw new NullPointerException("tracing == null");
     return new BraveTracer(tracing);
   }
 
+  final Tracing tracing;
   final brave.Tracer tracer;
-  final Set<String> allPropagationKeys;
   final TraceContext.Injector<TextMap> injector;
-  final TraceContext.Extractor<TextMapView> extractor;
+  final TraceContext.Extractor<TextMap> extractor;
 
   BraveTracer(brave.Tracing tracing) {
+    this.tracing = tracing;
     tracer = tracing.tracer();
-    Propagation<String> propagation = tracing.propagation();
-    allPropagationKeys = lowercaseSet(propagation.keys());
-    if (propagation instanceof ExtraFieldPropagation) {
-      allPropagationKeys.addAll(((ExtraFieldPropagation<String>) propagation).extraKeys());
-    }
-    injector = tracing.propagation().injector(TextMap::put);
-    extractor = tracing.propagation().extractor(TextMapView::get);
+    injector = tracing.propagation().injector(TEXT_MAP_SETTER);
+    extractor = new TextMapExtractorAdaptor(tracing.propagation());
   }
 
   @Override public ScopeManager scopeManager() {
@@ -63,6 +61,10 @@ final class BraveTracer implements Tracer {
   }
 
   @Override public Span activeSpan() {
+    return null; // out-of-scope for a simple example
+  }
+
+  @Override public Scope activateSpan(Span span) {
     return null; // out-of-scope for a simple example
   }
 
@@ -82,44 +84,63 @@ final class BraveTracer implements Tracer {
     if (format != Format.Builtin.HTTP_HEADERS) {
       throw new UnsupportedOperationException(format.toString());
     }
-    TraceContextOrSamplingFlags extracted =
-        extractor.extract(new TextMapView(allPropagationKeys, (TextMap) carrier));
-    TraceContext context = extracted.context() != null
-        ? tracer.joinSpan(extracted.context()).context()
-        : tracer.nextSpan(extracted).context();
-    return new BraveSpanContext(context);
+    TraceContextOrSamplingFlags extractionResult = extractor.extract((TextMap) carrier);
+    return BraveSpanContext.create(extractionResult);
   }
+
+  @Override public void close() {
+    tracing.close();
+  }
+
+  static final Setter<TextMap, String> TEXT_MAP_SETTER = new Setter<TextMap, String>() {
+    @Override public void put(TextMap carrier, String key, String value) {
+      carrier.put(key, value);
+    }
+
+    @Override public String toString() {
+      return "TextMap::put";
+    }
+  };
+
+  static final Getter<Map<String, String>, String> LC_MAP_GETTER =
+    new Getter<Map<String, String>, String>() {
+      @Override public String get(Map<String, String> carrier, String key) {
+        return carrier.get(key.toLowerCase(Locale.ROOT));
+      }
+
+      @Override public String toString() {
+        return "Map::getLowerCase";
+      }
+    };
 
   /**
    * Eventhough TextMap is named like Map, it doesn't have a retrieve-by-key method.
    *
    * <p>See https://github.com/opentracing/opentracing-java/issues/305
    */
-  static final class TextMapView {
-    final Iterator<Map.Entry<String, String>> input;
-    final Map<String, String> cache = new LinkedHashMap<>();
+  static final class TextMapExtractorAdaptor implements TraceContext.Extractor<TextMap> {
     final Set<String> allPropagationKeys;
+    final TraceContext.Extractor<Map<String, String>> delegate;
 
-    TextMapView(Set<String> allPropagationKeys, TextMap input) {
-      this.allPropagationKeys = allPropagationKeys;
-      this.input = input.iterator();
+    TextMapExtractorAdaptor(Propagation<String> propagation) {
+      allPropagationKeys = lowercaseSet(propagation.keys());
+      if (propagation instanceof ExtraFieldPropagation) {
+        allPropagationKeys.addAll(((ExtraFieldPropagation<String>) propagation).extraKeys());
+      }
+      delegate = propagation.extractor(LC_MAP_GETTER);
     }
 
     /** Performs case-insensitive lookup */
-    @Nullable String get(String key) {
-      key = key.toLowerCase(Locale.ROOT);
-      String result = cache.get(key);
-      if (result != null) return result;
-      while (input.hasNext()) {
-        Map.Entry<String, String> next = input.next();
-        String keyInCarrier = next.getKey().toLowerCase(Locale.ROOT);
-        if (keyInCarrier.equals(key)) {
-          return next.getValue();
-        } else if (allPropagationKeys.contains(keyInCarrier)) {
-          cache.put(keyInCarrier, next.getValue());
+    @Override public TraceContextOrSamplingFlags extract(TextMap entries) {
+      Map<String, String> cache = new LinkedHashMap<>();
+      for (Iterator<Map.Entry<String, String>> it = entries.iterator(); it.hasNext(); ) {
+        Map.Entry<String, String> next = it.next();
+        String inputKey = next.getKey().toLowerCase(Locale.ROOT);
+        if (allPropagationKeys.contains(inputKey)) {
+          cache.put(inputKey, next.getValue());
         }
       }
-      return null;
+      return delegate.extract(cache);
     }
   }
 

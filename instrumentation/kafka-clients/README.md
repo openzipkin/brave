@@ -81,4 +81,4 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
 
 ## Notes
 * This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
-* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/blob/master/pages/instrumenting.md#message-tracing)
+* More information about "Message Tracing" [here](https://github.com/apache/incubator-zipkin-website/blob/master/pages/instrumenting.md#message-tracing)

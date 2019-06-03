@@ -31,7 +31,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   /**
    * Handle when the client doesn't actually make a client span
    *
-   * <p>See https://github.com/openzipkin/brave/issues/864
+   * <p>See https://github.com/apache/incubator-zipkin-brave/issues/864
    */
   @Test public void cacheControl() throws Exception {
     server.enqueue(new MockResponse()
