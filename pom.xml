@@ -28,7 +28,7 @@
 
   <groupId>org.apache.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>5.6.4</version>
+  <version>5.6.5-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Zipkin Brave (incubating) (parent)</name>
@@ -54,7 +54,7 @@
     <url>https://github.com/apache/incubator-zipkin-brave</url>
     <connection>scm:git:https://github.com/apache/incubator-zipkin-brave.git</connection>
     <developerConnection>scm:git:https://github.com/apache/incubator-zipkin-brave.git</developerConnection>
-    <tag>v5.6.4</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <!-- Developer section is needed for Maven Central, but doesn't need to include each person -->
