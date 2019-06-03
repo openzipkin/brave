@@ -20,7 +20,7 @@
 <assembly>
   <id>source-release</id>
   <!-- the only thing being done differently here is the base directory -->
-  <baseDirectory>zipkin-brave-${version}</baseDirectory>
+  <baseDirectory>brave-${version}</baseDirectory>
   <formats>
     <format>zip</format>
   </formats>
