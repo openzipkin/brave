@@ -33,11 +33,14 @@
     <main.basedir>${project.basedir}/..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
+
+    <!-- disable errorprone cast warning as PendingSpans internally hacks equals -->
+    <errorprone.args>-Xep:EqualsUnsafeCast:OFF</errorprone.args>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>io.zipkin.zipkin2</groupId>
+      <groupId>org.apache.zipkin.zipkin2</groupId>
       <artifactId>zipkin</artifactId>
     </dependency>
     <dependency>
@@ -68,7 +71,7 @@
     <dependency>
       <groupId>io.opentracing</groupId>
       <artifactId>opentracing-api</artifactId>
-      <version>0.31.0</version>
+      <version>0.33.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>

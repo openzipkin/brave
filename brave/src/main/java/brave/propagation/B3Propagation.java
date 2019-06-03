@@ -23,7 +23,7 @@ import java.util.List;
 import static java.util.Arrays.asList;
 
 /**
- * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
+ * Implements <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3 Propagation</a>
  */
 public final class B3Propagation<K> implements Propagation<K> {
 

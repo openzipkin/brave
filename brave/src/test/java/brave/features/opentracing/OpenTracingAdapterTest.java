@@ -23,8 +23,7 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
-import io.opentracing.propagation.TextMapExtractAdapter;
-import io.opentracing.propagation.TextMapInjectAdapter;
+import io.opentracing.propagation.TextMapAdapter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,7 +81,7 @@ public class OpenTracingAdapterTest {
   }
 
   @Test
-  public void extractTraceContext() throws Exception {
+  public void extractTraceContext() {
     Map<String, String> map = new LinkedHashMap<>();
     map.put("X-B3-TraceId", "0000000000000001");
     map.put("X-B3-SpanId", "0000000000000002");
@@ -90,13 +89,12 @@ public class OpenTracingAdapterTest {
     map.put("Client-Id", "sammy");
 
     BraveSpanContext openTracingContext =
-        opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapExtractAdapter(map));
+        opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapAdapter(map));
 
-    assertThat(openTracingContext.unwrap())
+    assertThat(openTracingContext.context)
         .isEqualTo(TraceContext.newBuilder()
             .traceId(1L)
             .spanId(2L)
-            .shared(true)
             .sampled(true).build());
 
     assertThat(openTracingContext.baggageItems())
@@ -104,15 +102,15 @@ public class OpenTracingAdapterTest {
   }
 
   @Test
-  public void injectTraceContext() throws Exception {
+  public void injectTraceContext() {
     TraceContext context = TraceContext.newBuilder()
         .traceId(1L)
         .spanId(2L)
         .sampled(true).build();
 
     Map<String, String> map = new LinkedHashMap<>();
-    TextMapInjectAdapter carrier = new TextMapInjectAdapter(map);
-    opentracing.inject(BraveSpanContext.wrap(context), Format.Builtin.HTTP_HEADERS, carrier);
+    TextMapAdapter carrier = new TextMapAdapter(map);
+    opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, carrier);
 
     assertThat(map).containsExactly(
         entry("X-B3-TraceId", "0000000000000001"),

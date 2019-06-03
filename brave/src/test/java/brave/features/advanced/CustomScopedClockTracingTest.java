@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * span if a query occurred on it. By default, spans have a clock pinned to the trace. To use a
  * clock pinned to a connection, you have to control timestamps manually.
  *
- * <p>See https://github.com/openzipkin/brave/issues/564
+ * <p>See https://github.com/apache/incubator-zipkin-brave/issues/564
  */
 public class CustomScopedClockTracingTest {
   List<Span> spans = new ArrayList();

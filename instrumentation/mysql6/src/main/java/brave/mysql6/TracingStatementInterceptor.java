@@ -34,7 +34,10 @@ import java.util.Properties;
  *
  * <p>To use it, append <code>?statementInterceptors=brave.mysql6.TracingStatementInterceptor</code>
  * to the end of the connection url.
+ *
+ * @deprecated mysql-connector-java v6 is not a long term release. Please upgrade to version 8
  */
+@Deprecated
 public class TracingStatementInterceptor implements StatementInterceptor {
 
   /**

@@ -145,7 +145,8 @@ public abstract class ITHttp {
             .withFailMessage("Span remaining in queue. Check for redundant reporting")
             .isNull();
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
       }
     }
   };

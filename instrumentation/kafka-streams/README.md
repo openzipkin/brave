@@ -55,7 +55,7 @@ builder.stream(inputTopic)
        .to(outputTopic);
 ```
 
-For more details, [see here](https://github.com/openzipkin/brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
+For more details, [see here](https://github.com/apache/incubator-zipkin-brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
 
 To create a Kafka Streams with Tracing Client Supplier enabled pass your topology and configuration like this:
 

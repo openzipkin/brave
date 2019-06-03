@@ -16,13 +16,10 @@
  */
 package brave.features.opentracing;
 
-import brave.Span;
-import brave.Tracer.SpanInScope;
-import brave.propagation.TraceContext;
 import io.opentracing.References;
-import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tag;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -32,25 +29,25 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
   final Map<String, String> tags = new LinkedHashMap<>();
 
   long timestamp;
-  TraceContext parent;
+  BraveSpanContext reference;
 
   BraveSpanBuilder(brave.Tracer tracer, String operationName) {
     this.tracer = tracer;
     this.operationName = operationName;
   }
 
-  @Override public BraveSpanBuilder asChildOf(SpanContext spanContext) {
-    return addReference(References.CHILD_OF, spanContext);
+  @Override public BraveSpanBuilder asChildOf(SpanContext parent) {
+    return addReference(References.CHILD_OF, parent);
   }
 
-  @Override public BraveSpanBuilder asChildOf(io.opentracing.Span span) {
-    return asChildOf(span.context());
+  @Override public BraveSpanBuilder asChildOf(io.opentracing.Span parent) {
+    return asChildOf(parent != null ? parent.context() : null);
   }
 
-  @Override public BraveSpanBuilder addReference(String reference, SpanContext spanContext) {
-    if (parent != null) return this;// yolo pick the first parent!
-    if (References.CHILD_OF.equals(reference) || References.FOLLOWS_FROM.equals(reference)) {
-      this.parent = ((BraveSpanContext) spanContext).context;
+  @Override public BraveSpanBuilder addReference(String type, SpanContext context) {
+    if (reference != null || context == null) return this; // yolo pick the first parent!
+    if (References.CHILD_OF.equals(type) || References.FOLLOWS_FROM.equals(type)) {
+      this.reference = (BraveSpanContext) context;
     }
     return this;
   }
@@ -72,32 +69,28 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
     return withTag(key, value.toString());
   }
 
+  @Override public <T> Tracer.SpanBuilder withTag(Tag<T> tag, T t) {
+    if (t instanceof String) return withTag(tag.getKey(), (String) t);
+    if (t instanceof Number) return withTag(tag.getKey(), (Number) t);
+    if (t instanceof Boolean) return withTag(tag.getKey(), (Boolean) t);
+    throw new IllegalArgumentException("tag value not a string, number or boolean: " + tag);
+  }
+
   @Override public BraveSpanBuilder withStartTimestamp(long timestamp) {
     this.timestamp = timestamp;
     return this;
   }
 
-  @Override public Scope startActive(boolean finishOnClose) {
-    BraveSpan span = startManual();
-    SpanInScope delegate = tracer.withSpanInScope(span.delegate);
-    return new Scope() {
-      @Override public void close() {
-        if (finishOnClose) span.finish();
-        delegate.close();
-      }
-
-      @Override public io.opentracing.Span span() {
-        return span;
-      }
-    };
-  }
-
-  @Override public BraveSpan startManual() {
-    return start();
-  }
-
   @Override public BraveSpan start() {
-    Span result = parent == null ? tracer.newTrace() : tracer.newChild(parent);
+    brave.Span result;
+    if (reference == null) {
+      result = tracer.nextSpan();
+    } else if (reference.context != null) {
+      result = tracer.newChild(reference.context);
+    } else {
+      result = tracer.nextSpan(((BraveSpanContext.Incomplete) reference).extractionResult);
+    }
+
     if (operationName != null) result.name(operationName);
     for (Map.Entry<String, String> tag : tags.entrySet()) {
       result.tag(tag.getKey(), tag.getValue());
