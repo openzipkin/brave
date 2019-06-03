@@ -33,7 +33,7 @@ httpTracing = httpTracing.toBuilder()
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
         customizer.name(spanName(adapter, req)); // default span name
-        customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
+        customizer.tag("http.url", adapter.url(req)); // the whole url, not just the path
       }
     })
     .build();
