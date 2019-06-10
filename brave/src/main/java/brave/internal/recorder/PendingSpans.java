@@ -46,7 +46,7 @@ import java.util.logging.Logger;
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
   private static final Logger LOG = Logger.getLogger(PendingSpans.class.getName());
 
-  // Eventhough we only put by RealKey, we allow get and remove by LookupKey
+  // Even though we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
   final FinishedSpanHandler zipkinHandler; // Used when flushing spans
