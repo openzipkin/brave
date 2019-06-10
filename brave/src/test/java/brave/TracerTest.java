@@ -709,7 +709,6 @@ public class TracerTest {
   @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush()
     throws InterruptedException {
     Tracer noOpTracer = Tracing.newBuilder()
-      .spanReporter(Reporter.NOOP)
       .build().tracer();
     simulateInProcessPropagation(noOpTracer, tracer);
     blockOnGC();
