@@ -396,7 +396,7 @@ public class TracerTest {
 
     try {
       assertThat(tracer.currentSpanCustomizer())
-          .isInstanceOf(RealSpanCustomizer.class);
+          .isInstanceOf(SpanCustomizerShield.class);
     } finally {
       parent.finish();
     }

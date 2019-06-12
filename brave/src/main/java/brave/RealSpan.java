@@ -29,7 +29,6 @@ final class RealSpan extends Span {
   final MutableSpan state;
   final Clock clock;
   final FinishedSpanHandler finishedSpanHandler;
-  final RealSpanCustomizer customizer;
 
   RealSpan(TraceContext context,
       PendingSpans pendingSpans,
@@ -41,7 +40,6 @@ final class RealSpan extends Span {
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
-    this.customizer = new RealSpanCustomizer(context, state, clock);
     this.finishedSpanHandler = finishedSpanHandler;
   }
 
@@ -54,7 +52,7 @@ final class RealSpan extends Span {
   }
 
   @Override public SpanCustomizer customizer() {
-    return new RealSpanCustomizer(context, state, clock);
+    return new SpanCustomizerShield(this);
   }
 
   @Override public Span start() {

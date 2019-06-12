@@ -19,6 +19,7 @@ package brave;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -223,6 +224,25 @@ public class TracerBenchmarks {
       span.tag("baz", "qux");
     } finally {
       span.finish();
+    }
+  }
+
+  @Benchmark public void currentSpan() {
+    currentSpan(tracer, extracted.context(), false);
+  }
+
+  @Benchmark public void currentSpan_tag() {
+    currentSpan(tracer, extracted.context(), true);
+  }
+
+  @Benchmark public void currentSpan_unsampled() {
+    currentSpan(tracer, unsampledExtracted.context(), false);
+  }
+
+  void currentSpan(Tracer tracer, TraceContext context, boolean tag) {
+    try (CurrentTraceContext.Scope scope = tracer.currentTraceContext.newScope(context)) {
+      Span span = tracer.currentSpan();
+      if (tag) span.tag("customer.id", "1234");
     }
   }
 
