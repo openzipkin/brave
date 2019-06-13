@@ -34,8 +34,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Test;
+import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
@@ -693,6 +695,52 @@ public class TracerTest {
         .isPositive();
   }
 
+  @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() throws InterruptedException {
+    simulateInProcessPropagation(tracer, tracer);
+    blockOnGC();
+    tracer.newTrace().start().abandon(); //trigger orphaned span check
+    assertThat(spans).hasSize(1);
+    assertThat(spans.stream()
+      .flatMap(span -> span.annotations().stream())
+      .map(Annotation::value)
+      .collect(Collectors.toList())).doesNotContain("brave.flush");
+  }
+
+  @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush()
+    throws InterruptedException {
+    Tracer noOpTracer = Tracing.newBuilder()
+      .build().tracer();
+    simulateInProcessPropagation(noOpTracer, tracer);
+    blockOnGC();
+    tracer.newTrace().start().abandon(); //trigger orphaned span check
+
+    // We expect the span to be reported to the NOOP reporter, and nothing to be reported to "spans"
+    assertThat(spans).hasSize(0);
+    assertThat(spans.stream()
+      .flatMap(span -> span.annotations().stream())
+      .map(Annotation::value)
+      .collect(Collectors.toList())).doesNotContain("brave.flush");
+  }
+
+  /**
+   * Must be a separate method from the test method to allow for local variables to be garbage
+   * collected
+   */
+  private static void simulateInProcessPropagation(Tracer tracer1, Tracer tracer2) {
+    Span span1 = tracer1.newTrace();
+    span1.start();
+
+    // Pretend we're on child thread
+    Tracer.SpanInScope spanInScope = tracer2.withSpanInScope(span1);
+
+    // Back on original thread
+    span1.finish();
+
+    // Pretend we're on child thread
+    Span span2 = tracer2.currentSpan();
+    spanInScope.close();
+  }
+
   @Test public void localRootId_joinSpan_notYetSampled() {
     TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).build();
     TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).build();
@@ -825,5 +873,10 @@ public class TracerTest {
       }
     }).spanReporter(Reporter.NOOP).build().tracer();
     return reportedNames;
+  }
+
+  static void blockOnGC() throws InterruptedException {
+    System.gc();
+    Thread.sleep(200L);
   }
 }
