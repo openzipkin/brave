@@ -28,7 +28,7 @@ import brave.propagation.TraceContext;
 final class LazySpan extends Span {
   final Tracer tracer;
   final TraceContext context;
-  volatile Span delegate;
+  Span delegate;
 
   LazySpan(Tracer tracer, TraceContext context) {
     this.tracer = tracer;
