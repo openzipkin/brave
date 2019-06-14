@@ -152,7 +152,7 @@ void userCode() {
 ```
 
 ### RPC tracing
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](http://zipkin.io/pages/existing_instrumentations.html)
+Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
 before rolling your own RPC instrumentation!
 
 RPC tracing is often done automatically by interceptors. Under the scenes,

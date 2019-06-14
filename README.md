@@ -63,7 +63,7 @@ release version for all components.
 ### Library Releases
 Releases are uploaded to [Bintray](https://bintray.com/openzipkin/maven/zipkin) and synchronized to [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
 ### Library Snapshots
-Snapshots are uploaded to [JFrog](http://oss.jfrog.org/artifactory/oss-snapshot-local) after commits to master.
+Snapshots are uploaded to [JFrog](https://oss.jfrog.org/artifactory/oss-snapshot-local) after commits to master.
 ### Version alignments
 When using multiple brave components, you'll want to align versions in
 one place. This allows you to more safely upgrade, with less worry about
