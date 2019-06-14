@@ -12,14 +12,14 @@ http headers.
 
 ## Setup
 
-Most importantly, you need a Tracer, configured to [report to Zipkin](https://github.com/apache/incubator-zipkin-reporter-java).
+Most importantly, you need a Tracer, configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
 
 Here's an example setup that sends trace data (spans) to Zipkin over
 http (as opposed to Kafka).
 
 ```java
 // Configure a reporter, which controls how often spans are sent
-//   (the dependency is org.apache.zipkin.reporter2:zipkin-sender-okhttp3)
+//   (the dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
 spanReporter = AsyncReporter.create(sender);
 
@@ -42,7 +42,7 @@ sender.close();
 
 ### Zipkin v1 setup
 If you need to connect to an older version of the Zipkin api, you can use the following to use
-Zipkin v1 format. See [zipkin-reporter](https://github.com/apache/incubator-zipkin-reporter-java#legacy-encoding) for more.
+Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-reporter-java#legacy-encoding) for more.
 
 ```java
 sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans");
@@ -152,7 +152,7 @@ void userCode() {
 ```
 
 ### RPC tracing
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.apache.org/pages/existing_instrumentations.html)
+Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
 before rolling your own RPC instrumentation!
 
 RPC tracing is often done automatically by interceptors. Under the scenes,
@@ -226,7 +226,7 @@ oneWayReceive.start().flush();
 next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
 ```
 
-**Note** The above propagation logic is a simplified version of our [http handlers](https://github.com/apache/incubator-zipkin-brave/tree/master/instrumentation/http#http-server).
+**Note** The above propagation logic is a simplified version of our [http handlers](https://github.com/openzipkin/brave/tree/master/instrumentation/http#http-server).
 
 There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
 
@@ -337,7 +337,7 @@ sent along with it, encoded as request headers:
 └──────────────────┘                                       └──────────────────┘
 ```
 
-The names above are from [B3 Propagation](https://github.com/apache/incubator-zipkin-b3-propagation),
+The names above are from [B3 Propagation](https://github.com/openzipkin/b3-propagation),
 which is built-in to Brave and has implementations in many languages and
 frameworks.
 
@@ -818,10 +818,10 @@ Brave 4 was designed to live alongside Brave 3. Using `TracerAdapter`,
 you can navigate between apis, buying you time to update as appropriate.
 
 Concepts are explained below, and there's an elaborate example of interop
-[here](https://github.com/apache/incubator-zipkin-brave/blob/4.13.4/archive/brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
+[here](https://github.com/openzipkin/brave/blob/4.13.4/archive/brave-core/src/test/java/brave/interop/MixedBraveVersionsExample.java).
 
-Note: The last version of Brave 3 types is `org.apache.zipkin.brave:brave-core:4.13.4`
-`TracerAdapter` also should work with later versions of `org.apache.zipkin.brave:brave`
+Note: The last version of Brave 3 types is `io.zipkin.brave:brave-core:4.13.4`
+`TracerAdapter` also should work with later versions of `io.zipkin.brave:brave`
 
 ### Creating a Brave 3 instance
 If your code uses Brave 3 apis, all you need to do is use `TracerAdapter`
@@ -877,8 +877,8 @@ brave3.serverTracer().setServerSend(); // for example
 ```
 
 ### Dependencies
-`org.apache.zipkin.brave:brave`(Brave 4) is an optional dependency of
-`org.apache.zipkin.brave:brave-core`(Brave 3). To use `TracerAdapter`, you need
+`io.zipkin.brave:brave`(Brave 4) is an optional dependency of
+`io.zipkin.brave:brave-core`(Brave 3). To use `TracerAdapter`, you need
 to declare an explicit dependency, and ensure both libraries are of the
 same version.
 
@@ -950,7 +950,7 @@ through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
 
 ### Current Tracer Api
-The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/apache/incubator-zipkin-brave/pull/210),
+The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
 which was itself influenced by Finagle's implicit Tracer api. This feature
 is noted as edge-case, when other means to get a reference to a trace are
 impossible. The only instrumentation that needed this was JDBC.
@@ -995,7 +995,7 @@ means is that `FinishedSpanHandler` will see data for that trace context.
 ### FinishedSpanHandler Api
 Brave had for a long time re-used zipkin's Reporter library, which is
 like Census' SpanExporter in so far that they both allow pushing a specific
-format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/apache/incubator-zipkin-brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
+format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
 is a little more like Census' [SpanExporter.Handler](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SpanExporter.java)
 in so far as the structure includes the trace context.. something we need
 access to in order to do things like advanced sampling.

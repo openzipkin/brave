@@ -1,23 +1,43 @@
-# Default JDK is really old: 1.8.0_31; Trusty's is less old: 1.8.0_51
-# https://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
-sudo: required
-dist: trusty
-
-language: java
-
-jdk:
-  - openjdk11
-
-services:
-  - rabbitmq
+# Run `travis lint` when changing this file to avoid breaking the build.
 
 cache:
   directories:
-  - $HOME/.m2
+    - $HOME/.m2
 
-  # Override default travis to use the maven wrapper
-install: ./mvnw install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
-script: ./mvnw clean verify -B
+language: java
+
+jdk: openjdk11
+
+before_install:
+  # allocate commits to CI, not the owner of the deploy key
+  - git config user.name "zipkinci"
+  - git config user.email "zipkinci+zipkin-dev@googlegroups.com"
+  # setup https authentication credentials, used by ./mvnw release:prepare
+  - git config credential.helper "store --file=.git/credentials"
+  - echo "https://$GH_TOKEN:@github.com" > .git/credentials
+
+# Override default travis to use the maven wrapper; skip license on travis due to #1512
+install: ./mvnw install -DskipTests=true -Dlicense.skip=true -Dmaven.javadoc.skip=true -B -V
+script: ./travis/publish.sh
+
+# Don't build release tags. This avoids publish conflicts because the version commit exists both on master and the release tag.
+# See https://github.com/travis-ci/travis-ci/issues/1532
+branches:
+  except:
+    - /^[0-9]/
+
+env:
+  global:
+    # Ex. travis encrypt BINTRAY_USER=your_github_account
+    - secure: "H/206l5ui8qWnFNMxB974bT0LgrLi8OxMk1YVR1Ndpw7+7MqnEqYCWTLFgsCyQ2BWD2oYVJVf+zG5kwGvPqXkVR4T2h+CTCMNGgoAlpLKRwn39HcBBRHTQGJzdcm7dCTP0WKDwEySYofLJ2pO0KelBubXkhAEQfSa5QL81mhDa0="
+    # Ex. travis encrypt BINTRAY_KEY=xxx-https://bintray.com/profile/edit-xxx --add
+    - secure: "F3g7AuO9HOsHCT2i2XgquNE6GiIuLNGDEJOK3N825ZvacRgU+7x+CJ1pn3Gr0I3TCw3821fAvWpgIhGXL1+l7pFPnQvNfB19eHowJE3YiKsMI/TsJDuOmzx8Kx3poVqPVlzd4lQ78wZ3BpVxwox+k9dXgWjcxjSITzlLib+WJZo="
+    # Ex. travis encrypt GH_TOKEN=XXX-https://github.com/settings/tokens-XXX --add
+    - secure: "AZysKsH7uI8h+w3Pszdc/O2Q1smDj8Xkpl6qq31M0eDr8fdyF50tEkyK48GHilWGj904T9OD/xDH7VN1Xpm92KsYP3pc7/lwNXXXLpID2z6k4oH6dwSn4Rrf18PJOZSaLNyAo+zYIoHnc/tGv5vau6XdMcs8hO73cUXnqpKku/o="
+    # Ex. travis encrypt SONATYPE_USER=your_sonatype_account
+    - secure: "diMmYEeyqSr1rJlsLWz1cVjpYncFRTBFHd0pMeUWSk+nQqFu6EWaU4TZw/1ALZYDFe7e1OOcLyQxh7gE4OFUMoC9FHuDwdusvdd+H/PvIfjxXjU/w1bEkOa4S89v/Sx69DXZEDgEAmmGOQj0is6zNUvB3ybWF63vjTD8GOURUIk="
+    # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
+    - secure: "L0ojowpsepOksZq9jHz2lI7Px9BZx5q5rxor+ziN1UuPEqJWBX9ssUY785mIBpr7HevQiHLpxrnVC42OGPzgbmXMeMqcg34h6uE4axCIKGJ16O5+3rpulQAXkXUTWCfrhsnozfqCO1exRXckjQ+6THOPUrBh3ZVN9ftS5eBZHfE="
 
 notifications:
   webhooks:
@@ -25,3 +45,6 @@ notifications:
       - https://webhooks.gitter.im/e/637e968b45032d16ee26
     on_success: change
     on_failure: always
+
+services:
+  - rabbitmq

@@ -74,4 +74,4 @@ void process(Message message) {
 
 ## Notes
 * This instrumentation library works with JMS 1.1 and 2.0
-* More information about "Message Tracing" [here](https://github.com/apache/incubator-zipkin-openzipkin.github.io/blob/master/pages/instrumenting.md#message-tracing)
+* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/blob/master/pages/instrumenting.md#message-tracing)
