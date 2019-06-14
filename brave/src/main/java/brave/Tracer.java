@@ -348,6 +348,10 @@ public class Tracer {
 
   /** Converts the context to a Span object after decorating it for propagation */
   public Span toSpan(TraceContext context) {
+    return _toSpan(decorateExternal(context));
+  }
+
+  TraceContext decorateExternal(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     if (alwaysSampleLocal) {
       int flags = InternalPropagation.instance.flags(context);
@@ -356,7 +360,7 @@ public class Tracer {
       }
     }
     // decorating here addresses join, new traces or children and ad-hoc trace contexts
-    return _toSpan(propagationFactory.decorate(context));
+    return propagationFactory.decorate(context);
   }
 
   Span _toSpan(TraceContext decorated) {
@@ -426,8 +430,7 @@ public class Tracer {
     // note: we don't need to decorate the context for propagation as it is only used for toString
     TraceContext context = currentTraceContext.get();
     if (context == null || isNoop(context)) return NoopSpanCustomizer.INSTANCE;
-    PendingSpan pendingSpan = pendingSpans.getOrCreate(context, false);
-    return new RealSpanCustomizer(context, pendingSpan.state(), pendingSpan.clock());
+    return new SpanCustomizerShield(toSpan(context));
   }
 
   /**
@@ -438,7 +441,13 @@ public class Tracer {
    */
   @Nullable public Span currentSpan() {
     TraceContext currentContext = currentTraceContext.get();
-    return currentContext != null ? toSpan(currentContext) : null;
+    if (currentContext == null) return null;
+    TraceContext decorated = decorateExternal(currentContext);
+    if (isNoop(decorated)) return new NoopSpan(decorated);
+
+    // Returns a lazy span to reduce overhead when tracer.currentSpan() is invoked just to see if
+    // one exists, or when the result is never used.
+    return new LazySpan(this, decorated);
   }
 
   /**

@@ -48,7 +48,7 @@ public class RealSpanTest {
   }
 
   @Test public void hasRealCustomizer() {
-    assertThat(span.customizer()).isInstanceOf(RealSpanCustomizer.class);
+    assertThat(span.customizer()).isInstanceOf(SpanCustomizerShield.class);
   }
 
   @Test public void start() {
