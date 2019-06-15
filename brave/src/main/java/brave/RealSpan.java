@@ -28,10 +28,10 @@ final class RealSpan extends Span {
   final FinishedSpanHandler finishedSpanHandler;
 
   RealSpan(TraceContext context,
-      PendingSpans pendingSpans,
-      MutableSpan state,
-      Clock clock,
-      FinishedSpanHandler finishedSpanHandler
+    PendingSpans pendingSpans,
+    MutableSpan state,
+    Clock clock,
+    FinishedSpanHandler finishedSpanHandler
   ) {
     this.context = context;
     this.pendingSpans = pendingSpans;
@@ -164,10 +164,22 @@ final class RealSpan extends Span {
     return "RealSpan(" + context + ")";
   }
 
+  /**
+   * This also matches equals against a lazy span. The rationale is least surprise to the user, as
+   * code should not act differently given an instance of lazy or {@link RealSpan}.
+   */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof RealSpan)) return false;
-    return context.equals(((RealSpan) o).context);
+    return isEqualToRealOrLazySpan(context, o);
+  }
+
+  static boolean isEqualToRealOrLazySpan(TraceContext context, Object o) {
+    if (o instanceof LazySpan) {
+      return context.equals(((LazySpan) o).context);
+    } else if (o instanceof RealSpan) {
+      return context.equals(((RealSpan) o).context);
+    }
+    return false;
   }
 
   @Override public int hashCode() {

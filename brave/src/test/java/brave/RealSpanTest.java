@@ -13,7 +13,9 @@
  */
 package brave;
 
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -27,9 +29,13 @@ import static org.assertj.core.api.Assertions.entry;
 public class RealSpanTest {
   List<zipkin2.Span> spans = new ArrayList();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(spans::add)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(spans::add)
+    .build();
+
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
+  TraceContext context2 = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
   Span span = tracing.tracer().newTrace();
 
   @After public void close() {
@@ -53,8 +59,8 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(zipkin2.Span::timestamp)
-        .isNotNull();
+      .extracting(zipkin2.Span::timestamp)
+      .isNotNull();
   }
 
   @Test public void start_timestamp() {
@@ -62,8 +68,8 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(zipkin2.Span::timestamp)
-        .isEqualTo(2L);
+      .extracting(zipkin2.Span::timestamp)
+      .isEqualTo(2L);
   }
 
   @Test public void finish() {
@@ -71,8 +77,8 @@ public class RealSpanTest {
     span.finish();
 
     assertThat(spans).hasSize(1).first()
-        .extracting(zipkin2.Span::duration)
-        .isNotNull();
+      .extracting(zipkin2.Span::duration)
+      .isNotNull();
   }
 
   @Test public void finish_timestamp() {
@@ -80,8 +86,8 @@ public class RealSpanTest {
     span.finish(5);
 
     assertThat(spans).hasSize(1).first()
-        .extracting(zipkin2.Span::duration)
-        .isEqualTo(3L);
+      .extracting(zipkin2.Span::duration)
+      .isEqualTo(3L);
   }
 
   @Test public void abandon() {
@@ -96,8 +102,8 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .extracting(Annotation::value)
-        .containsExactly("foo");
+      .extracting(Annotation::value)
+      .containsExactly("foo");
   }
 
   @Test public void remoteEndpoint_nulls() {
@@ -112,7 +118,7 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .containsExactly(Annotation.create(2L, "foo"));
+      .containsExactly(Annotation.create(2L, "foo"));
   }
 
   @Test public void tag() {
@@ -120,7 +126,7 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("foo", "bar"));
+      .containsExactly(entry("foo", "bar"));
   }
 
   @Test public void finished_client_annotation() {
@@ -173,7 +179,7 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("error", "this cake is a lie"));
+      .containsExactly(entry("error", "this cake is a lie"));
   }
 
   @Test public void error_noMessage() {
@@ -181,6 +187,39 @@ public class RealSpanTest {
     span.flush();
 
     assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("error", "RuntimeException"));
+      .containsOnly(entry("error", "RuntimeException"));
+  }
+
+  @Test public void equals_sameContext() {
+    Span one = tracing.tracer().toSpan(context), two = tracing.tracer().toSpan(context);
+
+    assertThat(one)
+      .isInstanceOf(RealSpan.class)
+      .isNotSameAs(two)
+      .isEqualTo(two);
+  }
+
+  @Test public void equals_notSameContext() {
+    Span one = tracing.tracer().toSpan(context), two = tracing.tracer().toSpan(context2);
+
+    assertThat(one).isNotEqualTo(two);
+  }
+
+  @Test public void equals_realSpan_sameContext() {
+    Span current;
+    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext().newScope(context)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(tracing.tracer().toSpan(context)).isEqualTo(current);
+  }
+
+  @Test public void equals_realSpan_notSameContext() {
+    Span current;
+    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext().newScope(context2)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(tracing.tracer().toSpan(context)).isNotEqualTo(current);
   }
 }
