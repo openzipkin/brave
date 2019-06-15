@@ -115,6 +115,40 @@ public class ITKafkaTracing {
   }
 
   @Test
+  public void report_producer_spans_to_queue() throws Exception {
+    String topic1 = testName.getMethodName() + "1";
+
+    producer = createTracingProducer();
+    consumer = kafkaRule.helper().createStringConsumer(); // not traced
+
+    for (int i = 0; i < 2; i++) {
+      producer.send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE)).get();
+    }
+    consumer.subscribe(Collections.singletonList(topic1));
+    ConsumerRecords<String, String> records = consumer.poll(10000);
+    assertThat(producerSpans).hasSize(2);
+    assertThat(records).hasSize(2);
+
+  }
+
+  @Test
+  public void report_consumer_spans_to_queue() throws Exception {
+    String topic1 = testName.getMethodName() + "1";
+
+    producer = kafkaRule.helper().createStringProducer(); // not traced
+    consumer = createTracingConsumer(topic1);
+
+    for (int i = 0; i < 2; i++) {
+      producer.send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE)).get();
+    }
+
+    ConsumerRecords<String, String> records = consumer.poll(10000);
+    assertThat(consumerSpans).hasSize(2);
+    assertThat(records).hasSize(2);
+
+  }
+
+  @Test
   public void poll_creates_one_consumer_span_per_extracted_context() throws Exception {
     String topic1 = testName.getMethodName() + "1";
     String topic2 = testName.getMethodName() + "2";
