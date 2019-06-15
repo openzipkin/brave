@@ -16,6 +16,8 @@ package brave;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 
+import static brave.RealSpan.isEqualToRealOrLazySpan;
+
 /**
  * This defers creation of a span until first public method call.
  *
@@ -112,12 +114,7 @@ final class LazySpan extends Span {
    */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    if (o instanceof LazySpan) {
-      return context.equals(((LazySpan) o).context);
-    } else if (o instanceof RealSpan) {
-      return context.equals(((RealSpan) o).context);
-    }
-    return false;
+    return isEqualToRealOrLazySpan(context, o);
   }
 
   /**
