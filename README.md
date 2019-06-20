@@ -3,10 +3,11 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.zipkin.brave/brave.svg)](https://search.maven.org/search?q=g:io.zipkin.brave%20AND%20a:brave)
 
 # Brave
-Brave is a library used to capture latency information about distributed
-operations. It reports this data to [Zipkin](https://zipkin.io) as spans.
 
-Zipkin is based on [Dapper](http://research.google.com/pubs/pub36356.html). Dapper (dutch) = Brave (english)... So, that's where the name comes from.
+Brave is a distributed tracing instrumentation library. Brave typically intercepts production requests to gather timing data,
+correlate and propagate trace contexts. While typically trace data is sent to [Zipkin server](https://github.com/openzipkin/zipkin/tree/master/zipkin-server), third-party plugins are available to send to alternate services such as [Amazon X-Ray](https://github.com/openzipkin/zipkin-aws/tree/master/reporter-xray-udp).
+
+This repository includes dependency-free Java libraries and instrumentation for common components used in production services. For example, this includes trace filters for Servlet and log correlation for Apache Log4J.
 
 You can look at our [example project](https://github.com/openzipkin/brave-webmvc-example) for how to trace a simple web application.
 
