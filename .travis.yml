@@ -26,25 +26,26 @@ branches:
   except:
     - /^[0-9]/
 
-env:
-  global:
-    # Ex. travis encrypt BINTRAY_USER=your_github_account
-    - secure: "H/206l5ui8qWnFNMxB974bT0LgrLi8OxMk1YVR1Ndpw7+7MqnEqYCWTLFgsCyQ2BWD2oYVJVf+zG5kwGvPqXkVR4T2h+CTCMNGgoAlpLKRwn39HcBBRHTQGJzdcm7dCTP0WKDwEySYofLJ2pO0KelBubXkhAEQfSa5QL81mhDa0="
-    # Ex. travis encrypt BINTRAY_KEY=xxx-https://bintray.com/profile/edit-xxx --add
-    - secure: "F3g7AuO9HOsHCT2i2XgquNE6GiIuLNGDEJOK3N825ZvacRgU+7x+CJ1pn3Gr0I3TCw3821fAvWpgIhGXL1+l7pFPnQvNfB19eHowJE3YiKsMI/TsJDuOmzx8Kx3poVqPVlzd4lQ78wZ3BpVxwox+k9dXgWjcxjSITzlLib+WJZo="
-    # Ex. travis encrypt GH_TOKEN=XXX-https://github.com/settings/tokens-XXX --add
-    - secure: "AZysKsH7uI8h+w3Pszdc/O2Q1smDj8Xkpl6qq31M0eDr8fdyF50tEkyK48GHilWGj904T9OD/xDH7VN1Xpm92KsYP3pc7/lwNXXXLpID2z6k4oH6dwSn4Rrf18PJOZSaLNyAo+zYIoHnc/tGv5vau6XdMcs8hO73cUXnqpKku/o="
-    # Ex. travis encrypt SONATYPE_USER=your_sonatype_account
-    - secure: "diMmYEeyqSr1rJlsLWz1cVjpYncFRTBFHd0pMeUWSk+nQqFu6EWaU4TZw/1ALZYDFe7e1OOcLyQxh7gE4OFUMoC9FHuDwdusvdd+H/PvIfjxXjU/w1bEkOa4S89v/Sx69DXZEDgEAmmGOQj0is6zNUvB3ybWF63vjTD8GOURUIk="
-    # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
-    - secure: "L0ojowpsepOksZq9jHz2lI7Px9BZx5q5rxor+ziN1UuPEqJWBX9ssUY785mIBpr7HevQiHLpxrnVC42OGPzgbmXMeMqcg34h6uE4axCIKGJ16O5+3rpulQAXkXUTWCfrhsnozfqCO1exRXckjQ+6THOPUrBh3ZVN9ftS5eBZHfE="
-
 notifications:
   webhooks:
     urls:
-      - https://webhooks.gitter.im/e/637e968b45032d16ee26
+      - https://webhooks.gitter.im/e/ead3c37d57527214e9f2
+      - https://webhooks.gitter.im/e/e57478303f87ecd7bffc
     on_success: change
     on_failure: always
+
+env:
+  global:
+    # Ex. travis encrypt BINTRAY_USER=your_github_account
+    - secure: "Xg7ERaJ+8TFkg/lBG6KSKwpQ/Wmw8/TdvyHagphCpGtlp8uAM92igOvXAWvzgnnQxmcPh9Ks0Z5/dJuSVTtxydIqKkac3LXa4AucHe7sxJSHBwFSy0WuWN4Apuvp3uglantjwxc+OEKF9LYI5IgEWW3IS7UD7zvlXPuJ0AjdeP0="
+    # Ex. travis encrypt BINTRAY_KEY=xxx-https://bintray.com/profile/edit-xxx --add
+    - secure: "ipXMdXTjN7Ilg+bxjYFXixrBVT5dr/TFKIMH54vCuirrPXkvccCXaMCndk+eN+pprlgjcNBqtb0j/TGAfasdX0jSxOeyAUv5E0hxuXDURZ/OQUEpo7YMjLXrAT1/lg8f343TLJnjujeyuabvMdmFcY9o6HWc+MqB4ZGzNgYNiQo="
+    # Ex. travis encrypt GH_TOKEN=XXX-https://github.com/settings/tokens-XXX --add
+    - secure: "PpQs4Eje8IYrCzLBWEv5nc2RL7XPubwhlFps4MO/LUvDg05cJpX4/rj5D0C99O9X9V9RnkDrvDkGxG02dwxZ6E1ciPheL7sGVDYlG75yDNipdSFGErNNH1W1wy4Q4PFbNg0i+vOB7MZas+MyGTZi7aZieX2f/ikVZvieCYoWwh8="
+    # Ex. travis encrypt SONATYPE_USER=your_sonatype_account
+    - secure: "Z6aQmONN3znLNtaMdt4ycoyHGdVqSC9W8N3FluZZFFYcoqhtR+p4RMWjpgloQHPZadLLuJIUijQgCYELCAFFkaIcanytIxWnVgK5/qpdfv7Vx52d5mwyCGq3jFtreVRNsd/4g6vkStr4nRf0+dZcDA4Y10CAlsZloF9ETPqQmco="
+    # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
+    - secure: "GY48c/XSiQ87QC7HadzzdXKeymnLYdkwrWliaZzD2djSOv2pgmDMrW05jxIN+81B4w9CcM8R18KsUjpkATWKIctl/+/9sXMlQcvRMdM3EFA66RJA7tg4BjRjRwSv7YQ+935dbCHB/C8Zw05TkUQMpbqtGzjpckGIhNViyOJWYIU="
 
 services:
   - rabbitmq
