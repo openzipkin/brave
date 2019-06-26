@@ -414,6 +414,11 @@ ExtraFieldPropagation.set(span.context(), "country-code", "FO");
 String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
 ```
 
+#### Redacting fields
+
+You may have some fields that you would like to propagate in-process, but not downstream to other
+hosts. Use `.addRedactedField()` to indicate a field which should not be injected into headers.
+
 ### Extracting a propagated context
 The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
 from an incoming request or message. The carrier is usually a request object

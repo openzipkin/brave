@@ -22,6 +22,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -88,7 +89,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
     String[] validated = ensureLowerCase(new LinkedHashSet<>(Arrays.asList(fieldNames)));
-    return new Factory(delegate, validated, validated);
+    return new Factory(delegate, validated, validated, new BitSet());
   }
 
   /** Wraps an underlying propagation implementation, pushing one or more fields */
@@ -97,7 +98,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
     String[] validated = ensureLowerCase(new LinkedHashSet<>(fieldNames));
-    return new Factory(delegate, validated, validated);
+    return new Factory(delegate, validated, validated, new BitSet());
   }
 
   public static FactoryBuilder newFactoryBuilder(Propagation.Factory delegate) {
@@ -107,11 +108,20 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   public static final class FactoryBuilder {
     final Propagation.Factory delegate;
     final Set<String> fieldNames = new LinkedHashSet<>();
+    final Set<String> redactedFieldNames = new LinkedHashSet<>();
     final Map<String, String[]> prefixedNames = new LinkedHashMap<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
       this.delegate = delegate;
+    }
+
+    /** Same as {@link #addField} except that this field is redacted from downstream propagation. */
+    public FactoryBuilder addRedactedField(String fieldName) {
+      fieldName = validateFieldName(fieldName);
+      fieldNames.add(fieldName);
+      redactedFieldNames.add(fieldName);
+      return this;
     }
 
     /**
@@ -121,10 +131,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
      * <p>Note: {@code fieldName} will be implicitly lower-cased.
      */
     public FactoryBuilder addField(String fieldName) {
-      if (fieldName == null) throw new NullPointerException("fieldName == null");
-      fieldName = fieldName.trim();
-      if (fieldName.isEmpty()) throw new IllegalArgumentException("fieldName is empty");
-      fieldNames.add(fieldName.toLowerCase(Locale.ROOT));
+      fieldNames.add(validateFieldName(fieldName));
       return this;
     }
 
@@ -143,25 +150,20 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
 
     public Factory build() {
-      if (prefixedNames.isEmpty()) {
-        String[] validated = ensureLowerCase(fieldNames);
-        return new Factory(delegate, validated, validated);
-      }
+      BitSet redacted = new BitSet();
       List<String> fields = new ArrayList<>(), keys = new ArrayList<>();
       List<Integer> keyToFieldList = new ArrayList<>();
-      if (!fieldNames.isEmpty()) {
-        List<String> validated = Arrays.asList(ensureLowerCase(fieldNames));
-        for (int i = 0, length = validated.size(); i < length; i++) {
-          String nextFieldName = validated.get(i);
-          fields.add(nextFieldName);
-          keys.add(nextFieldName);
-          keyToFieldList.add(i);
-        }
+      int i = 0;
+      for (String fieldName : fieldNames) {
+        if (redactedFieldNames.contains(fieldName)) redacted.set(i);
+        fields.add(fieldName);
+        keys.add(fieldName);
+        keyToFieldList.add(i++);
       }
       for (Map.Entry<String, String[]> entry : prefixedNames.entrySet()) {
         String nextPrefix = entry.getKey();
         String[] nextFieldNames = entry.getValue();
-        for (int i = 0; i < nextFieldNames.length; i++) {
+        for (i = 0; i < nextFieldNames.length; i++) {
           String nextFieldName = nextFieldNames[i];
           int index = fields.indexOf(nextFieldName);
           if (index == -1) {
@@ -172,13 +174,12 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
           keyToFieldList.add(index);
         }
       }
-      int keysLength = keys.size();
-      int[] keyToField = new int[keysLength];
-      for (int i = 0; i < keysLength; i++) {
+      int[] keyToField = new int[keys.size()];
+      for (i = 0; i < keyToField.length; i++) {
         keyToField[i] = keyToFieldList.get(i);
       }
       return new Factory(delegate, fields.toArray(new String[0]), keys.toArray(new String[0]),
-          keyToField);
+        keyToField, redacted);
     }
   }
 
@@ -255,10 +256,11 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     final String[] fieldNames;
     final String[] keyNames;
     final int[] keyToField;
+    final BitSet redacted;
     final ExtraFactory extraFactory;
 
-    Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames) {
-      this(delegate, fieldNames, keyNames, keyToField(keyNames));
+    Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames, BitSet redacted) {
+      this(delegate, fieldNames, keyNames, keyToField(keyNames), redacted);
     }
 
     /**
@@ -272,11 +274,12 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
 
     Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames,
-        int[] keyToField) {
+      int[] keyToField, BitSet redacted) {
       this.delegate = delegate;
       this.keyToField = keyToField;
       this.fieldNames = fieldNames;
       this.keyNames = keyNames;
+      this.redacted = redacted;
       this.extraFactory = new ExtraFactory(fieldNames);
     }
 
@@ -295,7 +298,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       for (int i = 0; i < length; i++) {
         keys.add(keyFactory.create(keyNames[i]));
       }
-      return new ExtraFieldPropagation<>(this, keyFactory, keys);
+      return new ExtraFieldPropagation<>(this, keyFactory, keys, redacted);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
@@ -307,11 +310,14 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   final Factory factory;
   final Propagation<K> delegate;
   final List<K> keys;
+  final BitSet redacted;
 
-  ExtraFieldPropagation(Factory factory, Propagation.KeyFactory<K> keyFactory, List<K> keys) {
+  ExtraFieldPropagation(Factory factory, Propagation.KeyFactory<K> keyFactory, List<K> keys,
+    BitSet redacted) {
     this.factory = factory;
     this.delegate = factory.delegate.create(keyFactory);
     this.keys = keys;
+    this.redacted = redacted;
   }
 
   /**
@@ -361,6 +367,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
     void inject(Extra fields, C carrier) {
       for (int i = 0, length = propagation.keys.size(); i < length; i++) {
+        if (propagation.redacted.get(i)) continue; // don't propagate downstream
         String maybeValue = fields.get(propagation.factory.keyToField[i]);
         if (maybeValue == null) continue;
         setter.put(carrier, propagation.keys.get(i), maybeValue);
@@ -444,5 +451,12 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   static String lowercase(String name) {
     if (name == null) throw new NullPointerException("name == null");
     return name.toLowerCase(Locale.ROOT);
+  }
+
+  static String validateFieldName(String fieldName) {
+    if (fieldName == null) throw new NullPointerException("fieldName == null");
+    fieldName = fieldName.toLowerCase(Locale.ROOT).trim();
+    if (fieldName.isEmpty()) throw new IllegalArgumentException("fieldName is empty");
+    return fieldName;
   }
 }

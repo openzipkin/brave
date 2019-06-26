@@ -150,8 +150,7 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * True if we are contributing to a span started by another tracer (ex on a different host).
-   * Defaults to false.
+   * True if we are recording a server span with the same span ID parsed from incoming headers.
    *
    * <h3>Impact on indexing</h3>
    * <p>When an RPC trace is client-originated, it will be sampled and the same span ID is used for
