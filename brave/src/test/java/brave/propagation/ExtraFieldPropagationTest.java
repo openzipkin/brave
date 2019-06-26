@@ -313,8 +313,8 @@ public class ExtraFieldPropagationTest {
   /** Redaction only applies outbound. Inbound parsing should be unaffected */
   @Test public void extract_redactedField() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addRedactedField("userId")
-      .addField("sessionId")
+      .addRedactedField("userid")
+      .addField("sessionid")
       .build();
     initialize();
 
@@ -324,27 +324,27 @@ public class ExtraFieldPropagationTest {
 
     context = extractor.extract(carrier).context();
 
-    assertThat(ExtraFieldPropagation.get(context, "userId"))
+    assertThat(ExtraFieldPropagation.get(context, "userid"))
         .isEqualTo("bob");
-    assertThat(ExtraFieldPropagation.get(context, "sessionId"))
+    assertThat(ExtraFieldPropagation.get(context, "sessionid"))
         .isEqualTo("12345");
   }
 
   /** Redaction prevents named fields from being written downstream. */
   @Test public void inject_redactedField() {
     factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addRedactedField("userId")
-      .addField("sessionId")
+      .addRedactedField("userid")
+      .addField("sessionid")
       .build();
     initialize();
 
-    ExtraFieldPropagation.set(context, "userId", "bob");
-    ExtraFieldPropagation.set(context, "sessionId", "12345");
+    ExtraFieldPropagation.set(context, "userid", "bob");
+    ExtraFieldPropagation.set(context, "sessionid", "12345");
 
     injector.inject(context, carrier);
 
     assertThat(carrier)
-      .doesNotContainKey("userId")
+      .doesNotContainKey("userid")
       .containsEntry("sessionid", "12345");
   }
 
