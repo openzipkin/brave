@@ -153,13 +153,17 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       BitSet redacted = new BitSet();
       List<String> fields = new ArrayList<>(), keys = new ArrayList<>();
       List<Integer> keyToFieldList = new ArrayList<>();
+
+      // First pass: add any field names that are used as propagation keys directly
       int i = 0;
       for (String fieldName : fieldNames) {
-        if (redactedFieldNames.contains(fieldName)) redacted.set(i);
+        if (redactedFieldNames.contains(fieldName)) redacted.set(i); // flag to redact on inject
         fields.add(fieldName);
         keys.add(fieldName);
         keyToFieldList.add(i++);
       }
+
+      // Second pass: add prefixed fields, noting a prefixed field could be a dupe of a non-prefixed
       for (Map.Entry<String, String[]> entry : prefixedNames.entrySet()) {
         String nextPrefix = entry.getKey();
         String[] nextFieldNames = entry.getValue();
@@ -174,6 +178,9 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
           keyToFieldList.add(index);
         }
       }
+
+      // Last pass: we may have multiple propagation keys pointing to the same field. Create an
+      // index so that an update a field mapped as "user-id" and "x-user-id" affect the same cell
       int[] keyToField = new int[keys.size()];
       for (i = 0; i < keyToField.length; i++) {
         keyToField[i] = keyToFieldList.get(i);
