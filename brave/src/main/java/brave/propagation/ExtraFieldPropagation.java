@@ -36,8 +36,7 @@ import java.util.Set;
 /**
  * Allows you to propagate predefined request-scoped fields, usually but not always HTTP headers.
  *
- * <p>For example, if you are in a Cloud Foundry environment, you might want to pass the request
- * ID:
+ * <p>For example, if you are in a Cloud Foundry environment, you might want to pass the request ID:
  * <pre>{@code
  * // when you initialize the builder, define the extra field you want to propagate
  * tracingBuilder.propagationFactory(
@@ -51,7 +50,20 @@ import java.util.Set;
  * ExtraFieldPropagation.get("x-country-code", "FO");
  * }</pre>
  *
- * <p>You may also need to propagate a trace context you aren't using. For example, you may be in
+ * <h3>Appropriate usage</h3>
+ * It is generally not a good idea to use the tracing system for application logic or critical code
+ * such as security context propagation.
+ *
+ * <p>Brave is an infrastructure library: you will create lock-in if you expose its apis into
+ * business code. Prefer exposing your own types for utility functions that use this class as this
+ * will insulate you from lock-in.
+ *
+ * <p>While it may seem convenient, do not use this for security context propagation as it was not
+ * designed for this use case. For example, anything placed in here can be accessed by any code, in
+ * the same classloader!
+ *
+ * <h3>Passing through alternate trace contexts</h3>
+ * <p>You may also need to propagate an second trace context transparently. For example, when in
  * an Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
  * correctly, pass-through its tracing header like so.
  *
@@ -61,6 +73,7 @@ import java.util.Set;
  * );
  * }</pre>
  *
+ * <h3>Prefixed fields</h3>
  * <p>You can also prefix fields, if they follow a common pattern. For example, the following will
  * propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
  * on the wire as "baggage-country-code" and "baggage-user-id" respectively.
