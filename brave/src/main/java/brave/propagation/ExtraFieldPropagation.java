@@ -59,7 +59,7 @@ import java.util.Set;
  * will insulate you from lock-in.
  *
  * <p>While it may seem convenient, do not use this for security context propagation as it was not
- * designed for this use case. For example, anything placed in here can be accessed by any code, in
+ * designed for this use case. For example, anything placed in here can be accessed by any code in
  * the same classloader!
  *
  * <h3>Passing through alternate trace contexts</h3>
