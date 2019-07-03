@@ -60,6 +60,17 @@
       <artifactId>mockito-core</artifactId>
       <version>@mockito.version@</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-jul</artifactId>
+      <version>@log4j.version@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>@log4j.version@</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -81,7 +92,12 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>@maven-failsafe-plugin.version@</version>
         <configuration>
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+          </systemPropertyVariables>
           <failIfNoTests>true</failIfNoTests>
+          <trimStackTrace>false</trimStackTrace>
+          <useFile>false</useFile>
           <includes>
             <include>**/IT*.java</include>
           </includes>
