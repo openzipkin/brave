@@ -49,6 +49,7 @@ public class SpanCustomizingApplicationEventListener
   final EventParser parser;
 
   @Inject SpanCustomizingApplicationEventListener(EventParser parser) {
+    if (parser == null) throw new NullPointerException("parser == null");
     this.parser = parser;
   }
 

@@ -15,7 +15,9 @@ package brave.jersey.server;
 
 import brave.SpanCustomizer;
 import brave.http.HttpTracing;
+import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.model.Invocable;
+import org.glassfish.jersey.server.model.ResourceMethod;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 
@@ -46,8 +48,9 @@ public class EventParser {
    * to change this behavior.
    */
   protected void requestMatched(RequestEvent event, SpanCustomizer customizer) {
-    Invocable i =
-        event.getContainerRequest().getUriInfo().getMatchedResourceMethod().getInvocable();
+    ResourceMethod method = event.getContainerRequest().getUriInfo().getMatchedResourceMethod();
+    if (method == null) return; // This case is extremely odd as this is called on REQUEST_MATCHED!
+    Invocable i = method.getInvocable();
     customizer.tag(RESOURCE_CLASS, i.getHandler().getHandlerClass().getSimpleName());
     customizer.tag(RESOURCE_METHOD, i.getHandlingMethod().getName());
   }
