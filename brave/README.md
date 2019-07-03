@@ -377,7 +377,19 @@ tracingBuilder.propagationFactory(
 requestId = ExtraFieldPropagation.get("x-vcap-request-id");
 ```
 
-You may also need to propagate a trace context you aren't using. For example, you may be in an
+#### Appropriate usage
+
+Brave is an infrastructure library: you will create lock-in if you expose its apis into
+business code. Prefer exposing your own types for utility functions that use this class as this
+will insulate you from lock-in.
+
+While it may seem convenient, do not use this for security context propagation as it was not
+designed for this use case. For example, anything placed in here can be accessed by any code in
+the same classloader!
+
+#### Passing through alternate trace contexts
+
+You may also need to propagate an second trace context transparently. For example, when in an
 Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
 correctly, pass-through its tracing header like so.
 
@@ -388,6 +400,7 @@ tracingBuilder.propagationFactory(
 ```
 
 #### Prefixed fields
+
 You can also prefix fields, if they follow a common pattern. For example, the following will
 propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
 on the wire as "baggage-country-code" and "baggage-user-id" respectively.
@@ -413,6 +426,11 @@ Or, if you have a reference to a trace context, use it explicitly
 ExtraFieldPropagation.set(span.context(), "country-code", "FO");
 String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
 ```
+
+#### Redacting fields
+
+You may have some fields that you would like to propagate in-process, but not downstream to other
+hosts. Use `.addRedactedField()` to indicate a field which should not be injected into headers.
 
 ### Extracting a propagated context
 The `TraceContext.Extractor<C>` reads trace identifiers and sampling status

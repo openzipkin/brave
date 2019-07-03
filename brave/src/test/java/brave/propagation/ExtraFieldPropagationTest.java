@@ -14,7 +14,6 @@
 package brave.propagation;
 
 import brave.Tracing;
-import brave.internal.PredefinedPropagationFields;
 import brave.internal.PropagationFields;
 import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Collections;
@@ -306,9 +305,47 @@ public class ExtraFieldPropagationTest {
     context = extractor.extract(carrier).context();
 
     assertThat(ExtraFieldPropagation.get(context, "userId"))
-        .isEqualTo("bob");
+      .isEqualTo("bob");
     assertThat(ExtraFieldPropagation.get(context, "sessionId"))
+      .isEqualTo("12345");
+  }
+
+  /** Redaction only applies outbound. Inbound parsing should be unaffected */
+  @Test public void extract_redactedField() {
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .addRedactedField("userid")
+      .addField("sessionid")
+      .build();
+    initialize();
+
+    injector.inject(context, carrier);
+    carrier.put("userid", "bob");
+    carrier.put("sessionid", "12345");
+
+    context = extractor.extract(carrier).context();
+
+    assertThat(ExtraFieldPropagation.get(context, "userid"))
+        .isEqualTo("bob");
+    assertThat(ExtraFieldPropagation.get(context, "sessionid"))
         .isEqualTo("12345");
+  }
+
+  /** Redaction prevents named fields from being written downstream. */
+  @Test public void inject_redactedField() {
+    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .addRedactedField("userid")
+      .addField("sessionid")
+      .build();
+    initialize();
+
+    ExtraFieldPropagation.set(context, "userid", "bob");
+    ExtraFieldPropagation.set(context, "sessionid", "12345");
+
+    injector.inject(context, carrier);
+
+    assertThat(carrier)
+      .doesNotContainKey("userid")
+      .containsEntry("sessionid", "12345");
   }
 
   @Test public void inject_field_multiple_prefixes() {
