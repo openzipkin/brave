@@ -31,7 +31,7 @@
     <main.signature.artifact>java16</main.signature.artifact>
 
     <protobuf.version>3.7.1</protobuf.version>
-    <opencensus.version>0.22.1</opencensus.version>
+    <opencensus.version>0.23.0</opencensus.version>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 

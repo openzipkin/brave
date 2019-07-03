@@ -440,7 +440,7 @@ public abstract class ITHttpServer extends ITHttp {
   /** like {@link #get(Request)} except doesn't throw unsupported on not found */
   Response call(Request request) throws IOException {
     try (Response response = client.newCall(request).execute()) {
-      if (!HttpHeaders.hasBody(response)) return response;
+      if (!HttpHeaders.promisesBody(response)) return response;
 
       // buffer response so tests can read it. Otherwise the finally block will drop it
       ResponseBody toReturn;

@@ -91,20 +91,20 @@
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.6.2.Final</resteasy.version>
 
-    <kafka.version>2.2.0</kafka.version>
+    <kafka.version>2.3.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.1.5</kafka-junit.version>
+    <kafka-junit.version>4.1.6</kafka-junit.version>
     <activemq.version>5.15.9</activemq.version>
     <spring-rabbit.version>1.7.13.RELEASE</spring-rabbit.version>
 
-    <finagle.version>19.5.1</finagle.version>
-    <log4j.version>2.11.2</log4j.version>
-    <okhttp.version>3.14.2</okhttp.version>
-    <httpclient.version>4.5.8</httpclient.version>
+    <finagle.version>19.6.0</finagle.version>
+    <log4j.version>2.12.0</log4j.version>
+    <okhttp.version>4.0.0</okhttp.version>
+    <httpclient.version>4.5.9</httpclient.version>
 
-    <grpc.version>1.21.0</grpc.version>
+    <grpc.version>1.22.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.34.Final</netty.version>
+    <netty.version>4.1.35.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.12</junit.version>
