@@ -15,7 +15,6 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerHandler;
-import brave.internal.Nullable;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -44,7 +43,7 @@ abstract class ServletRuntime {
     return (HttpServletResponse) response;
   }
 
-  abstract @Nullable Integer status(HttpServletResponse response);
+  abstract int status(HttpServletResponse response);
 
   abstract boolean isAsync(HttpServletRequest request);
 
@@ -80,7 +79,7 @@ abstract class ServletRuntime {
       return request.isAsyncStarted();
     }
 
-    @Override @Nullable Integer status(HttpServletResponse response) {
+    @Override int status(HttpServletResponse response) {
       return response.getStatus();
     }
 
@@ -167,7 +166,7 @@ abstract class ServletRuntime {
      * Eventhough the Servlet 2.5 version of HttpServletResponse doesn't have the getStatus method,
      * routine servlet runtimes, do, for example {@code org.eclipse.jetty.server.Response}
      */
-    @Override @Nullable Integer status(HttpServletResponse response) {
+    @Override int status(HttpServletResponse response) {
       // unwrap if we've decorated the response
       if (response instanceof HttpServletAdapter.DecoratedHttpServletResponse) {
         HttpServletResponseWrapper decorated = ((HttpServletResponseWrapper) response);
@@ -182,12 +181,12 @@ abstract class ServletRuntime {
       Object getStatusMethod = classesToCheck.get(clazz);
       if (getStatusMethod == RETURN_NULL ||
           (getStatusMethod == null && classesToCheck.size() == 10)) { // limit size
-        return null;
+        return 0;
       }
 
       // Now, we either have a cached method or we have room to cache a method
       if (getStatusMethod == null) {
-        if (clazz.isLocalClass() || clazz.isAnonymousClass()) return null; // don't cache
+        if (clazz.isLocalClass() || clazz.isAnonymousClass()) return 0; // don't cache
         try {
           // we don't check for accessibility as isAccessible is deprecated: just fail later
           getStatusMethod = clazz.getMethod("getStatus");
@@ -195,7 +194,7 @@ abstract class ServletRuntime {
         } catch (Throwable throwable) {
           Call.propagateIfFatal(throwable);
           getStatusMethod = RETURN_NULL;
-          return null;
+          return 0;
         } finally {
           // regardless of success or fail, replace the cache
           Map<Class<?>, Object> replacement = new LinkedHashMap<>(classesToCheck);
@@ -212,7 +211,7 @@ abstract class ServletRuntime {
         Map<Class<?>, Object> replacement = new LinkedHashMap<>(classesToCheck);
         replacement.put(clazz, RETURN_NULL);
         classToGetStatus.set(replacement); // prefer overriding on failure
-        return null;
+        return 0;
       }
     }
   }

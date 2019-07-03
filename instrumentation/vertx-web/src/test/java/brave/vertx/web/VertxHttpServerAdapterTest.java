@@ -14,14 +14,19 @@
 package brave.vertx.web;
 
 import io.vertx.core.http.HttpServerResponse;
-import java.lang.reflect.Proxy;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class VertxHttpServerAdapterTest {
+  @Mock HttpServerResponse response;
   VertxHttpServerAdapter adapter = new VertxHttpServerAdapter();
 
   @After public void clear() {
@@ -29,33 +34,39 @@ public class VertxHttpServerAdapterTest {
   }
 
   @Test public void methodFromResponse() {
-    HttpServerResponse response = dummyResponse();
-
     VertxHttpServerAdapter.setCurrentMethodAndPath("GET", null);
 
     assertThat(adapter.methodFromResponse(response))
-        .isEqualTo("GET");
+      .isEqualTo("GET");
   }
 
   @Test public void route_emptyByDefault() {
-    HttpServerResponse response = dummyResponse();
-
     VertxHttpServerAdapter.setCurrentMethodAndPath("GET", null);
 
     assertThat(adapter.route(response)).isEmpty();
   }
 
   @Test public void route() {
-    HttpServerResponse response = dummyResponse();
-
     VertxHttpServerAdapter.setCurrentMethodAndPath("GET", "/users/:userID");
 
     assertThat(adapter.route(response))
-        .isEqualTo("/users/:userID");
+      .isEqualTo("/users/:userID");
   }
 
   @Test public void setCurrentMethodAndPath_doesntPreventClassUnloading() {
     assertRunIsUnloadable(MethodFromResponse.class, getClass().getClassLoader());
+  }
+
+  @Test public void statusCodeAsInt() {
+    when(response.getStatusCode()).thenReturn(200);
+
+    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
+    assertThat(adapter.statusCode(response)).isEqualTo(200);
+  }
+
+  @Test public void statusCodeAsInt_zero() {
+    assertThat(adapter.statusCodeAsInt(response)).isZero();
+    assertThat(adapter.statusCode(response)).isNull();
   }
 
   static class MethodFromResponse implements Runnable {
@@ -65,16 +76,5 @@ public class VertxHttpServerAdapterTest {
       VertxHttpServerAdapter.setCurrentMethodAndPath("GET", null);
       adapter.methodFromResponse(null);
     }
-  }
-
-  /** In JRE 1.8, mockito crashes with 'Mockito cannot mock this class' */
-  HttpServerResponse dummyResponse() {
-    return (HttpServerResponse) Proxy.newProxyInstance(
-        getClass().getClassLoader(),
-        new Class[] {HttpServerResponse.class},
-        (proxy, method, methodArgs) -> {
-          throw new UnsupportedOperationException(
-              "Unsupported method: " + method.getName());
-        });
   }
 }

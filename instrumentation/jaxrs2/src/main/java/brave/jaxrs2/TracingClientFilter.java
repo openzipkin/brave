@@ -19,6 +19,7 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import javax.annotation.Priority;
@@ -110,12 +111,14 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
       return request.getHeaderString(name);
     }
 
-    @Override public Integer statusCode(ClientResponseContext response) {
-      return statusCodeAsInt(response);
+    @Override @Nullable public Integer statusCode(ClientResponseContext response) {
+      int result = statusCodeAsInt(response);
+      return result != 0 ? result : null;
     }
 
     @Override public int statusCodeAsInt(ClientResponseContext response) {
-      return response.getStatus();
+      int result = response.getStatus();
+      return result != -1 ? result : 0;
     }
   }
 }

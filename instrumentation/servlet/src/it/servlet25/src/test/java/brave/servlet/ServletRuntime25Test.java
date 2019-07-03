@@ -45,7 +45,7 @@ public class ServletRuntime25Test {
 
   @Test public void status_fromInvalidMethod() throws Exception {
     assertThat(ServletRuntime.get().status(new WithInvalidGetStatus()))
-        .isNull();
+        .isZero();
   }
 
   public static class WithInvalidGetStatus extends WithoutGetStatus {

@@ -14,10 +14,12 @@
 package brave.httpclient;
 
 import brave.Span;
+import brave.internal.Nullable;
 import java.net.InetAddress;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpRequestWrapper;
 
 final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequestWrapper, HttpResponse> {
@@ -42,12 +44,14 @@ final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequestWrapper,
     return result != null ? result.getValue() : null;
   }
 
-  @Override public Integer statusCode(HttpResponse response) {
-    return statusCodeAsInt(response);
+  @Override @Nullable public Integer statusCode(HttpResponse response) {
+    int result = statusCodeAsInt(response);
+    return result != 0 ? result : null;
   }
 
   @Override public int statusCodeAsInt(HttpResponse response) {
-    return response.getStatusLine().getStatusCode();
+    StatusLine statusLine = response.getStatusLine();
+    return statusLine != null ? statusLine.getStatusCode() : 0;
   }
 
   static void parseTargetAddress(HttpRequestWrapper httpRequest, Span span) {

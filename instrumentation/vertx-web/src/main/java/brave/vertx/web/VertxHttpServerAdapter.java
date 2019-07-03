@@ -15,6 +15,7 @@ package brave.vertx.web;
 
 import brave.Span;
 import brave.http.HttpServerAdapter;
+import brave.internal.Nullable;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.SocketAddress;
@@ -61,8 +62,9 @@ class VertxHttpServerAdapter extends HttpServerAdapter<HttpServerRequest, HttpSe
     return result != null ? result : "";
   }
 
-  @Override public Integer statusCode(HttpServerResponse response) {
-    return statusCodeAsInt(response);
+  @Override @Nullable public Integer statusCode(HttpServerResponse response) {
+    int result = statusCodeAsInt(response);
+    return result != 0 ? result : null;
   }
 
   @Override public int statusCodeAsInt(HttpServerResponse response) {
