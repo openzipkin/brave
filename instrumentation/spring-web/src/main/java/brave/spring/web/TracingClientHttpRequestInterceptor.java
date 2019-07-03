@@ -18,6 +18,7 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
@@ -88,11 +89,16 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
       return result != null ? result.toString() : "";
     }
 
-    @Override public Integer statusCode(ClientHttpResponse response) {
+    @Override @Nullable public Integer statusCode(ClientHttpResponse response) {
+      int result = statusCodeAsInt(response);
+      return result != 0 ? result : null;
+    }
+
+    @Override public int statusCodeAsInt(ClientHttpResponse response) {
       try {
         return response.getRawStatusCode();
-      } catch (IOException e) {
-        return null;
+      } catch (IllegalArgumentException | IOException e) {
+        return 0;
       }
     }
   }

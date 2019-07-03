@@ -17,6 +17,7 @@ import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -32,6 +33,7 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
+import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
@@ -157,12 +159,14 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       return result != null ? result.getValue() : null;
     }
 
-    @Override public Integer statusCode(HttpResponse response) {
-      return statusCodeAsInt(response);
+    @Override @Nullable public Integer statusCode(HttpResponse response) {
+      int result = statusCodeAsInt(response);
+      return result != 0 ? result : null;
     }
 
     @Override public int statusCodeAsInt(HttpResponse response) {
-      return response.getStatusLine().getStatusCode();
+      StatusLine statusLine = response.getStatusLine();
+      return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }
 

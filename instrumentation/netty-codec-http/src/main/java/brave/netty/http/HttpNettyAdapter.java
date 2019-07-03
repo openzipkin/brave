@@ -14,8 +14,10 @@
 package brave.netty.http;
 
 import brave.http.HttpServerAdapter;
+import brave.internal.Nullable;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
 final class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse> {
   @Override public String method(HttpRequest request) {
@@ -33,11 +35,13 @@ final class HttpNettyAdapter extends HttpServerAdapter<HttpRequest, HttpResponse
     return request.headers().get(name);
   }
 
-  @Override public Integer statusCode(HttpResponse response) {
-    return statusCodeAsInt(response);
+  @Override @Nullable public Integer statusCode(HttpResponse response) {
+    int result = statusCodeAsInt(response);
+    return result != 0 ? result : null;
   }
 
   @Override public int statusCodeAsInt(HttpResponse response) {
-    return response.status().code();
+    HttpResponseStatus status = response.status();
+    return status != null ? status.code() : 0;
   }
 }

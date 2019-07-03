@@ -68,8 +68,9 @@ final class TracingInterceptor implements Interceptor {
       return request.header(name);
     }
 
-    @Override public Integer statusCode(Response response) {
-      return statusCodeAsInt(response);
+    @Override @Nullable public Integer statusCode(Response response) {
+      int result = statusCodeAsInt(response);
+      return result != 0 ? result : null;
     }
 
     @Override public int statusCodeAsInt(Response response) {

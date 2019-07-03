@@ -18,6 +18,7 @@ import brave.Tracer;
 import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import javax.inject.Inject;
@@ -101,8 +102,9 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       return (String) event.getContainerRequest().getProperty("http.route");
     }
 
-    @Override public Integer statusCode(RequestEvent event) {
-      return statusCodeAsInt(event);
+    @Override @Nullable public Integer statusCode(RequestEvent response) {
+      int result = statusCodeAsInt(response);
+      return result != 0 ? result : null;
     }
 
     @Override public int statusCodeAsInt(RequestEvent event) {

@@ -15,6 +15,7 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerAdapter;
+import brave.internal.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
@@ -88,7 +89,12 @@ public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, Ht
     return null;
   }
 
-  @Override public Integer statusCode(HttpServletResponse response) {
+  @Override @Nullable public Integer statusCode(HttpServletResponse response) {
+    int result = statusCodeAsInt(response);
+    return result != 0 ? result : null;
+  }
+
+  @Override public int statusCodeAsInt(HttpServletResponse response) {
     return servlet.status(response);
   }
 
