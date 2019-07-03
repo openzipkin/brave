@@ -16,12 +16,15 @@ package brave.httpclient;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -29,7 +32,10 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class HttpAdapterTest {
   @Mock HttpRequestWrapper request;
+  @Mock HttpResponse response;
+  @Mock StatusLine statusLine;
   @Mock brave.Span span;
+  HttpAdapter adapter = new HttpAdapter();
 
   @Test public void parseTargetAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
@@ -75,5 +81,18 @@ public class HttpAdapterTest {
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", 9999);
     verifyNoMoreInteractions(span);
+  }
+
+  @Test public void statusCodeAsInt() {
+    when(response.getStatusLine()).thenReturn(statusLine);
+    when(statusLine.getStatusCode()).thenReturn(200);
+
+    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
+    assertThat(adapter.statusCode(response)).isEqualTo(200);
+  }
+
+  @Test public void statusCodeAsInt_zeroWhenNoStatusLine() {
+    assertThat(adapter.statusCodeAsInt(response)).isZero();
+    assertThat(adapter.statusCode(response)).isNull();
   }
 }

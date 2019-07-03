@@ -245,7 +245,7 @@ abstract class ServletRuntime {
       super.setStatus(sc);
     }
 
-    int getStatusInServlet25() {
+    public int getStatusInServlet25() {
       return httpStatus;
     }
   }

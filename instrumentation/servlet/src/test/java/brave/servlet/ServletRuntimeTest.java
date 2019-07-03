@@ -35,7 +35,7 @@ public class ServletRuntimeTest {
       }
     };
     assertThat(servlet25.status(jettyResponse))
-        .isNull();
+      .isZero();
   }
 
   @Test public void servlet25_status_doesntParseLocalTypes() throws Exception {
@@ -43,7 +43,7 @@ public class ServletRuntimeTest {
     class LocalResponse extends HttpServletResponseImpl {
     }
     assertThat(servlet25.status(new LocalResponse()))
-        .isNull();
+      .isZero();
   }
 
   class ExceptionResponse extends HttpServletResponseImpl {
@@ -54,7 +54,7 @@ public class ServletRuntimeTest {
 
   @Test public void servlet25_status_nullOnException() throws Exception {
     assertThat(servlet25.status(new ExceptionResponse()))
-        .isNull();
+      .isZero();
   }
 
   class Response1 extends HttpServletResponseImpl {
@@ -112,7 +112,7 @@ public class ServletRuntimeTest {
     assertThat(servlet25.status(new Response10()))
         .isEqualTo(200);
     assertThat(servlet25.status(new Response11()))
-        .isNull();
+         .isZero();
   }
 
   public static class HttpServletResponseImpl implements HttpServletResponse {
