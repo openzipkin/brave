@@ -19,28 +19,33 @@ import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
 
 /**
- * Adds correlation properties "traceId", "parentId" and "spanId" when a {@link
- * brave.Tracer#currentSpan() span is current}.
+ * Adds correlation properties "traceId", "parentId", "spanId" and "sampled" when a {@link
+ * brave.Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log correlation.
+ * "parentId" is used for scenarios such as log parsing that reconstructs the trace tree. "sampled"
+ * is used as a hint that a span found in logs might be in Zipkin.
  */
 public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
 
   /**
-   * When the input is not null "traceId", "parentId" and "spanId" correlation properties are saved
-   * off and replaced with those of the current span. When the input is null, these properties are
-   * removed. Either way, "traceId", "parentId" and "spanId" properties are restored on {@linkplain
-   * Scope#close()}.
+   * When the input is not null "traceId", "parentId", "spanId" and "sampled" correlation properties
+   * are saved off and replaced with those of the current span. When the input is null, these
+   * properties are removed. Either way, "traceId", "parentId", "spanId" and "sampled" properties
+   * are restored on {@linkplain Scope#close()}.
    */
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
     String previousTraceId = get("traceId");
     String previousSpanId = get("spanId");
     String previousParentId = get("parentId");
+    String previousSampled = get("sampled");
 
     if (currentSpan != null) {
-      maybeReplaceTraceContext(currentSpan, previousTraceId, previousParentId, previousSpanId);
+      maybeReplaceTraceContext(
+          currentSpan, previousTraceId, previousParentId, previousSpanId, previousSampled);
     } else {
       remove("traceId");
       remove("parentId");
       remove("spanId");
+      remove("sampled");
     }
 
     class CorrelationFieldCurrentTraceContextScope implements Scope {
@@ -49,6 +54,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
         replace("traceId", previousTraceId);
         replace("parentId", previousParentId);
         replace("spanId", previousSpanId);
+        replace("sampled", previousSampled);
       }
     }
     return new CorrelationFieldCurrentTraceContextScope();
@@ -62,7 +68,8 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
       TraceContext currentSpan,
       String previousTraceId,
       @Nullable String previousParentId,
-      String previousSpanId
+      String previousSpanId,
+      @Nullable String previousSampled
   ) {
     String traceId = currentSpan.traceIdString();
     if (!traceId.equals(previousTraceId)) put("traceId", currentSpan.traceIdString());
@@ -77,6 +84,15 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
 
     String spanId = currentSpan.spanIdString();
     if (!spanId.equals(previousSpanId)) put("spanId", spanId);
+
+    Boolean sampled = currentSpan.sampled();
+    if (sampled == null) {
+      remove("sampled");
+    } else {
+      String sampledString = sampled.toString();
+      boolean sameSampled = sampledString.equals(previousSampled);
+      if (!sameSampled) put("sampled", sampledString);
+    }
   }
 
   /**

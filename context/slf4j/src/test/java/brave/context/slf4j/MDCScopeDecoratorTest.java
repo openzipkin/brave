@@ -37,7 +37,7 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     }
   }
 
-  protected void verifyImplicitContext(@Nullable TraceContext context) {
+  @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
       assertThat(MDC.get("traceId"))
           .isEqualTo(context.traceIdString());
@@ -45,12 +45,17 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
           .isEqualTo(context.parentIdString());
       assertThat(MDC.get("spanId"))
           .isEqualTo(context.spanIdString());
+      Boolean sampled = context.sampled();
+      assertThat(MDC.get("sampled"))
+          .isEqualTo(sampled != null ? sampled.toString() : null);
     } else {
       assertThat(MDC.get("traceId"))
           .isNull();
       assertThat(MDC.get("parentId"))
           .isNull();
       assertThat(MDC.get("spanId"))
+          .isNull();
+      assertThat(MDC.get("sampled"))
           .isNull();
     }
   }

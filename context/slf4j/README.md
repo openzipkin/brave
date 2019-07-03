@@ -15,7 +15,7 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-Then, in your log configuration, you can use `traceId`, `parentId` and `spanId`.
+Then, in your log configuration, you can use `traceId`, `parentId`, `spanId` and `sampled`.
 
 Here's an example logback configuration:
 

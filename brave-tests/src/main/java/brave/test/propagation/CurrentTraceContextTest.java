@@ -37,9 +37,9 @@ public abstract class CurrentTraceContextTest {
 
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context =
-      TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).build();
+      TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
   protected final TraceContext context2 =
-      context.toBuilder().parentId(context.spanId()).spanId(-2L).build();
+      context.toBuilder().parentId(context.spanId()).spanId(-2L).sampled(false).build();
 
   protected abstract Class<? extends Supplier<CurrentTraceContext>> currentSupplier();
 
