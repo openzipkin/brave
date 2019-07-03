@@ -40,6 +40,7 @@ public class PendingSpansTest {
         if (!Boolean.TRUE.equals(ctx.sampled())) return true;
 
         Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
+        b.name(span.name());
         span.forEachAnnotation(Span.Builder::addAnnotation, b);
         spans.add(b.build());
         return true;
@@ -179,7 +180,9 @@ public class PendingSpansTest {
   @Test
   public void reportOrphanedSpans_afterGC() throws Exception {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
-    pendingSpans.getOrCreate(context1, false);
+    PendingSpan span = pendingSpans.getOrCreate(context1, false);
+    span.state.name("foo");
+    span = null; // clear reference so GC occurs
     TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
     pendingSpans.getOrCreate(context2, false);
     TraceContext context3 = context.toBuilder().traceId(3).spanId(3).build();
@@ -207,15 +210,12 @@ public class PendingSpansTest {
     assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
         .containsExactlyInAnyOrder(context3, context4);
 
-    // We also expect only the sampled (remote) spans to have been reported with a flush annotation
-    assertThat(spans).flatExtracting(Span::id)
-        .containsExactlyInAnyOrder("0000000000000001", "0000000000000002");
-    assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::value)
-        .containsExactly("brave.flush", "brave.flush");
-
-    // we also expect the clock to have been called only once
-    assertThat(spans).flatExtracting(Span::annotations).extracting(Annotation::timestamp)
-        .allSatisfy(t -> assertThat(t).isEqualTo((initialClockVal + 1) * 1000));
+    // We also expect only the sampled span containing data to have been reported
+    assertThat(spans).hasSize(1);
+    assertThat(spans.get(0).id()).isEqualTo("0000000000000001");
+    assertThat(spans.get(0).name()).isEqualTo("foo"); // data was flushed
+    assertThat(spans.get(0).annotations())
+      .containsExactly(Annotation.create((initialClockVal + 1) * 1000, "brave.flush"));
   }
 
   @Test

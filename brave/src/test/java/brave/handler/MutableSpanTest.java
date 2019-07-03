@@ -13,6 +13,7 @@
  */
 package brave.handler;
 
+import brave.Span;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -142,6 +143,75 @@ public class MutableSpanTest {
         entry(2L, "SSN=xxx-xx-xxxx"),
         entry(3L, "3")
     );
+  }
+
+  @Test public void isEmpty() {
+    assertThat(new MutableSpan().isEmpty()).isTrue();
+    {
+      MutableSpan span = new MutableSpan();
+      span.name("a");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.startTimestamp(1);
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.finishTimestamp(1);
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.kind(Span.Kind.CLIENT);
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.localServiceName("a");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.localIp("1.2.3.4");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.localPort(1);
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.remoteServiceName("a");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.remoteIpAndPort("1.2.3.4", 1);
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.annotate(1L, "a");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.error(new RuntimeException());
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.tag("a", "b");
+      assertThat(span.isEmpty()).isFalse();
+    }
+    {
+      MutableSpan span = new MutableSpan();
+      span.setShared();
+      assertThat(span.isEmpty()).isFalse();
+    }
   }
 
   @Test public void accessorScansTags() {

@@ -132,12 +132,18 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
           contextKey.localRootId, 0L, contextKey.spanId,
           Collections.emptyList()
       );
-      value.state.annotate(flushTime, "brave.flush");
 
+      boolean isEmpty = value.state.isEmpty();
       Throwable caller = value.caller;
       if (caller != null) {
-        LOG.log(Level.FINE, "Span " + context + " neither finished nor flushed before GC", caller);
+        String message = isEmpty
+          ? "Span " + context + " was allocated but never used"
+          : "Span " + context + " neither finished nor flushed before GC";
+        LOG.log(Level.FINE, message, caller);
       }
+      if (isEmpty) continue;
+
+      value.state.annotate(flushTime, "brave.flush");
 
       try {
         zipkinHandler.handle(context, value.state);

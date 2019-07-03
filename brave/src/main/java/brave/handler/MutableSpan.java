@@ -79,6 +79,24 @@ public final class MutableSpan implements Cloneable {
     // lazy initialize annotations
   }
 
+  /** Returns true if there was no data added. Usually this indicates an instrumentation bug. */
+  public boolean isEmpty() {
+    return kind == null
+      && !shared
+      && startTimestamp == 0L
+      && finishTimestamp == 0L
+      && name == null
+      && localServiceName == null
+      && localIp == null
+      && remoteServiceName == null
+      && remoteIp == null
+      && localPort == 0
+      && remotePort == 0
+      && tags.isEmpty()
+      && annotations == null
+      && error == null;
+  }
+
   /** Returns the {@link brave.Span#name(String) span name} or null */
   @Nullable public String name() {
     return name;
