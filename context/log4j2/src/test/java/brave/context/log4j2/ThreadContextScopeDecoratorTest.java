@@ -45,9 +45,8 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
           .isEqualTo(context.parentIdString());
       assertThat(ThreadContext.get("spanId"))
           .isEqualTo(context.spanIdString());
-      Boolean sampled = context.sampled();
       assertThat(ThreadContext.get("sampled"))
-          .isEqualTo(sampled != null ? sampled.toString() : null);
+          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(ThreadContext.get("traceId"))
           .isNull();

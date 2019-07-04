@@ -38,8 +38,10 @@ public abstract class CurrentTraceContextTest {
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context =
       TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
-  protected final TraceContext context2 =
-      context.toBuilder().parentId(context.spanId()).spanId(-2L).sampled(false).build();
+  protected final TraceContext notYetSampledContext =
+    TraceContext.newBuilder().traceId(2L).spanId(1L).build();
+  protected final TraceContext unsampledContext =
+    TraceContext.newBuilder().traceId(2L).spanId(2L).sampled(false).build();
 
   protected abstract Class<? extends Supplier<CurrentTraceContext>> currentSupplier();
 
@@ -102,11 +104,17 @@ public abstract class CurrentTraceContextTest {
   }
 
   void noticesDifferentContext(Scope scope) {
-    try (Scope scope2 = currentTraceContext.maybeScope(context2)) {
+    try (Scope scope2 = currentTraceContext.maybeScope(unsampledContext)) {
       assertThat(scope2).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
-          .isEqualTo(context2);
-      verifyImplicitContext(context2);
+          .isEqualTo(unsampledContext);
+      verifyImplicitContext(unsampledContext);
+      try (Scope scope3 = currentTraceContext.maybeScope(notYetSampledContext)) {
+        assertThat(scope3).isNotEqualTo(Scope.NOOP);
+        assertThat(currentTraceContext.get())
+          .isEqualTo(notYetSampledContext);
+        verifyImplicitContext(notYetSampledContext);
+      }
     } finally {
       scope.close();
     }
@@ -197,9 +205,9 @@ public abstract class CurrentTraceContextTest {
     });
 
     // Set another span between the time the task was made and executed.
-    try (Scope scope2 = currentTraceContext.newScope(context2)) {
+    try (Scope scope2 = currentTraceContext.newScope(unsampledContext)) {
       callable.call(); // runs assertion
-      verifyImplicitContext(context2);
+      verifyImplicitContext(unsampledContext);
     }
   }
 
@@ -217,9 +225,9 @@ public abstract class CurrentTraceContextTest {
     }
 
     // Set another span between the time the task was made and executed.
-    try (Scope scope2 = currentTraceContext.newScope(context2)) {
+    try (Scope scope2 = currentTraceContext.newScope(unsampledContext)) {
       callable.call(); // runs assertion
-      verifyImplicitContext(context2);
+      verifyImplicitContext(unsampledContext);
     }
   }
 
@@ -245,9 +253,9 @@ public abstract class CurrentTraceContextTest {
     }
 
     // Set another span between the time the task was made and executed.
-    try (Scope scope2 = currentTraceContext.newScope(context2)) {
+    try (Scope scope2 = currentTraceContext.newScope(unsampledContext)) {
       runnable.run(); // runs assertion
-      verifyImplicitContext(context2);
+      verifyImplicitContext(unsampledContext);
     }
   }
 

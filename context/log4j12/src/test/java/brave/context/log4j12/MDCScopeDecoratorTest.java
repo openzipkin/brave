@@ -73,9 +73,8 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
           .isEqualTo(context.parentIdString());
       assertThat(MDC.get("spanId"))
           .isEqualTo(context.spanIdString());
-      Boolean sampled = context.sampled();
       assertThat(MDC.get("sampled"))
-          .isEqualTo(sampled != null ? sampled.toString() : null);
+          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(MDC.get("traceId"))
           .isNull();
