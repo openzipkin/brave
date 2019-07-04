@@ -21,24 +21,23 @@ import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.extension.Activate;
-import com.alibaba.dubbo.common.extension.ExtensionLoader;
-import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
-import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-import com.alibaba.dubbo.rpc.Filter;
-import com.alibaba.dubbo.rpc.Invocation;
-import com.alibaba.dubbo.rpc.Invoker;
-import com.alibaba.dubbo.rpc.Result;
-import com.alibaba.dubbo.rpc.RpcContext;
-import com.alibaba.dubbo.rpc.RpcException;
-import com.alibaba.dubbo.rpc.protocol.dubbo.FutureAdapter;
+
+import org.apache.dubbo.common.constants.CommonConstants;
+import org.apache.dubbo.common.extension.Activate;
+import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.spring.extension.SpringExtensionFactory;
+import org.apache.dubbo.rpc.Filter;
+import org.apache.dubbo.rpc.Invocation;
+import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.Result;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
+
 import com.alibaba.dubbo.rpc.support.RpcUtils;
 import java.net.InetSocketAddress;
 import java.util.Map;
-import java.util.concurrent.Future;
 
-@Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
+@Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
@@ -84,18 +83,22 @@ public final class TracingFilter implements Filter {
       span.start();
     }
 
-    boolean isOneway = false, deferFinish = false;
+    boolean isOneway = false;
     try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
       Result result = invoker.invoke(invocation);
       if (result.hasException()) {
         onError(result.getException(), span);
       }
+
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
-      Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (future instanceof FutureAdapter) {
-        deferFinish = true;
-        ((FutureAdapter) future).getFuture().setCallback(new FinishSpanCallback(span));
-      }
+
+      result.whenComplete((v, t) -> {
+        if (t != null) {
+          onError(t, span);
+        }
+        span.finish();
+      });
+
       return result;
     } catch (Error | RuntimeException e) {
       onError(e, span);
@@ -103,8 +106,6 @@ public final class TracingFilter implements Filter {
     } finally {
       if (isOneway) {
         span.flush();
-      } else if (!deferFinish) {
-        span.finish();
       }
     }
   }
@@ -148,20 +149,4 @@ public final class TracingFilter implements Filter {
         }
       };
 
-  static final class FinishSpanCallback implements ResponseCallback {
-    final Span span;
-
-    FinishSpanCallback(Span span) {
-      this.span = span;
-    }
-
-    @Override public void done(Object response) {
-      span.finish();
-    }
-
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-    }
-  }
 }
