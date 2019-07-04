@@ -42,12 +42,16 @@ public class ThreadContextCurrentTraceContextTest extends CurrentTraceContextTes
           .isEqualTo(context.parentIdString());
       assertThat(ThreadContext.get("spanId"))
           .isEqualTo(context.spanIdString());
+      assertThat(ThreadContext.get("sampled"))
+          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(ThreadContext.get("traceId"))
           .isNull();
       assertThat(ThreadContext.get("parentId"))
           .isNull();
       assertThat(ThreadContext.get("spanId"))
+          .isNull();
+      assertThat(ThreadContext.get("sampled"))
           .isNull();
     }
   }

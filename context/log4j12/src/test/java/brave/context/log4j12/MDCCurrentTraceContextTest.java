@@ -58,12 +58,16 @@ public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
           .isEqualTo(context.parentIdString());
       assertThat(MDC.get("spanId"))
           .isEqualTo(context.spanIdString());
+      assertThat(MDC.get("sampled"))
+          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(MDC.get("traceId"))
           .isNull();
       assertThat(MDC.get("parentId"))
           .isNull();
       assertThat(MDC.get("spanId"))
+          .isNull();
+      assertThat(MDC.get("sampled"))
           .isNull();
     }
   }
