@@ -89,7 +89,9 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     if (sampled == null) {
       remove("sampled");
     } else {
-      put("sampled", sampled.toString());
+      String sampledString = sampled.toString();
+      boolean sameSampled = sampledString.equals(previousSampled);
+      if (!sameSampled) put("sampled", sampledString);
     }
   }
 
