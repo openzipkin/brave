@@ -14,10 +14,10 @@
 package brave.dubbo.rpc;
 
 import brave.sampler.Sampler;
-import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
-import com.alibaba.dubbo.config.ApplicationConfig;
-import com.alibaba.dubbo.config.ReferenceConfig;
-import com.alibaba.dubbo.rpc.RpcContext;
+import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
