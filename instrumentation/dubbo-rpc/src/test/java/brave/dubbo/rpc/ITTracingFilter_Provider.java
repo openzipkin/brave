@@ -14,10 +14,10 @@
 package brave.dubbo.rpc;
 
 import brave.sampler.Sampler;
-import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.RpcContext;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
@@ -32,14 +32,18 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   @Before public void setup() {
     server.service.setFilter("tracing");
     server.service.setRef((method, parameterTypes, args) -> {
-      JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
-      if (arg.getProperty("value").equals("bad")) {
-        throw new IllegalArgumentException();
-      }
-      String value = tracing != null && tracing.currentTraceContext().get() != null
+      // com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor not in org.apache.dubbo:dubbo
+      Iterable<Map.Entry<Object, Object>> arg = (Iterable<Map.Entry<Object, Object>>) args[0];
+      arg.forEach(entry -> {
+        if (!entry.getKey().equals("value")) return;
+        if (entry.getValue().equals("bad")) {
+          throw new IllegalArgumentException();
+        }
+        String value = tracing != null && tracing.currentTraceContext().get() != null
           ? tracing.currentTraceContext().get().traceIdString()
           : "";
-      arg.setProperty("value", value);
+        entry.setValue(value);
+      });
       return args[0];
     });
     server.start();

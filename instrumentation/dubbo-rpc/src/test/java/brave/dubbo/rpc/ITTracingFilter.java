@@ -17,9 +17,10 @@ import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.Filter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -70,10 +71,35 @@ public abstract class ITTracingFilter {
         .sampler(sampler);
   }
 
+  // Reflection because com.alibaba.dubbo.common.extension.ExtensionLoader was not backported
   void setTracing(Tracing tracing) {
-    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
-        .getExtension("tracing"))
+    Class extensionLoaderClass;
+    try {
+      extensionLoaderClass = Class.forName("com.alibaba.dubbo.common.extension.ExtensionLoader");
+    } catch (ClassNotFoundException e) {
+      try {
+        extensionLoaderClass = Class.forName("org.apache.dubbo.common.extension.ExtensionLoader");
+      } catch (ClassNotFoundException ex) {
+        throw new AssertionError(ex);
+      }
+    }
+
+    Method getExtensionLoader;
+    Method getExtension;
+    try {
+      getExtensionLoader = extensionLoaderClass.getMethod("getExtensionLoader", Class.class);
+      getExtension = extensionLoaderClass.getMethod("getExtension", String.class);
+    } catch (NoSuchMethodException e) {
+      throw new AssertionError(e);
+    }
+
+    try {
+      Object extensionLoader = getExtensionLoader.invoke(null, Filter.class);
+      ((TracingFilter) getExtension.invoke(extensionLoader, "tracing"))
         .setTracing(tracing);
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      throw new AssertionError(e);
+    }
     this.tracing = tracing;
   }
 
