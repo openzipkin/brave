@@ -97,7 +97,7 @@ public abstract class Platform {
     try {
       Class zoneId = Class.forName("java.time.ZoneId");
       Class.forName("java.time.Clock").getMethod("tickMillis", zoneId);
-      return new Jre9();
+      return new Jre9(); // intentionally doesn't not access the type prior to the above guard
     } catch (ClassNotFoundException e) {
       // pre JRE 8
     } catch (NoSuchMethodException e) {
@@ -107,7 +107,7 @@ public abstract class Platform {
     // Find JRE 7 new methods
     try {
       Class.forName("java.util.concurrent.ThreadLocalRandom");
-      return new Jre7();
+      return new Jre7(); // intentionally doesn't not access the type prior to the above guard
     } catch (ClassNotFoundException e) {
       // pre JRE 7
     }
