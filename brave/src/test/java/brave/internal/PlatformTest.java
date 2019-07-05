@@ -42,7 +42,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest({Platform.class, NetworkInterface.class})
 public class PlatformTest {
-  Platform platform = Platform.Jre7.buildIfSupported();
+  Platform platform = new Platform.Jre7();
 
   @Test public void clock_hasNiceToString_jre7() {
     assertThat(platform.clock())
@@ -62,7 +62,7 @@ public class PlatformTest {
     when(System.currentTimeMillis())
         .thenReturn(1465510280_000L); // Thursday, June 9, 2016 10:11:20 PM
 
-    long traceIdHigh = Platform.Jre7.buildIfSupported().nextTraceIdHigh();
+    long traceIdHigh = platform.nextTraceIdHigh();
 
     assertThat(HexCodec.toLowerHex(traceIdHigh)).startsWith("5759e988");
   }
