@@ -43,7 +43,7 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
-public final class  KafkaStreamsTracing {
+public final class KafkaStreamsTracing {
 
   final Tracing tracing;
   final TraceContext.Extractor<Headers> extractor;
