@@ -249,7 +249,7 @@ public final class KafkaStreamsTracing {
    * Create a filter transformer.
    *
    * WARNING: as this filter is based on Transformer API, if followed by a grouping or joining
-   * will lead to re-partitioning
+   * will lead to re-partitioning. Consider using it when none of these happen after this.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
@@ -268,7 +268,7 @@ public final class KafkaStreamsTracing {
    * Create a filterNot transformer.
    *
    * WARNING: as this filter is based on Transformer API, if followed by a grouping or joining
-   * will lead to re-partitioning
+   * will lead to re-partitioning. Consider using it when none of these happen after.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
