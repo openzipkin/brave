@@ -43,7 +43,7 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
-public final class KafkaStreamsTracing {
+public final class  KafkaStreamsTracing {
 
   final Tracing tracing;
   final TraceContext.Extractor<Headers> extractor;
@@ -180,17 +180,19 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
+   *        .transformValues(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
-  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> peek(String spanName, ForeachAction<K, V> action) {
-    return new TracingTransformerSupplier<>(this, spanName, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
-      @Override public KeyValue<K, V> transform(K key, V value) {
-        action.apply(key, value);
-        return KeyValue.pair(key, value);
-      }
-    });
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> peek(String spanName,
+      ForeachAction<K, V> action) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          action.apply(key, value);
+          return value;
+        }
+      });
   }
 
   /**
@@ -204,20 +206,21 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mark("beginning-complex-map")
+   *        .transformValues(kafkaStreamsTracing.mark("beginning-complex-map")
    *        .map(complexTransformation1)
    *        .filter(predicate)
-   *        .map(complexTransformation2)
+   *        .mapValues(complexTransformation2)
    *        .transform(kafkaStreamsTracing.mark("end-complex-transformation")
    *        .to(outputTopic);
    * }</pre>
    */
-  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> mark(String spanName) {
-    return new TracingTransformerSupplier<>(this, spanName, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
-      @Override public KeyValue<K, V> transform(K key, V value) {
-        return KeyValue.pair(key, value);
-      }
-    });
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          return value;
+        }
+      });
   }
 
   /**
@@ -273,14 +276,14 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
+   * Create a mapValues transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
    * will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
+   *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
@@ -295,14 +298,14 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapper)}, where its mapper action
+   * Create a mapValues transformer, similar to {@link KStream#mapValues(ValueMapper)}, where its mapper action
    * will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
+   *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
