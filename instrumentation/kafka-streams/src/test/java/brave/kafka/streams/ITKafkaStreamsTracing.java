@@ -284,13 +284,16 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filternot_predicate_true() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
+        .peek((s, s2) -> {
+          System.out.println(s + "-" + s2);
+        })
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
@@ -314,7 +317,7 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filternot_predicate_false() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -353,7 +356,7 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
+        .transformValues(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
           try {
             Thread.sleep(100L);
           } catch (InterruptedException e) {
@@ -390,7 +393,7 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.mark("mark-1"))
+        .transformValues(kafkaStreamsTracing.mark("mark-1"))
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
