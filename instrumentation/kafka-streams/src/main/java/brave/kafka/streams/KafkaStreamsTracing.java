@@ -284,6 +284,46 @@ public final class KafkaStreamsTracing {
   }
 
   /**
+   * Create a markFilter valueTransformer.
+   *
+   * Instead of filtering, and not emitting a value as {@code filter} does,
+   * it creates span marking it as filtered or not. If filtered, value returned
+   * will be {@code null}
+   *
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transformValues(kafkaStreamsTracing.markFilter("myFilter", (k, v) -> ...)
+   *       .filterNot((k, v) -> Objects.isNull(v))
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markFilter(String spanName, Predicate<K, V> predicate) {
+    return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, false);
+  }
+
+  /**
+   * Create a markFilterNot valueTransformer.
+   *
+   * Instead of filtering, and not emitting a value as {@code filterNot} does,
+   * it creates span marking it as filtered or not. If filtered, value returned
+   * will be {@code null}
+   *
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transformValues(kafkaStreamsTracing.markFilterNot("myFilter", (k, v) -> ...)
+   *       .filterNot((k, v) -> Objects.isNull(v))
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markFilterNot(String spanName, Predicate<K, V> predicate) {
+    return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, true);
+  }
+
+  /**
    * Create a mapValues transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
    * will be recorded in a new span with the indicated name.
    *
