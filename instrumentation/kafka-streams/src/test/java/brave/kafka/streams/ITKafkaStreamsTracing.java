@@ -291,9 +291,6 @@ public class ITKafkaStreamsTracing {
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
         .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
-        .peek((s, s2) -> {
-          System.out.println(s + "-" + s2);
-        })
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
