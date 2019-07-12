@@ -248,8 +248,10 @@ public final class KafkaStreamsTracing {
   /**
    * Create a filter transformer.
    *
-   * WARNING: as this filter is based on Transformer API, if followed by a grouping or joining
-   * will lead to re-partitioning. Consider using it when none of these happen after this.
+   * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
+   * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
+   * In that case, consider using {@link #markFilter(String, Predicate)} instead which
+   * uses {@link ValueTransformerWithKey} API instead.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
@@ -267,8 +269,10 @@ public final class KafkaStreamsTracing {
   /**
    * Create a filterNot transformer.
    *
-   * WARNING: as this filter is based on Transformer API, if followed by a grouping or joining
-   * will lead to re-partitioning. Consider using it when none of these happen after.
+   * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
+   * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
+   * In that case, consider using {@link #markFilterNot(String, Predicate)} instead
+   * which uses {@link ValueTransformerWithKey} API instead.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
