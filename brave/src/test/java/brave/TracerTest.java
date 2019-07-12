@@ -738,6 +738,51 @@ public class TracerTest {
     spanInScope.close();
   }
 
+  @Test public void joinSpan_whenJoinIsSupported_resultantSpanIsLocalRoot() {
+    tracer = Tracing.newBuilder().supportsJoin(true).build().tracer();
+
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId());// Sanity check
+    assertThat(span.context().isLocalRoot()).isTrue();
+  }
+
+  @Test public void joinSpan_whenJoinIsNotSupported_resultantSpanIsLocalRoot() {
+    tracer = Tracing.newBuilder().supportsJoin(false).build().tracer();
+
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId());// Sanity check
+    assertThat(span.context().isLocalRoot()).isTrue();
+  }
+
+  @Test public void newChild_resultantSpanIsLocalRoot() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    Span span = tracer.newChild(context);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId());// Sanity check
+    assertThat(span.context().isLocalRoot()).isTrue();
+  }
+
+  @Test public void nextSpan_fromFlags_resultantSpanIsLocalRoot() {
+    TraceContextOrSamplingFlags traceContextOrSamplingFlags = TraceContextOrSamplingFlags.newBuilder().samplingFlags(SamplingFlags.SAMPLED).build();
+    Span span = tracer.nextSpan(traceContextOrSamplingFlags);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId());// Sanity check
+    assertThat(span.context().isLocalRoot()).isTrue();
+  }
+
+  @Test public void nextSpan_fromContext_resultantSpanIsLocalRoot() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    TraceContextOrSamplingFlags traceContextOrSamplingFlags = TraceContextOrSamplingFlags.newBuilder().context(context).build();
+    Span span = tracer.nextSpan(traceContextOrSamplingFlags);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId());// Sanity check
+    assertThat(span.context().isLocalRoot()).isTrue();
+  }
+
   @Test public void localRootId_joinSpan_notYetSampled() {
     TraceContext context1 = TraceContext.newBuilder().traceId(1).spanId(2).build();
     TraceContext context2 = TraceContext.newBuilder().traceId(1).spanId(3).build();
