@@ -230,11 +230,13 @@ public class Tracer {
   }
 
   /**
-   * Decorates a context after backfilling any missing data such as span IDs or sampling state.
+   * Creates a trace context object holding the below fields. When fields such as span ID are
+   * absent, they will be backfilled. Then, any missing state managed by the tracer are applied,
+   * such as the "local root". Finally, decoration hooks apply to ensure any propagation state are
+   * added to the "extra" section of the result. This supports functionality like extra field
+   * propagation.
    *
-   * <p>This primarily supports sampling use cases and ensures special cases such as "local root"
-   * and "shared" concepts are applied consistently. All parameters except span ID can be empty in
-   * the case of a new root span.
+   * <p>All parameters except span ID can be empty in the case of a new root span.
    *
    * @param flags any incoming flags from a parent context.
    * @param traceIdHigh See {@link TraceContext#traceIdHigh()}
