@@ -112,6 +112,9 @@ public final class TraceContext extends SamplingFlags {
    *
    * <p>This does not group together multiple points of entry in the same trace. For example,
    * repetitive consumption of the same incoming message results in different local roots.
+   *
+   * @return the {@link #spanId() span ID} of the local root or zero if this context wasn't
+   * initialized by a {@link brave.Tracer}.
    */
   // This is the first span ID that became a Span or ScopedSpan
   public long localRootId() {
