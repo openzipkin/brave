@@ -219,13 +219,13 @@ public class Tracer {
     int flags = InternalPropagation.instance.flags(parent);
     if (spanId != 0L) flags |= FLAG_SHARED;
     return decorateContext(
-      flags,
-      parent.traceIdHigh(),
-      parent.traceId(),
-      parent.localRootId(),
-      parentId,
-      spanId,
-      parent.extra()
+        flags,
+        parent.traceIdHigh(),
+        parent.traceId(),
+        parent.localRootId(),
+        parentId,
+        spanId,
+        parent.extra()
     );
   }
 
@@ -246,13 +246,13 @@ public class Tracer {
    * @return a decorated, sampled context with local root information applied.
    */
   TraceContext decorateContext(
-    int flags,
-    long traceIdHigh,
-    long traceId,
-    long localRootId,
-    long parentId,
-    long spanId,
-    List<Object> extra
+      int flags,
+      long traceIdHigh,
+      long traceId,
+      long localRootId,
+      long parentId,
+      long spanId,
+      List<Object> extra
   ) {
     if (alwaysSampleLocal && (flags & FLAG_SAMPLED_LOCAL) != FLAG_SAMPLED_LOCAL) {
       flags |= FLAG_SAMPLED_LOCAL;
@@ -278,13 +278,13 @@ public class Tracer {
       flags &= ~FLAG_LOCAL_ROOT;
     }
     return propagationFactory.decorate(InternalPropagation.instance.newTraceContext(
-      flags,
-      traceIdHigh,
-      traceId,
-      localRootId,
-      parentId,
-      spanId,
-      extra
+        flags,
+        traceIdHigh,
+        traceId,
+        localRootId,
+        parentId,
+        spanId,
+        extra
     ));
   }
 
@@ -324,13 +324,13 @@ public class Tracer {
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (traceIdContext != null) {
       return _toSpan(decorateContext(
-        InternalPropagation.instance.flags(extracted.traceIdContext()),
-        traceIdContext.traceIdHigh(),
-        traceIdContext.traceId(),
-        0L,
-        0L,
-        0L,
-        extracted.extra()
+          InternalPropagation.instance.flags(extracted.traceIdContext()),
+          traceIdContext.traceIdHigh(),
+          traceIdContext.traceId(),
+          0L,
+          0L,
+          0L,
+          extracted.extra()
       ));
     }
 
