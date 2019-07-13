@@ -360,18 +360,17 @@ public class Tracer {
   /** Converts the context to a Span object after decorating it for propagation */
   public Span toSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    if (isDecorated(context)) {
-      return _toSpan(decorateContext(
-        InternalPropagation.instance.flags(context),
-        context.traceIdHigh(),
-        context.traceId(),
-        context.localRootId(),
-        context.parentIdAsLong(),
-        context.spanId(),
-        context.extra()
-      ));
-    }
-    return _toSpan(context);
+    if (isDecorated(context)) return _toSpan(context);
+
+    return _toSpan(decorateContext(
+      InternalPropagation.instance.flags(context),
+      context.traceIdHigh(),
+      context.traceId(),
+      context.localRootId(),
+      context.parentIdAsLong(),
+      context.spanId(),
+      context.extra()
+    ));
   }
 
   Span _toSpan(TraceContext decorated) {
@@ -453,7 +452,7 @@ public class Tracer {
   @Nullable public Span currentSpan() {
     TraceContext context = currentTraceContext.get();
     if (context == null) return null;
-    if (isDecorated(context)) { // It wasn't initialized by our tracer, so we must decorate.
+    if (!isDecorated(context)) { // It wasn't initialized by our tracer, so we must decorate.
       context = decorateContext(context, context.parentIdAsLong(), context.spanId());
     }
     if (isNoop(context)) return new NoopSpan(context);
@@ -561,7 +560,7 @@ public class Tracer {
    * only be set internally, we use this as a signal that we've already decorated.
    */
   static boolean isDecorated(TraceContext context) {
-    return context.localRootId() == 0L;
+    return context.localRootId() != 0L;
   }
 
   /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */
