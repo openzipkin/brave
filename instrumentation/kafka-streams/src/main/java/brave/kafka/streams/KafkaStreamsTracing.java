@@ -242,7 +242,7 @@ public final class KafkaStreamsTracing {
           @Override public KeyValue<KR, VR> transform(K key, V value) {
             return mapper.apply(key, value);
           }
-        });
+         });
   }
 
   /**
@@ -250,7 +250,8 @@ public final class KafkaStreamsTracing {
    *
    * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
    * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
-   * In that case, consider using {@link #markFilter(String, Predicate)} instead which
+   *
+   * In that case, consider using {@link #markAsFiltered(String, Predicate)} instead which
    * uses {@link ValueTransformerWithKey} API instead.
    *
    *<p>Simple example using Kafka Streams DSL:
@@ -271,7 +272,7 @@ public final class KafkaStreamsTracing {
    *
    * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
    * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
-   * In that case, consider using {@link #markFilterNot(String, Predicate)} instead
+   * In that case, consider using {@link #markAsNotFiltered(String, Predicate)} instead
    * which uses {@link ValueTransformerWithKey} API instead.
    *
    *<p>Simple example using Kafka Streams DSL:
@@ -288,42 +289,52 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a markFilter valueTransformer.
+   * Create a markAsFiltered valueTransformer.
    *
-   * Instead of filtering, and not emitting a value as {@code filter} does,
-   * it creates span marking it as filtered or not. If filtered, value returned
-   * will be {@code null}
+   * Instead of filtering, and not emitting values downstream as {@code filter} does;
+   * {@code markAsFiltered} creates a span, marking it as filtered or not.
+   * If filtered, value returned will be {@code null} and will require
+   * an additional non-null value filter to complete the filtering.
+   *
+   * This operation is offered as lack of a processor that allows to
+   * continue conditionally with the processing without risk of accidental
+   * re-partitioning.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
    *StreamsBuilder builder = new StreamsBuilder();
    *builder.stream(inputTopic)
-   *       .transformValues(kafkaStreamsTracing.markFilter("myFilter", (k, v) -> ...)
+   *       .transformValues(kafkaStreamsTracing.markAsFiltered("myFilter", (k, v) -> ...)
    *       .filterNot((k, v) -> Objects.isNull(v))
    *       .to(outputTopic);
    *}</pre>
    */
-  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markFilter(String spanName, Predicate<K, V> predicate) {
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsFiltered(String spanName, Predicate<K, V> predicate) {
     return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, false);
   }
 
   /**
-   * Create a markFilterNot valueTransformer.
+   * Create a markAsNotFiltered valueTransformer.
    *
-   * Instead of filtering, and not emitting a value as {@code filterNot} does,
-   * it creates span marking it as filtered or not. If filtered, value returned
-   * will be {@code null}
+   * Instead of filtering, and not emitting values downstream as {@code filterNot} does;
+   * {@code markAsNotFiltered} creates a span, marking it as filtered or not.
+   * If filtered, value returned will be {@code null} and will require
+   * an additional non-null value filter to complete the filtering.
+   *
+   * This operation is offered as lack of a processor that allows to
+   * continue conditionally with the processing without risk of accidental
+   * re-partitioning.
    *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
    *StreamsBuilder builder = new StreamsBuilder();
    *builder.stream(inputTopic)
-   *       .transformValues(kafkaStreamsTracing.markFilterNot("myFilter", (k, v) -> ...)
+   *       .transformValues(kafkaStreamsTracing.markAsNotFiltered("myFilter", (k, v) -> ...)
    *       .filterNot((k, v) -> Objects.isNull(v))
    *       .to(outputTopic);
    *}</pre>
    */
-  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markFilterNot(String spanName, Predicate<K, V> predicate) {
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsNotFiltered(String spanName, Predicate<K, V> predicate) {
     return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, true);
   }
 

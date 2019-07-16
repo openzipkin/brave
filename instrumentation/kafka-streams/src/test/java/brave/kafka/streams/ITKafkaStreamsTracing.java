@@ -346,13 +346,13 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_filter_predicate_true() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markFilter("filter-1", (key, value) -> true))
+        .transformValues(kafkaStreamsTracing.markAsFiltered("filter-1", (key, value) -> true))
         .filterNot((k, v) -> Objects.isNull(v))
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
@@ -378,13 +378,13 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_filter_predicate_false() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-      .transformValues(kafkaStreamsTracing.markFilter("filter-2", (key, value) -> false))
+      .transformValues(kafkaStreamsTracing.markAsFiltered("filter-2", (key, value) -> false))
       .filterNot((k, v) -> Objects.isNull(v))
       .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
@@ -409,13 +409,13 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_filter_not_predicate_true() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markFilterNot("filterNot-1", (key, value) -> true))
+        .transformValues(kafkaStreamsTracing.markAsNotFiltered("filterNot-1", (key, value) -> true))
         .filterNot((k, v) -> Objects.isNull(v))
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
@@ -440,13 +440,13 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_filter_not_predicate_false() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markFilterNot("filterNot-2", (key, value) -> false))
+        .transformValues(kafkaStreamsTracing.markAsNotFiltered("filterNot-2", (key, value) -> false))
         .filterNot((k, v) -> Objects.isNull(v))
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
