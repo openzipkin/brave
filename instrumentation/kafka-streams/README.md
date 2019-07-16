@@ -1,4 +1,4 @@
-# Brave Kafka Streams instrumentation
+# Brave Kafka Streams instrumentation [EXPERIMENTAL]
 
 Add decorators for Kafka Streams to enable tracing.
 * `TracingKafkaClientSupplier` a client supplier which traces poll and send operations.
@@ -77,6 +77,11 @@ will reference the initial span, and mark the end of a Stream Process.
 If intermediate steps on the Stream topology require tracing, then `TracingProcessorSupplier` and
 `TracingTransformerSupplier` will allow you to define a Processor/Transformer where execution is recorded as Span, 
 referencing the parent context stored on Headers, if available.
+
+### Partitioning
+
+Be aware that operations that require `builder.transformer(...)` will cause re-partitioning when 
+grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
 
 ## Notes
 

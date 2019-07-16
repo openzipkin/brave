@@ -13,14 +13,14 @@
  */
 package brave.kafka.streams;
 
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Predicate;
-import org.apache.kafka.streams.kstream.Transformer;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-class TracingFilterTransformer<K, V> extends TracingFilter<K, V, KeyValue<K, V>> implements Transformer<K, V, KeyValue<K, V>> {
+class TracingFilterValueTransformerWithKey<K, V> extends TracingFilter<K, V, V> implements
+  ValueTransformerWithKey<K, V, V> {
 
-  TracingFilterTransformer(KafkaStreamsTracing tracing, String spanName,
+  TracingFilterValueTransformerWithKey(KafkaStreamsTracing tracing, String spanName,
       Predicate<K, V> delegatePredicate, boolean filterNot) {
     super(tracing, spanName, delegatePredicate, filterNot);
   }
@@ -31,14 +31,14 @@ class TracingFilterTransformer<K, V> extends TracingFilter<K, V, KeyValue<K, V>>
   }
 
   @Override
-  public KeyValue<K, V> transform(K key, V value) {
+  public V transform(K key, V value) {
     return super.transform(key, value);
   }
 
   @Override public void close() {
   }
 
-  @Override KeyValue<K, V> result(K key, V value) {
-    return KeyValue.pair(key, value);
+  @Override V result(K key, V value) {
+    return value;
   }
 }

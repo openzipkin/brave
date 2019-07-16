@@ -180,17 +180,19 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
+   *        .transformValues(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
-  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> peek(String spanName, ForeachAction<K, V> action) {
-    return new TracingTransformerSupplier<>(this, spanName, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
-      @Override public KeyValue<K, V> transform(K key, V value) {
-        action.apply(key, value);
-        return KeyValue.pair(key, value);
-      }
-    });
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> peek(String spanName,
+      ForeachAction<K, V> action) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          action.apply(key, value);
+          return value;
+        }
+      });
   }
 
   /**
@@ -204,20 +206,21 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mark("beginning-complex-map")
+   *        .transformValues(kafkaStreamsTracing.mark("beginning-complex-map")
    *        .map(complexTransformation1)
    *        .filter(predicate)
-   *        .map(complexTransformation2)
+   *        .mapValues(complexTransformation2)
    *        .transform(kafkaStreamsTracing.mark("end-complex-transformation")
    *        .to(outputTopic);
    * }</pre>
    */
-  public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> mark(String spanName) {
-    return new TracingTransformerSupplier<>(this, spanName, new AbstractTracingTransformer<K, V, KeyValue<K, V>>() {
-      @Override public KeyValue<K, V> transform(K key, V value) {
-        return KeyValue.pair(key, value);
-      }
-    });
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          return value;
+        }
+      });
   }
 
   /**
@@ -239,11 +242,18 @@ public final class KafkaStreamsTracing {
           @Override public KeyValue<KR, VR> transform(K key, V value) {
             return mapper.apply(key, value);
           }
-        });
+         });
   }
 
   /**
    * Create a filter transformer.
+   *
+   * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
+   * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
+   *
+   * In that case, consider using {@link #markAsFiltered(String, Predicate)} instead which
+   * uses {@link ValueTransformerWithKey} API instead.
+   *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
    *StreamsBuilder builder = new StreamsBuilder();
@@ -259,6 +269,12 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a filterNot transformer.
+   *
+   * WARNING: this filter implementation uses the Streams transform API, meaning that re-partitioning
+   * can occur if a key modifying operation like grouping or joining operation is applied after this filter.
+   * In that case, consider using {@link #markAsNotFiltered(String, Predicate)} instead
+   * which uses {@link ValueTransformerWithKey} API instead.
+   *
    *<p>Simple example using Kafka Streams DSL:
    *<pre>{@code
    *StreamsBuilder builder = new StreamsBuilder();
@@ -273,14 +289,64 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
+   * Create a markAsFiltered valueTransformer.
+   *
+   * Instead of filtering, and not emitting values downstream as {@code filter} does;
+   * {@code markAsFiltered} creates a span, marking it as filtered or not.
+   * If filtered, value returned will be {@code null} and will require
+   * an additional non-null value filter to complete the filtering.
+   *
+   * This operation is offered as lack of a processor that allows to
+   * continue conditionally with the processing without risk of accidental
+   * re-partitioning.
+   *
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transformValues(kafkaStreamsTracing.markAsFiltered("myFilter", (k, v) -> ...)
+   *       .filterNot((k, v) -> Objects.isNull(v))
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsFiltered(String spanName, Predicate<K, V> predicate) {
+    return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, false);
+  }
+
+  /**
+   * Create a markAsNotFiltered valueTransformer.
+   *
+   * Instead of filtering, and not emitting values downstream as {@code filterNot} does;
+   * {@code markAsNotFiltered} creates a span, marking it as filtered or not.
+   * If filtered, value returned will be {@code null} and will require
+   * an additional non-null value filter to complete the filtering.
+   *
+   * This operation is offered as lack of a processor that allows to
+   * continue conditionally with the processing without risk of accidental
+   * re-partitioning.
+   *
+   *<p>Simple example using Kafka Streams DSL:
+   *<pre>{@code
+   *StreamsBuilder builder = new StreamsBuilder();
+   *builder.stream(inputTopic)
+   *       .transformValues(kafkaStreamsTracing.markAsNotFiltered("myFilter", (k, v) -> ...)
+   *       .filterNot((k, v) -> Objects.isNull(v))
+   *       .to(outputTopic);
+   *}</pre>
+   */
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsNotFiltered(String spanName, Predicate<K, V> predicate) {
+    return new TracingFilterValueTransformerWithKeySupplier<>(this, spanName, predicate, true);
+  }
+
+  /**
+   * Create a mapValues transformer, similar to {@link KStream#mapValues(ValueMapperWithKey)}, where its mapper action
    * will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
+   *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
@@ -295,14 +361,14 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a peek transformer, similar to {@link KStream#mapValues(ValueMapper)}, where its mapper action
+   * Create a mapValues transformer, similar to {@link KStream#mapValues(ValueMapper)}, where its mapper action
    * will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
+   *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
