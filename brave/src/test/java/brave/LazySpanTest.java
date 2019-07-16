@@ -30,8 +30,8 @@ public class LazySpanTest {
     .spanReporter(spans::add)
     .build();
 
-  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
-  TraceContext context2 = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+  TraceContext context = tracing.tracer().newTrace().context();
+  TraceContext context2 = tracing.tracer().newTrace().context();
 
   @After public void close() {
     tracing.close();

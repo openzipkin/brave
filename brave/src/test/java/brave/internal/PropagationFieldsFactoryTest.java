@@ -73,8 +73,7 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
       assertThat(fields1).isSameAs(fields2);
 
       // we no longer have the same span ID, so we should decouple our extra fields
-      TraceContext context3 =
-          tracing.tracer().toSpan(context1.toBuilder().spanId(1L).build()).context();
+      TraceContext context3 = tracing.tracer().newChild(context1).context();
       PropagationFields fields3 = (PropagationFields) context3.extra().get(0);
 
       // we have different instances of extra
