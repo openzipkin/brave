@@ -297,26 +297,17 @@ public class ITKafkaStreamsTracing {
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
-    Transformer<String, String, KeyValue<String, String>> transformer =
-        new Transformer<String, String, KeyValue<String, String>>() {
-          @Override public void init(ProcessorContext processorContext) {
-          }
-
-          @Override
-          public KeyValue<String, String> transform(String k, String v) {
-            String userId =
-                ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
-            assertThat(userId).isEqualTo("user1");
-            return KeyValue.pair(k, v);
-          }
-
-          @Override public void close() {
-          }
-        };
-
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.transformer("transform1", transformer))
-        .transform(kafkaStreamsTracing.transformer("transform2", transformer))
+        .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
+          brave.Span span = tracing.tracer().currentSpan();
+          String userId = ExtraFieldPropagation.get(span.context(), "user-id");
+          assertThat(userId).isEqualTo("user1");
+          ExtraFieldPropagation.set(span.context(), "user-id", "user2");
+        }))
+        .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
+          String userId = ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
+          assertThat(userId).isEqualTo("user2");
+        }))
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 

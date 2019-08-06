@@ -50,7 +50,9 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
     }
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return delegateTransformer.transform(k, v);
+      R transform = delegateTransformer.transform(k, v);
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
+      return transform;
     } catch (RuntimeException | Error e) {
       span.error(e); // finish as an exception means the callback won't finish the span
       throw e;

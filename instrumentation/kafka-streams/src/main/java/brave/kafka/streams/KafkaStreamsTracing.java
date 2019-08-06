@@ -47,10 +47,12 @@ public final class KafkaStreamsTracing {
 
   final Tracing tracing;
   final TraceContext.Extractor<Headers> extractor;
+  final TraceContext.Injector<Headers> injector;
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
     this.extractor = tracing.propagation().extractor(KafkaStreamsPropagation.GETTER);
+    this.injector = tracing.propagation().injector(KafkaStreamsPropagation.SETTER);
   }
 
   public static KafkaStreamsTracing create(Tracing tracing) {
