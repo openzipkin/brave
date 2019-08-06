@@ -15,10 +15,13 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.List;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
@@ -55,6 +58,19 @@ public class KafkaTracingTest extends BaseTracingTest {
 
   @Test public void nextSpan_should_create_span_if_no_headers() {
     assertThat(kafkaTracing.nextSpan(fakeRecord)).isNotNull();
+  }
+
+  @Test public void nextSpan_should_create_span_with_extra_keys() {
+    tracing = tracing.newBuilder()
+        .propagationFactory(
+            ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
+        .build();
+    kafkaTracing = KafkaTracing.newBuilder(tracing).build();
+    addB3Headers(fakeRecord);
+    fakeRecord.headers().add("user-id", "user1".getBytes());
+
+    Span span = kafkaTracing.nextSpan(fakeRecord);
+    assertThat(ExtraFieldPropagation.get(span.context(), "user-id")).contains("user1");
   }
 
   @Test public void nextSpan_should_tag_topic_and_key_when_no_incoming_context() {

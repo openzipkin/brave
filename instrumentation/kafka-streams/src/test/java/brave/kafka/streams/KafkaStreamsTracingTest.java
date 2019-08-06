@@ -14,15 +14,20 @@
 package brave.kafka.streams;
 
 import brave.Span;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,6 +76,31 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
         .containsOnly(
             entry("kafka.streams.application.id", TEST_APPLICATION_ID),
             entry("kafka.streams.task.id", TEST_TASK_ID));
+  }
+
+  @Test
+  public void processorSupplier_should_add_extra_field() {
+    tracing = tracing.newBuilder()
+        .propagationFactory(
+            ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
+        .build();
+    kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
+
+    ProcessorSupplier<String, String> processorSupplier =
+        kafkaStreamsTracing.processor(
+            "forward-1",
+            new AbstractProcessor<String, String>() {
+              @Override
+              public void process(String key, String value) {
+                String userId =
+                    ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
+                assertThat(userId).isEqualTo("user1");
+              }
+            });
+    Headers headers = new RecordHeaders().add("user-id", "user1".getBytes());
+    Processor<String, String> processor = processorSupplier.get();
+    processor.init(processorContextSupplier.apply(headers));
+    processor.process(TEST_KEY, TEST_VALUE);
   }
 
   @Test
