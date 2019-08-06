@@ -322,6 +322,13 @@ public class ITKafkaStreamsTracing {
 
     Span spanInput = takeSpan(), spanTransform1 = takeSpan(), spanTransform2 = takeSpan(), spanOutput = takeSpan();
 
+    assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
+    assertThat(spanInput.traceId()).isEqualTo(spanTransform1.traceId());
+    assertThat(spanInput.traceId()).isEqualTo(spanTransform2.traceId());
+    assertThat(spanInput.id()).isEqualTo(spanTransform1.parentId());
+    assertThat(spanTransform1.id()).isEqualTo(spanTransform2.parentId());
+    assertThat(spanTransform2.id()).isEqualTo(spanOutput.parentId());
+
     streams.close();
     streams.cleanUp();
   }
