@@ -14,7 +14,11 @@
 package brave.kafka.clients;
 
 import brave.Tracing;
+import brave.internal.PropagationFieldsFactory;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.Propagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.google.common.base.Charsets;
