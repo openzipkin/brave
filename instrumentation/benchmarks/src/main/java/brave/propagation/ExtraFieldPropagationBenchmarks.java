@@ -43,6 +43,9 @@ public class ExtraFieldPropagationBenchmarks {
   static final Propagation<String> extra = factory.create(Propagation.KeyFactory.STRING);
   static final Injector<Map<String, String>> extraInjector = extra.injector(Map::put);
   static final Extractor<Map<String, String>> extraExtractor = extra.extractor(Map::get);
+  static final Propagation<String> redactedExtra = factory.create(Propagation.KeyFactory.STRING);
+  static final Injector<Map<String, String>> redactedInjector = redactedExtra.injector(Map::put);
+  static final Extractor<Map<String, String>> redactedExtractor = redactedExtra.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
     .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -81,6 +84,23 @@ public class ExtraFieldPropagationBenchmarks {
 
   @Benchmark public TraceContextOrSamplingFlags extract_no_extra() {
     return extraExtractor.extract(incomingNoExtra);
+  }
+
+  @Benchmark public void redacted_inject() {
+    Map<String, String> carrier = new LinkedHashMap<>();
+    redactedInjector.inject(context, carrier);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags redacted_extract() {
+    return redactedExtractor.extract(incoming);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags redacted_extract_nothing() {
+    return redactedExtractor.extract(nothingIncoming);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags redacted_extract_no_extra() {
+    return redactedExtractor.extract(incomingNoExtra);
   }
 
   // Convenience main entry-point
