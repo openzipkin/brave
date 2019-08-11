@@ -28,9 +28,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
-    <!-- TODO: not compile compatible with apache dubbo until 2.7.2
-         See https://github.com/apache/incubator-zipkin-brave/issues/867 -->
-    <dubbo.version>2.7.3-SNAPSHOT</dubbo.version>
+    <dubbo.version>2.7.3</dubbo.version>
   </properties>
 
   <dependencies>
