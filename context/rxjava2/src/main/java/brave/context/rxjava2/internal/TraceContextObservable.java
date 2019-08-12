@@ -25,7 +25,7 @@ final class TraceContextObservable<T> extends Observable<T> {
   final TraceContext assembled;
 
   TraceContextObservable(
-      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

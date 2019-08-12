@@ -32,7 +32,7 @@ class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
   BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
   TraceContext.Extractor<Map<String, String>> extractor =
-      B3Propagation.B3_STRING.extractor(TracingFilter.GETTER);
+    B3Propagation.B3_STRING.extractor(TracingFilter.GETTER);
   ServiceConfig<GenericService> service;
   String linkLocalIp;
 

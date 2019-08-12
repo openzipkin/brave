@@ -163,7 +163,7 @@ public final class MutableSpan implements Cloneable {
   /** @see #localIp() */
   public boolean localIp(@Nullable String localIp) {
     this.localIp = IpLiteral.ipOrNull(localIp);
-    return true;
+    return localIp != null;
   }
 
   /** When zero {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */

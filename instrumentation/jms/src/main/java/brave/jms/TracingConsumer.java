@@ -17,7 +17,6 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
-import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.Destination;
 import javax.jms.Message;
@@ -27,7 +26,6 @@ abstract class TracingConsumer<C> {
   final JmsTracing jmsTracing;
   final Tracing tracing;
   final Tracer tracer;
-  final Extractor<Message> extractor;
   @Nullable final String remoteServiceName;
 
   TracingConsumer(C delegate, JmsTracing jmsTracing) {
@@ -35,7 +33,6 @@ abstract class TracingConsumer<C> {
     this.jmsTracing = jmsTracing;
     this.tracing = jmsTracing.tracing;
     this.tracer = tracing.tracer();
-    this.extractor = jmsTracing.extractor;
     this.remoteServiceName = jmsTracing.remoteServiceName;
   }
 

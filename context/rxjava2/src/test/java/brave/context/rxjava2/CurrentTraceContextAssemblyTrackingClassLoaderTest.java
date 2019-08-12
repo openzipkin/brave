@@ -32,7 +32,7 @@ public class CurrentTraceContextAssemblyTrackingClassLoaderTest {
   static class Noop implements Runnable {
     @Override public void run() {
       new CurrentTraceContextAssemblyTracking(
-          ThreadLocalCurrentTraceContext.newBuilder().build()
+        ThreadLocalCurrentTraceContext.newBuilder().build()
       ).enable();
       CurrentTraceContextAssemblyTracking.disable();
     }
@@ -46,9 +46,9 @@ public class CurrentTraceContextAssemblyTrackingClassLoaderTest {
   static class SimpleUsable implements Runnable {
     @Override public void run() {
       CurrentTraceContext currentTraceContext =
-          ThreadLocalCurrentTraceContext.newBuilder().build();
+        ThreadLocalCurrentTraceContext.newBuilder().build();
       SavedHooks saved = new CurrentTraceContextAssemblyTracking(currentTraceContext)
-          .enableAndChain();
+        .enableAndChain();
 
       TraceContext assembly = TraceContext.newBuilder().traceId(1).spanId(1).build();
 

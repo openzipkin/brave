@@ -37,7 +37,7 @@ public class TagContextBinaryMarshallerBenchmarks {
   static final TagContextBinaryMarshaller marshaller = new TagContextBinaryMarshaller();
 
   static final Map<String, String>
-      context = Collections.singletonMap("method", "helloworld.Greeter/SayHello");
+    context = Collections.singletonMap("method", "helloworld.Greeter/SayHello");
 
   static final byte[] serialized = marshaller.toBytes(context);
 
@@ -52,9 +52,9 @@ public class TagContextBinaryMarshallerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + TagContextBinaryMarshallerBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + TagContextBinaryMarshallerBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

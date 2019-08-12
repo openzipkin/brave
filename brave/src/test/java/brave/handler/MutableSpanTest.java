@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanTest {
-  static final Pattern SSN = Pattern.compile("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}");
+  static final Pattern SSN = Pattern.compile("[0-9]{3}-[0-9]{2}-[0-9]{4}");
 
   /** This is a compile test to show how the signature is intended to be used */
   @Test public void forEachTag_consumer_usageExplained() {
@@ -62,9 +62,9 @@ public class MutableSpanTest {
     span.forEachTag((target, key, value) -> target.add(new Tag(key, value)), listTarget);
 
     assertThat(listTarget).containsExactly(
-        new Tag("a", "1"),
-        new Tag("b", "2"),
-        new Tag("c", "3")
+      new Tag("a", "1"),
+      new Tag("b", "2"),
+      new Tag("c", "3")
     );
   }
 
@@ -89,9 +89,9 @@ public class MutableSpanTest {
     });
 
     assertThat(tagsToMap(span)).containsExactly(
-        entry("a", "1"),
-        entry("ssn-suffix", "SSN=xxx-xx-xxxx"),
-        entry("c", "3")
+      entry("a", "1"),
+      entry("ssn-suffix", "SSN=xxx-xx-xxxx"),
+      entry("c", "3")
     );
   }
 
@@ -112,7 +112,7 @@ public class MutableSpanTest {
     span.forEachAnnotation((target, timestamp, value) -> {
       LogRecord record = new LogRecord(Level.FINE, value);
       record.setParameters(
-          new Object[] {context.traceIdString(), context.spanIdString()});
+        new Object[] {context.traceIdString(), context.spanIdString()});
       record.setMillis(timestamp / 1000L);
       target.log(record);
     }, logger);
@@ -139,9 +139,9 @@ public class MutableSpanTest {
     });
 
     assertThat(annotationsToList(span)).containsExactly(
-        entry(1L, "1"),
-        entry(2L, "SSN=xxx-xx-xxxx"),
-        entry(3L, "3")
+      entry(1L, "1"),
+      entry(2L, "SSN=xxx-xx-xxxx"),
+      entry(3L, "3")
     );
   }
 

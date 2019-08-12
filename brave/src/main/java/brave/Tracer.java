@@ -94,16 +94,16 @@ public class Tracer {
   final AtomicBoolean noop;
 
   Tracer(
-      Clock clock,
-      Propagation.Factory propagationFactory,
-      FinishedSpanHandler finishedSpanHandler,
-      PendingSpans pendingSpans,
-      Sampler sampler,
-      CurrentTraceContext currentTraceContext,
-      boolean traceId128Bit,
-      boolean supportsJoin,
-      boolean alwaysSampleLocal,
-      AtomicBoolean noop
+    Clock clock,
+    Propagation.Factory propagationFactory,
+    FinishedSpanHandler finishedSpanHandler,
+    PendingSpans pendingSpans,
+    Sampler sampler,
+    CurrentTraceContext currentTraceContext,
+    boolean traceId128Bit,
+    boolean supportsJoin,
+    boolean alwaysSampleLocal,
+    AtomicBoolean noop
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
@@ -132,16 +132,16 @@ public class Tracer {
   public Tracer withSampler(Sampler sampler) {
     if (sampler == null) throw new NullPointerException("sampler == null");
     return new Tracer(
-        clock,
-        propagationFactory,
-        finishedSpanHandler,
-        pendingSpans,
-        sampler,
-        currentTraceContext,
-        traceId128Bit,
-        supportsJoin,
-        alwaysSampleLocal,
-        noop
+      clock,
+      propagationFactory,
+      finishedSpanHandler,
+      pendingSpans,
+      sampler,
+      currentTraceContext,
+      traceId128Bit,
+      supportsJoin,
+      alwaysSampleLocal,
+      noop
     );
   }
 
@@ -219,13 +219,13 @@ public class Tracer {
     int flags = InternalPropagation.instance.flags(parent);
     if (spanId != 0L) flags |= FLAG_SHARED;
     return decorateContext(
-        flags,
-        parent.traceIdHigh(),
-        parent.traceId(),
-        parent.localRootId(),
-        parentId,
-        spanId,
-        parent.extra()
+      flags,
+      parent.traceIdHigh(),
+      parent.traceId(),
+      parent.localRootId(),
+      parentId,
+      spanId,
+      parent.extra()
     );
   }
 
@@ -248,13 +248,13 @@ public class Tracer {
    * @return a decorated, sampled context with local root information applied.
    */
   TraceContext decorateContext(
-      int flags,
-      long traceIdHigh,
-      long traceId,
-      long localRootId,
-      long parentId,
-      long spanId,
-      List<Object> extra
+    int flags,
+    long traceIdHigh,
+    long traceId,
+    long localRootId,
+    long parentId,
+    long spanId,
+    List<Object> extra
   ) {
     if (alwaysSampleLocal && (flags & FLAG_SAMPLED_LOCAL) != FLAG_SAMPLED_LOCAL) {
       flags |= FLAG_SAMPLED_LOCAL;
@@ -280,13 +280,13 @@ public class Tracer {
       flags &= ~FLAG_LOCAL_ROOT;
     }
     return propagationFactory.decorate(InternalPropagation.instance.newTraceContext(
-        flags,
-        traceIdHigh,
-        traceId,
-        localRootId,
-        parentId,
-        spanId,
-        extra
+      flags,
+      traceIdHigh,
+      traceId,
+      localRootId,
+      parentId,
+      spanId,
+      extra
     ));
   }
 
@@ -326,13 +326,13 @@ public class Tracer {
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (traceIdContext != null) {
       return _toSpan(decorateContext(
-          InternalPropagation.instance.flags(extracted.traceIdContext()),
-          traceIdContext.traceIdHigh(),
-          traceIdContext.traceId(),
-          0L,
-          0L,
-          0L,
-          extracted.extra()
+        InternalPropagation.instance.flags(extracted.traceIdContext()),
+        traceIdContext.traceIdHigh(),
+        traceIdContext.traceId(),
+        0L,
+        0L,
+        0L,
+        extracted.extra()
       ));
     }
 
@@ -378,7 +378,7 @@ public class Tracer {
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
     PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated, false);
     return new RealSpan(decorated, pendingSpans, pendingSpan.state(), pendingSpan.clock(),
-        finishedSpanHandler);
+      finishedSpanHandler);
   }
 
   /**
@@ -541,10 +541,10 @@ public class Tracer {
   @Override public String toString() {
     TraceContext currentSpan = currentTraceContext.get();
     return "Tracer{"
-        + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
-        + (noop.get() ? "noop=true, " : "")
-        + "finishedSpanHandler=" + finishedSpanHandler
-        + "}";
+      + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
+      + (noop.get() ? "noop=true, " : "")
+      + "finishedSpanHandler=" + finishedSpanHandler
+      + "}";
   }
 
   boolean isNoop(TraceContext context) {

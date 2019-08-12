@@ -111,7 +111,7 @@ public class HttpHandlerTest {
   @Test public void handleFinish_parsesTagsInScope() {
     handler = new HttpHandler(currentTraceContext, adapter, new HttpParser() {
       @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-          SpanCustomizer customizer) {
+        SpanCustomizer customizer) {
         assertThat(currentTraceContext.get()).isNotNull();
       }
     }) {

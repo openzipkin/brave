@@ -23,8 +23,8 @@ class TracingProcessorSupplier<K, V> implements ProcessorSupplier<K, V> {
   final Processor<K, V> delegateProcessor;
 
   TracingProcessorSupplier(KafkaStreamsTracing kafkaStreamsTracing,
-      String spanName,
-      Processor<K, V> delegateProcessor) {
+    String spanName,
+    Processor<K, V> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegateProcessor = delegateProcessor;

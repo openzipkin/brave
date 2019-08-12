@@ -32,8 +32,8 @@ public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, Ht
   public HttpServletResponse adaptResponse(HttpServletRequest req, HttpServletResponse resp) {
     String httpRoute = (String) req.getAttribute("http.route");
     return httpRoute != null
-        ? new DecoratedHttpServletResponse(resp, req.getMethod(), httpRoute)
-        : resp;
+      ? new DecoratedHttpServletResponse(resp, req.getMethod(), httpRoute)
+      : resp;
   }
 
   final ServletRuntime servlet = ServletRuntime.get();

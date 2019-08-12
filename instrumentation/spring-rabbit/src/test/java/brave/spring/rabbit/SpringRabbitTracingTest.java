@@ -18,6 +18,7 @@ import brave.propagation.Propagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collection;
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -34,9 +35,9 @@ import static org.mockito.Mockito.when;
 
 public class SpringRabbitTracingTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(Reporter.NOOP)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(Reporter.NOOP)
+    .build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);
 
   @After public void close() {
@@ -46,10 +47,10 @@ public class SpringRabbitTracingTest {
   @Test public void decorateRabbitTemplate_adds_by_default() {
     RabbitTemplate template = new RabbitTemplate();
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
-        .extracting("beforePublishPostProcessors")
-        .allSatisfy(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
-            postProcessor -> postProcessor instanceof TracingMessagePostProcessor
-        ));
+      .extracting("beforePublishPostProcessors")
+      .satisfies(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
+        postProcessor -> postProcessor instanceof TracingMessagePostProcessor
+      ));
   }
 
   @Test public void decorateRabbitTemplate_skips_when_present() {
@@ -57,8 +58,8 @@ public class SpringRabbitTracingTest {
     template.setBeforePublishPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
-        .extracting("beforePublishPostProcessors")
-        .hasSize(1);
+      .extracting("beforePublishPostProcessors")
+      .satisfies(l -> assertThat((List<?>) l).hasSize(1));
   }
 
   @Test public void decorateRabbitTemplate_appends_when_absent() {
@@ -66,17 +67,17 @@ public class SpringRabbitTracingTest {
     template.setBeforePublishPostProcessors(new UnzipPostProcessor());
 
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
-        .extracting("beforePublishPostProcessors")
-        .anySatisfy(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
-            postProcessor -> postProcessor instanceof TracingMessagePostProcessor
-        ));
+      .extracting("beforePublishPostProcessors")
+      .satisfies(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
+        postProcessor -> postProcessor instanceof TracingMessagePostProcessor
+      ));
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_adds_by_default() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+      .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_skips_when_present() {
@@ -84,7 +85,7 @@ public class SpringRabbitTracingTest {
     factory.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .hasSize(1);
+      .hasSize(1);
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_appends_when_absent() {
@@ -92,7 +93,7 @@ public class SpringRabbitTracingTest {
     factory.setAdviceChain(new CacheInterceptor());
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-        .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+      .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 
   @Test public void failsFastIfPropagationDoesntSupportSingleHeader() {
@@ -107,10 +108,10 @@ public class SpringRabbitTracingTest {
     when(propagationFactory.create(Propagation.KeyFactory.STRING)).thenReturn(propagation);
 
     assertThatThrownBy(() -> SpringRabbitTracing.newBuilder(
-        Tracing.newBuilder().propagationFactory(propagationFactory).build())
-        .writeB3SingleFormat(true)
-        .build()
+      Tracing.newBuilder().propagationFactory(propagationFactory).build())
+      .writeB3SingleFormat(true)
+      .build()
     ).hasMessage(
-        "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+      "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
   }
 }

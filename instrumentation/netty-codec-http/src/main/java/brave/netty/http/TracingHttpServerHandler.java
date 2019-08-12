@@ -107,8 +107,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       extracted = extracted.sampled(sampled.booleanValue());
     }
     return extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+      ? tracer.joinSpan(extracted.context())
+      : tracer.nextSpan(extracted);
   }
 
   @Override public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise prm) {

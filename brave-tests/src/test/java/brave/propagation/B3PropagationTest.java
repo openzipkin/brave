@@ -34,8 +34,8 @@ public class B3PropagationTest extends PropagationTest<String> {
   }
 
   @Override protected void inject(Map<String, String> map, @Nullable String traceId,
-      @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
-      @Nullable Boolean debug) {
+    @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
+    @Nullable Boolean debug) {
     if (traceId != null) map.put("X-B3-TraceId", traceId);
     if (parentId != null) map.put("X-B3-ParentSpanId", parentId);
     if (spanId != null) map.put("X-B3-SpanId", spanId);
@@ -58,7 +58,7 @@ public class B3PropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.NOT_SAMPLED);
+      .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
   @Test public void extractTraceContext_sampledFalseUpperCase() {
@@ -68,7 +68,7 @@ public class B3PropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.NOT_SAMPLED);
+      .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
   @Test public void extractTraceContext_malformed() {
@@ -80,7 +80,7 @@ public class B3PropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void extractTraceContext_malformed_sampled() {
@@ -91,7 +91,7 @@ public class B3PropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void extractTraceContext_debug_with_ids() {
@@ -103,7 +103,7 @@ public class B3PropagationTest extends PropagationTest<String> {
     TraceContext result = propagation.extractor(mapEntry).extract(map).context();
 
     assertThat(result.sampled())
-        .isTrue();
+      .isTrue();
   }
 
   @Test public void extractTraceContext_singleHeaderFormat() {
@@ -114,8 +114,8 @@ public class B3PropagationTest extends PropagationTest<String> {
     TraceContext result = propagation.extractor(mapEntry).extract(map).context();
 
     assertThat(result.traceIdString())
-        .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
+      .isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
     assertThat(result.spanIdString())
-        .isEqualTo("00f067aa0ba902b7");
+      .isEqualTo("00f067aa0ba902b7");
   }
 }

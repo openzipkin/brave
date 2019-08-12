@@ -46,7 +46,7 @@ public class ITTracingJMSProducer extends JmsTest {
   @Before public void setup() {
     context = jms.newContext();
     tracedContext = jmsTracing.connectionFactory(jms.factory)
-        .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+      .createContext(JMSContext.AUTO_ACKNOWLEDGE);
 
     producer = tracedContext.createProducer();
     existingProperties.forEach(producer::setProperty);
@@ -64,8 +64,8 @@ public class ITTracingJMSProducer extends JmsTest {
     Span producerSpan = takeSpan();
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_not_serialize_parent_span_id() throws Exception {
@@ -81,13 +81,13 @@ public class ITTracingJMSProducer extends JmsTest {
     assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
     producer.setProperty("b3",
-        writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
+      writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
 
     ScopedSpan parent = tracing.tracer().startScopedSpan("main");
     try {
@@ -101,8 +101,8 @@ public class ITTracingJMSProducer extends JmsTest {
     assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_record_properties() throws Exception {

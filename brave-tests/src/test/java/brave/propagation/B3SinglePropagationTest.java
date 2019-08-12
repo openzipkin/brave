@@ -33,8 +33,8 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   }
 
   @Override protected void inject(Map<String, String> map, @Nullable String traceId,
-      @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
-      @Nullable Boolean debug) {
+    @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
+    @Nullable Boolean debug) {
     StringBuilder builder = new StringBuilder();
     char sampledChar = sampledChar(sampled, debug);
     if (traceId == null) {
@@ -66,7 +66,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.NOT_SAMPLED);
+      .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
   @Test public void extractTraceContext_malformed() {
@@ -76,7 +76,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void extractTraceContext_malformed_uuid() {
@@ -86,7 +86,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
 
     assertThat(result)
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void extractTraceContext_debug_with_ids() {
@@ -97,6 +97,6 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
     TraceContext result = propagation.extractor(mapEntry).extract(map).context();
 
     assertThat(result.debug())
-        .isTrue();
+      .isTrue();
   }
 }

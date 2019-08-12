@@ -37,8 +37,8 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
         throw new IllegalArgumentException();
       }
       String value = tracing != null && tracing.currentTraceContext().get() != null
-          ? tracing.currentTraceContext().get().traceIdString()
-          : "";
+        ? tracing.currentTraceContext().get().traceIdString()
+        : "";
       arg.setProperty("value", value);
       return args[0];
     });
@@ -103,7 +103,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Test public void currentSpanVisibleToImpl() throws Exception {
     assertThat(client.get().sayHello("jorge"))
-        .isNotEmpty();
+      .isNotEmpty();
 
     takeSpan();
   }
@@ -113,7 +113,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     Span span = takeSpan();
     assertThat(span.kind())
-        .isEqualTo(Span.Kind.SERVER);
+      .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
@@ -121,7 +121,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("genericservice/sayhello");
+      .isEqualTo("genericservice/sayhello");
   }
 
   @Test public void addsErrorTagOnException() throws Exception {
@@ -132,7 +132,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     } catch (IllegalArgumentException e) {
       Span span = takeSpan();
       assertThat(span.tags()).containsExactly(
-          entry("error", "IllegalArgumentException")
+        entry("error", "IllegalArgumentException")
       );
     }
   }

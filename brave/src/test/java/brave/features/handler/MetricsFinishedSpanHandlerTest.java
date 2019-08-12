@@ -29,9 +29,9 @@ public class MetricsFinishedSpanHandlerTest {
   SimpleMeterRegistry registry = new SimpleMeterRegistry();
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .addFinishedSpanHandler(new MetricsFinishedSpanHandler(registry, "span", "foo"))
-      .build();
+    .spanReporter(spans::add)
+    .addFinishedSpanHandler(new MetricsFinishedSpanHandler(registry, "span", "foo"))
+    .build();
 
   @After public void after() {
     tracing.close();
@@ -44,8 +44,8 @@ public class MetricsFinishedSpanHandlerTest {
     tracing.tracer().nextSpan().name("foo").start().finish();
 
     assertThat(registry.get("span")
-        .tags("name", "foo", "exception", "None").timer().count())
-        .isEqualTo(2L);
+      .tags("name", "foo", "exception", "None").timer().count())
+      .isEqualTo(2L);
 
     try {
       registry.get("span").tags("name", "bar", "exception", "None").timer();
@@ -57,14 +57,14 @@ public class MetricsFinishedSpanHandlerTest {
 
   @Test public void addsExceptionTagToSpan() {
     tracing.tracer().nextSpan().name("foo").start()
-        .tag("error", "wow")
-        .error(new IllegalStateException())
-        .finish();
+      .tag("error", "wow")
+      .error(new IllegalStateException())
+      .finish();
 
     assertThat(registry.get("span")
-        .tags("name", "foo", "exception", "IllegalStateException").timer().count())
-        .isEqualTo(1L);
+      .tags("name", "foo", "exception", "IllegalStateException").timer().count())
+      .isEqualTo(1L);
     assertThat(spans.get(0).tags())
-        .containsEntry("exception", "IllegalStateException");
+      .containsEntry("exception", "IllegalStateException");
   }
 }

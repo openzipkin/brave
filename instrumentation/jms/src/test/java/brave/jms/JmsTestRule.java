@@ -55,7 +55,7 @@ public abstract class JmsTestRule extends ExternalResource {
   }
 
   abstract void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties)
-      throws Exception;
+    throws Exception;
 
   abstract Connection newConnection() throws Exception;
 
@@ -107,17 +107,17 @@ public abstract class JmsTestRule extends ExternalResource {
 
     @Override Connection newConnection() throws Exception {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-          .createConnection();
+        .createConnection();
     }
 
     @Override QueueConnection newQueueConnection() throws Exception {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-          .createQueueConnection();
+        .createQueueConnection();
     }
 
     @Override TopicConnection newTopicConnection() throws Exception {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-          .createTopicConnection();
+        .createTopicConnection();
     }
 
     @Override void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties) {

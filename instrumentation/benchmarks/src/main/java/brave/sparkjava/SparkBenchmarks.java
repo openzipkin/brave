@@ -45,7 +45,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class Unsampled implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
     );
 
     @Override
@@ -58,7 +58,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class Traced implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
     );
 
     @Override
@@ -71,12 +71,12 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class TracedExtra implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder()
-            .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                .addField("x-vcap-request-id")
-                .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-                .build()
-            ).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder()
+        .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+          .addField("x-vcap-request-id")
+          .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+          .build()
+        ).spanReporter(Reporter.NOOP).build()
     );
 
     @Override
@@ -92,7 +92,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   public static class Traced128 implements SparkApplication {
     SparkTracing sparkTracing = SparkTracing.create(
-        Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
     );
 
     @Override
@@ -105,28 +105,28 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
 
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder
-        .addFilter(new FilterInfo("NotTraced", SparkFilter.class)
-            .addInitParam("applicationClass", NotTraced.class.getName()))
-        .addFilterUrlMapping("NotTraced", "/*", REQUEST)
-        .addFilter(new FilterInfo("Unsampled", SparkFilter.class)
-            .addInitParam("applicationClass", Unsampled.class.getName()))
-        .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
-        .addFilter(new FilterInfo("Traced", SparkFilter.class)
-            .addInitParam("applicationClass", Traced.class.getName()))
-        .addFilterUrlMapping("Traced", "/traced", REQUEST)
-        .addFilter(new FilterInfo("TracedExtra", SparkFilter.class)
-            .addInitParam("applicationClass", TracedExtra.class.getName()))
-        .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
-        .addFilter(new FilterInfo("Traced128", SparkFilter.class)
+      .addFilter(new FilterInfo("NotTraced", SparkFilter.class)
+        .addInitParam("applicationClass", NotTraced.class.getName()))
+      .addFilterUrlMapping("NotTraced", "/*", REQUEST)
+      .addFilter(new FilterInfo("Unsampled", SparkFilter.class)
+        .addInitParam("applicationClass", Unsampled.class.getName()))
+      .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
+      .addFilter(new FilterInfo("Traced", SparkFilter.class)
+        .addInitParam("applicationClass", Traced.class.getName()))
+      .addFilterUrlMapping("Traced", "/traced", REQUEST)
+      .addFilter(new FilterInfo("TracedExtra", SparkFilter.class)
+        .addInitParam("applicationClass", TracedExtra.class.getName()))
+      .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
+      .addFilter(new FilterInfo("Traced128", SparkFilter.class)
         .addInitParam("applicationClass", Traced128.class.getName()))
-        .addFilterUrlMapping("Traced128", "/traced128", REQUEST);
+      .addFilterUrlMapping("Traced128", "/traced128", REQUEST);
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + SparkBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + SparkBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

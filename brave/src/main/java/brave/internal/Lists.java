@@ -40,12 +40,9 @@ public final class Lists {
     if (extra == Collections.EMPTY_LIST) return true;
     // avoid copying datastructure by trusting certain names.
     String simpleName = extra.getClass().getSimpleName();
-    if (simpleName.equals("SingletonList")
-        || simpleName.startsWith("Unmodifiable")
-        || simpleName.contains("Immutable")) {
-      return true;
-    }
-    return false;
+    return simpleName.equals("SingletonList")
+      || simpleName.startsWith("Unmodifiable")
+      || simpleName.contains("Immutable");
   }
 
   public static List<Object> concatImmutableLists(List<Object> left, List<Object> right) {

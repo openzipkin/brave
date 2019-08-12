@@ -50,7 +50,7 @@ public class HttpAdapterTest {
     when(span.isNoop()).thenReturn(false);
     when(span.remoteIpAndPort("1.2.3.4", -1)).thenReturn(true);
     when(request.getTarget()).thenReturn(
-        new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http"));
+      new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http"));
 
     HttpAdapter.parseTargetAddress(request, span);
 

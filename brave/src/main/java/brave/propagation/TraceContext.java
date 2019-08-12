@@ -439,8 +439,8 @@ public final class TraceContext extends SamplingFlags {
 
       assert max == 32 || max == 16;
       Platform.get().log(max == 32
-          ? "{0} should be a 1 to 32 character lower-hex string with no prefix"
-          : "{0} should be a 1 to 16 character lower-hex string with no prefix", key, null);
+        ? "{0} should be a 1 to 32 character lower-hex string with no prefix"
+        : "{0} should be a 1 to 16 character lower-hex string with no prefix", key, null);
 
       return true;
     }
@@ -461,7 +461,7 @@ public final class TraceContext extends SamplingFlags {
       if (spanId == 0L) missing += " spanId";
       if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
       return new TraceContext(
-          flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
+        flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
       );
     }
 
@@ -481,13 +481,13 @@ public final class TraceContext extends SamplingFlags {
   final List<Object> extra;
 
   TraceContext(
-      int flags,
-      long traceIdHigh,
-      long traceId,
-      long localRootId,
-      long parentId,
-      long spanId,
-      List<Object> extra
+    int flags,
+    long traceIdHigh,
+    long traceId,
+    long localRootId,
+    long parentId,
+    long spanId,
+    List<Object> extra
   ) {
     super(flags);
     this.traceIdHigh = traceIdHigh;
@@ -511,9 +511,9 @@ public final class TraceContext extends SamplingFlags {
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;
     return (traceIdHigh == that.traceIdHigh)
-        && (traceId == that.traceId)
-        && (spanId == that.spanId)
-        && ((flags & FLAG_SHARED) == (that.flags & FLAG_SHARED));
+      && (traceId == that.traceId)
+      && (spanId == that.spanId)
+      && ((flags & FLAG_SHARED) == (that.flags & FLAG_SHARED));
   }
 
   volatile int hashCode; // Lazily initialized and cached.

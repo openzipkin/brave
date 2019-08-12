@@ -121,7 +121,7 @@ public class TracerTest {
 
     assertThat(tracer).extracting(
       "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
-      .containsExactly("my-foo");
+      .isEqualTo("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
@@ -129,7 +129,7 @@ public class TracerTest {
 
     assertThat(tracer).extracting(
       "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
-      .containsExactly("unknown");
+      .isEqualTo("unknown");
   }
 
   @Test public void localServiceName_ignoredWhenGivenLocalEndpoint() {
@@ -137,7 +137,7 @@ public class TracerTest {
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
     assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint")
-      .allSatisfy(e -> assertThat(e).isEqualTo(endpoint));
+      .isEqualTo(endpoint);
   }
 
   @Test public void newTrace_isRootSpan() {
@@ -536,10 +536,10 @@ public class TracerTest {
   @Test public void nextSpan_extractedTraceContext_extra() {
     TraceContext traceContext = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
     TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceContext)
-        .toBuilder().addExtra(1L).build();
+      .toBuilder().addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
-        .contains(1L);
+      .contains(1L);
   }
 
   @Test public void startScopedSpan_isInScope() {
@@ -547,9 +547,9 @@ public class TracerTest {
 
     try {
       assertThat(tracer.currentSpan().context())
-          .isEqualTo(current.context);
+        .isEqualTo(current.context);
       assertThat(tracer.currentSpanCustomizer())
-          .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
+        .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
     } finally {
       current.finish();
     }
@@ -564,9 +564,9 @@ public class TracerTest {
 
     try {
       assertThat(tracer.currentSpan().context())
-          .isEqualTo(current.context);
+        .isEqualTo(current.context);
       assertThat(tracer.currentSpanCustomizer())
-          .isSameAs(NoopSpanCustomizer.INSTANCE);
+        .isSameAs(NoopSpanCustomizer.INSTANCE);
     } finally {
       current.finish();
     }
@@ -580,10 +580,10 @@ public class TracerTest {
 
     try (SpanInScope ws = tracer.withSpanInScope(current)) {
       assertThat(tracer.currentSpan())
-          .isEqualTo(current);
+        .isEqualTo(current);
       assertThat(tracer.currentSpanCustomizer())
-          .isNotEqualTo(current)
-          .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
+        .isNotEqualTo(current)
+        .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
     }
 
     // context was cleared
@@ -595,10 +595,10 @@ public class TracerTest {
 
     try (SpanInScope ws = tracer.withSpanInScope(current)) {
       assertThat(tracer.currentSpan())
-          .isEqualTo(current);
+        .isEqualTo(current);
       assertThat(tracer.currentSpanCustomizer())
-          .isNotEqualTo(current)
-          .isEqualTo(NoopSpanCustomizer.INSTANCE);
+        .isNotEqualTo(current)
+        .isEqualTo(NoopSpanCustomizer.INSTANCE);
     }
 
     // context was cleared
@@ -609,7 +609,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-          "Tracer{currentSpan=0000000000000001/000000000000000a, finishedSpanHandler=MyReporter{}}"
+        "Tracer{currentSpan=0000000000000001/000000000000000a, finishedSpanHandler=MyReporter{}}"
       );
     }
   }
@@ -618,7 +618,7 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-        "Tracer{noop=true, finishedSpanHandler=MyReporter{}}"
+      "Tracer{noop=true, finishedSpanHandler=MyReporter{}}"
     );
   }
 
@@ -630,12 +630,12 @@ public class TracerTest {
       Span child = tracer.newChild(parent.context());
       try (SpanInScope wsChild = tracer.withSpanInScope(child)) {
         assertThat(tracer.currentSpan())
-            .isEqualTo(child);
+          .isEqualTo(child);
       }
 
       // old parent reverted
       assertThat(tracer.currentSpan())
-          .isEqualTo(parent);
+        .isEqualTo(parent);
     }
   }
 
@@ -645,14 +645,14 @@ public class TracerTest {
     try (SpanInScope wsParent = tracer.withSpanInScope(parent)) {
       try (SpanInScope clearScope = tracer.withSpanInScope(null)) {
         assertThat(tracer.currentSpan())
-            .isNull();
+          .isNull();
         assertThat(tracer.currentSpanCustomizer())
-            .isEqualTo(NoopSpanCustomizer.INSTANCE);
+          .isEqualTo(NoopSpanCustomizer.INSTANCE);
       }
 
       // old parent reverted
       assertThat(tracer.currentSpan())
-          .isEqualTo(parent);
+        .isEqualTo(parent);
     }
   }
 
@@ -728,9 +728,9 @@ public class TracerTest {
     }
 
     assertThat(spans.get(0).name())
-        .isEqualTo("foo");
+      .isEqualTo("foo");
     assertThat(spans.get(0).durationAsLong())
-        .isPositive();
+      .isPositive();
   }
 
   @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() throws InterruptedException {
@@ -967,17 +967,18 @@ public class TracerTest {
     localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
   }
 
-  void localRootId(TraceContext c1, TraceContext c2, Function<TraceContextOrSamplingFlags, Span> fn) {
+  void localRootId(TraceContext c1, TraceContext c2,
+    Function<TraceContextOrSamplingFlags, Span> fn) {
     localRootId(TraceContextOrSamplingFlags.create(c1), TraceContextOrSamplingFlags.create(c2), fn);
   }
 
   void localRootId(TraceIdContext c1, TraceIdContext c2,
-      Function<TraceContextOrSamplingFlags, Span> fn) {
+    Function<TraceContextOrSamplingFlags, Span> fn) {
     localRootId(TraceContextOrSamplingFlags.create(c1), TraceContextOrSamplingFlags.create(c2), fn);
   }
 
   void localRootId(TraceContextOrSamplingFlags ctx1, TraceContextOrSamplingFlags ctx2,
-      Function<TraceContextOrSamplingFlags, Span> ctxFn
+    Function<TraceContextOrSamplingFlags, Span> ctxFn
   ) {
     Map<Long, List<String>> reportedNames = tracerThatPartitionsNamesOnlocalRootId();
     Span server1 = ctxFn.apply(ctx1).name("server1").kind(Kind.SERVER).start();
@@ -1006,8 +1007,8 @@ public class TracerTest {
     }
 
     assertThat(reportedNames).hasSize(2).containsValues(
-        asList("client1", "processor1", "server1"),
-        asList("client2", "client3", "processor2", "server2")
+      asList("client1", "processor1", "server1"),
+      asList("client2", "client3", "processor2", "server2")
     );
   }
 
@@ -1016,7 +1017,8 @@ public class TracerTest {
     tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext context, MutableSpan span) {
         assertThat(context.localRootId()).isNotZero();
-        reportedNames.computeIfAbsent(context.localRootId(), k -> new ArrayList<>()).add(span.name());
+        reportedNames.computeIfAbsent(context.localRootId(), k -> new ArrayList<>())
+          .add(span.name());
         return true; // retain
       }
 

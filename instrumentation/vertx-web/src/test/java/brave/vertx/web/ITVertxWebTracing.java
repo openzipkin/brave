@@ -17,8 +17,8 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.http.HttpAdapter;
 import brave.http.HttpServerParser;
-import brave.test.http.ITHttpServer;
 import brave.propagation.ExtraFieldPropagation;
+import brave.test.http.ITHttpServer;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -84,7 +84,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     router.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));
     });
-    router.route( "/async_items/:itemId").handler(ctx -> {
+    router.route("/async_items/:itemId").handler(ctx -> {
       if (Tracing.currentTracer().currentSpan() == null) {
         throw new IllegalStateException("couldn't read current span!");
       }
@@ -100,10 +100,10 @@ public class ITVertxWebTracing extends ITHttpServer {
     });
 
     Handler<RoutingContext> routingContextHandler =
-        VertxWebTracing.create(httpTracing).routingContextHandler();
+      VertxWebTracing.create(httpTracing).routingContextHandler();
     router.route()
-        .order(-1).handler(routingContextHandler)
-        .failureHandler(routingContextHandler);
+      .order(-1).handler(routingContextHandler)
+      .failureHandler(routingContextHandler);
 
     server = vertx.createHttpServer(new HttpServerOptions().setPort(0).setHost("localhost"));
 
@@ -114,8 +114,8 @@ public class ITVertxWebTracing extends ITHttpServer {
     });
 
     assertThat(latch.await(10, TimeUnit.SECONDS))
-        .withFailMessage("server didn't start")
-        .isTrue();
+      .withFailMessage("server didn't start")
+      .isTrue();
   }
 
   // makes sure we don't accidentally rewrite the incoming http path
@@ -154,8 +154,8 @@ public class ITVertxWebTracing extends ITHttpServer {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.path", path)
-        .containsEntry("http.url", url(path));
+      .containsEntry("http.path", path)
+      .containsEntry("http.url", url(path));
   }
 
   @Override

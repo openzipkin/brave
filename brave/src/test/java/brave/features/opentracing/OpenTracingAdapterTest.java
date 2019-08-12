@@ -39,11 +39,11 @@ import static org.assertj.core.data.MapEntry.entry;
 public class OpenTracingAdapterTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
-      .spanReporter(spans::add).build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
+    .spanReporter(spans::add).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
@@ -52,11 +52,11 @@ public class OpenTracingAdapterTest {
   }
 
   @Test public void startWithOpenTracingAndFinishWithBrave() {
-    io.opentracing.Span openTracingSpan = opentracing.buildSpan("encode")
-        .withTag("lc", "codec")
-        .withStartTimestamp(1L).start();
+    BraveSpan openTracingSpan = opentracing.buildSpan("encode")
+      .withTag("lc", "codec")
+      .withStartTimestamp(1L).start();
 
-    brave.Span braveSpan = ((BraveSpan) openTracingSpan).unwrap();
+    brave.Span braveSpan = openTracingSpan.unwrap();
 
     braveSpan.annotate(2L, "pump fake");
     braveSpan.finish(3L);
@@ -66,8 +66,8 @@ public class OpenTracingAdapterTest {
 
   @Test public void startWithBraveAndFinishWithOpenTracing() {
     brave.Span braveSpan = brave.tracer().newTrace().name("encode")
-        .tag("lc", "codec")
-        .start(1L);
+      .tag("lc", "codec")
+      .start(1L);
 
     io.opentracing.Span openTracingSpan = BraveSpan.wrap(braveSpan);
 
@@ -86,46 +86,46 @@ public class OpenTracingAdapterTest {
     map.put("Client-Id", "sammy");
 
     BraveSpanContext openTracingContext =
-        opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapAdapter(map));
+      opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapAdapter(map));
 
     assertThat(openTracingContext.context)
-        .isEqualTo(TraceContext.newBuilder()
-            .traceId(1L)
-            .spanId(2L)
-            .sampled(true).build());
+      .isEqualTo(TraceContext.newBuilder()
+        .traceId(1L)
+        .spanId(2L)
+        .sampled(true).build());
 
     assertThat(openTracingContext.baggageItems())
-        .containsExactly(entry("client-id", "sammy"));
+      .containsExactly(entry("client-id", "sammy"));
   }
 
   @Test
   public void injectTraceContext() {
     TraceContext context = TraceContext.newBuilder()
-        .traceId(1L)
-        .spanId(2L)
-        .sampled(true).build();
+      .traceId(1L)
+      .spanId(2L)
+      .sampled(true).build();
 
     Map<String, String> map = new LinkedHashMap<>();
     TextMapAdapter carrier = new TextMapAdapter(map);
     opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, carrier);
 
     assertThat(map).containsExactly(
-        entry("X-B3-TraceId", "0000000000000001"),
-        entry("X-B3-SpanId", "0000000000000002"),
-        entry("X-B3-Sampled", "1")
+      entry("X-B3-TraceId", "0000000000000001"),
+      entry("X-B3-SpanId", "0000000000000002"),
+      entry("X-B3-Sampled", "1")
     );
   }
 
   void checkSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
-          assertThat(s.name()).isEqualTo("encode");
-          assertThat(s.timestamp()).isEqualTo(1L);
-          assertThat(s.annotations())
-              .containsExactly(Annotation.create(2L, "pump fake"));
-          assertThat(s.tags())
-              .containsExactly(entry("lc", "codec"));
-          assertThat(s.duration()).isEqualTo(2L);
-        }
+        assertThat(s.name()).isEqualTo("encode");
+        assertThat(s.timestamp()).isEqualTo(1L);
+        assertThat(s.annotations())
+          .containsExactly(Annotation.create(2L, "pump fake"));
+        assertThat(s.tags())
+          .containsExactly(entry("lc", "codec"));
+        assertThat(s.duration()).isEqualTo(2L);
+      }
     );
   }
 }

@@ -43,7 +43,8 @@ public abstract class FinishedSpanHandler {
    * This is invoked after a span is finished, allowing data to be modified or reported out of
    * process. A return value of false means the span should be dropped completely from the stream.
    *
-   * <p>Changes to the input span are visible by later finished span handlers. One reason to change the
+   * <p>Changes to the input span are visible by later finished span handlers. One reason to change
+   * the
    * input is to align tags, so that correlation occurs. For example, some may clean the tag
    * "http.path" knowing downstream handlers such as zipkin reporting have the same value.
    *

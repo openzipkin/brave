@@ -32,7 +32,7 @@ public class HandlerParser {
   /** Adds no tags to the span representing the request. */
   public static final HandlerParser NOOP = new HandlerParser() {
     @Override protected void preHandle(HttpServletRequest request, Object handler,
-        SpanCustomizer customizer) {
+      SpanCustomizer customizer) {
     }
   };
 
@@ -42,7 +42,8 @@ public class HandlerParser {
   public static final String CONTROLLER_METHOD = "mvc.controller.method";
 
   /**
-   * Invoked prior to request invocation during {@link HandlerInterceptor#preHandle(HttpServletRequest, HttpServletResponse, Object)}.
+   * Invoked prior to request invocation during {@link HandlerInterceptor#preHandle(HttpServletRequest,
+   * HttpServletResponse, Object)}.
    *
    * <p>Adds the tags {@link #CONTROLLER_CLASS} and {@link #CONTROLLER_METHOD}. Override or use
    * {@link #NOOP} to change this behavior.

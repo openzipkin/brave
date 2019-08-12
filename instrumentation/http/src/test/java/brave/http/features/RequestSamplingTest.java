@@ -43,29 +43,29 @@ public class RequestSamplingTest {
 
   ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
   Tracing tracing = Tracing.newBuilder()
-      .localServiceName("server")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(spans::push)
-      .build();
+    .localServiceName("server")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(spans::push)
+    .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
-      // server starts traces under the path /api
-      .serverSampler(new HttpSampler() {
-        @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-          return adapter.path(request).startsWith("/api");
-        }
-      })
-      // client doesn't start new traces
-      .clientSampler(HttpSampler.NEVER_SAMPLE)
-      .build();
+    // server starts traces under the path /api
+    .serverSampler(new HttpSampler() {
+      @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+        return adapter.path(request).startsWith("/api");
+      }
+    })
+    // client doesn't start new traces
+    .clientSampler(HttpSampler.NEVER_SAMPLE)
+    .build();
 
   OkHttpClient client = new OkHttpClient();
 
   @Before public void setup() {
     server.setDispatcher(new TracingDispatcher(httpTracing, new Dispatcher() {
       OkHttpClient tracedClient = client.newBuilder()
-          .addNetworkInterceptor(new TracingInterceptor(httpTracing)).build();
+        .addNetworkInterceptor(new TracingInterceptor(httpTracing)).build();
 
       @Override public MockResponse dispatch(RecordedRequest request) {
         if (request.getPath().equals("/next")) return new MockResponse().setBody("next");
@@ -79,7 +79,7 @@ public class RequestSamplingTest {
     }));
   }
 
-  @After public void close(){
+  @After public void close() {
     tracing.close();
   }
 
@@ -92,8 +92,8 @@ public class RequestSamplingTest {
     callServer("/api");
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .contains(entry("http.path", "/api"), entry("http.path", "/next"));
+      .flatExtracting(s -> s.tags().entrySet())
+      .contains(entry("http.path", "/api"), entry("http.path", "/next"));
   }
 
   void callServer(String path) throws IOException {

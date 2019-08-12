@@ -61,8 +61,8 @@ public class ServletRuntimeBenchmarks {
   int threeStatuses(ServletRuntime runtime) {
     // & to ensure null wasn't returned (forces NPE)
     return runtime.status(new Response1()) &
-        runtime.status(new Response2()) &
-        runtime.status(new Response3());
+      runtime.status(new Response2()) &
+      runtime.status(new Response3());
   }
 
   @Benchmark @Group("no_contention") @GroupThreads(1)
@@ -83,8 +83,8 @@ public class ServletRuntimeBenchmarks {
   int threeResponses(ServletRuntime runtime) {
     // & to ensure null wasn't returned (forces NPE)
     return runtime.httpResponse(new Response1()).getStatus() &
-        runtime.httpResponse(new Response2()).getStatus() &
-        runtime.httpResponse(new Response3()).getStatus();
+      runtime.httpResponse(new Response2()).getStatus() &
+      runtime.httpResponse(new Response3()).getStatus();
   }
 
   @Benchmark @Group("no_contention") @GroupThreads(1)
@@ -135,26 +135,26 @@ public class ServletRuntimeBenchmarks {
   private int threeStatusesReflection() throws Exception {
     // & to ensure null wasn't returned (forces NPE)
     return ((int) Response1.class.getMethod("getStatus").invoke(new Response1())) &
-        ((int) Response2.class.getMethod("getStatus").invoke(new Response2())) &
-        ((int) Response3.class.getMethod("getStatus").invoke(new Response3()));
+      ((int) Response2.class.getMethod("getStatus").invoke(new Response2())) &
+      ((int) Response3.class.getMethod("getStatus").invoke(new Response3()));
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + ServletRuntimeBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + ServletRuntimeBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }
 
-  class Response1 extends HttpServletResponseImpl {
+  static class Response1 extends HttpServletResponseImpl {
   }
 
-  class Response2 extends HttpServletResponseImpl {
+  static class Response2 extends HttpServletResponseImpl {
   }
 
-  class Response3 extends HttpServletResponseImpl {
+  static class Response3 extends HttpServletResponseImpl {
   }
 
   public static class HttpServletResponseImpl implements HttpServletResponse {

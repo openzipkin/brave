@@ -31,12 +31,12 @@ import org.springframework.web.client.AsyncRestTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingAsyncClientHttpRequestInterceptor
-    extends ITHttpAsyncClient<AsyncClientHttpRequestFactory> {
+  extends ITHttpAsyncClient<AsyncClientHttpRequestFactory> {
   AsyncClientHttpRequestInterceptor interceptor;
 
   AsyncClientHttpRequestFactory configureClient(AsyncClientHttpRequestInterceptor interceptor) {
     HttpComponentsAsyncClientHttpRequestFactory factory =
-        new HttpComponentsAsyncClientHttpRequestFactory();
+      new HttpComponentsAsyncClientHttpRequestFactory();
     factory.setReadTimeout(1000);
     factory.setConnectTimeout(1000);
     this.interceptor = interceptor;
@@ -52,18 +52,18 @@ public class ITTracingAsyncClientHttpRequestInterceptor
   }
 
   @Override protected void get(AsyncClientHttpRequestFactory client, String pathIncludingQuery)
-      throws Exception {
+    throws Exception {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForEntity(url(pathIncludingQuery), String.class).get();
   }
 
   @Override protected void post(AsyncClientHttpRequestFactory client, String uri, String content)
-      throws Exception {
+    throws Exception {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.postForEntity(url(uri), RequestEntity.post(URI.create(url(uri))).body(content),
-        String.class).get();
+      String.class).get();
   }
 
   @Override protected void getAsync(AsyncClientHttpRequestFactory client, String uri) {
@@ -78,14 +78,14 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Arrays.asList(interceptor, (request, body, execution) -> {
       request.getHeaders()
-          .add("my-id", currentTraceContext.get().traceIdString());
+        .add("my-id", currentTraceContext.get().traceIdString());
       return execution.executeAsync(request, body);
     }));
     restTemplate.getForEntity(server.url("/foo").toString(), String.class).get();
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(request.getHeader("my-id"));
+      .isEqualTo(request.getHeader("my-id"));
 
     takeSpan();
   }

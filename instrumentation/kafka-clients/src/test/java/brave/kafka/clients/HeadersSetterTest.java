@@ -21,7 +21,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import static brave.kafka.clients.KafkaPropagation.SETTER;
-import static brave.kafka.clients.KafkaPropagation.UTF_8;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
   Headers carrier = new RecordHeaders();
@@ -40,7 +40,7 @@ public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
 
   @Override protected Iterable<String> read(Headers carrier, String key) {
     return StreamSupport.stream(carrier.headers(key).spliterator(), false)
-        .map(h -> new String(h.value(), UTF_8))
-        .collect(Collectors.toList());
+      .map(h -> new String(h.value(), UTF_8))
+      .collect(Collectors.toList());
   }
 }

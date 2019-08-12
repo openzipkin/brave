@@ -27,20 +27,20 @@ public class PropagationFactoryTest {
   /** 64 bit trace IDs are not consistently mandatory across propagation, yet. */
   @Test public void requires128BitTraceId_defaultsToFalse() {
     assertThat(factory.requires128BitTraceId())
-        .isFalse();
+      .isFalse();
   }
 
   /** join (reusing span ID on client and server side) is rarely supported outside B3. */
   @Test public void supportsJoin_defaultsToFalse() {
     assertThat(B3Propagation.FACTORY.supportsJoin())
-        .isTrue();
+      .isTrue();
     assertThat(factory.supportsJoin())
-        .isFalse();
+      .isFalse();
   }
 
   @Test public void decorate_defaultsToReturnSameInstance() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
     assertThat(factory.decorate(context))
-        .isSameAs(context);
+      .isSameAs(context);
   }
 }

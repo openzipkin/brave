@@ -18,7 +18,8 @@ import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 
-public class TracingFilterTransformerSupplier<K, V> implements TransformerSupplier<K, V, KeyValue<K, V>> {
+public class TracingFilterTransformerSupplier<K, V>
+  implements TransformerSupplier<K, V, KeyValue<K, V>> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
@@ -26,7 +27,7 @@ public class TracingFilterTransformerSupplier<K, V> implements TransformerSuppli
   final boolean filterNot;
 
   public TracingFilterTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
-      String spanName, Predicate<K, V> delegatePredicate, boolean filterNot) {
+    String spanName, Predicate<K, V> delegatePredicate, boolean filterNot) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegatePredicate = delegatePredicate;
@@ -35,6 +36,6 @@ public class TracingFilterTransformerSupplier<K, V> implements TransformerSuppli
 
   @Override public Transformer<K, V, KeyValue<K, V>> get() {
     return new TracingFilterTransformer<>(kafkaStreamsTracing, spanName, delegatePredicate,
-        filterNot);
+      filterNot);
   }
 }

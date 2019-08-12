@@ -49,8 +49,8 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("jaxrs.resource.class", "TestResource")
-        .containsEntry("jaxrs.resource.method", "foo");
+      .containsEntry("jaxrs.resource.class", "TestResource")
+      .containsEntry("jaxrs.resource.method", "foo");
   }
 
   @Override public void init(ServletContextHandler handler) {
@@ -72,8 +72,8 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
       deployment.setApplication(new Application() {
         @Override public Set<Object> getSingletons() {
           return new LinkedHashSet<>(Arrays.asList(
-              resource,
-              SpanCustomizingContainerFilter.create()
+            resource,
+            SpanCustomizingContainerFilter.create()
           ));
         }
       });

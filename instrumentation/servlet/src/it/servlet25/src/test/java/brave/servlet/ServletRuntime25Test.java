@@ -21,7 +21,6 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Response;
-import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,21 +34,21 @@ public class ServletRuntime25Test {
     field.setAccessible(true);
     field.set(jettyResponse, 400);
     assertThat(ServletRuntime.get().status(jettyResponse))
-        .isEqualTo(400);
+      .isEqualTo(400);
   }
 
   @Test public void httpResponse_wrapsHttpServletResponse() throws Exception {
     assertThat(ServletRuntime.get().httpResponse(new WithoutGetStatus()))
-        .isInstanceOf(ServletRuntime.Servlet25ServerResponseAdapter.class);
+      .isInstanceOf(ServletRuntime.Servlet25ServerResponseAdapter.class);
   }
 
   @Test public void status_fromInvalidMethod() throws Exception {
     assertThat(ServletRuntime.get().status(new WithInvalidGetStatus()))
-        .isZero();
+      .isZero();
   }
 
   public static class WithInvalidGetStatus extends WithoutGetStatus {
-    public String getStatus(){
+    public String getStatus() {
       return "foo";
     }
   }

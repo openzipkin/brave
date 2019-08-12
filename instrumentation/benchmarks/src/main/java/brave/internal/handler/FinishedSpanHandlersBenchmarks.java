@@ -112,9 +112,9 @@ public class FinishedSpanHandlersBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + FinishedSpanHandlersBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .addProfiler("gc")
+      .include(".*" + FinishedSpanHandlersBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

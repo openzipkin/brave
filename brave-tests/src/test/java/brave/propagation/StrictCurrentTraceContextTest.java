@@ -54,8 +54,8 @@ public class StrictCurrentTraceContextTest extends CurrentTraceContextTest {
     scopingThread.join();
 
     assertThat(spawnedThreadException[0])
-        .hasMessage("scope closed in a different thread: spawned thread");
+      .hasMessage("scope closed in a different thread: spawned thread");
     assertThat(spawnedThreadException[0].getCause())
-        .hasMessage("Thread scoping thread opened scope for " + context + " here:");
+      .hasMessage("Thread scoping thread opened scope for " + context + " here:");
   }
 }

@@ -62,7 +62,7 @@ public class TracingProducerBenchmarks {
     producer = new FakeProducer();
     tracingProducer = KafkaTracing.create(tracing).producer(producer);
     tracingB3SingleProducer =
-        KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build().producer(producer);
+      KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build().producer(producer);
   }
 
   @TearDown(Level.Trial) public void close() {
@@ -84,9 +84,9 @@ public class TracingProducerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + TracingProducerBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + TracingProducerBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

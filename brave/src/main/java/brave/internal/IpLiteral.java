@@ -90,10 +90,10 @@ public final class IpLiteral {
     int len = toExcluded - from;
     int i;
     return len <= 15 && len >= 7 &&
-        (i = ip.indexOf('.', from + 1)) > 0 && isValidIpV4Word(ip, from, i) &&
-        (i = ip.indexOf('.', from = i + 2)) > 0 && isValidIpV4Word(ip, from - 1, i) &&
-        (i = ip.indexOf('.', from = i + 2)) > 0 && isValidIpV4Word(ip, from - 1, i) &&
-        isValidIpV4Word(ip, i + 1, toExcluded);
+      (i = ip.indexOf('.', from + 1)) > 0 && isValidIpV4Word(ip, from, i) &&
+      (i = ip.indexOf('.', from = i + 2)) > 0 && isValidIpV4Word(ip, from - 1, i) &&
+      (i = ip.indexOf('.', from = i + 2)) > 0 && isValidIpV4Word(ip, from - 1, i) &&
+      isValidIpV4Word(ip, i + 1, toExcluded);
   }
 
   private static boolean isValidIpV4Word(CharSequence word, int from, int toExclusive) {
@@ -103,9 +103,9 @@ public final class IpLiteral {
     c0 = word.charAt(from);
     if (len == 3) {
       return (c1 = word.charAt(from + 1)) >= '0' &&
-          (c2 = word.charAt(from + 2)) >= '0' &&
-          ((c0 <= '1' && c1 <= '9' && c2 <= '9') ||
-              (c0 == '2' && c1 <= '5' && (c2 <= '5' || (c1 < '5' && c2 <= '9'))));
+        (c2 = word.charAt(from + 2)) >= '0' &&
+        ((c0 <= '1' && c1 <= '9' && c2 <= '9') ||
+          (c0 == '2' && c1 <= '5' && (c2 <= '5' || (c1 < '5' && c2 <= '9'))));
     }
     return c0 <= '9' && (len == 1 || isValidNumericChar(word.charAt(from + 1)));
   }

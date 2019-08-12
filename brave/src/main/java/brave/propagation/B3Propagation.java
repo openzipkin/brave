@@ -20,12 +20,13 @@ import java.util.List;
 import static java.util.Arrays.asList;
 
 /**
- * Implements <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3 Propagation</a>
+ * Implements <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3
+ * Propagation</a>
  */
 public final class B3Propagation<K> implements Propagation<K> {
 
   public static final Propagation.Factory FACTORY = new Propagation.Factory() {
-    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
       return new B3Propagation<>(keyFactory);
     }
 
@@ -70,7 +71,7 @@ public final class B3Propagation<K> implements Propagation<K> {
     this.sampledKey = keyFactory.create(SAMPLED_NAME);
     this.debugKey = keyFactory.create(FLAGS_NAME);
     this.fields = Collections.unmodifiableList(
-        asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+      asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
   }
 
@@ -134,8 +135,8 @@ public final class B3Propagation<K> implements Propagation<K> {
       // Official sampled value is 1, though some old instrumentation send true
       String sampled = getter.get(carrier, propagation.sampledKey);
       Boolean sampledV = sampled != null
-          ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
-          : null;
+        ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
+        : null;
       boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
 
       String traceIdString = getter.get(carrier, propagation.traceIdKey);
@@ -145,8 +146,8 @@ public final class B3Propagation<K> implements Propagation<K> {
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();
       if (result.parseTraceId(traceIdString, propagation.traceIdKey)
-          && result.parseSpanId(getter, carrier, propagation.spanIdKey)
-          && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
+        && result.parseSpanId(getter, carrier, propagation.spanIdKey)
+        && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
         if (sampledV != null) result.sampled(sampledV.booleanValue());
         if (debug) result.debug(true);
         return TraceContextOrSamplingFlags.create(result.build());

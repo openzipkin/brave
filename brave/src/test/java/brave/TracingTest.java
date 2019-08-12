@@ -39,8 +39,8 @@ public class TracingTest {
   };
 
   /**
-   * This behavior could be problematic as downstream services may report spans based on
-   * propagated sampled status, and be missing a parent when their parent tracer is in noop.
+   * This behavior could be problematic as downstream services may report spans based on propagated
+   * sampled status, and be missing a parent when their parent tracer is in noop.
    */
   @Test public void setNoop_dropsDataButDoesntAffectSampling() {
     try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
@@ -79,18 +79,18 @@ public class TracingTest {
     };
 
     try (Tracing tracing = Tracing.newBuilder()
-        .localServiceName(expectedLocalServiceName)
-        .localIp(expectedLocalIp)
-        .localPort(expectedLocalPort)
-        .spanReporter(spanReporter)
-        .build()) {
+      .localServiceName(expectedLocalServiceName)
+      .localIp(expectedLocalIp)
+      .localPort(expectedLocalPort)
+      .spanReporter(spanReporter)
+      .build()) {
       tracing.tracer().newTrace().start().finish();
     }
 
     assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
-  @Test public void firehose_dataChangesVisibleToZipkin() {
+  @Test public void finishedSpanHandler_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
     FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
@@ -101,20 +101,20 @@ public class TracingTest {
     };
 
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .addFinishedSpanHandler(finishedSpanHandler)
-        .build()) {
+      .spanReporter(spans::add)
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .build()) {
       tracing.tracer().newTrace().start().finish();
     }
 
     assertThat(spans.get(0).localServiceName()).isEqualTo(serviceNameOverride);
   }
 
-  @Test public void firehose_recordsWhenSampled() {
+  @Test public void finishedSpanHandler_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .addFinishedSpanHandler(finishedSpanHandler)
-        .build()) {
+      .spanReporter(spans::add)
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
@@ -122,16 +122,16 @@ public class TracingTest {
     assertThat(spans.get(0).name()).isEqualTo(mutableSpans.get(0).name());
     assertThat(spans.get(0).timestampAsLong()).isEqualTo(mutableSpans.get(0).startTimestamp());
     long mutableSpanDuration =
-        Math.max(1, mutableSpans.get(0).finishTimestamp() - mutableSpans.get(0).startTimestamp());
+      Math.max(1, mutableSpans.get(0).finishTimestamp() - mutableSpans.get(0).startTimestamp());
     assertThat(spans.get(0).durationAsLong()).isEqualTo(mutableSpanDuration);
   }
 
-  @Test public void firehose_doesntRecordWhenUnsampled() {
+  @Test public void finishedSpanHandler_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .addFinishedSpanHandler(finishedSpanHandler)
-        .sampler(Sampler.NEVER_SAMPLE)
-        .build()) {
+      .spanReporter(spans::add)
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .sampler(Sampler.NEVER_SAMPLE)
+      .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
@@ -139,7 +139,7 @@ public class TracingTest {
     assertThat(mutableSpans).isEmpty();
   }
 
-  @Test public void firehose_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
+  @Test public void finishedSpanHandler_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(Reporter.NOOP)
       .addFinishedSpanHandler(finishedSpanHandler)
@@ -151,21 +151,21 @@ public class TracingTest {
     assertThat(mutableSpans).hasSize(1);
   }
 
-  @Test public void firehose_recordsWhenUnsampledIfAlwaysSampleLocal() {
+  @Test public void finishedSpanHandler_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .addFinishedSpanHandler(new FinishedSpanHandler() {
-          @Override public boolean handle(TraceContext context, MutableSpan span) {
-            mutableSpans.add(span);
-            return true;
-          }
+      .spanReporter(spans::add)
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
+        @Override public boolean handle(TraceContext context, MutableSpan span) {
+          mutableSpans.add(span);
+          return true;
+        }
 
-          @Override public boolean alwaysSampleLocal() {
-            return true;
-          }
-        })
-        .sampler(Sampler.NEVER_SAMPLE)
-        .build()) {
+        @Override public boolean alwaysSampleLocal() {
+          return true;
+        }
+      })
+      .sampler(Sampler.NEVER_SAMPLE)
+      .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
@@ -173,23 +173,23 @@ public class TracingTest {
     assertThat(mutableSpans).hasSize(1);
   }
 
-  @Test public void firehose_recordsWhenUnsampledIfContextSamplesLocal() {
+  @Test public void finishedSpanHandler_recordsWhenUnsampledIfContextSamplesLocal() {
     AtomicBoolean sampledLocal = new AtomicBoolean();
     try (Tracing tracing = Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .propagationFactory(new Propagation.Factory() {
-          @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-            return B3SinglePropagation.FACTORY.create(keyFactory);
-          }
+      .spanReporter(spans::add)
+      .propagationFactory(new Propagation.Factory() {
+        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+          return B3SinglePropagation.FACTORY.create(keyFactory);
+        }
 
-          @Override public TraceContext decorate(TraceContext context) {
-            if (sampledLocal.getAndSet(true)) return context;
-            return context.toBuilder().sampledLocal(true).build();
-          }
-        })
-        .addFinishedSpanHandler(finishedSpanHandler)
-        .sampler(Sampler.NEVER_SAMPLE)
-        .build()) {
+        @Override public TraceContext decorate(TraceContext context) {
+          if (sampledLocal.getAndSet(true)) return context;
+          return context.toBuilder().sampledLocal(true).build();
+        }
+      })
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .sampler(Sampler.NEVER_SAMPLE)
+      .build()) {
       tracing.tracer().newTrace().start().name("one").finish();
       tracing.tracer().newTrace().start().name("two").finish();
     }

@@ -33,8 +33,8 @@ public class RestTemplateBenchmarks extends HttpClientBenchmarks<RestTemplate> {
     OkHttp3ClientHttpRequestFactory factory = new OkHttp3ClientHttpRequestFactory(ok);
     RestTemplate result = new RestTemplate(factory);
     result.setInterceptors(Collections.singletonList(
-        TracingClientHttpRequestInterceptor.create(httpTracing
-        )));
+      TracingClientHttpRequestInterceptor.create(httpTracing
+      )));
     return result;
   }
 
@@ -53,8 +53,8 @@ public class RestTemplateBenchmarks extends HttpClientBenchmarks<RestTemplate> {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + RestTemplateBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + RestTemplateBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

@@ -45,8 +45,8 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
-      HttpClientContext clientContext, HttpExecutionAware execAware)
-      throws IOException, HttpException {
+    HttpClientContext clientContext, HttpExecutionAware execAware)
+    throws IOException, HttpException {
     Span span = handler.nextSpan(request);
     CloseableHttpResponse response = null;
     Throwable error = null;

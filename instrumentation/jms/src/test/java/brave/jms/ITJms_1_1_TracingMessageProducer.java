@@ -65,11 +65,11 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
   @Before public void setup() throws Exception {
     tracedSession = jmsTracing.connection(jms.connection)
-        .createSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
-        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedTopicSession = jmsTracing.topicConnection(jms.topicConnection)
-        .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
 
     messageProducer = tracedSession.createProducer(null /* to test explicit destination */);
     messageConsumer = jms.session.createConsumer(jms.destination);
@@ -113,8 +113,8 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     Span producerSpan = takeSpan();
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_not_serialize_parent_span_id() throws Exception {
@@ -130,14 +130,14 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
     jms.setReadOnlyProperties(message, false);
     message.setStringProperty("b3",
-        writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
+      writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
 
     ScopedSpan parent = tracing.tracer().startScopedSpan("main");
     try {
@@ -151,8 +151,8 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
 
     assertThat(propertiesToMap(received))
-        .containsAllEntriesOf(existingProperties)
-        .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
+      .containsAllEntriesOf(existingProperties)
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
   @Test public void should_record_properties() throws Exception {

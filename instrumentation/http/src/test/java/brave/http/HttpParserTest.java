@@ -37,7 +37,7 @@ public class HttpParserTest {
     when(adapter.method(request)).thenReturn("GET");
 
     assertThat(parser.spanName(adapter, request))
-        .isEqualTo("GET"); // note: in practice this will become lowercase
+      .isEqualTo("GET"); // note: in practice this will become lowercase
   }
 
   @Test public void request_addsMethodAndPath() {

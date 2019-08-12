@@ -24,7 +24,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LazySpanTest {
-  List<zipkin2.Span> spans = new ArrayList();
+  List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(ThreadLocalCurrentTraceContext.create())
     .spanReporter(spans::add)

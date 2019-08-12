@@ -28,9 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** This ensures all filters can be injected, supplied with only {@linkplain HttpTracing}. */
 public class InjectionTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(Reporter.NOOP)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(Reporter.NOOP)
+    .build();
 
   Injector injector = Guice.createInjector(new AbstractModule() {
     @Override protected void configure() {
@@ -44,30 +44,30 @@ public class InjectionTest {
 
   @Test public void spanCustomizingApplicationEventListener() {
     SpanCustomizingApplicationEventListener filter =
-        injector.getInstance(SpanCustomizingApplicationEventListener.class);
+      injector.getInstance(SpanCustomizingApplicationEventListener.class);
 
     assertThat(filter.parser.getClass())
-        .isSameAs(EventParser.class);
+      .isSameAs(EventParser.class);
   }
 
   @Test public void spanCustomizingApplicationEventListener_resource() {
     SpanCustomizingApplicationEventListener filter =
-        injector.createChildInjector(new AbstractModule() {
-          @Override protected void configure() {
-            bind(EventParser.class).toInstance(EventParser.NOOP);
-          }
-        }).getInstance(SpanCustomizingApplicationEventListener.class);
+      injector.createChildInjector(new AbstractModule() {
+        @Override protected void configure() {
+          bind(EventParser.class).toInstance(EventParser.NOOP);
+        }
+      }).getInstance(SpanCustomizingApplicationEventListener.class);
 
     assertThat(filter.parser)
-        .isSameAs(EventParser.NOOP);
+      .isSameAs(EventParser.NOOP);
   }
 
   @Test public void tracingApplicationEventListener() {
     TracingApplicationEventListener filter =
-        injector.getInstance(TracingApplicationEventListener.class);
+      injector.getInstance(TracingApplicationEventListener.class);
 
     assertThat(filter.parser.getClass())
-        .isSameAs(EventParser.class);
+      .isSameAs(EventParser.class);
   }
 
   @Test public void tracingApplicationEventListener_resource() {
@@ -78,6 +78,6 @@ public class InjectionTest {
     }).getInstance(TracingApplicationEventListener.class);
 
     assertThat(filter.parser)
-        .isSameAs(EventParser.NOOP);
+      .isSameAs(EventParser.NOOP);
   }
 }

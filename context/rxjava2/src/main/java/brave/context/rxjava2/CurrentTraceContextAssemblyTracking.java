@@ -81,16 +81,16 @@ public final class CurrentTraceContextAssemblyTracking {
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super Completable, ? extends Completable> saveC =
-        RxJavaPlugins.getOnCompletableAssembly();
+      RxJavaPlugins.getOnCompletableAssembly();
     Function<? super Completable, ? extends Completable> oldCompletable = saveC;
     if (oldCompletable == null || !chain) oldCompletable = Util.identity();
 
     RxJavaPlugins.setOnCompletableAssembly(
-        new ConditionalOnCurrentTraceContextFunction<Completable>(oldCompletable) {
-          @Override Completable applyActual(Completable c, TraceContext assembled) {
-            return Wrappers.wrap(c, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<Completable>(oldCompletable) {
+        @Override Completable applyActual(Completable c, TraceContext assembled) {
+          return Wrappers.wrap(c, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
@@ -99,11 +99,11 @@ public final class CurrentTraceContextAssemblyTracking {
     if (oldMaybe == null || !chain) oldMaybe = Util.identity();
 
     RxJavaPlugins.setOnMaybeAssembly(
-        new ConditionalOnCurrentTraceContextFunction<Maybe>(oldMaybe) {
-          @Override Maybe applyActual(Maybe m, TraceContext assembled) {
-            return Wrappers.wrap(m, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<Maybe>(oldMaybe) {
+        @Override Maybe applyActual(Maybe m, TraceContext assembled) {
+          return Wrappers.wrap(m, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
@@ -112,83 +112,83 @@ public final class CurrentTraceContextAssemblyTracking {
     if (oldSingle == null || !chain) oldSingle = Util.identity();
 
     RxJavaPlugins.setOnSingleAssembly(
-        new ConditionalOnCurrentTraceContextFunction<Single>(oldSingle) {
-          @Override Single applyActual(Single s, TraceContext assembled) {
-            return Wrappers.wrap(s, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<Single>(oldSingle) {
+        @Override Single applyActual(Single s, TraceContext assembled) {
+          return Wrappers.wrap(s, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super Observable, ? extends Observable> saveO =
-        RxJavaPlugins.getOnObservableAssembly();
+      RxJavaPlugins.getOnObservableAssembly();
     Function<? super Observable, ? extends Observable> oldObservable = saveO;
     if (oldObservable == null || !chain) oldObservable = Util.identity();
 
     RxJavaPlugins.setOnObservableAssembly(
-        new ConditionalOnCurrentTraceContextFunction<Observable>(oldObservable) {
-          @Override Observable applyActual(Observable o, TraceContext assembled) {
-            return Wrappers.wrap(o, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<Observable>(oldObservable) {
+        @Override Observable applyActual(Observable o, TraceContext assembled) {
+          return Wrappers.wrap(o, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super Flowable, ? extends Flowable> saveF =
-        RxJavaPlugins.getOnFlowableAssembly();
+      RxJavaPlugins.getOnFlowableAssembly();
     Function<? super Flowable, ? extends Flowable> oldFlowable = saveF;
     if (oldFlowable == null || !chain) oldFlowable = Util.identity();
 
     RxJavaPlugins.setOnFlowableAssembly(
-        new ConditionalOnCurrentTraceContextFunction<Flowable>(oldFlowable) {
-          @Override Flowable applyActual(Flowable f, TraceContext assembled) {
-            return Wrappers.wrap(f, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<Flowable>(oldFlowable) {
+        @Override Flowable applyActual(Flowable f, TraceContext assembled) {
+          return Wrappers.wrap(f, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super ConnectableFlowable, ? extends ConnectableFlowable> saveCF =
-        RxJavaPlugins.getOnConnectableFlowableAssembly();
+      RxJavaPlugins.getOnConnectableFlowableAssembly();
     Function<? super ConnectableFlowable, ? extends ConnectableFlowable> oldConnFlow = saveCF;
     if (oldConnFlow == null || !chain) oldConnFlow = Util.identity();
 
     RxJavaPlugins.setOnConnectableFlowableAssembly(
-        new ConditionalOnCurrentTraceContextFunction<ConnectableFlowable>(oldConnFlow) {
-          @Override ConnectableFlowable applyActual(ConnectableFlowable cf,
-              TraceContext assembled) {
-            return Wrappers.wrap(cf, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<ConnectableFlowable>(oldConnFlow) {
+        @Override ConnectableFlowable applyActual(ConnectableFlowable cf,
+          TraceContext assembled) {
+          return Wrappers.wrap(cf, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super ConnectableObservable, ? extends ConnectableObservable> saveCO =
-        RxJavaPlugins.getOnConnectableObservableAssembly();
+      RxJavaPlugins.getOnConnectableObservableAssembly();
     Function<? super ConnectableObservable, ? extends ConnectableObservable> oldConnObs = saveCO;
     if (oldConnObs == null || !chain) oldConnObs = Util.identity();
 
     RxJavaPlugins.setOnConnectableObservableAssembly(
-        new ConditionalOnCurrentTraceContextFunction<ConnectableObservable>(oldConnObs) {
-          @Override ConnectableObservable applyActual(ConnectableObservable co,
-              TraceContext assembled) {
-            return Wrappers.wrap(co, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<ConnectableObservable>(oldConnObs) {
+        @Override ConnectableObservable applyActual(ConnectableObservable co,
+          TraceContext assembled) {
+          return Wrappers.wrap(co, currentTraceContext, assembled);
+        }
+      });
 
     // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
     final Function<? super ParallelFlowable, ? extends ParallelFlowable> savePF =
-        RxJavaPlugins.getOnParallelAssembly();
+      RxJavaPlugins.getOnParallelAssembly();
     Function<? super ParallelFlowable, ? extends ParallelFlowable> oldParFlow = savePF;
     if (oldParFlow == null || !chain) oldParFlow = Util.identity();
 
     RxJavaPlugins.setOnParallelAssembly(
-        new ConditionalOnCurrentTraceContextFunction<ParallelFlowable>(oldParFlow) {
-          @Override ParallelFlowable applyActual(ParallelFlowable pf, TraceContext assembled) {
-            return Wrappers.wrap(pf, currentTraceContext, assembled);
-          }
-        });
+      new ConditionalOnCurrentTraceContextFunction<ParallelFlowable>(oldParFlow) {
+        @Override ParallelFlowable applyActual(ParallelFlowable pf, TraceContext assembled) {
+          return Wrappers.wrap(pf, currentTraceContext, assembled);
+        }
+      });
 
     enabled = true;
 

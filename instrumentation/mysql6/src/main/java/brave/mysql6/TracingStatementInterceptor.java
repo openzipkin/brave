@@ -66,8 +66,8 @@ public class TracingStatementInterceptor implements StatementInterceptor {
 
   @Override
   public <T extends Resultset> T postProcess(String sql, Statement interceptedStatement,
-      T originalResultSet, int warningCount, boolean noIndexUsed, boolean noGoodIndexUsed,
-      Exception statementException) {
+    T originalResultSet, int warningCount, boolean noIndexUsed, boolean noGoodIndexUsed,
+    Exception statementException) {
     Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
     if (span == null || span.isNoop()) return null;
 
@@ -124,7 +124,7 @@ public class TracingStatementInterceptor implements StatementInterceptor {
 
   @Override
   public StatementInterceptor init(MysqlConnection mysqlConnection, Properties properties,
-      Log log) {
+    Log log) {
     TracingStatementInterceptor interceptor = new TracingStatementInterceptor();
     interceptor.connection = mysqlConnection;
     return interceptor;

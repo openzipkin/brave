@@ -25,7 +25,7 @@ final class TraceContextSingle<T> extends Single<T> {
   final TraceContext assembled;
 
   TraceContextSingle(
-      SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    SingleSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

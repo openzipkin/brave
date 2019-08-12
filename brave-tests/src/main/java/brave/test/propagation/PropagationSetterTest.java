@@ -32,7 +32,7 @@ public abstract class PropagationSetterTest<C, K> {
     setter().put(carrier(), key, "48485a3953bb6124");
 
     assertThat(read(carrier(), key))
-        .containsExactly("48485a3953bb6124");
+      .containsExactly("48485a3953bb6124");
   }
 
   @Test public void set128() throws Exception {
@@ -40,7 +40,7 @@ public abstract class PropagationSetterTest<C, K> {
     setter().put(carrier(), key, "463ac35c9f6413ad48485a3953bb6124");
 
     assertThat(read(carrier(), key))
-        .containsExactly("463ac35c9f6413ad48485a3953bb6124");
+      .containsExactly("463ac35c9f6413ad48485a3953bb6124");
   }
 
   @Test public void setTwoKeys() throws Exception {
@@ -50,9 +50,9 @@ public abstract class PropagationSetterTest<C, K> {
     setter().put(carrier(), key2, "48485a3953bb6124");
 
     assertThat(read(carrier(), key1))
-        .containsExactly("463ac35c9f6413ad48485a3953bb6124");
+      .containsExactly("463ac35c9f6413ad48485a3953bb6124");
     assertThat(read(carrier(), key2))
-        .containsExactly("48485a3953bb6124");
+      .containsExactly("48485a3953bb6124");
   }
 
   @Test public void reset() throws Exception {
@@ -61,6 +61,6 @@ public abstract class PropagationSetterTest<C, K> {
     setter().put(carrier(), key, "463ac35c9f6413ad");
 
     assertThat(read(carrier(), key))
-        .containsExactly("463ac35c9f6413ad");
+      .containsExactly("463ac35c9f6413ad");
   }
 }

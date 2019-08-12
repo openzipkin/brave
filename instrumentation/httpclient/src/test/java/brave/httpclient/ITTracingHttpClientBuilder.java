@@ -39,12 +39,12 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
   }
 
   @Override protected void get(CloseableHttpClient client, String pathIncludingQuery)
-      throws IOException {
+    throws IOException {
     consume(client.execute(new HttpGet(URI.create(url(pathIncludingQuery)))).getEntity());
   }
 
   @Override protected void post(CloseableHttpClient client, String pathIncludingQuery, String body)
-      throws Exception {
+    throws Exception {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new StringEntity(body));
     consume(client.execute(post).getEntity());
@@ -55,15 +55,15 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     closeClient(client);
 
     client = TracingHttpClientBuilder.create(httpTracing).disableAutomaticRetries()
-        .addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
-            request.setHeader("my-id", currentTraceContext.get().traceIdString())
-        ).build();
+      .addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
+        request.setHeader("my-id", currentTraceContext.get().traceIdString())
+      ).build();
 
     get(client, "/foo");
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(request.getHeader("my-id"));
+      .isEqualTo(request.getHeader("my-id"));
 
     takeSpan();
   }

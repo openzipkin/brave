@@ -92,27 +92,27 @@ public class ServletRuntimeTest {
 
   @Test public void servlet25_status_cachesUpToTenTypes() throws Exception {
     assertThat(servlet25.status(new Response1()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response2()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response3()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response4()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response5()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response6()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response7()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response8()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response9()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response10()))
-        .isEqualTo(200);
+      .isEqualTo(200);
     assertThat(servlet25.status(new Response11()))
-         .isZero();
+      .isZero();
   }
 
   public static class HttpServletResponseImpl implements HttpServletResponse {

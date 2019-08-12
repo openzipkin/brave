@@ -31,9 +31,9 @@ public class TracingExceptionInterceptor implements ExceptionInterceptor {
   @Override public ExceptionInterceptor init(Properties properties, Log log) {
     String queryInterceptors = properties.getProperty("queryInterceptors");
     if (queryInterceptors == null ||
-        !queryInterceptors.contains(TracingQueryInterceptor.class.getName())) {
+      !queryInterceptors.contains(TracingQueryInterceptor.class.getName())) {
       throw new IllegalStateException(
-          "TracingQueryInterceptor must be enabled to use TracingExceptionInterceptor.");
+        "TracingQueryInterceptor must be enabled to use TracingExceptionInterceptor.");
     }
     return new TracingExceptionInterceptor();
   }
@@ -44,8 +44,8 @@ public class TracingExceptionInterceptor implements ExceptionInterceptor {
 
   /**
    * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
-   * all callbacks happen on the same thread. The span will already have been created in
-   * {@link TracingQueryInterceptor}.
+   * all callbacks happen on the same thread. The span will already have been created in {@link
+   * TracingQueryInterceptor}.
    *
    * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before
    * tracing.

@@ -92,7 +92,7 @@ public class HttpParser {
   // This accepts response or exception because sometimes http 500 is an exception and sometimes not
   // If this were not an abstraction, we'd use separate hooks for response and error.
   public <Resp> void response(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
-      @Nullable Throwable error, SpanCustomizer customizer) {
+    @Nullable Throwable error, SpanCustomizer customizer) {
     int statusCode = 0;
     if (res != null) {
       statusCode = adapter.statusCodeAsInt(res);
@@ -135,7 +135,7 @@ public class HttpParser {
   // BRAVE6: httpStatus is a Integer, not a int. We can't change this api as users expect this to be
   // called by default. Unfortunately, this implies boxing until we can change it.
   protected void error(@Nullable Integer httpStatus, @Nullable Throwable error,
-      SpanCustomizer customizer) {
+    SpanCustomizer customizer) {
     if (error != null) {
       errorParser().error(error, customizer);
       return;

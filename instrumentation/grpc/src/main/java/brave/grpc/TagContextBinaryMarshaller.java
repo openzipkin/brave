@@ -30,6 +30,7 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
   static final byte VERSION = 0, TAG_FIELD_ID = 0;
   static final byte[] EMPTY_BYTES = {};
 
+  // grpc < 1.15 supports java 6 https://github.com/grpc/grpc-java/issues/3961
   static final Charset US_ASCII = Charset.forName("US-ASCII");
 
   @Override
@@ -43,14 +44,13 @@ final class TagContextBinaryMarshaller implements BinaryMarshaller<Map<String, S
     bytes.writeByte(VERSION);
     for (Map.Entry<String, String> entry : tagContext.entrySet()) {
       bytes.writeByte(TAG_FIELD_ID);
-      bytes.writeLengthPrefixed(entry.getKey());
+      bytes.writeLengthPrefixed(entry.getKey()); // TODO: should we check the result here?
       bytes.writeLengthPrefixed(entry.getValue());
     }
     return result;
   }
 
-  @Override
-  public Map<String, String> parseBytes(byte[] buf) {
+  @Override public Map<String, String> parseBytes(byte[] buf) {
     if (buf == null) throw new NullPointerException("buf == null"); // programming error
     if (buf.length == 0) return Collections.emptyMap();
     Buffer bytes = new Buffer(buf);

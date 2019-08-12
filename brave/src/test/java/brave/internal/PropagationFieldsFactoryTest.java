@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
-    extends ExtraFactoryTest<P, PropagationFieldsFactory<P>> {
+  extends ExtraFactoryTest<P, PropagationFieldsFactory<P>> {
   static final String FIELD1 = "foo";
   static final String FIELD2 = "bar";
 
@@ -38,23 +38,23 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
 
       // Instances are not the same
       assertThat(context1.findExtra(factory.type()))
-          .isNotSameAs(context2.findExtra(factory.type()));
+        .isNotSameAs(context2.findExtra(factory.type()));
 
       // But have the same values
       assertThat(context1.findExtra(factory.type()).toMap())
-          .isEqualTo(context2.findExtra(factory.type()).toMap());
+        .isEqualTo(context2.findExtra(factory.type()).toMap());
       assertThat(PropagationFields.get(context1, FIELD1, factory.type()))
-          .isEqualTo(PropagationFields.get(context2, FIELD1, factory.type()))
-          .isEqualTo("1");
+        .isEqualTo(PropagationFields.get(context2, FIELD1, factory.type()))
+        .isEqualTo("1");
 
       PropagationFields.put(context1, FIELD1, "2", factory.type());
       PropagationFields.put(context2, FIELD1, "3", factory.type());
 
       // Yet downstream changes don't affect eachother
       assertThat(PropagationFields.get(context1, FIELD1, factory.type()))
-          .isEqualTo("2");
+        .isEqualTo("2");
       assertThat(PropagationFields.get(context2, FIELD1, factory.type()))
-          .isEqualTo("3");
+        .isEqualTo("3");
     }
   }
 
@@ -65,7 +65,7 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
       PropagationFields.put(context1, FIELD1, "1", factory.type());
 
       TraceContext context2 =
-          tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
+        tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
       PropagationFields fields1 = (PropagationFields) context1.extra().get(0);
       PropagationFields fields2 = (PropagationFields) context2.extra().get(0);
 
@@ -109,21 +109,21 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
         extractedPropagationFields.put(FIELD2, "a");
 
         TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-            .samplingFlags(SamplingFlags.EMPTY)
-            .addExtra(extractedPropagationFields)
-            .build();
+          .samplingFlags(SamplingFlags.EMPTY)
+          .addExtra(extractedPropagationFields)
+          .build();
 
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
 
         assertThat(context1.extra()) // merged
-            .hasSize(1);
+          .hasSize(1);
         PropagationFields fields = ((PropagationFields) context1.extra().get(0));
         assertThat(fields.toMap()).containsExactly(
-            entry(FIELD1, "2"),
-            entry(FIELD2, "a")
+          entry(FIELD1, "2"),
+          entry(FIELD2, "a")
         );
         assertThat(fields).extracting("traceId", "spanId")
-            .containsExactly(context1.traceId(), context1.spanId());
+          .containsExactly(context1.traceId(), context1.spanId());
       } finally {
         parent.finish();
       }
@@ -139,9 +139,9 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
         extractedPropagationFields.put(FIELD2, "a");
 
         TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-            .samplingFlags(SamplingFlags.EMPTY)
-            .addExtra(extractedPropagationFields)
-            .build();
+          .samplingFlags(SamplingFlags.EMPTY)
+          .addExtra(extractedPropagationFields)
+          .build();
 
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
 
@@ -149,9 +149,9 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
 
         PropagationFields fields = ((PropagationFields) context1.extra().get(0));
         assertThat(fields.toMap())
-            .containsEntry(FIELD2, "a");
+          .containsEntry(FIELD2, "a");
         assertThat(fields).extracting("traceId", "spanId")
-            .containsExactly(context1.traceId(), context1.spanId());
+          .containsExactly(context1.traceId(), context1.spanId());
       } finally {
         parent.finish();
       }
@@ -166,8 +166,8 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
         PropagationFields.put(parent.context(), FIELD1, "1", factory.type());
 
         TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-            .samplingFlags(SamplingFlags.EMPTY)
-            .build();
+          .samplingFlags(SamplingFlags.EMPTY)
+          .build();
 
         // TODO didn't pass the reference from parent
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
@@ -176,9 +176,9 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
 
         PropagationFields fields = ((PropagationFields) context1.extra().get(0));
         assertThat(fields.toMap())
-            .containsEntry(FIELD1, "1");
+          .containsEntry(FIELD1, "1");
         assertThat(fields).extracting("traceId", "spanId")
-            .containsExactly(context1.traceId(), context1.spanId());
+          .containsExactly(context1.traceId(), context1.spanId());
       } finally {
         parent.finish();
       }
@@ -187,21 +187,21 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
 
   @Test public void get() {
     TraceContext context =
-        propagationFactory.decorate(TraceContext.newBuilder().traceId(1).spanId(2).build());
+      propagationFactory.decorate(TraceContext.newBuilder().traceId(1).spanId(2).build());
     PropagationFields.put(context, FIELD2, "a", factory.type());
 
     assertThat(PropagationFields.get(context, FIELD2, factory.type()))
-        .isEqualTo("a");
+      .isEqualTo("a");
   }
 
   @Test public void get_null_if_not_set() {
     assertThat(PropagationFields.get(context, FIELD2, factory.type()))
-        .isNull();
+      .isNull();
   }
 
   @Test public void get_ignore_if_not_defined() {
     assertThat(PropagationFields.get(context, "balloon-color", factory.type()))
-        .isNull();
+      .isNull();
   }
 
   @Override
@@ -215,8 +215,8 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
     fields.put(FIELD2, "a");
 
     assertThat(fields.toMap())
-        .hasSize(1)
-        .containsEntry(FIELD2, "a");
+      .hasSize(1)
+      .containsEntry(FIELD2, "a");
   }
 
   @Test public void toMap_two() {
@@ -225,9 +225,9 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
     fields.put(FIELD2, "a");
 
     assertThat(fields.toMap())
-        .hasSize(2)
-        .containsEntry(FIELD1, "1")
-        .containsEntry(FIELD2, "a");
+      .hasSize(2)
+      .containsEntry(FIELD1, "1")
+      .containsEntry(FIELD2, "a");
   }
 
   @Test public void toString_one() {
@@ -235,7 +235,7 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
     fields.put(FIELD2, "a");
 
     assertThat(fields.toString())
-        .contains("{bar=a}");
+      .contains("{bar=a}");
   }
 
   @Test public void toString_two() {
@@ -244,6 +244,6 @@ public abstract class PropagationFieldsFactoryTest<P extends PropagationFields>
     fields.put(FIELD2, "a");
 
     assertThat(fields.toString())
-        .contains("{foo=1, bar=a}");
+      .contains("{foo=1, bar=a}");
   }
 }

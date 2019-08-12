@@ -67,19 +67,19 @@ public class ITKafkaTracing {
   BlockingQueue<Span> producerSpans = new LinkedBlockingQueue<>();
 
   KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .localServiceName("consumer")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(consumerSpans::add)
-      .build());
+    .localServiceName("consumer")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(consumerSpans::add)
+    .build());
   KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .localServiceName("producer")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(producerSpans::add)
-      .build());
+    .localServiceName("producer")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(producerSpans::add)
+    .build());
 
   @ClassRule
   public static KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
@@ -95,11 +95,11 @@ public class ITKafkaTracing {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(producerSpans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Producer span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Producer span remaining in queue. Check for redundant reporting")
+          .isNull();
         assertThat(consumerSpans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Consumer span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Consumer span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -136,14 +136,14 @@ public class ITKafkaTracing {
     String firstTopic = producerSpan1.tags().get(KAFKA_TOPIC_TAG);
     if (firstTopic.equals(consumerSpan1.tags().get(KAFKA_TOPIC_TAG))) {
       assertThat(producerSpan1.traceId())
-          .isEqualTo(consumerSpan1.traceId());
+        .isEqualTo(consumerSpan1.traceId());
       assertThat(producerSpan2.traceId())
-          .isEqualTo(consumerSpan2.traceId());
+        .isEqualTo(consumerSpan2.traceId());
     } else {
       assertThat(producerSpan1.traceId())
-          .isEqualTo(consumerSpan2.traceId());
+        .isEqualTo(consumerSpan2.traceId());
       assertThat(producerSpan2.traceId())
-          .isEqualTo(consumerSpan1.traceId());
+        .isEqualTo(consumerSpan1.traceId());
     }
   }
 
@@ -183,8 +183,8 @@ public class ITKafkaTracing {
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
-        tuple("producer", "kafka"),
-        tuple("kafka", "consumer")
+      tuple("producer", "kafka"),
+      tuple("kafka", "consumer")
     );
   }
 
@@ -205,7 +205,7 @@ public class ITKafkaTracing {
       brave.Span processor = consumerTracing.nextSpan(record);
 
       assertThat(consumerSpan.tags())
-          .containsEntry(KAFKA_TOPIC_TAG, record.topic());
+        .containsEntry(KAFKA_TOPIC_TAG, record.topic());
 
       assertThat(processor.context().traceIdString()).isEqualTo(consumerSpan.traceId());
       assertThat(processor.context().parentIdString()).isEqualTo(consumerSpan.id());
@@ -215,7 +215,7 @@ public class ITKafkaTracing {
       // The processor doesn't taint the consumer span which has already finished
       Span processorSpan = takeConsumerSpan();
       assertThat(processorSpan.id())
-          .isNotEqualTo(consumerSpan.id());
+        .isNotEqualTo(consumerSpan.id());
     }
   }
 
@@ -239,8 +239,8 @@ public class ITKafkaTracing {
         String result = getter.get(carrier, key);
         if (result == null) return TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
         return TraceContextOrSamplingFlags.create(TraceIdContext.newBuilder()
-            .traceId(HexCodec.lowerHexToUnsignedLong(result))
-            .build());
+          .traceId(HexCodec.lowerHexToUnsignedLong(result))
+          .build());
       };
     }
   }
@@ -248,21 +248,21 @@ public class ITKafkaTracing {
   @Test
   public void continues_a_trace_when_only_trace_id_propagated() throws Exception {
     consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-        .spanReporter(consumerSpans::add)
-        .propagationFactory(new Propagation.Factory() {
-          @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-            return new TraceIdOnlyPropagation<>(keyFactory);
-          }
-        })
-        .build());
+      .spanReporter(consumerSpans::add)
+      .propagationFactory(new Propagation.Factory() {
+        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+          return new TraceIdOnlyPropagation<>(keyFactory);
+        }
+      })
+      .build());
     producerTracing = KafkaTracing.create(Tracing.newBuilder()
-        .spanReporter(producerSpans::add)
-        .propagationFactory(new Propagation.Factory() {
-          @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-            return new TraceIdOnlyPropagation<>(keyFactory);
-          }
-        })
-        .build());
+      .spanReporter(producerSpans::add)
+      .propagationFactory(new Propagation.Factory() {
+        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+          return new TraceIdOnlyPropagation<>(keyFactory);
+        }
+      })
+      .build());
 
     producer = createTracingProducer();
     consumer = createTracingConsumer();
@@ -278,7 +278,7 @@ public class ITKafkaTracing {
     Span consumerSpan = takeConsumerSpan();
 
     assertThat(producerSpan.traceId())
-        .isEqualTo(consumerSpan.traceId());
+      .isEqualTo(consumerSpan.traceId());
 
     for (ConsumerRecord<String, String> record : records) {
       TraceContext forProcessor = consumerTracing.nextSpan(record).context();
@@ -307,8 +307,8 @@ public class ITKafkaTracing {
   Span takeProducerSpan() throws InterruptedException {
     Span result = producerSpans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Producer span was not reported")
-        .isNotNull();
+      .withFailMessage("Producer span was not reported")
+      .isNotNull();
     // ensure the span finished
     assertThat(result.durationAsLong()).isPositive();
     return result;
@@ -318,8 +318,8 @@ public class ITKafkaTracing {
   Span takeConsumerSpan() throws InterruptedException {
     Span result = consumerSpans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Consumer span was not reported")
-        .isNotNull();
+      .withFailMessage("Consumer span was not reported")
+      .isNotNull();
     // ensure the span finished
     assertThat(result.durationAsLong()).isPositive();
     return result;

@@ -78,8 +78,8 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
 
   @Override protected int initServer() {
     server = (PortExposing) new PortExposing()
-        .deploy(App.class)
-        .start(Undertow.builder().addHttpListener(8888, "127.0.0.1"));
+      .deploy(App.class)
+      .start(Undertow.builder().addHttpListener(8888, "127.0.0.1"));
     return server.getPort();
   }
 
@@ -101,8 +101,8 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + JaxRs2ServerBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + JaxRs2ServerBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

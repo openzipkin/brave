@@ -28,7 +28,7 @@ public class HttpServerParser extends HttpParser {
    * <p>{@inheritDoc}
    */
   @Override public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
-      SpanCustomizer customizer) {
+    SpanCustomizer customizer) {
     super.request(adapter, req, customizer);
   }
 
@@ -38,7 +38,7 @@ public class HttpServerParser extends HttpParser {
    * <p>{@inheritDoc}
    */
   @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
-      @Nullable Throwable error, SpanCustomizer customizer) {
+    @Nullable Throwable error, SpanCustomizer customizer) {
     super.response(adapter, res, error, customizer);
   }
 }

@@ -25,7 +25,7 @@ final class TraceContextCompletable extends Completable {
   final TraceContext assembled;
 
   TraceContextCompletable(
-      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

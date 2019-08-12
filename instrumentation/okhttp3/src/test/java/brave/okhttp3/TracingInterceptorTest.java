@@ -31,9 +31,9 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class TracingInterceptorTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(Reporter.NOOP)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(Reporter.NOOP)
+    .build();
   @Mock Interceptor.Chain chain;
   @Mock Span span;
 

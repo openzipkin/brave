@@ -28,12 +28,12 @@ import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanConverterTest {
   MutableSpanConverter converter =
-      new MutableSpanConverter(new ErrorParser(), "fooService", "1.2.3.4", 80);
+    new MutableSpanConverter(new ErrorParser(), "fooService", "1.2.3.4", 80);
 
   @Test public void localEndpoint_default() {
     // When span doesn't set local endpoint info
     assertThat(convert(new MutableSpan()).localEndpoint())
-        .isEqualTo(converter.localEndpoint);
+      .isEqualTo(converter.localEndpoint);
 
     // When span sets to the same values
     MutableSpan span = new MutableSpan();
@@ -42,7 +42,7 @@ public class MutableSpanConverterTest {
     span.localPort(converter.localPort);
 
     assertThat(convert(span).localEndpoint())
-        .isEqualTo(converter.localEndpoint);
+      .isEqualTo(converter.localEndpoint);
   }
 
   @Test public void localEndpoint_default_whenIpNull() {
@@ -50,7 +50,7 @@ public class MutableSpanConverterTest {
 
     // When span doesn't set local endpoint info
     assertThat(convert(new MutableSpan()).localEndpoint())
-        .isEqualTo(converter.localEndpoint);
+      .isEqualTo(converter.localEndpoint);
 
     // When span sets to the same values
     MutableSpan span = new MutableSpan();
@@ -58,7 +58,7 @@ public class MutableSpanConverterTest {
     span.localPort(converter.localPort);
 
     assertThat(convert(span).localEndpoint())
-        .isEqualTo(converter.localEndpoint);
+      .isEqualTo(converter.localEndpoint);
   }
 
   @Test public void localEndpoint_override() {
@@ -66,7 +66,7 @@ public class MutableSpanConverterTest {
     span.localServiceName("barService");
 
     assertThat(convert(span).localEndpoint())
-        .isEqualTo(Endpoint.newBuilder().serviceName("barService").ip("1.2.3.4").port(80).build());
+      .isEqualTo(Endpoint.newBuilder().serviceName("barService").ip("1.2.3.4").port(80).build());
   }
 
   @Test public void minimumDurationIsOne() {
@@ -88,10 +88,10 @@ public class MutableSpanConverterTest {
     span.tag("3", "3");
 
     assertThat(convert(span).tags()).containsOnly(
-        entry("1", "1"),
-        entry("foo", "baz"),
-        entry("2", "2"),
-        entry("3", "3")
+      entry("1", "1"),
+      entry("foo", "baz"),
+      entry("2", "2"),
+      entry("3", "3")
     );
   }
 
@@ -103,7 +103,7 @@ public class MutableSpanConverterTest {
     span.finishTimestamp(2L);
 
     assertThat(convert(span).annotations())
-        .containsOnly(Annotation.create(2L, "foo"));
+      .containsOnly(Annotation.create(2L, "foo"));
   }
 
   @Test public void finished_client() {
@@ -168,10 +168,10 @@ public class MutableSpanConverterTest {
     MutableSpan span = new MutableSpan();
 
     Endpoint endpoint = Endpoint.newBuilder()
-        .serviceName("fooService")
-        .ip("1.2.3.4")
-        .port(80)
-        .build();
+      .serviceName("fooService")
+      .ip("1.2.3.4")
+      .port(80)
+      .build();
 
     span.kind(CLIENT);
     span.remoteServiceName(endpoint.serviceName());
@@ -180,7 +180,7 @@ public class MutableSpanConverterTest {
     span.finishTimestamp(2L);
 
     assertThat(convert(span).remoteEndpoint())
-        .isEqualTo(endpoint);
+      .isEqualTo(endpoint);
   }
 
   // This prevents the server startTimestamp from overwriting the client one on the collector
@@ -193,7 +193,7 @@ public class MutableSpanConverterTest {
     span.finishTimestamp(2L);
 
     assertThat(convert(span).shared())
-        .isTrue();
+      .isTrue();
   }
 
   @Test public void flushUnstartedNeitherSetsTimestampNorDuration() {
@@ -201,7 +201,7 @@ public class MutableSpanConverterTest {
     flushed.finishTimestamp(0L);
 
     assertThat(convert(flushed)).extracting(s -> s.timestampAsLong(), s -> s.durationAsLong())
-        .allSatisfy(u -> assertThat(u).isEqualTo(0L));
+      .allSatisfy(u -> assertThat(u).isEqualTo(0L));
   }
 
   /** We can't compute duration unless we started the span in the same tracer. */
@@ -221,8 +221,9 @@ public class MutableSpanConverterTest {
     converter.convert(flush, flushBuilder);
 
     assertThat(finishWithTimestampBuilder)
-        .isEqualToComparingFieldByFieldRecursively(finishWithNoTimestampBuilder)
-        .isEqualToComparingFieldByFieldRecursively(flushBuilder);
+      .usingRecursiveComparison()
+      .isEqualTo(finishWithNoTimestampBuilder)
+      .isEqualTo(flushBuilder);
   }
 
   Span convert(MutableSpan span) {

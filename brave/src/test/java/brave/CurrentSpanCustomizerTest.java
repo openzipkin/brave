@@ -27,9 +27,9 @@ public class CurrentSpanCustomizerTest {
 
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(spans::add)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(spans::add)
+    .build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
 
@@ -45,7 +45,7 @@ public class CurrentSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).extracting(zipkin2.Span::name)
-        .containsExactly("newname");
+      .containsExactly("newname");
   }
 
   @Test public void name_when_no_current_span() {
@@ -60,7 +60,7 @@ public class CurrentSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("foo", "bar"));
+      .containsExactly(entry("foo", "bar"));
   }
 
   @Test public void tag_when_no_current_span() {
@@ -75,8 +75,8 @@ public class CurrentSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .extracting(Annotation::value)
-        .containsExactly("foo");
+      .extracting(Annotation::value)
+      .containsExactly("foo");
   }
 
   @Test public void annotate_when_no_current_span() {

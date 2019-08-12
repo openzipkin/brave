@@ -13,10 +13,7 @@
  */
 package brave.kafka.streams;
 
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Predicate;
-import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 
@@ -29,7 +26,7 @@ public class TracingFilterValueTransformerWithKeySupplier<K, V> implements
   final boolean filterNot;
 
   public TracingFilterValueTransformerWithKeySupplier(KafkaStreamsTracing kafkaStreamsTracing,
-      String spanName, Predicate<K, V> delegatePredicate, boolean filterNot) {
+    String spanName, Predicate<K, V> delegatePredicate, boolean filterNot) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegatePredicate = delegatePredicate;
@@ -37,7 +34,8 @@ public class TracingFilterValueTransformerWithKeySupplier<K, V> implements
   }
 
   @Override public ValueTransformerWithKey<K, V, V> get() {
-    return new TracingFilterValueTransformerWithKey<>(kafkaStreamsTracing, spanName, delegatePredicate,
-        filterNot);
+    return new TracingFilterValueTransformerWithKey<>(kafkaStreamsTracing, spanName,
+      delegatePredicate,
+      filterNot);
   }
 }

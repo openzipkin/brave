@@ -50,9 +50,9 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       for (int i = 0; i < 2; i++) {
         RecordedRequest request = server.takeRequest();
         assertThat(request.getHeader("x-b3-traceId"))
-            .isEqualTo(parent.context().traceIdString());
+          .isEqualTo(parent.context().traceIdString());
         assertThat(request.getHeader("x-b3-parentspanid"))
-            .isEqualTo(parent.context().spanIdString());
+          .isEqualTo(parent.context().spanIdString());
       }
     } finally {
       otherSpan.finish();
@@ -60,7 +60,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     // Check we reported 2 in-process spans and 2 RPC client spans
     assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 }

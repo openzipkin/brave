@@ -23,7 +23,7 @@ import io.netty.util.AttributeKey;
 public final class NettyHttpTracing {
   static final AttributeKey<Span> SPAN_ATTRIBUTE = AttributeKey.valueOf(Span.class.getName());
   static final AttributeKey<SpanInScope> SPAN_IN_SCOPE_ATTRIBUTE =
-      AttributeKey.valueOf(SpanInScope.class.getName());
+    AttributeKey.valueOf(SpanInScope.class.getName());
 
   public static NettyHttpTracing create(Tracing tracing) {
     return new NettyHttpTracing(HttpTracing.create(tracing));

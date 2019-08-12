@@ -27,7 +27,7 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
   final TraceContext assembled;
 
   TraceContextConnectableObservable(
-      ConnectableObservable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    ConnectableObservable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

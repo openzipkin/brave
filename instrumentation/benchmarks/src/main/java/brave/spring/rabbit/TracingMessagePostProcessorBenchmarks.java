@@ -49,7 +49,7 @@ public class TracingMessagePostProcessorBenchmarks {
     Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
     tracingPostProcessor = new TracingMessagePostProcessor(SpringRabbitTracing.create(tracing));
     tracingB3SinglePostProcessor = new TracingMessagePostProcessor(
-        SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
+      SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
     );
   }
 
@@ -68,9 +68,9 @@ public class TracingMessagePostProcessorBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + TracingMessagePostProcessorBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + TracingMessagePostProcessorBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

@@ -19,13 +19,12 @@ import brave.Tracing;
 import brave.sampler.Sampler;
 import com.p6spy.engine.common.ConnectionInformation;
 import com.p6spy.engine.common.StatementInformation;
+import com.p6spy.engine.logging.P6LogOptions;
+import com.p6spy.engine.spy.option.P6OptionsRepository;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-
-import com.p6spy.engine.logging.P6LogOptions;
-import com.p6spy.engine.spy.option.P6OptionsRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,7 +49,7 @@ public class TracingJdbcEventListenerTest {
   String urlWithServiceName = url + "?zipkinServiceName=mysql_service&foo=bar";
   String urlWithEmptyServiceName = url + "?zipkinServiceName=&foo=bar";
   String urlWithWhiteSpace =
-      "jdbc:sqlserver://1.2.3.4;databaseName=mydatabase;applicationName=Microsoft JDBC Driver for SQL Server";
+    "jdbc:sqlserver://1.2.3.4;databaseName=mydatabase;applicationName=Microsoft JDBC Driver for SQL Server";
   P6OptionsRepository p6OptionsRepository;
   P6LogOptions logOptions;
 

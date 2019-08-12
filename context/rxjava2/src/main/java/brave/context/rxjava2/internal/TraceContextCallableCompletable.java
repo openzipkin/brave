@@ -26,7 +26,7 @@ final class TraceContextCallableCompletable<T> extends Completable implements Ca
   final TraceContext assembled;
 
   TraceContextCallableCompletable(
-      CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    CompletableSource source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

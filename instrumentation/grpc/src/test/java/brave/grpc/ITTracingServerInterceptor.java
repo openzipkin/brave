@@ -93,16 +93,16 @@ public class ITTracingServerInterceptor {
     // tracing interceptor needs to go last
     ServerInterceptor tracingInterceptor = grpcTracing.newServerInterceptor();
     ServerInterceptor[] interceptors = userInterceptor != null
-        ? new ServerInterceptor[] {userInterceptor, tracingInterceptor}
-        : new ServerInterceptor[] {tracingInterceptor};
+      ? new ServerInterceptor[] {userInterceptor, tracingInterceptor}
+      : new ServerInterceptor[] {tracingInterceptor};
 
     server = ServerBuilder.forPort(PickUnusedPort.get())
-        .addService(ServerInterceptors.intercept(new GreeterImpl(grpcTracing), interceptors))
-        .build().start();
+      .addService(ServerInterceptors.intercept(new GreeterImpl(grpcTracing), interceptors))
+      .build().start();
 
     client = ManagedChannelBuilder.forAddress("localhost", server.getPort())
-        .usePlaintext(true)
-        .build();
+      .usePlaintext(true)
+      .build();
   }
 
   @After public void stop() throws Exception {
@@ -124,8 +124,8 @@ public class ITTracingServerInterceptor {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -140,7 +140,7 @@ public class ITTracingServerInterceptor {
     Channel channel = ClientInterceptors.intercept(client, new ClientInterceptor() {
       @Override
       public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
         return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
           @Override
           public void start(Listener<RespT> responseListener, Metadata headers) {
@@ -174,7 +174,7 @@ public class ITTracingServerInterceptor {
     Channel channel = ClientInterceptors.intercept(client, new ClientInterceptor() {
       @Override
       public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
         return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
           @Override
           public void start(Listener<RespT> responseListener, Metadata headers) {
@@ -216,7 +216,7 @@ public class ITTracingServerInterceptor {
     init(new ServerInterceptor() {
       @Override
       public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
-          Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         testLogger.info("in span!");
         fromUserInterceptor.set(grpcTracing.tracing.currentTraceContext().get());
         return next.startCall(call, headers);
@@ -226,14 +226,14 @@ public class ITTracingServerInterceptor {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(fromUserInterceptor.get())
-        .isNotNull();
+      .isNotNull();
 
     takeSpan();
   }
 
   @Test public void currentSpanVisibleToImpl() throws Exception {
     assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
-        .isNotEmpty();
+      .isNotEmpty();
 
     takeSpan();
   }
@@ -243,7 +243,7 @@ public class ITTracingServerInterceptor {
 
     Span span = takeSpan();
     assertThat(span.kind())
-        .isEqualTo(Span.Kind.SERVER);
+      .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
@@ -251,32 +251,32 @@ public class ITTracingServerInterceptor {
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("helloworld.greeter/sayhello");
+      .isEqualTo("helloworld.greeter/sayhello");
   }
 
   @Test public void addsErrorTagOnException() throws Exception {
     try {
       GreeterGrpc.newBlockingStub(client)
-          .sayHello(HelloRequest.newBuilder().setName("bad").build());
+        .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
       Span span = takeSpan();
       assertThat(span.tags()).containsExactly(
-          entry("error", "UNKNOWN"),
-          entry("grpc.status_code", "UNKNOWN")
+        entry("error", "UNKNOWN"),
+        entry("grpc.status_code", "UNKNOWN")
       );
     }
   }
-  
+
   @Test public void addsErrorTagOnRuntimeException() throws Exception {
     try {
       GreeterGrpc.newBlockingStub(client)
-          .sayHello(HelloRequest.newBuilder().setName("testerror").build());
+        .sayHello(HelloRequest.newBuilder().setName("testerror").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
       Span span = takeSpan();
       assertThat(span.tags()).containsExactly(
-          entry("error", "testerror")
+        entry("error", "testerror")
       );
     }
   }
@@ -310,8 +310,8 @@ public class ITTracingServerInterceptor {
     Span span = takeSpan();
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
-        "grpc.message_received", "grpc.message_sent",
-        "grpc.message_received.visible", "grpc.message_sent.visible"
+      "grpc.message_received", "grpc.message_sent",
+      "grpc.message_received.visible", "grpc.message_sent.visible"
     );
   }
 
@@ -326,7 +326,7 @@ public class ITTracingServerInterceptor {
     init();
 
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-        .sayHelloWithManyReplies(HELLO_REQUEST);
+      .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
     Span span = takeSpan();
@@ -335,21 +335,21 @@ public class ITTracingServerInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext( // connect to log4j
-            ThreadLocalCurrentTraceContext.newBuilder()
-                .addScopeDecorator(StrictScopeDecorator.create())
-                .addScopeDecorator(ThreadContextScopeDecorator.create())
-                .build())
-        .sampler(sampler);
+      .spanReporter(spans::add)
+      .currentTraceContext( // connect to log4j
+        ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .addScopeDecorator(ThreadContextScopeDecorator.create())
+          .build())
+      .sampler(sampler);
   }
 
   /** Call this to block until a span was reported */
   Span takeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Span was not reported")
-        .isNotNull();
+      .withFailMessage("Span was not reported")
+      .isNotNull();
     return result;
   }
 }

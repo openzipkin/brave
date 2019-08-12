@@ -26,7 +26,7 @@ final class TraceContextCompletableObserver implements CompletableObserver, Disp
   Disposable upstream;
 
   TraceContextCompletableObserver(
-      CompletableObserver downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+    CompletableObserver downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

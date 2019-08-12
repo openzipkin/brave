@@ -33,18 +33,18 @@ import static org.assertj.core.api.Assertions.entry;
 public class DefaultTagsTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          if (context.isLocalRoot()) {
-            // pretend these are sourced from the environment
-            span.tag("env", "prod");
-            span.tag("region", "east");
-          }
-          return true;
+    .addFinishedSpanHandler(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        if (context.isLocalRoot()) {
+          // pretend these are sourced from the environment
+          span.tag("env", "prod");
+          span.tag("region", "east");
         }
-      })
-      .spanReporter(spans::add)
-      .build();
+        return true;
+      }
+    })
+    .spanReporter(spans::add)
+    .build();
 
   @After public void close() {
     tracing.close();
@@ -63,8 +63,8 @@ public class DefaultTagsTest {
 
     assertThat(spans.get(1).name()).isEqualTo("parent");
     assertThat(spans.get(1).tags()).containsExactly(
-        entry("env", "prod"),
-        entry("region", "east")
+      entry("env", "prod"),
+      entry("region", "east")
     );
   }
 }

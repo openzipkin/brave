@@ -46,7 +46,7 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
     return new Builder();
   }
 
-  static final class Builder extends CurrentTraceContext.Builder{
+  static final class Builder extends CurrentTraceContext.Builder {
 
     @Override public CurrentTraceContext build() {
       return new ThreadLocalCurrentTraceContext(this, DEFAULT);
@@ -62,8 +62,8 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   final ThreadLocal<TraceContext> local;
 
   ThreadLocalCurrentTraceContext(
-      CurrentTraceContext.Builder builder,
-      ThreadLocal<TraceContext> local
+    CurrentTraceContext.Builder builder,
+    ThreadLocal<TraceContext> local
   ) {
     super(builder);
     if (local == null) throw new NullPointerException("local == null");

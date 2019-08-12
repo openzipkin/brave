@@ -102,8 +102,8 @@ public abstract class Span implements SpanCustomizer {
   @Override public abstract Span name(String name);
 
   /**
-   * When present, the span is remote. This value clarifies how to interpret
-   * {@link #remoteServiceName(String)} and {@link #remoteIpAndPort(String, int)}.
+   * When present, the span is remote. This value clarifies how to interpret {@link
+   * #remoteServiceName(String)} and {@link #remoteIpAndPort(String, int)}.
    *
    * <p>Note: This affects Zipkin v1 format even if that format does not have a "kind" field. For
    * example, if kind is {@link Kind#SERVER} and reported in v1 Zipkin format, the span's start
@@ -131,8 +131,8 @@ public abstract class Span implements SpanCustomizer {
   public abstract Span error(Throwable throwable);
 
   /**
-   * @deprecated Use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String, int)}.
-   * Will be removed in Brave v6.
+   * @deprecated Use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String, int)}. Will
+   * be removed in Brave v6.
    */
   @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
     if (endpoint == null) return this;
@@ -192,7 +192,7 @@ public abstract class Span implements SpanCustomizer {
   /**
    * Like {@link #finish()}, except with a given timestamp in microseconds.
    *
-   * <p>{@link zipkin2.Span#duration Zipkin's span duration} is derived by subtracting the start
+   * <p>{@link zipkin2.Span#duration() Zipkin's span duration} is derived by subtracting the start
    * timestamp from this, and set when appropriate.
    *
    * <p>Take extreme care with this feature as it is easy to have incorrect timestamps. If you must

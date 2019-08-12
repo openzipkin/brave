@@ -50,8 +50,8 @@ public final class ParameterizedSampler<P> {
 
     SamplingFlags isSampled() {
       return sampler.isSampled(0L) // counting sampler ignores the input
-          ? SamplingFlags.SAMPLED
-          : SamplingFlags.NOT_SAMPLED;
+        ? SamplingFlags.SAMPLED
+        : SamplingFlags.NOT_SAMPLED;
     }
   }
 

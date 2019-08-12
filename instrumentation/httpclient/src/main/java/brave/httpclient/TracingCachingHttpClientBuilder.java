@@ -54,7 +54,7 @@ public final class TracingCachingHttpClientBuilder extends CachingHttpClientBuil
 
     @Override boolean isRemote(HttpContext context, Span span) {
       boolean cacheHit = CacheResponseStatus.CACHE_HIT.equals(
-          context.getAttribute(HttpCacheContext.CACHE_RESPONSE_STATUS));
+        context.getAttribute(HttpCacheContext.CACHE_RESPONSE_STATUS));
       if (cacheHit) span.tag("http.cache_hit", "");
       return !cacheHit;
     }

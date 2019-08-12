@@ -35,11 +35,11 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class TraceContextBinaryMarshallerBenchmarks {
   static final TraceContext context = TraceContext.newBuilder()
-      .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
-      .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-      .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
-      .sampled(true)
-      .build();
+    .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
+    .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
+    .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
+    .sampled(true)
+    .build();
 
   static final byte[] serialized = TraceContextBinaryFormat.toBytes(context);
 
@@ -54,9 +54,9 @@ public class TraceContextBinaryMarshallerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + TraceContextBinaryMarshallerBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + TraceContextBinaryMarshallerBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

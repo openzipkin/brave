@@ -38,7 +38,7 @@ public final class StrictScopeDecorator implements ScopeDecorator {
   /** Identifies problems by throwing assertion errors when a scope is closed on a different thread. */
   @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
     return new StrictScope(scope, new Error(String.format("Thread %s opened scope for %s here:",
-        Thread.currentThread().getName(), currentSpan)));
+      Thread.currentThread().getName(), currentSpan)));
   }
 
   static final class StrictScope implements Scope {
@@ -54,8 +54,8 @@ public final class StrictScopeDecorator implements ScopeDecorator {
     @Override public void close() {
       if (Thread.currentThread().getId() != threadId) {
         throw new IllegalStateException(
-            "scope closed in a different thread: " + Thread.currentThread().getName(),
-            caller);
+          "scope closed in a different thread: " + Thread.currentThread().getName(),
+          caller);
       }
       delegate.close();
     }

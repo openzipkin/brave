@@ -28,15 +28,15 @@ public class ListsTest {
     List<Object> list = new ArrayList<>();
 
     assertThat(Lists.ensureMutable(list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void ensureMutable_copiesImmutable() {
     List<Object> list = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
 
     assertThat(Lists.ensureMutable(list))
-        .isInstanceOf(ArrayList.class)
-        .containsExactlyElementsOf(list);
+      .isInstanceOf(ArrayList.class)
+      .containsExactlyElementsOf(list);
   }
 
   @Test(expected = UnsupportedOperationException.class)
@@ -48,39 +48,39 @@ public class ListsTest {
     List<Object> list = new ArrayList<>();
     list.add("foo");
     assertThat(Lists.ensureImmutable(list).getClass().getSimpleName())
-        .isEqualTo("SingletonList");
+      .isEqualTo("SingletonList");
   }
 
   @Test public void ensureImmutable_returnsEmptyList() {
     List<Object> list = Collections.emptyList();
     assertThat(Lists.ensureImmutable(list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void ensureImmutable_doesntCopySingletonList() {
     List<Object> list = Collections.singletonList("foo");
     assertThat(Lists.ensureImmutable(list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void ensureImmutable_doesntCopyUnmodifiableList() {
     List<Object> list = Collections.unmodifiableList(Arrays.asList("foo"));
     assertThat(Lists.ensureImmutable(list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void ensureImmutable_doesntCopyImmutableList() {
     List<Object> list = ImmutableList.of("foo");
     assertThat(Lists.ensureImmutable(list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void concatImmutableLists_choosesNonEmpty() {
     List<Object> list = ImmutableList.of("foo");
     assertThat(Lists.concatImmutableLists(list, Collections.emptyList()))
-        .isSameAs(list);
+      .isSameAs(list);
     assertThat(Lists.concatImmutableLists(Collections.emptyList(), list))
-        .isSameAs(list);
+      .isSameAs(list);
   }
 
   @Test public void concatImmutableLists_concatenates() {
@@ -88,7 +88,7 @@ public class ListsTest {
     List<Object> list2 = ImmutableList.of("bar", "baz");
 
     assertThat(Lists.concatImmutableLists(list1, list2))
-        .hasSameClassAs(Collections.unmodifiableList(list1))
-        .containsExactly("foo", "bar", "baz");
+      .hasSameClassAs(Collections.unmodifiableList(list1))
+      .containsExactly("foo", "bar", "baz");
   }
 }

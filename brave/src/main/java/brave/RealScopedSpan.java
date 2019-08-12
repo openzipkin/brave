@@ -30,12 +30,12 @@ final class RealScopedSpan extends ScopedSpan {
   final FinishedSpanHandler finishedSpanHandler;
 
   RealScopedSpan(
-      TraceContext context,
-      Scope scope,
-      MutableSpan state,
-      Clock clock,
-      PendingSpans pendingSpans,
-      FinishedSpanHandler finishedSpanHandler
+    TraceContext context,
+    Scope scope,
+    MutableSpan state,
+    Clock clock,
+    PendingSpans pendingSpans,
+    FinishedSpanHandler finishedSpanHandler
   ) {
     this.context = context;
     this.scope = scope;

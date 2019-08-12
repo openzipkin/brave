@@ -29,15 +29,15 @@ import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.FINISHED;
 import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.REQUEST_MATCHED;
 
 /**
- * Adds application-tier data to an existing http span via {@link EventParser}.
- * This also sets the request property "http.route" so that it can be used in naming the http span.
+ * Adds application-tier data to an existing http span via {@link EventParser}. This also sets the
+ * request property "http.route" so that it can be used in naming the http span.
  *
  * <p>Use this instead of {@link TracingApplicationEventListener} when you start traces at the
  * servlet level via {@code brave.servlet.TracingFilter}.
  */
 @Provider
 public class SpanCustomizingApplicationEventListener
-    implements ApplicationEventListener, RequestEventListener {
+  implements ApplicationEventListener, RequestEventListener {
   public static SpanCustomizingApplicationEventListener create() {
     return new SpanCustomizingApplicationEventListener(new EventParser());
   }

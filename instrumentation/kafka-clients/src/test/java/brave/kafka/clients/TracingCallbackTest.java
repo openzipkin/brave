@@ -50,7 +50,7 @@ public class TracingCallbackTest extends BaseTracingTest {
     tracingCallback.onCompletion(null, new Exception("Test exception"));
 
     assertThat(spans.getFirst().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 
   @Test public void on_completion_should_forward_then_finish_span() {
@@ -85,7 +85,7 @@ public class TracingCallbackTest extends BaseTracingTest {
     verify(delegate).onCompletion(md, e);
 
     assertThat(spans.getFirst().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 
   RecordMetadata createRecordMetadata() {

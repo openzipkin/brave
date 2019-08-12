@@ -37,10 +37,10 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
 
   @Override protected Call.Factory newClient(int port) {
     return TracingCallFactory.create(httpTracing, new OkHttpClient.Builder()
-        .connectTimeout(1, TimeUnit.SECONDS)
-        .readTimeout(1, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(false)
-        .build()
+      .connectTimeout(1, TimeUnit.SECONDS)
+      .readTimeout(1, TimeUnit.SECONDS)
+      .retryOnConnectionFailure(false)
+      .build()
     );
   }
 
@@ -49,28 +49,28 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override protected void get(Call.Factory client, String pathIncludingQuery)
-      throws IOException {
+    throws IOException {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-        .execute();
+      .execute();
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
-      throws Exception {
+    throws Exception {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
-        .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
-        .execute();
+      .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
+      .execute();
   }
 
   @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-        .enqueue(new Callback() {
-          @Override public void onFailure(Call call, IOException e) {
-            e.printStackTrace();
-          }
+      .enqueue(new Callback() {
+        @Override public void onFailure(Call call, IOException e) {
+          e.printStackTrace();
+        }
 
-          @Override public void onResponse(Call call, Response response) {
-          }
-        });
+        @Override public void onResponse(Call call, Response response) {
+        }
+      });
   }
 
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
@@ -79,10 +79,10 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     closeClient(client);
 
     client = TracingCallFactory.create(httpTracing, new OkHttpClient.Builder()
-        .addInterceptor(chain -> chain.proceed(chain.request().newBuilder()
-            .addHeader("my-id", currentTraceContext.get().traceIdString())
-            .build()))
-        .build());
+      .addInterceptor(chain -> chain.proceed(chain.request().newBuilder()
+        .addHeader("my-id", currentTraceContext.get().traceIdString())
+        .build()))
+      .build());
 
     ScopedSpan parent = tracer.startScopedSpan("test");
     try {
@@ -93,11 +93,11 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(request.getHeader("my-id"));
+      .isEqualTo(request.getHeader("my-id"));
 
     // we report one in-process and one RPC client span
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 }

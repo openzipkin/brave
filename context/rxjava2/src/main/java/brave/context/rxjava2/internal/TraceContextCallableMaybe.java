@@ -26,7 +26,7 @@ final class TraceContextCallableMaybe<T> extends Maybe<T> implements Callable<T>
   final TraceContext assembled;
 
   TraceContextCallableMaybe(
-      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

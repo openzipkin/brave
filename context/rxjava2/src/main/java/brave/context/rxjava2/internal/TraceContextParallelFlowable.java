@@ -24,7 +24,7 @@ final class TraceContextParallelFlowable<T> extends ParallelFlowable<T> {
   final TraceContext assembled;
 
   TraceContextParallelFlowable(
-      ParallelFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    ParallelFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

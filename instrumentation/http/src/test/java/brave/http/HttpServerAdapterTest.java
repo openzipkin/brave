@@ -44,21 +44,21 @@ public class HttpServerAdapterTest {
 
   @Test public void path_doesntCrashOnNullUrl() {
     assertThat(adapter.path(request))
-        .isNull();
+      .isNull();
   }
 
   @Test public void statusCodeAsInt_callsStatusCodeByDefault() {
     when(adapter.statusCode(response)).thenReturn(400);
 
     assertThat(adapter.statusCodeAsInt(response))
-        .isEqualTo(400);
+      .isEqualTo(400);
   }
 
   @Test public void path_derivedFromUrl() {
     when(adapter.url(request)).thenReturn("http://foo:8080/bar?hello=world");
 
     assertThat(adapter.path(request))
-        .isEqualTo("/bar");
+      .isEqualTo("/bar");
   }
 
   @Test public void parseClientIpAndPort_prefersXForwardedFor() {

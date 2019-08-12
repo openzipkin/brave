@@ -40,8 +40,8 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("mvc.controller.class", "Servlet3TestController")
-        .containsEntry("mvc.controller.method", "foo");
+      .containsEntry("mvc.controller.class", "Servlet3TestController")
+      .containsEntry("mvc.controller.method", "foo");
   }
 
   @Configuration
@@ -54,14 +54,14 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
 
   @Override public void init(ServletContextHandler handler) {
     AnnotationConfigWebApplicationContext appContext =
-        new AnnotationConfigWebApplicationContext() {
-          // overriding this allows us to register dependencies of TracingHandlerInterceptor
-          // without passing static state to a configuration class.
-          @Override protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) {
-            beanFactory.registerSingleton("httpTracing", httpTracing);
-            super.loadBeanDefinitions(beanFactory);
-          }
-        };
+      new AnnotationConfigWebApplicationContext() {
+        // overriding this allows us to register dependencies of TracingHandlerInterceptor
+        // without passing static state to a configuration class.
+        @Override protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) {
+          beanFactory.registerSingleton("httpTracing", httpTracing);
+          super.loadBeanDefinitions(beanFactory);
+        }
+      };
 
     appContext.register(Servlet3TestController.class); // the test resource
     appContext.register(TracingConfig.class); // generic tracing setup
@@ -74,7 +74,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
 
     // add the trace filter, which lazy initializes a real tracing filter from the spring context
     Dynamic filterRegistration =
-        handler.getServletContext().addFilter("tracingFilter", DelegatingTracingFilter.class);
+      handler.getServletContext().addFilter("tracingFilter", DelegatingTracingFilter.class);
     filterRegistration.setAsyncSupported(true);
     filterRegistration.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }

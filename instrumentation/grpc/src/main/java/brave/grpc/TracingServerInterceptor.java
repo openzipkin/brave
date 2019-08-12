@@ -34,15 +34,15 @@ import static brave.grpc.GrpcPropagation.RPC_METHOD;
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
   static final Propagation.Getter<Metadata, Key<String>> GETTER =
-      new Propagation.Getter<Metadata, Key<String>>() { // retrolambda no like
-        @Override public String get(Metadata metadata, Key<String> key) {
-          return metadata.get(key);
-        }
+    new Propagation.Getter<Metadata, Key<String>>() { // retrolambda no like
+      @Override public String get(Metadata metadata, Key<String> key) {
+        return metadata.get(key);
+      }
 
-        @Override public String toString() {
-          return "Metadata::get";
-        }
-      };
+      @Override public String toString() {
+        return "Metadata::get";
+      }
+    };
 
   final Tracer tracer;
   final Extractor<Metadata> extractor;
@@ -58,11 +58,11 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
-      final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
+    final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
     TraceContextOrSamplingFlags extracted = extractor.extract(headers);
     Span span = extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+      ? tracer.joinSpan(extracted.context())
+      : tracer.nextSpan(extracted);
 
     // If grpc propagation is enabled, make sure we refresh the server method
     if (grpcPropagationFormatEnabled) {
@@ -76,7 +76,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
     ServerCall.Listener<ReqT> result;
     SpanInScope scope = tracer.withSpanInScope(span);
     try { // retrolambda can't resolve this try/finally
-      result = next.startCall(new TracingServerCall<>(span, call, parser), headers);
+      result = next.startCall(new TracingServerCall<>(span, call), headers);
     } catch (RuntimeException | Error e) {
       span.error(e);
       span.finish();
@@ -92,7 +92,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
     final Span span;
 
-    TracingServerCall(Span span, ServerCall<ReqT, RespT> call, GrpcServerParser parser) {
+    TracingServerCall(Span span, ServerCall<ReqT, RespT> call) {
       super(call);
       this.span = span;
     }
@@ -122,13 +122,13 @@ final class TracingServerInterceptor implements ServerInterceptor {
   }
 
   static final class ScopingServerCallListener<ReqT>
-      extends SimpleForwardingServerCallListener<ReqT> {
+    extends SimpleForwardingServerCallListener<ReqT> {
     final Tracer tracer;
     final Span span;
     final GrpcServerParser parser;
 
     ScopingServerCallListener(Tracer tracer, Span span, ServerCall.Listener<ReqT> delegate,
-        GrpcServerParser parser) {
+      GrpcServerParser parser) {
       super(delegate);
       this.tracer = tracer;
       this.span = span;

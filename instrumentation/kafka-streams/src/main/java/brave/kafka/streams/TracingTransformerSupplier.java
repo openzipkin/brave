@@ -22,8 +22,8 @@ class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R
   final Transformer<K, V, R> delegateTransformer;
 
   TracingTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
-      String spanName,
-      Transformer<K, V, R> delegateTransformer) {
+    String spanName,
+    Transformer<K, V, R> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
@@ -32,5 +32,5 @@ class TracingTransformerSupplier<K, V, R> implements TransformerSupplier<K, V, R
   /** This wraps transform method to enable tracing. */
   @Override public Transformer<K, V, R> get() {
     return new TracingTransformer<>(kafkaStreamsTracing, spanName, delegateTransformer);
- }
+  }
 }

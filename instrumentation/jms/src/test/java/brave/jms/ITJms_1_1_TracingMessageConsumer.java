@@ -61,11 +61,11 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
   @Before public void setup() throws Exception {
     tracedSession = jmsTracing.connection(jms.connection)
-        .createSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
-        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedTopicSession = jmsTracing.topicConnection(jms.topicConnection)
-        .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
+      .createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
 
     messageProducer = jms.session.createProducer(jms.destination);
     messageConsumer = tracedSession.createConsumer(jms.destination);
@@ -89,32 +89,32 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
   @Test public void messageListener_startsNewTrace() throws Exception {
     messageListener_startsNewTrace(
-        () -> messageProducer.send(message),
-        messageConsumer,
-        Collections.singletonMap("jms.queue", jms.destinationName)
+      () -> messageProducer.send(message),
+      messageConsumer,
+      Collections.singletonMap("jms.queue", jms.destinationName)
     );
   }
 
   @Test public void messageListener_startsNewTrace_queue() throws Exception {
     messageListener_startsNewTrace(
-        () -> queueSender.send(message),
-        queueReceiver,
-        Collections.singletonMap("jms.queue", jms.queueName)
+      () -> queueSender.send(message),
+      queueReceiver,
+      Collections.singletonMap("jms.queue", jms.queueName)
     );
   }
 
   @Test public void messageListener_startsNewTrace_topic() throws Exception {
     messageListener_startsNewTrace(
-        () -> topicPublisher.send(message),
-        topicSubscriber,
-        Collections.singletonMap("jms.topic", jms.topicName)
+      () -> topicPublisher.send(message),
+      topicSubscriber,
+      Collections.singletonMap("jms.topic", jms.topicName)
     );
   }
 
   void messageListener_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
-      Map<String, String> consumerTags) throws Exception {
+    Map<String, String> consumerTags) throws Exception {
     messageConsumer.setMessageListener(
-        m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
+      m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
     );
     send.run();
 
@@ -144,7 +144,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   void messageListener_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer)
-      throws Exception {
+    throws Exception {
     messageConsumer.setMessageListener(m -> {
       try {
         // clearing headers ensures later work doesn't try to use the old parent
@@ -166,30 +166,30 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
   @Test public void receive_startsNewTrace() throws Exception {
     receive_startsNewTrace(
-        () -> messageProducer.send(message),
-        messageConsumer,
-        Collections.singletonMap("jms.queue", jms.destinationName)
+      () -> messageProducer.send(message),
+      messageConsumer,
+      Collections.singletonMap("jms.queue", jms.destinationName)
     );
   }
 
   @Test public void receive_startsNewTrace_queue() throws Exception {
     receive_startsNewTrace(
-        () -> queueSender.send(message),
-        queueReceiver,
-        Collections.singletonMap("jms.queue", jms.queueName)
+      () -> queueSender.send(message),
+      queueReceiver,
+      Collections.singletonMap("jms.queue", jms.queueName)
     );
   }
 
   @Test public void receive_startsNewTrace_topic() throws Exception {
     receive_startsNewTrace(
-        () -> topicPublisher.send(message),
-        topicSubscriber,
-        Collections.singletonMap("jms.topic", jms.topicName)
+      () -> topicPublisher.send(message),
+      topicSubscriber,
+      Collections.singletonMap("jms.topic", jms.topicName)
     );
   }
 
   void receive_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
-      Map<String, String> consumerTags) throws Exception {
+    Map<String, String> consumerTags) throws Exception {
     send.run();
 
     messageConsumer.receive();
@@ -224,6 +224,6 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
 
     assertThat(received.getStringProperty("b3"))
-        .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+      .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
   }
 }

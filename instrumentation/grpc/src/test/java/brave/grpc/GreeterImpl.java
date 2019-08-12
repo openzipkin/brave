@@ -34,7 +34,7 @@ class GreeterImpl extends GreeterGrpc.GreeterImplBase {
   GreeterImpl(@Nullable GrpcTracing grpcTracing) {
     tracing = grpcTracing != null ? grpcTracing.tracing : null;
     spanCustomizer =
-        tracing != null ? CurrentSpanCustomizer.create(tracing) : NoopSpanCustomizer.INSTANCE;
+      tracing != null ? CurrentSpanCustomizer.create(tracing) : NoopSpanCustomizer.INSTANCE;
   }
 
   @Override
@@ -55,7 +55,7 @@ class GreeterImpl extends GreeterGrpc.GreeterImplBase {
 
   @Override
   public void sayHelloWithManyReplies(
-      HelloRequest request, StreamObserver<HelloReply> responseObserver) {
+    HelloRequest request, StreamObserver<HelloReply> responseObserver) {
     for (int i = 0; i < 10; i++) {
       responseObserver.onNext(HelloReply.newBuilder().setMessage("reply " + i).build());
     }

@@ -152,7 +152,7 @@ public class ThreadLocalSpan {
     Span span = (Span) spanAndScope[0];
     ((SpanInScope) spanAndScope[1]).close();
     assert span.equals(currentSpan) :
-        "Misalignment: scoped span " + span + " !=  current span " + currentSpan;
+      "Misalignment: scoped span " + span + " !=  current span " + currentSpan;
     return currentSpan;
   }
 

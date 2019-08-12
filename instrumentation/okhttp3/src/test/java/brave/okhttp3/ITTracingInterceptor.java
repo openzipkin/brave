@@ -29,15 +29,15 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
 
   @Override protected Call.Factory newClient(int port) {
     return new OkHttpClient.Builder()
-        .connectTimeout(1, TimeUnit.SECONDS)
-        .readTimeout(1, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(false)
-        .dispatcher(new Dispatcher(
-            httpTracing.tracing().currentTraceContext()
-                .executorService(new Dispatcher().executorService())
-        ))
-        .addNetworkInterceptor(TracingInterceptor.create(httpTracing))
-        .build();
+      .connectTimeout(1, TimeUnit.SECONDS)
+      .readTimeout(1, TimeUnit.SECONDS)
+      .retryOnConnectionFailure(false)
+      .dispatcher(new Dispatcher(
+        httpTracing.tracing().currentTraceContext()
+          .executorService(new Dispatcher().executorService())
+      ))
+      .addNetworkInterceptor(TracingInterceptor.create(httpTracing))
+      .build();
   }
 
   @Override protected void closeClient(Call.Factory client) throws IOException {
@@ -45,27 +45,27 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override protected void get(Call.Factory client, String pathIncludingQuery)
-      throws IOException {
+    throws IOException {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-        .execute();
+      .execute();
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
-      throws Exception {
+    throws Exception {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
-        .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
-        .execute();
+      .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
+      .execute();
   }
 
   @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-        .enqueue(new Callback() {
-          @Override public void onFailure(Call call, IOException e) {
-            e.printStackTrace();
-          }
+      .enqueue(new Callback() {
+        @Override public void onFailure(Call call, IOException e) {
+          e.printStackTrace();
+        }
 
-          @Override public void onResponse(Call call, Response response) throws IOException {
-          }
-        });
+        @Override public void onResponse(Call call, Response response) throws IOException {
+        }
+      });
   }
 }

@@ -56,16 +56,16 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
   }
 
   static final Setter<MultivaluedMap<String, Object>, String> SETTER =
-      new Setter<MultivaluedMap<String, Object>, String>() {
-        @Override
-        public void put(MultivaluedMap<String, Object> carrier, String key, String value) {
-          carrier.putSingle(key, value);
-        }
+    new Setter<MultivaluedMap<String, Object>, String>() {
+      @Override
+      public void put(MultivaluedMap<String, Object> carrier, String key, String value) {
+        carrier.putSingle(key, value);
+      }
 
-        @Override public String toString() {
-          return "MultivaluedMap::putSingle";
-        }
-      };
+      @Override public String toString() {
+        return "MultivaluedMap::putSingle";
+      }
+    };
 
   final Tracer tracer;
   final HttpClientHandler<ClientRequestContext, ClientResponseContext> handler;
@@ -93,7 +93,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
   }
 
   static final class HttpAdapter
-      extends brave.http.HttpClientAdapter<ClientRequestContext, ClientResponseContext> {
+    extends brave.http.HttpClientAdapter<ClientRequestContext, ClientResponseContext> {
 
     @Override public String method(ClientRequestContext request) {
       return request.getMethod();

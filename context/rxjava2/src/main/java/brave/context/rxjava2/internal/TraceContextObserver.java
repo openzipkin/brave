@@ -28,7 +28,7 @@ final class TraceContextObserver<T> implements Observer<T>, Disposable {
   boolean done;
 
   TraceContextObserver(
-      Observer<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+    Observer<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

@@ -167,7 +167,7 @@ import javax.jms.XAJMSContext;
   }
 
   @Override public JMSConsumer createConsumer(Destination destination, String messageSelector,
-      boolean noLocal) {
+    boolean noLocal) {
     JMSConsumer cDelegate = delegate.createConsumer(destination, messageSelector, noLocal);
     return new TracingJMSConsumer(cDelegate, destination, jmsTracing);
   }
@@ -186,7 +186,7 @@ import javax.jms.XAJMSContext;
 
   @Override
   public JMSConsumer createDurableConsumer(Topic topic, String name, String messageSelector,
-      boolean noLocal) {
+    boolean noLocal) {
     JMSConsumer cDelegate = delegate.createDurableConsumer(topic, name, messageSelector, noLocal);
     return new TracingJMSConsumer(cDelegate, topic, jmsTracing);
   }
@@ -208,9 +208,9 @@ import javax.jms.XAJMSContext;
   }
 
   @Override public JMSConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
-      String messageSelector) {
+    String messageSelector) {
     JMSConsumer cDelegate =
-        delegate.createSharedConsumer(topic, sharedSubscriptionName, messageSelector);
+      delegate.createSharedConsumer(topic, sharedSubscriptionName, messageSelector);
     return new TracingJMSConsumer(cDelegate, topic, jmsTracing);
   }
 

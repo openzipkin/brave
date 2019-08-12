@@ -95,12 +95,12 @@ public class ITSpringRabbitTracing {
     String consumerSpanId = allSpans.get(1).id();
 
     assertThat(allSpans)
-        .extracting(Span::kind, Span::traceId, Span::parentId)
-        .containsExactly(
-            tuple(PRODUCER, originatingTraceId, null),
-            tuple(CONSUMER, originatingTraceId, originatingTraceId),
-            tuple(null, originatingTraceId, consumerSpanId)
-        );
+      .extracting(Span::kind, Span::traceId, Span::parentId)
+      .containsExactly(
+        tuple(PRODUCER, originatingTraceId, null),
+        tuple(CONSUMER, originatingTraceId, originatingTraceId),
+        tuple(null, originatingTraceId, consumerSpanId)
+      );
   }
 
   @Test public void clears_message_headers_after_propagation() throws Exception {
@@ -121,18 +121,18 @@ public class ITSpringRabbitTracing {
     consumerSpans.add(takeConsumerSpan());
 
     assertThat(consumerSpans)
-        .filteredOn(s -> s.kind() == CONSUMER)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(
-            entry("rabbit.exchange", "test-exchange"),
-            entry("rabbit.routing_key", "test.binding"),
-            entry("rabbit.queue", "test-queue")
-        );
+      .filteredOn(s -> s.kind() == CONSUMER)
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(
+        entry("rabbit.exchange", "test-exchange"),
+        entry("rabbit.routing_key", "test.binding"),
+        entry("rabbit.queue", "test-queue")
+      );
 
     assertThat(consumerSpans)
-        .filteredOn(s -> s.kind() != CONSUMER)
-        .flatExtracting(s -> s.tags().entrySet())
-        .isEmpty();
+      .filteredOn(s -> s.kind() != CONSUMER)
+      .flatExtracting(s -> s.tags().entrySet())
+      .isEmpty();
   }
 
   /** Technical implementation of clock sharing might imply a race. This ensures happens-after */
@@ -145,7 +145,7 @@ public class ITSpringRabbitTracing {
     Span listenerSpan = consumerSpan == span1 ? span2 : span1;
 
     assertThat(consumerSpan.timestampAsLong() + consumerSpan.durationAsLong())
-        .isLessThanOrEqualTo(listenerSpan.timestampAsLong());
+      .isLessThanOrEqualTo(listenerSpan.timestampAsLong());
   }
 
   @Test public void creates_dependency_links() throws Exception {
@@ -159,8 +159,8 @@ public class ITSpringRabbitTracing {
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
-        tuple("spring-amqp-producer", "rabbitmq"),
-        tuple("rabbitmq", "spring-amqp-consumer")
+      tuple("spring-amqp-producer", "rabbitmq"),
+      tuple("rabbitmq", "spring-amqp-consumer")
     );
   }
 
@@ -173,18 +173,18 @@ public class ITSpringRabbitTracing {
     consumerSpans.add(takeConsumerSpan());
 
     assertThat(consumerSpans)
-        .filteredOn(s -> s.kind() == CONSUMER)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(
-            entry("rabbit.exchange", "test-exchange"),
-            entry("rabbit.routing_key", "test.binding"),
-            entry("rabbit.queue", "test-queue")
-        );
+      .filteredOn(s -> s.kind() == CONSUMER)
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(
+        entry("rabbit.exchange", "test-exchange"),
+        entry("rabbit.routing_key", "test.binding"),
+        entry("rabbit.queue", "test-queue")
+      );
 
     assertThat(consumerSpans)
-        .filteredOn(s -> s.kind() != CONSUMER)
-        .flatExtracting(s -> s.tags().entrySet())
-        .isEmpty();
+      .filteredOn(s -> s.kind() != CONSUMER)
+      .flatExtracting(s -> s.tags().entrySet())
+      .isEmpty();
   }
 
   // We will revisit this eventually, but these names mostly match the method names
@@ -198,8 +198,8 @@ public class ITSpringRabbitTracing {
     allSpans.add(takeConsumerSpan());
 
     assertThat(allSpans)
-        .extracting(Span::name)
-        .containsExactly("publish", "next-message", "on-message");
+      .extracting(Span::name)
+      .containsExactly("publish", "next-message", "on-message");
   }
 
   @Configuration
@@ -237,12 +237,12 @@ public class ITSpringRabbitTracing {
     @Bean
     public Tracing tracing(BlockingQueue<Span> producerSpans) {
       return Tracing.newBuilder()
-          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-              .addScopeDecorator(StrictScopeDecorator.create())
-              .build())
-          .localServiceName("spring-amqp-producer")
-          .spanReporter(producerSpans::add)
-          .build();
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
+        .localServiceName("spring-amqp-producer")
+        .spanReporter(producerSpans::add)
+        .build();
     }
 
     @Bean
@@ -257,8 +257,8 @@ public class ITSpringRabbitTracing {
 
     @Bean
     public RabbitTemplate newRabbitTemplate(
-        ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing
+      ConnectionFactory connectionFactory,
+      SpringRabbitTracing springRabbitTracing
     ) {
       RabbitTemplate newRabbitTemplate = springRabbitTracing.newRabbitTemplate(connectionFactory);
       newRabbitTemplate.setExchange("test-exchange");
@@ -267,8 +267,8 @@ public class ITSpringRabbitTracing {
 
     @Bean
     public RabbitTemplate decorateRabbitTemplate(
-        ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing
+      ConnectionFactory connectionFactory,
+      SpringRabbitTracing springRabbitTracing
     ) {
       RabbitTemplate newRabbitTemplate = new RabbitTemplate(connectionFactory);
       newRabbitTemplate.setExchange("test-exchange");
@@ -277,14 +277,14 @@ public class ITSpringRabbitTracing {
 
     @Bean
     public HelloWorldProducer tracingRabbitProducer_new(
-        @Qualifier("newRabbitTemplate") RabbitTemplate newRabbitTemplate
+      @Qualifier("newRabbitTemplate") RabbitTemplate newRabbitTemplate
     ) {
       return new HelloWorldProducer(newRabbitTemplate);
     }
 
     @Bean
     public HelloWorldProducer tracingRabbitProducer_decorate(
-        @Qualifier("decorateRabbitTemplate") RabbitTemplate newRabbitTemplate
+      @Qualifier("decorateRabbitTemplate") RabbitTemplate newRabbitTemplate
     ) {
       return new HelloWorldProducer(newRabbitTemplate);
     }
@@ -296,12 +296,12 @@ public class ITSpringRabbitTracing {
     @Bean
     public Tracing tracing(BlockingQueue<Span> consumerSpans) {
       return Tracing.newBuilder()
-          .localServiceName("spring-amqp-consumer")
-          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-              .addScopeDecorator(StrictScopeDecorator.create())
-              .build())
-          .spanReporter(consumerSpans::add)
-          .build();
+        .localServiceName("spring-amqp-consumer")
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .build())
+        .spanReporter(consumerSpans::add)
+        .build();
     }
 
     @Bean
@@ -316,14 +316,14 @@ public class ITSpringRabbitTracing {
 
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-        ConnectionFactory connectionFactory,
-        SpringRabbitTracing springRabbitTracing
+      ConnectionFactory connectionFactory,
+      SpringRabbitTracing springRabbitTracing
     ) {
       SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory =
-          new SimpleRabbitListenerContainerFactory();
+        new SimpleRabbitListenerContainerFactory();
       rabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
       return springRabbitTracing.decorateSimpleRabbitListenerContainerFactory(
-          rabbitListenerContainerFactory
+        rabbitListenerContainerFactory
       );
     }
 
@@ -410,13 +410,13 @@ public class ITSpringRabbitTracing {
 
     private void produceMessage() {
       HelloWorldProducer rabbitProducer =
-          producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
+        producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
     private void produceMessageFromDefault() {
       HelloWorldProducer rabbitProducer =
-          producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
+        producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
@@ -435,8 +435,8 @@ public class ITSpringRabbitTracing {
   Span takeProducerSpan() throws InterruptedException {
     Span result = testFixture.producerSpans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Producer span was not reported")
-        .isNotNull();
+      .withFailMessage("Producer span was not reported")
+      .isNotNull();
     // ensure the span finished
     assertThat(result.durationAsLong()).isPositive();
     return result;
@@ -446,8 +446,8 @@ public class ITSpringRabbitTracing {
   Span takeConsumerSpan() throws InterruptedException {
     Span result = testFixture.consumerSpans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Consumer span was not reported")
-        .isNotNull();
+      .withFailMessage("Consumer span was not reported")
+      .isNotNull();
     // ensure the span finished
     assertThat(result.durationAsLong()).isPositive();
     return result;

@@ -14,7 +14,6 @@
 package brave;
 
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,11 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanTest {
-  List<zipkin2.Span> spans = new ArrayList();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+  List<zipkin2.Span> spans = new ArrayList<>();
+  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
 
   TraceContext context = tracing.tracer().newTrace().context();
   TraceContext context2 = tracing.tracer().newTrace().context();

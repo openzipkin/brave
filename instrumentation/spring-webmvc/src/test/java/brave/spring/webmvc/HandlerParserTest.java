@@ -43,9 +43,9 @@ public class HandlerParserTest {
   /** For Spring WebMVC 3.1+ */
   @Test public void preHandle_HandlerMethod_addsClassAndMethodTags() throws Exception {
     parser.preHandle(
-        request,
-        new HandlerMethod(controller, TestController.class.getMethod("items", String.class)),
-        customizer
+      request,
+      new HandlerMethod(controller, TestController.class.getMethod("items", String.class)),
+      customizer
     );
 
     verify(customizer).tag("mvc.controller.class", "TestController");

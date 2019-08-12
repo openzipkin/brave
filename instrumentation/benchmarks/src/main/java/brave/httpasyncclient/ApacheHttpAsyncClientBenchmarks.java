@@ -26,7 +26,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 public class ApacheHttpAsyncClientBenchmarks extends
-    HttpClientBenchmarks<CloseableHttpAsyncClient> {
+  HttpClientBenchmarks<CloseableHttpAsyncClient> {
 
   @Override protected CloseableHttpAsyncClient newClient(HttpTracing httpTracing) {
     CloseableHttpAsyncClient result = TracingHttpAsyncClientBuilder.create(httpTracing).build();
@@ -51,8 +51,8 @@ public class ApacheHttpAsyncClientBenchmarks extends
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + ApacheHttpAsyncClientBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + ApacheHttpAsyncClientBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

@@ -50,46 +50,46 @@ import zipkin2.reporter.Reporter;
 @State(Scope.Benchmark)
 public class TracerBenchmarks {
   Propagation.Factory extraFactory = ExtraFieldPropagation.newFactory(
-      B3Propagation.FACTORY, "x-vcap-request-id");
+    B3Propagation.FACTORY, "x-vcap-request-id");
 
   TraceContext context =
-      TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
+    TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
   TraceContext contextExtra = extraFactory.decorate(context);
   TraceContext unsampledContext =
-      TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
+    TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
   TraceContext unsampledContextExtra = extraFactory.decorate(unsampledContext);
   TraceContext sampledLocalContext = unsampledContext.toBuilder().sampledLocal(true).build();
   TraceContext sampledLocalContextExtra = extraFactory.decorate(sampledLocalContext);
   TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
   TraceContextOrSamplingFlags extractedExtra = TraceContextOrSamplingFlags.create(contextExtra);
   TraceContextOrSamplingFlags unsampledExtracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED);
+    TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED);
   TraceContextOrSamplingFlags unsampledExtractedExtra =
-      TraceContextOrSamplingFlags.newBuilder()
-          .samplingFlags(SamplingFlags.NOT_SAMPLED)
-          .addExtra(contextExtra.extra())
-          .build();
+    TraceContextOrSamplingFlags.newBuilder()
+      .samplingFlags(SamplingFlags.NOT_SAMPLED)
+      .addExtra(contextExtra.extra())
+      .build();
 
   Tracer tracer;
   Tracer tracerExtra;
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
-        .addFinishedSpanHandler(new FinishedSpanHandler() {
-          @Override public boolean handle(TraceContext context, MutableSpan span) {
-            return true; // anonymous subtype prevents all recording from being no-op
-          }
-        })
-        .spanReporter(Reporter.NOOP).build().tracer();
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
+        @Override public boolean handle(TraceContext context, MutableSpan span) {
+          return true; // anonymous subtype prevents all recording from being no-op
+        }
+      })
+      .spanReporter(Reporter.NOOP).build().tracer();
     tracerExtra = Tracing.newBuilder()
-        .propagationFactory(ExtraFieldPropagation.newFactory(
-            B3Propagation.FACTORY, "x-vcap-request-id"))
-        .addFinishedSpanHandler(new FinishedSpanHandler() {
-          @Override public boolean handle(TraceContext context, MutableSpan span) {
-            return true; // anonymous subtype prevents all recording from being no-op
-          }
-        })
-        .spanReporter(Reporter.NOOP).build().tracer();
+      .propagationFactory(ExtraFieldPropagation.newFactory(
+        B3Propagation.FACTORY, "x-vcap-request-id"))
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
+        @Override public boolean handle(TraceContext context, MutableSpan span) {
+          return true; // anonymous subtype prevents all recording from being no-op
+        }
+      })
+      .spanReporter(Reporter.NOOP).build().tracer();
   }
 
   @TearDown(Level.Trial) public void close() {
@@ -246,9 +246,9 @@ public class TracerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + TracerBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + TracerBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

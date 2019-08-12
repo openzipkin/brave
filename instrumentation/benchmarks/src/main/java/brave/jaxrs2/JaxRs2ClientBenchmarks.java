@@ -31,15 +31,15 @@ public class JaxRs2ClientBenchmarks extends HttpClientBenchmarks<Client> {
 
   @Override protected Client newClient(HttpTracing httpTracing) {
     return new ResteasyClientBuilder()
-        .httpEngine(new OkHttpClientEngine(ok))
-        .register(TracingClientFilter.create(httpTracing))
-        .build();
+      .httpEngine(new OkHttpClientEngine(ok))
+      .register(TracingClientFilter.create(httpTracing))
+      .build();
   }
 
   @Override protected Client newClient() {
     return new ResteasyClientBuilder()
-        .httpEngine(new OkHttpClientEngine(ok))
-        .build();
+      .httpEngine(new OkHttpClientEngine(ok))
+      .build();
   }
 
   @Override protected void get(Client client) throws Exception {
@@ -53,8 +53,8 @@ public class JaxRs2ClientBenchmarks extends HttpClientBenchmarks<Client> {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + JaxRs2ClientBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + JaxRs2ClientBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

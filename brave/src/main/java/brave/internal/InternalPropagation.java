@@ -55,13 +55,13 @@ public abstract class InternalPropagation {
    * @param localRootId must be non-zero prior to instantiating {@link Span} or {@link ScopedSpan}
    */
   public abstract TraceContext newTraceContext(
-      int flags,
-      long traceIdHigh,
-      long traceId,
-      long localRootId,
-      long parentId,
-      long spanId,
-      List<Object> extra
+    int flags,
+    long traceIdHigh,
+    long traceId,
+    long localRootId,
+    long parentId,
+    long spanId,
+    List<Object> extra
   );
 
   /** {@linkplain brave.propagation.TraceContext} is immutable so you need to read the result */

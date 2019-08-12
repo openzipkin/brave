@@ -15,7 +15,6 @@ package brave.features.advanced;
 
 import brave.Clock;
 import brave.Tracing;
-import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,11 +33,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>See https://github.com/apache/incubator-zipkin-brave/issues/564
  */
 public class CustomScopedClockTracingTest {
-  List<Span> spans = new ArrayList();
+  List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(spans::add)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(spans::add)
+    .build();
 
   @After public void close() {
     Tracing.current().close();
@@ -90,7 +89,7 @@ public class CustomScopedClockTracingTest {
 
       TracedConnection() {
         span = tracing.tracer().nextSpan().name("connection").start()
-            .tag("connection.id", id.toString());
+          .tag("connection.id", id.toString());
         clock = tracing.clock(span.context());
       }
 
@@ -115,8 +114,8 @@ public class CustomScopedClockTracingTest {
         // notice we are using the clock from the connection, which means eventhough
         // this is a different trace, the timestamps will be aligned.
         brave.Span span = tracing.tracer().nextSpan().name("query")
-            .tag("connection.id", connection.id.toString())
-            .start(clock.currentTimeMicroseconds());
+          .tag("connection.id", connection.id.toString())
+          .start(clock.currentTimeMicroseconds());
         super.execute();
         span.finish(clock.currentTimeMicroseconds());
       }
@@ -140,9 +139,9 @@ public class CustomScopedClockTracingTest {
 
     // we expect a trace for each query and one for the connection
     assertThat(spans)
-        .hasSize(3)
-        // we expect to be able to correlate all traces by the connection ID
-        .allSatisfy(s -> assertThat(s.tags())
-            .containsEntry("connection.id", connection2.id.toString()));
+      .hasSize(3)
+      // we expect to be able to correlate all traces by the connection ID
+      .allSatisfy(s -> assertThat(s.tags())
+        .containsEntry("connection.id", connection2.id.toString()));
   }
 }

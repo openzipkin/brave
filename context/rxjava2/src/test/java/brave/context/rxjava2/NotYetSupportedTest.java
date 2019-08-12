@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class NotYetSupportedTest {
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build();
+    .addScopeDecorator(StrictScopeDecorator.create())
+    .build();
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
   TraceContext subscribeContext = assemblyContext.toBuilder().parentId(1L).spanId(2L).build();
 
@@ -52,7 +52,7 @@ public class NotYetSupportedTest {
 
   /**
    * On XMap (ex {@code just(1).concatMap(..}, the source scalar callable is not passed as an input
-   * to the subsequent operator like {@link ObservableScalarXMap.ScalarXMapObservable}. What is
+   * to the subsequent operator like {@code ObservableScalarXMap.ScalarXMapObservable}. What is
    * passed is the result of {@link ScalarCallable#call()}.
    *
    * <p>Usually, this would result in lost tracking of the assembled context. However, we use a
@@ -143,12 +143,12 @@ public class NotYetSupportedTest {
 
   Observable<Integer> assertXMapFusion(Observable<Integer> fuseable) {
     return fuseable
-        // prove XMap fusion occurred
-        .doOnSubscribe(d -> {
-          assertThat(d).isInstanceOf(ObservableScalarXMap.ScalarDisposable.class);
-        })
-        .doOnNext(e -> assertInAssemblyContext())
-        .doOnComplete(this::assertInAssemblyContext);
+      // prove XMap fusion occurred
+      .doOnSubscribe(d -> {
+        assertThat(d).isInstanceOf(ObservableScalarXMap.ScalarDisposable.class);
+      })
+      .doOnNext(e -> assertInAssemblyContext())
+      .doOnComplete(this::assertInAssemblyContext);
   }
 
   void assertInAssemblyContext() {

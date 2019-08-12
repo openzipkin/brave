@@ -61,11 +61,11 @@ public abstract class ITHttpServer extends ITHttp {
     final String spanId = "48485a3953bb6124";
 
     get(new Request.Builder().url(url(path))
-        .header("X-B3-TraceId", traceId)
-        .header("X-B3-ParentSpanId", parentId)
-        .header("X-B3-SpanId", spanId)
-        .header("X-B3-Sampled", "1")
-        .build());
+      .header("X-B3-TraceId", traceId)
+      .header("X-B3-ParentSpanId", parentId)
+      .header("X-B3-SpanId", spanId)
+      .header("X-B3-Sampled", "1")
+      .build());
 
     Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
@@ -83,7 +83,7 @@ public abstract class ITHttpServer extends ITHttp {
   @Test
   public void readsExtra_unsampled() throws Exception {
     readsExtra(new Request.Builder()
-        .header("X-B3-Sampled", "0"));
+      .header("X-B3-Sampled", "0"));
 
     // @After will check that nothing is reported
   }
@@ -93,8 +93,8 @@ public abstract class ITHttpServer extends ITHttp {
     String traceId = "463ac35c9f6413ad";
 
     readsExtra(new Request.Builder()
-        .header("X-B3-TraceId", traceId)
-        .header("X-B3-SpanId", traceId));
+      .header("X-B3-TraceId", traceId)
+      .header("X-B3-SpanId", traceId));
 
     Span span = takeSpan();
     assertThat(span.traceId()).isEqualTo(traceId);
@@ -102,19 +102,19 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   /**
-   * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using
-   * {@link ExtraFieldPropagation#get(String)}.
+   * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using {@link
+   * ExtraFieldPropagation#get(String)}.
    */
   void readsExtra(Request.Builder builder) throws Exception {
     Request request = builder.url(url("/extra"))
-        // this is the pre-configured key we can pass through
-        .header(EXTRA_KEY, "joey").build();
+      // this is the pre-configured key we can pass through
+      .header(EXTRA_KEY, "joey").build();
 
     Response response = get(request);
     assertThat(response.isSuccessful()).isTrue();
     // if we can read the response header, the server must have been able to copy it
     assertThat(response.body().source().readUtf8())
-        .isEqualTo("joey");
+      .isEqualTo("joey");
   }
 
   @Test
@@ -131,8 +131,8 @@ public abstract class ITHttpServer extends ITHttp {
     String path = "/foo";
 
     httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
-        .addRule(null, path, 0.0f)
-        .build()).build();
+      .addRule(null, path, 0.0f)
+      .build()).build();
     init();
 
     Request request = new Request.Builder().url(url(path)).build();
@@ -179,19 +179,19 @@ public abstract class ITHttpServer extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.remoteEndpoint())
-        .isNotNull();
+      .isNotNull();
   }
 
   @Test
   public void reportsClientAddress_XForwardedFor() throws Exception {
     get(new Request.Builder().url(url("/foo"))
-        .header("X-Forwarded-For", "1.2.3.4")
-        .build());
+      .header("X-Forwarded-For", "1.2.3.4")
+      .build());
 
     Span span = takeSpan();
     assertThat(span.remoteEndpoint())
-        .extracting(Endpoint::ipv4)
-        .isEqualTo("1.2.3.4");
+      .extracting(Endpoint::ipv4)
+      .isEqualTo("1.2.3.4");
   }
 
   @Test
@@ -200,7 +200,7 @@ public abstract class ITHttpServer extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.kind())
-        .isEqualTo(Span.Kind.SERVER);
+      .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test
@@ -210,7 +210,7 @@ public abstract class ITHttpServer extends ITHttp {
     Span span = takeSpan();
     if (!span.name().equals("get")) {
       assertThat(span.name())
-          .isEqualTo("get /foo");
+        .isEqualTo("get /foo");
     }
   }
 
@@ -226,7 +226,7 @@ public abstract class ITHttpServer extends ITHttp {
 
       @Override
       public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-          SpanCustomizer customizer) {
+        SpanCustomizer customizer) {
         super.response(adapter, res, error, customizer);
         customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
       }
@@ -238,10 +238,10 @@ public abstract class ITHttpServer extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.url", url(uri))
-        .containsEntry("context.visible", "true")
-        .containsEntry("request_customizer.is_span", "false")
-        .containsEntry("response_customizer.is_span", "false");
+      .containsEntry("http.url", url(uri))
+      .containsEntry("context.visible", "true")
+      .containsEntry("request_customizer.is_span", "false")
+      .containsEntry("response_customizer.is_span", "false");
   }
 
   /**
@@ -258,8 +258,8 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   /**
-   * The "/nested/items/{itemId}" endpoint should be implemented by two route expressions:
-   * A path prefix: "/nested" and then a relative expression "/items/{itemId}"
+   * The "/nested/items/{itemId}" endpoint should be implemented by two route expressions: A path
+   * prefix: "/nested" and then a relative expression "/items/{itemId}"
    */
   @Test
   public void httpRoute_nested() throws Exception {
@@ -291,30 +291,30 @@ public abstract class ITHttpServer extends ITHttp {
 
     // Reading the route parameter from the response ensures the test endpoint is correct
     assertThat(request1.body().string())
-        .isEqualTo("1");
+      .isEqualTo("1");
     assertThat(request2.body().string())
-        .isEqualTo("2");
+      .isEqualTo("2");
 
     Span span1 = takeSpan(), span2 = takeSpan();
 
     // verify that the path and url reflect the initial request (not a route expression)
     assertThat(span1.tags())
-        .containsEntry("http.method", "GET")
-        .containsEntry("http.path", prefix + "/1")
-        .containsEntry("http.url", url(prefix + "/1?foo"));
+      .containsEntry("http.method", "GET")
+      .containsEntry("http.path", prefix + "/1")
+      .containsEntry("http.url", url(prefix + "/1?foo"));
     assertThat(span2.tags())
-        .containsEntry("http.method", "GET")
-        .containsEntry("http.path", prefix + "/2")
-        .containsEntry("http.url", url(prefix + "/2?bar"));
+      .containsEntry("http.method", "GET")
+      .containsEntry("http.path", prefix + "/2")
+      .containsEntry("http.url", url(prefix + "/2?bar"));
 
     // We don't know the exact format of the http route as it is framework specific
     // However, we know that it should match both requests and include the common part of the path
     Set<String> routeBasedNames = new LinkedHashSet<>(Arrays.asList(span1.name(), span2.name()));
     assertThat(routeBasedNames).hasSize(1);
     assertThat(routeBasedNames.iterator().next())
-        .startsWith("get " + prefix)
-        .doesNotEndWith("/") // no trailing slashes
-        .doesNotContain("//"); // no duplicate slashes
+      .startsWith("get " + prefix)
+      .doesNotEndWith("/") // no trailing slashes
+      .doesNotContain("//"); // no duplicate slashes
   }
 
   final HttpServerParser addHttpUrlTag = new HttpServerParser() {
@@ -328,17 +328,17 @@ public abstract class ITHttpServer extends ITHttp {
   /** If http route is supported, then the span name should include it */
   @Test public void notFound() throws Exception {
     assertThat(call("GET", "/foo/bark").code())
-        .isEqualTo(404);
+      .isEqualTo(404);
 
     Span span = takeSpan();
 
     // verify normal tags
     assertThat(span.tags())
-        .hasSize(4)
-        .containsEntry("http.method", "GET")
-        .containsEntry("http.path", "/foo/bark")
-        .containsEntry("http.status_code", "404")
-        .containsKey("error"); // as 404 is an error
+      .hasSize(4)
+      .containsEntry("http.method", "GET")
+      .containsEntry("http.path", "/foo/bark")
+      .containsEntry("http.status_code", "404")
+      .containsKey("error"); // as 404 is an error
 
     // Either the span name is the method, or it is a route expression
     String name = span.name();
@@ -353,14 +353,14 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test public void options() throws Exception {
     assertThat(call("OPTIONS", "/").isSuccessful())
-        .isTrue();
+      .isTrue();
 
     Span span = takeSpan();
 
     // verify normal tags
     assertThat(span.tags())
-        .containsEntry("http.method", "OPTIONS")
-        .containsEntry("http.path", "/");
+      .containsEntry("http.method", "OPTIONS")
+      .containsEntry("http.path", "/");
 
     // Either the span name is the method, or it is a route expression
     String name = span.name();
@@ -379,8 +379,8 @@ public abstract class ITHttpServer extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.status_code", "400")
-        .containsEntry("error", "400");
+      .containsEntry("http.status_code", "400")
+      .containsEntry("error", "400");
   }
 
   @Test
@@ -415,7 +415,7 @@ public abstract class ITHttpServer extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.path", "/foo");
+      .containsEntry("http.path", "/foo");
   }
 
   protected Response get(String path) throws Exception {
@@ -456,6 +456,6 @@ public abstract class ITHttpServer extends ITHttp {
   private void addsErrorTagOnException(String path) throws Exception {
     Span span = reportsSpanOnException(path);
     assertThat(span.tags())
-        .containsKey("error");
+      .containsKey("error");
   }
 }

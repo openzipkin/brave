@@ -30,8 +30,8 @@ final class TickClock implements Clock {
 
   @Override public String toString() {
     return "TickClock{"
-        + "baseEpochMicros=" + baseEpochMicros + ", "
-        + "baseTickNanos=" + baseTickNanos
-        + "}";
+      + "baseEpochMicros=" + baseEpochMicros + ", "
+      + "baseTickNanos=" + baseTickNanos
+      + "}";
   }
 }

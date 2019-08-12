@@ -33,8 +33,8 @@ public class CurrentTraceContextExecutorTest {
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   // override default so that it isn't inheritable
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build();
+    .addScopeDecorator(StrictScopeDecorator.create())
+    .build();
 
   Executor executor = currentTraceContext.executor(wrappedExecutor);
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
@@ -74,7 +74,7 @@ public class CurrentTraceContextExecutorTest {
       latch.countDown();
       shutdownExecutor();
       assertThat(threadValues)
-          .containsExactly(context, context);
+        .containsExactly(context, context);
     }
   }
 }

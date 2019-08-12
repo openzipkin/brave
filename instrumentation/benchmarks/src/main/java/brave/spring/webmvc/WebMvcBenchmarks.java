@@ -84,14 +84,14 @@ public class WebMvcBenchmarks extends HttpServerBenchmarks {
     appContext.register(HelloController.class);
     appContext.register(SpringConfig.class);
     servletBuilder.addServlet(new ServletInfo("DispatcherServlet", DispatcherServlet.class,
-        () -> new ImmediateInstanceHandle(new DispatcherServlet(appContext))).addMapping("/*"));
+      () -> new ImmediateInstanceHandle<>(new DispatcherServlet(appContext))).addMapping("/*"));
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + WebMvcBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + WebMvcBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

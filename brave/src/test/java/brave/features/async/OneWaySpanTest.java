@@ -47,19 +47,19 @@ public class OneWaySpanTest {
 
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing clientTracing = Tracing.newBuilder()
-      .localServiceName("client")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(spans::add)
-      .build();
+    .localServiceName("client")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(spans::add)
+    .build();
   Tracing serverTracing = Tracing.newBuilder()
-      .localServiceName("server")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(spans::add)
-      .build();
+    .localServiceName("server")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(spans::add)
+    .build();
 
   CountDownLatch flushedIncomingRequest = new CountDownLatch(1);
 
@@ -68,15 +68,15 @@ public class OneWaySpanTest {
       @Override public MockResponse dispatch(RecordedRequest recordedRequest) {
         // pull the context out of the incoming request
         TraceContextOrSamplingFlags extracted = serverTracing.propagation()
-            .extractor(RecordedRequest::getHeader).extract(recordedRequest);
+          .extractor(RecordedRequest::getHeader).extract(recordedRequest);
 
         Span span = extracted.context() != null
-            ? serverTracing.tracer().joinSpan(extracted.context())
-            : serverTracing.tracer().nextSpan(extracted);
+          ? serverTracing.tracer().joinSpan(extracted.context())
+          : serverTracing.tracer().nextSpan(extracted);
 
         span.name(recordedRequest.getMethod())
-            .kind(Span.Kind.SERVER)
-            .start().flush(); // start the server side and flush instead of processing a response
+          .kind(Span.Kind.SERVER)
+          .start().flush(); // start the server side and flush instead of processing a response
 
         flushedIncomingRequest.countDown();
         // eventhough the client doesn't read the response, we return one
@@ -98,7 +98,7 @@ public class OneWaySpanTest {
     // inject the trace context into the request
     Request.Builder request = new Request.Builder().url(server.url("/"));
     clientTracing.propagation()
-        .injector(Request.Builder::addHeader).inject(span.context(), request);
+      .injector(Request.Builder::addHeader).inject(span.context(), request);
 
     // fire off the request asynchronously, totally dropping any response
     new OkHttpClient().newCall(request.build()).enqueue(mock(Callback.class));
@@ -109,17 +109,17 @@ public class OneWaySpanTest {
     zipkin2.Span clientSpan = spans.take();
     assertThat(clientSpan.name()).isNull();
     assertThat(clientSpan.localServiceName())
-        .isEqualTo("client");
+      .isEqualTo("client");
     assertThat(clientSpan.kind())
-        .isEqualTo(zipkin2.Span.Kind.CLIENT);
+      .isEqualTo(zipkin2.Span.Kind.CLIENT);
 
     // check that the server receive arrived last
     zipkin2.Span serverSpan = spans.take();
     assertThat(serverSpan.name()).isEqualTo("get");
     assertThat(serverSpan.localServiceName())
-        .isEqualTo("server");
+      .isEqualTo("server");
     assertThat(serverSpan.kind())
-        .isEqualTo(zipkin2.Span.Kind.SERVER);
+      .isEqualTo(zipkin2.Span.Kind.SERVER);
 
     // check that the server span is shared
     assertThat(serverSpan.shared()).isTrue();

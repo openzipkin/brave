@@ -58,7 +58,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     final Call.Factory callFactory = new OkHttpClient();
 
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-        throws IOException {
+      throws IOException {
       resp.addHeader("Content-Type", "text/plain; charset=UTF-8");
       // regardless of how we got here, if we are "api" we just return a string
       if (req.getRequestURI().endsWith("/api")) {
@@ -67,14 +67,14 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
         // noop if extra field propagation is not configured
         ExtraFieldPropagation.set("country-code", "FO");
         Request request = new Request.Builder().url(new HttpUrl.Builder()
-            .scheme("http")
-            .host("127.0.0.1")
-            .port(PORT)
-            .encodedPath(req.getRequestURI() + "/api").build()).build();
+          .scheme("http")
+          .host("127.0.0.1")
+          .port(PORT)
+          .encodedPath(req.getRequestURI() + "/api").build()).build();
 
         // If we are tracing, we'll have a scoped call factory available
         Call.Factory localCallFactory =
-            (Call.Factory) req.getAttribute(Call.Factory.class.getName());
+          (Call.Factory) req.getAttribute(Call.Factory.class.getName());
         if (localCallFactory == null) localCallFactory = callFactory;
 
         resp.getWriter().println(localCallFactory.newCall(request).execute().body().string());
@@ -85,93 +85,93 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class Unsampled extends ForwardingTracingFilter {
     public Unsampled() {
       super(Tracing.newBuilder()
-          .sampler(Sampler.NEVER_SAMPLE)
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+        .sampler(Sampler.NEVER_SAMPLE)
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-          .addFinishedSpanHandler(new FinishedSpanHandler() {
-            @Override public boolean handle(TraceContext context, MutableSpan span) {
-              return true;
-            }
+        .addFinishedSpanHandler(new FinishedSpanHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            return true;
+          }
 
-            @Override public boolean alwaysSampleLocal() {
-              return true;
-            }
-          })
-          .sampler(Sampler.NEVER_SAMPLE)
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+          @Override public boolean alwaysSampleLocal() {
+            return true;
+          }
+        })
+        .sampler(Sampler.NEVER_SAMPLE)
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   public static class TracedCorrelated extends ForwardingTracingFilter {
     public TracedCorrelated() {
       super(Tracing.newBuilder()
-          .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-              // intentionally added twice to test overhead of multiple correlations
-              .addScopeDecorator(ThreadContextScopeDecorator.create())
-              .addScopeDecorator(ThreadContextScopeDecorator.create())
-              .build())
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+          // intentionally added twice to test overhead of multiple correlations
+          .addScopeDecorator(ThreadContextScopeDecorator.create())
+          .addScopeDecorator(ThreadContextScopeDecorator.create())
+          .build())
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   public static class TracedExtra extends ForwardingTracingFilter {
     public TracedExtra() {
       super(Tracing.newBuilder()
-          .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-              .addField("x-vcap-request-id")
-              .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-              .build()
-          )
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+        .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+          .addField("x-vcap-request-id")
+          .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
+          .build()
+        )
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   public static class Traced128 extends ForwardingTracingFilter {
     public Traced128() {
       super(Tracing.newBuilder()
-          .traceId128Bit(true)
-          .spanReporter(AsyncReporter.create(new NoopSender()))
-          .build());
+        .traceId128Bit(true)
+        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .build());
     }
   }
 
   @Override protected void init(DeploymentInfo servletBuilder) {
     servletBuilder.addFilter(new FilterInfo("Unsampled", Unsampled.class))
-        .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
-        .addFilterUrlMapping("Unsampled", "/unsampled/api", REQUEST)
-        .addFilter(new FilterInfo("OnlySampledLocal", OnlySampledLocal.class))
-        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal", REQUEST)
-        .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal/api", REQUEST)
-        .addFilter(new FilterInfo("Traced", Traced.class))
-        .addFilterUrlMapping("Traced", "/traced", REQUEST)
-        .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
-        .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
-        .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
-        .addFilterUrlMapping("TracedExtra", "/tracedextra/api", REQUEST)
-        .addFilter(new FilterInfo("TracedCorrelated", TracedCorrelated.class))
-        .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated", REQUEST)
-        .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated/api", REQUEST)
-        .addFilter(new FilterInfo("Traced128", Traced128.class))
-        .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
-        .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
-        .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
+      .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
+      .addFilterUrlMapping("Unsampled", "/unsampled/api", REQUEST)
+      .addFilter(new FilterInfo("OnlySampledLocal", OnlySampledLocal.class))
+      .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal", REQUEST)
+      .addFilterUrlMapping("OnlySampledLocal", "/onlysampledlocal/api", REQUEST)
+      .addFilter(new FilterInfo("Traced", Traced.class))
+      .addFilterUrlMapping("Traced", "/traced", REQUEST)
+      .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
+      .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
+      .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
+      .addFilterUrlMapping("TracedExtra", "/tracedextra/api", REQUEST)
+      .addFilter(new FilterInfo("TracedCorrelated", TracedCorrelated.class))
+      .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated", REQUEST)
+      .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated/api", REQUEST)
+      .addFilter(new FilterInfo("Traced128", Traced128.class))
+      .addFilterUrlMapping("Traced128", "/traced128", REQUEST)
+      .addFilterUrlMapping("Traced128", "/traced128/api", REQUEST)
+      .addServlets(Servlets.servlet("HelloServlet", HelloServlet.class).addMapping("/*"));
   }
 
   @Override protected int initServer() throws Exception {
@@ -181,11 +181,11 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*"
-            + EndToEndBenchmarks.class.getSimpleName()
-            + ".*(tracedCorrelatedServer_get|tracedServer_get)$")
-        .build();
+      .addProfiler("gc")
+      .include(".*"
+        + EndToEndBenchmarks.class.getSimpleName()
+        + ".*(tracedCorrelatedServer_get|tracedServer_get)$")
+      .build();
 
     new Runner(opt).run();
   }
@@ -203,7 +203,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     }
 
     @Override public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse,
-        FilterChain filterChain) throws IOException, ServletException {
+      FilterChain filterChain) throws IOException, ServletException {
       servletRequest.setAttribute(Call.Factory.class.getName(), callFactory);
       delegate.doFilter(servletRequest, servletResponse, filterChain);
     }

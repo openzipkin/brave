@@ -39,17 +39,17 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class ExtraFieldPropagationBenchmarks {
   static final Propagation.Factory
-      factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id");
+    factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id");
   static final Propagation<String> extra = factory.create(Propagation.KeyFactory.STRING);
   static final Injector<Map<String, String>> extraInjector = extra.injector(Map::put);
   static final Extractor<Map<String, String>> extraExtractor = extra.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
-      .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
-      .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-      .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
-      .sampled(true)
-      .build();
+    .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
+    .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
+    .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
+    .sampled(true)
+    .build();
 
   static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
     {
@@ -86,9 +86,9 @@ public class ExtraFieldPropagationBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + ExtraFieldPropagationBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + ExtraFieldPropagationBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

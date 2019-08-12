@@ -48,7 +48,7 @@ abstract class ServletRuntime {
   abstract boolean isAsync(HttpServletRequest request);
 
   abstract void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-      HttpServletRequest request, HttpServletResponse response, Span span);
+    HttpServletRequest request, HttpServletResponse response, Span span);
 
   ServletRuntime() {
   }
@@ -84,7 +84,7 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, HttpServletResponse response, Span span) {
+      HttpServletRequest request, HttpServletResponse response, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
       TracingAsyncListener listener = new TracingAsyncListener(handler, span);
       request.getAsyncContext().addListener(listener, request, response);
@@ -96,8 +96,8 @@ abstract class ServletRuntime {
       volatile boolean complete; // multiple async events can occur, only complete once
 
       TracingAsyncListener(
-          HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-          Span span
+        HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+        Span span
       ) {
         this.handler = handler;
         this.span = span;
@@ -138,8 +138,8 @@ abstract class ServletRuntime {
 
   static HttpServletResponse adaptResponse(AsyncEvent event) {
     return ADAPTER.adaptResponse(
-        (HttpServletRequest) event.getSuppliedRequest(),
-        (HttpServletResponse) event.getSuppliedResponse()
+      (HttpServletRequest) event.getSuppliedRequest(),
+      (HttpServletResponse) event.getSuppliedResponse()
     );
   }
 
@@ -153,13 +153,13 @@ abstract class ServletRuntime {
     }
 
     @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
-        HttpServletRequest request, HttpServletResponse response, Span span) {
+      HttpServletRequest request, HttpServletResponse response, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }
 
     // copy-on-write global reflection cache outperforms thread local copies
     final AtomicReference<Map<Class<?>, Object>> classToGetStatus =
-        new AtomicReference<>(new LinkedHashMap<>());
+      new AtomicReference<>(new LinkedHashMap<>());
     static final String RETURN_NULL = "RETURN_NULL";
 
     /**
@@ -180,7 +180,7 @@ abstract class ServletRuntime {
       Map<Class<?>, Object> classesToCheck = classToGetStatus.get();
       Object getStatusMethod = classesToCheck.get(clazz);
       if (getStatusMethod == RETURN_NULL ||
-          (getStatusMethod == null && classesToCheck.size() == 10)) { // limit size
+        (getStatusMethod == null && classesToCheck.size() == 10)) { // limit size
         return 0;
       }
 
@@ -225,7 +225,8 @@ abstract class ServletRuntime {
       super((HttpServletResponse) response);
     }
 
-    @Override public void setStatus(int sc, String sm) {
+    // Do not use @Override annotation to avoid compatibility on deprecated methods
+    public void setStatus(int sc, String sm) {
       httpStatus = sc;
       super.setStatus(sc, sm);
     }

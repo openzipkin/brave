@@ -57,12 +57,13 @@ public class SkeletalSpansTest {
       if (span.kind() == null) return false; // skip local spans
 
       zipkin2.Span.Builder builder = zipkin2.Span.newBuilder()
-          .traceId(context.traceIdString())
-          .parentId(context.isLocalRoot() ? null : context.localRootIdString()) // rewrite the parent ID
-          .id(context.spanIdString())
-          .name(span.name())
-          .kind(zipkin2.Span.Kind.valueOf(span.kind().name()))
-          .localEndpoint(Endpoint.newBuilder().serviceName(localServiceName).build());
+        .traceId(context.traceIdString())
+        .parentId(
+          context.isLocalRoot() ? null : context.localRootIdString()) // rewrite the parent ID
+        .id(context.spanIdString())
+        .name(span.name())
+        .kind(zipkin2.Span.Kind.valueOf(span.kind().name()))
+        .localEndpoint(Endpoint.newBuilder().serviceName(localServiceName).build());
 
       if (span.error() != null || span.tag("error") != null) {
         builder.putTag("error", ""); // linking counts errors: the value isn't important
@@ -77,28 +78,28 @@ public class SkeletalSpansTest {
   }
 
   Map<String, List<zipkin2.Span>>
-      spans = new LinkedHashMap<>(),
-      skeletalSpans = new LinkedHashMap<>();
+    spans = new LinkedHashMap<>(),
+    skeletalSpans = new LinkedHashMap<>();
 
   Tracer server1Tracer = Tracing.newBuilder()
-      .localServiceName("server1")
-      .spanReporter(toReporter(spans))
-      .build().tracer();
+    .localServiceName("server1")
+    .spanReporter(toReporter(spans))
+    .build().tracer();
 
   Tracer server2Tracer = Tracing.newBuilder()
-      .localServiceName("server2")
-      .spanReporter(toReporter(spans))
-      .build().tracer();
+    .localServiceName("server2")
+    .spanReporter(toReporter(spans))
+    .build().tracer();
 
   Tracer server1SkeletalTracer = Tracing.newBuilder()
-      .addFinishedSpanHandler(new ReportSkeletalSpans("server1", toReporter(skeletalSpans)))
-      .spanReporter(Reporter.NOOP)
-      .build().tracer();
+    .addFinishedSpanHandler(new ReportSkeletalSpans("server1", toReporter(skeletalSpans)))
+    .spanReporter(Reporter.NOOP)
+    .build().tracer();
 
   Tracer server2SkeletalTracer = Tracing.newBuilder()
-      .addFinishedSpanHandler(new ReportSkeletalSpans("server2", toReporter(skeletalSpans)))
-      .spanReporter(Reporter.NOOP)
-      .build().tracer();
+    .addFinishedSpanHandler(new ReportSkeletalSpans("server2", toReporter(skeletalSpans)))
+    .spanReporter(Reporter.NOOP)
+    .build().tracer();
 
   @Before public void acceptTwoServerRequests() {
     acceptTwoServerRequests(server1Tracer, server2Tracer);
@@ -111,39 +112,39 @@ public class SkeletalSpansTest {
 
   @Test public void skeletalSpans_skipLocalSpans() {
     assertThat(spans.values())
-        .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
-        .containsExactly(
-            asList("post", "post", "controller", "get"),
-            asList("async1"),
-            asList("async2"),
-            asList("post", "post", "post", "controller2", "get")
-        );
+      .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
+      .containsExactly(
+        asList("post", "post", "controller", "get"),
+        asList("async1"),
+        asList("async2"),
+        asList("post", "post", "post", "controller2", "get")
+      );
 
     assertThat(skeletalSpans.values())
-        .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
-        .containsExactly(
-            asList("post", "post", "get"),
-            asList("post", "post", "post", "get")
-        );
+      .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
+      .containsExactly(
+        asList("post", "post", "get"),
+        asList("post", "post", "post", "get")
+      );
   }
 
   @Test public void skeletalSpans_produceSameServiceGraph() {
     assertThat(link(spans))
-        .containsExactly(
-            DependencyLink.newBuilder()
-                .parent("server1")
-                .child("server2")
-                .callCount(2L)
-                .errorCount(1L)
-                .build(),
-            DependencyLink.newBuilder()
-                .parent("server1")
-                .child("uninstrumentedserver")
-                .callCount(1L)
-                .errorCount(1L)
-                .build()
-        )
-        .isEqualTo(link(skeletalSpans));
+      .containsExactly(
+        DependencyLink.newBuilder()
+          .parent("server1")
+          .child("server2")
+          .callCount(2L)
+          .errorCount(1L)
+          .build(),
+        DependencyLink.newBuilder()
+          .parent("server1")
+          .child("uninstrumentedserver")
+          .callCount(1L)
+          .errorCount(1L)
+          .build()
+      )
+      .isEqualTo(link(skeletalSpans));
   }
 
   /** Executes the linker for each collected trace */
@@ -159,12 +160,12 @@ public class SkeletalSpansTest {
     Span server2 = server1Tracer.newTrace().name("get").kind(Kind.SERVER).start();
     try {
       Span client1 =
-          server1Tracer.newChild(server1.context()).name("post").kind(Kind.CLIENT).start();
+        server1Tracer.newChild(server1.context()).name("post").kind(Kind.CLIENT).start();
 
       server2Tracer.joinSpan(fakeUseOfHeaders(client1.context()))
-          .name("post")
-          .kind(Kind.SERVER)
-          .start().finish();
+        .name("post")
+        .kind(Kind.SERVER)
+        .start().finish();
 
       ScopedSpan local1 = server1Tracer.startScopedSpanWithParent("controller", server1.context());
       try {
@@ -173,21 +174,21 @@ public class SkeletalSpansTest {
           server2Tracer.newTrace().name("async2").start().finish();
 
           ScopedSpan local2 =
-              server1Tracer.startScopedSpanWithParent("controller2", server2.context());
+            server1Tracer.startScopedSpanWithParent("controller2", server2.context());
           Span client2 = server1Tracer.nextSpan().name("post").kind(Kind.CLIENT).start();
           try {
             server2Tracer.joinSpan(fakeUseOfHeaders(client2.context()))
-                .name("post")
-                .kind(Kind.SERVER)
-                .start().error(new RuntimeException()).finish();
+              .name("post")
+              .kind(Kind.SERVER)
+              .start().error(new RuntimeException()).finish();
 
             server1Tracer.nextSpan()
-                .name("post")
-                .kind(Kind.CLIENT)
-                .start()
-                .remoteServiceName("uninstrumentedServer")
-                .error(new RuntimeException())
-                .finish();
+              .name("post")
+              .kind(Kind.CLIENT)
+              .start()
+              .remoteServiceName("uninstrumentedServer")
+              .error(new RuntimeException())
+              .finish();
           } finally {
             client2.finish();
             local2.finish();
@@ -212,6 +213,6 @@ public class SkeletalSpansTest {
   /** To reduce code, we don't use real client-server instrumentation. This fakes headers. */
   static TraceContext fakeUseOfHeaders(TraceContext context) {
     return B3SingleFormat.parseB3SingleFormat(B3SingleFormat.writeB3SingleFormat(context))
-        .context();
+      .context();
   }
 }

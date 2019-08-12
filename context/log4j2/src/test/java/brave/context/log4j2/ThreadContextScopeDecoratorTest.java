@@ -32,30 +32,30 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
   static class CurrentSupplier implements Supplier<CurrentTraceContext> {
     @Override public CurrentTraceContext get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(ThreadContextScopeDecorator.create())
-          .build();
+        .addScopeDecorator(ThreadContextScopeDecorator.create())
+        .build();
     }
   }
 
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
       assertThat(ThreadContext.get("traceId"))
-          .isEqualTo(context.traceIdString());
+        .isEqualTo(context.traceIdString());
       assertThat(ThreadContext.get("parentId"))
-          .isEqualTo(context.parentIdString());
+        .isEqualTo(context.parentIdString());
       assertThat(ThreadContext.get("spanId"))
-          .isEqualTo(context.spanIdString());
+        .isEqualTo(context.spanIdString());
       assertThat(ThreadContext.get("sampled"))
-          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
+        .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(ThreadContext.get("traceId"))
-          .isNull();
+        .isNull();
       assertThat(ThreadContext.get("parentId"))
-          .isNull();
+        .isNull();
       assertThat(ThreadContext.get("spanId"))
-          .isNull();
+        .isNull();
       assertThat(ThreadContext.get("sampled"))
-          .isNull();
+        .isNull();
     }
   }
 }

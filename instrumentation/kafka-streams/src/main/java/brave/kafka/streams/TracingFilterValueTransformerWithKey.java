@@ -21,7 +21,7 @@ class TracingFilterValueTransformerWithKey<K, V> extends TracingFilter<K, V, V> 
   ValueTransformerWithKey<K, V, V> {
 
   TracingFilterValueTransformerWithKey(KafkaStreamsTracing tracing, String spanName,
-      Predicate<K, V> delegatePredicate, boolean filterNot) {
+    Predicate<K, V> delegatePredicate, boolean filterNot) {
     super(tracing, spanName, delegatePredicate, filterNot);
   }
 

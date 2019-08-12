@@ -85,9 +85,9 @@ public class MutableSpanBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + MutableSpanBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .addProfiler("gc")
+      .include(".*" + MutableSpanBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

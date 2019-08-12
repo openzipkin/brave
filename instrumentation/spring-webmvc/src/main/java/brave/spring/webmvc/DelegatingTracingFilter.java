@@ -39,7 +39,7 @@ public final class DelegatingTracingFilter implements Filter {
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
+    throws IOException, ServletException {
     Filter tracingFilter = delegate;
     if (tracingFilter == null) { // don't break on initialization error.
       chain.doFilter(request, response);

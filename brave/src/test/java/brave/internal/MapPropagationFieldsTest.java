@@ -42,7 +42,7 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPr
     fields.put("balloon-color", "red");
 
     assertThat(fields.values)
-        .containsEntry("balloon-color", "red");
+      .containsEntry("balloon-color", "red");
   }
 
   @Test public void put_idempotent() {
@@ -53,11 +53,11 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPr
 
     fields.put("balloon-color", "red");
     assertThat(fields.values)
-        .isSameAs(fieldsMap);
+      .isSameAs(fieldsMap);
 
     fields.put("balloon-color", "blue");
     assertThat(fields.values)
-        .isNotSameAs(fieldsMap);
+      .isNotSameAs(fieldsMap);
   }
 
   @Test public void unmodifiable() {

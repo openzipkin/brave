@@ -15,7 +15,6 @@ package brave.servlet;
 
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
@@ -35,15 +34,15 @@ import javax.servlet.http.HttpServletResponse;
 
 public final class TracingFilter implements Filter {
   static final Getter<HttpServletRequest, String> GETTER =
-      new Getter<HttpServletRequest, String>() {
-        @Override public String get(HttpServletRequest carrier, String key) {
-          return carrier.getHeader(key);
-        }
+    new Getter<HttpServletRequest, String>() {
+      @Override public String get(HttpServletRequest carrier, String key) {
+        return carrier.getHeader(key);
+      }
 
-        @Override public String toString() {
-          return "HttpServletRequest::getHeader";
-        }
-      };
+      @Override public String toString() {
+        return "HttpServletRequest::getHeader";
+      }
+    };
   static final HttpServletAdapter ADAPTER = new HttpServletAdapter();
 
   public static Filter create(Tracing tracing) {
@@ -56,12 +55,10 @@ public final class TracingFilter implements Filter {
 
   final ServletRuntime servlet = ServletRuntime.get();
   final CurrentTraceContext currentTraceContext;
-  final Tracer tracer;
   final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
   final TraceContext.Extractor<HttpServletRequest> extractor;
 
   TracingFilter(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
     currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing, ADAPTER);
     extractor = httpTracing.tracing().propagation().extractor(GETTER);
@@ -69,7 +66,7 @@ public final class TracingFilter implements Filter {
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
+    throws IOException, ServletException {
     HttpServletRequest httpRequest = (HttpServletRequest) request;
     HttpServletResponse httpResponse = servlet.httpResponse(response);
 

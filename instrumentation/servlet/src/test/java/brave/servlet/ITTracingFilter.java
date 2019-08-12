@@ -30,7 +30,7 @@ public class ITTracingFilter extends ITServlet3Container {
   @Override
   protected void addFilter(ServletContextHandler handler, Filter filter) {
     FilterRegistration.Dynamic filterRegistration =
-        handler.getServletContext().addFilter(filter.getClass().getSimpleName(), filter);
+      handler.getServletContext().addFilter(filter.getClass().getSimpleName(), filter);
     filterRegistration.setAsyncSupported(true);
     // isMatchAfter=true is required for async tests to pass!
     filterRegistration.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");

@@ -39,16 +39,16 @@ public class ITNettyHttpTracing extends ITHttpServer {
     ServerBootstrap b = new ServerBootstrap();
     b.option(ChannelOption.SO_BACKLOG, 1024);
     b.group(bossGroup, workerGroup)
-        .channel(NioServerSocketChannel.class)
-        .childHandler(new ChannelInitializer<Channel>() {
-          @Override
-          protected void initChannel(final Channel ch) throws Exception {
-            ChannelPipeline p = ch.pipeline();
-            p.addLast(new HttpServerCodec());
-            p.addLast(NettyHttpTracing.create(httpTracing).serverHandler());
-            p.addLast(new TestHandler(httpTracing));
-          }
-        });
+      .channel(NioServerSocketChannel.class)
+      .childHandler(new ChannelInitializer<Channel>() {
+        @Override
+        protected void initChannel(final Channel ch) throws Exception {
+          ChannelPipeline p = ch.pipeline();
+          p.addLast(new HttpServerCodec());
+          p.addLast(NettyHttpTracing.create(httpTracing).serverHandler());
+          p.addLast(new TestHandler(httpTracing));
+        }
+      });
 
     Channel ch = b.bind(0).sync().channel();
     port = ((InetSocketAddress) ch.localAddress()).getPort();
