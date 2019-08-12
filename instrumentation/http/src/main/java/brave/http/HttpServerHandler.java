@@ -43,10 +43,10 @@ import brave.propagation.TraceContextOrSamplingFlags;
  * @param <Resp> the native http response type of the server.
  */
 public final class HttpServerHandler<Req, Resp>
-    extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
+  extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
 
   public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
-      HttpServerAdapter<Req, Resp> adapter) {
+    HttpServerAdapter<Req, Resp> adapter) {
     return new HttpServerHandler<>(httpTracing, adapter);
   }
 
@@ -55,9 +55,9 @@ public final class HttpServerHandler<Req, Resp>
 
   HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
     super(
-        httpTracing.tracing().currentTraceContext(),
-        adapter,
-        httpTracing.serverParser()
+      httpTracing.tracing().currentTraceContext(),
+      adapter,
+      httpTracing.serverParser()
     );
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.serverSampler();
@@ -100,8 +100,8 @@ public final class HttpServerHandler<Req, Resp>
       extracted = extracted.sampled(sampled.booleanValue());
     }
     return extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+      ? tracer.joinSpan(extracted.context())
+      : tracer.nextSpan(extracted);
   }
 
   /**

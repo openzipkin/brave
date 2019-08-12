@@ -15,7 +15,6 @@ package brave.jersey.server;
 
 import brave.SpanCustomizer;
 import brave.http.HttpTracing;
-import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.model.Invocable;
 import org.glassfish.jersey.server.model.ResourceMethod;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -44,7 +43,8 @@ public class EventParser {
    * Invoked prior to request invocation during {@link RequestEventListener#onEvent(RequestEvent)}
    * where the event type is {@link RequestEvent.Type#REQUEST_MATCHED}
    *
-   * <p>Adds the tags {@link #RESOURCE_CLASS} and {@link #RESOURCE_METHOD}. Override or use {@link #NOOP}
+   * <p>Adds the tags {@link #RESOURCE_CLASS} and {@link #RESOURCE_METHOD}. Override or use {@link
+   * #NOOP}
    * to change this behavior.
    */
   protected void requestMatched(RequestEvent event, SpanCustomizer customizer) {

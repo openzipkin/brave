@@ -24,6 +24,7 @@ import org.apache.kafka.common.header.Header;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -36,29 +37,29 @@ public class TracingProducerTest extends BaseTracingTest {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<String> headerKeys = mockProducer.history().stream()
-        .flatMap(records -> Arrays.stream(records.headers().toArray()))
-        .map(Header::key)
-        .collect(Collectors.toList());
+      .flatMap(records -> Arrays.stream(records.headers().toArray()))
+      .map(Header::key)
+      .collect(Collectors.toList());
 
     List<String> expectedHeaders = Arrays.asList(
-        "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+      "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
 
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
   @Test public void should_add_b3_headers_to_records_and_try_to_extract() {
     ProducerRecord<Object, String> record =
-        new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+      new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     record.headers().add("tx-id", "1".getBytes());
     tracingProducer.send(record);
 
     List<String> headerKeys = mockProducer.history().stream()
-        .flatMap(records -> Arrays.stream(records.headers().toArray()))
-        .map(Header::key)
-        .collect(Collectors.toList());
+      .flatMap(records -> Arrays.stream(records.headers().toArray()))
+      .map(Header::key)
+      .collect(Collectors.toList());
 
     List<String> expectedHeaders = Arrays.asList(
-        "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
+      "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
 
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
@@ -69,12 +70,12 @@ public class TracingProducerTest extends BaseTracingTest {
     scopedSpan.finish();
 
     List<String> headerKeys = mockProducer.history().stream()
-        .flatMap(records -> Arrays.stream(records.headers().toArray()))
-        .map(Header::key)
-        .collect(Collectors.toList());
+      .flatMap(records -> Arrays.stream(records.headers().toArray()))
+      .map(Header::key)
+      .collect(Collectors.toList());
 
     List<String> expectedHeaders = Arrays.asList(
-        "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
+      "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
 
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
@@ -88,30 +89,30 @@ public class TracingProducerTest extends BaseTracingTest {
     tracingProducer.send(record);
 
     List<String> headerKeys = mockProducer.history().stream()
-        .flatMap(records -> Arrays.stream(records.headers().toArray()))
-        .map(Header::key)
-        .collect(Collectors.toList());
+      .flatMap(records -> Arrays.stream(records.headers().toArray()))
+      .map(Header::key)
+      .collect(Collectors.toList());
 
     List<String> expectedHeaders = Arrays.asList(
-        "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
+      "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
 
     assertThat(headerKeys).containsAll(expectedHeaders);
   }
 
   @Test public void should_add_b3_single_header_to_message() {
     tracingProducer = KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
-        .producer(mockProducer);
+      .producer(mockProducer);
 
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
 
     List<Header> headers = mockProducer.history().stream()
-        .flatMap(records -> Arrays.stream(records.headers().toArray()))
-        .collect(Collectors.toList());
+      .flatMap(records -> Arrays.stream(records.headers().toArray()))
+      .collect(Collectors.toList());
 
     assertThat(headers).hasSize(1);
     assertThat(headers.get(0).key()).isEqualTo("b3");
     assertThat(new String(headers.get(0).value(), UTF_8))
-        .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
+      .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
   }
 
   @Test public void should_call_wrapped_producer() {
@@ -125,8 +126,8 @@ public class TracingProducerTest extends BaseTracingTest {
     mockProducer.completeNext();
 
     assertThat(spans)
-        .flatExtracting(Span::name)
-        .containsOnly("send");
+      .flatExtracting(Span::name)
+      .containsOnly("send");
   }
 
   @Test public void send_should_tag_topic_and_key() {
@@ -134,8 +135,8 @@ public class TracingProducerTest extends BaseTracingTest {
     mockProducer.completeNext();
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
   @Test public void send_shouldnt_tag_null_key() {
@@ -143,8 +144,8 @@ public class TracingProducerTest extends BaseTracingTest {
     mockProducer.completeNext();
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", TEST_TOPIC));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
   @Test public void send_shouldnt_tag_binary_key() {
@@ -152,7 +153,7 @@ public class TracingProducerTest extends BaseTracingTest {
     mockProducer.completeNext();
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", TEST_TOPIC));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 }

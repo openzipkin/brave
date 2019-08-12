@@ -28,12 +28,12 @@ import javax.jms.XATopicConnectionFactory;
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 class TracingConnectionFactory implements QueueConnectionFactory, TopicConnectionFactory {
   static final int
-      TYPE_CF = 1 << 1,
-      TYPE_QUEUE_CF = 1 << 2,
-      TYPE_TOPIC_CF = 1 << 3,
-      TYPE_XA_CF = 1 << 4,
-      TYPE_XA_QUEUE_CF = 1 << 5,
-      TYPE_XA_TOPIC_CF = 1 << 6;
+    TYPE_CF = 1 << 1,
+    TYPE_QUEUE_CF = 1 << 2,
+    TYPE_TOPIC_CF = 1 << 3,
+    TYPE_XA_CF = 1 << 4,
+    TYPE_XA_QUEUE_CF = 1 << 5,
+    TYPE_XA_TOPIC_CF = 1 << 6;
 
   static ConnectionFactory create(ConnectionFactory delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("connectionFactory == null");
@@ -65,7 +65,7 @@ class TracingConnectionFactory implements QueueConnectionFactory, TopicConnectio
   }
 
   @Override public Connection createConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     checkConnectionFactory();
     ConnectionFactory cf = (ConnectionFactory) delegate;
     return TracingConnection.create(cf.createConnection(userName, password), jmsTracing);
@@ -117,7 +117,7 @@ class TracingConnectionFactory implements QueueConnectionFactory, TopicConnectio
   }
 
   @Override public QueueConnection createQueueConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     checkQueueConnectionFactory();
     QueueConnectionFactory qcf = (QueueConnectionFactory) delegate;
     return TracingConnection.create(qcf.createQueueConnection(userName, password), jmsTracing);
@@ -138,7 +138,7 @@ class TracingConnectionFactory implements QueueConnectionFactory, TopicConnectio
   }
 
   @Override public TopicConnection createTopicConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     checkTopicConnectionFactory();
     TopicConnectionFactory qcf = (TopicConnectionFactory) delegate;
     return TracingConnection.create(qcf.createTopicConnection(userName, password), jmsTracing);

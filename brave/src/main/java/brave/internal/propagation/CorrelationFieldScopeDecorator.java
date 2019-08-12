@@ -40,7 +40,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
 
     if (currentSpan != null) {
       maybeReplaceTraceContext(
-          currentSpan, previousTraceId, previousParentId, previousSpanId, previousSampled);
+        currentSpan, previousTraceId, previousParentId, previousSpanId, previousSampled);
     } else {
       remove("traceId");
       remove("parentId");
@@ -65,11 +65,11 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
    * context.
    */
   void maybeReplaceTraceContext(
-      TraceContext currentSpan,
-      String previousTraceId,
-      @Nullable String previousParentId,
-      String previousSpanId,
-      @Nullable String previousSampled
+    TraceContext currentSpan,
+    String previousTraceId,
+    @Nullable String previousParentId,
+    String previousSpanId,
+    @Nullable String previousSampled
   ) {
     String traceId = currentSpan.traceIdString();
     if (!traceId.equals(previousTraceId)) put("traceId", currentSpan.traceIdString());

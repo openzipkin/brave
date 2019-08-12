@@ -66,34 +66,34 @@ public class SamplingFlagsTest {
 
   @Test public void debug_set_true() {
     assertThat(SamplingFlags.debug(true, SamplingFlags.EMPTY.flags))
-        .isEqualTo(SamplingFlags.DEBUG.flags)
-        .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG);
+      .isEqualTo(SamplingFlags.DEBUG.flags)
+      .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG);
   }
 
   @Test public void sampled_flags() {
     assertThat(SamplingFlags.debug(false, SamplingFlags.DEBUG.flags))
-        .isEqualTo(SamplingFlags.SAMPLED.flags)
-        .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED);
+      .isEqualTo(SamplingFlags.SAMPLED.flags)
+      .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED);
   }
 
   /** Ensures constants are used */
   @Test public void toSamplingFlags_returnsConstants() {
     assertThat(toSamplingFlags(SamplingFlags.EMPTY.flags))
-        .isSameAs(SamplingFlags.EMPTY);
+      .isSameAs(SamplingFlags.EMPTY);
     assertThat(toSamplingFlags(SamplingFlags.NOT_SAMPLED.flags))
-        .isSameAs(SamplingFlags.NOT_SAMPLED);
+      .isSameAs(SamplingFlags.NOT_SAMPLED);
     assertThat(toSamplingFlags(SamplingFlags.SAMPLED.flags))
-        .isSameAs(SamplingFlags.SAMPLED);
+      .isSameAs(SamplingFlags.SAMPLED);
     assertThat(toSamplingFlags(SamplingFlags.DEBUG.flags))
-        .isSameAs(SamplingFlags.DEBUG);
+      .isSameAs(SamplingFlags.DEBUG);
     assertThat(toSamplingFlags(SamplingFlags.EMPTY.flags | FLAG_SAMPLED_LOCAL))
-        .isSameAs(SamplingFlags.EMPTY_SAMPLED_LOCAL);
+      .isSameAs(SamplingFlags.EMPTY_SAMPLED_LOCAL);
     assertThat(toSamplingFlags(SamplingFlags.NOT_SAMPLED.flags | FLAG_SAMPLED_LOCAL))
-        .isSameAs(SamplingFlags.NOT_SAMPLED_SAMPLED_LOCAL);
+      .isSameAs(SamplingFlags.NOT_SAMPLED_SAMPLED_LOCAL);
     assertThat(toSamplingFlags(SamplingFlags.SAMPLED.flags | FLAG_SAMPLED_LOCAL))
-        .isSameAs(SamplingFlags.SAMPLED_SAMPLED_LOCAL);
+      .isSameAs(SamplingFlags.SAMPLED_SAMPLED_LOCAL);
     assertThat(toSamplingFlags(SamplingFlags.DEBUG.flags | FLAG_SAMPLED_LOCAL))
-        .isSameAs(SamplingFlags.DEBUG_SAMPLED_LOCAL);
+      .isSameAs(SamplingFlags.DEBUG_SAMPLED_LOCAL);
   }
 
   @Test public void sampledLocal() {

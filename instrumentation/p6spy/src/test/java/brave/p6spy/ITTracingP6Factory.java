@@ -68,7 +68,7 @@ public class ITTracingP6Factory {
     }
 
     assertThat(spans)
-        .hasSize(2);
+      .hasSize(2);
   }
 
   @Test
@@ -76,8 +76,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(Span::kind)
-        .containsExactly(Span.Kind.CLIENT);
+      .flatExtracting(Span::kind)
+      .containsExactly(Span.Kind.CLIENT);
   }
 
   @Test
@@ -85,8 +85,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("select");
+      .extracting(Span::name)
+      .containsExactly("select");
   }
 
   @Test
@@ -94,8 +94,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("sql.query", QUERY));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsExactly(entry("sql.query", QUERY));
   }
 
   @Test
@@ -103,8 +103,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(Span::remoteServiceName)
-        .containsExactly("myservice");
+      .flatExtracting(Span::remoteServiceName)
+      .containsExactly("myservice");
   }
 
   void prepareExecuteSelect(String query) throws SQLException {
@@ -119,8 +119,8 @@ public class ITTracingP6Factory {
 
   static Tracing.Builder tracingBuilder(Sampler sampler, ArrayList<Span> spans) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-        .sampler(sampler);
+      .spanReporter(spans::add)
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+      .sampler(sampler);
   }
 }

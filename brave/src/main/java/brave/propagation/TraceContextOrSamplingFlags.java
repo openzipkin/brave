@@ -51,10 +51,10 @@ import static java.util.Collections.emptyList;
 //@Immutable
 public final class TraceContextOrSamplingFlags {
   public static final TraceContextOrSamplingFlags
-      EMPTY = new TraceContextOrSamplingFlags(3, SamplingFlags.EMPTY, emptyList()),
-      NOT_SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.NOT_SAMPLED, emptyList()),
-      SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.SAMPLED, emptyList()),
-      DEBUG = new TraceContextOrSamplingFlags(3, SamplingFlags.DEBUG, emptyList());
+    EMPTY = new TraceContextOrSamplingFlags(3, SamplingFlags.EMPTY, emptyList()),
+    NOT_SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.NOT_SAMPLED, emptyList()),
+    SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.SAMPLED, emptyList()),
+    DEBUG = new TraceContextOrSamplingFlags(3, SamplingFlags.DEBUG, emptyList());
 
   public static Builder newBuilder() {
     return new Builder();
@@ -222,7 +222,7 @@ public final class TraceContextOrSamplingFlags {
           context = InternalPropagation.instance.withExtra(context, ensureImmutable(extra));
         } else {
           context = InternalPropagation.instance.withExtra(context,
-              concatImmutableLists(context.extra(), extra));
+            concatImmutableLists(context.extra(), extra));
         }
         result = new TraceContextOrSamplingFlags(type, context, emptyList());
       } else {

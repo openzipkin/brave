@@ -67,8 +67,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap())
-        .containsKeys("x-b3-traceId", "x-b3-spanId")
-        .containsEntry("x-b3-sampled", asList("1"));
+      .containsKeys("x-b3-traceId", "x-b3-spanId")
+      .containsEntry("x-b3-sampled", asList("1"));
 
     takeSpan();
   }
@@ -86,13 +86,13 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(parent.context().traceIdString());
+      .isEqualTo(parent.context().traceIdString());
     assertThat(request.getHeader("x-b3-parentspanid"))
-        .isEqualTo(parent.context().spanIdString());
+      .isEqualTo(parent.context().spanIdString());
 
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -108,12 +108,12 @@ public abstract class ITHttpClient<C> extends ITHttp {
     }
 
     assertThat(server.takeRequest().getHeader(EXTRA_KEY))
-        .isEqualTo("joey");
+      .isEqualTo("joey");
 
     // we report one in-process and one RPC client span
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
@@ -129,7 +129,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     }
 
     assertThat(server.takeRequest().getHeader(EXTRA_KEY))
-        .isEqualTo("joey");
+      .isEqualTo("joey");
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -143,16 +143,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap())
-        .containsKeys("x-b3-traceId", "x-b3-spanId")
-        .doesNotContainKey("x-b3-parentSpanId")
-        .containsEntry("x-b3-sampled", asList("0"));
+      .containsKeys("x-b3-traceId", "x-b3-spanId")
+      .doesNotContainKey("x-b3-parentSpanId")
+      .containsEntry("x-b3-sampled", asList("0"));
   }
 
   @Test public void customSampler() throws Exception {
     close();
     httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
-        .addRule(null, "/foo", 0.0f)
-        .build()).build();
+      .addRule(null, "/foo", 0.0f)
+      .build()).build();
     client = newClient(server.getPort());
 
     server.enqueue(new MockResponse());
@@ -160,7 +160,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap())
-        .containsEntry("x-b3-sampled", asList("0"));
+      .containsEntry("x-b3-sampled", asList("0"));
   }
 
   @Test public void reportsClientKindToZipkin() throws Exception {
@@ -169,7 +169,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.kind())
-        .isEqualTo(Span.Kind.CLIENT);
+      .isEqualTo(Span.Kind.CLIENT);
   }
 
   @Test
@@ -179,10 +179,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.remoteEndpoint())
-        .isEqualTo(Endpoint.newBuilder()
-            .ip("127.0.0.1")
-            .port(server.getPort()).build()
-        );
+      .isEqualTo(Endpoint.newBuilder()
+        .ip("127.0.0.1")
+        .port(server.getPort()).build()
+      );
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
@@ -191,7 +191,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("get");
+      .isEqualTo("get");
   }
 
   @Test public void supportsPortableCustomization() throws Exception {
@@ -199,24 +199,24 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     close();
     httpTracing = httpTracing.toBuilder()
-        .clientParser(new HttpClientParser() {
-          @Override
-          public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
-              SpanCustomizer customizer) {
-            customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-            customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
-            customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
-            customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
-          }
+      .clientParser(new HttpClientParser() {
+        @Override
+        public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
+          SpanCustomizer customizer) {
+          customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
+          customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+          customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
+          customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
+        }
 
-          @Override
-          public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-              SpanCustomizer customizer) {
-            super.response(adapter, res, error, customizer);
-            customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
-          }
-        })
-        .build().clientOf("remote-service");
+        @Override
+        public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
+          SpanCustomizer customizer) {
+          super.response(adapter, res, error, customizer);
+          customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
+        }
+      })
+      .build().clientOf("remote-service");
 
     client = newClient(server.getPort());
     server.enqueue(new MockResponse());
@@ -224,16 +224,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("get /foo");
+      .isEqualTo("get /foo");
 
     assertThat(span.remoteServiceName())
-        .isEqualTo("remote-service");
+      .isEqualTo("remote-service");
 
     assertThat(span.tags())
-        .containsEntry("http.url", url(uri))
-        .containsEntry("context.visible", "true")
-        .containsEntry("request_customizer.is_span", "false")
-        .containsEntry("response_customizer.is_span", "false");
+      .containsEntry("http.url", url(uri))
+      .containsEntry("context.visible", "true")
+      .containsEntry("request_customizer.is_span", "false")
+      .containsEntry("response_customizer.is_span", "false");
   }
 
   @Test public void addsStatusCodeWhenNotOk() throws Exception {
@@ -247,14 +247,14 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.status_code", "400")
-        .containsEntry("error", "400");
+      .containsEntry("http.status_code", "400")
+      .containsEntry("error", "400");
   }
 
   @Test public void redirect() throws Exception {
     Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse().setResponseCode(302)
-        .addHeader("Location: " + url("/bar")));
+      .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
     ScopedSpan parent = tracer.startScopedSpan("test");
@@ -269,7 +269,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     Span client1 = takeSpan();
     Span client2 = takeSpan();
     assertThat(Arrays.asList(client1.tags().get("http.path"), client2.tags().get("http.path")))
-        .contains("/foo", "/bar");
+      .contains("/foo", "/bar");
 
     assertThat(takeSpan().kind()).isNull(); // local
   }
@@ -282,11 +282,11 @@ public abstract class ITHttpClient<C> extends ITHttp {
     post(client, path, body);
 
     assertThat(server.takeRequest().getBody().readUtf8())
-        .isEqualTo(body);
+      .isEqualTo(body);
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("post");
+      .isEqualTo("post");
   }
 
   @Test public void reportsSpanOnTransportException() throws Exception {
@@ -308,7 +308,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
   @Test public void addsErrorTagOnTransportException() throws Exception {
     Span span = checkReportsSpanOnTransportException();
     assertThat(span.tags())
-        .containsKey("error");
+      .containsKey("error");
   }
 
   @Test public void httpPathTagExcludesQueryParams() throws Exception {
@@ -319,7 +319,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("http.path", "/foo");
+      .containsEntry("http.path", "/foo");
   }
 
   protected String url(String pathIncludingQuery) {

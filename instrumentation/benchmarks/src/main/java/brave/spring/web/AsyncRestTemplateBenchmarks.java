@@ -32,8 +32,8 @@ public class AsyncRestTemplateBenchmarks extends HttpClientBenchmarks<AsyncRestT
     OkHttp3ClientHttpRequestFactory factory = new OkHttp3ClientHttpRequestFactory(ok);
     AsyncRestTemplate result = new AsyncRestTemplate(factory);
     result.setInterceptors(Collections.singletonList(
-        TracingAsyncClientHttpRequestInterceptor.create(httpTracing
-        )));
+      TracingAsyncClientHttpRequestInterceptor.create(httpTracing
+      )));
     return result;
   }
 
@@ -52,8 +52,8 @@ public class AsyncRestTemplateBenchmarks extends HttpClientBenchmarks<AsyncRestT
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + AsyncRestTemplateBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + AsyncRestTemplateBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

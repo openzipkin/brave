@@ -39,8 +39,8 @@ public class CurrentTraceContextExecutorServiceTest {
 
   // override default so that it isn't inheritable
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build();
+    .addScopeDecorator(StrictScopeDecorator.create())
+    .build();
   ExecutorService executor = currentTraceContext.executorService(wrappedExecutor);
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
@@ -105,14 +105,14 @@ public class CurrentTraceContextExecutorServiceTest {
   @Test
   public void invokeAll() throws Exception {
     eachTaskHasCorrectSpanAttached(() -> executor.invokeAll(asList(
-        () -> {
-          threadValues[0] = currentTraceContext.get();
-          // Can't use externally supplied latch as invokeAll calls get before returning!
-          Thread.sleep(100); // block the queue in a dodgy compromise
-          return true;
-        },
-        // this won't run immediately because the other is blocked
-        () -> threadValues[1] = currentTraceContext.get())
+      () -> {
+        threadValues[0] = currentTraceContext.get();
+        // Can't use externally supplied latch as invokeAll calls get before returning!
+        Thread.sleep(100); // block the queue in a dodgy compromise
+        return true;
+      },
+      // this won't run immediately because the other is blocked
+      () -> threadValues[1] = currentTraceContext.get())
     ));
   }
 
@@ -131,7 +131,7 @@ public class CurrentTraceContextExecutorServiceTest {
       latch.countDown();
       shutdownExecutor();
       assertThat(threadValues)
-          .containsExactly(context, context);
+        .containsExactly(context, context);
     }
   }
 }

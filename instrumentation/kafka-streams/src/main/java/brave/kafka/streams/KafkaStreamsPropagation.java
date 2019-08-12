@@ -15,14 +15,12 @@ package brave.kafka.streams;
 
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
-import java.nio.charset.Charset;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 final class KafkaStreamsPropagation {
-
-  static final Charset UTF_8 = Charset.forName("UTF-8");
-
   static final Getter<Headers, String> GETTER = (carrier, key) -> {
     Header header = carrier.lastHeader(key);
     if (header == null) return null;

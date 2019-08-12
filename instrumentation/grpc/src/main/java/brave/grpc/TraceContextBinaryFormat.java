@@ -29,12 +29,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 final class TraceContextBinaryFormat {
   static final byte VERSION = 0,
-      TRACE_ID_FIELD_ID = 0,
-      SPAN_ID_FIELD_ID = 1,
-      TRACE_OPTION_FIELD_ID = 2;
+    TRACE_ID_FIELD_ID = 0,
+    SPAN_ID_FIELD_ID = 1,
+    TRACE_OPTION_FIELD_ID = 2;
 
   static final int FORMAT_LENGTH =
-      4 /* version + 3 fields */ + 16 /* trace ID */ + 8 /* span ID */ + 1 /* sampled bit */;
+    4 /* version + 3 fields */ + 16 /* trace ID */ + 8 /* span ID */ + 1 /* sampled bit */;
 
   static byte[] toBytes(TraceContext traceContext) {
     checkNotNull(traceContext, "traceContext");
@@ -93,9 +93,9 @@ final class TraceContextBinaryFormat {
       sampled = bytes[pos] == 1;
     }
     TraceContext.Builder builder = TraceContext.newBuilder()
-        .traceIdHigh(traceIdHigh)
-        .traceId(traceId)
-        .spanId(spanId);
+      .traceIdHigh(traceIdHigh)
+      .traceId(traceId)
+      .spanId(spanId);
     if (sampled != null) builder.sampled(sampled.booleanValue());
     if (tags != null) builder.extra(Collections.singletonList(tags));
     return builder.build();
@@ -116,12 +116,12 @@ final class TraceContextBinaryFormat {
   /** Inspired by {@code okio.Buffer.readLong} */
   static long readLong(byte[] data, int pos) {
     return (data[pos] & 0xffL) << 56
-        | (data[pos + 1] & 0xffL) << 48
-        | (data[pos + 2] & 0xffL) << 40
-        | (data[pos + 3] & 0xffL) << 32
-        | (data[pos + 4] & 0xffL) << 24
-        | (data[pos + 5] & 0xffL) << 16
-        | (data[pos + 6] & 0xffL) << 8
-        | (data[pos + 7] & 0xffL);
+      | (data[pos + 1] & 0xffL) << 48
+      | (data[pos + 2] & 0xffL) << 40
+      | (data[pos + 3] & 0xffL) << 32
+      | (data[pos + 4] & 0xffL) << 24
+      | (data[pos + 5] & 0xffL) << 16
+      | (data[pos + 6] & 0xffL) << 8
+      | (data[pos + 7] & 0xffL);
   }
 }

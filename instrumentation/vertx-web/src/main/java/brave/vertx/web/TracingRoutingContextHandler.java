@@ -89,8 +89,8 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
       VertxHttpServerAdapter.setCurrentMethodAndPath(
-          context.request().rawMethod(),
-          context.currentRoute().getPath()
+        context.request().rawMethod(),
+        context.currentRoute().getPath()
       );
       try {
         serverHandler.handleSend(context.response(), context.failure(), span);

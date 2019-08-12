@@ -13,7 +13,6 @@
  */
 package brave.propagation;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -21,7 +20,7 @@ import java.util.List;
 public final class B3SinglePropagation<K> implements Propagation<K> {
 
   public static final Factory FACTORY = new Factory() {
-    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
       return new B3SinglePropagation<>(keyFactory);
     }
 
@@ -39,7 +38,7 @@ public final class B3SinglePropagation<K> implements Propagation<K> {
 
   B3SinglePropagation(KeyFactory<K> keyFactory) {
     this.b3Key = keyFactory.create("b3");
-    this.fields = Collections.unmodifiableList(Arrays.asList(b3Key));
+    this.fields = Collections.unmodifiableList(Collections.singletonList(b3Key));
   }
 
   @Override public List<K> keys() {

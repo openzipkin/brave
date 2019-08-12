@@ -23,7 +23,7 @@ import org.apache.http.message.BasicHttpRequest;
 import static brave.httpclient.TracingMainExec.SETTER;
 
 public class HttpRequestWrapperSetterTest
-    extends PropagationSetterTest<HttpRequestWrapper, String> {
+  extends PropagationSetterTest<HttpRequestWrapper, String> {
   HttpRequestWrapper carrier = HttpRequestWrapper.wrap(new BasicHttpRequest("GET", "/foo"));
 
   @Override public Propagation.KeyFactory<String> keyFactory() {

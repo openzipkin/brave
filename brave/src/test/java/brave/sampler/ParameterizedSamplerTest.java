@@ -24,35 +24,35 @@ public class ParameterizedSamplerTest {
 
   @Test public void matchesParameters() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(rule(1.0f,
-        Boolean::booleanValue)));
+      Boolean::booleanValue)));
 
     assertThat(sampler.sample(true))
-        .isEqualTo(SamplingFlags.SAMPLED);
+      .isEqualTo(SamplingFlags.SAMPLED);
   }
 
   @Test public void emptyOnNoMatch() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(rule(1.0f,
-        Boolean::booleanValue)));
+      Boolean::booleanValue)));
 
     assertThat(sampler.sample(false))
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void emptyOnNull() {
     ParameterizedSampler<Void> sampler = ParameterizedSampler.create(asList(rule(1.0f, v -> true)));
 
     assertThat(sampler.sample(null))
-        .isEqualTo(SamplingFlags.EMPTY);
+      .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void multipleRules() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(
-        rule(1.0f, v -> false), // doesn't match
-        rule(0.0f, v -> true) // match
+      rule(1.0f, v -> false), // doesn't match
+      rule(0.0f, v -> true) // match
     ));
 
     assertThat(sampler.sample(true))
-        .isEqualTo(SamplingFlags.NOT_SAMPLED);
+      .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
   // we can do this in tests because tests compile against java 8

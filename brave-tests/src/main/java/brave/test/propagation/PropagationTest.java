@@ -34,8 +34,8 @@ public abstract class PropagationTest<K> {
   protected abstract Class<? extends Supplier<Propagation<K>>> propagationSupplier();
 
   protected abstract void inject(Map<K, String> map, @Nullable String traceId,
-      @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
-      @Nullable Boolean debug);
+    @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
+    @Nullable Boolean debug);
 
   /**
    * There's currently no standard API to just inject sampling flags, as IDs are intended to be
@@ -47,12 +47,12 @@ public abstract class PropagationTest<K> {
   MapEntry<K> mapEntry = new MapEntry<>();
 
   TraceContext rootSpan = TraceContext.newBuilder()
-      .traceId(1L)
-      .spanId(1L)
-      .sampled(true).build();
+    .traceId(1L)
+    .spanId(1L)
+    .sampled(true).build();
   TraceContext childSpan = rootSpan.toBuilder()
-      .parentId(rootSpan.spanId())
-      .spanId(2).build();
+    .parentId(rootSpan.spanId())
+    .spanId(2).build();
 
   protected final Propagation<K> propagation;
 
@@ -72,9 +72,9 @@ public abstract class PropagationTest<K> {
     inject(map, high64Bits + low64Bits, null, low64Bits, true, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(rootSpan.toBuilder()
-        .traceIdHigh(HexCodec.lowerHexToUnsignedLong(high64Bits))
-        .traceId(HexCodec.lowerHexToUnsignedLong(low64Bits))
-        .spanId(HexCodec.lowerHexToUnsignedLong(low64Bits)).build()));
+      .traceIdHigh(HexCodec.lowerHexToUnsignedLong(high64Bits))
+      .traceId(HexCodec.lowerHexToUnsignedLong(low64Bits))
+      .spanId(HexCodec.lowerHexToUnsignedLong(low64Bits)).build()));
   }
 
   @Test public void verifyRoundTrip_childSpan() throws Exception {
@@ -87,7 +87,7 @@ public abstract class PropagationTest<K> {
     inject(map, "0000000000000001", "0000000000000001", "0000000000000002", false, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(
-        childSpan.toBuilder().sampled(false).build()
+      childSpan.toBuilder().sampled(false).build()
     ));
   }
 
@@ -129,7 +129,7 @@ public abstract class PropagationTest<K> {
     TraceContextOrSamplingFlags extracted = propagation.extractor(mapEntry).extract(map);
 
     assertThat(extracted)
-        .isEqualTo(expected);
+      .isEqualTo(expected);
 
     Map<K, String> injected = new LinkedHashMap<>();
     if (expected.context() != null) {
@@ -142,8 +142,8 @@ public abstract class PropagationTest<K> {
   }
 
   protected static class MapEntry<K> implements
-      Propagation.Getter<Map<K, String>, K>,
-      Propagation.Setter<Map<K, String>, K> {
+    Propagation.Getter<Map<K, String>, K>,
+    Propagation.Setter<Map<K, String>, K> {
     public MapEntry() {
     }
 
@@ -179,7 +179,7 @@ public abstract class PropagationTest<K> {
       injector.inject(ctx, map);
 
       assertThat(extractor.extract(map).context())
-          .isEqualToIgnoringGivenFields(ctx, "traceIdString", "spanIdString");
+        .isEqualToIgnoringGivenFields(ctx, "traceIdString", "spanIdString");
     }
   }
 }

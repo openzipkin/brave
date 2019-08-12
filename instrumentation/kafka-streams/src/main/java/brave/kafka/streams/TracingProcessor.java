@@ -28,7 +28,7 @@ class TracingProcessor<K, V> implements Processor<K, V> {
   ProcessorContext processorContext;
 
   TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-      String spanName, Processor<K, V> delegateProcessor) {
+    String spanName, Processor<K, V> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
     this.spanName = spanName;

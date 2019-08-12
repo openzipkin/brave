@@ -27,7 +27,7 @@ import static brave.jms.TracingConnection.TYPE_XA_TOPIC;
 
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 final class TracingXAConnectionFactory extends TracingConnectionFactory
-    implements XAQueueConnectionFactory, XATopicConnectionFactory {
+  implements XAQueueConnectionFactory, XATopicConnectionFactory {
 
   static XAConnectionFactory create(XAConnectionFactory delegate, JmsTracing jmsTracing) {
     if (delegate == null) throw new NullPointerException("xaConnectionFactory == null");
@@ -45,7 +45,7 @@ final class TracingXAConnectionFactory extends TracingConnectionFactory
   }
 
   @Override public XAConnection createXAConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     XAConnectionFactory xacf = (XAConnectionFactory) delegate;
     return TracingXAConnection.create(xacf.createXAConnection(userName, password), jmsTracing);
   }
@@ -71,11 +71,11 @@ final class TracingXAConnectionFactory extends TracingConnectionFactory
   }
 
   @Override public XAQueueConnection createXAQueueConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     checkQueueConnectionFactory();
     XAQueueConnectionFactory xaqcf = (XAQueueConnectionFactory) delegate;
     return TracingXAConnection.create(xaqcf.createXAQueueConnection(userName, password),
-        jmsTracing);
+      jmsTracing);
   }
 
   void checkQueueConnectionFactory() {
@@ -93,11 +93,11 @@ final class TracingXAConnectionFactory extends TracingConnectionFactory
   }
 
   @Override public XATopicConnection createXATopicConnection(String userName, String password)
-      throws JMSException {
+    throws JMSException {
     checkTopicConnectionFactory();
     XATopicConnectionFactory xaqcf = (XATopicConnectionFactory) delegate;
     return TracingXAConnection.create(xaqcf.createXATopicConnection(userName, password),
-        jmsTracing);
+      jmsTracing);
   }
 
   void checkTopicConnectionFactory() {

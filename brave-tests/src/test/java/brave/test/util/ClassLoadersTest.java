@@ -28,9 +28,9 @@ public class ClassLoadersTest {
     Foo foo = new Foo(); // load the class
 
     ClassLoader loader =
-        ClassLoaders.reloadClassNamePrefix(getClass().getClassLoader(), getClass().getName());
+      ClassLoaders.reloadClassNamePrefix(getClass().getClassLoader(), getClass().getName());
     assertThat(loader.loadClass(Foo.class.getName()))
-        .isNotSameAs(foo.getClass());
+      .isNotSameAs(foo.getClass());
   }
 
   static class PresentThreadLocalWithSystemType implements Runnable {
@@ -79,7 +79,7 @@ public class ClassLoadersTest {
 
   @Test public void assertRunIsUnloadable_threadLocalWithWeakRefToOurClassIsUnloadable() {
     assertRunIsUnloadable(PresentThreadLocalWithWeakRefToApplicationType.class,
-        getClass().getClassLoader());
+      getClass().getClassLoader());
   }
 
   /**

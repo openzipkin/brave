@@ -60,7 +60,7 @@ public final class HexCodec {
 
   static NumberFormatException isntLowerHexLong(CharSequence lowerHex) {
     throw new NumberFormatException(
-        lowerHex + " should be a 1 to 32 character lower-hex string with no prefix");
+      lowerHex + " should be a 1 to 32 character lower-hex string with no prefix");
   }
 
   /** Inspired by {@code okio.Buffer.writeLong} */
@@ -83,7 +83,7 @@ public final class HexCodec {
   }
 
   static final char[] HEX_DIGITS =
-      {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
   static void writeHexByte(char[] data, int pos, byte b) {
     data[pos + 0] = HEX_DIGITS[(b >> 4) & 0xf];

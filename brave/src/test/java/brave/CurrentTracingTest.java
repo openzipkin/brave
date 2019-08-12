@@ -31,7 +31,7 @@ public class CurrentTracingTest {
     Tracing.current = null;
   }
 
-  @After public void close(){
+  @After public void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
@@ -48,10 +48,10 @@ public class CurrentTracingTest {
     Tracing tracing = Tracing.newBuilder().build();
 
     assertThat(Tracing.current())
-        .isSameAs(tracing);
+      .isSameAs(tracing);
 
     assertThat(Tracing.currentTracer())
-        .isSameAs(tracing.tracer());
+      .isSameAs(tracing.tracer());
   }
 
   @Test public void setsNotCurrentOnClose() {
@@ -95,6 +95,6 @@ public class CurrentTracingTest {
     tracers.remove(null);
     // depending on race, we should have either one tracer or no tracer
     assertThat(tracers.isEmpty() || tracers.size() == 1)
-        .isTrue();
+      .isTrue();
   }
 }

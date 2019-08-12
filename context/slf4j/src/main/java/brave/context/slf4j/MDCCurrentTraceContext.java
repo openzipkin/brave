@@ -28,7 +28,7 @@ import org.slf4j.MDC;
 @Deprecated
 public final class MDCCurrentTraceContext extends CurrentTraceContext {
   static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
-      ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(MDCScopeDecorator.create());
+    ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(MDCScopeDecorator.create());
 
   public static MDCCurrentTraceContext create() {
     return create(CurrentTraceContext.Default.inheritable());

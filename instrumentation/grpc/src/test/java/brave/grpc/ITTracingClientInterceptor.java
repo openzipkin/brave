@@ -94,8 +94,8 @@ public class ITTracingClientInterceptor {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -108,9 +108,9 @@ public class ITTracingClientInterceptor {
 
   ManagedChannel newClient(ClientInterceptor... clientInterceptors) {
     return ManagedChannelBuilder.forAddress("localhost", server.port())
-        .intercept(clientInterceptors)
-        .usePlaintext(true)
-        .build();
+      .intercept(clientInterceptors)
+      .usePlaintext(true)
+      .build();
   }
 
   void closeClient(ManagedChannel client) throws Exception {
@@ -138,14 +138,14 @@ public class ITTracingClientInterceptor {
 
     TraceContext context = server.takeRequest().context();
     assertThat(context.traceId())
-        .isEqualTo(parent.context().traceId());
+      .isEqualTo(parent.context().traceId());
     assertThat(context.parentId())
-        .isEqualTo(parent.context().spanId());
+      .isEqualTo(parent.context().spanId());
 
     // we report one in-process and one RPC client span
     assertThat(Arrays.asList(takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 
   /**
@@ -169,9 +169,9 @@ public class ITTracingClientInterceptor {
       for (int i = 0; i < 2; i++) {
         TraceContext context = server.takeRequest().context();
         assertThat(context.traceId())
-            .isEqualTo(parent.context().traceId());
+          .isEqualTo(parent.context().traceId());
         assertThat(context.parentId())
-            .isEqualTo(parent.context().spanId());
+          .isEqualTo(parent.context().spanId());
       }
     } finally {
       otherSpan.finish();
@@ -179,8 +179,8 @@ public class ITTracingClientInterceptor {
 
     // Check we reported 2 local spans and 2 client spans
     assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-        .extracting(Span::kind)
-        .containsOnly(null, Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -202,7 +202,7 @@ public class ITTracingClientInterceptor {
 
     Span span = takeSpan();
     assertThat(span.kind())
-        .isEqualTo(Span.Kind.CLIENT);
+      .isEqualTo(Span.Kind.CLIENT);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
@@ -210,7 +210,7 @@ public class ITTracingClientInterceptor {
 
     Span span = takeSpan();
     assertThat(span.name())
-        .isEqualTo("helloworld.greeter/sayhello");
+      .isEqualTo("helloworld.greeter/sayhello");
   }
 
   @Test public void onTransportException_reportsSpan() throws Exception {
@@ -220,8 +220,8 @@ public class ITTracingClientInterceptor {
   @Test public void onTransportException_addsErrorTag() throws Exception {
     Span span = spanFromTransportException();
     assertThat(span.tags()).containsExactly(
-        entry("error", "UNAVAILABLE"),
-        entry("grpc.status_code", "UNAVAILABLE")
+      entry("error", "UNAVAILABLE"),
+      entry("grpc.status_code", "UNAVAILABLE")
     );
   }
 
@@ -246,8 +246,8 @@ public class ITTracingClientInterceptor {
 
     Span span = takeSpan();
     assertThat(span.tags()).containsExactly(
-        entry("error", "UNIMPLEMENTED"),
-        entry("grpc.status_code", "UNIMPLEMENTED")
+      entry("error", "UNIMPLEMENTED"),
+      entry("grpc.status_code", "UNIMPLEMENTED")
     );
   }
 
@@ -259,8 +259,8 @@ public class ITTracingClientInterceptor {
 
     Span span = takeSpan();
     assertThat(span.tags()).containsExactly(
-        entry("error", "CANCELLED"),
-        entry("grpc.status_code", "CANCELLED")
+      entry("error", "CANCELLED"),
+      entry("grpc.status_code", "CANCELLED")
     );
   }
 
@@ -273,29 +273,29 @@ public class ITTracingClientInterceptor {
     closeClient(client);
 
     client = newClient(
-        new ClientInterceptor() {
-          @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-              MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-            testLogger.info("in span!");
-            tracer.currentSpanCustomizer().annotate("before");
-            return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
-                next.newCall(method, callOptions)) {
-              @Override
-              public void start(Listener<RespT> responseListener, Metadata headers) {
-                tracer.currentSpanCustomizer().annotate("start");
-                super.start(responseListener, headers);
-              }
-            };
-          }
-        },
-        tracing.newClientInterceptor()
+      new ClientInterceptor() {
+        @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+          testLogger.info("in span!");
+          tracer.currentSpanCustomizer().annotate("before");
+          return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
+            next.newCall(method, callOptions)) {
+            @Override
+            public void start(Listener<RespT> responseListener, Metadata headers) {
+              tracer.currentSpanCustomizer().annotate("start");
+              super.start(responseListener, headers);
+            }
+          };
+        }
+      },
+      tracing.newClientInterceptor()
     );
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(takeSpan().annotations())
-        .extracting(Annotation::value)
-        .containsOnly("before", "start");
+      .extracting(Annotation::value)
+      .containsOnly("before", "start");
   }
 
   @Test public void clientParserTest() throws Exception {
@@ -327,8 +327,8 @@ public class ITTracingClientInterceptor {
     Span span = takeSpan();
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags()).containsKeys(
-        "grpc.message_received", "grpc.message_sent",
-        "grpc.message_received.visible", "grpc.message_sent.visible"
+      "grpc.message_received", "grpc.message_sent",
+      "grpc.message_received.visible", "grpc.message_sent.visible"
     );
   }
 
@@ -345,7 +345,7 @@ public class ITTracingClientInterceptor {
     client = newClient();
 
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-        .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
+      .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
     assertThat(replies).toIterable().hasSize(10);
 
     Span span = takeSpan();
@@ -355,21 +355,21 @@ public class ITTracingClientInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext( // connect to log4j
-            ThreadLocalCurrentTraceContext.newBuilder()
-                .addScopeDecorator(StrictScopeDecorator.create())
-                .addScopeDecorator(ThreadContextScopeDecorator.create())
-                .build())
-        .sampler(sampler);
+      .spanReporter(spans::add)
+      .currentTraceContext( // connect to log4j
+        ThreadLocalCurrentTraceContext.newBuilder()
+          .addScopeDecorator(StrictScopeDecorator.create())
+          .addScopeDecorator(ThreadContextScopeDecorator.create())
+          .build())
+      .sampler(sampler);
   }
 
   /** Call this to block until a span was reported */
   Span takeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Span was not reported")
-        .isNotNull();
+      .withFailMessage("Span was not reported")
+      .isNotNull();
     return result;
   }
 }

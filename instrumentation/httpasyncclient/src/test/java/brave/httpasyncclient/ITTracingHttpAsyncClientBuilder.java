@@ -41,14 +41,14 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   }
 
   @Override protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery)
-      throws Exception {
+    throws Exception {
     HttpGet get = new HttpGet(URI.create(url(pathIncludingQuery)));
     EntityUtils.consume(client.execute(get, null).get().getEntity());
   }
 
   @Override
   protected void post(CloseableHttpAsyncClient client, String pathIncludingQuery, String body)
-      throws Exception {
+    throws Exception {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new NStringEntity(body));
     EntityUtils.consume(client.execute(post, null).get().getEntity());
@@ -63,16 +63,16 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     closeClient(client);
 
     client = TracingHttpAsyncClientBuilder.create(httpTracing)
-        .addInterceptorLast((HttpRequestInterceptor) (request, context) ->
-            request.setHeader("my-id", currentTraceContext.get().traceIdString())
-        ).build();
+      .addInterceptorLast((HttpRequestInterceptor) (request, context) ->
+        request.setHeader("my-id", currentTraceContext.get().traceIdString())
+      ).build();
     client.start();
 
     get(client, "/foo");
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
-        .isEqualTo(request.getHeader("my-id"));
+      .isEqualTo(request.getHeader("my-id"));
 
     takeSpan();
   }

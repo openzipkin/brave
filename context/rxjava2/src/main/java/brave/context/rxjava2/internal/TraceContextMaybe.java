@@ -25,7 +25,7 @@ final class TraceContextMaybe<T> extends Maybe<T> {
   final TraceContext assembled;
 
   TraceContextMaybe(
-      MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    MaybeSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

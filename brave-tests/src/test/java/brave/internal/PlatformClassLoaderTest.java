@@ -61,7 +61,7 @@ public class PlatformClassLoaderTest {
     @Override public void run() {
       Platform platform = Platform.get();
       assertThat(platform.getHostString(createUnresolved("1.2.3.4", 0)))
-          .isNotNull();
+        .isNotNull();
     }
   }
 
@@ -73,7 +73,7 @@ public class PlatformClassLoaderTest {
     @Override public void run() {
       Platform platform = Platform.get();
       assertThat(platform.clock().currentTimeMicroseconds())
-          .isPositive();
+        .isPositive();
     }
   }
 

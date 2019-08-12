@@ -17,23 +17,20 @@ import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
-import java.nio.charset.Charset;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class KafkaPropagation {
-
-  static final Charset UTF_8 = Charset.forName("UTF-8");
-
   static final TraceContext TEST_CONTEXT = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
   static final ProducerRecord<String, String> TEST_RECORD =
-      new ProducerRecord<>("dummy", "");
+    new ProducerRecord<>("dummy", "");
   static final Headers B3_SINGLE_TEST_HEADERS =
-      TEST_RECORD.headers().add("b3", writeB3SingleFormat(TEST_CONTEXT).getBytes(UTF_8));
+    TEST_RECORD.headers().add("b3", writeB3SingleFormat(TEST_CONTEXT).getBytes(UTF_8));
 
   static final Injector<Headers> B3_SINGLE_INJECTOR = new Injector<Headers>() {
     @Override public void inject(TraceContext traceContext, Headers carrier) {

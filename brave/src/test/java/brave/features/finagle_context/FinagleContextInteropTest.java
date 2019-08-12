@@ -48,19 +48,19 @@ public class FinagleContextInteropTest {
     try (Scope scope = currentTraceContext.newScope(parent)) {
       // Inside the parent scope, trace context is consistent between finagle and brave
       assertThat(currentTraceContext.get().spanId())
-          .isEqualTo(Trace.id().spanId().self());
+        .isEqualTo(Trace.id().spanId().self());
 
       // Clear a scope temporarily
       try (Scope noScope = currentTraceContext.newScope(null)) {
         assertThat(currentTraceContext.get())
-            .isNull();
+          .isNull();
       }
 
       // Clear it temporarily in scala!
       Trace.letClear(new AbstractFunction0<Object>() {
         @Override public Object apply() {
           assertThat(currentTraceContext.get())
-              .isNull();
+            .isNull();
           return null;
         }
       });
@@ -70,12 +70,12 @@ public class FinagleContextInteropTest {
         @Override public Void apply() {
           // Inside the child scope, trace context is consistent between finagle and brave
           assertThat(currentTraceContext.get().spanId())
-              .isEqualTo(Trace.id().spanId().self());
+            .isEqualTo(Trace.id().spanId().self());
 
           // The child span has the correct parent (consistent between finagle and brave)
           assertThat(currentTraceContext.get().parentId())
-              .isEqualTo(parent.spanId())
-              .isEqualTo(Trace.id().parentId().self());
+            .isEqualTo(parent.spanId())
+            .isEqualTo(Trace.id().parentId().self());
 
           return null;
         }
@@ -83,12 +83,12 @@ public class FinagleContextInteropTest {
 
       // After leaving the child scope, trace context is consistent between finagle and brave
       assertThat(currentTraceContext.get().spanId())
-          .isEqualTo(Trace.id().spanId().self());
+        .isEqualTo(Trace.id().spanId().self());
 
       // The parent span was reverted
       assertThat(currentTraceContext.get().spanId())
-          .isEqualTo(parent.spanId())
-          .isEqualTo(Trace.id().spanId().self());
+        .isEqualTo(parent.spanId())
+        .isEqualTo(Trace.id().spanId().self());
     }
 
     // Outside a scope, trace context is consistent between finagle and brave
@@ -123,16 +123,16 @@ public class FinagleContextInteropTest {
       Map<Buf, MarshalledContext.Cell> update;
       if (currentSpan != null) { // replace the existing trace context with this one
         update = broadcast().env().updated(
-            TRACE_ID_KEY.marshalId(),
-            broadcast().Real().apply(TRACE_ID_KEY, new Some(toTraceId(currentSpan)))
+          TRACE_ID_KEY.marshalId(),
+          broadcast().Real().apply(TRACE_ID_KEY, new Some(toTraceId(currentSpan)))
         );
       } else { // remove the existing trace context from scope
         update = broadcast().env().filterKeys(
-            new AbstractFunction1<Buf, Object>() {
-              @Override public Object apply(Buf v1) {
-                return !v1.equals(TRACE_ID_KEY.marshalId());
-              }
-            });
+          new AbstractFunction1<Buf, Object>() {
+            @Override public Object apply(Buf v1) {
+              return !v1.equals(TRACE_ID_KEY.marshalId());
+            }
+          });
       }
       broadcastLocal.set(new Some(update));
       return () -> broadcastLocal.set(new Some(saved));
@@ -141,22 +141,22 @@ public class FinagleContextInteropTest {
 
   static TraceContext toTraceContext(TraceId id) {
     return TraceContext.newBuilder()
-        .traceId(id.traceId().self())
-        .parentId(id._parentId().isEmpty() ? null : id.parentId().self())
-        .spanId(id.spanId().self())
-        .sampled(id.getSampled().isEmpty() ? null : id.getSampled().get())
-        .debug(id.flags().isDebug())
-        // .shared(isn't known in finagle)
-        .build();
+      .traceId(id.traceId().self())
+      .parentId(id._parentId().isEmpty() ? null : id.parentId().self())
+      .spanId(id.spanId().self())
+      .sampled(id.getSampled().isEmpty() ? null : id.getSampled().get())
+      .debug(id.flags().isDebug())
+      // .shared(isn't known in finagle)
+      .build();
   }
 
   static TraceId toTraceId(TraceContext context) {
     return new TraceId(
-        Option.apply(SpanId.apply(context.traceId())),
-        Option.apply(context.parentIdAsLong() == 0L ? null : SpanId.apply(context.parentIdAsLong())),
-        SpanId.apply(context.spanId()),
-        Option.apply(context.sampled()),
-        Flags$.MODULE$.apply(context.debug() ? 1 : 0)
+      Option.apply(SpanId.apply(context.traceId())),
+      Option.apply(context.parentIdAsLong() == 0L ? null : SpanId.apply(context.parentIdAsLong())),
+      SpanId.apply(context.spanId()),
+      Option.apply(context.sampled()),
+      Flags$.MODULE$.apply(context.debug() ? 1 : 0)
     );
   }
 }

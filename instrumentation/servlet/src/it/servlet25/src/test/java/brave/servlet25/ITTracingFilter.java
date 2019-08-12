@@ -13,8 +13,8 @@
  */
 package brave.servlet25;
 
-import brave.test.http.ITServlet25Container;
 import brave.servlet.TracingFilter;
+import brave.test.http.ITServlet25Container;
 import java.util.EnumSet;
 import javax.servlet.Filter;
 import org.eclipse.jetty.server.DispatcherType;

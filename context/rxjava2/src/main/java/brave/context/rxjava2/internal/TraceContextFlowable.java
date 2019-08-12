@@ -26,7 +26,7 @@ final class TraceContextFlowable<T> extends Flowable<T> {
   final TraceContext assembled;
 
   TraceContextFlowable(
-      Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

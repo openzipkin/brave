@@ -73,7 +73,7 @@ public class ITTracingQueryInterceptor {
 
     dataSource.setUser(System.getenv("MYSQL_USER"));
     assumeTrue("Minimally, the environment variable MYSQL_USER must be set",
-        dataSource.getUser() != null);
+      dataSource.getUser() != null);
     dataSource.setPassword(envOr("MYSQL_PASS", ""));
     connection = dataSource.getConnection();
     spans.clear();
@@ -94,7 +94,7 @@ public class ITTracingQueryInterceptor {
     }
 
     assertThat(spans)
-        .hasSize(2);
+      .hasSize(2);
   }
 
   @Test
@@ -102,8 +102,8 @@ public class ITTracingQueryInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.CLIENT);
+      .extracting(Span::kind)
+      .containsExactly(Span.Kind.CLIENT);
   }
 
   @Test
@@ -111,8 +111,8 @@ public class ITTracingQueryInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("select");
+      .extracting(Span::name)
+      .containsExactly("select");
   }
 
   /** This intercepts all SQL, not just queries. This ensures single-word statements work */
@@ -122,8 +122,8 @@ public class ITTracingQueryInterceptor {
     connection.commit();
 
     assertThat(spans)
-        .extracting(Span::name)
-        .contains("commit");
+      .extracting(Span::name)
+      .contains("commit");
   }
 
   @Test
@@ -131,8 +131,8 @@ public class ITTracingQueryInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("sql.query", QUERY));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsExactly(entry("sql.query", QUERY));
   }
 
   @Test
@@ -140,19 +140,19 @@ public class ITTracingQueryInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-        .extracting(Span::remoteServiceName)
-        .contains("myservice");
+      .extracting(Span::remoteServiceName)
+      .contains("myservice");
   }
 
   @Test
   public void sqlError() throws Exception {
     assertThatThrownBy(() -> prepareExecuteSelect(ERROR_QUERY)).isInstanceOf(SQLException.class);
     assertThat(spans)
-        .isNotEmpty();
+      .isNotEmpty();
 
     if (exceptionsTraced) {
       assertThat(spans)
-          .anySatisfy(span -> assertThat(span.tags()).containsEntry("error", "1046"));
+        .anySatisfy(span -> assertThat(span.tags()).containsEntry("error", "1046"));
     }
   }
 
@@ -168,9 +168,9 @@ public class ITTracingQueryInterceptor {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-        .sampler(sampler);
+      .spanReporter(spans::add)
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+      .sampler(sampler);
   }
 
   static int envOr(String key, int fallback) {

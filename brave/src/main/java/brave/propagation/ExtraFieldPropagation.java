@@ -36,7 +36,8 @@ import java.util.Set;
 /**
  * Allows you to propagate predefined request-scoped fields, usually but not always HTTP headers.
  *
- * <p>For example, if you are in a Cloud Foundry environment, you might want to pass the request ID:
+ * <p>For example, if you are in a Cloud Foundry environment, you might want to pass the request
+ * ID:
  * <pre>{@code
  * // when you initialize the builder, define the extra field you want to propagate
  * tracingBuilder.propagationFactory(
@@ -107,7 +108,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
 
   /** Wraps an underlying propagation implementation, pushing one or more fields */
   public static Factory newFactory(Propagation.Factory delegate,
-      Collection<String> fieldNames) {
+    Collection<String> fieldNames) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
     String[] validated = ensureLowerCase(new LinkedHashSet<>(fieldNames));

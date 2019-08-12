@@ -44,10 +44,10 @@ import brave.sampler.Sampler;
  * @since 4.3
  */
 public final class HttpClientHandler<Req, Resp>
-    extends HttpHandler<Req, Resp, HttpClientAdapter<Req, Resp>> {
+  extends HttpHandler<Req, Resp, HttpClientAdapter<Req, Resp>> {
 
   public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
-      HttpClientAdapter<Req, Resp> adapter) {
+    HttpClientAdapter<Req, Resp> adapter) {
     return new HttpClientHandler<>(httpTracing, adapter);
   }
 
@@ -58,9 +58,9 @@ public final class HttpClientHandler<Req, Resp>
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
     super(
-        httpTracing.tracing().currentTraceContext(),
-        adapter,
-        httpTracing.clientParser()
+      httpTracing.tracing().currentTraceContext(),
+      adapter,
+      httpTracing.clientParser()
     );
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();

@@ -41,13 +41,13 @@ public class JmsTracingTest extends JmsTest {
 
   @Test public void connectionFactory_wrapsInput() {
     assertThat(jmsTracing.connectionFactory(mock(ConnectionFactory.class)))
-        .isInstanceOf(TracingConnectionFactory.class);
+      .isInstanceOf(TracingConnectionFactory.class);
   }
 
   @Test public void connectionFactory_doesntDoubleWrap() {
     ConnectionFactory wrapped = jmsTracing.connectionFactory(mock(ConnectionFactory.class));
     assertThat(jmsTracing.connectionFactory(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void connectionFactory_wrapsXaInput() {
@@ -55,18 +55,18 @@ public class JmsTracingTest extends JmsTest {
     }
 
     assertThat(jmsTracing.connectionFactory(mock(Both.class)))
-        .isInstanceOf(XAConnectionFactory.class);
+      .isInstanceOf(XAConnectionFactory.class);
   }
 
   @Test public void connection_wrapsInput() {
     assertThat(jmsTracing.connection(mock(Connection.class)))
-        .isInstanceOf(TracingConnection.class);
+      .isInstanceOf(TracingConnection.class);
   }
 
   @Test public void connection_doesntDoubleWrap() {
     Connection wrapped = jmsTracing.connection(mock(Connection.class));
     assertThat(jmsTracing.connection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void connection_wrapsXaInput() {
@@ -74,18 +74,18 @@ public class JmsTracingTest extends JmsTest {
     }
 
     assertThat(jmsTracing.connection(mock(Both.class)))
-        .isInstanceOf(XAConnection.class);
+      .isInstanceOf(XAConnection.class);
   }
 
   @Test public void queueConnection_wrapsInput() {
     assertThat(jmsTracing.queueConnection(mock(QueueConnection.class)))
-        .isInstanceOf(TracingConnection.class);
+      .isInstanceOf(TracingConnection.class);
   }
 
   @Test public void queueConnection_doesntDoubleWrap() {
     QueueConnection wrapped = jmsTracing.queueConnection(mock(QueueConnection.class));
     assertThat(jmsTracing.queueConnection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void queueConnection_wrapsXaInput() {
@@ -93,18 +93,18 @@ public class JmsTracingTest extends JmsTest {
     }
 
     assertThat(jmsTracing.queueConnection(mock(Both.class)))
-        .isInstanceOf(XAQueueConnection.class);
+      .isInstanceOf(XAQueueConnection.class);
   }
 
   @Test public void topicConnection_wrapsInput() {
     assertThat(jmsTracing.topicConnection(mock(TopicConnection.class)))
-        .isInstanceOf(TracingConnection.class);
+      .isInstanceOf(TracingConnection.class);
   }
 
   @Test public void topicConnection_doesntDoubleWrap() {
     TopicConnection wrapped = jmsTracing.topicConnection(mock(TopicConnection.class));
     assertThat(jmsTracing.topicConnection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void topicConnection_wrapsXaInput() {
@@ -112,78 +112,78 @@ public class JmsTracingTest extends JmsTest {
     }
 
     assertThat(jmsTracing.topicConnection(mock(Both.class)))
-        .isInstanceOf(XATopicConnection.class);
+      .isInstanceOf(XATopicConnection.class);
   }
 
   @Test public void xaConnectionFactory_wrapsInput() {
     assertThat(jmsTracing.xaConnectionFactory(mock(XAConnectionFactory.class)))
-        .isInstanceOf(TracingXAConnectionFactory.class);
+      .isInstanceOf(TracingXAConnectionFactory.class);
   }
 
   @Test public void xaConnectionFactory_doesntDoubleWrap() {
     XAConnectionFactory wrapped = jmsTracing.xaConnectionFactory(mock(XAConnectionFactory.class));
     assertThat(jmsTracing.xaConnectionFactory(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void xaConnection_wrapsInput() {
     assertThat(jmsTracing.xaConnection(mock(XAConnection.class)))
-        .isInstanceOf(TracingXAConnection.class);
+      .isInstanceOf(TracingXAConnection.class);
   }
 
   @Test public void xaConnection_doesntDoubleWrap() {
     XAConnection wrapped = jmsTracing.xaConnection(mock(XAConnection.class));
     assertThat(jmsTracing.xaConnection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void xaQueueConnection_wrapsInput() {
     assertThat(jmsTracing.xaQueueConnection(mock(XAQueueConnection.class)))
-        .isInstanceOf(TracingXAConnection.class);
+      .isInstanceOf(TracingXAConnection.class);
   }
 
   @Test public void xaQueueConnection_doesntDoubleWrap() {
     XAQueueConnection wrapped = jmsTracing.xaQueueConnection(mock(XAQueueConnection.class));
     assertThat(jmsTracing.xaQueueConnection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void xaTopicConnection_wrapsInput() {
     assertThat(jmsTracing.xaTopicConnection(mock(XATopicConnection.class)))
-        .isInstanceOf(TracingXAConnection.class);
+      .isInstanceOf(TracingXAConnection.class);
   }
 
   @Test public void xaTopicConnection_doesntDoubleWrap() {
     XATopicConnection wrapped = jmsTracing.xaTopicConnection(mock(XATopicConnection.class));
     assertThat(jmsTracing.xaTopicConnection(wrapped))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void messageListener_traces() throws Exception {
     jmsTracing.messageListener(mock(MessageListener.class), false)
-        .onMessage(message);
+      .onMessage(message);
 
     assertThat(takeSpan().name()).isEqualTo("on-message");
   }
 
   @Test public void messageListener_traces_addsConsumerSpan() throws Exception {
     jmsTracing.messageListener(mock(MessageListener.class), true)
-        .onMessage(message);
+      .onMessage(message);
 
     assertThat(asList(takeSpan(), takeSpan()))
-        .extracting(zipkin2.Span::name)
-        .containsExactly("receive", "on-message");
+      .extracting(zipkin2.Span::name)
+      .containsExactly("receive", "on-message");
   }
 
   @Test public void messageListener_wrapsInput() {
     assertThat(jmsTracing.messageListener(mock(MessageListener.class), false))
-        .isInstanceOf(TracingMessageListener.class);
+      .isInstanceOf(TracingMessageListener.class);
   }
 
   @Test public void messageListener_doesntDoubleWrap() {
     MessageListener wrapped = jmsTracing.messageListener(mock(MessageListener.class), false);
     assertThat(jmsTracing.messageListener(wrapped, false))
-        .isSameAs(wrapped);
+      .isSameAs(wrapped);
   }
 
   @Test public void nextSpan_prefers_b3_header() throws Exception {
@@ -191,21 +191,21 @@ public class JmsTracingTest extends JmsTest {
 
     Span child;
     try (Scope ws = tracing.currentTraceContext()
-        .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
       child = jmsTracing.nextSpan(message);
     }
     assertThat(child.context().parentId())
-        .isEqualTo(2L);
+      .isEqualTo(2L);
   }
 
   @Test public void nextSpan_uses_current_context() {
     Span child;
     try (Scope ws = tracing.currentTraceContext()
-        .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
       child = jmsTracing.nextSpan(message);
     }
     assertThat(child.context().parentId())
-        .isEqualTo(1L);
+      .isEqualTo(1L);
   }
 
   @Test public void nextSpan_should_use_span_from_headers_as_parent() throws Exception {
@@ -226,7 +226,7 @@ public class JmsTracingTest extends JmsTest {
     jmsTracing.nextSpan(message).start().finish();
 
     assertThat(takeSpan().tags())
-        .containsOnly(entry("jms.queue", "foo"));
+      .containsOnly(entry("jms.queue", "foo"));
   }
 
   /**
@@ -244,7 +244,7 @@ public class JmsTracingTest extends JmsTest {
   @Test public void nextSpan_should_clear_propagation_headers() throws Exception {
 
     TraceContext context =
-        TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).debug(true).build();
+      TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).debug(true).build();
     Propagation.B3_STRING.injector(SETTER).inject(context, message);
     Propagation.B3_SINGLE_STRING.injector(SETTER).inject(context, message);
 

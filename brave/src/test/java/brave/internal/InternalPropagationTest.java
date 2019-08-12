@@ -24,11 +24,11 @@ public class InternalPropagationTest {
 
   @Test public void set_sampled_true() {
     assertThat(sampled(true, 0))
-        .isEqualTo(FLAG_SAMPLED_SET + FLAG_SAMPLED);
+      .isEqualTo(FLAG_SAMPLED_SET + FLAG_SAMPLED);
   }
 
   @Test public void set_sampled_false() {
     assertThat(sampled(false, FLAG_SAMPLED_SET | FLAG_SAMPLED))
-        .isEqualTo(FLAG_SAMPLED_SET);
+      .isEqualTo(FLAG_SAMPLED_SET);
   }
 }

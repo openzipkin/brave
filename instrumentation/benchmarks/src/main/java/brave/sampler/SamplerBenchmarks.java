@@ -134,9 +134,9 @@ public class SamplerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + SamplerBenchmarks.class.getSimpleName() + ".*rate.*")
-        .build();
+      .addProfiler("gc")
+      .include(".*" + SamplerBenchmarks.class.getSimpleName() + ".*rate.*")
+      .build();
 
     new Runner(opt).run();
   }

@@ -37,7 +37,7 @@ public class SamplingFlags {
 
       @Override
       public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId,
-          long localRootId, long parentId, long spanId, List<Object> extra) {
+        long localRootId, long parentId, long spanId, List<Object> extra) {
         return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
       }
 
@@ -78,8 +78,8 @@ public class SamplingFlags {
    */
   @Nullable public final Boolean sampled() {
     return (flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET
-        ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
-        : null;
+      ? (flags & FLAG_SAMPLED) == FLAG_SAMPLED
+      : null;
   }
 
   /**
@@ -107,12 +107,12 @@ public class SamplingFlags {
 
   @Override public String toString() {
     return "SamplingFlags(sampled="
-        + sampled()
-        + ", sampledLocal="
-        + sampledLocal()
-        + ", debug="
-        + debug()
-        + ")";
+      + sampled()
+      + ", sampledLocal="
+      + sampledLocal()
+      + ", debug="
+      + debug()
+      + ")";
   }
 
   /** @deprecated prefer using constants. This will be removed in Brave v6 */
@@ -170,10 +170,10 @@ public class SamplingFlags {
 
   // Internal: not meant to be used directly by end users
   static final SamplingFlags
-      EMPTY_SAMPLED_LOCAL = new SamplingFlags(FLAG_SAMPLED_LOCAL),
-      NOT_SAMPLED_SAMPLED_LOCAL = new SamplingFlags(NOT_SAMPLED.flags | FLAG_SAMPLED_LOCAL),
-      SAMPLED_SAMPLED_LOCAL = new SamplingFlags(SAMPLED.flags | FLAG_SAMPLED_LOCAL),
-      DEBUG_SAMPLED_LOCAL = new SamplingFlags(DEBUG.flags | FLAG_SAMPLED_LOCAL);
+    EMPTY_SAMPLED_LOCAL = new SamplingFlags(FLAG_SAMPLED_LOCAL),
+    NOT_SAMPLED_SAMPLED_LOCAL = new SamplingFlags(NOT_SAMPLED.flags | FLAG_SAMPLED_LOCAL),
+    SAMPLED_SAMPLED_LOCAL = new SamplingFlags(SAMPLED.flags | FLAG_SAMPLED_LOCAL),
+    DEBUG_SAMPLED_LOCAL = new SamplingFlags(DEBUG.flags | FLAG_SAMPLED_LOCAL);
 
   /** This ensures constants are always used, in order to reduce allocation overhead */
   static SamplingFlags toSamplingFlags(int flags) {

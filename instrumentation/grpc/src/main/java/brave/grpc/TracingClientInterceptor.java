@@ -31,16 +31,16 @@ import io.grpc.Status;
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingClientInterceptor implements ClientInterceptor {
   static final Setter<Metadata, Metadata.Key<String>> SETTER =
-      new Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
-        @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
-          metadata.removeAll(key);
-          metadata.put(key, value);
-        }
+    new Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
+      @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
+        metadata.removeAll(key);
+        metadata.put(key, value);
+      }
 
-        @Override public String toString() {
-          return "Metadata::put";
-        }
-      };
+      @Override public String toString() {
+        return "Metadata::put";
+      }
+    };
 
   final Tracer tracer;
   final Injector<Metadata> injector;
@@ -60,8 +60,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
    */
   @Override
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-      final MethodDescriptor<ReqT, RespT> method, final CallOptions callOptions,
-      final Channel next) {
+    final MethodDescriptor<ReqT, RespT> method, final CallOptions callOptions,
+    final Channel next) {
     Span span = tracer.nextSpan();
     SpanInScope scope = tracer.withSpanInScope(span);
     try {

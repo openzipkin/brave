@@ -67,17 +67,17 @@ public abstract class HttpServerBenchmarks {
 
   protected int initServer() throws Exception {
     DeploymentInfo servletBuilder = Servlets.deployment()
-        .setClassLoader(getClass().getClassLoader())
-        .setContextPath("/")
-        .setDeploymentName("test.war");
+      .setClassLoader(getClass().getClassLoader())
+      .setContextPath("/")
+      .setDeploymentName("test.war");
 
     init(servletBuilder);
 
     DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
     manager.deploy();
     server = Undertow.builder()
-        .addHttpListener(0, "127.0.0.1")
-        .setHandler(manager.start()).build();
+      .addHttpListener(0, "127.0.0.1")
+      .setHandler(manager.start()).build();
     server.start();
     return ((InetSocketAddress) server.getListenerInfo().get(0).getAddress()).getPort();
   }
@@ -110,18 +110,18 @@ public abstract class HttpServerBenchmarks {
 
   @Benchmark public void tracedExtraServer_get_request_id() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/tracedextra")
-        .header("x-vcap-request-id", "216a2aea45d08fc9")
-        .build())
-        .execute().body().close();
+      .header("x-vcap-request-id", "216a2aea45d08fc9")
+      .build())
+      .execute().body().close();
   }
 
   @Benchmark public void tracedServer_get_resumeTrace() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/traced")
-        .header("X-B3-TraceId", "216a2aea45d08fc9")
-        .header("X-B3-SpanId", "5b4185666d50f68b")
-        .header("X-B3-Sampled", "1")
-        .build())
-        .execute().body().close();
+      .header("X-B3-TraceId", "216a2aea45d08fc9")
+      .header("X-B3-SpanId", "5b4185666d50f68b")
+      .header("X-B3-Sampled", "1")
+      .build())
+      .execute().body().close();
   }
 
   @Benchmark public void traced128Server_get() throws Exception {
@@ -130,11 +130,11 @@ public abstract class HttpServerBenchmarks {
 
   @Benchmark public void traced128Server_get_resumeTrace() throws Exception {
     client.newCall(new Request.Builder().url(baseUrl() + "/traced128")
-        .header("X-B3-TraceId", "5759e988b62e8f6a216a2aea45d08fc9")
-        .header("X-B3-SpanId", "5b4185666d50f68b")
-        .header("X-B3-Sampled", "1")
-        .build())
-        .execute().body().close();
+      .header("X-B3-TraceId", "5759e988b62e8f6a216a2aea45d08fc9")
+      .header("X-B3-SpanId", "5b4185666d50f68b")
+      .header("X-B3-Sampled", "1")
+      .build())
+      .execute().body().close();
   }
 
   void get(String path) throws IOException {

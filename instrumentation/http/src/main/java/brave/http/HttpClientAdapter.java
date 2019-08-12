@@ -22,7 +22,7 @@ public abstract class HttpClientAdapter<Req, Resp> extends HttpAdapter<Req, Resp
    * @deprecated remote IP information should be added directly by instrumentation. This will be
    * removed in Brave v6.
    */
-  @Deprecated  public boolean parseServerIpAndPort(Req req, Endpoint.Builder builder) {
+  @Deprecated public boolean parseServerIpAndPort(Req req, Endpoint.Builder builder) {
     return false;
   }
 }

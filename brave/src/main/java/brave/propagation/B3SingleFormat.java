@@ -98,8 +98,8 @@ public final class B3SingleFormat {
   }
 
   /**
-   * Like {@link #writeB3SingleFormatAsBytes(TraceContext)}, but for carriers with byte array or
-   * byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte
+   * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
     char[] buffer = getCharBuffer();
@@ -145,7 +145,7 @@ public final class B3SingleFormat {
    */
   @Nullable
   public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3, int beginIndex,
-      int endIndex) {
+    int endIndex) {
     if (beginIndex == endIndex) {
       Platform.get().log("Invalid input: empty", null);
       return null;
@@ -231,13 +231,13 @@ public final class B3SingleFormat {
     }
 
     return TraceContextOrSamplingFlags.create(new TraceContext(
-        flags,
-        traceIdHigh,
-        traceId,
-        0L, // localRootId is the first ID used in process, not necessarily the one extracted
-        parentId,
-        spanId,
-        Collections.emptyList()
+      flags,
+      traceIdHigh,
+      traceId,
+      0L, // localRootId is the first ID used in process, not necessarily the one extracted
+      parentId,
+      spanId,
+      Collections.emptyList()
     ));
   }
 
@@ -251,7 +251,7 @@ public final class B3SingleFormat {
     long parentId = tryParse16HexCharacters(b3, pos, endIndex);
     if (parentId == 0L) {
       Platform.get()
-          .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
+        .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
       return 0L;
     }
 

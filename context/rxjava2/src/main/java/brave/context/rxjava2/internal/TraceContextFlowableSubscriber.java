@@ -22,15 +22,15 @@ import org.reactivestreams.Subscription;
 
 /**
  * We implement {@linkplain FlowableSubscriber}, not {@linkplain Subscriber} as the only call site
- * is {@link Flowable#subscribeActual(Subscriber)} which is guaranteed to only take a {@linkplain
+ * is {@code Flowable#subscribeActual(Subscriber)} which is guaranteed to only take a {@linkplain
  * FlowableSubscriber}.
  */
 class TraceContextFlowableSubscriber<T> extends TraceContextSubscriber<T>
-    implements FlowableSubscriber<T>, Subscription {
+  implements FlowableSubscriber<T>, Subscription {
 
   TraceContextFlowableSubscriber(
-      FlowableSubscriber<T> downstream, CurrentTraceContext contextScoper,
-      TraceContext assembled) {
+    FlowableSubscriber<T> downstream, CurrentTraceContext contextScoper,
+    TraceContext assembled) {
     super(downstream, contextScoper, assembled);
   }
 

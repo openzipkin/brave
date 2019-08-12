@@ -64,7 +64,7 @@ public class TracingQueryInterceptor implements QueryInterceptor {
 
   @Override
   public <T extends Resultset> T postProcess(Supplier<String> sql, Query interceptedQuery,
-      T originalResultSet, ServerSession serverSession) {
+    T originalResultSet, ServerSession serverSession) {
     if (interceptingExceptions && originalResultSet == null) {
       // Error case, the span will be finished in TracingExceptionInterceptor.
       return null;
@@ -122,15 +122,15 @@ public class TracingQueryInterceptor implements QueryInterceptor {
 
   @Override
   public QueryInterceptor init(MysqlConnection mysqlConnection, Properties properties,
-      Log log) {
+    Log log) {
     String exceptionInterceptors = properties.getProperty("exceptionInterceptors");
     TracingQueryInterceptor interceptor = new TracingQueryInterceptor();
     interceptor.connection = mysqlConnection;
     interceptor.interceptingExceptions = exceptionInterceptors != null &&
-        exceptionInterceptors.contains(TracingExceptionInterceptor.class.getName());
+      exceptionInterceptors.contains(TracingExceptionInterceptor.class.getName());
     if (!interceptor.interceptingExceptions) {
       log.logWarn("TracingExceptionInterceptor not enabled. It is highly recommended to "
-          + "enable it for error logging to Zipkin.");
+        + "enable it for error logging to Zipkin.");
     }
     return interceptor;
   }

@@ -32,9 +32,9 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
    */
   @Test public void cacheControl() throws Exception {
     server.enqueue(new MockResponse()
-        .addHeader("Content-Type", "text/plain")
-        .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
-        .setBody("Hello"));
+      .addHeader("Content-Type", "text/plain")
+      .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
+      .setBody("Hello"));
 
     // important to use a different path than other tests!
     get(client, "/cached");

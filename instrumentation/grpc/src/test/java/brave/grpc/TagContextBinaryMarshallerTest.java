@@ -93,7 +93,7 @@ public class TagContextBinaryMarshallerTest {
       1, // unsupported field number
     };
     assertThat(binaryMarshaller.parseBytes(contextBytes))
-        .isEqualTo(ImmutableMap.of("method", "foo"));
+      .isEqualTo(ImmutableMap.of("method", "foo"));
   }
 
   @Test

@@ -30,7 +30,7 @@ import javax.jms.Message;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 @JMS2_0 final class TracingJMSProducer extends TracingProducer<JMSProducer, JMSProducer>
-    implements JMSProducer {
+  implements JMSProducer {
 
   static final Getter<JMSProducer, String> GETTER = new Getter<JMSProducer, String>() {
     @Override public String get(JMSProducer carrier, String key) {

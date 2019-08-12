@@ -30,6 +30,7 @@ public abstract class HttpAdapter<Req, Resp> {
    * "/objects/abcd-ff"
    *
    * <p>Conventionally associated with the key "http.path"
+   *
    * @see #route(Object)
    */
   @Nullable public String path(Req request) {

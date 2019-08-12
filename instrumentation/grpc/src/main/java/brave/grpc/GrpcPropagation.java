@@ -33,13 +33,13 @@ final class GrpcPropagation<K> implements Propagation<K> {
    * context as opposed to a census span context
    */
   static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
-      Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
+    Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
 
   /** This stashes the tag context in "extra" so it isn't lost */
   static final Metadata.Key<Map<String, String>> GRPC_TAGS_BIN =
-      Metadata.Key.of("grpc-tags-bin", new TagContextBinaryMarshaller());
+    Metadata.Key.of("grpc-tags-bin", new TagContextBinaryMarshaller());
 
-  /** The census tag key corresponding to the {@link MethodDescriptor#fullMethodName}. */
+  /** The census tag key corresponding to the {@link MethodDescriptor#getFullMethodName()}. */
   static final String RPC_METHOD = "method";
 
   static Propagation.Factory newFactory(Propagation.Factory delegate) {

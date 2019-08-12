@@ -53,18 +53,18 @@ public class TracingConsumerTest extends BaseTracingTest {
 
     // name is correct
     assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("poll");
+      .extracting(Span::name)
+      .containsExactly("poll");
 
     // kind is correct
     assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.CONSUMER);
+      .extracting(Span::kind)
+      .containsExactly(Span.Kind.CONSUMER);
 
     // tags are correct
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
@@ -78,18 +78,18 @@ public class TracingConsumerTest extends BaseTracingTest {
 
     // name is correct
     assertThat(spans)
-        .extracting(Span::name)
-        .containsExactly("poll");
+      .extracting(Span::name)
+      .containsExactly("poll");
 
     // kind is correct
     assertThat(spans)
-        .extracting(Span::kind)
-        .containsExactly(Span.Kind.CONSUMER);
+      .extracting(Span::kind)
+      .containsExactly(Span.Kind.CONSUMER);
 
     // tags are correct
     assertThat(spans)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"));
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
@@ -100,10 +100,10 @@ public class TracingConsumerTest extends BaseTracingTest {
     ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
 
     assertThat(poll)
-        .extracting(ConsumerRecord::headers)
-        .flatExtracting(TracingConsumerTest::lastHeaders)
-        .extracting(Map.Entry::getKey)
-        .contains("X-B3-TraceId", "X-B3-SpanId");
+      .extracting(ConsumerRecord::headers)
+      .flatExtracting(TracingConsumerTest::lastHeaders)
+      .extracting(Map.Entry::getKey)
+      .contains("X-B3-TraceId", "X-B3-SpanId");
   }
 
   @Test
@@ -115,9 +115,9 @@ public class TracingConsumerTest extends BaseTracingTest {
     ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
 
     assertThat(poll)
-        .extracting(ConsumerRecord::headers)
-        .flatExtracting(TracingConsumerTest::lastHeaders)
-        .contains(entry("X-B3-TraceId", TRACE_ID), entry("X-B3-ParentSpanId", SPAN_ID));
+      .extracting(ConsumerRecord::headers)
+      .flatExtracting(TracingConsumerTest::lastHeaders)
+      .contains(entry("X-B3-TraceId", TRACE_ID), entry("X-B3-ParentSpanId", SPAN_ID));
   }
 
   @Test
@@ -141,8 +141,8 @@ public class TracingConsumerTest extends BaseTracingTest {
 
     // only one consumer span reported
     assertThat(spans)
-        .hasSize(1)
-        .flatExtracting(s -> s.tags().entrySet())
-        .containsOnly(entry("kafka.topic", "myTopic"));
+      .hasSize(1)
+      .flatExtracting(s -> s.tags().entrySet())
+      .containsOnly(entry("kafka.topic", "myTopic"));
   }
 }

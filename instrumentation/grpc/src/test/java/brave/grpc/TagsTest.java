@@ -19,7 +19,7 @@ import java.util.Map;
 import org.junit.Test;
 
 import static brave.grpc.GrpcPropagation.extractTags;
-import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TagsTest {
 
@@ -29,9 +29,9 @@ public class TagsTest {
 
     Tags tags = extractTags(extracted);
     assertThat(tags.parentMethod)
-        .isEqualTo("helloworld.Greeter/SayHello");
+      .isEqualTo("helloworld.Greeter/SayHello");
     assertThat(tags.get("method"))
-        .isNull();
+      .isNull();
   }
 
   @Test public void inheritsParentMethod() {
@@ -41,6 +41,6 @@ public class TagsTest {
 
     Tags child = new Tags(parent);
     assertThat(child.parentMethod)
-        .isEqualTo(parent.parentMethod);
+      .isEqualTo(parent.parentMethod);
   }
 }

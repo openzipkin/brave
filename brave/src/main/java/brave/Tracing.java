@@ -193,7 +193,7 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Sets the {@link zipkin2.Span#localEndpoint Endpoint of the local service} being traced.
+     * Sets the {@link zipkin2.Span#localEndpoint() Endpoint of the local service} being traced.
      *
      * @deprecated Use {@link #localServiceName(String)} {@link #localIp(String)} and {@link
      * #localPort(int)}. Will be removed in Brave v6.
@@ -323,8 +323,9 @@ public abstract class Tracing implements Closeable {
      * <h3>Advanced notes</h3>
      *
      * <p>This is named firehose as it can receive data even when spans are not sampled remotely.
-     * For example, {@link FinishedSpanHandler#alwaysSampleLocal()} will generate data for all traced
-     * requests while not affecting headers. This setting is often used for metrics aggregation.
+     * For example, {@link FinishedSpanHandler#alwaysSampleLocal()} will generate data for all
+     * traced requests while not affecting headers. This setting is often used for metrics
+     * aggregation.
      *
      *
      * <p>Your handler can also be a custom span transport. When this is the case, set the {@link
@@ -389,26 +390,26 @@ public abstract class Tracing implements Closeable {
       FinishedSpanHandler zipkinFirehose = FinishedSpanHandler.NOOP;
       if (builder.spanReporter != Reporter.NOOP) {
         zipkinFirehose = new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
-            builder.localServiceName, builder.localIp, builder.localPort);
+          builder.localServiceName, builder.localIp, builder.localPort);
         finishedSpanHandlers = new ArrayList<>(finishedSpanHandlers);
         finishedSpanHandlers.add(zipkinFirehose);
       }
 
       // Compose the handlers into one which honors Tracing.noop
       FinishedSpanHandler finishedSpanHandler =
-          FinishedSpanHandlers.noopAware(FinishedSpanHandlers.compose(finishedSpanHandlers), noop);
+        FinishedSpanHandlers.noopAware(FinishedSpanHandlers.compose(finishedSpanHandlers), noop);
 
       this.tracer = new Tracer(
-          builder.clock,
-          builder.propagationFactory,
-          finishedSpanHandler,
-          new PendingSpans(clock, zipkinFirehose, noop),
-          builder.sampler,
-          builder.currentTraceContext,
-          builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
-          builder.supportsJoin && propagationFactory.supportsJoin(),
-          finishedSpanHandler.alwaysSampleLocal(),
-          noop
+        builder.clock,
+        builder.propagationFactory,
+        finishedSpanHandler,
+        new PendingSpans(clock, zipkinFirehose, noop),
+        builder.sampler,
+        builder.currentTraceContext,
+        builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
+        builder.supportsJoin && propagationFactory.supportsJoin(),
+        finishedSpanHandler.alwaysSampleLocal(),
+        noop
       );
       maybeSetCurrent();
     }

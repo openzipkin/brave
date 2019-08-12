@@ -80,22 +80,22 @@ public class ITKafkaStreamsTracing {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Stream span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Stream span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
   };
   Tracing tracing = Tracing.newBuilder()
-      .localServiceName("streams-app")
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .propagationFactory(
-          ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
-      .spanReporter(spans::add)
-      .build();
+    .localServiceName("streams-app")
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .propagationFactory(
+      ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
+    .spanReporter(spans::add)
+    .build();
   KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
   Producer<String, String> producer;
   Consumer<String, String> consumer;
@@ -133,7 +133,7 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_span_from_stream_input_topic_using_kafka_client_supplier()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
@@ -142,7 +142,7 @@ public class ITKafkaStreamsTracing {
     Topology topology = builder.build();
 
     KafkaStreams streams =
-        new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier());
+      new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier());
 
     producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
@@ -190,24 +190,24 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
-        kafkaStreamsTracing.processor(
-            "forward-1",
-            new AbstractProcessor<String, String>() {
-              @Override
-              public void process(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-              }
-            });
+      kafkaStreamsTracing.processor(
+        "forward-1",
+        new AbstractProcessor<String, String>() {
+          @Override
+          public void process(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .process(processorSupplier);
+      .process(processorSupplier);
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -229,14 +229,14 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_predicate_true()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.filter("filter-1", (key, value) -> true))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(kafkaStreamsTracing.filter("filter-1", (key, value) -> true))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -261,14 +261,14 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_predicate_false()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.filter("filter-2", (key, value) -> false))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(kafkaStreamsTracing.filter("filter-2", (key, value) -> false))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -292,23 +292,24 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_and_propagate_extra_from_stream_with_multi_processor()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
-          brave.Span span = tracing.tracer().currentSpan();
-          String userId = ExtraFieldPropagation.get(span.context(), "user-id");
-          assertThat(userId).isEqualTo("user1");
-          ExtraFieldPropagation.set(span.context(), "user-id", "user2");
-        }))
-        .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
-          String userId = ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
-          assertThat(userId).isEqualTo("user2");
-        }))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
+        brave.Span span = tracing.tracer().currentSpan();
+        String userId = ExtraFieldPropagation.get(span.context(), "user-id");
+        assertThat(userId).isEqualTo("user1");
+        ExtraFieldPropagation.set(span.context(), "user-id", "user2");
+      }))
+      .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
+        String userId =
+          ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
+        assertThat(userId).isEqualTo("user2");
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -320,7 +321,8 @@ public class ITKafkaStreamsTracing {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanTransform1 = takeSpan(), spanTransform2 = takeSpan(), spanOutput = takeSpan();
+    Span spanInput = takeSpan(), spanTransform1 = takeSpan(), spanTransform2 = takeSpan(),
+      spanOutput = takeSpan();
 
     assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
     assertThat(spanInput.traceId()).isEqualTo(spanTransform1.traceId());
@@ -335,14 +337,14 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -366,14 +368,14 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.filterNot("filterNot-2", (key, value) -> false))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(kafkaStreamsTracing.filterNot("filterNot-2", (key, value) -> false))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -398,15 +400,15 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markAsFiltered("filter-1", (key, value) -> true))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.markAsFiltered("filter-1", (key, value) -> true))
+      .filterNot((k, v) -> Objects.isNull(v))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -431,15 +433,15 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markAsFiltered("filter-2", (key, value) -> false))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.markAsFiltered("filter-2", (key, value) -> false))
+      .filterNot((k, v) -> Objects.isNull(v))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -463,15 +465,15 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.markAsNotFiltered("filterNot-1", (key, value) -> true))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.markAsNotFiltered("filterNot-1", (key, value) -> true))
+      .filterNot((k, v) -> Objects.isNull(v))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -495,16 +497,16 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false()
-      throws Exception {
+    throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(
-            kafkaStreamsTracing.markAsNotFiltered("filterNot-2", (key, value) -> false))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(
+        kafkaStreamsTracing.markAsNotFiltered("filterNot-2", (key, value) -> false))
+      .filterNot((k, v) -> Objects.isNull(v))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -536,15 +538,15 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
-          try {
-            Thread.sleep(100L);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          tracing.tracer().currentSpan().annotate(now, "test");
-        }))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        tracing.tracer().currentSpan().annotate(now, "test");
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -573,8 +575,8 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.mark("mark-1"))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.mark("mark-1"))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -601,13 +603,13 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .process(kafkaStreamsTracing.foreach("foreach-1", (key, value) -> {
-          try {
-            Thread.sleep(100L);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }));
+      .process(kafkaStreamsTracing.foreach("foreach-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -629,26 +631,26 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_and_tracing_processor()
-      throws Exception {
+    throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
-        kafkaStreamsTracing.processor(
-            "forward-1",
-            new AbstractProcessor<String, String>() {
-              @Override
-              public void process(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-              }
-            });
+      kafkaStreamsTracing.processor(
+        "forward-1",
+        new AbstractProcessor<String, String>() {
+          @Override
+          public void process(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .process(processorSupplier);
+      .process(processorSupplier);
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
@@ -662,7 +664,7 @@ public class ITKafkaStreamsTracing {
 
     assertThat(spanProcessor.tags().size()).isEqualTo(2);
     assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-        "kafka.streams.task.id");
+      "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
@@ -671,38 +673,38 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
-        kafkaStreamsTracing.transformer(
-            "transformer-1",
-            new Transformer<String, String, KeyValue<String, String>>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.transformer(
+        "transformer-1",
+        new Transformer<String, String, KeyValue<String, String>>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public KeyValue<String, String> transform(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return KeyValue.pair(key, value);
-              }
+          @Override
+          public KeyValue<String, String> transform(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return KeyValue.pair(key, value);
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -726,40 +728,40 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_flattransformer()
-      throws Exception {
+    throws Exception {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
-        kafkaStreamsTracing.transformer(
-            "double-transformer-1",
-            new Transformer<String, String, Iterable<KeyValue<String, String>>>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.transformer(
+        "double-transformer-1",
+        new Transformer<String, String, Iterable<KeyValue<String, String>>>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public Iterable<KeyValue<String, String>> transform(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return Arrays.asList(KeyValue.pair(key, value), KeyValue.pair(key, value));
-              }
+          @Override
+          public Iterable<KeyValue<String, String>> transform(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return Arrays.asList(KeyValue.pair(key, value), KeyValue.pair(key, value));
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .flatTransform(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .flatTransform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -777,7 +779,7 @@ public class ITKafkaStreamsTracing {
     assertThat(inputSpan.parentId()).isNull();
     assertThat(spanProcessor.tags().size()).isEqualTo(2);
     assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-        "kafka.streams.task.id");
+      "kafka.streams.task.id");
     assertThat(spanProcessor.traceId()).isEqualTo(inputSpan.traceId());
     assertThat(outputSpan1.traceId()).isEqualTo(spanProcessor.traceId());
     assertThat(outputSpan2.traceId()).isEqualTo(spanProcessor.traceId());
@@ -788,40 +790,40 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_transformer()
-      throws Exception {
+    throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
-        kafkaStreamsTracing.transformer(
-            "transformer-1",
-            new Transformer<String, String, KeyValue<String, String>>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.transformer(
+        "transformer-1",
+        new Transformer<String, String, KeyValue<String, String>>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public KeyValue<String, String> transform(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return KeyValue.pair(key, value);
-              }
+          @Override
+          public KeyValue<String, String> transform(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return KeyValue.pair(key, value);
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
@@ -835,7 +837,7 @@ public class ITKafkaStreamsTracing {
 
     assertThat(spanProcessor.tags().size()).isEqualTo(2);
     assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-        "kafka.streams.task.id");
+      "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
@@ -844,38 +846,38 @@ public class ITKafkaStreamsTracing {
   @Test
   public void should_create_spans_from_stream_with_tracing_valueTransformer() throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
-        kafkaStreamsTracing.valueTransformer(
-            "transformer-1",
-            new ValueTransformer<String, String>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.valueTransformer(
+        "transformer-1",
+        new ValueTransformer<String, String>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public String transform(String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return value;
-              }
+          @Override
+          public String transform(String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return value;
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -904,15 +906,15 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transform(kafkaStreamsTracing.map("map-1", (key, value) -> {
-          try {
-            Thread.sleep(100L);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          return KeyValue.pair(key, value);
-        }))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transform(kafkaStreamsTracing.map("map-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return KeyValue.pair(key, value);
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -941,15 +943,15 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", value -> {
-          try {
-            Thread.sleep(100L);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          return value;
-        }))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", value -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return value;
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -978,15 +980,15 @@ public class ITKafkaStreamsTracing {
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", (key, value) -> {
-          try {
-            Thread.sleep(100L);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          return value;
-        }))
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return value;
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -1010,40 +1012,40 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer()
-      throws Exception {
+    throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
-        kafkaStreamsTracing.valueTransformer(
-            "transformer-1",
-            new ValueTransformer<String, String>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.valueTransformer(
+        "transformer-1",
+        new ValueTransformer<String, String>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public String transform(String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return value;
-              }
+          @Override
+          public String transform(String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return value;
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
@@ -1057,7 +1059,7 @@ public class ITKafkaStreamsTracing {
 
     assertThat(spanProcessor.tags().size()).isEqualTo(2);
     assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-        "kafka.streams.task.id");
+      "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
@@ -1065,40 +1067,40 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey()
-      throws Exception {
+    throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
-        kafkaStreamsTracing.valueTransformerWithKey(
-            "transformer-1",
-            new ValueTransformerWithKey<String, String, String>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.valueTransformerWithKey(
+        "transformer-1",
+        new ValueTransformerWithKey<String, String, String>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public String transform(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return value;
-              }
+          @Override
+          public String transform(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return value;
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -1122,40 +1124,40 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey()
-      throws Exception {
+    throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
-        kafkaStreamsTracing.valueTransformerWithKey(
-            "transformer-1",
-            new ValueTransformerWithKey<String, String, String>() {
-              ProcessorContext context;
+      kafkaStreamsTracing.valueTransformerWithKey(
+        "transformer-1",
+        new ValueTransformerWithKey<String, String, String>() {
+          ProcessorContext context;
 
-              @Override
-              public void init(ProcessorContext context) {
-                this.context = context;
-              }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-              @Override
-              public String transform(String key, String value) {
-                try {
-                  Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-                return value;
-              }
+          @Override
+          public String transform(String key, String value) {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            return value;
+          }
 
-              @Override
-              public void close() {
-              }
-            });
+          @Override
+          public void close() {
+          }
+        });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-        .transformValues(transformerSupplier)
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+      .transformValues(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
@@ -1169,7 +1171,7 @@ public class ITKafkaStreamsTracing {
 
     assertThat(spanProcessor.tags().size()).isEqualTo(2);
     assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-        "kafka.streams.task.id");
+      "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
@@ -1191,11 +1193,11 @@ public class ITKafkaStreamsTracing {
   Properties streamsProperties() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-        kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+      kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-        Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+      Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     return properties;
   }
 
@@ -1227,8 +1229,8 @@ public class ITKafkaStreamsTracing {
   Span takeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Stream span was not reported")
-        .isNotNull();
+      .withFailMessage("Stream span was not reported")
+      .isNotNull();
     return result;
   }
 }

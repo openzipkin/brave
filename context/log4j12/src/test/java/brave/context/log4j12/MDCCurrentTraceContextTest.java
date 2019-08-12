@@ -53,22 +53,22 @@ public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
       assertThat(MDC.get("traceId"))
-          .isEqualTo(context.traceIdString());
+        .isEqualTo(context.traceIdString());
       assertThat(MDC.get("parentId"))
-          .isEqualTo(context.parentIdString());
+        .isEqualTo(context.parentIdString());
       assertThat(MDC.get("spanId"))
-          .isEqualTo(context.spanIdString());
+        .isEqualTo(context.spanIdString());
       assertThat(MDC.get("sampled"))
-          .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
+        .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
     } else {
       assertThat(MDC.get("traceId"))
-          .isNull();
+        .isNull();
       assertThat(MDC.get("parentId"))
-          .isNull();
+        .isNull();
       assertThat(MDC.get("spanId"))
-          .isNull();
+        .isNull();
       assertThat(MDC.get("sampled"))
-          .isNull();
+        .isNull();
     }
   }
 }

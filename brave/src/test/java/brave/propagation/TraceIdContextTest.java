@@ -22,42 +22,42 @@ public class TraceIdContextTest {
 
   @Test public void canUsePrimitiveOverloads_true() {
     TraceIdContext primitives = base.toBuilder()
-        .sampled(true)
-        .debug(true)
-        .build();
+      .sampled(true)
+      .debug(true)
+      .build();
 
     TraceIdContext objects = base.toBuilder()
-        .sampled(Boolean.TRUE)
-        .debug(Boolean.TRUE)
-        .build();
+      .sampled(Boolean.TRUE)
+      .debug(Boolean.TRUE)
+      .build();
 
     assertThat(primitives)
-        .isEqualToComparingFieldByField(objects);
+      .isEqualToComparingFieldByField(objects);
     assertThat(primitives.debug())
-        .isTrue();
+      .isTrue();
     assertThat(primitives.sampled())
-        .isTrue();
+      .isTrue();
   }
 
   @Test public void canUsePrimitiveOverloads_false() {
     base = base.toBuilder().debug(true).build();
 
     TraceIdContext primitives = base.toBuilder()
-        .sampled(false)
-        .debug(false)
-        .build();
+      .sampled(false)
+      .debug(false)
+      .build();
 
     TraceIdContext objects = base.toBuilder()
-        .sampled(Boolean.FALSE)
-        .debug(Boolean.FALSE)
-        .build();
+      .sampled(Boolean.FALSE)
+      .debug(Boolean.FALSE)
+      .build();
 
     assertThat(primitives)
-        .isEqualToComparingFieldByField(objects);
+      .isEqualToComparingFieldByField(objects);
     assertThat(primitives.debug())
-        .isFalse();
+      .isFalse();
     assertThat(primitives.sampled())
-        .isFalse();
+      .isFalse();
   }
 
   @Test public void canSetSampledNull() {
@@ -66,28 +66,28 @@ public class TraceIdContextTest {
     TraceIdContext objects = base.toBuilder().sampled(null).build();
 
     assertThat(objects.debug())
-        .isFalse();
+      .isFalse();
     assertThat(objects.sampled())
-        .isNull();
+      .isNull();
   }
 
   @Test public void compareUnequalIds() {
     assertThat(base)
-        .isNotEqualTo(base.toBuilder().traceIdHigh(222L).build());
+      .isNotEqualTo(base.toBuilder().traceIdHigh(222L).build());
   }
 
   @Test public void compareEqualIds() {
     assertThat(base)
-        .isEqualTo(TraceIdContext.newBuilder().traceId(333L).build());
+      .isEqualTo(TraceIdContext.newBuilder().traceId(333L).build());
   }
 
   @Test public void testToString_lo() {
     assertThat(base.toString())
-        .isEqualTo("000000000000014d");
+      .isEqualTo("000000000000014d");
   }
 
   @Test public void testToString() {
     assertThat(base.toBuilder().traceIdHigh(222L).build().toString())
-        .isEqualTo("00000000000000de000000000000014d");
+      .isEqualTo("00000000000000de000000000000014d");
   }
 }

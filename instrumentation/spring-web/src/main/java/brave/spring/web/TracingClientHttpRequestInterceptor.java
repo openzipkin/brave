@@ -59,7 +59,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   }
 
   @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,
-      ClientHttpRequestExecution execution) throws IOException {
+    ClientHttpRequestExecution execution) throws IOException {
     Span span = handler.handleSend(injector, request.getHeaders(), request);
     ClientHttpResponse response = null;
     Throwable error = null;
@@ -74,7 +74,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   }
 
   static final class HttpAdapter
-      extends brave.http.HttpClientAdapter<HttpRequest, ClientHttpResponse> {
+    extends brave.http.HttpClientAdapter<HttpRequest, ClientHttpResponse> {
 
     @Override public String method(HttpRequest request) {
       return request.getMethod().name();

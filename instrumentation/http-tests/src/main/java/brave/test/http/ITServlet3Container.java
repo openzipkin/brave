@@ -63,7 +63,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   static class ForwardServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-        throws ServletException, IOException {
+      throws ServletException, IOException {
       req.getServletContext().getRequestDispatcher("/foo").forward(req, resp);
     }
   }
@@ -82,15 +82,15 @@ public abstract class ITServlet3Container extends ITServlet25Container {
       AsyncContext ctx = req.startAsync();
       ctx.setTimeout(1);
       ctx.start(
-          () -> {
-            try {
-              Thread.sleep(10L);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            } finally {
-              ctx.complete();
-            }
-          });
+        () -> {
+          try {
+            Thread.sleep(10L);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          } finally {
+            ctx.complete();
+          }
+        });
     }
   }
 

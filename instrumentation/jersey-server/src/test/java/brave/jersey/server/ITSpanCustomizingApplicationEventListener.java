@@ -40,8 +40,8 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("jaxrs.resource.class", "TestResource")
-        .containsEntry("jaxrs.resource.method", "foo");
+      .containsEntry("jaxrs.resource.class", "TestResource")
+      .containsEntry("jaxrs.resource.method", "foo");
   }
 
   /** Tests that the span propagates between under asynchronous callbacks managed by jersey. */
@@ -60,7 +60,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
 
     // add the underlying servlet tracing filter which the event listener decorates with more tags
     Dynamic filterRegistration =
-        handler.getServletContext().addFilter("tracingFilter", TracingFilter.create(httpTracing));
+      handler.getServletContext().addFilter("tracingFilter", TracingFilter.create(httpTracing));
     filterRegistration.setAsyncSupported(true);
     // isMatchAfter=true is required for async tests to pass!
     filterRegistration.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");

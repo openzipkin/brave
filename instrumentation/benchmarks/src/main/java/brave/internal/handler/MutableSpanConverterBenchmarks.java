@@ -44,7 +44,7 @@ import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 @Threads(1)
 public class MutableSpanConverterBenchmarks {
   final MutableSpanConverter converter =
-      new MutableSpanConverter(new ErrorParser(), "unknown", "127.0.0.1", 0);
+    new MutableSpanConverter(new ErrorParser(), "unknown", "127.0.0.1", 0);
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 
@@ -67,9 +67,9 @@ public class MutableSpanConverterBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + MutableSpanConverterBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .addProfiler("gc")
+      .include(".*" + MutableSpanConverterBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

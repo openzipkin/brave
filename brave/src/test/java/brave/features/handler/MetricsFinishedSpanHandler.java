@@ -62,8 +62,8 @@ public class MetricsFinishedSpanHandler extends FinishedSpanHandler {
 
     // Look or create up a timer that records duration against
     registry.timer(metricName, Arrays.asList(nameTag, errorTag))
-        // Timestamps are derived from a function of clock time and nanos offset
-        .record(span.finishTimestamp() - span.startTimestamp(), TimeUnit.MICROSECONDS);
+      // Timestamps are derived from a function of clock time and nanos offset
+      .record(span.finishTimestamp() - span.startTimestamp(), TimeUnit.MICROSECONDS);
     return true;
   }
 
@@ -71,7 +71,7 @@ public class MetricsFinishedSpanHandler extends FinishedSpanHandler {
     if (exception == null) return EXCEPTION_NONE;
     String simpleName = exception.getClass().getSimpleName();
     return Tag.of("exception",
-        // check hasText as the class could be anonymous
-        StringUtils.hasText(simpleName) ? simpleName : exception.getClass().getName());
+      // check hasText as the class could be anonymous
+      StringUtils.hasText(simpleName) ? simpleName : exception.getClass().getName());
   }
 }

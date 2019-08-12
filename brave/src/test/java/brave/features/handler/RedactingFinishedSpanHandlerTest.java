@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 /** One reason {@link brave.handler.MutableSpan} is mutable is to support redaction */
 public class RedactingFinishedSpanHandlerTest {
-  static final Pattern SSN = Pattern.compile("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}");
+  static final Pattern SSN = Pattern.compile("[0-9]{3}-[0-9]{2}-[0-9]{4}");
 
   enum ValueRedactor implements TagUpdater, AnnotationUpdater {
     INSTANCE;
@@ -61,15 +61,15 @@ public class RedactingFinishedSpanHandlerTest {
 
   List<Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          span.forEachTag(ValueRedactor.INSTANCE);
-          span.forEachAnnotation(ValueRedactor.INSTANCE);
-          return true;
-        }
-      })
-      .spanReporter(spans::add)
-      .build();
+    .addFinishedSpanHandler(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        span.forEachTag(ValueRedactor.INSTANCE);
+        span.forEachAnnotation(ValueRedactor.INSTANCE);
+        return true;
+      }
+    })
+    .spanReporter(spans::add)
+    .build();
 
   @After public void close() {
     tracing.close();
@@ -87,12 +87,12 @@ public class RedactingFinishedSpanHandlerTest {
     }
 
     assertThat(spans.get(0).tags()).containsExactly(
-        entry("a", "1"),
-        // SSN tag was nuked
-        entry("c", "3")
+      entry("a", "1"),
+      // SSN tag was nuked
+      entry("c", "3")
     );
     assertThat(spans.get(0).annotations()).flatExtracting(Annotation::value).containsExactly(
-        "SSN=xxx-xx-xxxx"
+      "SSN=xxx-xx-xxxx"
     );
   }
 }

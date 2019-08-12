@@ -29,7 +29,7 @@ class TraceContextSubscriber<T> implements Subscriber<T> {
   boolean done;
 
   TraceContextSubscriber(
-      Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+    Subscriber<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

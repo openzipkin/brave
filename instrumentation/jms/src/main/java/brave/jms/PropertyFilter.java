@@ -55,7 +55,7 @@ enum PropertyFilter {
   abstract void filterProperties(Object message, Set<String> namesToClear);
 
   static void doFilterProperties(
-      Message message, Set<String> namesToClear, ArrayList<Object> retainedProperties
+    Message message, Set<String> namesToClear, ArrayList<Object> retainedProperties
   ) throws JMSException {
     Enumeration<?> names = message.getPropertyNames();
     while (names.hasMoreElements()) {
@@ -71,14 +71,14 @@ enum PropertyFilter {
     message.clearProperties();
     for (int i = 0, length = retainedProperties.size(); i < length; i += 2) {
       message.setObjectProperty(
-          retainedProperties.get(i).toString(),
-          retainedProperties.get(i + 1)
+        retainedProperties.get(i).toString(),
+        retainedProperties.get(i + 1)
       );
     }
   }
 
   static void doFilterProperties(JMSProducer producer, Set<String> namesToClear,
-      ArrayList<Object> retainedProperties) {
+    ArrayList<Object> retainedProperties) {
     boolean filtered = false;
     for (String name : producer.getPropertyNames()) {
       Object value = producer.getObjectProperty(name);
@@ -97,8 +97,8 @@ enum PropertyFilter {
     producer.clearProperties();
     for (int i = 0, length = retainedProperties.size(); i < length; i += 2) {
       producer.setProperty(
-          retainedProperties.get(i).toString(),
-          retainedProperties.get(i + 1)
+        retainedProperties.get(i).toString(),
+        retainedProperties.get(i + 1)
       );
     }
   }

@@ -54,13 +54,13 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-        .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-        .spanReporter(spans::add)
-        .sampler(new Sampler() {
-          @Override public boolean isSampled(long traceId) {
-            throw new AssertionError(); // in this case, we aren't expecting a fallback
-          }
-        }).build());
+      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+      .spanReporter(spans::add)
+      .sampler(new Sampler() {
+        @Override public boolean isSampled(long traceId) {
+          throw new AssertionError(); // in this case, we aren't expecting a fallback
+        }
+      }).build());
     spans.clear();
   }
 

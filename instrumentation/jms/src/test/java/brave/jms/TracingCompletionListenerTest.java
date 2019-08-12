@@ -29,7 +29,7 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-        TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, current);
 
     assertThat(tracingCompletionListener).isSameAs(delegate);
   }
@@ -39,7 +39,7 @@ public class TracingCompletionListenerTest extends JmsTest {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
-        TracingCompletionListener.create(mock(CompletionListener.class), span, current);
+      TracingCompletionListener.create(mock(CompletionListener.class), span, current);
     tracingCompletionListener.onCompletion(message);
 
     assertThat(takeSpan()).isNotNull();
@@ -50,11 +50,11 @@ public class TracingCompletionListenerTest extends JmsTest {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
-        TracingCompletionListener.create(mock(CompletionListener.class), span, current);
+      TracingCompletionListener.create(mock(CompletionListener.class), span, current);
     tracingCompletionListener.onException(message, new Exception("Test exception"));
 
     assertThat(takeSpan().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 
   @Test public void on_completion_should_forward_then_finish_span() throws Exception {
@@ -63,7 +63,7 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-        TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, current);
     tracingCompletionListener.onCompletion(message);
 
     verify(delegate).onCompletion(message);
@@ -95,12 +95,12 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-        TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, current);
     Exception e = new Exception("Test exception");
     tracingCompletionListener.onException(message, e);
 
     verify(delegate).onException(message, e);
     assertThat(takeSpan().tags())
-        .containsEntry("error", "Test exception");
+      .containsEntry("error", "Test exception");
   }
 }

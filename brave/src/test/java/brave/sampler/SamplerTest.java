@@ -51,7 +51,7 @@ public abstract class SamplerTest {
     long passed = new Random().longs(INPUT_SIZE).parallel().filter(sampler::isSampled).count();
 
     assertThat(passed)
-        .isCloseTo((long) (INPUT_SIZE * sampleRate), expectedErrorRate());
+      .isCloseTo((long) (INPUT_SIZE * sampleRate), expectedErrorRate());
   }
 
   @Test
@@ -66,7 +66,7 @@ public abstract class SamplerTest {
     final Sampler sampler = newSampler(1.0f);
 
     assertThat(new Random().longs(INPUT_SIZE).filter(sampler::isSampled).count()).isEqualTo(
-        INPUT_SIZE);
+      INPUT_SIZE);
   }
 
   @Test

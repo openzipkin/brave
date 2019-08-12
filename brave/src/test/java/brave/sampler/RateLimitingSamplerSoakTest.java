@@ -79,9 +79,9 @@ public class RateLimitingSamplerSoakTest {
     service.awaitTermination(1, TimeUnit.SECONDS);
 
     assertThat(passed.get())
-        .isCloseTo(reservoir, withPercentage(0.01)); // accomodates flakes in CI
+      .isCloseTo(reservoir, withPercentage(0.01)); // accomodates flakes in CI
     assumeThat(hitLastDecisecond.get())
-        .withFailMessage("ran out of samples before the end of the second")
-        .isTrue();
+      .withFailMessage("ran out of samples before the end of the second")
+      .isTrue();
   }
 }

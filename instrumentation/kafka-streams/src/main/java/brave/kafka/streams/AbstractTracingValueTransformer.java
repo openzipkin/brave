@@ -17,7 +17,7 @@ import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
 abstract class AbstractTracingValueTransformer<V, VR> implements
-    ValueTransformer<V, VR> {
+  ValueTransformer<V, VR> {
 
   @Override public void init(ProcessorContext context) {
   }

@@ -41,7 +41,8 @@ public class ContainerParser {
    * Invoked prior to request invocation during {@link ContainerRequestFilter#filter(ContainerRequestContext)}
    * where the resource info was injected from context.
    *
-   * <p>Adds the tags {@link #RESOURCE_CLASS} and {@link #RESOURCE_METHOD}. Override or use {@link #NOOP}
+   * <p>Adds the tags {@link #RESOURCE_CLASS} and {@link #RESOURCE_METHOD}. Override or use {@link
+   * #NOOP}
    * to change this behavior.
    */
   protected void resourceInfo(ResourceInfo resourceInfo, SpanCustomizer customizer) {

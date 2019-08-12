@@ -14,7 +14,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.zipkin.brave</groupId>
@@ -74,7 +76,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- override to set exclusions per-project -->
-    <errorprone.args />
+    <errorprone.args/>
     <errorprone.version>2.3.3</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
@@ -108,7 +110,7 @@
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.12</junit.version>
-    <assertj.version>3.12.2</assertj.version>
+    <assertj.version>3.13.2</assertj.version>
     <powermock.version>2.0.2</powermock.version>
     <!-- Up to v2.27.0 of mockito has a conflict https://github.com/mockito/mockito/issues/1606
     java.lang.NoSuchMethodError: net.bytebuddy.dynamic.loading.MultipleParentClassLoader$Builder.appendMostSpecific(Ljava/util/Collection;)Lnet/bytebuddy/dynamic/loading/MultipleParentClassLoader$Builder
@@ -551,7 +553,8 @@
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
+            </java.util.logging.manager>
           </systemPropertyVariables>
         </configuration>
       </plugin>
@@ -562,7 +565,8 @@
           <!-- Try to prevent flakes in CI -->
           <reuseForks>false</reuseForks>
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
+            </java.util.logging.manager>
           </systemPropertyVariables>
         </configuration>
       </plugin>

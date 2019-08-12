@@ -110,7 +110,7 @@ public class PropertyFilterTest {
     PropertyFilter.JMS_PRODUCER.filterProperties(producer, Collections.singleton("b3"));
 
     assertThat(producer.message)
-        .isEqualToIgnoringGivenFields(newMessageWithAllTypes(), "processAsExpired");
+      .isEqualToIgnoringGivenFields(newMessageWithAllTypes(), "processAsExpired");
   }
 
   @Test public void filterProperties_producer_doesntPreventClassUnloading() {

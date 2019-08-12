@@ -25,7 +25,7 @@ import javax.jms.Message;
  */
 @JMS2_0 final class TracingCompletionListener implements CompletionListener {
   static CompletionListener create(CompletionListener delegate, Span span,
-      CurrentTraceContext current) {
+    CurrentTraceContext current) {
     if (span.isNoop()) return delegate; // save allocation overhead
     return new TracingCompletionListener(delegate, span, current);
   }

@@ -89,8 +89,8 @@ public class PredefinedPropagationFields extends PropagationFields {
   void checkSameFields(PredefinedPropagationFields predefinedParent) {
     if (!Arrays.equals(fieldNames, predefinedParent.fieldNames)) {
       throw new IllegalStateException(
-          String.format("Mixed name configuration unsupported: found %s, expected %s",
-              Arrays.toString(fieldNames), Arrays.toString(predefinedParent.fieldNames))
+        String.format("Mixed name configuration unsupported: found %s, expected %s",
+          Arrays.toString(fieldNames), Arrays.toString(predefinedParent.fieldNames))
       );
     }
   }

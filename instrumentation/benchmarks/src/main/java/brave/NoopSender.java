@@ -25,9 +25,6 @@ final class NoopSender extends Sender {
   final Encoding encoding = Encoding.JSON;
   final BytesMessageEncoder messageEncoder = BytesMessageEncoder.forEncoding(encoding);
 
-  /** close is typically called from a different thread */
-  volatile boolean closeCalled;
-
   @Override public int messageMaxBytes() {
     return 1024;
   }
@@ -54,7 +51,6 @@ final class NoopSender extends Sender {
   }
 
   @Override public void close() {
-    closeCalled = true;
   }
 
   @Override public String toString() {

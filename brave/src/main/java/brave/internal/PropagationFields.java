@@ -47,7 +47,7 @@ public abstract class PropagationFields {
         return true;
       }
       return this.traceId == traceId
-          && this.spanId == spanId;
+        && this.spanId == spanId;
     }
   }
 
@@ -57,7 +57,7 @@ public abstract class PropagationFields {
 
   /** Returns the value of the field with the specified key or null if not available */
   public static String get(TraceContext context, String name,
-      Class<? extends PropagationFields> type) {
+    Class<? extends PropagationFields> type) {
     if (context == null) throw new NullPointerException("context == null");
     if (name == null) throw new NullPointerException("name == null");
     PropagationFields fields = context.findExtra(type);
@@ -66,7 +66,7 @@ public abstract class PropagationFields {
 
   /** Replaces the value of the field with the specified key, ignoring if not a permitted field */
   public static void put(TraceContext context, String name, String value,
-      Class<? extends PropagationFields> type) {
+    Class<? extends PropagationFields> type) {
     if (context == null) throw new NullPointerException("context == null");
     if (name == null) throw new NullPointerException("name == null");
     if (value == null) throw new NullPointerException("value == null");

@@ -30,11 +30,12 @@ public class PendingSpansClassLoaderTest {
 
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          return true;
-        }
-      }, new AtomicBoolean());
+      PendingSpans pendingSpans =
+        new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            return true;
+          }
+        }, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);
@@ -48,11 +49,12 @@ public class PendingSpansClassLoaderTest {
 
   static class ErrorReporting implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans = new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          throw new RuntimeException();
-        }
-      }, new AtomicBoolean());
+      PendingSpans pendingSpans =
+        new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
+          @Override public boolean handle(TraceContext context, MutableSpan span) {
+            throw new RuntimeException();
+          }
+        }, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);

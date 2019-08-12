@@ -27,7 +27,7 @@ final class TraceContextConnectableFlowable<T> extends ConnectableFlowable<T> {
   final TraceContext assembled;
 
   TraceContextConnectableFlowable(
-      ConnectableFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    ConnectableFlowable<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

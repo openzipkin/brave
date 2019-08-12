@@ -28,9 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** This ensures all filters can be injected, supplied with only {@linkplain HttpTracing}. */
 public class InjectionTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(Reporter.NOOP)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(Reporter.NOOP)
+    .build();
 
   Injector injector = Guice.createInjector(new AbstractModule() {
     @Override protected void configure() {
@@ -44,15 +44,15 @@ public class InjectionTest {
 
   @Test public void tracingClientFilter() {
     assertThat(injector.getInstance(TracingClientFilter.class))
-        .isNotNull();
+      .isNotNull();
   }
 
   @Test public void spanCustomizingContainerFilter() {
     SpanCustomizingContainerFilter filter =
-        injector.getInstance(SpanCustomizingContainerFilter.class);
+      injector.getInstance(SpanCustomizingContainerFilter.class);
 
     assertThat(filter.parser.getClass())
-        .isSameAs(ContainerParser.class);
+      .isSameAs(ContainerParser.class);
   }
 
   @Test public void spanCustomizingContainerFilter_resource() {
@@ -63,6 +63,6 @@ public class InjectionTest {
     }).getInstance(SpanCustomizingContainerFilter.class);
 
     assertThat(filter.parser)
-        .isSameAs(ContainerParser.NOOP);
+      .isSameAs(ContainerParser.NOOP);
   }
 }

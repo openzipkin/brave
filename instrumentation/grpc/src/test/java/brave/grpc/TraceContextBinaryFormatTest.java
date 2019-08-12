@@ -25,25 +25,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class TraceContextBinaryFormatTest {
   TraceContext context = TraceContext.newBuilder()
-      .traceIdHigh(Long.MAX_VALUE).traceId(Long.MIN_VALUE)
-      .spanId(-1)
-      .sampled(true)
-      .build();
+    .traceIdHigh(Long.MAX_VALUE).traceId(Long.MIN_VALUE)
+    .spanId(-1)
+    .sampled(true)
+    .build();
 
   byte[] contextBytes = {
-      0, // version
-      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // trace ID
-      1, -1, -1, -1, -1, -1, -1, -1, -1, // span ID
-      2, 1 // sampled
+    0, // version
+    0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // trace ID
+    1, -1, -1, -1, -1, -1, -1, -1, -1, // span ID
+    2, 1 // sampled
   };
 
   @Test public void roundtrip() {
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
     assertThat(serialized)
-        .containsExactly(contextBytes);
+      .containsExactly(contextBytes);
 
     assertThat(TraceContextBinaryFormat.parseBytes(serialized, null))
-        .isEqualTo(context);
+      .isEqualTo(context);
   }
 
   @Test public void roundtrip_unsampled() {
@@ -52,10 +52,10 @@ public class TraceContextBinaryFormatTest {
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
     contextBytes[contextBytes.length - 1] = 0; // unsampled
     assertThat(serialized)
-        .containsExactly(contextBytes);
+      .containsExactly(contextBytes);
 
     assertThat(TraceContextBinaryFormat.parseBytes(serialized, null))
-        .isEqualTo(context);
+      .isEqualTo(context);
   }
 
   @Test public void roundtrip_tags() {
@@ -64,86 +64,86 @@ public class TraceContextBinaryFormatTest {
 
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
     assertThat(serialized)
-        .containsExactly(contextBytes);
+      .containsExactly(contextBytes);
 
     assertThat(TraceContextBinaryFormat.parseBytes(serialized, tags))
-        .isEqualTo(context);
+      .isEqualTo(context);
   }
 
   @Test public void parseBytes_empty_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[0], null))
-        .isNull();
+      .isNull();
   }
 
   @Test public void parseBytes_unsupportedVersionId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        1, // bad version
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        2, 1
+      1, // bad version
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      2, 1
     }, null)).isNull();
   }
 
   @Test public void parseBytes_unsupportedFieldIdFirst_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        4, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // bad field number
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        2, 1
+      0,
+      4, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // bad field number
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      2, 1
     }, null)).isNull();
   }
 
   @Test public void parseBytes_unsupportedFieldIdSecond_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        4, -1, -1, -1, -1, -1, -1, -1, -1, // bad field number
-        2, 1
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      4, -1, -1, -1, -1, -1, -1, -1, -1, // bad field number
+      2, 1
     }, null)).isNull();
   }
 
   @Test public void parseBytes_unsupportedFieldIdThird_toSampledNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        4, 1 // bad field number
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      4, 1 // bad field number
     }, null).sampled()).isNull();
   }
 
   @Test public void parseBytes_64BitTraceId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, // half a trace ID
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        2, 1
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, // half a trace ID
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      2, 1
     }, null)).isNull();
   }
 
   @Test public void parseBytes_32BitSpanId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        1, -1, -1, -1, -1, // half a span ID
-        2, 1
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      1, -1, -1, -1, -1, // half a span ID
+      2, 1
     }, null)).isNull();
   }
 
   @Test public void parseBytes_truncatedTraceOptions_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        2 // has field ID, but missing sampled bit
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      2 // has field ID, but missing sampled bit
     }, null)).isNull();
   }
 
   @Test public void parseBytes_missingTraceOptions() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
-        0,
-        0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
-        1, -1, -1, -1, -1, -1, -1, -1, -1,
-        // no trace options field
+      0,
+      0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
+      1, -1, -1, -1, -1, -1, -1, -1, -1,
+      // no trace options field
     }, null)).isEqualTo(context);
   }
 }

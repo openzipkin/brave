@@ -26,7 +26,7 @@ final class TraceContextCallableFlowable<T> extends Flowable<T> implements Calla
   final TraceContext assembled;
 
   TraceContextCallableFlowable(
-      Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    Publisher<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

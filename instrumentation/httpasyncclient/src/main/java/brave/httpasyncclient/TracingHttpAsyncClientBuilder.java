@@ -52,15 +52,15 @@ import org.apache.http.protocol.HttpContext;
  */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
   static final Propagation.Setter<HttpMessage, String> SETTER = // retrolambda no likey
-      new Propagation.Setter<HttpMessage, String>() {
-        @Override public void put(HttpMessage carrier, String key, String value) {
-          carrier.setHeader(key, value);
-        }
+    new Propagation.Setter<HttpMessage, String>() {
+      @Override public void put(HttpMessage carrier, String key, String value) {
+        carrier.setHeader(key, value);
+      }
 
-        @Override public String toString() {
-          return "HttpMessage::setHeader";
-        }
-      };
+      @Override public String toString() {
+        return "HttpMessage::setHeader";
+      }
+    };
 
   public static HttpAsyncClientBuilder create(Tracing tracing) {
     return new TracingHttpAsyncClientBuilder(HttpTracing.create(tracing));
@@ -178,14 +178,14 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
-        HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
-        FutureCallback<T> callback) {
+      HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
+      FutureCallback<T> callback) {
       context.setAttribute(TraceContext.class.getName(), currentTraceContext.get());
       return delegate.execute(
-          new TracingAsyncRequestProducer(requestProducer, context),
-          new TracingAsyncResponseConsumer<>(responseConsumer, context),
-          context,
-          callback
+        new TracingAsyncRequestProducer(requestProducer, context),
+        new TracingAsyncResponseConsumer<>(responseConsumer, context),
+        context,
+        callback
       );
     }
 
@@ -254,18 +254,18 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     final HttpContext context;
 
     TracingAsyncResponseConsumer(HttpAsyncResponseConsumer<T> responseConsumer,
-        HttpContext context) {
+      HttpContext context) {
       this.responseConsumer = responseConsumer;
       this.context = context;
     }
 
     @Override public void responseReceived(HttpResponse response)
-        throws IOException, HttpException {
+      throws IOException, HttpException {
       responseConsumer.responseReceived(response);
     }
 
     @Override public void consumeContent(ContentDecoder decoder, IOControl ioctrl)
-        throws IOException {
+      throws IOException {
       responseConsumer.consumeContent(decoder, ioctrl);
     }
 

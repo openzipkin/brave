@@ -22,7 +22,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class FinishedSpanHandlers {
   public static FinishedSpanHandler compose(List<FinishedSpanHandler> finishedSpanHandlers) {
-    if (finishedSpanHandlers == null) throw new NullPointerException("finishedSpanHandlers == null");
+    if (finishedSpanHandlers == null) {
+      throw new NullPointerException("finishedSpanHandlers == null");
+    }
     int length = finishedSpanHandlers.size();
     if (length == 0) return FinishedSpanHandler.NOOP;
 

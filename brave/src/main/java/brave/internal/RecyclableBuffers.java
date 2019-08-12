@@ -31,5 +31,6 @@ public final class RecyclableBuffers {
     return idBuffer;
   }
 
-  private RecyclableBuffers() {}
+  private RecyclableBuffers() {
+  }
 }

@@ -34,17 +34,17 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
 
   @Test public void should_complete_on_callback() throws Exception {
     should_complete_on_callback(
-        listener -> messageProducer.send(jms.destination, message, listener));
+      listener -> messageProducer.send(jms.destination, message, listener));
   }
 
   @Test public void should_complete_on_callback_queue() throws Exception {
     should_complete_on_callback(
-        listener -> queueSender.send(jms.queue, message, listener));
+      listener -> queueSender.send(jms.queue, message, listener));
   }
 
   @Test public void should_complete_on_callback_topic() throws Exception {
     should_complete_on_callback(
-        listener -> topicPublisher.send(jms.topic, message, listener));
+      listener -> topicPublisher.send(jms.topic, message, listener));
   }
 
   void should_complete_on_callback(JMSAsync async) throws Exception {

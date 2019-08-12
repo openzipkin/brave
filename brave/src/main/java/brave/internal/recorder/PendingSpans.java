@@ -78,7 +78,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
     if (LOG.isLoggable(Level.FINE)) {
       newSpan.caller =
-          new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
+        new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
     }
     return newSpan;
   }
@@ -92,13 +92,13 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     if (context.shared() || parentId != 0L) {
       long spanId = parentId != 0L ? parentId : context.spanId();
       parent = delegate.get(InternalPropagation.instance.newTraceContext(
-          0,
-          context.traceIdHigh(),
-          context.traceId(),
-          0,
-          0,
-          spanId,
-          Collections.emptyList()
+        0,
+        context.traceIdHigh(),
+        context.traceId(),
+        0,
+        0,
+        spanId,
+        Collections.emptyList()
       ));
     }
     return parent != null ? parent.clock : null;
@@ -127,10 +127,10 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
       TraceContext context = InternalPropagation.instance.newTraceContext(
-          InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
-          contextKey.traceIdHigh, contextKey.traceId,
-          contextKey.localRootId, 0L, contextKey.spanId,
-          Collections.emptyList()
+        InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
+        contextKey.traceIdHigh, contextKey.traceId,
+        contextKey.localRootId, 0L, contextKey.spanId,
+        Collections.emptyList()
       );
 
       boolean isEmpty = value.state.isEmpty();
@@ -242,9 +242,9 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       TraceContext thatContext = that.get();
       if (thatContext == null) return false;
       return traceIdHigh == thatContext.traceIdHigh()
-          && traceId == thatContext.traceId()
-          && spanId == thatContext.spanId()
-          && shared == thatContext.shared();
+        && traceId == thatContext.traceId()
+        && spanId == thatContext.spanId()
+        && shared == thatContext.shared();
     }
   }
 

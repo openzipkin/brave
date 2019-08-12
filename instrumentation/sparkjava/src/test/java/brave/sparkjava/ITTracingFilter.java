@@ -50,8 +50,8 @@ public class ITTracingFilter extends ITServletContainer {
 
   @Override public void init(ServletContextHandler handler) {
     handler.getServletContext()
-        .addFilter("tracingFilter", TracingFilter.create(httpTracing))
-        .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+      .addFilter("tracingFilter", TracingFilter.create(httpTracing))
+      .addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
 
     Dynamic sparkFilter = handler.getServletContext().addFilter("sparkFilter", new SparkFilter());
     sparkFilter.setInitParameter("applicationClass", TestApplication.class.getName());

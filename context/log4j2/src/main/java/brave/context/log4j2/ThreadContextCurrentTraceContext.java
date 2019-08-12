@@ -28,8 +28,8 @@ import org.apache.logging.log4j.ThreadContext;
 @Deprecated
 public final class ThreadContextCurrentTraceContext extends CurrentTraceContext {
   static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
-      ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(ThreadContextScopeDecorator.create());
+    ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(ThreadContextScopeDecorator.create());
 
   public static ThreadContextCurrentTraceContext create() {
     return create(CurrentTraceContext.Default.inheritable());

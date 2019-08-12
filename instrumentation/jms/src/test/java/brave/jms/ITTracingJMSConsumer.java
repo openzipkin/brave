@@ -40,7 +40,7 @@ public class ITTracingJMSConsumer extends JmsTest {
   @Before public void setup() {
     context = jms.newContext();
     tracedContext = jmsTracing.connectionFactory(jms.factory)
-        .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+      .createContext(JMSContext.AUTO_ACKNOWLEDGE);
 
     producer = context.createProducer();
     consumer = tracedContext.createConsumer(jms.queue);
@@ -52,7 +52,7 @@ public class ITTracingJMSConsumer extends JmsTest {
 
   @Test public void messageListener_startsNewTrace() throws Exception {
     consumer.setMessageListener(
-        m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
+      m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
     );
 
     producer.send(jms.queue, "foo");
@@ -110,6 +110,6 @@ public class ITTracingJMSConsumer extends JmsTest {
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
 
     assertThat(received.getStringProperty("b3"))
-        .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+      .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
   }
 }

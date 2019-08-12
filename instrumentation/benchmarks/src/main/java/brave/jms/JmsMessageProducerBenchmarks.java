@@ -71,9 +71,9 @@ public class JmsMessageProducerBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .addProfiler("gc")
-        .include(".*" + JmsMessageProducerBenchmarks.class.getSimpleName())
-        .build();
+      .addProfiler("gc")
+      .include(".*" + JmsMessageProducerBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }
@@ -133,7 +133,7 @@ public class JmsMessageProducerBenchmarks {
 
     @Override
     public void send(Destination destination, Message message, int deliveryMode, int priority,
-        long timeToLive) {
+      long timeToLive) {
     }
   }
 }

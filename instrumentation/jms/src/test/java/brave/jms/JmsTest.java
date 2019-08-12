@@ -37,15 +37,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class JmsTest {
   static final Propagation.Setter<Message, String> SETTER =
-      new Propagation.Setter<Message, String>() {
-        @Override public void put(Message carrier, String key, String value) {
-          try {
-            carrier.setStringProperty(key, value);
-          } catch (JMSException e) {
-            throw new AssertionError(e);
-          }
+    new Propagation.Setter<Message, String>() {
+      @Override public void put(Message carrier, String key, String value) {
+        try {
+          carrier.setStringProperty(key, value);
+        } catch (JMSException e) {
+          throw new AssertionError(e);
         }
-      };
+      }
+    };
 
   @After public void tearDown() {
     tracing.close();
@@ -63,8 +63,8 @@ public abstract class JmsTest {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -75,17 +75,17 @@ public abstract class JmsTest {
   Span takeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Span was not reported")
-        .isNotNull();
+      .withFailMessage("Span was not reported")
+      .isNotNull();
     return result;
   }
 
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .build())
-      .spanReporter(spans::add)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+      .addScopeDecorator(StrictScopeDecorator.create())
+      .build())
+    .spanReporter(spans::add)
+    .build();
   CurrentTraceContext current = tracing.currentTraceContext();
   JmsTracing jmsTracing = JmsTracing.create(tracing);
 

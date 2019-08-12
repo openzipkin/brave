@@ -26,7 +26,7 @@ final class TraceContextSingleObserver<T> implements SingleObserver<T>, Disposab
   Disposable upstream;
 
   TraceContextSingleObserver(
-      SingleObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+    SingleObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

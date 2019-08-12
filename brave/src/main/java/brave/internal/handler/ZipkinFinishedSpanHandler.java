@@ -26,7 +26,7 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   final MutableSpanConverter converter;
 
   public ZipkinFinishedSpanHandler(Reporter<zipkin2.Span> spanReporter,
-      ErrorParser errorParser, String serviceName, String ip, int port) {
+    ErrorParser errorParser, String serviceName, String ip, int port) {
     this.spanReporter = spanReporter;
     this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
   }
@@ -35,9 +35,9 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
     if (!Boolean.TRUE.equals(context.sampled())) return true;
 
     Span.Builder builderWithContextData = Span.newBuilder()
-        .traceId(context.traceIdString())
-        .parentId(context.parentIdString())
-        .id(context.spanIdString());
+      .traceId(context.traceIdString())
+      .parentId(context.parentIdString())
+      .id(context.spanIdString());
     if (context.debug()) builderWithContextData.debug(true);
 
     converter.convert(span, builderWithContextData);

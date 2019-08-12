@@ -34,8 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CurrentTraceContextAssemblyTrackingTest {
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build();
+    .addScopeDecorator(StrictScopeDecorator.create())
+    .build();
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
 
   @Before public void setup() {
@@ -53,7 +53,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
 
     // Sanity check that RxJavaAssemblyTracking is not already enabled
     TestObserver<Integer> to = newObservableThatErrs().test()
-        .assertFailure(IOException.class, 1, 2, 3, 4, 5);
+      .assertFailure(IOException.class, 1, 2, 3, 4, 5);
 
     assertThat(RxJavaAssemblyException.find(to.errors().get(0))).isNull();
 
@@ -61,7 +61,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
     try {
 
       SavedHooks h =
-          CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
+        CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
 
       to = newObservableThatErrs().test().assertFailure(IOException.class, 1, 2, 3, 4, 5);
 
@@ -109,7 +109,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
       Object o8 = RxJavaPlugins.getOnParallelAssembly();
 
       SavedHooks h =
-          CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
+        CurrentTraceContextAssemblyTracking.create(currentTraceContext).enableAndChain();
 
       h.restore();
 

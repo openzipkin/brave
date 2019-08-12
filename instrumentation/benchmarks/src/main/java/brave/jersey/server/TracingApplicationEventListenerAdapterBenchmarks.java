@@ -46,13 +46,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Thread)
 public class TracingApplicationEventListenerAdapterBenchmarks {
   FakeExtendedUriInfo uriInfo = new FakeExtendedUriInfo(URI.create("/"),
-      Arrays.asList(
-          new PathTemplate("/"),
-          new PathTemplate("/items/{itemId}")
-      )
+    Arrays.asList(
+      new PathTemplate("/"),
+      new PathTemplate("/items/{itemId}")
+    )
   );
   ContainerRequest request = new ContainerRequest(
-      URI.create("/"), null, null, null, new MapPropertiesDelegate()
+    URI.create("/"), null, null, null, new MapPropertiesDelegate()
   ) {
     @Override public ExtendedUriInfo getUriInfo() {
       return uriInfo;
@@ -60,16 +60,16 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
   };
   ContainerResponse response = new ContainerResponse(request, new ServerResponse());
   RequestEvent event = new RequestEventImpl.Builder()
-      .setContainerRequest(request)
-      .setContainerResponse(response).build(RequestEvent.Type.FINISHED);
+    .setContainerRequest(request)
+    .setContainerResponse(response).build(RequestEvent.Type.FINISHED);
 
   FakeExtendedUriInfo nestedUriInfo = new FakeExtendedUriInfo(URI.create("/"),
-      Arrays.asList(
-          new PathTemplate("/"),
-          new PathTemplate("/items/{itemId}"),
-          new PathTemplate("/"),
-          new PathTemplate("/nested")
-      )
+    Arrays.asList(
+      new PathTemplate("/"),
+      new PathTemplate("/items/{itemId}"),
+      new PathTemplate("/"),
+      new PathTemplate("/nested")
+    )
   );
 
   TracingApplicationEventListener.Adapter adapter = new TracingApplicationEventListener.Adapter();
@@ -85,8 +85,8 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + TracingApplicationEventListenerAdapterBenchmarks.class.getSimpleName())
-        .build();
+      .include(".*" + TracingApplicationEventListenerAdapterBenchmarks.class.getSimpleName())
+      .build();
 
     new Runner(opt).run();
   }

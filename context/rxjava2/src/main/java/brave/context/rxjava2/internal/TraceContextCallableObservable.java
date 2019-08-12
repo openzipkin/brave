@@ -26,7 +26,7 @@ final class TraceContextCallableObservable<T> extends Observable<T> implements C
   final TraceContext assembled;
 
   TraceContextCallableObservable(
-      ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
+    ObservableSource<T> source, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.source = source;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

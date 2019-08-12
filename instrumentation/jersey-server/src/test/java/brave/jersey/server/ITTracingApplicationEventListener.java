@@ -36,8 +36,8 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
 
     Span span = takeSpan();
     assertThat(span.tags())
-        .containsEntry("jaxrs.resource.class", "TestResource")
-        .containsEntry("jaxrs.resource.method", "foo");
+      .containsEntry("jaxrs.resource.class", "TestResource")
+      .containsEntry("jaxrs.resource.method", "foo");
   }
 
   /** Tests that the span propagates between under asynchronous callbacks managed by jersey. */

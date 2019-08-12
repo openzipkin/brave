@@ -15,7 +15,6 @@ package brave.httpclient;
 
 import brave.Span;
 import brave.Tracer;
-import brave.http.HttpClientHandler;
 import brave.http.HttpClientParser;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
@@ -24,7 +23,6 @@ import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.apache.http.HttpException;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpRequestWrapper;
@@ -39,20 +37,19 @@ import org.apache.http.protocol.HttpContext;
  */
 class TracingMainExec implements ClientExecChain { // not final for subclassing
   static final Setter<HttpRequestWrapper, String> SETTER = // retrolambda no likey
-      new Setter<HttpRequestWrapper, String>() {
-        @Override public void put(HttpRequestWrapper carrier, String key, String value) {
-          carrier.setHeader(key, value);
-        }
+    new Setter<HttpRequestWrapper, String>() {
+      @Override public void put(HttpRequestWrapper carrier, String key, String value) {
+        carrier.setHeader(key, value);
+      }
 
-        @Override public String toString() {
-          return "HttpRequestWrapper::setHeader";
-        }
-      };
+      @Override public String toString() {
+        return "HttpRequestWrapper::setHeader";
+      }
+    };
   static final HttpAdapter ADAPTER = new HttpAdapter();
 
   final Tracer tracer;
   final CurrentTraceContext currentTraceContext;
-  final HttpClientHandler<HttpRequestWrapper, HttpResponse> handler;
   final HttpClientParser parser;
   @Nullable final String serverName;
   final TraceContext.Injector<HttpRequestWrapper> injector;
@@ -63,14 +60,13 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
     this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
     this.parser = httpTracing.clientParser();
-    this.handler = HttpClientHandler.create(httpTracing, ADAPTER);
     this.injector = httpTracing.tracing().propagation().injector(SETTER);
     this.mainExec = mainExec;
   }
 
   @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
-      HttpClientContext context, HttpExecutionAware execAware)
-      throws IOException, HttpException {
+    HttpClientContext context, HttpExecutionAware execAware)
+    throws IOException, HttpException {
     Span span = tracer.currentSpan();
     if (span != null) {
       injector.inject(span.context(), request);

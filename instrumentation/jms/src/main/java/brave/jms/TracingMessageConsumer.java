@@ -30,7 +30,7 @@ import static brave.jms.TracingConnection.TYPE_TOPIC;
 
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 final class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
-    implements QueueReceiver, TopicSubscriber {
+  implements QueueReceiver, TopicSubscriber {
 
   static TracingMessageConsumer create(MessageConsumer delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingMessageConsumer) return (TracingMessageConsumer) delegate;

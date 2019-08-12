@@ -53,8 +53,8 @@ public abstract class ITTracingFilter {
     @Override protected void succeeded(Description description) {
       try {
         assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-            .withFailMessage("Span remaining in queue. Check for redundant reporting")
-            .isNull();
+          .withFailMessage("Span remaining in queue. Check for redundant reporting")
+          .isNull();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -63,17 +63,17 @@ public abstract class ITTracingFilter {
 
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-        .spanReporter(spans::add)
-        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-            .addScopeDecorator(StrictScopeDecorator.create())
-            .build())
-        .sampler(sampler);
+      .spanReporter(spans::add)
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+        .addScopeDecorator(StrictScopeDecorator.create())
+        .build())
+      .sampler(sampler);
   }
 
   void setTracing(Tracing tracing) {
     ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
-        .getExtension("tracing"))
-        .setTracing(tracing);
+      .getExtension("tracing"))
+      .setTracing(tracing);
     this.tracing = tracing;
   }
 
@@ -81,8 +81,8 @@ public abstract class ITTracingFilter {
   Span takeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
-        .withFailMessage("Span was not reported")
-        .isNotNull();
+      .withFailMessage("Span was not reported")
+      .isNotNull();
     return result;
   }
 }

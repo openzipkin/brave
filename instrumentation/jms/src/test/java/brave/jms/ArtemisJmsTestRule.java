@@ -62,7 +62,7 @@ class ArtemisJmsTestRule extends JmsTestRule {
   }
 
   @Override void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties)
-      throws Exception {
+    throws Exception {
     Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
     propertiesReadOnly.setAccessible(true);
     propertiesReadOnly.set(message, readOnlyProperties);

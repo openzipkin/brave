@@ -34,11 +34,11 @@ import javax.jms.XATopicConnection;
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 class TracingConnection implements QueueConnection, TopicConnection {
   static final int
-      TYPE_QUEUE = 1 << 1,
-      TYPE_TOPIC = 1 << 2,
-      TYPE_XA = 1 << 3,
-      TYPE_XA_QUEUE = 1 << 4,
-      TYPE_XA_TOPIC = 1 << 5;
+    TYPE_QUEUE = 1 << 1,
+    TYPE_TOPIC = 1 << 2,
+    TYPE_XA = 1 << 3,
+    TYPE_XA_QUEUE = 1 << 4,
+    TYPE_XA_TOPIC = 1 << 5;
 
   static TracingConnection create(Connection delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingConnection) return (TracingConnection) delegate;
@@ -62,7 +62,7 @@ class TracingConnection implements QueueConnection, TopicConnection {
   }
 
   @Override public Session createSession(boolean transacted, int acknowledgeMode)
-      throws JMSException {
+    throws JMSException {
     return TracingSession.create(delegate.createSession(transacted, acknowledgeMode), jmsTracing);
   }
 
@@ -111,55 +111,55 @@ class TracingConnection implements QueueConnection, TopicConnection {
   }
 
   @Override public ConnectionConsumer createConnectionConsumer(Destination destination,
-      String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createConnectionConsumer(destination, messageSelector, sessionPool, maxMessages);
+      delegate.createConnectionConsumer(destination, messageSelector, sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
   @JMS2_0
   public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String subscriptionName,
-      String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createSharedConnectionConsumer(topic, subscriptionName, messageSelector,
-            sessionPool, maxMessages);
+      delegate.createSharedConnectionConsumer(topic, subscriptionName, messageSelector,
+        sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
   @Override
   public ConnectionConsumer createDurableConnectionConsumer(Topic topic, String subscriptionName,
-      String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createDurableConnectionConsumer(topic, subscriptionName, messageSelector,
-            sessionPool, maxMessages);
+      delegate.createDurableConnectionConsumer(topic, subscriptionName, messageSelector,
+        sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
   @JMS2_0
   public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic,
-      String subscriptionName, String messageSelector, ServerSessionPool sessionPool,
-      int maxMessages) throws JMSException {
+    String subscriptionName, String messageSelector, ServerSessionPool sessionPool,
+    int maxMessages) throws JMSException {
     ConnectionConsumer cc =
-        delegate.createSharedDurableConnectionConsumer(topic, subscriptionName, messageSelector,
-            sessionPool, maxMessages);
+      delegate.createSharedDurableConnectionConsumer(topic, subscriptionName, messageSelector,
+        sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
   // QueueConnection
   @Override public QueueSession createQueueSession(boolean transacted, int acknowledgeMode)
-      throws JMSException {
+    throws JMSException {
     checkQueueConnection();
     QueueSession qs = ((QueueConnection) delegate).createQueueSession(transacted, acknowledgeMode);
     return TracingSession.create(qs, jmsTracing);
   }
 
   @Override public ConnectionConsumer createConnectionConsumer(Queue queue, String messageSelector,
-      ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     checkQueueConnection();
     ConnectionConsumer cc = ((QueueConnection) delegate)
-        .createConnectionConsumer(queue, messageSelector, sessionPool, maxMessages);
+      .createConnectionConsumer(queue, messageSelector, sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 
@@ -171,17 +171,17 @@ class TracingConnection implements QueueConnection, TopicConnection {
 
   // TopicConnection
   @Override public TopicSession createTopicSession(boolean transacted, int acknowledgeMode)
-      throws JMSException {
+    throws JMSException {
     checkTopicConnection();
     TopicSession ts = ((TopicConnection) delegate).createTopicSession(transacted, acknowledgeMode);
     return TracingSession.create(ts, jmsTracing);
   }
 
   @Override public ConnectionConsumer createConnectionConsumer(Topic topic, String messageSelector,
-      ServerSessionPool sessionPool, int maxMessages) throws JMSException {
+    ServerSessionPool sessionPool, int maxMessages) throws JMSException {
     checkTopicConnection();
     ConnectionConsumer cc = ((TopicConnection) delegate)
-        .createConnectionConsumer(topic, messageSelector, sessionPool, maxMessages);
+      .createConnectionConsumer(topic, messageSelector, sessionPool, maxMessages);
     return TracingConnectionConsumer.create(cc, jmsTracing);
   }
 

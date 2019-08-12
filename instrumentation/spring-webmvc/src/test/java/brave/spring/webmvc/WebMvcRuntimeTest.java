@@ -40,23 +40,23 @@ public class WebMvcRuntimeTest {
 
   @Test public void findWebMvcRuntime_HandlerMethod_exists() throws Exception {
     assertThat(WebMvcRuntime.findWebMvcRuntime())
-        .isInstanceOf(WebMvc31.class);
+      .isInstanceOf(WebMvc31.class);
   }
 
   @Test public void findWebMvcRuntime_HandlerMethod_notFound() throws Exception {
     mockStatic(Class.class);
     when(Class.forName(HandlerMethod.class.getName()))
-        .thenThrow(new ClassNotFoundException());
+      .thenThrow(new ClassNotFoundException());
 
     assertThat(WebMvcRuntime.findWebMvcRuntime())
-        .isInstanceOf(WebMvc25.class);
+      .isInstanceOf(WebMvc25.class);
   }
 
   @Test public void WebMvc31_isHandlerMethod() {
     HandlerMethod handlerMethod = mock(HandlerMethod.class);
 
     assertThat(new WebMvc31().isHandlerMethod(handlerMethod))
-        .isTrue();
+      .isTrue();
   }
 
   /** Due to HandlerMethod being only present after 3.1, we can't look up the class in 2.5 */
@@ -64,7 +64,7 @@ public class WebMvcRuntimeTest {
     HandlerMethod handlerMethod = mock(HandlerMethod.class);
 
     assertThat(new WebMvc25().isHandlerMethod(handlerMethod))
-        .isFalse();
+      .isFalse();
   }
 
   /** Spring 3+ can get beans by type, so use that! */

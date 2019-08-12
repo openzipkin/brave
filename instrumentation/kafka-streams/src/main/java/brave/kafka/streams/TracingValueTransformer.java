@@ -28,7 +28,7 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
   ProcessorContext processorContext;
 
   TracingValueTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
-      ValueTransformer<V, VR> delegateTransformer) {
+    ValueTransformer<V, VR> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracing.tracer();
     this.spanName = spanName;

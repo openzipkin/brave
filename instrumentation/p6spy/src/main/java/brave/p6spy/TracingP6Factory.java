@@ -29,6 +29,6 @@ public final class TracingP6Factory implements P6Factory {
 
   @Override public JdbcEventListener getJdbcEventListener() {
     return new TracingJdbcEventListener(options.remoteServiceName(),
-        options.includeParameterValues(), options.getLogOptions());
+      options.includeParameterValues(), options.getLogOptions());
   }
 }

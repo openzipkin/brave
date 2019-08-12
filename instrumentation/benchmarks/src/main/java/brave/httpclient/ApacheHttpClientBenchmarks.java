@@ -30,14 +30,14 @@ public class ApacheHttpClientBenchmarks extends HttpClientBenchmarks<CloseableHt
 
   @Override protected CloseableHttpClient newClient(HttpTracing httpTracing) {
     return TracingHttpClientBuilder.create(httpTracing)
-        .disableAutomaticRetries()
-        .build();
+      .disableAutomaticRetries()
+      .build();
   }
 
   @Override protected CloseableHttpClient newClient() {
     return HttpClients.custom()
-        .disableAutomaticRetries()
-        .build();
+      .disableAutomaticRetries()
+      .build();
   }
 
   @Override protected void get(CloseableHttpClient client) throws Exception {
@@ -51,8 +51,8 @@ public class ApacheHttpClientBenchmarks extends HttpClientBenchmarks<CloseableHt
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
-        .include(".*" + ApacheHttpClientBenchmarks.class.getSimpleName() + ".*")
-        .build();
+      .include(".*" + ApacheHttpClientBenchmarks.class.getSimpleName() + ".*")
+      .build();
 
     new Runner(opt).run();
   }

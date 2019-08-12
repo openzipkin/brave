@@ -42,9 +42,9 @@ import static brave.spring.rabbit.SpringRabbitPropagation.TEST_CONTEXT;
 public final class SpringRabbitTracing {
 
   static final String
-      RABBIT_EXCHANGE = "rabbit.exchange",
-      RABBIT_ROUTING_KEY = "rabbit.routing_key",
-      RABBIT_QUEUE = "rabbit.queue";
+    RABBIT_EXCHANGE = "rabbit.exchange",
+    RABBIT_ROUTING_KEY = "rabbit.routing_key",
+    RABBIT_QUEUE = "rabbit.queue";
 
   public static SpringRabbitTracing create(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("tracing == null");
@@ -105,7 +105,7 @@ public final class SpringRabbitTracing {
       TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
       if (!TEST_CONTEXT.equals(testExtraction)) {
         throw new IllegalArgumentException(
-            "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
+          "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
       }
       this.injector = SpringRabbitPropagation.B3_SINGLE_INJECTOR;
     } else {
@@ -116,7 +116,7 @@ public final class SpringRabbitTracing {
     Field beforePublishPostProcessorsField = null;
     try {
       beforePublishPostProcessorsField =
-          RabbitTemplate.class.getDeclaredField("beforePublishPostProcessors");
+        RabbitTemplate.class.getDeclaredField("beforePublishPostProcessors");
       beforePublishPostProcessorsField.setAccessible(true);
     } catch (NoSuchFieldException e) {
     }
@@ -161,14 +161,14 @@ public final class SpringRabbitTracing {
     newProcessors.addAll(processors);
     newProcessors.add(tracingMessagePostProcessor);
     rabbitTemplate.setBeforePublishPostProcessors(
-        newProcessors.toArray(new MessagePostProcessor[0])
+      newProcessors.toArray(new MessagePostProcessor[0])
     );
     return rabbitTemplate;
   }
 
   /** Creates an instrumented {@linkplain SimpleRabbitListenerContainerFactory} */
   public SimpleRabbitListenerContainerFactory newSimpleRabbitListenerContainerFactory(
-      ConnectionFactory connectionFactory
+    ConnectionFactory connectionFactory
   ) {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setConnectionFactory(connectionFactory);
@@ -178,7 +178,7 @@ public final class SpringRabbitTracing {
 
   /** Instruments an existing {@linkplain SimpleRabbitListenerContainerFactory} */
   public SimpleRabbitListenerContainerFactory decorateSimpleRabbitListenerContainerFactory(
-      SimpleRabbitListenerContainerFactory factory
+    SimpleRabbitListenerContainerFactory factory
   ) {
     Advice[] chain = factory.getAdviceChain();
 

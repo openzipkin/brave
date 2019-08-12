@@ -23,7 +23,7 @@ import javax.jms.XATopicSession;
 
 /** Implements all interfaces as according to ActiveMQ, this is typical of JMS 1.1. */
 final class TracingXAConnection extends TracingConnection
-    implements XATopicConnection, XAQueueConnection {
+  implements XATopicConnection, XAQueueConnection {
 
   static TracingXAConnection create(XAConnection delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingXAConnection) return (TracingXAConnection) delegate;

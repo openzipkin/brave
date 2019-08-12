@@ -13,7 +13,6 @@
  */
 package brave;
 
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -24,11 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanCustomizerTest {
-  List<zipkin2.Span> spans = new ArrayList();
-  Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(spans::add)
-      .build();
+  List<zipkin2.Span> spans = new ArrayList<>();
+  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
   Span span = tracing.tracer().newTrace();
   SpanCustomizer spanCustomizer = span.customizer();
 
@@ -41,7 +37,7 @@ public class RealSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).extracting(zipkin2.Span::name)
-        .containsExactly("foo");
+      .containsExactly("foo");
   }
 
   @Test public void annotate() {
@@ -49,8 +45,8 @@ public class RealSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-        .extracting(Annotation::value)
-        .containsExactly("foo");
+      .extracting(Annotation::value)
+      .containsExactly("foo");
   }
 
   @Test public void tag() {
@@ -58,6 +54,6 @@ public class RealSpanCustomizerTest {
     span.flush();
 
     assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-        .containsExactly(entry("foo", "bar"));
+      .containsExactly(entry("foo", "bar"));
   }
 }

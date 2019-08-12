@@ -19,7 +19,6 @@ import brave.propagation.ThreadLocalSpan;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
 import com.p6spy.engine.logging.P6LogLoadableOptions;
-
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -29,14 +28,14 @@ import java.util.regex.Pattern;
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   private final static Pattern URL_SERVICE_NAME_FINDER =
-      Pattern.compile("zipkinServiceName=(\\w*)");
+    Pattern.compile("zipkinServiceName=(\\w*)");
 
   @Nullable final String remoteServiceName;
   final boolean includeParameterValues;
   final P6LogLoadableOptions logOptions;
 
   TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues,
-      P6LogLoadableOptions logOptions) {
+    P6LogLoadableOptions logOptions) {
     this.remoteServiceName = remoteServiceName;
     this.includeParameterValues = includeParameterValues;
     this.logOptions = logOptions;
@@ -46,7 +45,8 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
    * Uses {@link ThreadLocalSpan} as there's no attribute namespace shared between callbacks, but
    * all callbacks happen on the same thread.
    *
-   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before tracing.
+   * <p>Uses {@link ThreadLocalSpan#CURRENT_TRACER} and this interceptor initializes before
+   * tracing.
    */
   @Override public void onBeforeAnyExecute(StatementInformation info) {
     String sql = includeParameterValues ? info.getSqlWithValues() : info.getSql();
@@ -86,23 +86,24 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     final Pattern includeExcludePattern = logOptions.getIncludeExcludePattern();
 
     return (sqlExpressionPattern == null || sqlExpressionPattern.matcher(sql).matches())
-        && (includeExcludePattern == null || includeExcludePattern.matcher(sql).matches());
+      && (includeExcludePattern == null || includeExcludePattern.matcher(sql).matches());
   }
 
-    /**
+  /**
    * This attempts to get the ip and port from the JDBC URL. Ex. localhost and 5555 from {@code
    * jdbc:mysql://localhost:5555/mydatabase}.
    */
   void parseServerIpAndPort(Connection connection, Span span) {
     try {
       String urlAsString = connection.getMetaData().getURL().substring(5); // strip "jdbc:"
-      URI url = URI.create(urlAsString.replace(" ", "")); // Remove all white space according to RFC 2396
+      URI url =
+        URI.create(urlAsString.replace(" ", "")); // Remove all white space according to RFC 2396
       String defaultRemoteServiceName = remoteServiceName;
       Matcher matcher = URL_SERVICE_NAME_FINDER.matcher(url.toString());
       if (matcher.find() && matcher.groupCount() == 1) {
         String parsedServiceName = matcher.group(1);
         if (parsedServiceName != null
-            && !parsedServiceName.isEmpty()) { // Do not override global service name if parsed service name is invalid
+          && !parsedServiceName.isEmpty()) { // Do not override global service name if parsed service name is invalid
           defaultRemoteServiceName = parsedServiceName;
         }
       }

@@ -27,9 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingApplicationEventListenerInjectionTest {
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .spanReporter(Reporter.NOOP)
-      .build();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .spanReporter(Reporter.NOOP)
+    .build();
 
   Injector injector = Guice.createInjector(new AbstractModule() {
     @Override protected void configure() {
@@ -43,6 +43,6 @@ public class TracingApplicationEventListenerInjectionTest {
 
   @Test public void onlyRequiresHttpTracing() {
     assertThat(injector.getInstance(TracingApplicationEventListener.class))
-        .isNotNull();
+      .isNotNull();
   }
 }

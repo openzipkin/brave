@@ -17,7 +17,6 @@ import com.p6spy.engine.logging.P6LogLoadableOptions;
 import com.p6spy.engine.logging.P6LogOptions;
 import com.p6spy.engine.spy.P6SpyOptions;
 import com.p6spy.engine.spy.option.P6OptionsRepository;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -41,12 +40,12 @@ final class TracingP6SpyOptions extends P6SpyOptions {
     logLoadableOptions.load(options);
     optionsRepository.set(String.class, REMOTE_SERVICE_NAME, options.get(REMOTE_SERVICE_NAME));
     optionsRepository.set(Boolean.class, INCLUDE_PARAMETER_VALUES,
-        options.get(INCLUDE_PARAMETER_VALUES));
+      options.get(INCLUDE_PARAMETER_VALUES));
   }
 
   @Override
   public Map<String, String> getDefaults() {
-    Map<String, String> allDefaults = new LinkedHashMap(super.getDefaults());
+    Map<String, String> allDefaults = new LinkedHashMap<>(super.getDefaults());
     allDefaults.putAll(logLoadableOptions.getDefaults());
     allDefaults.put(INCLUDE_PARAMETER_VALUES, Boolean.FALSE.toString());
     return allDefaults;

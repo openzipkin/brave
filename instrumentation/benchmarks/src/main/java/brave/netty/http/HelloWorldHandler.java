@@ -43,7 +43,7 @@ final class HelloWorldHandler extends ChannelInboundHandlerAdapter {
     }
     boolean keepAlive = HttpUtil.isKeepAlive(req);
     FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK,
-        Unpooled.wrappedBuffer(HELLO_WORLD));
+      Unpooled.wrappedBuffer(HELLO_WORLD));
     response.headers().set(CONTENT_TYPE, "text/plain");
     response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
 

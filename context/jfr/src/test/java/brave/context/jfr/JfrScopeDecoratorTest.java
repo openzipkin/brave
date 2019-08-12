@@ -41,9 +41,9 @@ public class JfrScopeDecoratorTest {
 
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .addScopeDecorator(JfrScopeDecorator.create())
-      .build();
+    .addScopeDecorator(StrictScopeDecorator.create())
+    .addScopeDecorator(JfrScopeDecorator.create())
+    .build();
 
   Executor executor = currentTraceContext.executor(wrappedExecutor);
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
@@ -68,14 +68,14 @@ public class JfrScopeDecoratorTest {
 
     List<RecordedEvent> events = RecordingFile.readAllEvents(destination);
     assertThat(events).extracting(e ->
-        tuple(e.getString("traceId"), e.getString("parentId"), e.getString("spanId")))
-        .containsExactlyInAnyOrder(
-            tuple("0000000000000001", null, "0000000000000001"),
-            tuple("0000000000000001", null, "0000000000000001"),
-            tuple(null, null, null),
-            tuple("0000000000000001", "0000000000000001", "0000000000000002"),
-            tuple("0000000000000002", null, "0000000000000003")
-        );
+      tuple(e.getString("traceId"), e.getString("parentId"), e.getString("spanId")))
+      .containsExactlyInAnyOrder(
+        tuple("0000000000000001", null, "0000000000000001"),
+        tuple("0000000000000001", null, "0000000000000001"),
+        tuple(null, null, null),
+        tuple("0000000000000001", "0000000000000001", "0000000000000002"),
+        tuple("0000000000000002", null, "0000000000000003")
+      );
   }
 
   /**

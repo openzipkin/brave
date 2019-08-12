@@ -23,7 +23,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import static brave.jaxrs2.TracingClientFilter.SETTER;
 
 public class MultivaluedMapSetterTest
-    extends PropagationSetterTest<MultivaluedMap<String, Object>, String> {
+  extends PropagationSetterTest<MultivaluedMap<String, Object>, String> {
   LinkedHashMap<String, List<String>> delegate = new LinkedHashMap<>();
   AbstractMultivaluedMap<String, Object> carrier = new AbstractMultivaluedMap(delegate) {
   };

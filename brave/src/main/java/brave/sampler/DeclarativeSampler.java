@@ -87,8 +87,8 @@ public final class DeclarativeSampler<M> {
   }
 
   /**
-   * Like {@link #toSampler(Object)}, except allows a fallback decision, usually from
-   * {@link brave.Tracing#sampler()}, when there was no rate for an input
+   * Like {@link #toSampler(Object)}, except allows a fallback decision, usually from {@link
+   * brave.Tracing#sampler()}, when there was no rate for an input
    *
    * <p>Ex:
    * <pre>{@code
@@ -135,8 +135,8 @@ public final class DeclarativeSampler<M> {
 
   private SamplingFlags sample(Sampler sampler) {
     return sampler.isSampled(0L) // counting sampler ignores the input
-        ? SamplingFlags.SAMPLED
-        : SamplingFlags.NOT_SAMPLED;
+      ? SamplingFlags.SAMPLED
+      : SamplingFlags.NOT_SAMPLED;
   }
 
   /** Prevents us from recomputing a method that had no configured factory */

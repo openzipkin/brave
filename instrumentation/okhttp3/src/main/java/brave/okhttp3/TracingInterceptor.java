@@ -53,14 +53,12 @@ public final class TracingInterceptor implements Interceptor {
   }
 
   final Tracer tracer;
-  final String remoteServiceName;
   final HttpClientHandler<Request, Response> handler;
   final TraceContext.Injector<Request.Builder> injector;
 
   TracingInterceptor(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     tracer = httpTracing.tracing().tracer();
-    remoteServiceName = httpTracing.serverName();
     handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
     injector = httpTracing.tracing().propagation().injector(SETTER);
   }

@@ -18,10 +18,11 @@ import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-class TracingFilterTransformer<K, V> extends TracingFilter<K, V, KeyValue<K, V>> implements Transformer<K, V, KeyValue<K, V>> {
+class TracingFilterTransformer<K, V> extends TracingFilter<K, V, KeyValue<K, V>>
+  implements Transformer<K, V, KeyValue<K, V>> {
 
   TracingFilterTransformer(KafkaStreamsTracing tracing, String spanName,
-      Predicate<K, V> delegatePredicate, boolean filterNot) {
+    Predicate<K, V> delegatePredicate, boolean filterNot) {
     super(tracing, spanName, delegatePredicate, filterNot);
   }
 

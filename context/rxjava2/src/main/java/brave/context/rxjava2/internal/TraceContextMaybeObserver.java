@@ -26,7 +26,7 @@ final class TraceContextMaybeObserver<T> implements MaybeObserver<T>, Disposable
   Disposable upstream;
 
   TraceContextMaybeObserver(
-      MaybeObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
+    MaybeObserver<T> downstream, CurrentTraceContext contextScoper, TraceContext assembled) {
     this.downstream = downstream;
     this.contextScoper = contextScoper;
     this.assembled = assembled;

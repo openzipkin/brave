@@ -55,7 +55,6 @@ public abstract class Platform {
   String produceLinkLocalIp() {
     try {
       Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
-      if (nics == null) return null;
       while (nics.hasMoreElements()) {
         NetworkInterface nic = nics.nextElement();
         Enumeration<InetAddress> addresses = nic.getInetAddresses();
@@ -85,7 +84,7 @@ public abstract class Platform {
   public void log(String msg, Object param1, @Nullable Throwable thrown) {
     if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
-    Object params[] = {param1};
+    Object[] params = {param1};
     lr.setParameters(params);
     if (thrown != null) lr.setThrown(thrown);
     LOG.log(lr);
@@ -188,7 +187,7 @@ public abstract class Platform {
   static long nextTraceIdHigh(int random) {
     long epochSeconds = System.currentTimeMillis() / 1000;
     return (epochSeconds & 0xffffffffL) << 32
-        | (random & 0xffffffffL);
+      | (random & 0xffffffffL);
   }
 
   static class Jre6 extends Platform {

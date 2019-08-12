@@ -22,14 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class NoopSpanTest {
   Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .clock(() -> {
-        throw new AssertionError();
-      })
-      .spanReporter(s -> {
-        throw new AssertionError();
-      })
-      .build().tracer();
+    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .clock(() -> {
+      throw new AssertionError();
+    })
+    .spanReporter(s -> {
+      throw new AssertionError();
+    })
+    .build().tracer();
   Span span = tracer.newTrace();
 
   @After public void close() {

@@ -37,7 +37,7 @@ public abstract class CurrentTraceContextTest {
 
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context =
-      TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
+    TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
   protected final TraceContext notYetSampledContext =
     TraceContext.newBuilder().traceId(2L).spanId(1L).build();
   protected final TraceContext unsampledContext =
@@ -68,7 +68,7 @@ public abstract class CurrentTraceContextTest {
     try {
       assertThat(scope).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
-          .isEqualTo(context);
+        .isEqualTo(context);
       verifyImplicitContext(context);
     } finally {
       scope.close();
@@ -88,7 +88,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope2 = currentTraceContext.maybeScope(differentSpanId)) {
       assertThat(scope2).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
-          .isEqualTo(differentSpanId);
+        .isEqualTo(differentSpanId);
       verifyImplicitContext(differentSpanId);
     } finally {
       scope.close();
@@ -107,7 +107,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope2 = currentTraceContext.maybeScope(unsampledContext)) {
       assertThat(scope2).isNotEqualTo(Scope.NOOP);
       assertThat(currentTraceContext.get())
-          .isEqualTo(unsampledContext);
+        .isEqualTo(unsampledContext);
       verifyImplicitContext(unsampledContext);
       try (Scope scope3 = currentTraceContext.maybeScope(notYetSampledContext)) {
         assertThat(scope3).isNotEqualTo(Scope.NOOP);
@@ -147,32 +147,32 @@ public abstract class CurrentTraceContextTest {
       try (Scope noScope = noScoper.get()) {
         assertThat(noScope).isNotEqualTo(Scope.NOOP);
         assertThat(currentTraceContext.get())
-            .isNull();
+          .isNull();
         verifyImplicitContext(null);
       }
 
       // old context reverted
       assertThat(currentTraceContext.get())
-          .isEqualTo(context);
+        .isEqualTo(context);
       verifyImplicitContext(context);
     }
   }
 
   protected void is_inheritable(CurrentTraceContext inheritableCurrentTraceContext)
-      throws Exception {
+    throws Exception {
     // use a single-threaded version of newCachedThreadPool
     ExecutorService service = new ThreadPoolExecutor(0, 1,
-        60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+      60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
     // submitting a job grows the pool, attaching the context to its thread
     try (Scope scope = inheritableCurrentTraceContext.newScope(context)) {
       assertThat(service.submit(inheritableCurrentTraceContext::get).get())
-          .isEqualTo(context);
+        .isEqualTo(context);
     }
 
     // same thread executes the next job and still has the same context (leaked and not cleaned up)
     assertThat(service.submit(inheritableCurrentTraceContext::get).get())
-        .isEqualTo(context);
+      .isEqualTo(context);
 
     service.shutdownNow();
   }
@@ -191,7 +191,7 @@ public abstract class CurrentTraceContextTest {
     }
 
     assertThat(service.submit(currentTraceContext::get).get())
-        .isNull();
+      .isNull();
     verifyImplicitContext(null);
 
     service.shutdownNow();
@@ -216,7 +216,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope = currentTraceContext.newScope(context)) {
       callable = currentTraceContext.wrap(() -> {
         assertThat(currentTraceContext.get())
-            .isEqualTo(context);
+          .isEqualTo(context);
         verifyImplicitContext(context);
         return true;
       });
@@ -235,7 +235,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope0 = currentTraceContext.newScope(context)) {
       attachesSpanInCallable();
       assertThat(currentTraceContext.get())
-          .isEqualTo(context);
+        .isEqualTo(context);
       verifyImplicitContext(context);
     }
   }
@@ -245,7 +245,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope = currentTraceContext.newScope(context)) {
       runnable = currentTraceContext.wrap(() -> {
         assertThat(currentTraceContext.get())
-            .isEqualTo(context);
+          .isEqualTo(context);
         verifyImplicitContext(context);
       });
 
@@ -265,7 +265,7 @@ public abstract class CurrentTraceContextTest {
     try (Scope scope0 = currentTraceContext.newScope(context0)) {
       attachesSpanInRunnable();
       assertThat(currentTraceContext.get())
-          .isEqualTo(context0);
+        .isEqualTo(context0);
       verifyImplicitContext(context0);
     }
   }

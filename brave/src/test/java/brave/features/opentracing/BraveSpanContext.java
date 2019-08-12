@@ -46,12 +46,6 @@ class BraveSpanContext implements SpanContext {
     return ExtraFieldPropagation.getAll(context).entrySet();
   }
 
-  static final class Complete extends BraveSpanContext {
-    Complete(TraceContext context) {
-      super(context);
-    }
-  }
-
   static final class Incomplete extends BraveSpanContext {
     final TraceContextOrSamplingFlags extractionResult;
 
