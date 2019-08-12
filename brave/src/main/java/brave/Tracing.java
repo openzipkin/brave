@@ -26,9 +26,9 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -145,7 +145,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    List<FinishedSpanHandler> finishedSpanHandlers = new ArrayList<>();
+    Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -331,12 +331,16 @@ public abstract class Tracing implements Closeable {
      * <p>Your handler can also be a custom span transport. When this is the case, set the {@link
      * #spanReporter(Reporter) span reporter} to {@link Reporter#NOOP} to avoid redundant conversion
      * overhead.
+     *
+     * @see TraceContext#sampledLocal()
      */
     public Builder addFinishedSpanHandler(FinishedSpanHandler finishedSpanHandler) {
       if (finishedSpanHandler == null) {
         throw new NullPointerException("finishedSpanHandler == null");
       }
-      this.finishedSpanHandlers.add(finishedSpanHandler);
+      if (finishedSpanHandler != FinishedSpanHandler.NOOP) { // lenient on config bug
+        this.finishedSpanHandlers.add(finishedSpanHandler);
+      }
       return this;
     }
 
@@ -384,26 +388,34 @@ public abstract class Tracing implements Closeable {
       this.sampler = builder.sampler;
       this.noop = new AtomicBoolean();
 
-      List<FinishedSpanHandler> finishedSpanHandlers = builder.finishedSpanHandlers;
+      LinkedHashSet<FinishedSpanHandler> finishedSpanHandlers =
+        new LinkedHashSet<>(builder.finishedSpanHandlers);
 
       // If a Zipkin reporter is present, it is invoked after the user-supplied finished span handlers.
-      FinishedSpanHandler zipkinFirehose = FinishedSpanHandler.NOOP;
+      FinishedSpanHandler zipkinHandler = FinishedSpanHandler.NOOP;
       if (builder.spanReporter != Reporter.NOOP) {
-        zipkinFirehose = new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
+        zipkinHandler = new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
           builder.localServiceName, builder.localIp, builder.localPort);
-        finishedSpanHandlers = new ArrayList<>(finishedSpanHandlers);
-        finishedSpanHandlers.add(zipkinFirehose);
+        finishedSpanHandlers.add(zipkinHandler);
       }
 
-      // Compose the handlers into one which honors Tracing.noop
-      FinishedSpanHandler finishedSpanHandler =
-        FinishedSpanHandlers.noopAware(FinishedSpanHandlers.compose(finishedSpanHandlers), noop);
+      FinishedSpanHandler finishedSpanHandler;
+      switch (finishedSpanHandlers.size()) {
+        case 0:
+          finishedSpanHandler = FinishedSpanHandler.NOOP;
+          break;
+        case 1:
+          finishedSpanHandler = finishedSpanHandlers.iterator().next();
+          break;
+        default:
+          finishedSpanHandler = FinishedSpanHandlers.compose(finishedSpanHandlers);
+      }
 
       this.tracer = new Tracer(
         builder.clock,
         builder.propagationFactory,
-        finishedSpanHandler,
-        new PendingSpans(clock, zipkinFirehose, noop),
+        FinishedSpanHandlers.noopAware(finishedSpanHandler, noop),
+        new PendingSpans(clock, zipkinHandler, noop),
         builder.sampler,
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),

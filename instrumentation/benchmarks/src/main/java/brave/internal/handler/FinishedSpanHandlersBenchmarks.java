@@ -16,6 +16,7 @@ package brave.internal.handler;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -74,7 +75,8 @@ public class FinishedSpanHandlersBenchmarks {
     }
   };
 
-  final FinishedSpanHandler composite = FinishedSpanHandlers.compose(asList(one, two, three));
+  final FinishedSpanHandler composite =
+    FinishedSpanHandlers.compose(new LinkedHashSet<>(asList(one, two, three)));
   final FinishedSpanHandler listIndexComposite = new FinishedSpanHandler() {
     List<FinishedSpanHandler> delegates = asList(one, two, three);
 

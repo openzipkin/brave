@@ -90,6 +90,64 @@ public class TracingTest {
     assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
+  @Test public void finishedSpanHandler_zipkinByDefault() {
+    try (Tracing tracing = Tracing.newBuilder().build()) {
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
+        .isInstanceOf(Tracing.LoggingReporter.class);
+    }
+  }
+
+  @Test public void finishedSpanHandler_ignoresNoop() {
+    try (Tracing tracing = Tracing.newBuilder()
+      .addFinishedSpanHandler(FinishedSpanHandler.NOOP)
+      .build()) {
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
+        .isInstanceOf(Tracing.LoggingReporter.class);
+    }
+  }
+
+  @Test public void finishedSpanHandler_multiple() {
+    FinishedSpanHandler one = new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        return true;
+      }
+    };
+    FinishedSpanHandler two = new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        return true;
+      }
+    };
+    try (Tracing tracing = Tracing.newBuilder()
+      .addFinishedSpanHandler(one)
+      .addFinishedSpanHandler(two)
+      .build()) {
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+        .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
+          .startsWith(one, two)
+          .hasSize(3) // zipkin and the above
+        );
+    }
+  }
+
+  @Test public void finishedSpanHandler_dedupes() {
+    FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        return true;
+      }
+    };
+
+    try (Tracing tracing = Tracing.newBuilder()
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .addFinishedSpanHandler(finishedSpanHandler)
+      .build()) {
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+        .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
+          .startsWith(finishedSpanHandler)
+          .hasSize(2) // zipkin and the above
+        );
+    }
+  }
+
   @Test public void finishedSpanHandler_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
