@@ -136,8 +136,8 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.first")
-      .isEqualTo(FIREHOSE_HANDLER);
+      .extracting("tracer.finishedSpanHandler.delegate.handlers")
+      .satisfies(a -> assertThat((FinishedSpanHandler[]) a).startsWith(FIREHOSE_HANDLER));
   }
 
   @Test public void clock() {
