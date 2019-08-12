@@ -36,8 +36,8 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 final class TracingProducer<K, V>
-    extends MessagingProducerHandler<Producer<K, V>, ProducerRecord<K, V>, ProducerRecord<K, V>>
-    implements Producer<K, V> {
+  extends MessagingProducerHandler<Producer<K, V>, ProducerRecord<K, V>, ProducerRecord<K, V>>
+  implements Producer<K, V> {
 
   final KafkaTracing kafkaTracing;
   final CurrentTraceContext current;
@@ -46,12 +46,12 @@ final class TracingProducer<K, V>
 
   TracingProducer(Producer<K, V> delegate, KafkaTracing kafkaTracing) {
     super(
-        delegate,
-        kafkaTracing.msgTracing,
-        KafkaProducerAdapter.create(kafkaTracing),
-        KafkaProducerAdapter.create(kafkaTracing),
-        kafkaTracing.producerRecordExtractor(),
-        kafkaTracing.producerRecordInjector());
+      delegate,
+      kafkaTracing.msgTracing,
+      KafkaProducerAdapter.create(kafkaTracing),
+      KafkaProducerAdapter.create(kafkaTracing),
+      kafkaTracing.producerRecordExtractor(),
+      kafkaTracing.producerRecordInjector());
     this.kafkaTracing = kafkaTracing;
     this.current = kafkaTracing.msgTracing.tracing().currentTraceContext();
     this.tracer = kafkaTracing.msgTracing.tracing().tracer();
@@ -179,8 +179,8 @@ final class TracingProducer<K, V>
   }
 
   static final class KafkaProducerAdapter<K, V> implements
-      MessageProducerAdapter<ProducerRecord<K, V>>,
-      ChannelAdapter<ProducerRecord<K, V>> {
+    MessageProducerAdapter<ProducerRecord<K, V>>,
+    ChannelAdapter<ProducerRecord<K, V>> {
     final KafkaTracing kafkaTracing;
 
     KafkaProducerAdapter(KafkaTracing kafkaTracing) {

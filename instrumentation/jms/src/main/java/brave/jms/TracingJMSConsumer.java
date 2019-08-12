@@ -20,18 +20,19 @@ import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
-@JMS2_0 final class TracingJMSConsumer extends MessagingConsumerHandler<JMSConsumer, Destination, Message> implements JMSConsumer {
+@JMS2_0 final class TracingJMSConsumer
+  extends MessagingConsumerHandler<JMSConsumer, Destination, Message> implements JMSConsumer {
   final JmsTracing jmsTracing;
   final Destination destination;
 
   TracingJMSConsumer(JMSConsumer delegate, Destination destination, JmsTracing jmsTracing) {
     super(
-        delegate,
-        jmsTracing.msgTracing,
-        jmsTracing.channelAdapter,
-        jmsTracing.consumerMessageAdapter,
-        jmsTracing.extractor,
-        jmsTracing.injector);
+      delegate,
+      jmsTracing.msgTracing,
+      jmsTracing.channelAdapter,
+      jmsTracing.consumerMessageAdapter,
+      jmsTracing.extractor,
+      jmsTracing.injector);
     this.destination = destination;
     this.jmsTracing = jmsTracing;
   }

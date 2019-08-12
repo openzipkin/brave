@@ -51,10 +51,10 @@ public class MessagingTracing {
   }
 
   public <Chan, Msg> Span nextSpan(ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      Msg message,
-      Chan channel) {
+    MessageAdapter<Msg> messageAdapter,
+    TraceContext.Extractor<Msg> extractor,
+    Msg message,
+    Chan channel) {
     TraceContextOrSamplingFlags extracted = extractor.extract(message);
     Span result = tracing.tracer().nextSpan(extracted);
 

@@ -21,7 +21,6 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -103,7 +102,7 @@ public final class KafkaTracing {
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = msgTracing.tracing().propagation().keys();
     final Extractor<Headers> extractor =
-        msgTracing.tracing().propagation().extractor(HEADERS_GETTER);
+      msgTracing.tracing().propagation().extractor(HEADERS_GETTER);
     List<String> keyList = msgTracing.tracing().propagation().keys();
     singleFormat = false;
     if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
@@ -118,46 +117,46 @@ public final class KafkaTracing {
 
   <K, V> Extractor<ProducerRecord<K, V>> producerRecordExtractor() {
     return msgTracing.tracing()
-        .propagation()
-        .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
+      .propagation()
+      .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
   }
 
   <K, V> Injector<ProducerRecord<K, V>> producerRecordInjector() {
     return singleFormat ?
-        new Injector<ProducerRecord<K, V>>() {
-          @Override public void inject(TraceContext traceContext, ProducerRecord<K, V> carrier) {
-            carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
-          }
-
-          @Override public String toString() {
-            return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
-          }
+      new Injector<ProducerRecord<K, V>>() {
+        @Override public void inject(TraceContext traceContext, ProducerRecord<K, V> carrier) {
+          carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
         }
-        : msgTracing.tracing().propagation().injector((record, key, value) -> {
-          HEADERS_SETTER.put(record.headers(), key, value);
-        });
+
+        @Override public String toString() {
+          return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+        }
+      }
+      : msgTracing.tracing().propagation().injector((record, key, value) -> {
+        HEADERS_SETTER.put(record.headers(), key, value);
+      });
   }
 
   <K, V> Extractor<ConsumerRecord<K, V>> consumerRecordExtractor() {
     return msgTracing.tracing()
-        .propagation()
-        .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
+      .propagation()
+      .extractor((record, key) -> HEADERS_GETTER.get(record.headers(), key));
   }
 
   <K, V> Injector<ConsumerRecord<K, V>> consumerRecordInjector() {
     return singleFormat ?
-        new Injector<ConsumerRecord<K, V>>() {
-          @Override public void inject(TraceContext traceContext, ConsumerRecord<K, V> carrier) {
-            carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
-          }
-
-          @Override public String toString() {
-            return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
-          }
+      new Injector<ConsumerRecord<K, V>>() {
+        @Override public void inject(TraceContext traceContext, ConsumerRecord<K, V> carrier) {
+          carrier.headers().add("b3", writeB3SingleFormatWithoutParentIdAsBytes(traceContext));
         }
-        : msgTracing.tracing().propagation().injector((record, key, value) -> {
-          HEADERS_SETTER.put(record.headers(), key, value);
-        });
+
+        @Override public String toString() {
+          return "Headers::add(\"b3\",singleHeaderFormatWithoutParent)";
+        }
+      }
+      : msgTracing.tracing().propagation().injector((record, key, value) -> {
+        HEADERS_SETTER.put(record.headers(), key, value);
+      });
   }
 
   /**
@@ -185,7 +184,7 @@ public final class KafkaTracing {
    */
   public <K, V> Span nextSpan(ConsumerRecord<K, V> record) {
     final TracingConsumer.KafkaConsumerAdapter<K, V> adapter =
-        TracingConsumer.KafkaConsumerAdapter.create(this);
+      TracingConsumer.KafkaConsumerAdapter.create(this);
     return msgTracing.nextSpan(adapter, adapter, consumerRecordExtractor(), record, record);
   }
 

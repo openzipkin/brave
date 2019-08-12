@@ -22,31 +22,31 @@ import java.util.List;
 import java.util.Map;
 
 public class MessagingConsumerHandler<C, Chan, Msg>
-    extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageAdapter<Msg>> {
+  extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageAdapter<Msg>> {
 
   static public <C, Chan, Msg> MessagingConsumerHandler<C, Chan, Msg> create(
-      C delegate,
-      MessagingTracing tracing,
-      ChannelAdapter<Chan> channelAdapter,
-      MessageConsumerAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      TraceContext.Injector<Msg> injector) {
+    C delegate,
+    MessagingTracing tracing,
+    ChannelAdapter<Chan> channelAdapter,
+    MessageConsumerAdapter<Msg> messageAdapter,
+    TraceContext.Extractor<Msg> extractor,
+    TraceContext.Injector<Msg> injector) {
     return new MessagingConsumerHandler<>(delegate, tracing, channelAdapter, messageAdapter,
-        extractor, injector);
+      extractor, injector);
   }
 
   public final C delegate;
   final Tracing tracing;
 
   public MessagingConsumerHandler(
-      C delegate,
-      MessagingTracing messagingTracing,
-      ChannelAdapter<Chan> channelAdapter,
-      MessageConsumerAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      TraceContext.Injector<Msg> injector) {
+    C delegate,
+    MessagingTracing messagingTracing,
+    ChannelAdapter<Chan> channelAdapter,
+    MessageConsumerAdapter<Msg> messageAdapter,
+    TraceContext.Extractor<Msg> extractor,
+    TraceContext.Injector<Msg> injector) {
     super(messagingTracing.tracing.currentTraceContext(), channelAdapter, messageAdapter,
-        messagingTracing.consumerParser, extractor, injector);
+      messagingTracing.consumerParser, extractor, injector);
     this.delegate = delegate;
     this.tracing = messagingTracing.tracing;
   }
@@ -82,7 +82,7 @@ public class MessagingConsumerHandler<C, Chan, Msg>
   }
 
   public Map<String, Span> handleConsume(Chan chan, List<Msg> messages,
-      Map<String, Span> spanForChannel) {
+    Map<String, Span> spanForChannel) {
     long timestamp = 0L;
     for (int i = 0, length = messages.size(); i < length; i++) {
       Msg message = messages.get(i);

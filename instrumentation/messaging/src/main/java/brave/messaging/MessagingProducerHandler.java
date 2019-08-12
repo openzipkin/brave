@@ -18,31 +18,31 @@ import brave.Tracer;
 import brave.propagation.TraceContext;
 
 public class MessagingProducerHandler<P, Chan, Msg>
-    extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageProducerAdapter<Msg>> {
+  extends MessagingHandler<Chan, Msg, ChannelAdapter<Chan>, MessageProducerAdapter<Msg>> {
 
   public static <P, Chan, Msg> MessagingProducerHandler<P, Chan, Msg> create(
-      P delegate,
-      MessagingTracing tracing,
-      ChannelAdapter<Chan> channelAdapter,
-      MessageProducerAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      TraceContext.Injector<Msg> injector) {
+    P delegate,
+    MessagingTracing tracing,
+    ChannelAdapter<Chan> channelAdapter,
+    MessageProducerAdapter<Msg> messageAdapter,
+    TraceContext.Extractor<Msg> extractor,
+    TraceContext.Injector<Msg> injector) {
     return new MessagingProducerHandler<>(delegate, tracing, channelAdapter, messageAdapter,
-        extractor, injector);
+      extractor, injector);
   }
 
   public final P delegate;
   final Tracer tracer;
 
   public MessagingProducerHandler(
-      P delegate,
-      MessagingTracing messagingTracing,
-      ChannelAdapter<Chan> channelAdapter,
-      MessageProducerAdapter<Msg> messageAdapter,
-      TraceContext.Extractor<Msg> extractor,
-      TraceContext.Injector<Msg> injector) {
+    P delegate,
+    MessagingTracing messagingTracing,
+    ChannelAdapter<Chan> channelAdapter,
+    MessageProducerAdapter<Msg> messageAdapter,
+    TraceContext.Extractor<Msg> extractor,
+    TraceContext.Injector<Msg> injector) {
     super(messagingTracing.tracing.currentTraceContext(), channelAdapter, messageAdapter,
-        messagingTracing.producerParser, extractor, injector);
+      messagingTracing.producerParser, extractor, injector);
     this.delegate = delegate;
     this.tracer = messagingTracing.tracing.tracer();
   }

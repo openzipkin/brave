@@ -14,14 +14,12 @@
 package brave.messaging;
 
 import brave.SpanCustomizer;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 
 public class MessagingConsumerParser extends MessagingParser {
 
   public <Chan, Msg> void message(ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
-      Chan channel, Msg message, SpanCustomizer customizer) {
+    MessageAdapter<Msg> messageAdapter,
+    Chan channel, Msg message, SpanCustomizer customizer) {
     customizer.name(messageAdapter.operation(message));
     channel(channelAdapter, channel, customizer);
     //identifier(messageAdapter, message, customizer);

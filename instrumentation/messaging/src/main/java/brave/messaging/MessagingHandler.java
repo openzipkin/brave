@@ -26,12 +26,12 @@ abstract class MessagingHandler<Chan, Msg, CA extends ChannelAdapter<Chan>, MA e
   final TraceContext.Injector<Msg> injector;
 
   MessagingHandler(
-      CurrentTraceContext currentTraceContext,
-      CA channelAdapter,
-      MA adapter,
-      MessagingParser parser,
-      TraceContext.Extractor<Msg> extractor,
-      TraceContext.Injector<Msg> injector) {
+    CurrentTraceContext currentTraceContext,
+    CA channelAdapter,
+    MA adapter,
+    MessagingParser parser,
+    TraceContext.Extractor<Msg> extractor,
+    TraceContext.Injector<Msg> injector) {
     this.currentTraceContext = currentTraceContext;
     this.channelAdapter = channelAdapter;
     this.messageAdapter = adapter;

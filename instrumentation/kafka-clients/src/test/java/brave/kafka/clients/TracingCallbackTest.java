@@ -70,7 +70,8 @@ public class TracingCallbackTest extends BaseTracingTest {
 
     Callback delegate = (metadata, exception) -> assertThat(current.get()).isSameAs(span.context());
 
-    TracingProducer.TracingCallback.create(delegate, span, current).onCompletion(createRecordMetadata(), null);
+    TracingProducer.TracingCallback.create(delegate, span, current)
+      .onCompletion(createRecordMetadata(), null);
   }
 
   @Test public void on_completion_should_forward_then_tag_if_exception() {

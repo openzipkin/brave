@@ -84,7 +84,8 @@ final class TracingMessageListener implements MessageListener {
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
-      jmsTracing.msgTracing.consumerParser().channel(channelAdapter, jmsTracing.destination(message), consumerSpan);
+      jmsTracing.msgTracing.consumerParser()
+        .channel(channelAdapter, jmsTracing.destination(message), consumerSpan);
       long consumerFinish = timestamp + 1L; // save a clock reading
       consumerSpan.finish(consumerFinish);
 

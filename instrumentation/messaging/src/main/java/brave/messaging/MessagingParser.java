@@ -18,21 +18,21 @@ import brave.SpanCustomizer;
 public class MessagingParser {
 
   public <Chan, Msg> void message(ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
-      Chan channel, Msg message, SpanCustomizer customizer) {
+    MessageAdapter<Msg> messageAdapter,
+    Chan channel, Msg message, SpanCustomizer customizer) {
     customizer.name(messageAdapter.operation(message));
     channel(channelAdapter, channel, customizer);
     identifier(messageAdapter, message, customizer);
   }
 
   public <Chan> void channel(ChannelAdapter<Chan> adapter, Chan chan,
-      SpanCustomizer customizer) {
+    SpanCustomizer customizer) {
     String channel = adapter.channel(chan);
     if (chan != null) customizer.tag(adapter.channelTagKey(chan), channel);
   }
 
   public <Msg> void identifier(MessageAdapter<Msg> adapter, Msg message,
-      SpanCustomizer customizer) {
+    SpanCustomizer customizer) {
     String identifier = adapter.identifier(message);
     if (identifier != null) {
       customizer.tag(adapter.identifierTagKey(), identifier);

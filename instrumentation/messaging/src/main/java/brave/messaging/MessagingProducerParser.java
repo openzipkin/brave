@@ -18,8 +18,8 @@ import brave.SpanCustomizer;
 public class MessagingProducerParser extends MessagingParser {
 
   public <Chan, Msg> void message(ChannelAdapter<Chan> channelAdapter,
-      MessageAdapter<Msg> messageAdapter,
-      Chan channel, Msg message, SpanCustomizer customizer) {
+    MessageAdapter<Msg> messageAdapter,
+    Chan channel, Msg message, SpanCustomizer customizer) {
     customizer.name(messageAdapter.operation(message));
     channel(channelAdapter, channel, customizer);
     identifier(messageAdapter, message, customizer);
