@@ -18,12 +18,11 @@ import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class FinishedSpanHandlers {
-  public static FinishedSpanHandler compose(List<FinishedSpanHandler> finishedSpanHandlers) {
+  public static FinishedSpanHandler compose(Collection<FinishedSpanHandler> finishedSpanHandlers) {
     if (finishedSpanHandlers.size() < 2) throw new IllegalArgumentException("don't compose < 2");
     int i = 0;
     boolean alwaysSampleLocal = false;
