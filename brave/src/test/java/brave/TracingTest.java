@@ -129,7 +129,8 @@ public class TracingTest {
     }
   }
 
-  @Test public void finishedSpanHandler_dedupes() {
+  /** This test lets future maintainers know that we don't dedupe, which can explain future bugs. */
+  @Test public void finishedSpanHandler_doesntDedupe() {
     FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext context, MutableSpan span) {
         return true;
@@ -142,8 +143,8 @@ public class TracingTest {
       .build()) {
       assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
         .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
-          .startsWith(finishedSpanHandler)
-          .hasSize(2) // zipkin and the above
+          .startsWith(finishedSpanHandler, finishedSpanHandler)
+          .hasSize(3) // zipkin and the above
         );
     }
   }
