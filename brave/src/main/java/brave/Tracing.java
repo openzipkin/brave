@@ -26,9 +26,8 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -145,7 +144,13 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
+    // Intentional dupes would be surprising. Be very careful when adding features here that no
+    // other list parameter extends FinishedSpanHandler. If it did, it could be accidentally added
+    // result in dupes here. Any component that provides a FinishedSpanHandler needs to be
+    // explicitly documented to not be added also here, to avoid dupes. That or mark a provider
+    // method protected, but still the user could accidentally create a dupe by misunderstanding and
+    // overriding public so they can add it here.
+    ArrayList<FinishedSpanHandler> finishedSpanHandlers = new ArrayList<>();
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -388,8 +393,8 @@ public abstract class Tracing implements Closeable {
       this.sampler = builder.sampler;
       this.noop = new AtomicBoolean();
 
-      LinkedHashSet<FinishedSpanHandler> finishedSpanHandlers =
-        new LinkedHashSet<>(builder.finishedSpanHandlers);
+      ArrayList<FinishedSpanHandler> finishedSpanHandlers =
+        new ArrayList<>(builder.finishedSpanHandlers); // defensive copy against mutation of builder
 
       // If a Zipkin reporter is present, it is invoked after the user-supplied finished span handlers.
       FinishedSpanHandler zipkinHandler = FinishedSpanHandler.NOOP;
