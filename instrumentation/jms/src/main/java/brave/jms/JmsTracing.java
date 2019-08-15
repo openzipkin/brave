@@ -208,7 +208,7 @@ public final class JmsTracing {
     TraceContextOrSamplingFlags extracted = extractor.extract(message);
     // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
     // message writable
-    PropertyFilter.MESSAGE.filterProperties(message, propagationKeys);
+    PropertyFilter.filterProperties(message, propagationKeys);
     return extracted;
   }
 

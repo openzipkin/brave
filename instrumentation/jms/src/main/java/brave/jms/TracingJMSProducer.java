@@ -53,14 +53,8 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     message.setProperty("b3", writeB3SingleFormatWithoutParentId(context));
   }
 
-  @Override void clearPropagationHeaders(JMSProducer message) {
-    PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-  }
-
-  @Override TraceContextOrSamplingFlags extractAndClearMessage(JMSProducer message) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(message);
-    PropertyFilter.JMS_PRODUCER.filterProperties(message, jmsTracing.propagationKeys);
-    return extracted;
+  @Override TraceContextOrSamplingFlags extract(JMSProducer message) {
+    return extractor.extract(message);
   }
 
   @Override Destination destination(JMSProducer producer) {
