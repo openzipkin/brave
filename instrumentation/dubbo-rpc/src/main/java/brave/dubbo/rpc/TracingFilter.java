@@ -46,6 +46,7 @@ public final class TracingFilter implements Filter {
   Tracer tracer;
   TraceContext.Extractor<Map<String, String>> extractor;
   TraceContext.Injector<Map<String, String>> injector;
+  volatile boolean isInit = false;
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "tracing". For
@@ -56,11 +57,12 @@ public final class TracingFilter implements Filter {
     tracer = tracing.tracer();
     extractor = tracing.propagation().extractor(GETTER);
     injector = tracing.propagation().injector(SETTER);
+    isInit = true;
   }
 
   @Override
   public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-    if (tracer == null) return invoker.invoke(invocation);
+    if (isInit == false) return invoker.invoke(invocation);
 
     RpcContext rpcContext = RpcContext.getContext();
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;
