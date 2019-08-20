@@ -48,12 +48,7 @@ final class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
   }
 
   @Override Destination destination(Message message) {
-    try {
-      return message.getJMSDestination();
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
-    }
-    return null;
+    return JmsTracing.destination(message);
   }
 
   @Override public String getMessageSelector() throws JMSException {

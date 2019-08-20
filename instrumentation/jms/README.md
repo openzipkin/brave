@@ -72,6 +72,10 @@ void process(Message message) {
 }
 ```
 
+## Troubleshooting
+If you have problems with a JMS provider, such as broken traces, please capture the "FINE" output of
+the Java logger: `brave.jms.JmsTracing` and ask on [gitter](https://gitter.im/openzipkin/zipkin).
+
 ## Notes
 * This instrumentation library works with JMS 1.1 and 2.0
 * More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/blob/master/pages/instrumenting.md#message-tracing)

@@ -17,6 +17,7 @@ import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.Map;
+import javax.jms.BytesMessage;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
@@ -36,6 +37,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
+import static brave.jms.JmsTracing.SETTER;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,7 +58,6 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   TopicPublisher topicPublisher;
   TopicSubscriber topicSubscriber;
 
-  TextMessage message;
   Map<String, String> existingProperties = Collections.singletonMap("tx", "1");
 
   JmsTestRule newJmsTestRule(TestName testName) {
@@ -82,10 +83,15 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
     message = jms.newMessage("foo");
     for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
-      message.setStringProperty(existingProperty.getKey(), existingProperty.getValue());
+      SETTER.put(message, existingProperty.getKey(), existingProperty.getValue());
+    }
+    bytesMessage = jms.newBytesMessage("foo");
+    for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
+      SETTER.put(bytesMessage, existingProperty.getKey(), existingProperty.getValue());
     }
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
+    jms.setReadOnlyProperties(bytesMessage, true);
   }
 
   @After public void tearDownTraced() throws JMSException {
@@ -96,6 +102,11 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
   @Test public void should_add_b3_single_property() throws Exception {
     messageProducer.send(jms.destination, message);
+    assertHasB3SingleProperty(messageConsumer.receive());
+  }
+
+  @Test public void should_add_b3_single_property_bytes() throws Exception {
+    messageProducer.send(jms.destination, bytesMessage);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
@@ -136,7 +147,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
   @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
     jms.setReadOnlyProperties(message, false);
-    message.setStringProperty("b3",
+    SETTER.put(message, "b3",
       writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
 
     ScopedSpan parent = tracing.tracer().startScopedSpan("main");

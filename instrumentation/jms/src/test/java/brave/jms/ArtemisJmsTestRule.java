@@ -17,8 +17,8 @@ import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.Connection;
 import javax.jms.JMSContext;
+import javax.jms.Message;
 import javax.jms.QueueConnection;
-import javax.jms.TextMessage;
 import javax.jms.TopicConnection;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQMessage;
@@ -61,7 +61,7 @@ class ArtemisJmsTestRule extends JmsTestRule {
     return factory.createTopicConnection();
   }
 
-  @Override void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties)
+  @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties)
     throws Exception {
     Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
     propertiesReadOnly.setAccessible(true);

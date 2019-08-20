@@ -25,6 +25,7 @@ import org.junit.After;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static brave.jms.JmsTracing.SETTER;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,7 +141,7 @@ public class TracingMessageListenerTest {
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    message.setStringProperty("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
+    SETTER.put(message, "b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
@@ -177,10 +178,10 @@ public class TracingMessageListenerTest {
 
   @Test public void continues_parent_trace() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    message.setStringProperty("X-B3-TraceId", TRACE_ID);
-    message.setStringProperty("X-B3-SpanId", SPAN_ID);
-    message.setStringProperty("X-B3-ParentSpanId", PARENT_ID);
-    message.setStringProperty("X-B3-Sampled", SAMPLED);
+    SETTER.put(message, "X-B3-TraceId", TRACE_ID);
+    SETTER.put(message, "X-B3-SpanId", SPAN_ID);
+    SETTER.put(message, "X-B3-ParentSpanId", PARENT_ID);
+    SETTER.put(message, "X-B3-Sampled", SAMPLED);
 
     onMessageConsumed(message);
 
@@ -198,10 +199,10 @@ public class TracingMessageListenerTest {
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    message.setStringProperty("X-B3-TraceId", TRACE_ID);
-    message.setStringProperty("X-B3-SpanId", SPAN_ID);
-    message.setStringProperty("X-B3-ParentSpanId", PARENT_ID);
-    message.setStringProperty("X-B3-Sampled", SAMPLED);
+    SETTER.put(message, "X-B3-TraceId", TRACE_ID);
+    SETTER.put(message, "X-B3-SpanId", SPAN_ID);
+    SETTER.put(message, "X-B3-ParentSpanId", PARENT_ID);
+    SETTER.put(message, "X-B3-Sampled", SAMPLED);
 
     onMessageConsumed(message);
 
@@ -215,7 +216,7 @@ public class TracingMessageListenerTest {
 
   @Test public void continues_parent_trace_single_header() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    message.setStringProperty("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
+    SETTER.put(message, "b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
 
     onMessageConsumed(message);
 
@@ -233,7 +234,7 @@ public class TracingMessageListenerTest {
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    message.setStringProperty("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
+    SETTER.put(message, "b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
 
     onMessageConsumed(message);
 
