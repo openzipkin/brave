@@ -6,7 +6,9 @@ factories.
 Under the scenes:
 * `TracingMessageProducer` - completes a producer span per message and propagates it via headers.
 * `TracingMessageConsumer` - completes a consumer span on `receive`, resuming a trace in headers if present.
+  * The message returned has the current span encoded as the property "b3".
 * `TracingMessageListener` - does the same as `TracingMessageConsumer`, and times the user-supplied listener.
+  * The message passed to the listener has no "b3" header. Similar to a server, use `Tracer.currentSpan()`.
 
 
 ## Setup
@@ -71,6 +73,10 @@ void process(Message message) {
   }
 }
 ```
+
+## Troubleshooting
+If you have problems with a JMS provider, such as broken traces, please capture the "FINE" output of
+the Java logger: `brave.jms.JmsTracing` and ask on [gitter](https://gitter.im/openzipkin/zipkin).
 
 ## Notes
 * This instrumentation library works with JMS 1.1 and 2.0

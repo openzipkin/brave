@@ -27,6 +27,7 @@ import javax.jms.QueueSender;
 import javax.jms.Topic;
 import javax.jms.TopicPublisher;
 
+import static brave.jms.JmsTracing.log;
 import static brave.jms.TracingConnection.TYPE_QUEUE;
 import static brave.jms.TracingConnection.TYPE_TOPIC;
 
@@ -62,12 +63,13 @@ final class TracingMessageProducer extends TracingProducer<MessageProducer, Mess
   }
 
   @Override Destination destination(Message message) {
+    Destination result = JmsTracing.destination(message);
+    if (result != null) return result;
+
     try {
-      Destination result = message.getJMSDestination();
-      if (result != null) return result;
       return delegate.getDestination();
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
+    } catch (JMSException e) {
+      log(e, "error getting destination of producer {0}", delegate, null);
     }
     return null;
   }

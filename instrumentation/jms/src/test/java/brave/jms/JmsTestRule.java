@@ -13,9 +13,11 @@
  */
 package brave.jms;
 
+import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.QueueConnection;
 import javax.jms.QueueSession;
@@ -25,7 +27,7 @@ import javax.jms.Topic;
 import javax.jms.TopicConnection;
 import javax.jms.TopicSession;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.activemq.command.ActiveMQTextMessage;
+import org.apache.activemq.command.ActiveMQMessage;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TestName;
 
@@ -54,8 +56,13 @@ public abstract class JmsTestRule extends ExternalResource {
     return queueSession.createTextMessage(text);
   }
 
-  abstract void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties)
-    throws Exception;
+  BytesMessage newBytesMessage(String text) throws JMSException {
+    BytesMessage message = queueSession.createBytesMessage();
+    message.writeUTF(text);
+    return message;
+  }
+
+  abstract void setReadOnlyProperties(Message message, boolean readOnlyProperties) throws Exception;
 
   abstract Connection newConnection() throws Exception;
 
@@ -120,8 +127,8 @@ public abstract class JmsTestRule extends ExternalResource {
         .createTopicConnection();
     }
 
-    @Override void setReadOnlyProperties(TextMessage message, boolean readOnlyProperties) {
-      ((ActiveMQTextMessage) message).setReadOnlyProperties(readOnlyProperties);
+    @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
+      ((ActiveMQMessage) message).setReadOnlyProperties(readOnlyProperties);
     }
   }
 }

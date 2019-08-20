@@ -15,7 +15,6 @@ package brave.jms;
 
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.Propagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.Enumeration;
@@ -24,8 +23,10 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import javax.jms.BytesMessage;
 import javax.jms.JMSException;
 import javax.jms.Message;
+import javax.jms.TextMessage;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -33,20 +34,10 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
+import static brave.jms.JmsTracing.SETTER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class JmsTest {
-  static final Propagation.Setter<Message, String> SETTER =
-    new Propagation.Setter<Message, String>() {
-      @Override public void put(Message carrier, String key, String value) {
-        try {
-          carrier.setStringProperty(key, value);
-        } catch (JMSException e) {
-          throw new AssertionError(e);
-        }
-      }
-    };
-
   @After public void tearDown() {
     tracing.close();
   }
@@ -88,6 +79,18 @@ public abstract class JmsTest {
     .build();
   CurrentTraceContext current = tracing.currentTraceContext();
   JmsTracing jmsTracing = JmsTracing.create(tracing);
+  TextMessage message;
+  BytesMessage bytesMessage;
+
+  String resetMessageToHaveParentId(JmsTestRule jms) throws Exception {
+    String parentId = "463ac35c9f6413ad";
+    jms.setReadOnlyProperties(message, false);
+    jms.setReadOnlyProperties(bytesMessage, true);
+    SETTER.put(message, "b3", parentId + "-" + parentId + "-1");
+    SETTER.put(bytesMessage, "b3", parentId + "-" + parentId + "-1");
+    bytesMessage.reset();
+    return parentId;
+  }
 
   static Map<String, String> propertiesToMap(Message headers) throws Exception {
     Map<String, String> result = new LinkedHashMap<>();

@@ -13,12 +13,17 @@
  */
 package brave.jms;
 
+import brave.internal.Platform;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Set;
 import javax.jms.JMSException;
 import javax.jms.JMSProducer;
+import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
+
+import static brave.jms.JmsTracing.log;
 
 enum PropertyFilter {
   MESSAGE {
@@ -32,9 +37,7 @@ enum PropertyFilter {
       Message message = (Message) object;
       ArrayList<Object> retainedProperties = messagePropertiesBuffer();
       try {
-        doFilterProperties(message, namesToClear, retainedProperties);
-      } catch (JMSException e) {
-        // don't die on wonky exception
+        filterProperties(message, namesToClear, retainedProperties);
       } finally {
         retainedProperties.clear(); // ensure no object references are held due to JMS exceptions
       }
@@ -45,7 +48,7 @@ enum PropertyFilter {
       JMSProducer jmsProducer = (JMSProducer) object;
       ArrayList<Object> retainedProperties = messagePropertiesBuffer();
       try {
-        doFilterProperties(jmsProducer, namesToClear, retainedProperties);
+        JMS2.filterProperties(jmsProducer, namesToClear, retainedProperties);
       } finally {
         retainedProperties.clear(); // ensure no object references are held due to JMS exceptions
       }
@@ -54,52 +57,91 @@ enum PropertyFilter {
 
   abstract void filterProperties(Object message, Set<String> namesToClear);
 
-  static void doFilterProperties(
-    Message message, Set<String> namesToClear, ArrayList<Object> retainedProperties
-  ) throws JMSException {
-    Enumeration<?> names = message.getPropertyNames();
+  static void filterProperties(Message message, Set<String> namesToClear, List<Object> out) {
+    Enumeration<?> names;
+    try {
+      names = message.getPropertyNames();
+    } catch (JMSException e) {
+      Platform.get().log("error getting property names from {0}", message, e);
+      return;
+    }
+
     while (names.hasMoreElements()) {
       String name = (String) names.nextElement();
-      Object value = message.getObjectProperty(name);
+      Object value;
+      try {
+        value = message.getObjectProperty(name);
+      } catch (JMSException e) {
+        log(e, "error getting property {0} from message {1}", name, message);
+        return;
+      }
       if (!namesToClear.contains(name) && value != null) {
-        retainedProperties.add(name);
-        retainedProperties.add(value);
+        out.add(name);
+        out.add(value);
       }
     }
 
     // redo the properties to keep
-    message.clearProperties();
-    for (int i = 0, length = retainedProperties.size(); i < length; i += 2) {
-      message.setObjectProperty(
-        retainedProperties.get(i).toString(),
-        retainedProperties.get(i + 1)
-      );
+    try {
+      message.clearProperties();
+    } catch (JMSException e) {
+      Platform.get().log("error clearing properties of {0}", message, e);
+      return;
+    }
+
+    for (int i = 0, length = out.size(); i < length; i += 2) {
+      String name = out.get(i).toString();
+      try {
+        message.setObjectProperty(name, out.get(i + 1));
+      } catch (JMSException e) {
+        log(e, "error setting property {0} on message {1}", name, message);
+        // continue on error when re-setting properties as it is better than not.
+      }
     }
   }
 
-  static void doFilterProperties(JMSProducer producer, Set<String> namesToClear,
-    ArrayList<Object> retainedProperties) {
-    boolean filtered = false;
-    for (String name : producer.getPropertyNames()) {
-      Object value = producer.getObjectProperty(name);
-      if (!namesToClear.contains(name) && value != null) {
-        retainedProperties.add(name);
-        retainedProperties.add(value);
-      } else {
-        filtered = true;
+  static class JMS2 { // sneaky way to delay resolution of JMSRuntimeException
+    static void filterProperties(JMSProducer producer, Set<String> namesToClear, List<Object> out) {
+      Set<String> names;
+      try {
+        names = producer.getPropertyNames();
+      } catch (JMSRuntimeException e) {
+        Platform.get().log("error getting property names from {0}", producer, e);
+        return;
       }
-    }
 
-    // a producer doesn't need to mark things mutable via clearProperties
-    if (!filtered) return;
+      boolean needsClear = false;
+      for (String name : names) {
+        Object value;
+        try {
+          value = producer.getObjectProperty(name);
+        } catch (JMSRuntimeException e) {
+          log(e, "error getting property {0} from producer {1}", name, producer);
+          return;
+        }
+        if (!namesToClear.contains(name) && value != null) {
+          out.add(name);
+          out.add(value);
+        } else {
+          needsClear = true;
+        }
+      }
 
-    // redo the properties to keep
-    producer.clearProperties();
-    for (int i = 0, length = retainedProperties.size(); i < length; i += 2) {
-      producer.setProperty(
-        retainedProperties.get(i).toString(),
-        retainedProperties.get(i + 1)
-      );
+      // If the producer hasn't set a property we need to clear, we can just return. Unlike JMS 1.1,
+      // there's no special casing for property override. It is only special when removing.
+      if (!needsClear) return;
+
+      // There's no api for remove property, so we have to replay the properties to keep instead.
+      producer.clearProperties();
+      for (int i = 0, length = out.size(); i < length; i += 2) {
+        String name = out.get(i).toString();
+        try {
+          producer.setProperty(name, out.get(i + 1));
+        } catch (JMSRuntimeException e) {
+          log(e, "error setting property {0} on producer {1}", name, producer);
+          // continue on error when re-setting properties as it is better than not.
+        }
+      }
     }
   }
 

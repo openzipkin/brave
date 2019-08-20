@@ -16,16 +16,22 @@ package brave.jms;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
+import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 import javax.jms.Queue;
@@ -41,21 +47,37 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
+  private static final Logger LOG = Logger.getLogger(JmsTracing.class.getName());
+
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
 
   static final Getter<Message, String> GETTER = new Getter<Message, String>() {
-    @Override public String get(Message carrier, String key) {
+    @Override public String get(Message message, String name) {
       try {
-        return carrier.getStringProperty(key);
+        return message.getStringProperty(name);
       } catch (JMSException e) {
-        // don't crash on wonky exceptions!
+        log(e, "error getting property {0} from message {1}", name, message);
         return null;
       }
     }
 
     @Override public String toString() {
       return "Message::getStringProperty";
+    }
+  };
+
+  static final Setter<Message, String> SETTER = new Setter<Message, String>() {
+    @Override public void put(Message message, String name, String value) {
+      try {
+        message.setStringProperty(name, value);
+      } catch (JMSException e) {
+        log(e, "error setting property {0} on message {1}", name, message);
+      }
+    }
+
+    @Override public String toString() {
+      return "Message::setStringProperty";
     }
   };
 
@@ -203,20 +225,21 @@ public final class JmsTracing {
 
   /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
   static void addB3SingleHeader(Message message, TraceContext context) {
+    SETTER.put(message, "b3", writeB3SingleFormatWithoutParentId(context));
+  }
+
+  @Nullable static Destination destination(Message message) {
     try {
-      message.setStringProperty("b3", writeB3SingleFormatWithoutParentId(context));
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
+      return message.getJMSDestination();
+    } catch (JMSException e) {
+      log(e, "error destination of message {0}", message, null);
     }
+    return null;
   }
 
   void tagQueueOrTopic(Message message, SpanCustomizer span) {
-    try {
-      Destination destination = message.getJMSDestination();
-      if (destination != null) tagQueueOrTopic(destination, span);
-    } catch (JMSException e) {
-      // don't crash on wonky exceptions!
-    }
+    Destination destination = destination(message);
+    if (destination != null) tagQueueOrTopic(destination, span);
   }
 
   void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
@@ -226,8 +249,37 @@ public final class JmsTracing {
       } else if (destination instanceof Topic) {
         span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
       }
-    } catch (JMSException ignored) {
-      // don't crash on wonky exceptions!
+    } catch (JMSException e) {
+      log(e, "error getting destination name from {0}", destination, null);
     }
+  }
+
+  /**
+   * Avoids array allocation when logging a parameterized message when fine level is disabled. The
+   * second parameter is optional. This is used to pinpoint provider-specific problems that throw
+   * {@link JMSException} or {@link JMSRuntimeException}.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * try {
+   *    return message.getStringProperty(name);
+   *  } catch (JMSException e) {
+   *    log(e, "error getting property {0} from message {1}", name, message);
+   *    return null;
+   *  }
+   * }</pre>
+   *
+   * @param thrown the JMS exception that was caught
+   * @param msg the format string
+   * @param zero will end up as {@code {0}} in the format string
+   * @param one if present, will end up as {@code {1}} in the format string
+   */
+  static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
+    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    LogRecord lr = new LogRecord(Level.FINE, msg);
+    Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
+    lr.setParameters(params);
+    lr.setThrown(thrown);
+    LOG.log(lr);
   }
 }

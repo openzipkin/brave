@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
+import static brave.jms.JmsTracing.GETTER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITJms_2_0_TracingMessageConsumer} */
@@ -51,48 +52,79 @@ public class ITTracingJMSConsumer extends JmsTest {
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {
-    consumer.setMessageListener(
-      m -> tracing.tracer().currentSpanCustomizer().name("message-listener")
-    );
+    messageListener_startsNewTrace(() -> producer.send(jms.queue, "foo"));
+  }
 
-    producer.send(jms.queue, "foo");
+  @Test public void messageListener_startsNewTrace_bytes() throws Exception {
+    messageListener_startsNewTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
+  }
 
-    Span consumerSpan = takeSpan();
+  void messageListener_startsNewTrace(Runnable send) throws Exception {
+    consumer.setMessageListener(m -> {
+      tracing.tracer().currentSpanCustomizer().name("message-listener");
+
+      // clearing headers ensures later work doesn't try to use the old parent
+      String b3 = GETTER.get(m, "b3");
+      tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
+    });
+
+    send.run();
+
+    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
+
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
     assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
-    assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
+    assertThat(consumerSpan.tags())
+      .hasSize(1)
+      .containsEntry("jms.queue", jms.queueName);
 
-    Span listenerSpan = takeSpan();
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
     assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id()); // root span
     assertThat(listenerSpan.kind()).isNull(); // processor span, not a consumer
-    assertThat(listenerSpan.tags()).isEmpty();
+    assertThat(listenerSpan.tags())
+      .hasSize(1) // no redundant copy of consumer tags
+      .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
   @Test public void messageListener_resumesTrace() throws Exception {
+    messageListener_resumesTrace(() -> producer.send(jms.queue, "foo"));
+  }
+
+  @Test public void messageListener_resumesTrace_bytes() throws Exception {
+    messageListener_resumesTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
+  }
+
+  void messageListener_resumesTrace(Runnable send) throws Exception {
     consumer.setMessageListener(m -> {
-      try {
-        // clearing headers ensures later work doesn't try to use the old parent
-        assertThat(m.getStringProperty("b3")).isNull();
-      } catch (JMSException e) {
-        e.printStackTrace();
-      }
+      // clearing headers ensures later work doesn't try to use the old parent
+      String b3 = GETTER.get(m, "b3");
+      tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
     });
 
     String parentId = "463ac35c9f6413ad";
     producer.setProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(jms.queue, "foo");
+    send.run();
 
-    Span consumerSpan = takeSpan();
+    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
     assertThat(consumerSpan.parentId()).isEqualTo(parentId);
-    assertThat(takeSpan().parentId()).isEqualTo(consumerSpan.id()); // root span
+    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id());
+    assertThat(listenerSpan.tags())
+      .hasSize(1) // no redundant copy of consumer tags
+      .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
   @Test public void receive_startsNewTrace() throws Exception {
-    producer.send(jms.queue, "foo");
-    consumer.receive();
+    receive_startsNewTrace(() -> producer.send(jms.queue, "foo"));
+  }
 
+  @Test public void receive_startsNewTrace_bytes() throws Exception {
+    receive_startsNewTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
+  }
+
+  void receive_startsNewTrace(Runnable send) throws InterruptedException {
+    send.run();
+    consumer.receive();
     Span consumerSpan = takeSpan();
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
@@ -101,9 +133,17 @@ public class ITTracingJMSConsumer extends JmsTest {
   }
 
   @Test public void receive_resumesTrace() throws Exception {
+    receiveResumesTrace(() -> producer.send(jms.queue, "foo"));
+  }
+
+  @Test public void receive_resumesTrace_bytes() throws Exception {
+    receiveResumesTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
+  }
+
+  void receiveResumesTrace(Runnable send) throws InterruptedException, JMSException {
     String parentId = "463ac35c9f6413ad";
     producer.setProperty("b3", parentId + "-" + parentId + "-1");
-    producer.send(jms.queue, "foo");
+    send.run();
 
     Message received = consumer.receive();
     Span consumerSpan = takeSpan();
