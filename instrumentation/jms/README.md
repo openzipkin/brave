@@ -6,7 +6,9 @@ factories.
 Under the scenes:
 * `TracingMessageProducer` - completes a producer span per message and propagates it via headers.
 * `TracingMessageConsumer` - completes a consumer span on `receive`, resuming a trace in headers if present.
+  * The message returned has the current span encoded as the property "b3".
 * `TracingMessageListener` - does the same as `TracingMessageConsumer`, and times the user-supplied listener.
+  * The message passed to the listener has no "b3" header. Similar to a server, use `Tracer.currentSpan()`.
 
 
 ## Setup
