@@ -19,43 +19,26 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import javax.jms.JMSException;
-import javax.jms.JMSProducer;
-import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 
 import static brave.jms.JmsTracing.log;
 
-enum PropertyFilter {
-  MESSAGE {
-    /**
-     * This implies copying properties because the JMS spec says you can't write properties until
-     * {@link Message#clearProperties()} has been called.
-     *
-     * <p> See https://docs.oracle.com/javaee/6/api/javax/jms/Message.html
-     */
-    @Override void filterProperties(Object object, Set<String> namesToClear) {
-      Message message = (Message) object;
-      ArrayList<Object> retainedProperties = messagePropertiesBuffer();
-      try {
-        filterProperties(message, namesToClear, retainedProperties);
-      } finally {
-        retainedProperties.clear(); // ensure no object references are held due to JMS exceptions
-      }
+// Similar to https://github.com/apache/camel/blob/b9a3117f19dd19abd2ea8b789c42c3e86fe4c488/components/camel-jms/src/main/java/org/apache/camel/component/jms/JmsMessageHelper.java
+final class PropertyFilter {
+  /**
+   * This implies copying properties because the JMS spec says you can't write properties upon
+   * receipt until {@link Message#clearProperties()} has been called.
+   *
+   * <p> See https://docs.oracle.com/javaee/6/api/javax/jms/Message.html
+   */
+  static void filterProperties(Message message, Set<String> namesToClear) {
+    ArrayList<Object> retainedProperties = messagePropertiesBuffer();
+    try {
+      filterProperties(message, namesToClear, retainedProperties);
+    } finally {
+      retainedProperties.clear(); // ensure no object references are held due to any exception
     }
-  },
-  JMS_PRODUCER {
-    @Override void filterProperties(Object object, Set<String> namesToClear) {
-      JMSProducer jmsProducer = (JMSProducer) object;
-      ArrayList<Object> retainedProperties = messagePropertiesBuffer();
-      try {
-        JMS2.filterProperties(jmsProducer, namesToClear, retainedProperties);
-      } finally {
-        retainedProperties.clear(); // ensure no object references are held due to JMS exceptions
-      }
-    }
-  };
-
-  abstract void filterProperties(Object message, Set<String> namesToClear);
+  }
 
   static void filterProperties(Message message, Set<String> namesToClear, List<Object> out) {
     Enumeration<?> names;
@@ -96,51 +79,6 @@ enum PropertyFilter {
       } catch (JMSException e) {
         log(e, "error setting property {0} on message {1}", name, message);
         // continue on error when re-setting properties as it is better than not.
-      }
-    }
-  }
-
-  static class JMS2 { // sneaky way to delay resolution of JMSRuntimeException
-    static void filterProperties(JMSProducer producer, Set<String> namesToClear, List<Object> out) {
-      Set<String> names;
-      try {
-        names = producer.getPropertyNames();
-      } catch (JMSRuntimeException e) {
-        Platform.get().log("error getting property names from {0}", producer, e);
-        return;
-      }
-
-      boolean needsClear = false;
-      for (String name : names) {
-        Object value;
-        try {
-          value = producer.getObjectProperty(name);
-        } catch (JMSRuntimeException e) {
-          log(e, "error getting property {0} from producer {1}", name, producer);
-          return;
-        }
-        if (!namesToClear.contains(name) && value != null) {
-          out.add(name);
-          out.add(value);
-        } else {
-          needsClear = true;
-        }
-      }
-
-      // If the producer hasn't set a property we need to clear, we can just return. Unlike JMS 1.1,
-      // there's no special casing for property override. It is only special when removing.
-      if (!needsClear) return;
-
-      // There's no api for remove property, so we have to replay the properties to keep instead.
-      producer.clearProperties();
-      for (int i = 0, length = out.size(); i < length; i += 2) {
-        String name = out.get(i).toString();
-        try {
-          producer.setProperty(name, out.get(i + 1));
-        } catch (JMSRuntimeException e) {
-          log(e, "error setting property {0} on producer {1}", name, producer);
-          // continue on error when re-setting properties as it is better than not.
-        }
       }
     }
   }

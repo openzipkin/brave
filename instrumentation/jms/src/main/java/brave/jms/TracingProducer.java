@@ -22,7 +22,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.Destination;
 
 abstract class TracingProducer<P, M> {
-
   final P delegate;
   final JmsTracing jmsTracing;
   final Tracer tracer;
@@ -42,16 +41,14 @@ abstract class TracingProducer<P, M> {
     // Unlike message consumers, we try current span before trying extraction. This is the proper
     // order because the span in scope should take precedence over a potentially stale header entry.
     //
-    // NOTE: Brave instrumentation used properly does not result in stale header entries, as we
-    // always clear message headers after reading.
+    // NOTE: The JMS Spec says you need to clear headers only when receiving a message, not when
+    // sending one. At any rate, as long as we are using b3-single format, this is an overwrite not
+    // a clear.
     Span span;
     if (maybeParent == null) {
-      span = tracer.nextSpan(extractAndClearMessage(message));
+      span = tracer.nextSpan(extract(message));
     } else {
-      // As JMS is sensitive about write access to headers, we  defensively clear even if it seems
-      // upstream would have cleared (because there is a span in scope!).
       span = tracer.newChild(maybeParent);
-      clearPropagationHeaders(message);
     }
 
     if (!span.isNoop()) {
@@ -68,9 +65,7 @@ abstract class TracingProducer<P, M> {
 
   abstract void addB3SingleHeader(M message, TraceContext context);
 
-  abstract void clearPropagationHeaders(M message);
-
-  abstract TraceContextOrSamplingFlags extractAndClearMessage(M message);
+  abstract TraceContextOrSamplingFlags extract(M message);
 
   @Nullable abstract Destination destination(M message);
 }

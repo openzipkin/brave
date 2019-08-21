@@ -54,12 +54,8 @@ final class TracingMessageProducer extends TracingProducer<MessageProducer, Mess
     JmsTracing.addB3SingleHeader(message, context);
   }
 
-  @Override void clearPropagationHeaders(Message message) {
-    PropertyFilter.MESSAGE.filterProperties(message, jmsTracing.propagationKeys);
-  }
-
-  @Override TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
-    return jmsTracing.extractAndClearMessage(message);
+  @Override TraceContextOrSamplingFlags extract(Message message) {
+    return jmsTracing.extractor.extract(message);
   }
 
   @Override Destination destination(Message message) {

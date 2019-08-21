@@ -92,9 +92,6 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
       SETTER.put(bytesMessage, existingProperty.getKey(), existingProperty.getValue());
     }
-    // this forces us to handle JMS write concerns!
-    jms.setReadOnlyProperties(message, true);
-    jms.setReadOnlyProperties(bytesMessage, true);
   }
 
   @After public void tearDownTraced() throws JMSException {
