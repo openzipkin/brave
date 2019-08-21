@@ -61,6 +61,9 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     return new JmsTestRule.ActiveMQ(testName);
   }
 
+  TextMessage message;
+  BytesMessage bytesMessage;
+
   @Before public void setup() throws Exception {
     tracedSession = jmsTracing.connection(jms.connection)
       .createSession(false, Session.AUTO_ACKNOWLEDGE);
@@ -80,10 +83,24 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
     message = jms.newMessage("foo");
     bytesMessage = jms.newBytesMessage("foo");
+    lockMessages();
+  }
+
+  void lockMessages() throws Exception {
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
     jms.setReadOnlyProperties(bytesMessage, true);
     bytesMessage.reset();
+  }
+
+  String resetB3PropertyToIncludeParentId(JmsTestRule jms) throws Exception {
+    message = jms.newMessage("foo");
+    bytesMessage = jms.newBytesMessage("foo");
+    String parentId = "463ac35c9f6413ad";
+    SETTER.put(message, "b3", parentId + "-" + parentId + "-1");
+    SETTER.put(bytesMessage, "b3", parentId + "-" + parentId + "-1");
+    lockMessages();
+    return parentId;
   }
 
   @After public void tearDownTraced() throws JMSException {
@@ -156,8 +173,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     messageListener_resumesTrace(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test(expected = ComparisonFailure.class) // TODO: https://github.com/openzipkin/brave/issues/967
-  public void messageListener_resumesTrace_bytes() throws Exception {
+  @Test public void messageListener_resumesTrace_bytes() throws Exception {
     messageListener_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
@@ -178,7 +194,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
       }
     );
 
-    String parentId = resetMessageToHaveParentId(jms);
+    String parentId = resetB3PropertyToIncludeParentId(jms);
     send.run();
 
     Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
@@ -244,7 +260,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   void receive_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer) throws Exception {
-    String parentId = resetMessageToHaveParentId(jms);
+    String parentId = resetB3PropertyToIncludeParentId(jms);
     send.run();
 
     Message received = messageConsumer.receive();

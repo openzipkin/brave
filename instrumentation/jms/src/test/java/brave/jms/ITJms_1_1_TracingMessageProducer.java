@@ -58,6 +58,9 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   TopicPublisher topicPublisher;
   TopicSubscriber topicSubscriber;
 
+  TextMessage message;
+  BytesMessage bytesMessage;
+
   Map<String, String> existingProperties = Collections.singletonMap("tx", "1");
 
   JmsTestRule newJmsTestRule(TestName testName) {
