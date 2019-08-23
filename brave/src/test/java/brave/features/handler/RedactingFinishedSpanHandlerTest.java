@@ -95,4 +95,29 @@ public class RedactingFinishedSpanHandlerTest {
       "SSN=xxx-xx-xxxx"
     );
   }
+
+  @Test public void showRedactionInOrphanedSpan() throws InterruptedException {
+    createAndLeakSpan(); // done in separate method so we can force gc
+    blockOnGC();
+    tracing.tracer().nextSpan().abandon(); //create another span to trigger PendingSpans.reportOrphanedSpans()
+
+    assertThat(spans.get(0).tags()).containsExactly(
+      // SSN tag was nuked
+    );
+    assertThat(spans.get(0).annotations()).flatExtracting(Annotation::value).containsExactly(
+      "SSN=xxx-xx-xxxx",
+      "brave.flush"
+    );
+  }
+
+  private void createAndLeakSpan() {
+    brave.Span span = tracing.tracer().nextSpan();
+    span.tag("b", "912-23-1433");
+    span.annotate("SSN=912-23-1433");
+  }
+
+  private static void blockOnGC() throws InterruptedException {
+    System.gc();
+    Thread.sleep(200L);
+  }
 }
