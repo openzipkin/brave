@@ -420,7 +420,7 @@ public abstract class Tracing implements Closeable {
         builder.clock,
         builder.propagationFactory,
         FinishedSpanHandlers.noopAware(finishedSpanHandler, noop),
-        new PendingSpans(clock, zipkinHandler, noop),
+        new PendingSpans(clock, finishedSpanHandler, noop),
         builder.sampler,
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
