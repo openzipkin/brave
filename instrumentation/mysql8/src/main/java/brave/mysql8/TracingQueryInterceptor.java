@@ -14,6 +14,7 @@
 package brave.mysql8;
 
 import brave.Span;
+import brave.Tracing;
 import brave.propagation.ThreadLocalSpan;
 import com.mysql.cj.MysqlConnection;
 import com.mysql.cj.Query;
@@ -46,11 +47,21 @@ public class TracingQueryInterceptor implements QueryInterceptor {
    */
   @Override
   public <T extends Resultset> T preProcess(Supplier<String> sqlSupplier, Query interceptedQuery) {
+    Tracing tracing = Tracing.current();
+    if (tracing == null) return null;
+
+    String sql = sqlSupplier.get();
+
+    boolean isRoot = tracing.currentTraceContext().get() == null;
+    // Hard-coding to punt problem of how to safely encode in the JDBC connection string
+    if (isRoot && sql.startsWith("/*") || sql.startsWith("SET")) {
+      return null; // No junk spans for connection management!
+    }
+
     // Gets the next span (and places it in scope) so code between here and postProcess can read it
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
     if (span == null || span.isNoop()) return null;
 
-    String sql = sqlSupplier.get();
     int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
     span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
