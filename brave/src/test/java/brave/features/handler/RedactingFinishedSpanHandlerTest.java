@@ -60,14 +60,16 @@ public class RedactingFinishedSpanHandlerTest {
   }
 
   List<Span> spans = new ArrayList<>();
+  FinishedSpanHandler redacter = new FinishedSpanHandler() {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      span.forEachTag(ValueRedactor.INSTANCE);
+      span.forEachAnnotation(ValueRedactor.INSTANCE);
+      return true;
+    }
+  };
   Tracing tracing = Tracing.newBuilder()
-    .addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
-        span.forEachTag(ValueRedactor.INSTANCE);
-        span.forEachAnnotation(ValueRedactor.INSTANCE);
-        return true;
-      }
-    })
+    .addFinishedSpanHandler(redacter)
+    .addOrphanedSpanHandler(redacter) // also redact data leaked by bugs
     .spanReporter(spans::add)
     .build();
 
