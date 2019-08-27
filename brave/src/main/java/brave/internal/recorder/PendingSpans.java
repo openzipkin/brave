@@ -19,7 +19,6 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -49,7 +48,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Even though we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
-  final FinishedSpanHandler orphanedSpanHandler; // Used when flushing spans
+  final FinishedSpanHandler orphanedSpanHandler;
   final AtomicBoolean noop;
 
   public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, AtomicBoolean noop) {

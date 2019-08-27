@@ -121,7 +121,7 @@ public class TracingTest {
       .addFinishedSpanHandler(one)
       .addFinishedSpanHandler(two)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
         .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
           .startsWith(one, two)
           .hasSize(3) // zipkin and the above
@@ -141,7 +141,7 @@ public class TracingTest {
       .addFinishedSpanHandler(finishedSpanHandler)
       .addFinishedSpanHandler(finishedSpanHandler)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
         .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
           .startsWith(finishedSpanHandler, finishedSpanHandler)
           .hasSize(3) // zipkin and the above

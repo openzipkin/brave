@@ -136,7 +136,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.handlers")
+      .extracting("tracer.finishedSpanHandler.handlers")
       .satisfies(a -> assertThat((FinishedSpanHandler[]) a).startsWith(FIREHOSE_HANDLER));
   }
 

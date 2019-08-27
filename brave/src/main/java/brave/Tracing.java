@@ -17,7 +17,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.handler.FinishedSpanHandlers;
+import brave.internal.handler.NoopAwareFinishedSpanHandler;
 import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
@@ -402,7 +402,7 @@ public abstract class Tracing implements Closeable {
         zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler, noop);
 
       ArrayList<FinishedSpanHandler> orphanedSpanHandlers = new ArrayList<>();
-      for (FinishedSpanHandler handler: builder.finishedSpanHandlers) {
+      for (FinishedSpanHandler handler : builder.finishedSpanHandlers) {
         if (handler.supportsOrphans()) orphanedSpanHandlers.add(handler);
       }
 
@@ -481,17 +481,8 @@ public abstract class Tracing implements Closeable {
     // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
     if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);
 
-    if (defensiveCopy.isEmpty()) return FinishedSpanHandler.NOOP;
-
-    FinishedSpanHandler unwrapped;
-    if (defensiveCopy.size() == 1) {
-      unwrapped = defensiveCopy.get(0);
-    } else {
-      unwrapped = FinishedSpanHandlers.compose(defensiveCopy);
-    }
-
     // Make sure any exceptions caused by handlers don't crash callers
-    return FinishedSpanHandlers.noopAware(unwrapped, noop);
+    return NoopAwareFinishedSpanHandler.create(defensiveCopy, noop);
   }
 
   Tracing() { // intentionally hidden constructor
