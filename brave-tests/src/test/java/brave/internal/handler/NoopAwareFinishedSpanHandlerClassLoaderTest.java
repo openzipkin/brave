@@ -22,7 +22,7 @@ import org.junit.Test;
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static java.util.Arrays.asList;
 
-public class NoopAwareFinishedSpanHandlerTest {
+public class NoopAwareFinishedSpanHandlerClassLoaderTest {
 
   @Test public void unloadable_afterHandle() {
     assertRunIsUnloadable(Handle.class, getClass().getClassLoader());
