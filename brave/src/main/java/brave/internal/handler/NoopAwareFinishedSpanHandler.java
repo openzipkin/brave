@@ -29,17 +29,25 @@ import zipkin2.Call;
 public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
   public static FinishedSpanHandler create(List<FinishedSpanHandler> handlers, AtomicBoolean noop) {
     if (handlers.isEmpty()) return FinishedSpanHandler.NOOP;
-    if (handlers.size() == 1) return new Single(handlers.get(0), noop);
+
+    if (handlers.size() == 1) {
+      FinishedSpanHandler onlyHandler = handlers.get(0);
+      return onlyHandler == FinishedSpanHandler.NOOP ? onlyHandler : new Single(onlyHandler, noop);
+    }
 
     int i = 0;
     boolean alwaysSampleLocal = false, supportsOrphans = false;
     FinishedSpanHandler[] copy = new FinishedSpanHandler[handlers.size()];
     for (FinishedSpanHandler handler : handlers) {
       if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
-      if (handler.supportsOrphans()) supportsOrphans = true;
+      if (handler.supportsOrphans()) {
+        supportsOrphans = true;
+      } else if (supportsOrphans) {
+        throw new IllegalArgumentException("Cannot mix supportsOrphans with not");
+      }
       copy[i++] = handler;
     }
-    return new Composite(copy, noop, alwaysSampleLocal, supportsOrphans);
+    return new Multiple(copy, noop, alwaysSampleLocal, supportsOrphans);
   }
 
   final AtomicBoolean noop;
@@ -90,10 +98,10 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
     }
   }
 
-  static final class Composite extends NoopAwareFinishedSpanHandler {
+  static final class Multiple extends NoopAwareFinishedSpanHandler {
     final FinishedSpanHandler[] handlers; // Array ensures no iterators are created at runtime
 
-    Composite(FinishedSpanHandler[] handlers, AtomicBoolean noop, boolean alwaysSampleLocal,
+    Multiple(FinishedSpanHandler[] handlers, AtomicBoolean noop, boolean alwaysSampleLocal,
       boolean supportsOrphans) {
       super(noop, alwaysSampleLocal, supportsOrphans);
       this.handlers = handlers;

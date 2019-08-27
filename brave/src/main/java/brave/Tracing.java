@@ -466,6 +466,10 @@ public abstract class Tracing implements Closeable {
       }
     }
 
+    @Override public String toString() {
+      return tracer.toString();
+    }
+
     @Override public void close() {
       if (current != this) return;
       // don't blindly set most recent to null as there could be a race
