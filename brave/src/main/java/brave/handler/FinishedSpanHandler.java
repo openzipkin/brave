@@ -100,18 +100,17 @@ public abstract class FinishedSpanHandler {
    * implementation concerns apply to data received in {@link #handle(TraceContext, MutableSpan)}.
    *
    * <p><h3>What data is available on the orphaned path</h3>
-   * Unlike normal, only {@link TraceContext#sampled() remotely sampled} are received. The trace
-   * context will not include extra fields, and there are no assumptions that can be made between
-   * the amount of calls per operation. For example, a bug could result in many calls for the same
-   * span ID. Also, orphans are reported as a side effect of GC, which means a GC thread will be
-   * processing these hooks.
+   * Unlike normal, the trace context will not include extra fields, and there are no assumptions
+   * that can be made between the amount of calls per operation. For example, a bug could result in
+   * many calls for the same span ID. Also, orphans are reported as a side effect of GC, which means
+   * a GC thread will be processing these hooks.
    *
    * <p>The {@link TraceContext} parameter contains minimal information, including lookup ids
    * (traceId, spanId and localRootId) and sampling status. {@link TraceContext#extra() "extra"}
    * will be empty.
    *
-   * <p>The {@link MutableSpan} parameter includes the annotation "brave.flush", and whatever state
-   * was orphaned (ex a tag).
+   * <p>The {@link MutableSpan} parameter {@link MutableSpan#containsAnnotation(String) includes
+   * the annotation} "brave.flush", and whatever state was orphaned (ex a tag).
    */
   public boolean supportsOrphans() {
     return false;

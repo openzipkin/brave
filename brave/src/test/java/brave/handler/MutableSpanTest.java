@@ -32,6 +32,35 @@ import static org.assertj.core.api.Assertions.entry;
 public class MutableSpanTest {
   static final Pattern SSN = Pattern.compile("[0-9]{3}-[0-9]{2}-[0-9]{4}");
 
+  /**
+   * This shows an edge case of someone implementing a {@link FinishedSpanHandler} whose intent is
+   * only handle orphans.
+   */
+  @Test public void hasAnnotation_usageExplained() {
+    class AbandonCounter extends FinishedSpanHandler {
+      int orphans;
+
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        if (span.containsAnnotation("brave.flush")) orphans++;
+        return true;
+      }
+
+      @Override public boolean supportsOrphans() {
+        return true;
+      }
+    }
+
+    AbandonCounter counter = new AbandonCounter();
+    MutableSpan orphan = new MutableSpan();
+    orphan.annotate(1, "brave.flush"); // orphaned spans have this annotation
+
+    counter.handle(null, orphan);
+    counter.handle(null, new MutableSpan());
+    counter.handle(null, orphan);
+
+    assertThat(counter.orphans).isEqualTo(2);
+  }
+
   /** This is a compile test to show how the signature is intended to be used */
   @Test public void forEachTag_consumer_usageExplained() {
     MutableSpan span = new MutableSpan();

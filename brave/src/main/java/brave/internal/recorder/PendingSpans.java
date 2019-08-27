@@ -126,14 +126,14 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     boolean noop = orphanedSpanHandler == FinishedSpanHandler.NOOP || this.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
-      if (noop || value == null || !contextKey.sampled) continue;
+      if (noop || value == null) continue;
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
       boolean isEmpty = value.state.isEmpty();
       Throwable caller = value.caller;
 
       TraceContext context = InternalPropagation.instance.newTraceContext(
-        InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
+        contextKey.flags,
         contextKey.traceIdHigh, contextKey.traceId,
         contextKey.localRootId, 0L, contextKey.spanId,
         Collections.emptyList()
@@ -164,7 +164,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
     // Copy the identity fields from the trace context, so we can use them when the reference clears
     final long traceIdHigh, traceId, localRootId, spanId;
-    final boolean sampled;
+    final int flags;
 
     RealKey(TraceContext context, ReferenceQueue<TraceContext> queue) {
       super(context, queue);
@@ -173,7 +173,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       traceId = context.traceId();
       localRootId = context.localRootId();
       spanId = context.spanId();
-      sampled = Boolean.TRUE.equals(context.sampled());
+      flags = InternalPropagation.instance.flags(context);
     }
 
     @Override public String toString() {
