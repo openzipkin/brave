@@ -40,11 +40,7 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
     FinishedSpanHandler[] copy = new FinishedSpanHandler[handlers.size()];
     for (FinishedSpanHandler handler : handlers) {
       if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
-      if (handler.supportsOrphans()) {
-        supportsOrphans = true;
-      } else if (supportsOrphans) {
-        throw new IllegalArgumentException("Cannot mix supportsOrphans with not");
-      }
+      if (handler.supportsOrphans()) supportsOrphans = true;
       copy[i++] = handler;
     }
     return new Multiple(copy, noop, alwaysSampleLocal, supportsOrphans);

@@ -24,7 +24,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -101,21 +100,6 @@ public class NoopAwareFinishedSpanHandlerTest {
     assertThat(NoopAwareFinishedSpanHandler.create(asList(one, two), noop))
       .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
       .containsExactly(true, true);
-  }
-
-  /**
-   * This prevents future code changes to Brave from accidentally calling a handler not designed for
-   * orphans on the orphan path
-   */
-  @Test public void multiple_mixedSupportsOrphansDisallowed() {
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(one, two), noop))
-      .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
-      .containsExactly(false, false);
-
-    when(one.supportsOrphans()).thenReturn(true);
-
-    assertThatThrownBy(() -> NoopAwareFinishedSpanHandler.create(asList(one, two), noop))
-      .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test public void multiple_callInSequence() {
