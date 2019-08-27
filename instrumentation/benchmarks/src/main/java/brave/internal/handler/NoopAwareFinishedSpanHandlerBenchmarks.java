@@ -16,9 +16,9 @@ package brave.internal.handler;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -43,7 +43,8 @@ import static java.util.Arrays.asList;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(1)
-public class FinishedSpanHandlersBenchmarks {
+public class NoopAwareFinishedSpanHandlerBenchmarks {
+  AtomicBoolean noop = new AtomicBoolean();
   FinishedSpanHandler one = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.tag("one", "");
@@ -76,7 +77,7 @@ public class FinishedSpanHandlersBenchmarks {
   };
 
   final FinishedSpanHandler composite =
-    FinishedSpanHandlers.compose(new LinkedHashSet<>(asList(one, two, three)));
+    NoopAwareFinishedSpanHandler.create(asList(one, two, three), noop);
   final FinishedSpanHandler listIndexComposite = new FinishedSpanHandler() {
     List<FinishedSpanHandler> delegates = asList(one, two, three);
 
@@ -115,7 +116,7 @@ public class FinishedSpanHandlersBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + FinishedSpanHandlersBenchmarks.class.getSimpleName() + ".*")
+      .include(".*" + NoopAwareFinishedSpanHandlerBenchmarks.class.getSimpleName() + ".*")
       .build();
 
     new Runner(opt).run();
