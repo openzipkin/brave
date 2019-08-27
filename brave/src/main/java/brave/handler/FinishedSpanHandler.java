@@ -106,10 +106,9 @@ public abstract class FinishedSpanHandler {
    * span ID. Also, orphans are reported as a side effect of GC, which means a GC thread will be
    * processing these hooks.
    *
-   * <p>The {@link TraceContext} parameter will only include lookup ids (traceId, spanId and
-   * localRootId). If the logger {@link PendingSpans} is set to FINE level, the {@link
-   * TraceContext#extra()} includes a throwable of the call site that leaked the span. Otherwise,
-   * "extra" will be empty regardless of propagation plugins.
+   * <p>The {@link TraceContext} parameter contains minimal information, including lookup ids
+   * (traceId, spanId and localRootId) and sampling status. {@link TraceContext#extra() "extra"}
+   * will be empty.
    *
    * <p>The {@link MutableSpan} parameter includes the annotation "brave.flush", and whatever state
    * was orphaned (ex a tag).

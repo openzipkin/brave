@@ -50,6 +50,10 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
     return true;
   }
 
+  @Override public boolean supportsOrphans() {
+    return true;
+  }
+
   @Override public String toString() {
     return spanReporter.toString();
   }
