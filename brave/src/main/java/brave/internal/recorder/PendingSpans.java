@@ -14,6 +14,7 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
@@ -31,7 +32,9 @@ import java.util.logging.Logger;
 
 /**
  * Similar to Finagle's deadline span map, except this is GC pressure as opposed to timeout driven.
- * This means there's no bookkeeping thread required in order to flush orphaned spans.
+ * This means there's no bookkeeping thread required in order to flush orphaned spans. Work here is
+ * stolen from callers, though. For example, a call to {@link Tracer#nextSpan()} implicitly performs
+ * a check for orphans, invoking any handler that applies.
  *
  * <p>Spans are weakly referenced by their owning context. When the keys are collected, they are
  * transferred to a queue, waiting to be reported. A call to modify any span will implicitly flush
@@ -146,11 +149,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
       value.state.annotate(flushTime, "brave.flush");
 
-      try {
-        orphanedSpanHandler.handle(context, value.state);
-      } catch (RuntimeException e) {
-        Platform.get().log("error reporting {0}", context, e);
-      }
+      orphanedSpanHandler.handle(context, value.state);
     }
   }
 

@@ -20,6 +20,7 @@ import brave.propagation.TraceContext;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
+import zipkin2.Call;
 
 public final class FinishedSpanHandlers {
   public static FinishedSpanHandler compose(Collection<FinishedSpanHandler> finishedSpanHandlers) {
@@ -57,8 +58,9 @@ public final class FinishedSpanHandlers {
       if (noop.get()) return false;
       try {
         return delegate.handle(context, span);
-      } catch (RuntimeException e) {
-        Platform.get().log("error accepting {0}", context, e);
+      } catch (Throwable t) {
+        Call.propagateIfFatal(t);
+        Platform.get().log("error handling {0}", context, t);
         return false;
       }
     }

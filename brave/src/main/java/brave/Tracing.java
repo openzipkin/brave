@@ -150,7 +150,6 @@ public abstract class Tracing implements Closeable {
     // explicitly documented to not be added also here, to avoid dupes. That or mark a provider
     // method protected, but still the user could accidentally create a dupe by misunderstanding and
     // overriding public so they can add it here.
-    ArrayList<FinishedSpanHandler> orphanedSpanHandlers = new ArrayList<>();
     ArrayList<FinishedSpanHandler> finishedSpanHandlers = new ArrayList<>();
 
     /**
@@ -350,45 +349,6 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
-    /**
-     * Like {@link #addFinishedSpanHandler(FinishedSpanHandler)}, except used when spans are
-     * orphaned due to instrumentation bugs. Most often this is when a tag is added after a span is
-     * finished, or a similar race condition. To track down bugs like this, set the logger {@link
-     * PendingSpans} to FINE level.
-     *
-     * Use cases include redaction, trimming the "brave.flush" annotation, logging a different way
-     * than default, or incrementing bug counters. For example, you could use the same SSN cleaner
-     * here as you do on the success path.
-     *
-     * <p>As this is related to bugs, no assumptions can be made about span count etc. For example,
-     * one span context can result in many calls to this handler, depending on the nature of the
-     * bug. For this reason, certain handlers can be re-used here, such as redaction, but other
-     * handlers, such as dependency linkers should not.
-     *
-     * <p>There are important differences between data received here vs handlers added via {@link
-     * #addFinishedSpanHandler(FinishedSpanHandler)}. For example, only {@link
-     * TraceContext#sampled() remotely sampled} are received. The trace context will not include
-     * extra fields, and there are no assumptions that can be made between the amount of calls per
-     * operation. For example, a bug could result in many calls for the same span ID. Also, orphans
-     * are reported as a side effect of GC, which means a GC thread will be processing these hooks.
-     *
-     * <p>Contexts here only include lookup ids (traceId, spanId and localRootId). If the logger
-     * {@link PendingSpans} is set to FINE level, the {@link TraceContext#extra()} includes a
-     * throwable of the call site that leaked the span. Otherwise, "extra" will be empty regardless
-     * of propagation plugins.
-     *
-     * <p>Data includes the annotation "brave.flush", and whatever state was orphaned (ex a tag).
-     */
-    public Builder addOrphanedSpanHandler(FinishedSpanHandler orphanedSpanHandler) {
-      if (orphanedSpanHandler == null) {
-        throw new NullPointerException("orphanedSpanHandler == null");
-      }
-      if (orphanedSpanHandler != FinishedSpanHandler.NOOP) { // lenient on config bug
-        this.orphanedSpanHandlers.add(orphanedSpanHandler);
-      }
-      return this;
-    }
-
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
       if (localIp == null) localIp = Platform.get().linkLocalIp();
@@ -439,17 +399,23 @@ public abstract class Tracing implements Closeable {
         : FinishedSpanHandler.NOOP;
 
       FinishedSpanHandler finishedSpanHandler =
-        zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler);
+        zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler, noop);
+
+      ArrayList<FinishedSpanHandler> orphanedSpanHandlers = new ArrayList<>();
+      for (FinishedSpanHandler handler: builder.finishedSpanHandlers) {
+        if (handler.supportsOrphans()) orphanedSpanHandlers.add(handler);
+      }
 
       FinishedSpanHandler orphanedSpanHandler = finishedSpanHandler;
-      if (!builder.finishedSpanHandlers.equals(builder.orphanedSpanHandlers)) {
-        zipkinReportingFinishedSpanHandler(builder.orphanedSpanHandlers, zipkinHandler);
+      if (!builder.finishedSpanHandlers.equals(orphanedSpanHandlers)) {
+        orphanedSpanHandler =
+          zipkinReportingFinishedSpanHandler(orphanedSpanHandlers, zipkinHandler, noop);
       }
 
       this.tracer = new Tracer(
         builder.clock,
         builder.propagationFactory,
-        FinishedSpanHandlers.noopAware(finishedSpanHandler, noop),
+        finishedSpanHandler,
         new PendingSpans(clock, orphanedSpanHandler, noop),
         builder.sampler,
         builder.currentTraceContext,
@@ -509,15 +475,23 @@ public abstract class Tracing implements Closeable {
     }
   }
 
-  static FinishedSpanHandler zipkinReportingFinishedSpanHandler(ArrayList<FinishedSpanHandler> input,
-    FinishedSpanHandler zipkinHandler) {
+  static FinishedSpanHandler zipkinReportingFinishedSpanHandler(
+    ArrayList<FinishedSpanHandler> input, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
     ArrayList<FinishedSpanHandler> defensiveCopy = new ArrayList<>(input);
     // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
     if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);
 
     if (defensiveCopy.isEmpty()) return FinishedSpanHandler.NOOP;
-    if (defensiveCopy.size() == 1) return defensiveCopy.get(0);
-    return FinishedSpanHandlers.compose(defensiveCopy);
+
+    FinishedSpanHandler unwrapped;
+    if (defensiveCopy.size() == 1) {
+      unwrapped = defensiveCopy.get(0);
+    } else {
+      unwrapped = FinishedSpanHandlers.compose(defensiveCopy);
+    }
+
+    // Make sure any exceptions caused by handlers don't crash callers
+    return FinishedSpanHandlers.noopAware(unwrapped, noop);
   }
 
   Tracing() { // intentionally hidden constructor

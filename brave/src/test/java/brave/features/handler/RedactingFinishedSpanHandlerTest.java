@@ -20,8 +20,8 @@ import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.After;
@@ -59,17 +59,20 @@ public class RedactingFinishedSpanHandlerTest {
     }
   }
 
-  List<Span> spans = new ArrayList<>();
+  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
   FinishedSpanHandler redacter = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
       span.forEachTag(ValueRedactor.INSTANCE);
       span.forEachAnnotation(ValueRedactor.INSTANCE);
       return true;
     }
+
+    @Override public boolean supportsOrphans() {
+      return true; // also redact data leaked by bugs
+    }
   };
   Tracing tracing = Tracing.newBuilder()
     .addFinishedSpanHandler(redacter)
-    .addOrphanedSpanHandler(redacter) // also redact data leaked by bugs
     .spanReporter(spans::add)
     .build();
 
@@ -77,7 +80,7 @@ public class RedactingFinishedSpanHandlerTest {
     tracing.close();
   }
 
-  @Test public void showRedaction() {
+  @Test public void showRedaction() throws Exception {
     ScopedSpan span = tracing.tracer().startScopedSpan("auditor");
     try {
       span.tag("a", "1");
@@ -88,13 +91,36 @@ public class RedactingFinishedSpanHandlerTest {
       span.finish();
     }
 
-    assertThat(spans.get(0).tags()).containsExactly(
+    Span finished = spans.take();
+    assertThat(finished.tags()).containsExactly(
       entry("a", "1"),
       // SSN tag was nuked
       entry("c", "3")
     );
-    assertThat(spans.get(0).annotations()).flatExtracting(Annotation::value).containsExactly(
+    assertThat(finished.annotations()).flatExtracting(Annotation::value).containsExactly(
       "SSN=xxx-xx-xxxx"
     );
+
+    // Leak some data by adding a tag using the same context after the span was finished.
+    tracing.tracer().toSpan(span.context()).tag("d", "SSN=912-23-1433");
+    span = null; // Orphans are via GC, to test this, we have to drop any reference to the context
+    blockOnGC();
+
+    // GC only clears the reference to the leaked data. Normal tracer use implicitly handles orphans
+    tracing.tracer().nextSpan().start().finish();
+
+    Span leaked = spans.take();
+    assertThat(leaked.tags()).containsExactly(
+      // SSN tag was nuked
+      entry("d", "SSN=xxx-xx-xxxx")
+    );
+    assertThat(leaked.annotations()).flatExtracting(Annotation::value).containsExactly(
+      "brave.flush"
+    );
+  }
+
+  static void blockOnGC() throws InterruptedException {
+    System.gc();
+    Thread.sleep(200L);
   }
 }
