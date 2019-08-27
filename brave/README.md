@@ -534,6 +534,10 @@ tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
     );
     return true; // retain the span
   }
+
+  @Override public boolean supportsOrphans() {
+    return true; // orphaned data created by bugs must also be cleaned!
+  }
 });
 ```
 An example of redaction is [here](src/test/java/brave/features/handler/RedactingFinishedSpanHandlerTest.java)

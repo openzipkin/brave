@@ -65,6 +65,8 @@ public abstract class FinishedSpanHandler {
    * visible to later handlers, including Zipkin.
    * @return true retains the span, and should almost always be used. false drops the span, making
    * it invisible to later handlers such as Zipkin.
+   *
+   * @see #supportsOrphans() If you are scrubbing personal information, consider supporting orphans.
    */
   public abstract boolean handle(TraceContext context, MutableSpan span);
 
@@ -90,16 +92,21 @@ public abstract class FinishedSpanHandler {
    *
    * <p><h3>What shouldn't handle orphans?</h3>
    * As this is related to bugs, no assumptions can be made about span count etc. For example, one
-   * span context can result in many calls to this handler, depending on the nature of the bug. For
-   * this reason, certain handlers can be re-used here, such as redaction, but other handlers, such
-   * as dependency linkers should not.
+   * span context can result in many calls to this handler, unrelated to the actual operation
+   * performed. Handlers that redact or clean data work for normal spans and orphans. However,
+   * aggregation handlers, such as dependency linkers or success/fail counters, can create problems
+   * if used against orphaned data.
    *
    * <p><h2>Implementation</h2>
-   * Implementing this method is easy, just return true. Do not vary the value as this is only read
-   * once. In other words, it is a bug to sometimes return true and other times false. Most of the
-   * implementation concerns apply to data received in {@link #handle(TraceContext, MutableSpan)}.
+   * By default, this method returns false, suggesting the implementation is not designed to also
+   * process orphans. Return true to indicate otherwise. Whichever choice should be constant. In
+   * other words do not sometimes return false and other times true, as the value is only read
+   * once.
    *
-   * <p><h3>What data is available on the orphaned path</h3>
+   * <p><h3>Considerations for implementing {@code handle}</h3>
+   * When this method returns true, the {@link #handle(TraceContext, MutableSpan) handle method} is
+   * both invoked for normal spans and also orphaned ones. The following apply when handling
+   * orphans:
    *
    * <p>The {@link TraceContext} parameter contains minimal information, including lookup ids
    * (traceId, spanId and localRootId) and sampling status. {@link TraceContext#extra() "extra"}
