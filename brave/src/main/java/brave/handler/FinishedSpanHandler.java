@@ -65,7 +65,6 @@ public abstract class FinishedSpanHandler {
    * visible to later handlers, including Zipkin.
    * @return true retains the span, and should almost always be used. false drops the span, making
    * it invisible to later handlers such as Zipkin.
-   *
    * @see #supportsOrphans() If you are scrubbing personal information, consider supporting orphans.
    */
   public abstract boolean handle(TraceContext context, MutableSpan span);
@@ -78,34 +77,39 @@ public abstract class FinishedSpanHandler {
    * your handler is performing work like redaction. This sort of work needs to happen on all data,
    * not just the success paths.
    *
-   * <p><h3>What is an orphaned span?</h3>
-   * Brave adds an {@link Span#annotate(String) annotation} "brave.flush" when data remains
+   * <h3>What is an orphaned span?</h3>
+   *
+   * <p>Brave adds an {@link Span#annotate(String) annotation} "brave.flush" when data remains
    * associated with a span when it is garbage collected. This is almost always a bug. For example,
    * calling {@link Span#tag(String, String)} after calling {@link Span#finish()}, or calling {@link
    * Tracer#nextSpan()} yet never using the result. To track down bugs like this, set the logger
    * {@link PendingSpans} to FINE level.
    *
-   * <p><h3>Why handle orphans?</h3>
-   * Use cases for handling orphans include redaction, trimming the "brave.flush" annotation,
-   * logging a different way than default, or incrementing bug counters. For example, you could use
-   * the same SSN cleaner here as you do on the success path.
+   * <h3>Why handle orphaned spans?</h3>
    *
-   * <p><h3>What shouldn't handle orphans?</h3>
-   * As this is related to bugs, no assumptions can be made about span count etc. For example, one
-   * span context can result in many calls to this handler, unrelated to the actual operation
+   * <p>Use cases for handling orphans include redaction, trimming the "brave.flush" annotation,
+   * logging a different way than default, or incrementing bug counters. For example, you could use
+   * the same credit card cleaner here as you do on the success path.
+   *
+   * <h3>What shouldn't handle orphaned spans?</h3>
+   *
+   * <p>As this is related to bugs, no assumptions can be made about span count etc. For example,
+   * one span context can result in many calls to this handler, unrelated to the actual operation
    * performed. Handlers that redact or clean data work for normal spans and orphans. However,
    * aggregation handlers, such as dependency linkers or success/fail counters, can create problems
-   * if used against orphaned data.
+   * if used against orphaned spans.
    *
-   * <p><h2>Implementation</h2>
-   * By default, this method returns false, suggesting the implementation is not designed to also
-   * process orphans. Return true to indicate otherwise. Whichever choice should be constant. In
-   * other words do not sometimes return false and other times true, as the value is only read
+   * <h2>Implementation</h2>
+   *
+   * <p>By default, this method returns false, suggesting the implementation is not designed to
+   * also process orphans. Return true to indicate otherwise. Whichever choice should be constant.
+   * In other words do not sometimes return false and other times true, as the value is only read
    * once.
    *
-   * <p><h3>Considerations for implementing {@code handle}</h3>
-   * When this method returns true, the {@link #handle(TraceContext, MutableSpan) handle method} is
-   * both invoked for normal spans and also orphaned ones. The following apply when handling
+   * <h3>Considerations for implementing {@code handle}</h3>
+   *
+   * <p>When this method returns true, the {@link #handle(TraceContext, MutableSpan) handle method}
+   * is both invoked for normal spans and also orphaned ones. The following apply when handling
    * orphans:
    *
    * <p>The {@link TraceContext} parameter contains minimal information, including lookup ids
