@@ -515,9 +515,9 @@ public abstract class Tracing implements Closeable {
     // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
     if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);
 
-    if (input.isEmpty()) return FinishedSpanHandler.NOOP;
-    if (input.size() == 1) return input.get(0);
-    return FinishedSpanHandlers.compose(input);
+    if (defensiveCopy.isEmpty()) return FinishedSpanHandler.NOOP;
+    if (defensiveCopy.size() == 1) return defensiveCopy.get(0);
+    return FinishedSpanHandlers.compose(defensiveCopy);
   }
 
   Tracing() { // intentionally hidden constructor
