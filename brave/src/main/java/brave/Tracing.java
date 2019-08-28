@@ -407,7 +407,8 @@ public abstract class Tracing implements Closeable {
       }
 
       FinishedSpanHandler orphanedSpanHandler = finishedSpanHandler;
-      if (!builder.finishedSpanHandlers.equals(orphanedSpanHandlers)) {
+      boolean allHandlersSupportOrphans = builder.finishedSpanHandlers.equals(orphanedSpanHandlers);
+      if (!allHandlersSupportOrphans) {
         orphanedSpanHandler =
           zipkinReportingFinishedSpanHandler(orphanedSpanHandlers, zipkinHandler, noop);
       }
