@@ -30,12 +30,12 @@
     <main.signature.artifact>java16</main.signature.artifact>
     <!-- TODO: not compile compatible with apache dubbo until 2.7.2
          See https://github.com/apache/incubator-zipkin-brave/issues/867 -->
-    <dubbo.version>2.6.6</dubbo.version>
+    <dubbo.version>2.7.2</dubbo.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>com.alibaba</groupId>
+      <groupId>org.apache.dubbo</groupId>
       <artifactId>dubbo</artifactId>
       <version>${dubbo.version}</version>
     </dependency>

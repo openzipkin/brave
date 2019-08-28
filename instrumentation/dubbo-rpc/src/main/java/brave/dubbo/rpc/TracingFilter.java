@@ -21,20 +21,20 @@ import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.extension.Activate;
-import com.alibaba.dubbo.common.extension.ExtensionLoader;
-import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
-import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-import com.alibaba.dubbo.rpc.Filter;
-import com.alibaba.dubbo.rpc.Invocation;
-import com.alibaba.dubbo.rpc.Invoker;
-import com.alibaba.dubbo.rpc.Result;
-import com.alibaba.dubbo.rpc.RpcContext;
-import com.alibaba.dubbo.rpc.RpcException;
-import com.alibaba.dubbo.rpc.protocol.dubbo.FutureAdapter;
-import com.alibaba.dubbo.rpc.support.RpcUtils;
+import org.apache.dubbo.common.constants.CommonConstants;
+import org.apache.dubbo.common.extension.Activate;
+import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.spring.extension.SpringExtensionFactory;
+import org.apache.dubbo.rpc.Filter;
+import org.apache.dubbo.rpc.Invocation;
+import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.Result;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
+import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
+import org.apache.dubbo.rpc.support.RpcUtils;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 
@@ -69,7 +69,14 @@ public final class TracingFilter implements Filter {
     final Span span;
     if (kind.equals(Kind.CLIENT)) {
       span = tracer.nextSpan();
-      injector.inject(span.context(), invocation.getAttachments());
+      // if use  invocation.getAttachments(),when A service invoke B service,B service then invoke C service,the parentId  of C service span  is A
+      // because   invocation add attachments from rpcContext in org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141),so what we do will be override
+      //injector.inject(span.context(), invocation.getAttachments());
+      Map<String,String> temp=new HashMap<>();
+      injector.inject(span.context(),temp);
+      for (Map.Entry<String, String> entry : temp.entrySet()) {
+        RpcContext.getContext().getAttachments().put(entry.getKey(), entry.getValue());
+      }
     } else {
       TraceContextOrSamplingFlags extracted = extractor.extract(invocation.getAttachments());
       span = extracted.context() != null
