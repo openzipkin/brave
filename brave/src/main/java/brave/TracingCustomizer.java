@@ -19,7 +19,7 @@ import zipkin2.reporter.Reporter;
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link Tracing}.
  *
- * <p>Notably, this decoupled framework-level configuration (such as {@link
+ * <p>Notably, this decouples framework-level configuration (such as {@link
  * Tracing.Builder#spanReporter(Reporter)}) from site-specific configuration (such as {@link
  * Tracing.Builder#addFinishedSpanHandler(FinishedSpanHandler) additional finished span handlers}.
  *
