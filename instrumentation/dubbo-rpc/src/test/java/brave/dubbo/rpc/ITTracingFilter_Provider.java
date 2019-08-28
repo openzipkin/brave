@@ -14,7 +14,7 @@
 package brave.dubbo.rpc;
 
 import brave.sampler.Sampler;
-import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
+import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.RpcContext;
