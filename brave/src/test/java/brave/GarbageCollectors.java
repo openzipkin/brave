@@ -15,6 +15,7 @@
 package brave;
 
 import java.lang.ref.WeakReference;
+import org.awaitility.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -30,7 +31,7 @@ public final class GarbageCollectors {
    */
   public static void blockOnGC(WeakReference<?>... cleared) {
     System.gc();
-    await().untilAsserted(() -> {
+    await().atMost(Duration.TWO_HUNDRED_MILLISECONDS).untilAsserted(() -> {
       for (WeakReference<?> reference : cleared) {
         assertThat(reference.get()).isNull();
       }

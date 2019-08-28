@@ -17,8 +17,6 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
-import brave.test.util.GarbageCollectors;
-import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
@@ -50,6 +48,7 @@ public class PendingSpansClassLoaderTest {
   }
 
   static class OrphanedContext implements Runnable {
+
     @Override public void run() {
       PendingSpans pendingSpans =
         new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
@@ -60,10 +59,16 @@ public class PendingSpansClassLoaderTest {
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);
-      WeakReference<?> weakReference = new WeakReference<>(context);
       context = null; // orphan the context
 
-      GarbageCollectors.blockOnGC(weakReference);
+      System.gc();
+      try {
+        // We usually block on a weak reference being cleared, but here we would end up loading
+        // the WeakReference class from the classloader preventing it from unloading.
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        throw new AssertionError(e);
+      }
 
       pendingSpans.reportOrphanedSpans();
     }

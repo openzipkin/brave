@@ -15,8 +15,9 @@
 package brave.test.util;
 
 import java.lang.ref.WeakReference;
-import java.util.WeakHashMap;
+import org.awaitility.Duration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
@@ -29,24 +30,13 @@ public final class GarbageCollectors {
    * cleared, indicating the referenced objects have been collected.
    */
   public static void blockOnGC(WeakReference<?>... cleared) {
-    // WeakReference doesn't provide a way to know if the reference is cleared or not without
-    // creating a new reference. So we copy into a WeakHashMap which does let us know.
-    WeakHashMap<Object, Boolean> map = new WeakHashMap<>();
-    for (WeakReference<?> reference : cleared) {
-      Object obj = reference.get();
-      if (obj != null) {
-        map.put(obj, true);
-        obj = null;
-      }
-    }
-
     System.gc();
-
-    try {
-      await().until(map::isEmpty);
-    } catch (Throwable t) {
-      System.out.println(map);
-    }
+    // Even slow GC should finish in a second.
+    await().atMost(Duration.TWO_HUNDRED_MILLISECONDS).untilAsserted(() -> {
+      for (WeakReference<?> reference : cleared) {
+        assertThat(reference.get()).isNull();
+      }
+    });
   }
 
   private GarbageCollectors() {}
