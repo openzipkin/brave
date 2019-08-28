@@ -38,7 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-@Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
+@Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
@@ -103,7 +103,15 @@ public final class TracingFilter implements Filter {
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
       if (future instanceof FutureAdapter) {
         deferFinish = true;
-        ((FutureAdapter) future).getFuture().setCallback(new FinishSpanCallback(span));
+        ((FutureAdapter<Object>)future).whenComplete((v, t) -> {
+          if (t != null) {
+            onError(t, span);
+            span.finish();
+
+          } else {
+            span.finish();
+          }
+        });
       }
       return result;
     } catch (Error | RuntimeException e) {
@@ -157,20 +165,5 @@ public final class TracingFilter implements Filter {
       }
     };
 
-  static final class FinishSpanCallback implements ResponseCallback {
-    final Span span;
 
-    FinishSpanCallback(Span span) {
-      this.span = span;
-    }
-
-    @Override public void done(Object response) {
-      span.finish();
-    }
-
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-    }
-  }
 }
