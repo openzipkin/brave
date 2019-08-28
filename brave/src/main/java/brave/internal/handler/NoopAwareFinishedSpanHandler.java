@@ -35,15 +35,12 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
       return onlyHandler == FinishedSpanHandler.NOOP ? onlyHandler : new Single(onlyHandler, noop);
     }
 
-    int i = 0;
     boolean alwaysSampleLocal = false, supportsOrphans = false;
-    FinishedSpanHandler[] copy = new FinishedSpanHandler[handlers.size()];
     for (FinishedSpanHandler handler : handlers) {
       if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
       if (handler.supportsOrphans()) supportsOrphans = true;
-      copy[i++] = handler;
     }
-    return new Multiple(copy, noop, alwaysSampleLocal, supportsOrphans);
+    return new Multiple(handlers, noop, alwaysSampleLocal, supportsOrphans);
   }
 
   final AtomicBoolean noop;
@@ -97,10 +94,10 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
   static final class Multiple extends NoopAwareFinishedSpanHandler {
     final FinishedSpanHandler[] handlers; // Array ensures no iterators are created at runtime
 
-    Multiple(FinishedSpanHandler[] handlers, AtomicBoolean noop, boolean alwaysSampleLocal,
+    Multiple(List<FinishedSpanHandler> handlers, AtomicBoolean noop, boolean alwaysSampleLocal,
       boolean supportsOrphans) {
       super(noop, alwaysSampleLocal, supportsOrphans);
-      this.handlers = handlers;
+      this.handlers = handlers.toArray(new FinishedSpanHandler[0]);
     }
 
     @Override boolean doHandle(TraceContext context, MutableSpan span) {

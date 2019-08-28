@@ -57,7 +57,7 @@ public class RedactingFinishedSpanHandlerTest {
       if (matcher.find()) {
         String matched = matcher.group(0);
         if (matched.equals(value)) return null;
-        return value.replace(matched, "xxx-xx-xxxx");
+        return value.replace(matched, "xxxx-xxxx-xxxx-xxxx");
       }
       return value;
     }
@@ -103,7 +103,7 @@ public class RedactingFinishedSpanHandlerTest {
       entry("c", "3")
     );
     assertThat(finished.annotations()).flatExtracting(Annotation::value).containsExactly(
-      "cc=xxx-xx-xxxx"
+      "cc=xxxx-xxxx-xxxx-xxxx"
     );
 
     // Leak some data by adding a tag using the same context after the span was finished.
@@ -112,12 +112,12 @@ public class RedactingFinishedSpanHandlerTest {
     blockOnGC();
 
     // GC only clears the reference to the leaked data. Normal tracer use implicitly handles orphans
-    tracing.tracer().nextSpan().start().finish();
+    tracing.tracer().nextSpan().abandon();
 
     Span leaked = spans.take();
     assertThat(leaked.tags()).containsExactly(
       // credit card tag was nuked
-      entry("d", "cc=xxx-xx-xxxx")
+      entry("d", "cc=xxxx-xxxx-xxxx-xxxx")
     );
     assertThat(leaked.annotations()).flatExtracting(Annotation::value).containsExactly(
       "brave.flush"
