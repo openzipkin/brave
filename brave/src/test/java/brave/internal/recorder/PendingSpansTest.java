@@ -13,11 +13,13 @@
  */
 package brave.internal.recorder;
 
+import brave.GarbageCollectors;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -198,9 +200,12 @@ public class PendingSpansTest {
 
     int initialClockVal = clock.get();
 
+    WeakReference<?> context1Weak = new WeakReference<>(context1);
+    WeakReference<?> context2Weak = new WeakReference<>(context2);
+    WeakReference<?> context5Weak = new WeakReference<>(context5);
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = context5 = null;
-    blockOnGC();
+    GarbageCollectors.blockOnGC(context1Weak, context2Weak, context5Weak);
 
     // After GC, we expect that the weak references of context1 and context2 to be cleared
     assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
@@ -235,9 +240,11 @@ public class PendingSpansTest {
 
     pendingSpans.noop.set(true);
 
+    WeakReference<?> context1Weak = new WeakReference<>(context1);
+    WeakReference<?> context2Weak = new WeakReference<>(context2);
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
-    blockOnGC();
+    GarbageCollectors.blockOnGC(context1Weak, context2Weak);
 
     // After GC, we expect that the weak references of context1 and context2 to be cleared
     assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
@@ -265,10 +272,13 @@ public class PendingSpansTest {
       }
     });
 
+    TraceContext context = this.context.toBuilder().build();
+    pendingSpans.getOrCreate(context, false);
+    WeakReference<?> contextWeak = new WeakReference<>(context);
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    pendingSpans.getOrCreate(context.toBuilder().build(), false);
+    context = null;
 
-    blockOnGC();
+    GarbageCollectors.blockOnGC(contextWeak);
 
     // Sanity check that the referent trace context cleared due to GC
     assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
@@ -276,7 +286,7 @@ public class PendingSpansTest {
       .containsNull();
 
     // The innocent caller isn't killed due to the exception in implicitly reporting GC'd spans
-    pendingSpans.remove(context);
+    pendingSpans.remove(this.context);
 
     // However, the reference queue has been cleared.
     assertThat(pendingSpans.delegate.keySet())
@@ -320,10 +330,13 @@ public class PendingSpansTest {
       }
     });
 
+    TraceContext context = this.context.toBuilder().build();
+    pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");
+    WeakReference<?> contextWeak = new WeakReference<>(context);
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    pendingSpans.getOrCreate(context1.toBuilder().build(), false).state().tag("foo", "bar");
+    context = null;
 
-    blockOnGC();
+    GarbageCollectors.blockOnGC(contextWeak);
     pendingSpans.reportOrphanedSpans();
 
     assertThat(handledContext[0]).isEqualTo(context1); // ID comparision is the same
@@ -342,10 +355,13 @@ public class PendingSpansTest {
       }
     });
 
+    TraceContext context = context1.toBuilder().build();
+    pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");
+    WeakReference<?> contextWeak = new WeakReference<>(context);
     // We drop the reference to the context, which means the next GC should attempt to flush it
-    pendingSpans.getOrCreate(context1.toBuilder().build(), false).state().tag("foo", "bar");
+    context = null;
 
-    blockOnGC();
+    GarbageCollectors.blockOnGC(contextWeak);
     pendingSpans.reportOrphanedSpans();
 
     assertThat(InternalPropagation.instance.flags(handledContext[0]))
@@ -401,10 +417,5 @@ public class PendingSpansTest {
   /** In reality, this clears a reference even if it is strongly held by the test! */
   void pretendGCHappened() {
     ((PendingSpans.RealKey) pendingSpans.delegate.keySet().iterator().next()).clear();
-  }
-
-  static void blockOnGC() throws InterruptedException {
-    System.gc();
-    Thread.sleep(200L);
   }
 }

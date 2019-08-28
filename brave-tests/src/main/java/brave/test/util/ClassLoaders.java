@@ -24,6 +24,7 @@ import java.net.URLClassLoader;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.LogManager;
+import org.awaitility.core.ConditionTimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,21 +95,15 @@ public final class ClassLoaders {
       throw new AssertionError(e);
     }
 
-    blockOnGC();
+    try {
+      GarbageCollectors.blockOnGC(loader);
+    } catch (ConditionTimeoutException t) {
+      // Ignore timeout so we can provide a better message below.
+    }
 
     assertThat(loader.get())
       .withFailMessage(runnable + " includes state that couldn't be garbage collected")
       .isNull();
-  }
-
-  static void blockOnGC() {
-    System.gc();
-    try {
-      Thread.sleep(200L);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new AssertionError(e);
-    }
   }
 
   static WeakReference<ClassLoader> invokeRunFromNewClassLoader(

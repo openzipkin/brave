@@ -17,6 +17,8 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
+import brave.test.util.GarbageCollectors;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
@@ -58,20 +60,12 @@ public class PendingSpansClassLoaderTest {
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);
+      WeakReference<?> weakReference = new WeakReference<>(context);
       context = null; // orphan the context
 
-      try {
-        blockOnGC();
-      } catch (InterruptedException e) {
-        throw new AssertionError(e);
-      }
+      GarbageCollectors.blockOnGC(weakReference);
 
       pendingSpans.reportOrphanedSpans();
     }
-  }
-
-  static void blockOnGC() throws InterruptedException {
-    System.gc();
-    Thread.sleep(200L);
   }
 }
