@@ -14,6 +14,8 @@
 package brave.handler;
 
 import brave.Span;
+import brave.Tracer;
+import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
 
 /**
@@ -44,8 +46,7 @@ public abstract class FinishedSpanHandler {
    * process. A return value of false means the span should be dropped completely from the stream.
    *
    * <p>Changes to the input span are visible by later finished span handlers. One reason to change
-   * the
-   * input is to align tags, so that correlation occurs. For example, some may clean the tag
+   * the input is to align tags, so that correlation occurs. For example, some may clean the tag
    * "http.path" knowing downstream handlers such as zipkin reporting have the same value.
    *
    * <p>Returning false is the same effect as if {@link Span#abandon()} was called. Implementations
@@ -64,8 +65,63 @@ public abstract class FinishedSpanHandler {
    * visible to later handlers, including Zipkin.
    * @return true retains the span, and should almost always be used. false drops the span, making
    * it invisible to later handlers such as Zipkin.
+   * @see #supportsOrphans() If you are scrubbing personal information, consider supporting orphans.
    */
   public abstract boolean handle(TraceContext context, MutableSpan span);
+
+  /**
+   * Normally, {@link #handle(TraceContext, MutableSpan)} is only called upon explicit termination
+   * of a span: {@link Span#finish()}, {@link Span#finish(long)} or {@link Span#flush()}. When this
+   * method returns true, the callback will also receive data orphaned due to spans being never
+   * terminated or data added after termination. It is important to understand this, especially if
+   * your handler is performing work like redaction. This sort of work needs to happen on all data,
+   * not just the success paths.
+   *
+   * <h3>What is an orphaned span?</h3>
+   *
+   * <p>Brave adds an {@link Span#annotate(String) annotation} "brave.flush" when data remains
+   * associated with a span when it is garbage collected. This is almost always a bug. For example,
+   * calling {@link Span#tag(String, String)} after calling {@link Span#finish()}, or calling {@link
+   * Tracer#nextSpan()} yet never using the result. To track down bugs like this, set the logger
+   * {@link PendingSpans} to FINE level.
+   *
+   * <h3>Why handle orphaned spans?</h3>
+   *
+   * <p>Use cases for handling orphans include redaction, trimming the "brave.flush" annotation,
+   * logging a different way than default, or incrementing bug counters. For example, you could use
+   * the same credit card cleaner here as you do on the success path.
+   *
+   * <h3>What shouldn't handle orphaned spans?</h3>
+   *
+   * <p>As this is related to bugs, no assumptions can be made about span count etc. For example,
+   * one span context can result in many calls to this handler, unrelated to the actual operation
+   * performed. Handlers that redact or clean data work for normal spans and orphans. However,
+   * aggregation handlers, such as dependency linkers or success/fail counters, can create problems
+   * if used against orphaned spans.
+   *
+   * <h2>Implementation</h2>
+   *
+   * <p>By default, this method returns false, suggesting the implementation is not designed to
+   * also process orphans. Return true to indicate otherwise. Whichever choice should be constant.
+   * In other words do not sometimes return false and other times true, as the value is only read
+   * once.
+   *
+   * <h3>Considerations for implementing {@code handle}</h3>
+   *
+   * <p>When this method returns true, the {@link #handle(TraceContext, MutableSpan) handle method}
+   * is both invoked for normal spans and also orphaned ones. The following apply when handling
+   * orphans:
+   *
+   * <p>The {@link TraceContext} parameter contains minimal information, including lookup ids
+   * (traceId, spanId and localRootId) and sampling status. {@link TraceContext#extra() "extra"}
+   * will be empty.
+   *
+   * <p>The {@link MutableSpan} parameter {@link MutableSpan#containsAnnotation(String) includes
+   * the annotation} "brave.flush", and whatever state was orphaned (ex a tag).
+   */
+  public boolean supportsOrphans() {
+    return false;
+  }
 
   /**
    * When true, all spans become real spans even if they aren't sampled remotely. This allows

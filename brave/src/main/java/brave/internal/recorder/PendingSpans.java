@@ -14,6 +14,7 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
@@ -31,7 +32,9 @@ import java.util.logging.Logger;
 
 /**
  * Similar to Finagle's deadline span map, except this is GC pressure as opposed to timeout driven.
- * This means there's no bookkeeping thread required in order to flush orphaned spans.
+ * This means there's no bookkeeping thread required in order to flush orphaned spans. Work here is
+ * stolen from callers, though. For example, a call to {@link Tracer#nextSpan()} implicitly performs
+ * a check for orphans, invoking any handler that applies.
  *
  * <p>Spans are weakly referenced by their owning context. When the keys are collected, they are
  * transferred to a queue, waiting to be reported. A call to modify any span will implicitly flush
@@ -46,12 +49,12 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Even though we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
-  final FinishedSpanHandler zipkinHandler; // Used when flushing spans
+  final FinishedSpanHandler orphanedSpanHandler;
   final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
+  public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, AtomicBoolean noop) {
     this.clock = clock;
-    this.zipkinHandler = zipkinHandler;
+    this.orphanedSpanHandler = orphanedSpanHandler;
     this.noop = noop;
   }
 
@@ -120,21 +123,22 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     // flushing a span than hurt performance of unrelated operations by calling
     // currentTimeMicroseconds N times
     long flushTime = 0L;
-    boolean noop = zipkinHandler == FinishedSpanHandler.NOOP || this.noop.get();
+    boolean noop = orphanedSpanHandler == FinishedSpanHandler.NOOP || this.noop.get();
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
-      if (noop || value == null || !contextKey.sampled) continue;
+      if (noop || value == null) continue;
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
+      boolean isEmpty = value.state.isEmpty();
+      Throwable caller = value.caller;
+
       TraceContext context = InternalPropagation.instance.newTraceContext(
-        InternalPropagation.FLAG_SAMPLED_SET | InternalPropagation.FLAG_SAMPLED,
+        contextKey.flags,
         contextKey.traceIdHigh, contextKey.traceId,
         contextKey.localRootId, 0L, contextKey.spanId,
         Collections.emptyList()
       );
 
-      boolean isEmpty = value.state.isEmpty();
-      Throwable caller = value.caller;
       if (caller != null) {
         String message = isEmpty
           ? "Span " + context + " was allocated but never used"
@@ -144,12 +148,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       if (isEmpty) continue;
 
       value.state.annotate(flushTime, "brave.flush");
-
-      try {
-        zipkinHandler.handle(context, value.state);
-      } catch (RuntimeException e) {
-        Platform.get().log("error reporting {0}", context, e);
-      }
+      orphanedSpanHandler.handle(context, value.state);
     }
   }
 
@@ -165,7 +164,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
 
     // Copy the identity fields from the trace context, so we can use them when the reference clears
     final long traceIdHigh, traceId, localRootId, spanId;
-    final boolean sampled;
+    final int flags;
 
     RealKey(TraceContext context, ReferenceQueue<TraceContext> queue) {
       super(context, queue);
@@ -174,7 +173,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       traceId = context.traceId();
       localRootId = context.localRootId();
       spanId = context.spanId();
-      sampled = Boolean.TRUE.equals(context.sampled());
+      flags = InternalPropagation.instance.flags(context);
     }
 
     @Override public String toString() {

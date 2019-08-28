@@ -525,14 +525,18 @@ tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
 ```
 
 Another example is redaction: you may need to scrub tags to ensure no
-personal information like social security numbers end up in Zipkin.
+personal information like credit card numbers end up in Zipkin.
 ```java
 tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     span.forEachTag((key, value) ->
-      value.replaceAll("[0-9]{3}\\-[0-9]{2}\\-[0-9]{4}", "xxx-xx-xxxx")
+      value.replaceAll("[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}", "xxxx-xxxx-xxxx-xxxx")
     );
     return true; // retain the span
+  }
+
+  @Override public boolean supportsOrphans() {
+    return true; // orphaned data created by bugs must also be cleaned!
   }
 });
 ```

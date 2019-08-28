@@ -622,6 +622,28 @@ public class TracerTest {
     );
   }
 
+  @Test public void toString_withFinishedSpanHandler() {
+    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        return true;
+      }
+
+      @Override public String toString() {
+        return "MyHandler";
+      }
+    }).spanReporter(new Reporter<zipkin2.Span>() {
+      @Override public void report(zipkin2.Span span) {
+      }
+      @Override public String toString() {
+        return "MyReporter";
+      }
+    }).build().tracer();
+
+    assertThat(tracer).hasToString(
+      "Tracer{finishedSpanHandler=[MyHandler, MyReporter]}"
+    );
+  }
+
   @Test public void withSpanInScope_nested() {
     Span parent = tracer.newTrace();
 

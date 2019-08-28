@@ -222,6 +222,17 @@ public final class MutableSpan implements Cloneable {
     return true;
   }
 
+  /** Returns true if an annotation with the given value exists in this span. */
+  public boolean containsAnnotation(String value) {
+    if (value == null) throw new NullPointerException("value == null");
+    if (annotations == null) return false;
+
+    for (int i = 0, length = annotations.size(); i < length; i += 2) {
+      if (value.equals(annotations.get(i+1))) return true;
+    }
+    return false;
+  }
+
   /** @see brave.Span#annotate(String) */
   public void annotate(long timestamp, String value) {
     if (value == null) throw new NullPointerException("value == null");

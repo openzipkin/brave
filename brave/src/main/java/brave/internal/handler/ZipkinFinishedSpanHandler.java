@@ -31,6 +31,11 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
     this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
   }
 
+  /**
+   * This is the last in the chain of finished span handlers. A predecessor may have set {@link
+   * #alwaysSampleLocal()}, so we have to double-check here that the span was sampled to Zipkin.
+   * Otherwise, we could accidentally send 100% data.
+   */
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     if (!Boolean.TRUE.equals(context.sampled())) return true;
 
@@ -42,6 +47,10 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
 
     converter.convert(span, builderWithContextData);
     spanReporter.report(builderWithContextData.build());
+    return true;
+  }
+
+  @Override public boolean supportsOrphans() {
     return true;
   }
 

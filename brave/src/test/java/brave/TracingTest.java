@@ -22,11 +22,14 @@ import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TracingTest {
   List<zipkin2.Span> spans = new ArrayList<>();
@@ -121,7 +124,7 @@ public class TracingTest {
       .addFinishedSpanHandler(one)
       .addFinishedSpanHandler(two)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
         .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
           .startsWith(one, two)
           .hasSize(3) // zipkin and the above
@@ -141,7 +144,7 @@ public class TracingTest {
       .addFinishedSpanHandler(finishedSpanHandler)
       .addFinishedSpanHandler(finishedSpanHandler)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
         .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
           .startsWith(finishedSpanHandler, finishedSpanHandler)
           .hasSize(3) // zipkin and the above
@@ -256,5 +259,35 @@ public class TracingTest {
     assertThat(spans).isEmpty();
     assertThat(mutableSpans).hasSize(1);
     assertThat(mutableSpans.get(0).name()).isEqualTo("one");
+  }
+
+  /** This ensures handlers not designed for orphans aren't accidentally used. */
+  @Test public void finishedSpanHandler_splitsHandlersBasedOnOrphanSupport() {
+    FinishedSpanHandler one = mock(FinishedSpanHandler.class);
+    when(one.supportsOrphans()).thenReturn(true);
+    FinishedSpanHandler two = mock(FinishedSpanHandler.class);
+    when(two.supportsOrphans()).thenReturn(false);
+    FinishedSpanHandler three = mock(FinishedSpanHandler.class);
+    when(three.supportsOrphans()).thenReturn(true);
+    FinishedSpanHandler four = mock(FinishedSpanHandler.class);
+    when(four.supportsOrphans()).thenReturn(false);
+
+    try (Tracing tracing = Tracing.newBuilder()
+      .addFinishedSpanHandler(one)
+      .addFinishedSpanHandler(two)
+      .addFinishedSpanHandler(three)
+      .addFinishedSpanHandler(four)
+      .build()) {
+
+      // Handlers, regardless of whether they support orphans, should be invoked in order
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
+        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+        .startsWith(one, two, three, four);
+
+      // Only orphaned handlers should be invoked on the orphan path
+      assertThat(tracing.tracer().pendingSpans).extracting("orphanedSpanHandler.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+        .startsWith(one, three);
+    }
   }
 }

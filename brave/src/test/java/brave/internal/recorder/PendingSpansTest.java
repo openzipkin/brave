@@ -15,6 +15,7 @@ package brave.internal.recorder;
 
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PendingSpansTest {
@@ -304,6 +306,50 @@ public class PendingSpansTest {
     assertThat(key).isEqualTo(key);
     key.clear();
     assertThat(key).isEqualTo(key);
+  }
+
+  @Test
+  public void orphanContext_dropsExtra() throws Exception {
+    TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
+
+    TraceContext[] handledContext = {null};
+    init(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        handledContext[0] = context;
+        return true;
+      }
+    });
+
+    // We drop the reference to the context, which means the next GC should attempt to flush it
+    pendingSpans.getOrCreate(context1.toBuilder().build(), false).state().tag("foo", "bar");
+
+    blockOnGC();
+    pendingSpans.reportOrphanedSpans();
+
+    assertThat(handledContext[0]).isEqualTo(context1); // ID comparision is the same
+    assertThat(handledContext[0].extra()).isEmpty(); // No extra fields are retained
+  }
+
+  @Test
+  public void orphanContext_includesAllFlags() throws Exception {
+    TraceContext context1 = context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
+
+    TraceContext[] handledContext = {null};
+    init(new FinishedSpanHandler() {
+      @Override public boolean handle(TraceContext context, MutableSpan span) {
+        handledContext[0] = context;
+        return true;
+      }
+    });
+
+    // We drop the reference to the context, which means the next GC should attempt to flush it
+    pendingSpans.getOrCreate(context1.toBuilder().build(), false).state().tag("foo", "bar");
+
+    blockOnGC();
+    pendingSpans.reportOrphanedSpans();
+
+    assertThat(InternalPropagation.instance.flags(handledContext[0]))
+      .isEqualTo(InternalPropagation.instance.flags(context1)); // no flags lost
   }
 
   @Test

@@ -11,67 +11,52 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.recorder;
+package brave.internal.handler;
 
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
-import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
+import static java.util.Arrays.asList;
 
-public class PendingSpansClassLoaderTest {
+public class NoopAwareFinishedSpanHandlerClassLoaderTest {
 
-  @Test public void unloadable_afterCreateAndRemove() {
-    assertRunIsUnloadable(CreateAndRemove.class, getClass().getClassLoader());
+  @Test public void unloadable_afterHandle() {
+    assertRunIsUnloadable(Handle.class, getClass().getClassLoader());
   }
 
-  static class CreateAndRemove implements Runnable {
+  static class Handle implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans =
-        new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
+      FinishedSpanHandler handler =
+        NoopAwareFinishedSpanHandler.create(asList(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true;
           }
-        }, new AtomicBoolean());
+        }), new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
-      pendingSpans.getOrCreate(context, true);
-      pendingSpans.remove(context);
+      handler.handle(context, new MutableSpan());
     }
   }
 
-  @Test public void unloadable_afterOrphan() {
-    assertRunIsUnloadable(OrphanedContext.class, getClass().getClassLoader());
+  @Test public void unloadable_afterErrorHandling() {
+    assertRunIsUnloadable(ErrorHandling.class, getClass().getClassLoader());
   }
 
-  static class OrphanedContext implements Runnable {
+  static class ErrorHandling implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans =
-        new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
+      FinishedSpanHandler handler =
+        NoopAwareFinishedSpanHandler.create(asList(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
-            return true;
+            throw new RuntimeException();
           }
-        }, new AtomicBoolean());
+        }), new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
-      pendingSpans.getOrCreate(context, true);
-      context = null; // orphan the context
-
-      try {
-        blockOnGC();
-      } catch (InterruptedException e) {
-        throw new AssertionError(e);
-      }
-
-      pendingSpans.reportOrphanedSpans();
+      handler.handle(context, new MutableSpan());
     }
-  }
-
-  static void blockOnGC() throws InterruptedException {
-    System.gc();
-    Thread.sleep(200L);
   }
 }

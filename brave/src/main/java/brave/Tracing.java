@@ -17,7 +17,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.handler.FinishedSpanHandlers;
+import brave.internal.handler.NoopAwareFinishedSpanHandler;
 import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
@@ -393,34 +393,31 @@ public abstract class Tracing implements Closeable {
       this.sampler = builder.sampler;
       this.noop = new AtomicBoolean();
 
-      ArrayList<FinishedSpanHandler> finishedSpanHandlers =
-        new ArrayList<>(builder.finishedSpanHandlers); // defensive copy against mutation of builder
+      FinishedSpanHandler zipkinHandler = builder.spanReporter != Reporter.NOOP
+        ? new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
+        builder.localServiceName, builder.localIp, builder.localPort)
+        : FinishedSpanHandler.NOOP;
 
-      // If a Zipkin reporter is present, it is invoked after the user-supplied finished span handlers.
-      FinishedSpanHandler zipkinHandler = FinishedSpanHandler.NOOP;
-      if (builder.spanReporter != Reporter.NOOP) {
-        zipkinHandler = new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
-          builder.localServiceName, builder.localIp, builder.localPort);
-        finishedSpanHandlers.add(zipkinHandler);
+      FinishedSpanHandler finishedSpanHandler =
+        zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler, noop);
+
+      ArrayList<FinishedSpanHandler> orphanedSpanHandlers = new ArrayList<>();
+      for (FinishedSpanHandler handler : builder.finishedSpanHandlers) {
+        if (handler.supportsOrphans()) orphanedSpanHandlers.add(handler);
       }
 
-      FinishedSpanHandler finishedSpanHandler;
-      switch (finishedSpanHandlers.size()) {
-        case 0:
-          finishedSpanHandler = FinishedSpanHandler.NOOP;
-          break;
-        case 1:
-          finishedSpanHandler = finishedSpanHandlers.iterator().next();
-          break;
-        default:
-          finishedSpanHandler = FinishedSpanHandlers.compose(finishedSpanHandlers);
+      FinishedSpanHandler orphanedSpanHandler = finishedSpanHandler;
+      boolean allHandlersSupportOrphans = builder.finishedSpanHandlers.equals(orphanedSpanHandlers);
+      if (!allHandlersSupportOrphans) {
+        orphanedSpanHandler =
+          zipkinReportingFinishedSpanHandler(orphanedSpanHandlers, zipkinHandler, noop);
       }
 
       this.tracer = new Tracer(
         builder.clock,
         builder.propagationFactory,
-        FinishedSpanHandlers.noopAware(finishedSpanHandler, noop),
-        new PendingSpans(clock, zipkinHandler, noop),
+        finishedSpanHandler,
+        new PendingSpans(clock, orphanedSpanHandler, noop),
         builder.sampler,
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
@@ -470,6 +467,10 @@ public abstract class Tracing implements Closeable {
       }
     }
 
+    @Override public String toString() {
+      return tracer.toString();
+    }
+
     @Override public void close() {
       if (current != this) return;
       // don't blindly set most recent to null as there could be a race
@@ -477,6 +478,16 @@ public abstract class Tracing implements Closeable {
         if (current == this) current = null;
       }
     }
+  }
+
+  static FinishedSpanHandler zipkinReportingFinishedSpanHandler(
+    ArrayList<FinishedSpanHandler> input, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
+    ArrayList<FinishedSpanHandler> defensiveCopy = new ArrayList<>(input);
+    // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
+    if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);
+
+    // Make sure any exceptions caused by handlers don't crash callers
+    return NoopAwareFinishedSpanHandler.create(defensiveCopy, noop);
   }
 
   Tracing() { // intentionally hidden constructor
