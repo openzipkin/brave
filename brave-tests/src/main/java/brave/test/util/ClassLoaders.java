@@ -95,11 +95,7 @@ public final class ClassLoaders {
       throw new AssertionError(e);
     }
 
-    try {
-      GarbageCollectors.blockOnGC(loader);
-    } catch (ConditionTimeoutException t) {
-      // Ignore timeout so we can provide a better message below.
-    }
+    GarbageCollectors.blockOnGC(loader);
 
     assertThat(loader.get())
       .withFailMessage(runnable + " includes state that couldn't be garbage collected")
