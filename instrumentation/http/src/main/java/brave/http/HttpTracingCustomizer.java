@@ -19,9 +19,9 @@ import brave.TracingCustomizer;
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link HttpTracing}.
  *
- * <p>Notably, this decouples framework-level configuration (such as {@link
- * HttpTracing.Builder#Builder(Tracing) the http tracing instance}) from site-specific configuration
- * (such as {@link HttpTracing.Builder#clientParser(HttpClientParser) parsers}).
+ * <p>For example, a customizer can setup {@link HttpTracing.Builder#clientParser(HttpClientParser)
+ * http parsers} without a reference to the {@link HttpTracing.Builder#Builder(Tracing) tracing
+ * component}.
  *
  * <p>This also allows one object to customize both {@link Tracing}, via {@link TracingCustomizer},
  * and the http layer {@link HttpTracing}, by implementing both customizer interfaces.
