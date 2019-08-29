@@ -24,7 +24,6 @@ import java.net.URLClassLoader;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.LogManager;
-import org.awaitility.core.ConditionTimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
