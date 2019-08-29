@@ -18,6 +18,8 @@ import brave.http.HttpClientParser;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
+import brave.http.HttpTracingCustomizer;
+import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
@@ -28,6 +30,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
   HttpServerParser serverParser;
   HttpSampler clientSampler;
   HttpSampler serverSampler;
+  List<HttpTracingCustomizer> customizers;
 
   @Override public HttpTracing getObject() {
     HttpTracing.Builder builder = HttpTracing.newBuilder(tracing);
@@ -35,6 +38,9 @@ public class HttpTracingFactoryBean implements FactoryBean {
     if (serverParser != null) builder.serverParser(serverParser);
     if (clientSampler != null) builder.clientSampler(clientSampler);
     if (serverSampler != null) builder.serverSampler(serverSampler);
+    if (customizers != null) {
+      for (HttpTracingCustomizer customizer : customizers) customizer.customize(builder);
+    }
     return builder.build();
   }
 
@@ -64,5 +70,9 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   public void setServerSampler(HttpSampler serverSampler) {
     this.serverSampler = serverSampler;
+  }
+
+  public void setCustomizers(List<HttpTracingCustomizer> customizers) {
+    this.customizers = customizers;
   }
 }

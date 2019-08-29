@@ -16,6 +16,7 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -40,6 +41,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   Propagation.Factory propagationFactory;
   Boolean traceId128Bit;
   Boolean supportsJoin;
+  List<TracingCustomizer> customizers;
 
   @Override protected Tracing createInstance() {
     Tracing.Builder builder = Tracing.newBuilder();
@@ -59,6 +61,9 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (propagationFactory != null) builder.propagationFactory(propagationFactory);
     if (traceId128Bit != null) builder.traceId128Bit(traceId128Bit);
     if (supportsJoin != null) builder.supportsJoin(supportsJoin);
+    if (customizers != null) {
+      for (TracingCustomizer customizer : customizers) customizer.customize(builder);
+    }
     return builder.build();
   }
 
@@ -114,10 +119,6 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.currentTraceContext = currentTraceContext;
   }
 
-  public Propagation.Factory getPropagationFactory() {
-    return propagationFactory;
-  }
-
   public void setPropagationFactory(Propagation.Factory propagationFactory) {
     this.propagationFactory = propagationFactory;
   }
@@ -126,11 +127,11 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.traceId128Bit = traceId128Bit;
   }
 
-  public Boolean getSupportsJoin() {
-    return supportsJoin;
-  }
-
   public void setSupportsJoin(Boolean supportsJoin) {
     this.supportsJoin = supportsJoin;
+  }
+
+  public void setCustomizers(List<TracingCustomizer> customizers) {
+    this.customizers = customizers;
   }
 }
