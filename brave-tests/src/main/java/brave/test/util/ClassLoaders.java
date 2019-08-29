@@ -94,7 +94,7 @@ public final class ClassLoaders {
       throw new AssertionError(e);
     }
 
-    GarbageCollectors.blockOnGC(loader);
+    GarbageCollectors.blockOnGC();
 
     assertThat(loader.get())
       .withFailMessage(runnable + " includes state that couldn't be garbage collected")

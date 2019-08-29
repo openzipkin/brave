@@ -15,7 +15,6 @@
 package brave.test.util;
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Utilities for working with the garbage collector in tests.
@@ -26,28 +25,13 @@ public final class GarbageCollectors {
    * Runs the garbage collector and waits until all of the provided {@link WeakReference} are
    * cleared, indicating the referenced objects have been collected.
    */
-  public static void blockOnGC(WeakReference<?>... cleared) {
+  public static void blockOnGC() {
     System.gc();
-    // Poll references for up to 200ms
-    long currentTimeNanos = System.nanoTime();
-    while (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - currentTimeNanos) <= 200) {
-      try {
-        Thread.sleep(5);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new AssertionError(e);
-      }
-
-      boolean collected = true;
-      for (WeakReference<?> reference : cleared) {
-        if (reference.get() != null) {
-          collected = false;
-          break;
-        }
-      }
-      if (collected) {
-        return;
-      }
+    try {
+      Thread.sleep(200);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
     }
   }
 

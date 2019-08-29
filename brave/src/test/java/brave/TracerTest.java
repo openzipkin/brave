@@ -28,7 +28,6 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -757,7 +756,8 @@ public class TracerTest {
   }
 
   @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() throws InterruptedException {
-    GarbageCollectors.blockOnGC(simulateInProcessPropagation(tracer, tracer));
+    simulateInProcessPropagation(tracer, tracer);
+    GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
     assertThat(spans).hasSize(1);
     assertThat(spans.stream()
@@ -770,7 +770,8 @@ public class TracerTest {
     throws InterruptedException {
     Tracer noOpTracer = Tracing.newBuilder()
       .build().tracer();
-    GarbageCollectors.blockOnGC(simulateInProcessPropagation(noOpTracer, tracer));
+    simulateInProcessPropagation(noOpTracer, tracer);
+    GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
 
     // We expect the span to be reported to the NOOP reporter, and nothing to be reported to "spans"
@@ -785,7 +786,7 @@ public class TracerTest {
    * Must be a separate method from the test method to allow for local variables to be garbage
    * collected
    */
-  private static WeakReference<?>[] simulateInProcessPropagation(Tracer tracer1, Tracer tracer2) {
+  private static void simulateInProcessPropagation(Tracer tracer1, Tracer tracer2) {
     Span span1 = tracer1.newTrace();
     span1.start();
 
@@ -798,8 +799,6 @@ public class TracerTest {
     // Pretend we're on child thread
     Span span2 = tracer2.currentSpan();
     spanInScope.close();
-
-    return new WeakReference<?>[] { new WeakReference<>(span1), new WeakReference<>(span2) };
   }
 
   @Test public void newTrace_resultantSpanIsLocalRoot() {
