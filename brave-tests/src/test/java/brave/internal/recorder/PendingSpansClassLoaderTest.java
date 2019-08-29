@@ -17,6 +17,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
+import brave.test.util.GarbageCollectors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
@@ -61,14 +62,7 @@ public class PendingSpansClassLoaderTest {
       pendingSpans.getOrCreate(context, true);
       context = null; // orphan the context
 
-      System.gc();
-      try {
-        // We usually block on a weak reference being cleared, but here we would end up loading
-        // the WeakReference class from the classloader preventing it from unloading.
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        throw new AssertionError(e);
-      }
+      GarbageCollectors.blockOnGC();
 
       pendingSpans.reportOrphanedSpans();
     }

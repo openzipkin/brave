@@ -21,7 +21,6 @@ import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
 import brave.propagation.TraceContext;
-import java.lang.ref.WeakReference;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
@@ -121,9 +120,8 @@ public class RedactingFinishedSpanHandlerTest {
 
     // Leak some data by adding a tag using the same context after the span was finished.
     tracing.tracer().toSpan(span.context()).tag("d", "cc=4121-2319-1483-3421");
-    WeakReference<?> weakReference = new WeakReference<>(span);
     span = null; // Orphans are via GC, to test this, we have to drop any reference to the context
-    GarbageCollectors.blockOnGC(weakReference);
+    GarbageCollectors.blockOnGC();
 
     // GC only clears the reference to the leaked data. Normal tracer use implicitly handles orphans
     tracing.tracer().nextSpan().abandon();
