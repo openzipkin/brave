@@ -58,6 +58,7 @@ import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
@@ -213,28 +214,18 @@ public class ITTracingClientInterceptor {
       .isEqualTo("helloworld.greeter/sayhello");
   }
 
-  @Test public void onTransportException_reportsSpan() throws Exception {
-    spanFromTransportException();
-  }
-
   @Test public void onTransportException_addsErrorTag() throws Exception {
-    Span span = spanFromTransportException();
-    assertThat(span.tags()).containsExactly(
-      entry("error", "UNAVAILABLE"),
-      entry("grpc.status_code", "UNAVAILABLE")
-    );
-  }
-
-  Span spanFromTransportException() throws InterruptedException {
     server.stop();
 
-    try {
-      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-      failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
-    } catch (StatusRuntimeException e) {
-    }
+    StatusRuntimeException thrown = catchThrowableOfType(
+      () -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST),
+      StatusRuntimeException.class);
 
-    return takeSpan();
+    Span span = takeSpan();
+    assertThat(span.tags()).containsExactly(
+      entry("error", thrown.getStatus().getCode().toString()),
+      entry("grpc.status_code", thrown.getStatus().getCode().toString())
+    );
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
