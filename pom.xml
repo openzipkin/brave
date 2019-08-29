@@ -109,7 +109,6 @@
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.12</junit.version>
     <assertj.version>3.13.2</assertj.version>
-    <awaitility.version>3.1.6</awaitility.version>
     <powermock.version>2.0.2</powermock.version>
     <!-- Up to v2.27.0 of mockito has a conflict https://github.com/mockito/mockito/issues/1606
     java.lang.NoSuchMethodError: net.bytebuddy.dynamic.loading.MultipleParentClassLoader$Builder.appendMostSpecific(Ljava/util/Collection;)Lnet/bytebuddy/dynamic/loading/MultipleParentClassLoader$Builder
@@ -299,11 +298,6 @@
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
         <version>${assertj.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.awaitility</groupId>
-        <artifactId>awaitility</artifactId>
-        <version>${awaitility.version}</version>
       </dependency>
       <dependency>
         <groupId>javax.ws.rs</groupId>

@@ -15,10 +15,7 @@
 package brave;
 
 import java.lang.ref.WeakReference;
-import org.awaitility.Duration;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Utilities for working with the garbage collector in tests.
@@ -31,11 +28,27 @@ public final class GarbageCollectors {
    */
   public static void blockOnGC(WeakReference<?>... cleared) {
     System.gc();
-    await().atMost(Duration.TWO_HUNDRED_MILLISECONDS).untilAsserted(() -> {
-      for (WeakReference<?> reference : cleared) {
-        assertThat(reference.get()).isNull();
+    // Poll references for up to 200ms
+    long startTimeNanos = System.nanoTime();
+    while (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNanos) <= 200) {
+      try {
+        Thread.sleep(5);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
       }
-    });
+
+      boolean collected = true;
+      for (WeakReference<?> reference : cleared) {
+        if (reference.get() != null) {
+          collected = false;
+          break;
+        }
+      }
+      if (collected) {
+        return;
+      }
+    }
   }
 
   private GarbageCollectors() {}
