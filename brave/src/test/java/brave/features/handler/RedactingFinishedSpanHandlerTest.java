@@ -13,6 +13,7 @@
  */
 package brave.features.handler;
 
+import brave.GarbageCollectors;
 import brave.ScopedSpan;
 import brave.Tracing;
 import brave.handler.FinishedSpanHandler;
@@ -20,6 +21,7 @@ import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
 import brave.propagation.TraceContext;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
@@ -76,8 +78,17 @@ public class RedactingFinishedSpanHandlerTest {
     }
   };
 
+  // Only handles non-orphans
+  FinishedSpanHandler markFinished = new FinishedSpanHandler() {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      span.tag("oliver-twist", "false");
+      return true;
+    }
+  };
+
   Tracing tracing = Tracing.newBuilder()
     .addFinishedSpanHandler(redacter)
+    .addFinishedSpanHandler(markFinished)
     .spanReporter(spans::add)
     .build();
 
@@ -100,7 +111,9 @@ public class RedactingFinishedSpanHandlerTest {
     assertThat(finished.tags()).containsExactly(
       entry("a", "1"),
       // credit card tag was nuked
-      entry("c", "3")
+      entry("c", "3"),
+      // non-orphan handler ran
+      entry("oliver-twist", "false")
     );
     assertThat(finished.annotations()).flatExtracting(Annotation::value).containsExactly(
       "cc=xxxx-xxxx-xxxx-xxxx"
@@ -108,8 +121,9 @@ public class RedactingFinishedSpanHandlerTest {
 
     // Leak some data by adding a tag using the same context after the span was finished.
     tracing.tracer().toSpan(span.context()).tag("d", "cc=4121-2319-1483-3421");
+    WeakReference<?> weakReference = new WeakReference<>(span);
     span = null; // Orphans are via GC, to test this, we have to drop any reference to the context
-    blockOnGC();
+    GarbageCollectors.blockOnGC(weakReference);
 
     // GC only clears the reference to the leaked data. Normal tracer use implicitly handles orphans
     tracing.tracer().nextSpan().abandon();
@@ -118,14 +132,10 @@ public class RedactingFinishedSpanHandlerTest {
     assertThat(leaked.tags()).containsExactly(
       // credit card tag was nuked
       entry("d", "cc=xxxx-xxxx-xxxx-xxxx")
+      // non-orphan handler didn't run
     );
     assertThat(leaked.annotations()).flatExtracting(Annotation::value).containsExactly(
       "brave.flush"
     );
-  }
-
-  static void blockOnGC() throws InterruptedException {
-    System.gc();
-    Thread.sleep(200L);
   }
 }

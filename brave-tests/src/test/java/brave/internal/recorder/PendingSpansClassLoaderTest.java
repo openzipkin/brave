@@ -48,6 +48,7 @@ public class PendingSpansClassLoaderTest {
   }
 
   static class OrphanedContext implements Runnable {
+
     @Override public void run() {
       PendingSpans pendingSpans =
         new PendingSpans(Platform.get().clock(), new FinishedSpanHandler() {
@@ -60,18 +61,16 @@ public class PendingSpansClassLoaderTest {
       pendingSpans.getOrCreate(context, true);
       context = null; // orphan the context
 
+      System.gc();
       try {
-        blockOnGC();
+        // We usually block on a weak reference being cleared, but here we would end up loading
+        // the WeakReference class from the classloader preventing it from unloading.
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         throw new AssertionError(e);
       }
 
       pendingSpans.reportOrphanedSpans();
     }
-  }
-
-  static void blockOnGC() throws InterruptedException {
-    System.gc();
-    Thread.sleep(200L);
   }
 }

@@ -94,21 +94,11 @@ public final class ClassLoaders {
       throw new AssertionError(e);
     }
 
-    blockOnGC();
+    GarbageCollectors.blockOnGC(loader);
 
     assertThat(loader.get())
       .withFailMessage(runnable + " includes state that couldn't be garbage collected")
       .isNull();
-  }
-
-  static void blockOnGC() {
-    System.gc();
-    try {
-      Thread.sleep(200L);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new AssertionError(e);
-    }
   }
 
   static WeakReference<ClassLoader> invokeRunFromNewClassLoader(
