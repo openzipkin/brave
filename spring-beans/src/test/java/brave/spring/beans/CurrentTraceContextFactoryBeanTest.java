@@ -31,7 +31,9 @@ public class CurrentTraceContextFactoryBeanTest {
     context = new XmlBeans(""
       + "<bean id=\"currentTraceContext\" class=\"brave.spring.beans.CurrentTraceContextFactoryBean\">\n"
       + "  <property name=\"scopeDecorators\">\n"
-      + "    <bean class=\"brave.propagation.StrictScopeDecorator\" factory-method=\"create\"/>\n"
+      + "    <list>\n"
+      + "      <bean class=\"brave.propagation.StrictScopeDecorator\" factory-method=\"create\"/>\n"
+      + "    </list>\n"
       + "  </property>"
       + "</bean>"
     );

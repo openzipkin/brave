@@ -16,17 +16,22 @@ package brave.spring.beans;
 import brave.Clock;
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class TracingFactoryBeanTest {
   public static final Clock CLOCK = mock(Clock.class);
@@ -242,5 +247,26 @@ public class TracingFactoryBeanTest {
     assertThat(context.getBean("tracing", Tracing.class))
       .extracting("tracer.supportsJoin")
       .isEqualTo(true);
+  }
+
+  public static final TracingCustomizer CUSTOMIZER_ONE = mock(TracingCustomizer.class);
+  public static final TracingCustomizer CUSTOMIZER_TWO = mock(TracingCustomizer.class);
+
+  @Test public void customizers() {
+    context = new XmlBeans(""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"customizers\">\n"
+      + "    <list>\n"
+      + "      <util:constant static-field=\"" + getClass().getName() + ".CUSTOMIZER_ONE\"/>\n"
+      + "      <util:constant static-field=\"" + getClass().getName() + ".CUSTOMIZER_TWO\"/>\n"
+      + "    </list>\n"
+      + "  </property>"
+      + "</bean>"
+    );
+
+    context.getBean("tracing", Tracing.class);
+
+    verify(CUSTOMIZER_ONE).customize(any(Tracing.Builder.class));
+    verify(CUSTOMIZER_TWO).customize(any(Tracing.Builder.class));
   }
 }

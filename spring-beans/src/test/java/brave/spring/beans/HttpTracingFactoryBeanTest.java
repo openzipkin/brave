@@ -14,15 +14,19 @@
 package brave.spring.beans;
 
 import brave.Tracing;
+import brave.TracingCustomizer;
 import brave.http.HttpClientParser;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
+import brave.http.HttpTracingCustomizer;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class HttpTracingFactoryBeanTest {
 
@@ -116,5 +120,29 @@ public class HttpTracingFactoryBeanTest {
     assertThat(context.getBean("httpTracing", HttpTracing.class))
       .extracting("serverSampler")
       .isEqualTo(HttpSampler.NEVER_SAMPLE);
+  }
+
+  public static final HttpTracingCustomizer CUSTOMIZER_ONE = mock(HttpTracingCustomizer.class);
+  public static final HttpTracingCustomizer CUSTOMIZER_TWO = mock(HttpTracingCustomizer.class);
+
+  @Test public void customizers() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"customizers\">\n"
+      + "    <list>\n"
+      + "      <util:constant static-field=\"" + getClass().getName() + ".CUSTOMIZER_ONE\"/>\n"
+      + "      <util:constant static-field=\"" + getClass().getName() + ".CUSTOMIZER_TWO\"/>\n"
+      + "    </list>\n"
+      + "  </property>"
+      + "</bean>"
+    );
+
+    context.getBean("httpTracing", HttpTracing.class);
+
+    verify(CUSTOMIZER_ONE).customize(any(HttpTracing.Builder.class));
+    verify(CUSTOMIZER_TWO).customize(any(HttpTracing.Builder.class));
   }
 }
