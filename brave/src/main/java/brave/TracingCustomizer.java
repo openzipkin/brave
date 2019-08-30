@@ -39,5 +39,15 @@ import zipkin2.reporter.Reporter;
  * @since 5.7
  */
 public interface TracingCustomizer {
+  /** Use to avoid comparing against null references */
+  TracingCustomizer NOOP = new TracingCustomizer() {
+    @Override public void customize(Tracing.Builder builder) {
+    }
+
+    @Override public String toString() {
+      return "NoopTracingCustomizer{}";
+    }
+  };
+
   void customize(Tracing.Builder builder);
 }

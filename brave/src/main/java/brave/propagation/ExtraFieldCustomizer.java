@@ -45,5 +45,15 @@ import brave.TracingCustomizer;
  * @since 5.7
  */
 public interface ExtraFieldCustomizer {
+  /** Use to avoid comparing against null references */
+  ExtraFieldCustomizer NOOP = new ExtraFieldCustomizer() {
+    @Override public void customize(ExtraFieldPropagation.FactoryBuilder builder) {
+    }
+
+    @Override public String toString() {
+      return "NoopExtraFieldCustomizer{}";
+    }
+  };
+
   void customize(ExtraFieldPropagation.FactoryBuilder builder);
 }

@@ -43,5 +43,15 @@ import brave.TracingCustomizer;
  * @since 5.7
  */
 public interface HttpTracingCustomizer {
+  /** Use to avoid comparing against null references */
+  HttpTracingCustomizer NOOP = new HttpTracingCustomizer() {
+    @Override public void customize(HttpTracing.Builder builder) {
+    }
+
+    @Override public String toString() {
+      return "NoopHttpTracingCustomizer{}";
+    }
+  };
+
   void customize(HttpTracing.Builder builder);
 }
