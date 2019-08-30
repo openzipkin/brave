@@ -7,6 +7,8 @@ Bean Factories exist for the following types:
 * EndpointFactoryBean - for configuring the service name, IP etc representing this host
 * TracingFactoryBean - wires most together, like reporter and log integration
 * HttpTracingFactoryBean - for http tagging and sampling policy
+* CurrentTraceContextFactoryBean - for scope decorations such as MDC (logging) field correlation
+* ExtraFieldPropagationFactoryBean - for propagating extra fields over headers, like "customer-id"
 
 Here are some example beans using the factories in this module:
 ```xml
@@ -41,15 +43,12 @@ Here's an advanced example, which propagates the request-scoped header "x-vcap-r
 with trace headers:
 
 ```xml
-  <bean id="propagationFactory" class="brave.propagation.ExtraFieldPropagation" factory-method="newFactory">
-    <constructor-arg index="0">
-      <util:constant static-field="brave.propagation.B3Propagation.FACTORY"/>
-    </constructor-arg>
-    <constructor-arg index="1">
+  <bean id="propagationFactory" class="brave.spring.beans.ExtraFieldPropagationFactoryBean">
+    <property name="fields">
       <list>
         <value>x-vcap-request-id</value>
       </list>
-    </constructor-arg>
+    </property>
   </bean>
 
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">

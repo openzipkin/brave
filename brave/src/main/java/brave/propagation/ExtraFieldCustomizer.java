@@ -11,26 +11,28 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.http;
+package brave.propagation;
 
 import brave.Tracing;
 import brave.TracingCustomizer;
 
 /**
- * This allows configuration plugins to collaborate on building an instance of {@link HttpTracing}.
+ * This allows configuration plugins to collaborate on building an instance of {@link
+ * ExtraFieldPropagation.Factory}.
  *
- * <p>For example, a customizer can setup {@link HttpTracing.Builder#clientParser(HttpClientParser)
- * http parsers} without a reference to the {@link HttpTracing.Builder#Builder(Tracing) tracing
- * component}.
+ * <p>For example, a customizer can {@link ExtraFieldPropagation.FactoryBuilder#addField(String)
+ * add an extra field field} without affecting the {@link ExtraFieldPropagation#newFactoryBuilder(Propagation.Factory)
+ * trace propagation format}.
  *
  * <p>This also allows one object to customize both {@link Tracing}, via {@link TracingCustomizer},
- * and the http layer {@link HttpTracing}, by implementing both customizer interfaces.
+ * and extra fields {@link ExtraFieldPropagation}, by implementing both customizer interfaces.
  *
  * <h3>Integration examples</h3>
  *
  * <p>In practice, a dependency injection tool applies a collection of these instances prior to
- * {@link HttpTracing.Builder#build() building the tracing instance}. For example, an injected
- * {@code List<HttpTracingCustomizer>} parameter to a provider of {@link HttpTracing}.
+ * {@link ExtraFieldPropagation.FactoryBuilder#build() building the tracing instance}. For example,
+ * an injected {@code List<ExtraFieldPropagationCustomizer>} parameter to a provider of {@link
+ * Propagation.Factory}.
  *
  * <p>Here are some examples, in alphabetical order:
  * <pre><ul>
@@ -42,16 +44,16 @@ import brave.TracingCustomizer;
  * @see TracingCustomizer
  * @since 5.7
  */
-public interface HttpTracingCustomizer {
+public interface ExtraFieldCustomizer {
   /** Use to avoid comparing against null references */
-  HttpTracingCustomizer NOOP = new HttpTracingCustomizer() {
-    @Override public void customize(HttpTracing.Builder builder) {
+  ExtraFieldCustomizer NOOP = new ExtraFieldCustomizer() {
+    @Override public void customize(ExtraFieldPropagation.FactoryBuilder builder) {
     }
 
     @Override public String toString() {
-      return "NoopHttpTracingCustomizer{}";
+      return "NoopExtraFieldCustomizer{}";
     }
   };
 
-  void customize(HttpTracing.Builder builder);
+  void customize(ExtraFieldPropagation.FactoryBuilder builder);
 }
