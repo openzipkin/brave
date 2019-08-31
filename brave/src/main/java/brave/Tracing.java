@@ -338,6 +338,7 @@ public abstract class Tracing implements Closeable {
      * overhead.
      *
      * @see TraceContext#sampledLocal()
+     * @since 5.4
      */
     public Builder addFinishedSpanHandler(FinishedSpanHandler finishedSpanHandler) {
       if (finishedSpanHandler == null) {

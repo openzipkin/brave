@@ -13,26 +13,25 @@
  */
 package brave.propagation;
 
-import brave.Tracing;
 import brave.TracingCustomizer;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link
- * ExtraFieldPropagation.Factory}.
+ * CurrentTraceContext}.
  *
- * <p>For example, a customizer can {@link ExtraFieldPropagation.FactoryBuilder#addField(String)
- * add an extra field field} without affecting the {@link ExtraFieldPropagation#newFactoryBuilder(Propagation.Factory)
- * trace propagation format}.
+ * <p>For example, a customizer can {@link CurrentTraceContext.Builder#addScopeDecorator(CurrentTraceContext.ScopeDecorator)
+ * add a scope decorator} without affecting the the implementation (like thread locals).
  *
- * <p>This also allows one object to customize both {@link Tracing}, via {@link TracingCustomizer},
- * and extra fields {@link ExtraFieldPropagation}, by implementing both customizer interfaces.
+ * <p>This also allows one object to customize both {@link ExtraFieldPropagation}, via {@link
+ * ExtraFieldCustomizer}, and integration like MDC (log) correlation, by implementing both
+ * customizer interfaces.
  *
  * <h3>Integration examples</h3>
  *
  * <p>In practice, a dependency injection tool applies a collection of these instances prior to
- * {@link ExtraFieldPropagation.FactoryBuilder#build() building the tracing instance}. For example,
- * an injected {@code List<ExtraFieldPropagationCustomizer>} parameter to a provider of {@link
- * Propagation.Factory}.
+ * {@link CurrentTraceContext.Builder#build() building the tracing instance}. For example, an
+ * injected {@code List<CurrentTraceContextCustomizer>} parameter to a provider of {@link
+ * CurrentTraceContext}.
  *
  * <p>Here are some examples, in alphabetical order:
  * <pre><ul>
@@ -41,20 +40,20 @@ import brave.TracingCustomizer;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
- * @see CurrentTraceContextCustomizer
+ * @see ExtraFieldCustomizer
  * @see TracingCustomizer
  * @since 5.7
  */
-public interface ExtraFieldCustomizer {
+public interface CurrentTraceContextCustomizer {
   /** Use to avoid comparing against null references */
-  ExtraFieldCustomizer NOOP = new ExtraFieldCustomizer() {
-    @Override public void customize(ExtraFieldPropagation.FactoryBuilder builder) {
+  CurrentTraceContextCustomizer NOOP = new CurrentTraceContextCustomizer() {
+    @Override public void customize(CurrentTraceContext.Builder builder) {
     }
 
     @Override public String toString() {
-      return "NoopExtraFieldCustomizer{}";
+      return "NoopCurrentTraceContextCustomizer{}";
     }
   };
 
-  void customize(ExtraFieldPropagation.FactoryBuilder builder);
+  void customize(CurrentTraceContext.Builder builder);
 }
