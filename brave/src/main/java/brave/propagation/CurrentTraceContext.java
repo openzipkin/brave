@@ -46,7 +46,11 @@ public abstract class CurrentTraceContext {
   public abstract static class Builder {
     ArrayList<ScopeDecorator> scopeDecorators = new ArrayList<>();
 
-    /** Implementations call decorators in order to add features like log correlation to a scope. */
+    /**
+     * Implementations call decorators in order to add features like log correlation to a scope.
+     *
+     * @since 5.2
+     */
     public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
       if (scopeDecorator == null) throw new NullPointerException("scopeDecorator == null");
       this.scopeDecorators.add(scopeDecorator);
@@ -162,6 +166,8 @@ public abstract class CurrentTraceContext {
   /**
    * Use this to add features such as thread checks or log correlation fields when a scope is
    * created or closed.
+   *
+   * @since 5.2
    */
   public interface ScopeDecorator {
     Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope);

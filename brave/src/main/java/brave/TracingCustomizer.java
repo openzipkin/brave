@@ -14,6 +14,8 @@
 package brave;
 
 import brave.handler.FinishedSpanHandler;
+import brave.propagation.CurrentTraceContextCustomizer;
+import brave.propagation.ExtraFieldCustomizer;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -36,6 +38,8 @@ import zipkin2.reporter.Reporter;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * @see CurrentTraceContextCustomizer
+ * @see ExtraFieldCustomizer
  * @since 5.7
  */
 public interface TracingCustomizer {

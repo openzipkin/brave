@@ -28,6 +28,7 @@ import brave.propagation.TraceContext;
  * unsampled, this will still receive spans where {@link TraceContext#sampledLocal()} is true.
  *
  * @see #alwaysSampleLocal()
+ * @since 5.4
  */
 public abstract class FinishedSpanHandler {
   /** Use to avoid comparing against null references */
@@ -118,6 +119,8 @@ public abstract class FinishedSpanHandler {
    *
    * <p>The {@link MutableSpan} parameter {@link MutableSpan#containsAnnotation(String) includes
    * the annotation} "brave.flush", and whatever state was orphaned (ex a tag).
+   *
+   * @since 5.7
    */
   public boolean supportsOrphans() {
     return false;

@@ -15,6 +15,7 @@ package brave.spring.beans;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.propagation.CurrentTraceContextCustomizer;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.FactoryBean;
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class CurrentTraceContextFactoryBean implements FactoryBean {
 
+  List<CurrentTraceContextCustomizer> customizers;
   List<ScopeDecorator> scopeDecorators;
 
   @Override public CurrentTraceContext getObject() {
@@ -30,6 +32,9 @@ public class CurrentTraceContextFactoryBean implements FactoryBean {
       for (ScopeDecorator scopeDecorator : scopeDecorators) {
         builder.addScopeDecorator(scopeDecorator);
       }
+    }
+    if (customizers != null) {
+      for (CurrentTraceContextCustomizer customizer : customizers) customizer.customize(builder);
     }
     return builder.build();
   }
@@ -44,5 +49,9 @@ public class CurrentTraceContextFactoryBean implements FactoryBean {
 
   public void setScopeDecorators(List<ScopeDecorator> scopeDecorators) {
     this.scopeDecorators = scopeDecorators;
+  }
+
+  public void setCustomizers(List<CurrentTraceContextCustomizer> customizers) {
+    this.customizers = customizers;
   }
 }
