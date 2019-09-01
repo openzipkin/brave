@@ -19,6 +19,7 @@ import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Properties;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
@@ -37,8 +38,6 @@ import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
-
-import java.util.Properties;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
