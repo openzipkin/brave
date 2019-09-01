@@ -29,7 +29,7 @@ import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
-import org.junit.Test;
+import org.junit.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -89,7 +89,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
 
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
-        "forward-1",
+        "forward-1", () ->
         new AbstractProcessor<String, String>() {
           @Override
           public void process(String key, String value) {

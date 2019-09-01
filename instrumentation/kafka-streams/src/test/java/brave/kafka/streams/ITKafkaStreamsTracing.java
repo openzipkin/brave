@@ -21,14 +21,6 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -53,16 +45,20 @@ import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
-import org.junit.After;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
+import org.junit.*;
+import org.junit.rules.*;
+import org.junit.runner.*;
 import zipkin2.Annotation;
 import zipkin2.Span;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -191,7 +187,7 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
-        "forward-1",
+        "forward-1", () ->
         new AbstractProcessor<String, String>() {
           @Override
           public void process(String key, String value) {
@@ -634,7 +630,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
-        "forward-1",
+        "forward-1", () ->
         new AbstractProcessor<String, String>() {
           @Override
           public void process(String key, String value) {
@@ -674,7 +670,7 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "transformer-1",
+        "transformer-1", () ->
         new Transformer<String, String, KeyValue<String, String>>() {
           ProcessorContext context;
 
@@ -731,7 +727,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "double-transformer-1",
+        "double-transformer-1", () ->
         new Transformer<String, String, Iterable<KeyValue<String, String>>>() {
           ProcessorContext context;
 
@@ -793,7 +789,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "transformer-1",
+        "transformer-1", () ->
         new Transformer<String, String, KeyValue<String, String>>() {
           ProcessorContext context;
 
@@ -847,7 +843,7 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_valueTransformer() throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
-        "transformer-1",
+        "transformer-1", () ->
         new ValueTransformer<String, String>() {
           ProcessorContext context;
 
@@ -1015,7 +1011,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
-        "transformer-1",
+        "transformer-1", () ->
         new ValueTransformer<String, String>() {
           ProcessorContext context;
 
@@ -1070,7 +1066,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
-        "transformer-1",
+        "transformer-1", () ->
         new ValueTransformerWithKey<String, String, String>() {
           ProcessorContext context;
 
@@ -1127,7 +1123,7 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
-        "transformer-1",
+        "transformer-1", () ->
         new ValueTransformerWithKey<String, String, String>() {
           ProcessorContext context;
 

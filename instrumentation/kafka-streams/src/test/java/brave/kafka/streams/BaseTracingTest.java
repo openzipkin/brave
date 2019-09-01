@@ -16,8 +16,6 @@ package brave.kafka.streams;
 import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.function.Function;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
@@ -30,11 +28,13 @@ import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.TaskId;
-import org.junit.After;
+import org.junit.*;
 import zipkin2.Span;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.function.Function;
+
+import static org.mockito.Mockito.*;
 
 abstract class BaseTracingTest {
   String TEST_APPLICATION_ID = "myAppId";
@@ -65,7 +65,7 @@ abstract class BaseTracingTest {
 
   ProcessorSupplier<String, String> fakeProcessorSupplier =
     kafkaStreamsTracing.processor(
-      "forward-1",
+      "forward-1", () ->
       new AbstractProcessor<String, String>() {
         @Override
         public void process(String key, String value) {
@@ -75,7 +75,7 @@ abstract class BaseTracingTest {
 
   TransformerSupplier<String, String, KeyValue<String, String>> fakeTransformerSupplier =
     kafkaStreamsTracing.transformer(
-      "transformer-1",
+      "transformer-1", () ->
       new Transformer<String, String, KeyValue<String, String>>() {
         ProcessorContext context;
 
@@ -96,7 +96,7 @@ abstract class BaseTracingTest {
 
   ValueTransformerSupplier<String, String> fakeValueTransformerSupplier =
     kafkaStreamsTracing.valueTransformer(
-      "value-transformer-1",
+      "value-transformer-1", () ->
       new ValueTransformer<String, String>() {
         ProcessorContext context;
 
@@ -117,7 +117,7 @@ abstract class BaseTracingTest {
 
   ValueTransformerWithKeySupplier<String, String, String> fakeValueTransformerWithKeySupplier =
     kafkaStreamsTracing.valueTransformerWithKey(
-      "value-transformer-1",
+      "value-transformer-1", () ->
       new ValueTransformerWithKey<String, String, String>() {
         ProcessorContext context;
 
