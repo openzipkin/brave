@@ -34,7 +34,6 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
 import org.apache.dubbo.rpc.support.RpcUtils;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 
