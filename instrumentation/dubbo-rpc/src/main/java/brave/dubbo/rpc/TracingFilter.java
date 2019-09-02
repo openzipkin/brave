@@ -25,7 +25,9 @@ import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.extension.Activate;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
+import com.alibaba.dubbo.remoting.RemotingException;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
+import com.alibaba.dubbo.remoting.exchange.ResponseFuture;
 import com.alibaba.dubbo.rpc.Filter;
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
@@ -96,7 +98,9 @@ public final class TracingFilter implements Filter {
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
       if (!isOneway && future instanceof FutureAdapter) {
         deferFinish = true;
-        ((FutureAdapter) future).getFuture().setCallback(new FinishSpanCallback(span));
+        ResponseFuture responseFuture = ((FutureAdapter<Object>) future).getFuture();
+        ResponseFuture responseFutureDelegate = new AsyncResponseFutureDelegate(span, responseFuture);
+        RpcContext.getContext().setFuture(new FutureAdapter<>(responseFutureDelegate));
       }
       return result;
     } catch (Error | RuntimeException e) {
@@ -108,6 +112,63 @@ public final class TracingFilter implements Filter {
       } else if (!deferFinish) {
         span.finish();
       }
+    }
+  }
+
+  static class FinishSpanCallback implements ResponseCallback {
+
+    private final Span              span;
+    private final ResponseCallback        responseCallback;
+
+    FinishSpanCallback(Span span,ResponseCallback responseCallback) {
+      this.span = span;
+      this.responseCallback = responseCallback;
+    }
+
+    @Override public void done(Object response) {
+      span.finish();
+      responseCallback.done(response);
+    }
+
+    @Override public void caught(Throwable exception) {
+      onError(exception, span);
+      span.finish();
+      responseCallback.caught(exception);
+    }
+  }
+
+  /**
+   * ResponseFuture Delegate Class to Resolve ResponseCallBack are covered
+   */
+  static class AsyncResponseFutureDelegate implements ResponseFuture {
+
+    private final ResponseFuture responseFuture;
+    private final Span     span;
+
+    public AsyncResponseFutureDelegate(Span span,
+                                       ResponseFuture responseFuture) {
+      this.responseFuture = responseFuture;
+      this.span = span;
+    }
+
+    @Override
+    public Object get() throws RemotingException {
+      return responseFuture.get();
+    }
+
+    @Override
+    public Object get(int timeoutInMillis) throws RemotingException {
+      return responseFuture.get(timeoutInMillis);
+    }
+
+    @Override
+    public void setCallback(ResponseCallback callback) {
+      responseFuture.setCallback(new FinishSpanCallback(span, callback));
+    }
+
+    @Override
+    public boolean isDone() {
+      return responseFuture.isDone();
     }
   }
 
@@ -149,21 +210,4 @@ public final class TracingFilter implements Filter {
         return "Map::set";
       }
     };
-
-  static final class FinishSpanCallback implements ResponseCallback {
-    final Span span;
-
-    FinishSpanCallback(Span span) {
-      this.span = span;
-    }
-
-    @Override public void done(Object response) {
-      span.finish();
-    }
-
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-    }
-  }
 }
