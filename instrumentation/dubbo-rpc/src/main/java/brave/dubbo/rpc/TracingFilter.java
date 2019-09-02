@@ -115,27 +115,6 @@ public final class TracingFilter implements Filter {
     }
   }
 
-  static class FinishSpanCallback implements ResponseCallback {
-
-    private final Span              span;
-    private final ResponseCallback        responseCallback;
-
-    FinishSpanCallback(Span span,ResponseCallback responseCallback) {
-      this.span = span;
-      this.responseCallback = responseCallback;
-    }
-
-    @Override public void done(Object response) {
-      span.finish();
-      responseCallback.done(response);
-    }
-
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-      responseCallback.caught(exception);
-    }
-  }
 
   /**
    * ResponseFuture Delegate Class to Resolve ResponseCallBack are covered
@@ -210,4 +189,27 @@ public final class TracingFilter implements Filter {
         return "Map::set";
       }
     };
+
+  static final class FinishSpanCallback implements ResponseCallback {
+    final Span span;
+
+    final ResponseCallback        responseCallback;
+
+    FinishSpanCallback(Span span,ResponseCallback responseCallback) {
+      this.span = span;
+      this.responseCallback = responseCallback;
+    }
+
+    @Override public void done(Object response) {
+      span.finish();
+      responseCallback.done(response);
+    }
+
+    @Override public void caught(Throwable exception) {
+      onError(exception, span);
+      span.finish();
+      responseCallback.caught(exception);
+    }
+  }
+
 }
