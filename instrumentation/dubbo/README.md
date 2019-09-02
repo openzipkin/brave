@@ -1,5 +1,5 @@
 # brave-instrumentation
-This is a tracing filter for RPC providers and consumers in [Dubbo 2.7+](http://dubbo.apache.org/en-us/docs/dev/impls/filter.html)
+This is a tracing filter for RPC providers and consumers in [Apache Dubbo 2.7+](http://dubbo.apache.org/en-us/docs/dev/impls/filter.html)
 
 When used on a consumer, `TracingFilter` adds trace state as attachments
 to outgoing requests. When a provider, it extracts trace state from
