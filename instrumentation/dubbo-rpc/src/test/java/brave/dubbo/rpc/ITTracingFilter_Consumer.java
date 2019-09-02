@@ -23,6 +23,8 @@ import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
@@ -185,5 +187,21 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       .isEqualTo("1");
     assertThat(span.tags().get("error"))
       .contains("Not found exported service");
+  }
+
+
+  /**
+   * It will not be throws `Span was not reported` message, But before that, it will be
+   * @throws Exception
+   */
+  @Test public void test_async_invoke() throws Exception {
+    client.setAsync(true);
+    String jorge = client.get().sayHello("jorge");
+    Assert.assertTrue(jorge == null);
+    Object o = RpcContext.getContext().getFuture().get();
+    Assert.assertTrue(o != null);
+    Span span = takeSpan();
+    assertThat(span.kind())
+      .isEqualTo(Span.Kind.CLIENT);
   }
 }
