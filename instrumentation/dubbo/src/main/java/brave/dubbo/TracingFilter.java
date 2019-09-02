@@ -72,11 +72,7 @@ public final class TracingFilter implements Filter {
       // if use  invocation.getAttachments(),when A service invoke B service,B service then invoke C service,the parentId  of C service span  is A
       // because   invocation add attachments from rpcContext in org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141),so what we do will be override
       //injector.inject(span.context(), invocation.getAttachments());
-      Map<String,String> temp=new HashMap<>();
-      injector.inject(span.context(),temp);
-      for (Map.Entry<String, String> entry : temp.entrySet()) {
-        RpcContext.getContext().getAttachments().put(entry.getKey(), entry.getValue());
-      }
+      injector.inject(span.context(),  RpcContext.getContext().getAttachments());
     } else {
       TraceContextOrSamplingFlags extracted = extractor.extract(invocation.getAttachments());
       span = extracted.context() != null
