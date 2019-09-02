@@ -17,11 +17,8 @@ import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -36,24 +33,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@code TracingHandler} in https://github.com/opentracing-contrib/java-vertx-web
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
-  static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
-    @Override public String get(HttpServerRequest carrier, String key) {
-      return carrier.getHeader(key);
-    }
-
-    @Override public String toString() {
-      return "HttpServerRequest::getHeader";
-    }
-  };
-
   final Tracer tracer;
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> serverHandler;
-  final TraceContext.Extractor<HttpServerRequest> extractor;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    serverHandler = HttpServerHandler.create(httpTracing, new VertxHttpServerAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    handler = HttpServerHandler.create(httpTracing);
   }
 
   @Override public void handle(RoutingContext context) {
@@ -66,7 +51,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return;
     }
 
-    Span span = serverHandler.handleReceive(extractor, context.request());
+    Span span = handler.handleReceive(new VertxHttpServerRequest(context.request()));
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
@@ -88,15 +73,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      VertxHttpServerAdapter.setCurrentMethodAndPath(
-        context.request().rawMethod(),
-        context.currentRoute().getPath()
-      );
-      try {
-        serverHandler.handleSend(context.response(), context.failure(), span);
-      } finally {
-        VertxHttpServerAdapter.setCurrentMethodAndPath(null, null);
-      }
+      handler.handleSend(new VertxHttpServerResponse(context), context.failure(), span);
     }
   }
 }

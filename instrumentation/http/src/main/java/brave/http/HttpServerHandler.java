@@ -26,7 +26,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
  *
  * <p>This is an example of synchronous instrumentation:
  * <pre>{@code
- * Span span = handler.handleReceive(extractor, request);
+ * Span span = handler.handleReceive(request);
  * Throwable error = null;
  * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
  *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
@@ -42,9 +42,21 @@ import brave.propagation.TraceContextOrSamplingFlags;
  * @param <Req> the native http request type of the server.
  * @param <Resp> the native http response type of the server.
  */
-public final class HttpServerHandler<Req, Resp>
+public class HttpServerHandler<Req, Resp>
   extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
 
+  /**
+   * @since 5.7
+   */
+  public static HttpServerHandler<HttpServerRequest, HttpServerResponse> create(
+    HttpTracing httpTracing) {
+    return new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
+  }
+
+  /**
+   * @deprecated use {@link #create(HttpTracing)} as it is portable with secondary sampling.
+   */
+  @Deprecated
   public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
     HttpServerAdapter<Req, Resp> adapter) {
     return new HttpServerHandler<>(httpTracing, adapter);
@@ -52,6 +64,8 @@ public final class HttpServerHandler<Req, Resp>
 
   final Tracer tracer;
   final HttpSampler sampler;
+  final TraceContext.Extractor<HttpServerRequest> defaultExtractor;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> defaultHandler;
 
   HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
     super(
@@ -61,6 +75,10 @@ public final class HttpServerHandler<Req, Resp>
     );
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.serverSampler();
+    this.defaultExtractor = httpTracing.tracing().propagation().extractor(HttpServerRequest.GETTER);
+    this.defaultHandler = adapter == HttpServerAdapter.DEFAULT
+      ? (HttpServerHandler<HttpServerRequest, HttpServerResponse>) this
+      : new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
   }
 
   /**
@@ -68,7 +86,25 @@ public final class HttpServerHandler<Req, Resp>
    * extracted from the request. Tags are added before the span is started.
    *
    * <p>This is typically called before the request is processed by the actual library.
+   *
+   * @since 5.7
    */
+  public Span handleReceive(HttpServerRequest request) {
+    return defaultHandler.handleReceive(defaultExtractor, request);
+  }
+
+  /**
+   * Conditionally joins a span, or starts a new trace, depending on if a trace context was
+   * extracted from the request. Tags are added before the span is started.
+   *
+   * <p>This is typically called before the request is processed by the actual library.
+   *
+   * @param request prefer {@link HttpServerRequest} to allow extensions to know this is an http
+   * request.
+   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)} to handle any difference
+   * between carrier and request internally, as this allows more advanced samplers to be used.
+   */
+  @Deprecated
   public Span handleReceive(TraceContext.Extractor<Req> extractor, Req request) {
     return handleReceive(extractor, request, request);
   }
@@ -80,7 +116,10 @@ public final class HttpServerHandler<Req, Resp>
    * <p>Request data is parsed before the span is started.
    *
    * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
+   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)} to handle any difference
+   * between carrier and request internally, as this allows more advanced samplers to be used.
    */
+  @Deprecated
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
     Span span = nextSpan(extractor.extract(carrier), request);
     return handleStart(request, span);

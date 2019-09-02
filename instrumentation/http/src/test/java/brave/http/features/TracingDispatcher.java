@@ -15,10 +15,10 @@ package brave.http.features;
 
 import brave.Span;
 import brave.Tracer;
-import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
-import brave.propagation.TraceContext;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -26,18 +26,16 @@ import okhttp3.mockwebserver.RecordedRequest;
 final class TracingDispatcher extends Dispatcher {
   final Dispatcher delegate;
   final Tracer tracer;
-  final HttpServerHandler<RecordedRequest, MockResponse> handler;
-  final TraceContext.Extractor<RecordedRequest> extractor;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingDispatcher(HttpTracing httpTracing, Dispatcher delegate) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpServerHandler.create(httpTracing, new MockWebServerAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(RecordedRequest::getHeader);
+    handler = HttpServerHandler.create(httpTracing);
     this.delegate = delegate;
   }
 
   @Override public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
-    Span span = handler.handleReceive(extractor, request);
+    Span span = handler.handleReceive(new WrappedMockRequest(request));
     MockResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -46,34 +44,51 @@ final class TracingDispatcher extends Dispatcher {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(response, error, span);
+      handler.handleSend(new WrappedMockResponse(response), error, span);
     }
   }
 
-  static final class MockWebServerAdapter extends HttpServerAdapter<RecordedRequest, MockResponse> {
+  static final class WrappedMockRequest extends HttpServerRequest {
+    final RecordedRequest delegate;
 
-    @Override public String method(RecordedRequest request) {
-      return request.getMethod();
+    WrappedMockRequest(RecordedRequest delegate) {
+      this.delegate = delegate;
     }
 
-    @Override public String path(RecordedRequest request) {
-      return request.getPath();
+    @Override public Object unwrap() {
+      return delegate;
     }
 
-    @Override public String url(RecordedRequest request) {
-      return request.getRequestUrl().toString();
+    @Override public String method() {
+      return delegate.getMethod();
     }
 
-    @Override public String requestHeader(RecordedRequest request, String name) {
-      return request.getHeader(name);
+    @Override public String path() {
+      return delegate.getPath();
     }
 
-    @Override public Integer statusCode(MockResponse response) {
-      return statusCodeAsInt(response);
+    @Override public String url() {
+      return delegate.getRequestUrl().toString();
     }
 
-    @Override public int statusCodeAsInt(MockResponse response) {
-      return Integer.parseInt(response.getStatus().split(" ")[1]);
+    @Override public String header(String name) {
+      return delegate.getHeader(name);
+    }
+  }
+
+  static final class WrappedMockResponse extends HttpServerResponse {
+    final MockResponse delegate;
+
+    WrappedMockResponse(MockResponse delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      return Integer.parseInt(delegate.getStatus().split(" ")[1]);
     }
   }
 }

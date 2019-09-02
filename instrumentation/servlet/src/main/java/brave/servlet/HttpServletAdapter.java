@@ -20,8 +20,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
-/** This can also parse the remote IP of the client. */
+/**
+ * This can also parse the remote IP of the client.
+ *
+ * @deprecated Use {@link WrappedHttpServletRequest} and {@link WrappedHttpServletResponse}
+ */
 // public for others like sparkjava to use
+@Deprecated
 public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, HttpServletResponse> {
 
   /**

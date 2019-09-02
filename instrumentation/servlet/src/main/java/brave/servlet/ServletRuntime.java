@@ -15,6 +15,8 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -28,8 +30,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import zipkin2.Call;
-
-import static brave.servlet.TracingFilter.ADAPTER;
 
 /**
  * Access to servlet version-specific features
@@ -47,7 +47,7 @@ abstract class ServletRuntime {
 
   abstract boolean isAsync(HttpServletRequest request);
 
-  abstract void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+  abstract void handleAsync(HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
     HttpServletRequest request, HttpServletResponse response, Span span);
 
   ServletRuntime() {
@@ -83,7 +83,7 @@ abstract class ServletRuntime {
       return response.getStatus();
     }
 
-    @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+    @Override void handleAsync(HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
       HttpServletRequest request, HttpServletResponse response, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
       TracingAsyncListener listener = new TracingAsyncListener(handler, span);
@@ -91,12 +91,12 @@ abstract class ServletRuntime {
     }
 
     static final class TracingAsyncListener implements AsyncListener {
-      final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
+      final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
       final Span span;
       volatile boolean complete; // multiple async events can occur, only complete once
 
       TracingAsyncListener(
-        HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+        HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
         Span span
       ) {
         this.handler = handler;
@@ -105,20 +105,20 @@ abstract class ServletRuntime {
 
       @Override public void onComplete(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(adaptResponse(e), null, span);
+        handler.handleSend(wrappedResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onTimeout(AsyncEvent e) {
         if (complete) return;
         span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-        handler.handleSend(adaptResponse(e), null, span);
+        handler.handleSend(wrappedResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onError(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(adaptResponse(e), e.getThrowable(), span);
+        handler.handleSend(wrappedResponse(e), e.getThrowable(), span);
         complete = true;
       }
 
@@ -136,11 +136,10 @@ abstract class ServletRuntime {
     }
   }
 
-  static HttpServletResponse adaptResponse(AsyncEvent event) {
-    return ADAPTER.adaptResponse(
-      (HttpServletRequest) event.getSuppliedRequest(),
-      (HttpServletResponse) event.getSuppliedResponse()
-    );
+  static WrappedHttpServletResponse wrappedResponse(AsyncEvent event) {
+    HttpServletRequest req = (HttpServletRequest) event.getSuppliedRequest();
+    HttpServletResponse resp = (HttpServletResponse) event.getSuppliedResponse();
+    return new WrappedHttpServletResponse(req, resp);
   }
 
   static final class Servlet25 extends ServletRuntime {
@@ -152,7 +151,7 @@ abstract class ServletRuntime {
       return false;
     }
 
-    @Override void handleAsync(HttpServerHandler<HttpServletRequest, HttpServletResponse> handler,
+    @Override void handleAsync(HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
       HttpServletRequest request, HttpServletResponse response, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }

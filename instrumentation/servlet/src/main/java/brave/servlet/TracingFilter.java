@@ -17,10 +17,11 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import javax.servlet.Filter;
@@ -33,18 +34,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 public final class TracingFilter implements Filter {
-  static final Getter<HttpServletRequest, String> GETTER =
-    new Getter<HttpServletRequest, String>() {
-      @Override public String get(HttpServletRequest carrier, String key) {
-        return carrier.getHeader(key);
-      }
-
-      @Override public String toString() {
-        return "HttpServletRequest::getHeader";
-      }
-    };
-  static final HttpServletAdapter ADAPTER = new HttpServletAdapter();
-
   public static Filter create(Tracing tracing) {
     return new TracingFilter(HttpTracing.create(tracing));
   }
@@ -55,13 +44,11 @@ public final class TracingFilter implements Filter {
 
   final ServletRuntime servlet = ServletRuntime.get();
   final CurrentTraceContext currentTraceContext;
-  final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
-  final TraceContext.Extractor<HttpServletRequest> extractor;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingFilter(HttpTracing httpTracing) {
     currentTraceContext = httpTracing.tracing().currentTraceContext();
-    handler = HttpServerHandler.create(httpTracing, ADAPTER);
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    handler = HttpServerHandler.create(httpTracing);
   }
 
   @Override
@@ -83,7 +70,7 @@ public final class TracingFilter implements Filter {
       return;
     }
 
-    Span span = handler.handleReceive(extractor, httpRequest);
+    Span span = handler.handleReceive(new WrappedHttpServletRequest(httpRequest));
 
     // Add attributes for explicit access to customization or span context
     request.setAttribute(SpanCustomizer.class.getName(), span.customizer());
@@ -102,7 +89,7 @@ public final class TracingFilter implements Filter {
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, httpResponse, span);
       } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(ADAPTER.adaptResponse(httpRequest, httpResponse), error, span);
+        handler.handleSend(new WrappedHttpServletResponse(httpRequest, httpResponse), error, span);
       }
     }
   }

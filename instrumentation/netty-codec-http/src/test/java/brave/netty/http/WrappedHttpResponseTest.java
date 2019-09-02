@@ -24,21 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpNettyAdapterTest {
+public class WrappedHttpResponseTest {
   @Mock HttpResponse response;
   @Mock HttpResponseStatus status;
-  HttpNettyAdapter adapter = new HttpNettyAdapter();
 
   @Test public void statusCodeAsInt() {
     when(response.status()).thenReturn(status);
     when(status.code()).thenReturn(200);
 
-    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
-    assertThat(adapter.statusCode(response)).isEqualTo(200);
+    assertThat(new WrappedHttpResponse(response).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCodeAsInt_zeroNoResponse() {
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
+    assertThat(new WrappedHttpResponse(response).statusCode()).isZero();
   }
 }
