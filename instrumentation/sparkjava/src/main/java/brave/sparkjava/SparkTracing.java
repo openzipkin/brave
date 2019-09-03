@@ -20,10 +20,8 @@ import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
-import brave.propagation.TraceContext;
 import brave.servlet.WrappedHttpServletRequest;
 import brave.servlet.WrappedHttpServletResponse;
-import javax.servlet.http.HttpServletRequest;
 import spark.ExceptionHandler;
 import spark.Filter;
 
@@ -39,12 +37,10 @@ public final class SparkTracing {
 
   final Tracer tracer;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
-  final TraceContext.Extractor<HttpServletRequest> extractor;
 
   SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing);
-    extractor = httpTracing.tracing().propagation().extractor(HttpServletRequest::getHeader);
   }
 
   public Filter before() {
