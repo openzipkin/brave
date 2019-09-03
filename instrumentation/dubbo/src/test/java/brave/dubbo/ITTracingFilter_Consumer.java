@@ -45,7 +45,6 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // Duplicate Config found for ApplicationConfig, you should use only one unique ApplicationConfig for one application.
     ConfigManager.getInstance().clear();
 
-    ApplicationConfig application = new ApplicationConfig("brave-client");
     String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
     client.setApplication(application);

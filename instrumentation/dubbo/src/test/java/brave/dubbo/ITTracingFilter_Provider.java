@@ -47,7 +47,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     server.start();
 
     client = new ReferenceConfig<>();
-    client.setApplication(new ApplicationConfig("brave-client"));
+    client.setApplication(application);
     client.setInterface(GreeterService.class);
     client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
   }

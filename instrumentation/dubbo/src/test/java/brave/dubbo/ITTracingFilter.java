@@ -21,6 +21,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.Filter;
@@ -45,7 +46,8 @@ public abstract class ITTracingFilter {
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   Tracing tracing;
-  TestServer server = new TestServer();
+  ApplicationConfig application = new ApplicationConfig("brave");
+  TestServer server = new TestServer(application);
   ReferenceConfig<GreeterService> client;
 
   @After public void stop() {
