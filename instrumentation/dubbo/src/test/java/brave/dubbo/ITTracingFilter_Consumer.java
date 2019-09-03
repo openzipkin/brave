@@ -17,12 +17,13 @@ import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.rpc.RpcContext;
-import org.apache.dubbo.rpc.RpcException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.context.ConfigManager;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
@@ -31,11 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
-
   @Before public void setup() {
     setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     server.start();
 
+    ConfigManager.getInstance().clear();
     client = new ReferenceConfig<>();
     client.setApplication(new ApplicationConfig("bean-consumer"));
     client.setFilter("tracing");

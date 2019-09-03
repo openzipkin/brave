@@ -21,6 +21,9 @@ import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.Future;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -33,9 +36,6 @@ import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
 import org.apache.dubbo.rpc.support.RpcUtils;
-import java.net.InetSocketAddress;
-import java.util.Map;
-import java.util.concurrent.Future;
 
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html

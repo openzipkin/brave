@@ -14,16 +14,16 @@
 package brave.dubbo;
 
 import brave.Tracing;
-import brave.dubbo.TracingFilter;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import org.apache.dubbo.common.extension.ExtensionLoader;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.rpc.Filter;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.context.ConfigManager;
+import org.apache.dubbo.rpc.Filter;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -43,6 +43,7 @@ public abstract class ITTracingFilter {
 
   @After public void stop() {
     if (client != null) client.destroy();
+    ConfigManager.getInstance().clear();
     server.stop();
     Tracing current = Tracing.current();
     if (current != null) current.close();

@@ -13,23 +13,22 @@
  */
 package brave.dubbo;
 
-import brave.dubbo.TracingFilter;
 import brave.internal.Platform;
 import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import org.apache.dubbo.common.constants.CommonConstants;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ProtocolConfig;
-import org.apache.dubbo.config.RegistryConfig;
-import org.apache.dubbo.config.ServiceConfig;
-import org.apache.dubbo.rpc.RpcContext;
-import org.apache.dubbo.rpc.service.GenericService;
-import org.apache.dubbo.common.constants.RegistryConstants;
-import org.apache.dubbo.config.Constants;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.apache.dubbo.common.constants.CommonConstants;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.Constants;
+import org.apache.dubbo.config.ProtocolConfig;
+import org.apache.dubbo.config.RegistryConfig;
+import org.apache.dubbo.config.ServiceConfig;
+import org.apache.dubbo.config.context.ConfigManager;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.service.GenericService;
 
 class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
@@ -46,6 +45,7 @@ class TestServer {
       System.setProperty(CommonConstants.DUBBO_IP_TO_BIND, linkLocalIp);
       System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     }
+    ConfigManager.getInstance().clear();
     service = new ServiceConfig<>();
     service.setApplication(new ApplicationConfig("bean-provider"));
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
