@@ -18,6 +18,7 @@ import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Platform;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -45,6 +46,7 @@ import java.util.concurrent.Future;
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
 
+  CurrentTraceContext current;
   Tracer tracer;
   TraceContext.Extractor<Map<String, String>> extractor;
   TraceContext.Injector<Map<String, String>> injector;
@@ -56,14 +58,14 @@ public final class TracingFilter implements Filter {
    * injected.
    */
   public void setTracing(Tracing tracing) {
+    current = tracing.currentTraceContext();
     tracer = tracing.tracer();
     extractor = tracing.propagation().extractor(GETTER);
     injector = tracing.propagation().injector(SETTER);
     isInit = true;
   }
 
-  @Override
-  public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+  @Override public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
     if (isInit == false) return invoker.invoke(invocation);
 
     RpcContext rpcContext = RpcContext.getContext();
@@ -89,18 +91,11 @@ public final class TracingFilter implements Filter {
     }
 
     boolean isOneway = false, deferFinish = false;
-    try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
+    try (CurrentTraceContext.Scope scope = current.newScope(span.context())) {
       Result result = invoker.invoke(invocation);
-      if (result.hasException()) {
-        onError(result.getException(), span);
-      }
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
-      Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (!isOneway && future instanceof FutureAdapter) {
-        deferFinish = true;
-        ResponseFuture responseFuture = ((FutureAdapter<Object>) future).getFuture();
-        ResponseFuture responseFutureDelegate = new AsyncResponseFutureDelegate(span, responseFuture);
-        RpcContext.getContext().setFuture(new FutureAdapter<>(responseFutureDelegate));
+      if (!span.isNoop()) {
+        deferFinish = ensureSpanFinishes(rpcContext, span, result);
       }
       return result;
     } catch (Error | RuntimeException e) {
@@ -115,40 +110,19 @@ public final class TracingFilter implements Filter {
     }
   }
 
-
-  /**
-   * ResponseFuture Delegate Class to Resolve ResponseCallBack are covered
-   */
-  static class AsyncResponseFutureDelegate implements ResponseFuture {
-
-    private final ResponseFuture responseFuture;
-    private final Span     span;
-
-    public AsyncResponseFutureDelegate(Span span,
-                                       ResponseFuture responseFuture) {
-      this.responseFuture = responseFuture;
-      this.span = span;
+  boolean ensureSpanFinishes(RpcContext rpcContext, Span span, Result result) {
+    boolean deferFinish = false;
+    if (result.hasException()) onError(result.getException(), span);
+    Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
+    if (future instanceof FutureAdapter) {
+      deferFinish = true;
+      ResponseFuture original = ((FutureAdapter<Object>) future).getFuture();
+      ResponseFuture wrapped = new FinishSpanResponseFuture(original, span, current);
+      // Ensures even if no callback added later, for example when a consumer, we finish the span
+      wrapped.setCallback(null);
+      RpcContext.getContext().setFuture(new FutureAdapter<>(wrapped));
     }
-
-    @Override
-    public Object get() throws RemotingException {
-      return responseFuture.get();
-    }
-
-    @Override
-    public Object get(int timeoutInMillis) throws RemotingException {
-      return responseFuture.get(timeoutInMillis);
-    }
-
-    @Override
-    public void setCallback(ResponseCallback callback) {
-      responseFuture.setCallback(new FinishSpanCallback(span, callback));
-    }
-
-    @Override
-    public boolean isDone() {
-      return responseFuture.isDone();
-    }
+    return deferFinish;
   }
 
   static void parseRemoteAddress(RpcContext rpcContext, Span span) {
@@ -190,26 +164,32 @@ public final class TracingFilter implements Filter {
       }
     };
 
-  static final class FinishSpanCallback implements ResponseCallback {
+  /** Ensures any callbacks finish the span. */
+  static final class FinishSpanResponseFuture implements ResponseFuture {
+    final ResponseFuture delegate;
     final Span span;
+    final CurrentTraceContext current;
 
-    final ResponseCallback        responseCallback;
-
-    FinishSpanCallback(Span span,ResponseCallback responseCallback) {
+    FinishSpanResponseFuture(ResponseFuture delegate, Span span, CurrentTraceContext current) {
+      this.delegate = delegate;
       this.span = span;
-      this.responseCallback = responseCallback;
+      this.current = current;
     }
 
-    @Override public void done(Object response) {
-      span.finish();
-      responseCallback.done(response);
+    @Override public Object get() throws RemotingException {
+      return delegate.get();
     }
 
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-      responseCallback.caught(exception);
+    @Override public Object get(int timeoutInMillis) throws RemotingException {
+      return delegate.get(timeoutInMillis);
+    }
+
+    @Override public void setCallback(ResponseCallback callback) {
+      delegate.setCallback(TracingResponseCallback.create(callback, span, current));
+    }
+
+    @Override public boolean isDone() {
+      return delegate.isDone();
     }
   }
-
 }

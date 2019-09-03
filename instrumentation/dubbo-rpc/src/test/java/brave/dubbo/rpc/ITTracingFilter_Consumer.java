@@ -189,17 +189,14 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       .contains("Not found exported service");
   }
 
-
-  /**
-   * It will not be throws `Span was not reported` message, But before that, it will be
-   * @throws Exception
-   */
+  /** Ensures the span completes on asynchronous invocation. */
   @Test public void test_async_invoke() throws Exception {
     client.setAsync(true);
     String jorge = client.get().sayHello("jorge");
-    Assert.assertTrue(jorge == null);
+    assertThat(jorge).isNull();
     Object o = RpcContext.getContext().getFuture().get();
-    Assert.assertTrue(o != null);
+    assertThat(o).isNotNull();
+
     Span span = takeSpan();
     assertThat(span.kind())
       .isEqualTo(Span.Kind.CLIENT);
