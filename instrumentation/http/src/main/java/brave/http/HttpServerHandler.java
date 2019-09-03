@@ -42,7 +42,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
  * @param <Req> the native http request type of the server.
  * @param <Resp> the native http response type of the server.
  */
-public class HttpServerHandler<Req, Resp>
+public final class HttpServerHandler<Req, Resp>
   extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
 
   /**
@@ -101,8 +101,8 @@ public class HttpServerHandler<Req, Resp>
    *
    * @param request prefer {@link HttpServerRequest} to allow extensions to know this is an http
    * request.
-   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)} to handle any difference
-   * between carrier and request internally, as this allows more advanced samplers to be used.
+   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}, as this allows more
+   * advanced samplers to be used.
    */
   @Deprecated
   public Span handleReceive(TraceContext.Extractor<Req> extractor, Req request) {
@@ -117,7 +117,7 @@ public class HttpServerHandler<Req, Resp>
    *
    * @see HttpServerParser#request(HttpAdapter, Object, SpanCustomizer)
    * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)} to handle any difference
-   * between carrier and request internally, as this allows more advanced samplers to be used.
+   * between carrier and request via wrapping in {@link HttpServerRequest}.
    */
   @Deprecated
   public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
