@@ -6,9 +6,12 @@ cache:
 
 language: java
 
-jdk: openjdk11
-
 before_install:
+  # update to latest JDK patch instead of what's in the latest travis image
+  - set -eo pipefail
+  - wget https://github.com/sormuras/bach/raw/master/install-jdk.sh
+  - source install-jdk.sh -F 11
+  - ./mvnw -version
   # allocate commits to CI, not the owner of the deploy key
   - git config user.name "zipkinci"
   - git config user.email "zipkinci+zipkin-dev@googlegroups.com"
