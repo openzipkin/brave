@@ -19,9 +19,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
 import org.junit.After;
@@ -40,10 +38,6 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
 
     server.start();
-
-    // Avoid spurious error in CI:
-    // Duplicate Config found for ApplicationConfig, you should use only one unique ApplicationConfig for one application.
-    ConfigManager.getInstance().clear();
 
     String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
