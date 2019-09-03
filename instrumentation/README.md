@@ -5,7 +5,6 @@ example, the directory "servlet" includes the artifact "brave-instrumentation-se
 
 Here's a brief overview of what's packaged here:
 
-* [dubbo](dubbo/README.md) - Tracing filter for RPC providers and consumers in [Apache Dubbo](http://dubbo.apache.org/en-us/)
 * [dubbo-rpc](dubbo-rpc/README.md) - Tracing filter for RPC providers and consumers in [Alibaba Dubbo](http://dubbo.io/books/dubbo-user-book-en/)
 * [grpc](grpc/README.md) - Tracing client and server interceptors for [grpc](github.com/grpc/grpc-java)
 * [httpasyncclient](httpasyncclient/README.md) - Tracing decorator for [Apache HttpClient](https://hc.apache.org/httpcomponents-asyncclient-dev/) 4.0+

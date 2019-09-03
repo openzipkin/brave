@@ -36,7 +36,6 @@
     <module>http</module>
     <module>http-tests</module>
     <module>dubbo-rpc</module>
-    <module>dubbo</module>
     <module>grpc</module>
     <module>httpasyncclient</module>
     <module>httpclient</module>
