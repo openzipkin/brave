@@ -23,6 +23,8 @@ import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
@@ -185,5 +187,18 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       .isEqualTo("1");
     assertThat(span.tags().get("error"))
       .contains("Not found exported service");
+  }
+
+  /** Ensures the span completes on asynchronous invocation. */
+  @Test public void test_async_invoke() throws Exception {
+    client.setAsync(true);
+    String jorge = client.get().sayHello("jorge");
+    assertThat(jorge).isNull();
+    Object o = RpcContext.getContext().getFuture().get();
+    assertThat(o).isNotNull();
+
+    Span span = takeSpan();
+    assertThat(span.kind())
+      .isEqualTo(Span.Kind.CLIENT);
   }
 }

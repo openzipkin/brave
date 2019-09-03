@@ -49,10 +49,10 @@ import javax.jms.Message;
   }
 
   @Override public void onException(Message message, Exception exception) {
-    try {
+    try (Scope ws = current.maybeScope(span.context())) {
       delegate.onException(message, exception);
-      span.error(exception);
     } finally {
+      span.error(exception);
       span.finish();
     }
   }
