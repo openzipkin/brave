@@ -31,6 +31,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.http.HttpHeaders;
 import okio.Buffer;
+import org.eclipse.jetty.util.log.Log;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,6 +44,7 @@ public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
 
   @Before public void setup() throws Exception {
+    Log.setLog(new Log4J2Log());
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }

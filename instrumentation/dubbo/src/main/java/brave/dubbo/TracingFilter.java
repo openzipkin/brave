@@ -21,6 +21,9 @@ import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.Future;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -33,9 +36,6 @@ import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
 import org.apache.dubbo.rpc.support.RpcUtils;
-import java.net.InetSocketAddress;
-import java.util.Map;
-import java.util.concurrent.Future;
 
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
@@ -61,7 +61,7 @@ public final class TracingFilter implements Filter {
 
   @Override
   public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-    if (isInit == false) return invoker.invoke(invocation);
+    if (!isInit) return invoker.invoke(invocation);
 
     RpcContext rpcContext = RpcContext.getContext();
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;
@@ -96,13 +96,12 @@ public final class TracingFilter implements Filter {
       }
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (future instanceof FutureAdapter) {
+      if (!isOneway && future instanceof FutureAdapter) {
         deferFinish = true;
         ((FutureAdapter<Object>)future).whenComplete((v, t) -> {
           if (t != null) {
             onError(t, span);
             span.finish();
-
           } else {
             span.finish();
           }

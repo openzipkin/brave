@@ -17,30 +17,50 @@ import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.Sampler;
-import org.apache.dubbo.config.ApplicationConfig;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
+  ReferenceConfig<GraterService> wrongClient;
 
-  @Before public void setup() {
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+  @Before public void setup() throws Exception {
     server.start();
 
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
-    client.setApplication(new ApplicationConfig("bean-consumer"));
+    client.setApplication(application);
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl(url);
+
+    wrongClient = new ReferenceConfig<>();
+    wrongClient.setApplication(application);
+    wrongClient.setFilter("tracing");
+    wrongClient.setInterface(GraterService.class);
+    wrongClient.setUrl(url);
+
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+
+    // perform a warmup request to allow CI to fail quicker
+    client.get().sayHello("jorge");
+    server.takeRequest();
+    takeSpan();
+  }
+
+  @After public void stop() {
+    if (wrongClient != null) wrongClient.destroy();
+    super.stop();
   }
 
   @Test public void propagatesSpan() throws Exception {
@@ -169,16 +189,8 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
-    server.stop();
-    server = new TestServer();
-    server.service.setRef((method, parameterTypes, args) -> args);
-    server.start();
-
-    try {
-      client.get().sayHello("jorge");
-      failBecauseExceptionWasNotThrown(RpcException.class);
-    } catch (RpcException e) {
-    }
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+      .isInstanceOf(RpcException.class);
 
     Span span = takeSpan();
     assertThat(span.tags().get("dubbo.error_code"))

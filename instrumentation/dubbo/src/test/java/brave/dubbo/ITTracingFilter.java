@@ -14,31 +14,35 @@
 package brave.dubbo;
 
 import brave.Tracing;
-import brave.dubbo.TracingFilter;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import org.apache.dubbo.common.extension.ExtensionLoader;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.rpc.Filter;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.rpc.Filter;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
+  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   Tracing tracing;
-  TestServer server = new TestServer();
+  ApplicationConfig application = new ApplicationConfig("brave");
+  TestServer server = new TestServer(application);
   ReferenceConfig<GreeterService> client;
 
   @After public void stop() {

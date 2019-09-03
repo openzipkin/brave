@@ -15,7 +15,6 @@ package brave.dubbo;
 
 import brave.sampler.Sampler;
 import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
-import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
@@ -29,7 +28,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Provider extends ITTracingFilter {
 
-  @Before public void setup() {
+  @Before public void setup() throws Exception{
     server.service.setFilter("tracing");
     server.service.setRef((method, parameterTypes, args) -> {
       JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
@@ -42,15 +41,17 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
       arg.setProperty("value", value);
       return args[0];
     });
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     server.start();
 
-    ReferenceConfig<GreeterService> ref = new ReferenceConfig<>();
-    ref.setApplication(new ApplicationConfig("bean-consumer"));
-    ref.setInterface(GreeterService.class);
-    ref.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
-    client = ref;
+    client = new ReferenceConfig<>();
+    client.setApplication(application);
+    client.setInterface(GreeterService.class);
+    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
 
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    // perform a warmup request to allow CI to fail quicker
+    client.get().sayHello("jorge");
+    takeSpan();
   }
 
   @Test public void usesExistingTraceId() throws Exception {

@@ -98,7 +98,7 @@
     <spring-rabbit.version>1.7.13.RELEASE</spring-rabbit.version>
 
     <finagle.version>19.6.0</finagle.version>
-    <log4j.version>2.12.0</log4j.version>
+    <log4j.version>2.12.1</log4j.version>
     <okhttp.version>4.0.0</okhttp.version>
     <httpclient.version>4.5.9</httpclient.version>
 
@@ -567,6 +567,16 @@
             </java.util.logging.manager>
           </systemPropertyVariables>
         </configuration>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-eclipse-plugin</artifactId>

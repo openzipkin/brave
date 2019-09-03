@@ -112,11 +112,13 @@ public final class KafkaTracing {
    * #nextSpan(ConsumerRecord)}.
    */
   public <K, V> Consumer<K, V> consumer(Consumer<K, V> consumer) {
+    if (consumer == null) throw new NullPointerException("consumer == null");
     return new TracingConsumer<>(consumer, this);
   }
 
   /** Starts and propagates {@link Span.Kind#PRODUCER} span for each message sent. */
   public <K, V> Producer<K, V> producer(Producer<K, V> producer) {
+    if (producer == null) throw new NullPointerException("producer == null");
     return new TracingProducer<>(producer, this);
   }
 

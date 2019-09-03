@@ -13,23 +13,21 @@
  */
 package brave.dubbo;
 
-import brave.dubbo.TracingFilter;
 import brave.internal.Platform;
 import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.Constants;
 import org.apache.dubbo.config.ProtocolConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.ServiceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.service.GenericService;
-import org.apache.dubbo.common.constants.RegistryConstants;
-import org.apache.dubbo.config.Constants;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
@@ -39,7 +37,7 @@ class TestServer {
   ServiceConfig<GenericService> service;
   String linkLocalIp;
 
-  TestServer() {
+  TestServer(ApplicationConfig application) {
     linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip
@@ -47,7 +45,7 @@ class TestServer {
       System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     }
     service = new ServiceConfig<>();
-    service.setApplication(new ApplicationConfig("bean-provider"));
+    service.setApplication(application);
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
     service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
     service.setInterface(GreeterService.class.getName());
@@ -65,6 +63,10 @@ class TestServer {
 
       return args[0];
     });
+  }
+
+  ApplicationConfig application() {
+    return service.getApplication();
   }
 
   void start() {

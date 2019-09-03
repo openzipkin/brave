@@ -27,12 +27,15 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
+  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 

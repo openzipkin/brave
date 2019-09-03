@@ -94,7 +94,7 @@ public final class TracingFilter implements Filter {
       }
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (future instanceof FutureAdapter) {
+      if (!isOneway && future instanceof FutureAdapter) {
         deferFinish = true;
         ((FutureAdapter) future).getFuture().setCallback(new FinishSpanCallback(span));
       }
