@@ -21,6 +21,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.Filter;
@@ -28,12 +29,22 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
+  ITTracingFilter() {
+    resetStaticState();
+  }
+
+  // Dubbo is strict that there can be only one config.
+  static final ApplicationConfig APPLICATION_CONFIG = new ApplicationConfig("brave");
+
+  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
@@ -43,10 +54,8 @@ public abstract class ITTracingFilter {
 
   @After public void stop() {
     if (client != null) client.destroy();
-    ConfigManager.getInstance().clear();
     server.stop();
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
+    resetStaticState();
   }
 
   // See brave.http.ITHttp for rationale on polling after tests complete
@@ -77,6 +86,13 @@ public abstract class ITTracingFilter {
       .getExtension("tracing"))
       .setTracing(tracing);
     this.tracing = tracing;
+  }
+
+  static void resetStaticState() {
+    ConfigManager.getInstance().clear();
+    ExtensionLoader.resetExtensionLoader(Filter.class);
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   /** Call this to block until a span was reported */

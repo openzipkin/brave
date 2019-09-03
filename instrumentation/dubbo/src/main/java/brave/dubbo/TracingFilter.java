@@ -61,7 +61,7 @@ public final class TracingFilter implements Filter {
 
   @Override
   public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-    if (isInit == false) return invoker.invoke(invocation);
+    if (!isInit) return invoker.invoke(invocation);
 
     RpcContext rpcContext = RpcContext.getContext();
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;

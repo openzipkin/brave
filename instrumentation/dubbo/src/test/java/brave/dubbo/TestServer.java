@@ -26,9 +26,10 @@ import org.apache.dubbo.config.Constants;
 import org.apache.dubbo.config.ProtocolConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.ServiceConfig;
-import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.service.GenericService;
+
+import static brave.dubbo.ITTracingFilter.APPLICATION_CONFIG;
 
 class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
@@ -45,9 +46,8 @@ class TestServer {
       System.setProperty(CommonConstants.DUBBO_IP_TO_BIND, linkLocalIp);
       System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     }
-    ConfigManager.getInstance().clear();
     service = new ServiceConfig<>();
-    service.setApplication(new ApplicationConfig("bean-provider"));
+    service.setApplication(new ApplicationConfig("brave-service"));
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
     service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
     service.setInterface(GreeterService.class.getName());
@@ -67,12 +67,21 @@ class TestServer {
     });
   }
 
+  ApplicationConfig application() {
+    return service.getApplication();
+  }
+
   void start() {
     service.export();
   }
 
+  void unexport() {
+    service.unexport();
+  }
+
   void stop() {
     service.unexport();
+    service.getProtocol().destroy();
   }
 
   int port() {

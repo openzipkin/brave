@@ -31,7 +31,8 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Before public void setup() {
-    ConfigManager.getInstance().clear();
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+
     server.service.setFilter("tracing");
     server.service.setRef((method, parameterTypes, args) -> {
       JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
@@ -46,13 +47,10 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     });
     server.start();
 
-    ReferenceConfig<GreeterService> ref = new ReferenceConfig<>();
-    ref.setApplication(new ApplicationConfig("bean-consumer"));
-    ref.setInterface(GreeterService.class);
-    ref.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
-    client = ref;
-
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    client = new ReferenceConfig<>();
+    client.setApplication(new ApplicationConfig("brave-client"));
+    client.setInterface(GreeterService.class);
+    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
   }
 
   @Test public void usesExistingTraceId() throws Exception {
