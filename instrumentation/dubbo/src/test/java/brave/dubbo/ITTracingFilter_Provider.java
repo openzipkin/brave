@@ -28,9 +28,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Provider extends ITTracingFilter {
 
-  @Before public void setup() {
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
-
+  @Before public void setup() throws Exception{
     server.service.setFilter("tracing");
     server.service.setRef((method, parameterTypes, args) -> {
       JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
@@ -43,12 +41,17 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
       arg.setProperty("value", value);
       return args[0];
     });
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     server.start();
 
     client = new ReferenceConfig<>();
     client.setApplication(application);
     client.setInterface(GreeterService.class);
     client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+
+    // perform a warmup request to allow CI to fail quicker
+    client.get().sayHello("jorge");
+    takeSpan();
   }
 
   @Test public void usesExistingTraceId() throws Exception {

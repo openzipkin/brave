@@ -34,9 +34,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 public class ITTracingFilter_Consumer extends ITTracingFilter {
   ReferenceConfig<GraterService> wrongClient;
 
-  @Before public void setup() {
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
-
+  @Before public void setup() throws Exception {
     server.start();
 
     String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
@@ -51,6 +49,13 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     wrongClient.setFilter("tracing");
     wrongClient.setInterface(GraterService.class);
     wrongClient.setUrl(url);
+
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+
+    // perform a warmup request to allow CI to fail quicker
+    client.get().sayHello("jorge");
+    server.takeRequest();
+    takeSpan();
   }
 
   @After public void stop() {
