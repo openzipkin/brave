@@ -21,8 +21,10 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
@@ -32,16 +34,35 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
+  ReferenceConfig<GraterService> wrongClient;
+
   @Before public void setup() {
+    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+
     server.start();
 
+    // Avoid spurious error in CI:
+    // Duplicate Config found for ApplicationConfig, you should use only one unique ApplicationConfig for one application.
+    ConfigManager.getInstance().clear();
+
+    ApplicationConfig application = new ApplicationConfig("brave-client");
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
-    client.setApplication(new ApplicationConfig("brave-client"));
+    client.setApplication(application);
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl(url);
 
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    wrongClient = new ReferenceConfig<>();
+    wrongClient.setApplication(application);
+    wrongClient.setFilter("tracing");
+    wrongClient.setInterface(GraterService.class);
+    wrongClient.setUrl(url);
+  }
+
+  @After public void stop() {
+    if (wrongClient != null) wrongClient.destroy();
+    super.stop();
   }
 
   @Test public void propagatesSpan() throws Exception {
@@ -136,7 +157,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void onTransportException_addsErrorTag() throws Exception {
-    server.unexport();
+    server.stop();
 
     try {
       client.get().sayHello("jorge");
@@ -150,7 +171,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void onTransportException_addsErrorTag_async() throws Exception {
-    server.unexport();
+    server.stop();
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
@@ -170,16 +191,8 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
-    ReferenceConfig<GraterService> wrongClient = new ReferenceConfig<>();
-    wrongClient.setApplication(new ApplicationConfig("brave-client"));
-    wrongClient.setFilter("tracing");
-    wrongClient.setInterface(GraterService.class);
-    wrongClient.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
-
     assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
       .isInstanceOf(RpcException.class);
-
-    wrongClient.destroy();
 
     Span span = takeSpan();
     assertThat(span.tags().get("dubbo.error_code"))

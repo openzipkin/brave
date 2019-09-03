@@ -29,8 +29,6 @@ import org.apache.dubbo.config.ServiceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.service.GenericService;
 
-import static brave.dubbo.ITTracingFilter.APPLICATION_CONFIG;
-
 class TestServer {
   BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
   BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
@@ -75,13 +73,8 @@ class TestServer {
     service.export();
   }
 
-  void unexport() {
-    service.unexport();
-  }
-
   void stop() {
     service.unexport();
-    service.getProtocol().destroy();
   }
 
   int port() {

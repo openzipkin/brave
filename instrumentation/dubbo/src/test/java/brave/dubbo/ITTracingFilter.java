@@ -21,7 +21,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.common.extension.ExtensionLoader;
-import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.Filter;
@@ -39,9 +38,6 @@ public abstract class ITTracingFilter {
   ITTracingFilter() {
     resetStaticState();
   }
-
-  // Dubbo is strict that there can be only one config.
-  static final ApplicationConfig APPLICATION_CONFIG = new ApplicationConfig("brave");
 
   @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
 

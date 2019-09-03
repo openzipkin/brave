@@ -17,7 +17,6 @@ import brave.sampler.Sampler;
 import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
