@@ -45,9 +45,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 public final class HttpServerHandler<Req, Resp>
   extends HttpHandler<Req, Resp, HttpServerAdapter<Req, Resp>> {
 
-  /**
-   * @since 5.7
-   */
+  /** @since 5.7 */
   public static HttpServerHandler<HttpServerRequest, HttpServerResponse> create(
     HttpTracing httpTracing) {
     return new HttpServerHandler<>(httpTracing, HttpServerAdapter.LEGACY);

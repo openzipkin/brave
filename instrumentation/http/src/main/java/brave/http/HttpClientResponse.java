@@ -17,14 +17,14 @@ import brave.Span;
 import brave.internal.Nullable;
 
 /**
- * Marks an interface for use in {@link HttpServerHandler#handleSend(Object, Throwable, Span)}. This
- * gives a standard type to consider when parsing an outgoing context.
+ * Marks an interface for use in {@link HttpClientHandler#handleReceive(Object, Throwable, Span)}.
+ * This gives a standard type to consider when parsing an incoming context.
  *
  * @since 5.7
  */
-public abstract class HttpServerResponse {
+public abstract class HttpClientResponse {
   /**
-   * Returns the underlying http response object. Ex. {@code javax.servlet.http.HttpServletResponse}
+   * Returns the underlying http response object. Ex. {@code org.apache.http.HttpResponse}
    *
    * <p>Note: Some implementations are composed of multiple types, such as a response and an object
    * representing the matched route. Moreover, an implementation may change the type returned due to
