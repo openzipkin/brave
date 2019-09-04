@@ -60,6 +60,7 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
     if (span != null) {
       if (isRemote(context, span)) {
+        if (serverName != null) span.remoteServiceName(serverName);
         HttpAdapter.parseTargetAddress(request, span);
       } else {
         span.kind(null); // clear as cache hit
