@@ -134,7 +134,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   /** @see brave.Span#kind(brave.Span.Kind) */
-  public void kind(Kind kind) {
+  public void kind(@Nullable Kind kind) {
     this.kind = kind;
   }
 

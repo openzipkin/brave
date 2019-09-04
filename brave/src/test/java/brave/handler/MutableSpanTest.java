@@ -178,6 +178,20 @@ public class MutableSpanTest {
     );
   }
 
+  /**
+   * {@link brave.Span#kind(Span.Kind)} is nullable, so setting kind to null should work.
+   *
+   * <p>This allows you to change the decision later if a span is not remote, for example, when
+   * served from cache.
+   */
+  @Test public void unsetKind() {
+    MutableSpan span = new MutableSpan();
+    span.kind(Span.Kind.CLIENT);
+    span.kind(null);
+
+    assertThat(span.kind()).isNull();
+  }
+
   @Test public void isEmpty() {
     assertThat(new MutableSpan().isEmpty()).isTrue();
     {
