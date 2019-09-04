@@ -11,11 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.httpasyncclient;
+package brave.jaxrs2;
 
-import brave.httpasyncclient.TracingHttpAsyncClientBuilder.HttpAdapter;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
+import brave.jaxrs2.TracingClientFilter.HttpClientResponse;
+import javax.ws.rs.client.ClientResponseContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -25,21 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpAdapterTest {
-  @Mock HttpResponse response;
-  @Mock StatusLine statusLine;
-  HttpAdapter adapter = new HttpAdapter();
+public class HttpClientResponseTest {
+  @Mock ClientResponseContext response;
 
-  @Test public void statusCodeAsInt() {
-    when(response.getStatusLine()).thenReturn(statusLine);
-    when(statusLine.getStatusCode()).thenReturn(200);
+  @Test public void statusCode() {
+    when(response.getStatus()).thenReturn(200);
 
-    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
-    assertThat(adapter.statusCode(response)).isEqualTo(200);
+    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCodeAsInt_zeroWhenNoStatusLine() {
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
+  @Test public void statusCode_zeroWhenNegative() {
+    when(response.getStatus()).thenReturn(-1);
+
+    assertThat(new HttpClientResponse(response).statusCode()).isZero();
   }
 }

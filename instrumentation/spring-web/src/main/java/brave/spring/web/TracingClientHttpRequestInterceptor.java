@@ -18,28 +18,14 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
-  static final Setter<HttpHeaders, String> SETTER = new Setter<HttpHeaders, String>() {
-    @Override public void put(HttpHeaders carrier, String key, String value) {
-      carrier.set(key, value);
-    }
-
-    @Override public String toString() {
-      return "HttpHeaders::set";
-    }
-  };
-
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));
   }
@@ -49,22 +35,22 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   }
 
   final Tracer tracer;
-  final HttpClientHandler<HttpRequest, ClientHttpResponse> handler;
-  final TraceContext.Injector<HttpHeaders> injector;
+  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   @Autowired TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    injector = httpTracing.tracing().propagation().injector(SETTER);
+    handler = HttpClientHandler.create(httpTracing);
   }
 
   @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,
     ClientHttpRequestExecution execution) throws IOException {
-    Span span = handler.handleSend(injector, request.getHeaders(), request);
-    ClientHttpResponse response = null;
+    Span span = handler.handleSend(new HttpClientRequest(request));
+    HttpClientResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = execution.execute(request, body);
+      ClientHttpResponse result = execution.execute(request, body);
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | RuntimeException | Error e) {
       error = e;
       throw e;
@@ -73,30 +59,53 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     }
   }
 
-  static final class HttpAdapter
-    extends brave.http.HttpClientAdapter<HttpRequest, ClientHttpResponse> {
+  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+    final HttpRequest delegate;
 
-    @Override public String method(HttpRequest request) {
-      return request.getMethod().name();
+    HttpClientRequest(HttpRequest delegate) {
+      this.delegate = delegate;
     }
 
-    @Override public String url(HttpRequest request) {
-      return request.getURI().toString();
+    @Override public Object unwrap() {
+      return delegate;
     }
 
-    @Override public String requestHeader(HttpRequest request, String name) {
-      Object result = request.getHeaders().getFirst(name);
-      return result != null ? result.toString() : "";
+    @Override public String method() {
+      return delegate.getMethod().name();
     }
 
-    @Override @Nullable public Integer statusCode(ClientHttpResponse response) {
-      int result = statusCodeAsInt(response);
-      return result != 0 ? result : null;
+    @Override public String path() {
+      return delegate.getURI().getPath();
     }
 
-    @Override public int statusCodeAsInt(ClientHttpResponse response) {
+    @Override public String url() {
+      return delegate.getURI().toString();
+    }
+
+    @Override public String header(String name) {
+      Object result = delegate.getHeaders().getFirst(name);
+      return result instanceof String ? result.toString() : null;
+    }
+
+    @Override public void header(String name, String value) {
+      delegate.getHeaders().set(name, value);
+    }
+  }
+
+  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+    final ClientHttpResponse delegate;
+
+    HttpClientResponse(ClientHttpResponse delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
       try {
-        return response.getRawStatusCode();
+        return delegate.getRawStatusCode();
       } catch (IllegalArgumentException | IOException e) {
         return 0;
       }

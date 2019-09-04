@@ -1,6 +1,6 @@
 # brave-instrumentation-http rationale
 
-## `HttpServerRequest` and `HttpServerResponse` types
+## `HttpClientRequest`, `HttpClientResponse`, `HttpServerRequest` and `HttpServerResponse` types
 
 Initially, we had a partial function of (adapter, request) to parse attributes
 like the HTTP path from a request. This made sense in the http abstraction, as
@@ -24,6 +24,7 @@ type for http requests and responses. This allows the same object to be used
 regardless of purpose, whether that is primary or secondary sampling, or tag
 parsing.
 
-All of this led to the introduction of `HttpServerRequest` and
-`HttpServerResponse` types in Brave 5.7, along with `HttpServerAdapter.LEGACY`
-which allows integration with existing sampler and parser code.
+All of this led to the introduction of `HttpClientRequest`, `HttpClientResponse`,
+`HttpServerRequest` and `HttpServerResponse` types in Brave 5.7, along with
+`HttpClientAdapter.LEGACY` and `HttpServerAdapter.LEGACY` which allows integration with existing
+sampler and parser code.

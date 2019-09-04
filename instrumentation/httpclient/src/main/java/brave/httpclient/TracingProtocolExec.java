@@ -19,8 +19,12 @@ import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import java.io.IOException;
+import org.apache.http.Header;
 import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpRequestWrapper;
@@ -33,30 +37,89 @@ import org.apache.http.impl.execchain.ClientExecChain;
  * here so that user interceptors can see it.
  */
 final class TracingProtocolExec implements ClientExecChain {
-
   final Tracer tracer;
-  final HttpClientHandler<HttpRequestWrapper, HttpResponse> handler;
+  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
   final ClientExecChain protocolExec;
 
   TracingProtocolExec(HttpTracing httpTracing, ClientExecChain protocolExec) {
     this.tracer = httpTracing.tracing().tracer();
-    this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
+    this.handler = HttpClientHandler.create(httpTracing);
     this.protocolExec = protocolExec;
   }
 
   @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
     HttpClientContext clientContext, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = handler.nextSpan(request);
-    CloseableHttpResponse response = null;
+    Span span = handler.nextSpan(new HttpClientRequest(request));
+    HttpClientResponse response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = protocolExec.execute(route, request, clientContext, execAware);
+      CloseableHttpResponse result = protocolExec.execute(route, request, clientContext, execAware);
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | HttpException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
       handler.handleReceive(response, error, span);
+    }
+  }
+
+  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+    final HttpRequest delegate;
+
+    HttpClientRequest(HttpRequest delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public String method() {
+      return delegate.getRequestLine().getMethod();
+    }
+
+    @Override public String path() {
+      String result = delegate.getRequestLine().getUri();
+      int begin = result.lastIndexOf('/');
+      int queryIndex = result.indexOf('?');
+      return queryIndex == -1 ? result.substring(begin) : result.substring(begin, queryIndex);
+    }
+
+    @Override public String url() {
+      if (delegate instanceof HttpRequestWrapper) {
+        HttpRequestWrapper wrapper = (HttpRequestWrapper) delegate;
+        HttpHost target = wrapper.getTarget();
+        if (target != null) return target.toURI() + wrapper.getURI();
+      }
+      return delegate.getRequestLine().getUri();
+    }
+
+    @Override public String header(String name) {
+      Header result = delegate.getFirstHeader(name);
+      return result != null ? result.getValue() : null;
+    }
+
+    @Override public void header(String name, String value) {
+      delegate.setHeader(name, value);
+    }
+  }
+
+  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+    final HttpResponse delegate;
+
+    HttpClientResponse(HttpResponse delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      StatusLine statusLine = delegate.getStatusLine();
+      return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }
 }

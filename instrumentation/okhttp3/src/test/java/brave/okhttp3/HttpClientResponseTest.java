@@ -13,7 +13,7 @@
  */
 package brave.okhttp3;
 
-import brave.okhttp3.TracingInterceptor.HttpAdapter;
+import brave.okhttp3.TracingInterceptor.HttpClientResponse;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -21,23 +21,20 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class HttpAdapterTest {
-  HttpAdapter adapter = new HttpAdapter();
+public class HttpClientResponseTest {
   Response.Builder responseBuilder = new Response.Builder()
     .request(new Request.Builder().url("http://localhost/foo").build())
     .protocol(Protocol.HTTP_1_1);
 
-  @Test public void statusCodeAsInt() {
+  @Test public void statusCode() {
     Response response = responseBuilder.code(200).message("ok").build();
 
-    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
-    assertThat(adapter.statusCode(response)).isEqualTo(200);
+    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCodeAsInt_zero() {
+  @Test public void statusCode_zero() {
     Response response = responseBuilder.code(0).message("ice cream!").build();
 
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
+    assertThat(new HttpClientResponse(response).statusCode()).isZero();
   }
 }

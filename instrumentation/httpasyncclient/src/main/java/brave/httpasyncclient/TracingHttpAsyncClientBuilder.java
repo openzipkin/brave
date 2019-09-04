@@ -20,7 +20,6 @@ import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -28,13 +27,11 @@ import java.util.concurrent.Future;
 import org.apache.http.Header;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpMessage;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -51,17 +48,6 @@ import org.apache.http.protocol.HttpContext;
  * added last}.
  */
 public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder {
-  static final Propagation.Setter<HttpMessage, String> SETTER = // retrolambda no likey
-    new Propagation.Setter<HttpMessage, String>() {
-      @Override public void put(HttpMessage carrier, String key, String value) {
-        carrier.setHeader(key, value);
-      }
-
-      @Override public String toString() {
-        return "HttpMessage::setHeader";
-      }
-    };
-
   public static HttpAsyncClientBuilder create(Tracing tracing) {
     return new TracingHttpAsyncClientBuilder(HttpTracing.create(tracing));
   }
@@ -71,14 +57,12 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   final CurrentTraceContext currentTraceContext;
-  final TraceContext.Injector<HttpMessage> injector;
-  final HttpClientHandler<HttpRequest, HttpResponse> handler;
+  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
-    this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    this.injector = httpTracing.tracing().propagation().injector(SETTER);
+    this.handler = HttpClientHandler.create(httpTracing);
   }
 
   @Override public CloseableHttpAsyncClient build() {
@@ -91,15 +75,14 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   final class HandleSend implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
+      HttpClientRequest wrapped = new HttpClientRequest(host, request);
 
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
       Span span;
       try (Scope scope = currentTraceContext.maybeScope(parent)) {
-        span = handler.nextSpan(request);
+        span = handler.handleSend(wrapped);
       }
-      HttpRequestWrapper requestWrapper = HttpRequestWrapper.wrap(request, host);
-      parseTargetAddress(requestWrapper, span);
-      handler.handleSend(injector, request, requestWrapper, span);
+      parseTargetAddress(host, span);
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
@@ -119,55 +102,18 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void process(HttpResponse response, HttpContext context) {
       Span span = (Span) context.getAttribute(Span.class.getName());
       if (span == null) return;
-      handler.handleReceive(response, null, span);
+      handler.handleReceive(new HttpClientResponse(response), null, span);
     }
   }
 
-  static void parseTargetAddress(HttpRequestWrapper httpRequest, Span span) {
+  static void parseTargetAddress(HttpHost target, Span span) {
     if (span.isNoop()) return;
-    HttpHost target = httpRequest.getTarget();
     if (target == null) return;
     InetAddress address = target.getAddress();
     if (address != null) {
       if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
     }
     span.remoteIpAndPort(target.getHostName(), target.getPort());
-  }
-
-  static final class HttpAdapter extends brave.http.HttpClientAdapter<HttpRequest, HttpResponse> {
-    @Override public String method(HttpRequest request) {
-      return request.getRequestLine().getMethod();
-    }
-
-    @Override public String path(HttpRequest request) {
-      String result = request.getRequestLine().getUri();
-      int queryIndex = result.indexOf('?');
-      return queryIndex == -1 ? result : result.substring(0, queryIndex);
-    }
-
-    @Override public String url(HttpRequest request) {
-      if (request instanceof HttpRequestWrapper) {
-        HttpRequestWrapper wrapper = (HttpRequestWrapper) request;
-        HttpHost target = wrapper.getTarget();
-        if (target != null) return target.toURI() + wrapper.getURI();
-      }
-      return request.getRequestLine().getUri();
-    }
-
-    @Override public String requestHeader(HttpRequest request, String name) {
-      Header result = request.getFirstHeader(name);
-      return result != null ? result.getValue() : null;
-    }
-
-    @Override @Nullable public Integer statusCode(HttpResponse response) {
-      int result = statusCodeAsInt(response);
-      return result != 0 ? result : null;
-    }
-
-    @Override public int statusCodeAsInt(HttpResponse response) {
-      StatusLine statusLine = response.getStatusLine();
-      return statusLine != null ? statusLine.getStatusCode() : 0;
-    }
   }
 
   final class TracingHttpAsyncClient extends CloseableHttpAsyncClient {
@@ -300,6 +246,61 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public boolean cancel() {
       return responseConsumer.cancel();
+    }
+  }
+
+  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+    @Nullable final HttpHost target;
+    final HttpRequest request;
+
+    HttpClientRequest(HttpHost target, HttpRequest request) {
+      this.target = target;
+      this.request = request;
+    }
+
+    @Override public Object unwrap() {
+      return request;
+    }
+
+    @Override public String method() {
+      return request.getRequestLine().getMethod();
+    }
+
+    @Override public String path() {
+      String result = request.getRequestLine().getUri();
+      int queryIndex = result.indexOf('?');
+      return queryIndex == -1 ? result : result.substring(0, queryIndex);
+    }
+
+    @Override public String url() {
+      if (target != null) return target.toURI() + request.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
+    }
+
+    @Override public String header(String name) {
+      Header result = request.getFirstHeader(name);
+      return result != null ? result.getValue() : null;
+    }
+
+    @Override public void header(String name, String value) {
+      request.setHeader(name, value);
+    }
+  }
+
+  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+    final HttpResponse delegate;
+
+    HttpClientResponse(HttpResponse delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      StatusLine statusLine = delegate.getStatusLine();
+      return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }
 }

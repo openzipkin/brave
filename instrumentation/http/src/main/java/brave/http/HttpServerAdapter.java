@@ -68,7 +68,7 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
       }
 
       @Override public String toString() {
-        return "DefaultHttpServerAdapter{}";
+        return "LegacyHttpServerAdapter{}";
       }
     };
 

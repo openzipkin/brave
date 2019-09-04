@@ -19,9 +19,6 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.ws.rs.ConstrainedTo;
@@ -29,7 +26,6 @@ import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientRequestFilter;
 import javax.ws.rs.client.ClientResponseContext;
 import javax.ws.rs.client.ClientResponseFilter;
-import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
 
 import static javax.ws.rs.RuntimeType.CLIENT;
@@ -55,69 +51,72 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     return new TracingClientFilter(httpTracing);
   }
 
-  static final Setter<MultivaluedMap<String, Object>, String> SETTER =
-    new Setter<MultivaluedMap<String, Object>, String>() {
-      @Override
-      public void put(MultivaluedMap<String, Object> carrier, String key, String value) {
-        carrier.putSingle(key, value);
-      }
-
-      @Override public String toString() {
-        return "MultivaluedMap::putSingle";
-      }
-    };
-
   final Tracer tracer;
-  final HttpClientHandler<ClientRequestContext, ClientResponseContext> handler;
-  final TraceContext.Injector<MultivaluedMap<String, Object>> injector;
+  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   @Inject TracingClientFilter(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     tracer = httpTracing.tracing().tracer();
-    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    injector = httpTracing.tracing().propagation().injector(SETTER);
+    handler = HttpClientHandler.create(httpTracing);
   }
 
-  @Override
-  public void filter(ClientRequestContext request) {
-    Span span = handler.handleSend(injector, request.getHeaders(), request);
+  @Override public void filter(ClientRequestContext request) {
+    Span span = handler.handleSend(new HttpClientRequest(request));
     request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
   }
 
-  @Override
-  public void filter(ClientRequestContext request, ClientResponseContext response) {
+  @Override public void filter(ClientRequestContext request, ClientResponseContext response) {
     Span span = tracer.currentSpan();
     if (span == null) return;
-    ((Tracer.SpanInScope) request.getProperty(Tracer.SpanInScope.class.getName())).close();
-    handler.handleReceive(response, null, span);
+    ((SpanInScope) request.getProperty(SpanInScope.class.getName())).close();
+    handler.handleReceive(new HttpClientResponse(response), null, span);
   }
 
-  static final class HttpAdapter
-    extends brave.http.HttpClientAdapter<ClientRequestContext, ClientResponseContext> {
+  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+    final ClientRequestContext delegate;
 
-    @Override public String method(ClientRequestContext request) {
-      return request.getMethod();
+    HttpClientRequest(ClientRequestContext delegate) {
+      this.delegate = delegate;
     }
 
-    @Override public String path(ClientRequestContext request) {
-      return request.getUri().getPath();
+    @Override public Object unwrap() {
+      return delegate;
     }
 
-    @Override public String url(ClientRequestContext request) {
-      return request.getUri().toString();
+    @Override public String method() {
+      return delegate.getMethod();
     }
 
-    @Override public String requestHeader(ClientRequestContext request, String name) {
-      return request.getHeaderString(name);
+    @Override public String path() {
+      return delegate.getUri().getPath();
     }
 
-    @Override @Nullable public Integer statusCode(ClientResponseContext response) {
-      int result = statusCodeAsInt(response);
-      return result != 0 ? result : null;
+    @Override public String url() {
+      return delegate.getUri().toString();
     }
 
-    @Override public int statusCodeAsInt(ClientResponseContext response) {
-      int result = response.getStatus();
+    @Override public String header(String name) {
+      return delegate.getHeaderString(name);
+    }
+
+    @Override public void header(String name, String value) {
+      delegate.getStringHeaders().putSingle(name, value);
+    }
+  }
+
+  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+    final ClientResponseContext delegate;
+
+    HttpClientResponse(ClientResponseContext delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      int result = delegate.getStatus();
       return result != -1 ? result : 0;
     }
   }

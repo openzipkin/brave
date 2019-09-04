@@ -134,15 +134,11 @@ public final class MutableSpan implements Cloneable {
   }
 
   /** @see brave.Span#kind(brave.Span.Kind) */
-  public void kind(Kind kind) {
-    if (kind == null) throw new NullPointerException("kind == null");
+  public void kind(@Nullable Kind kind) {
     this.kind = kind;
   }
 
-  /**
-   * When null {@link brave.Tracing.Builder#localServiceName(String) default} will be used for
-   * zipkin.
-   */
+  /** When null {@link brave.Tracing.Builder#localServiceName(String) default} is used. */
   @Nullable public String localServiceName() {
     return localServiceName;
   }
@@ -228,7 +224,7 @@ public final class MutableSpan implements Cloneable {
     if (annotations == null) return false;
 
     for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      if (value.equals(annotations.get(i+1))) return true;
+      if (value.equals(annotations.get(i + 1))) return true;
     }
     return false;
   }
