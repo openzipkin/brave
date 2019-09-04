@@ -66,6 +66,11 @@ public abstract class HttpServerRequest {
     return false;
   }
 
+  /** @see HttpAdapter#startTimestamp(Object) */
+  public long startTimestamp() {
+    return 0L;
+  }
+
   @Override public String toString() {
     return unwrap().toString();
   }

@@ -50,6 +50,10 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
         return request.path();
       }
 
+      @Override public long startTimestamp(HttpServerRequest request) {
+        return request.startTimestamp();
+      }
+
       @Override public String methodFromResponse(HttpServerResponse response) {
         return response.method();
       }
@@ -65,6 +69,10 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
       @Override public Integer statusCode(HttpServerResponse response) {
         int result = response.statusCode();
         return result > 0 ? result : null;
+      }
+
+      @Override public long finishTimestamp(HttpServerResponse response) {
+        return response.finishTimestamp();
       }
 
       @Override public String toString() {

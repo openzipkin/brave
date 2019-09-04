@@ -43,10 +43,11 @@ public class HttpServerHandlerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracer tracer;
   @Mock HttpSampler sampler;
-  @Mock HttpServerAdapter<Object, Object> adapter;
-  @Mock TraceContext.Extractor<Object> extractor;
-  Object request = new Object();
-  HttpServerHandler<Object, Object> handler;
+  @Mock HttpServerAdapter<HttpServerRequest, HttpServerResponse> adapter;
+  @Mock TraceContext.Extractor<HttpServerRequest> extractor;
+  @Mock HttpServerRequest request;
+  @Mock HttpServerResponse response;
+  HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   @Before public void init() {
     HttpTracing httpTracing = HttpTracing.newBuilder(
@@ -151,5 +152,18 @@ public class HttpServerHandlerTest {
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
       .isTrue();
+  }
+
+  @Test public void externalTimestamps() {
+    List<zipkin2.Span> spans = new ArrayList<>();
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
+
+    try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
+      handler = HttpServerHandler.create(HttpTracing.create(tracing));
+      Span span = handler.handleReceive(request);
+      handler.handleSend(response, null, span);
+    }
+    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 }

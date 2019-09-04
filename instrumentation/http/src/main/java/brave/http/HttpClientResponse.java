@@ -46,6 +46,11 @@ public abstract class HttpClientResponse {
   /** @see HttpAdapter#statusCodeAsInt(Object) */
   public abstract int statusCode();
 
+  /** @see HttpAdapter#finishTimestamp(Object) */
+  public long finishTimestamp() {
+    return 0L;
+  }
+
   @Override public String toString() {
     return unwrap().toString();
   }
