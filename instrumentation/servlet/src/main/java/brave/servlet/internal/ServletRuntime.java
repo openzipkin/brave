@@ -15,6 +15,7 @@ package brave.servlet.internal;
 
 import brave.Span;
 import brave.http.HttpServerHandler;
+import brave.servlet.HttpServletAdapter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ public abstract class ServletRuntime {
     return (HttpServletResponse) response;
   }
 
+  /** public while {@link HttpServletAdapter} exists. */
   public abstract int status(HttpServletResponse response);
 
   public abstract boolean isAsync(HttpServletRequest request);

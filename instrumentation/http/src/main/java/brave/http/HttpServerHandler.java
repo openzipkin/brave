@@ -73,8 +73,10 @@ public final class HttpServerHandler<Req, Resp>
     );
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.serverSampler();
+    // The following allows us to add the method: handleReceive(HttpServerRequest request) without
+    // duplicating logic from the superclass or deprecated handleReceive methods.
     this.defaultExtractor = httpTracing.tracing().propagation().extractor(HttpServerRequest.GETTER);
-    this.defaultHandler = adapter == HttpServerAdapter.DEFAULT
+    this.defaultHandler = adapter == HttpServerAdapter.DEFAULT // special casing prevents recursion
       ? (HttpServerHandler<HttpServerRequest, HttpServerResponse>) this
       : new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
   }
