@@ -35,15 +35,17 @@ final class TracingInterceptor implements Interceptor {
   @Override public Response intercept(Interceptor.Chain chain) throws IOException {
     HttpClientRequest request = new HttpClientRequest(chain.request());
     Span span = handler.handleSend(request);
-    Response response = null;
+    HttpClientResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = chain.proceed(request.build());
+      Response result = chain.proceed(request.build());
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
-      handler.handleReceive(new HttpClientResponse(response), error, span);
+      handler.handleReceive(response, error, span);
     }
   }
 

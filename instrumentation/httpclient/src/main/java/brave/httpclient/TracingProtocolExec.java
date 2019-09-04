@@ -52,15 +52,17 @@ final class TracingProtocolExec implements ClientExecChain {
     HttpClientContext clientContext, HttpExecutionAware execAware)
     throws IOException, HttpException {
     Span span = handler.nextSpan(new HttpClientRequest(request));
-    CloseableHttpResponse response = null;
+    HttpClientResponse response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = protocolExec.execute(route, request, clientContext, execAware);
+      CloseableHttpResponse result = protocolExec.execute(route, request, clientContext, execAware);
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | HttpException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
-      handler.handleReceive(new HttpClientResponse(response), error, span);
+      handler.handleReceive(response, error, span);
     }
   }
 
@@ -81,8 +83,9 @@ final class TracingProtocolExec implements ClientExecChain {
 
     @Override public String path() {
       String result = delegate.getRequestLine().getUri();
+      int begin = result.lastIndexOf('/');
       int queryIndex = result.indexOf('?');
-      return queryIndex == -1 ? result : result.substring(0, queryIndex);
+      return queryIndex == -1 ? result.substring(begin) : result.substring(begin, queryIndex);
     }
 
     @Override public String url() {

@@ -45,15 +45,17 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,
     ClientHttpRequestExecution execution) throws IOException {
     Span span = handler.handleSend(new HttpClientRequest(request));
-    ClientHttpResponse response = null;
+    HttpClientResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = execution.execute(request, body);
+      ClientHttpResponse result = execution.execute(request, body);
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | RuntimeException | Error e) {
       error = e;
       throw e;
     } finally {
-      handler.handleReceive(new HttpClientResponse(response), error, span);
+      handler.handleReceive(response, error, span);
     }
   }
 

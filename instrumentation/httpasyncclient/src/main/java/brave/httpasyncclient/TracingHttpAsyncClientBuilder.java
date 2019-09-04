@@ -17,6 +17,7 @@ import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -31,7 +32,6 @@ import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -74,8 +74,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   final class HandleSend implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      HttpClientRequest wrapped = new HttpClientRequest(request);
       HttpHost host = HttpClientContext.adapt(context).getTargetHost();
+      HttpClientRequest wrapped = new HttpClientRequest(host, request);
 
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
       Span span;
@@ -250,42 +250,40 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   static final class HttpClientRequest extends brave.http.HttpClientRequest {
-    final HttpRequest delegate;
+    @Nullable final HttpHost target;
+    final HttpRequest request;
 
-    HttpClientRequest(HttpRequest delegate) {
-      this.delegate = delegate;
+    HttpClientRequest(HttpHost target, HttpRequest request) {
+      this.target = target;
+      this.request = request;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return request;
     }
 
     @Override public String method() {
-      return delegate.getRequestLine().getMethod();
+      return request.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      String result = delegate.getRequestLine().getUri();
+      String result = request.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (delegate instanceof HttpRequestWrapper) {
-        HttpRequestWrapper wrapper = (HttpRequestWrapper) delegate;
-        HttpHost target = wrapper.getTarget();
-        if (target != null) return target.toURI() + wrapper.getURI();
-      }
-      return delegate.getRequestLine().getUri();
+      if (target != null) return target.toURI() + request.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = delegate.getFirstHeader(name);
+      Header result = request.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      delegate.setHeader(name, value);
+      request.setHeader(name, value);
     }
   }
 

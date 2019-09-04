@@ -13,6 +13,7 @@
  */
 package brave.spring.web;
 
+import brave.spring.web.TracingClientHttpRequestInterceptor.HttpClientResponse;
 import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,33 +21,28 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.client.ClientHttpResponse;
 
-import static brave.spring.web.TracingClientHttpRequestInterceptor.HttpAdapter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpAdapterTest {
+public class HttpClientResponseTest {
   @Mock ClientHttpResponse response;
-  HttpAdapter adapter = new HttpAdapter();
 
-  @Test public void statusCodeAsInt() throws IOException {
+  @Test public void statusCode() throws IOException {
     when(response.getRawStatusCode()).thenReturn(200);
 
-    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
-    assertThat(adapter.statusCode(response)).isEqualTo(200);
+    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCodeAsInt_zeroOnIOE() throws IOException {
+  @Test public void statusCode_zeroOnIOE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IOException());
 
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
+    assertThat(new HttpClientResponse(response).statusCode()).isZero();
   }
 
-  @Test public void statusCodeAsInt_zeroOnIAE() throws IOException {
+  @Test public void statusCode_zeroOnIAE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IllegalArgumentException());
 
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
+    assertThat(new HttpClientResponse(response).statusCode()).isZero();
   }
 }
