@@ -50,7 +50,7 @@ public final class HttpServerHandler<Req, Resp>
    */
   public static HttpServerHandler<HttpServerRequest, HttpServerResponse> create(
     HttpTracing httpTracing) {
-    return new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
+    return new HttpServerHandler<>(httpTracing, HttpServerAdapter.LEGACY);
   }
 
   /** @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable. */
@@ -76,9 +76,9 @@ public final class HttpServerHandler<Req, Resp>
     // The following allows us to add the method: handleReceive(HttpServerRequest request) without
     // duplicating logic from the superclass or deprecated handleReceive methods.
     this.defaultExtractor = httpTracing.tracing().propagation().extractor(HttpServerRequest.GETTER);
-    this.defaultHandler = adapter == HttpServerAdapter.DEFAULT // special casing prevents recursion
+    this.defaultHandler = adapter == HttpServerAdapter.LEGACY // special casing prevents recursion
       ? (HttpServerHandler<HttpServerRequest, HttpServerResponse>) this
-      : new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
+      : new HttpServerHandler<>(httpTracing, HttpServerAdapter.LEGACY);
   }
 
   /**

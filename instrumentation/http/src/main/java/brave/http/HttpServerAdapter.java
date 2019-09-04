@@ -17,11 +17,17 @@ import brave.Span;
 
 public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
   /**
-   * Intentionally not exposed as call-sites shouldn't need this directly.
+   * We'd normally expect {@link HttpServerRequest} and {@link HttpServerResponse} to be used
+   * directly, so not need an adapter. However, doing so would imply duplicating types that use
+   * adapters, including {@link HttpServerParser} and {@link HttpSampler}. This field allows the new
+   * types to be used in existing parsers and samplers, avoiding code duplication.
+   *
+   * <p>This is intentionally not exposed public as {@link HttpServerHandler} holds the
+   * responsibility of passing adapters to call sites that need them.
    *
    * @since 5.7
    */
-  static final HttpServerAdapter<HttpServerRequest, HttpServerResponse> DEFAULT =
+  static final HttpServerAdapter<HttpServerRequest, HttpServerResponse> LEGACY =
     new HttpServerAdapter<HttpServerRequest, HttpServerResponse>() {
       @Override public boolean parseClientIpAndPort(HttpServerRequest request, Span span) {
         if (parseClientIpFromXForwardedFor(request, span)) return true;

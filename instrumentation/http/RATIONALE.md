@@ -25,5 +25,5 @@ regardless of purpose, whether that is primary or secondary sampling, or tag
 parsing.
 
 All of this led to the introduction of `HttpServerRequest` and
-`HttpServerResponse` types in Brave 5.7, retrofitted into the original
-`HttpServerAdapter` so as to not break API.
+`HttpServerResponse` types in Brave 5.7, along with `HttpServerAdapter.LEGACY`
+which allows integration with existing sampler and parser code.
