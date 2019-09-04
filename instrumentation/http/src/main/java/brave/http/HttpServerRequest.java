@@ -38,40 +38,16 @@ public abstract class HttpServerRequest {
   /** Returns the underlying http request object. */
   public abstract Object unwrap();
 
-  /**
-   * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
-   *
-   * <p>Conventionally associated with the key "http.method"
-   *
-   * @see HttpAdapter#method(Object)
-   */
+  /** @see HttpAdapter#method(Object) */
   @Nullable public abstract String method();
 
-  /**
-   * The absolute http path, without any query parameters or null if unreadable. Ex.
-   * "/objects/abcd-ff"
-   *
-   * <p>Conventionally associated with the key "http.path"
-   *
-   * @see HttpAdapter#path(Object)
-   */
+  /** @see HttpAdapter#path(Object) */
   @Nullable public abstract String path();
 
-  /**
-   * The entire URL, including the scheme, host and query parameters if available or null if
-   * unreadable.
-   *
-   * <p>Conventionally associated with the key "http.url"
-   *
-   * @see HttpAdapter#url(Object)
-   */
+  /** @see HttpAdapter#url(Object) */
   @Nullable public abstract String url();
 
-  /**
-   * Returns one value corresponding to the specified header, or null.
-   *
-   * @see HttpAdapter#requestHeader(Object, String)
-   */
+  /** @see HttpAdapter#requestHeader(Object, String) */
   @Nullable public abstract String header(String name);
 
   /**

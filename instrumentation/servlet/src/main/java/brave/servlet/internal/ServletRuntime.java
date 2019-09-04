@@ -110,20 +110,20 @@ public abstract class ServletRuntime {
 
       @Override public void onComplete(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(wrappedResponse(e), null, span);
+        handler.handleSend(httpServerResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onTimeout(AsyncEvent e) {
         if (complete) return;
         span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-        handler.handleSend(wrappedResponse(e), null, span);
+        handler.handleSend(httpServerResponse(e), null, span);
         complete = true;
       }
 
       @Override public void onError(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(wrappedResponse(e), e.getThrowable(), span);
+        handler.handleSend(httpServerResponse(e), e.getThrowable(), span);
         complete = true;
       }
 
@@ -140,7 +140,7 @@ public abstract class ServletRuntime {
       }
     }
 
-    static HttpServerResponse wrappedResponse(AsyncEvent event) {
+    static HttpServerResponse httpServerResponse(AsyncEvent event) {
       HttpServletRequest req = (HttpServletRequest) event.getSuppliedRequest();
       HttpServletResponse resp = (HttpServletResponse) event.getSuppliedResponse();
       return new HttpServerResponse(req, resp, resp.getStatus());

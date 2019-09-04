@@ -13,8 +13,8 @@
  */
 package brave.vertx.web;
 
+import brave.vertx.web.TracingRoutingContextHandler.HttpServerResponse;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.RoutingContext;
 import org.junit.Before;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 public class HttpServerResponseTest {
   @Mock RoutingContext context;
   @Mock HttpServerRequest request;
-  @Mock HttpServerResponse response;
+  @Mock io.vertx.core.http.HttpServerResponse response;
   @Mock Route currentRoute;
 
   @Before public void setup() {
@@ -42,31 +42,31 @@ public class HttpServerResponseTest {
   @Test public void method() {
     when(request.rawMethod()).thenReturn("GET");
 
-    assertThat(new VertxHttpServerResponse(context).method())
+    assertThat(new HttpServerResponse(context).method())
       .isEqualTo("GET");
   }
 
   @Test public void route_emptyByDefault() {
-    assertThat(new VertxHttpServerResponse(context).route())
+    assertThat(new HttpServerResponse(context).route())
       .isEmpty();
   }
 
   @Test public void route() {
     when(currentRoute.getPath()).thenReturn("/users/:userID");
 
-    assertThat(new VertxHttpServerResponse(context).route())
+    assertThat(new HttpServerResponse(context).route())
       .isEqualTo("/users/:userID");
   }
 
   @Test public void statusCode() {
     when(response.getStatusCode()).thenReturn(200);
 
-    assertThat(new VertxHttpServerResponse(context).statusCode())
+    assertThat(new HttpServerResponse(context).statusCode())
       .isEqualTo(200);
   }
 
   @Test public void statusCode_zero() {
-    assertThat(new VertxHttpServerResponse(context).statusCode())
+    assertThat(new HttpServerResponse(context).statusCode())
       .isZero();
   }
 }

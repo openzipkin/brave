@@ -97,8 +97,6 @@ public final class HttpServerHandler<Req, Resp>
    *
    * <p>This is typically called before the request is processed by the actual library.
    *
-   * @param request prefer {@link HttpServerRequest} to allow extensions to know this is an http
-   * request.
    * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}, as this allows more
    * advanced samplers to be used.
    */

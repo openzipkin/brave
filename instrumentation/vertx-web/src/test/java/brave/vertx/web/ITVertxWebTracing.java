@@ -108,7 +108,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     server = vertx.createHttpServer(new HttpServerOptions().setPort(0).setHost("localhost"));
 
     CountDownLatch latch = new CountDownLatch(1);
-    server.requestHandler(router::accept).listen(async -> {
+    server.requestHandler(router::handle).listen(async -> {
       port = async.result().actualPort();
       latch.countDown();
     });
