@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.servlet;
+package brave.servlet.internal;
 
 import java.io.PrintWriter;
 import java.util.Collection;
@@ -82,9 +82,9 @@ public class ServletRuntimeBenchmarks {
 
   int threeResponses(ServletRuntime runtime) {
     // & to ensure null wasn't returned (forces NPE)
-    return runtime.httpResponse(new Response1()).getStatus() &
-      runtime.httpResponse(new Response2()).getStatus() &
-      runtime.httpResponse(new Response3()).getStatus();
+    return runtime.httpServletResponse(new Response1()).getStatus() &
+      runtime.httpServletResponse(new Response2()).getStatus() &
+      runtime.httpServletResponse(new Response3()).getStatus();
   }
 
   @Benchmark @Group("no_contention") @GroupThreads(1)

@@ -53,9 +53,7 @@ public final class HttpServerHandler<Req, Resp>
     return new HttpServerHandler<>(httpTracing, HttpServerAdapter.DEFAULT);
   }
 
-  /**
-   * @deprecated use {@link #create(HttpTracing)} as it is portable with secondary sampling.
-   */
+  /** @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable. */
   @Deprecated
   public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
     HttpServerAdapter<Req, Resp> adapter) {

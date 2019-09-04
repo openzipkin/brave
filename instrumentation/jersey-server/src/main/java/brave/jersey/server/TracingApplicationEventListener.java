@@ -16,8 +16,6 @@ package brave.jersey.server;
 import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
-import brave.http.HttpServerRequest;
-import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import javax.inject.Inject;
 import javax.ws.rs.container.Suspended;
@@ -39,7 +37,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   }
 
   final Tracer tracer;
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
   final EventParser parser;
 
   @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
@@ -54,7 +52,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   @Override public RequestEventListener onRequest(RequestEvent event) {
     if (event.getType() != RequestEvent.Type.START) return null;
-    Span span = handler.handleReceive(new WrappedContainerRequest(event.getContainerRequest()));
+    Span span = handler.handleReceive(new HttpServerRequest(event.getContainerRequest()));
     return new TracingRequestEventListener(span, tracer.withSpanInScope(span));
   }
 
@@ -111,7 +109,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           if (maybeHttpRoute != null) {
             event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
           }
-          handler.handleSend(new WrappedRequestEvent(event), event.getException(), span);
+          handler.handleSend(new HttpServerResponse(event), event.getException(), span);
           break;
         default:
       }
@@ -123,10 +121,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared();
   }
 
-  static final class WrappedContainerRequest extends HttpServerRequest {
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
     final ContainerRequest delegate;
 
-    WrappedContainerRequest(ContainerRequest delegate) {
+    HttpServerRequest(ContainerRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -156,10 +154,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     // HttpServletRequest.getRemoteAddr
   }
 
-  static final class WrappedRequestEvent extends HttpServerResponse {
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
     final RequestEvent delegate;
 
-    WrappedRequestEvent(RequestEvent delegate) {
+    HttpServerResponse(RequestEvent delegate) {
       this.delegate = delegate;
     }
 

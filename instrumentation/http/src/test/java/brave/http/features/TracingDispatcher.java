@@ -16,8 +16,6 @@ package brave.http.features;
 import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
-import brave.http.HttpServerRequest;
-import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,7 +24,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 final class TracingDispatcher extends Dispatcher {
   final Dispatcher delegate;
   final Tracer tracer;
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
 
   TracingDispatcher(HttpTracing httpTracing, Dispatcher delegate) {
     tracer = httpTracing.tracing().tracer();
@@ -35,7 +33,7 @@ final class TracingDispatcher extends Dispatcher {
   }
 
   @Override public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
-    Span span = handler.handleReceive(new WrappedMockRequest(request));
+    Span span = handler.handleReceive(new HttpServerRequest(request));
     MockResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -44,14 +42,14 @@ final class TracingDispatcher extends Dispatcher {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new WrappedMockResponse(response), error, span);
+      handler.handleSend(new HttpServerResponse(response), error, span);
     }
   }
 
-  static final class WrappedMockRequest extends HttpServerRequest {
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
     final RecordedRequest delegate;
 
-    WrappedMockRequest(RecordedRequest delegate) {
+    HttpServerRequest(RecordedRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -76,10 +74,10 @@ final class TracingDispatcher extends Dispatcher {
     }
   }
 
-  static final class WrappedMockResponse extends HttpServerResponse {
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
     final MockResponse delegate;
 
-    WrappedMockResponse(MockResponse delegate) {
+    HttpServerResponse(MockResponse delegate) {
       this.delegate = delegate;
     }
 

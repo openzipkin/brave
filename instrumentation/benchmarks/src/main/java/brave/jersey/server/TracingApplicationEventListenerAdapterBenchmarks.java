@@ -13,6 +13,7 @@
  */
 package brave.jersey.server;
 
+import brave.jersey.server.TracingApplicationEventListener.HttpServerResponse;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -84,11 +85,11 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
     .build(RequestEvent.Type.FINISHED);
 
   @Benchmark public String parseRoute() {
-    return new TracingApplicationEventListener.WrappedRequestEvent(event).route();
+    return new HttpServerResponse(event).route();
   }
 
   @Benchmark public String parseRoute_nested() {
-    return new TracingApplicationEventListener.WrappedRequestEvent(nestedEvent).route();
+    return new HttpServerResponse(nestedEvent).route();
   }
 
   // Convenience main entry-point

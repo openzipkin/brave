@@ -15,18 +15,16 @@ package brave.sparkjava;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
-import brave.http.HttpServerRequest;
-import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
-import brave.servlet.WrappedHttpServletRequest;
-import brave.servlet.WrappedHttpServletResponse;
 import spark.ExceptionHandler;
 import spark.Filter;
+import spark.Request;
+import spark.Response;
 
 public final class SparkTracing {
-  // TODO: when https://github.com/perwendel/spark/issues/959 is resolved, add "http.route"
   public static SparkTracing create(Tracing tracing) {
     return new SparkTracing(HttpTracing.create(tracing));
   }
@@ -36,7 +34,7 @@ public final class SparkTracing {
   }
 
   final Tracer tracer;
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
 
   SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     tracer = httpTracing.tracing().tracer();
@@ -45,8 +43,8 @@ public final class SparkTracing {
 
   public Filter before() {
     return (request, response) -> {
-      Span span = handler.handleReceive(new WrappedHttpServletRequest(request.raw()));
-      request.attribute(Tracer.SpanInScope.class.getName(), tracer.withSpanInScope(span));
+      Span span = handler.handleReceive(new HttpServerRequest(request));
+      request.attribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     };
   }
 
@@ -54,20 +52,81 @@ public final class SparkTracing {
     return (request, response) -> {
       Span span = tracer.currentSpan();
       if (span == null) return;
-      ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
-      handler.handleSend(new WrappedHttpServletResponse(request.raw(), response.raw()), null, span);
+      ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+      handler.handleSend(new HttpServerResponse(response, request.requestMethod()), null, span);
     };
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
-    return (exception, request, response) -> {
+    return (error, request, response) -> {
       Span span = tracer.currentSpan();
       if (span != null) {
-        ((Tracer.SpanInScope) request.attribute(Tracer.SpanInScope.class.getName())).close();
-        handler.handleSend(new WrappedHttpServletResponse(request.raw(), response.raw()), exception,
-          span);
+        ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+        handler.handleSend(new HttpServerResponse(response, request.requestMethod()), error, span);
       }
-      delegate.handle(exception, request, response);
+      delegate.handle(error, request, response);
     };
+  }
+
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+    final Request delegate;
+
+    HttpServerRequest(Request delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Request unwrap() {
+      return delegate;
+    }
+
+    @Override public boolean parseClientIpAndPort(Span span) {
+      return span.remoteIpAndPort(delegate.raw().getRemoteAddr(), delegate.raw().getRemotePort());
+    }
+
+    @Override public String method() {
+      return delegate.requestMethod();
+    }
+
+    @Override public String path() {
+      return delegate.pathInfo();
+    }
+
+    @Override public String url() {
+      String baseUrl = delegate.url();
+      if (delegate.queryString() != null && !delegate.queryString().isEmpty()) {
+        return baseUrl + "?" + delegate.queryString();
+      }
+      return baseUrl;
+    }
+
+    @Override public String header(String name) {
+      return delegate.raw().getHeader(name);
+    }
+  }
+
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+    final Response delegate;
+    final String method;
+
+    HttpServerResponse(Response delegate, String method) {
+      this.delegate = delegate;
+      this.method = method;
+    }
+
+    @Override public Response unwrap() {
+      return delegate;
+    }
+
+    @Override public String method() {
+      return method;
+    }
+
+    @Override public String route() {
+      return null; // Update if this or similar merged https://github.com/perwendel/spark/pull/1126
+    }
+
+    @Override public int statusCode() {
+      return delegate.status();
+    }
   }
 }

@@ -13,8 +13,8 @@
  */
 package brave.jersey.server;
 
-import brave.jersey.server.TracingApplicationEventListener.WrappedContainerRequest;
-import brave.jersey.server.TracingApplicationEventListener.WrappedRequestEvent;
+import brave.jersey.server.TracingApplicationEventListener.HttpServerRequest;
+import brave.jersey.server.TracingApplicationEventListener.HttpServerResponse;
 import java.net.URI;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
@@ -39,14 +39,14 @@ public class TracingApplicationEventListenerWrapperTest {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getMethod()).thenReturn("GET");
 
-    assertThat(new WrappedRequestEvent(event).method())
+    assertThat(new HttpServerResponse(event).method())
       .isEqualTo("GET");
   }
 
   @Test public void path_prefixesSlashWhenMissing() {
     when(request.getPath(false)).thenReturn("bar");
 
-    assertThat(new WrappedContainerRequest(request).path())
+    assertThat(new HttpServerRequest(request).path())
       .isEqualTo("/bar");
   }
 
@@ -54,7 +54,7 @@ public class TracingApplicationEventListenerWrapperTest {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getProperty("http.route")).thenReturn("/items/{itemId}");
 
-    assertThat(new WrappedRequestEvent(event).route())
+    assertThat(new HttpServerResponse(event).route())
       .isEqualTo("/items/{itemId}");
   }
 
@@ -63,7 +63,7 @@ public class TracingApplicationEventListenerWrapperTest {
     when(request.getUriInfo()).thenReturn(uriInfo);
     when(uriInfo.getRequestUri()).thenReturn(URI.create("http://foo:8080/bar?hello=world"));
 
-    assertThat(new WrappedContainerRequest(request).url())
+    assertThat(new HttpServerRequest(request).url())
       .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
@@ -71,10 +71,10 @@ public class TracingApplicationEventListenerWrapperTest {
     when(event.getContainerResponse()).thenReturn(response);
     when(response.getStatus()).thenReturn(200);
 
-    assertThat(new WrappedRequestEvent(event).statusCode()).isEqualTo(200);
+    assertThat(new HttpServerResponse(event).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCodeAsInt_zeroNoResponse() {
-    assertThat(new WrappedRequestEvent(event).statusCode()).isZero();
+    assertThat(new HttpServerResponse(event).statusCode()).isZero();
   }
 }

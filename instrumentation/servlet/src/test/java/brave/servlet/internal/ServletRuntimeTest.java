@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.servlet;
+package brave.servlet.internal;
 
 import java.io.PrintWriter;
 import java.util.Collection;

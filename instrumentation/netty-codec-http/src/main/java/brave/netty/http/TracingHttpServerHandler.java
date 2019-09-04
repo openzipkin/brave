@@ -17,18 +17,20 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
-import brave.http.HttpServerRequest;
-import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
+import brave.internal.Platform;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.net.InetSocketAddress;
+import java.net.URI;
 
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
   final Tracer tracer;
 
   TracingHttpServerHandler(HttpTracing httpTracing) {
@@ -42,8 +44,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       return;
     }
 
-    WrappedHttpRequest request =
-      new WrappedHttpRequest((HttpRequest) msg, (InetSocketAddress) ctx.channel().remoteAddress());
+    HttpServerRequest request =
+      new HttpServerRequest((HttpRequest) msg, (InetSocketAddress) ctx.channel().remoteAddress());
 
     Span span = handler.handleReceive(request);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
@@ -81,7 +83,63 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       throw e;
     } finally {
       spanInScope.close(); // clear scope before reporting
-      handler.handleSend(new WrappedHttpResponse(response), t, span);
+      handler.handleSend(new HttpServerResponse(response), t, span);
+    }
+  }
+
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+    final HttpRequest request;
+    @Nullable final InetSocketAddress remoteAddress;
+
+    HttpServerRequest(HttpRequest request, InetSocketAddress remoteAddress) {
+      this.request = request;
+      this.remoteAddress = remoteAddress;
+    }
+
+    @Override public HttpRequest unwrap() {
+      return request;
+    }
+
+    @Override public boolean parseClientIpAndPort(Span span) {
+      if (remoteAddress.getAddress() == null) return false;
+      return span.remoteIpAndPort(Platform.get().getHostString(remoteAddress),
+        remoteAddress.getPort());
+    }
+
+    @Override public String method() {
+      return request.method().name();
+    }
+
+    @Override public String path() {
+      return URI.create(request.uri()).getPath(); // TODO benchmark
+    }
+
+    @Override public String url() {
+      String host = header("Host");
+      if (host == null) return null;
+      // TODO: we don't know if this is really http or https!
+      return "http://" + host + request.uri();
+    }
+
+    @Override public String header(String name) {
+      return request.headers().get(name);
+    }
+  }
+
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+    final HttpResponse delegate;
+
+    HttpServerResponse(HttpResponse delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public HttpResponse unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      HttpResponseStatus status = delegate.status();
+      return status != null ? status.code() : 0;
     }
   }
 }

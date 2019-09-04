@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.servlet;
+package brave.servlet.internal;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -37,8 +37,8 @@ public class ServletRuntime25Test {
       .isEqualTo(400);
   }
 
-  @Test public void httpResponse_wrapsHttpServletResponse() throws Exception {
-    assertThat(ServletRuntime.get().httpResponse(new WithoutGetStatus()))
+  @Test public void httpServletResponse_wrapsHttpServletResponse() throws Exception {
+    assertThat(ServletRuntime.get().httpServletResponse(new WithoutGetStatus()))
       .isInstanceOf(ServletRuntime.Servlet25ServerResponseAdapter.class);
   }
 

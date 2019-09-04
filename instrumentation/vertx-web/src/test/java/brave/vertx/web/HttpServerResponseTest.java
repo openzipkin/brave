@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class VertxHttpServerResponseTest {
+public class HttpServerResponseTest {
   @Mock RoutingContext context;
   @Mock HttpServerRequest request;
   @Mock HttpServerResponse response;
