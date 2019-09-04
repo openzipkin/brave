@@ -15,7 +15,7 @@ package brave.http;
 
 import brave.Span;
 import brave.internal.Nullable;
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 
 /**
  * Marks an interface for use in {@link HttpServerHandler#handleReceive(HttpServerRequest)}. This
@@ -24,16 +24,15 @@ import brave.propagation.Propagation;
  * @since 5.7
  */
 public abstract class HttpServerRequest {
-  static final Propagation.Getter<HttpServerRequest, String> GETTER =
-    new Propagation.Getter<HttpServerRequest, String>() {
-      @Override public String get(HttpServerRequest carrier, String key) {
-        return carrier.header(key);
-      }
+  static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
+    @Override public String get(HttpServerRequest carrier, String key) {
+      return carrier.header(key);
+    }
 
-      @Override public String toString() {
-        return "HttpServerRequest::header";
-      }
-    };
+    @Override public String toString() {
+      return "HttpServerRequest::header";
+    }
+  };
 
   /** Returns the underlying http request object. */
   public abstract Object unwrap();
