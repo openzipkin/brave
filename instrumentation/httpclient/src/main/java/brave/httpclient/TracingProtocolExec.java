@@ -37,7 +37,6 @@ import org.apache.http.impl.execchain.ClientExecChain;
  * here so that user interceptors can see it.
  */
 final class TracingProtocolExec implements ClientExecChain {
-
   final Tracer tracer;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
   final ClientExecChain protocolExec;

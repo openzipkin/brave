@@ -95,7 +95,16 @@ public final class HttpClientHandler<Req, Resp>
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
-    Span span = defaultHandler.nextSpan(request);
+    return handleSend(request, defaultHandler.nextSpan(request));
+  }
+
+  /**
+   * Like {@link #handleSend(HttpClientRequest)}, except explicitly controls the span representing
+   * the request.
+   *
+   * @since 5.7
+   */
+  public Span handleSend(HttpClientRequest request, Span span) {
     return defaultHandler.handleSend(defaultInjector, request, request, span);
   }
 

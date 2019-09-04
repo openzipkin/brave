@@ -18,7 +18,6 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.propagation.Propagation.Setter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
@@ -32,16 +31,6 @@ import okhttp3.Response;
  * In cases like that, use {@link TracingCallFactory}.
  */
 public final class TracingInterceptor implements Interceptor {
-  static final Setter<Request.Builder, String> SETTER = new Setter<Request.Builder, String>() {
-    @Override public void put(Request.Builder carrier, String key, String value) {
-      carrier.header(key, value);
-    }
-
-    @Override public String toString() {
-      return "Request.Builder::header";
-    }
-  };
-
   public static Interceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));
   }
