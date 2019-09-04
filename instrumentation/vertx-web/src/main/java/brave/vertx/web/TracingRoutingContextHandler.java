@@ -17,43 +17,28 @@ import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
 import io.vertx.core.Handler;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <h3>Why not rely on {@code context.request().endHandler()} to finish a span?</h3>
- * <p>There can be only one {@link HttpServerRequest#endHandler(Handler) end handler}. We can't
- * rely on {@code endHandler()} as a user can override it in their route. If they did, we'd leak an
- * unfinished span. For this reason, we speculatively use both an end handler and an end header
- * handler.
+ * <p>There can be only one {@link io.vertx.core.http.HttpServerRequest#endHandler(Handler) end
+ * handler}. We can't rely on {@code endHandler()} as a user can override it in their route. If they
+ * did, we'd leak an unfinished span. For this reason, we speculatively use both an end handler and
+ * an end header handler.
  *
  * <p>The hint that we need to re-attach the headers handler on re-route came from looking at
  * {@code TracingHandler} in https://github.com/opentracing-contrib/java-vertx-web
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
-  static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
-    @Override public String get(HttpServerRequest carrier, String key) {
-      return carrier.getHeader(key);
-    }
-
-    @Override public String toString() {
-      return "HttpServerRequest::getHeader";
-    }
-  };
-
   final Tracer tracer;
-  final HttpServerHandler<HttpServerRequest, HttpServerResponse> serverHandler;
-  final TraceContext.Extractor<HttpServerRequest> extractor;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
-    serverHandler = HttpServerHandler.create(httpTracing, new VertxHttpServerAdapter());
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    handler = HttpServerHandler.create(httpTracing);
   }
 
   @Override public void handle(RoutingContext context) {
@@ -66,7 +51,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return;
     }
 
-    Span span = serverHandler.handleReceive(extractor, context.request());
+    Span span = handler.handleReceive(new HttpServerRequest(context.request()));
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
@@ -88,15 +73,68 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      VertxHttpServerAdapter.setCurrentMethodAndPath(
-        context.request().rawMethod(),
-        context.currentRoute().getPath()
-      );
-      try {
-        serverHandler.handleSend(context.response(), context.failure(), span);
-      } finally {
-        VertxHttpServerAdapter.setCurrentMethodAndPath(null, null);
-      }
+      handler.handleSend(new HttpServerResponse(context), context.failure(), span);
+    }
+  }
+
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+    final io.vertx.core.http.HttpServerRequest delegate;
+
+    HttpServerRequest(io.vertx.core.http.HttpServerRequest delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public io.vertx.core.http.HttpServerRequest unwrap() {
+      return delegate;
+    }
+
+    @Override public String method() {
+      return delegate.rawMethod();
+    }
+
+    @Override public String path() {
+      return delegate.path();
+    }
+
+    @Override public String url() {
+      return delegate.absoluteURI();
+    }
+
+    @Override public String header(String name) {
+      return delegate.headers().get(name);
+    }
+
+    @Override public boolean parseClientIpAndPort(Span span) {
+      SocketAddress addr = delegate.remoteAddress();
+      return span.remoteIpAndPort(addr.host(), addr.port());
+    }
+  }
+
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+    final io.vertx.core.http.HttpServerResponse delegate;
+    final String method, httpRoute;
+
+    HttpServerResponse(RoutingContext context) {
+      this.delegate = context.response();
+      this.method = context.request().rawMethod();
+      String httpRoute = context.currentRoute().getPath();
+      this.httpRoute = httpRoute != null ? httpRoute : "";
+    }
+
+    @Override public io.vertx.core.http.HttpServerResponse unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      return delegate.getStatusCode();
+    }
+
+    @Override public String method() {
+      return method;
+    }
+
+    @Override public String route() {
+      return httpRoute;
     }
   }
 }

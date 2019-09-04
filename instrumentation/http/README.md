@@ -177,12 +177,9 @@ try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // 2.
 ## Http Server
 
 The first step in developing http server instrumentation is implementing
-a `HttpServerAdapter` for your native library. This ensures users can
-portably control tags using `HttpServerParser`. See [HttpServletAdapter](../servlet/src/main/java/brave/servlet/HttpServletAdapter.java)
-as an example (you may even be able to use it!).
-
-Next, you'll need to indicate how to extract trace IDs from the incoming
-request. Often, this is as simple as `Request::getHeader`.
+`brave.HttpServerRequest` and `brave.HttpServerResponse` for your native
+library. This ensures your instrumentation can extract headers, sample and
+control tags.
 
 With these two items, you now have the most important parts needed to
 trace your server library. You'll likely initialize the following in a
@@ -190,8 +187,7 @@ constructor like so:
 ```java
 MyTracingInterceptor(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
-  handler = HttpServerHandler.create(httpTracing, new MyHttpServerAdapter());
-  extractor = httpTracing.tracing().propagation().extractor(Request::getHeader);
+  handler = HttpServerHandler.create(httpTracing);
 }
 ```
 

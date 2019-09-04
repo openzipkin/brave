@@ -20,8 +20,8 @@ import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
+import brave.servlet.internal.ServletRuntime;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -33,18 +33,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 public final class TracingFilter implements Filter {
-  static final Getter<HttpServletRequest, String> GETTER =
-    new Getter<HttpServletRequest, String>() {
-      @Override public String get(HttpServletRequest carrier, String key) {
-        return carrier.getHeader(key);
-      }
-
-      @Override public String toString() {
-        return "HttpServletRequest::getHeader";
-      }
-    };
-  static final HttpServletAdapter ADAPTER = new HttpServletAdapter();
-
   public static Filter create(Tracing tracing) {
     return new TracingFilter(HttpTracing.create(tracing));
   }
@@ -55,20 +43,18 @@ public final class TracingFilter implements Filter {
 
   final ServletRuntime servlet = ServletRuntime.get();
   final CurrentTraceContext currentTraceContext;
-  final HttpServerHandler<HttpServletRequest, HttpServletResponse> handler;
-  final TraceContext.Extractor<HttpServletRequest> extractor;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
 
   TracingFilter(HttpTracing httpTracing) {
     currentTraceContext = httpTracing.tracing().currentTraceContext();
-    handler = HttpServerHandler.create(httpTracing, ADAPTER);
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    handler = HttpServerHandler.create(httpTracing);
   }
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
     throws IOException, ServletException {
     HttpServletRequest httpRequest = (HttpServletRequest) request;
-    HttpServletResponse httpResponse = servlet.httpResponse(response);
+    HttpServletResponse httpResponse = servlet.httpServletResponse(response);
 
     // Prevent duplicate spans for the same request
     TraceContext context = (TraceContext) request.getAttribute(TraceContext.class.getName());
@@ -83,7 +69,7 @@ public final class TracingFilter implements Filter {
       return;
     }
 
-    Span span = handler.handleReceive(extractor, httpRequest);
+    Span span = handler.handleReceive(new HttpServerRequest(httpRequest));
 
     // Add attributes for explicit access to customization or span context
     request.setAttribute(SpanCustomizer.class.getName(), span.customizer());
@@ -102,7 +88,7 @@ public final class TracingFilter implements Filter {
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, httpResponse, span);
       } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(ADAPTER.adaptResponse(httpRequest, httpResponse), error, span);
+        handler.handleSend(servlet.httpServerResponse(httpRequest, httpResponse), error, span);
       }
     }
   }
@@ -110,7 +96,42 @@ public final class TracingFilter implements Filter {
   @Override public void destroy() {
   }
 
-  @Override
-  public void init(FilterConfig filterConfig) {
+  @Override public void init(FilterConfig filterConfig) {
+  }
+
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+    final HttpServletRequest delegate;
+
+    HttpServerRequest(HttpServletRequest delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public HttpServletRequest unwrap() {
+      return delegate;
+    }
+
+    @Override public boolean parseClientIpAndPort(Span span) {
+      return span.remoteIpAndPort(delegate.getRemoteAddr(), delegate.getRemotePort());
+    }
+
+    @Override public String method() {
+      return delegate.getMethod();
+    }
+
+    @Override public String path() {
+      return delegate.getRequestURI();
+    }
+
+    @Override public String url() {
+      StringBuffer url = delegate.getRequestURL();
+      if (delegate.getQueryString() != null && !delegate.getQueryString().isEmpty()) {
+        url.append('?').append(delegate.getQueryString());
+      }
+      return url.toString();
+    }
+
+    @Override public String header(String name) {
+      return delegate.getHeader(name);
+    }
   }
 }

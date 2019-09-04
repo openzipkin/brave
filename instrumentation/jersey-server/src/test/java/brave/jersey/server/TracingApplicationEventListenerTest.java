@@ -13,7 +13,8 @@
  */
 package brave.jersey.server;
 
-import brave.jersey.server.TracingApplicationEventListener.Adapter;
+import brave.jersey.server.TracingApplicationEventListener.HttpServerRequest;
+import brave.jersey.server.TracingApplicationEventListener.HttpServerResponse;
 import java.net.URI;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
@@ -29,8 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class TracingApplicationEventListenerAdapterTest {
-  Adapter adapter = new Adapter();
+public class TracingApplicationEventListenerTest {
   @Mock ContainerRequest request;
   @Mock RequestEvent event;
   @Mock ContainerResponse response;
@@ -39,14 +39,14 @@ public class TracingApplicationEventListenerAdapterTest {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getMethod()).thenReturn("GET");
 
-    assertThat(adapter.methodFromResponse(event))
+    assertThat(new HttpServerResponse(event).method())
       .isEqualTo("GET");
   }
 
   @Test public void path_prefixesSlashWhenMissing() {
     when(request.getPath(false)).thenReturn("bar");
 
-    assertThat(adapter.path(request))
+    assertThat(new HttpServerRequest(request).path())
       .isEqualTo("/bar");
   }
 
@@ -54,7 +54,7 @@ public class TracingApplicationEventListenerAdapterTest {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getProperty("http.route")).thenReturn("/items/{itemId}");
 
-    assertThat(adapter.route(event))
+    assertThat(new HttpServerResponse(event).route())
       .isEqualTo("/items/{itemId}");
   }
 
@@ -63,7 +63,7 @@ public class TracingApplicationEventListenerAdapterTest {
     when(request.getUriInfo()).thenReturn(uriInfo);
     when(uriInfo.getRequestUri()).thenReturn(URI.create("http://foo:8080/bar?hello=world"));
 
-    assertThat(adapter.url(request))
+    assertThat(new HttpServerRequest(request).url())
       .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
@@ -71,12 +71,10 @@ public class TracingApplicationEventListenerAdapterTest {
     when(event.getContainerResponse()).thenReturn(response);
     when(response.getStatus()).thenReturn(200);
 
-    assertThat(adapter.statusCodeAsInt(event)).isEqualTo(200);
-    assertThat(adapter.statusCode(event)).isEqualTo(200);
+    assertThat(new HttpServerResponse(event).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCodeAsInt_zeroNoResponse() {
-    assertThat(adapter.statusCodeAsInt(event)).isZero();
-    assertThat(adapter.statusCode(event)).isNull();
+    assertThat(new HttpServerResponse(event).statusCode()).isZero();
   }
 }

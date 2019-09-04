@@ -15,12 +15,8 @@ package brave.jersey.server;
 
 import brave.Span;
 import brave.Tracer;
-import brave.http.HttpServerAdapter;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
 import javax.inject.Inject;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
@@ -40,25 +36,13 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     return new TracingApplicationEventListener(httpTracing, new EventParser());
   }
 
-  static final Getter<ContainerRequest, String> GETTER = new Getter<ContainerRequest, String>() {
-    @Override public String get(ContainerRequest carrier, String key) {
-      return carrier.getHeaderString(key);
-    }
-
-    @Override public String toString() {
-      return "ContainerRequest::getHeaderString";
-    }
-  };
-
   final Tracer tracer;
-  final HttpServerHandler<ContainerRequest, RequestEvent> serverHandler;
-  final TraceContext.Extractor<ContainerRequest> extractor;
+  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
   final EventParser parser;
 
   @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
     tracer = httpTracing.tracing().tracer();
-    serverHandler = HttpServerHandler.create(httpTracing, new Adapter());
-    extractor = httpTracing.tracing().propagation().extractor(GETTER);
+    handler = HttpServerHandler.create(httpTracing);
     this.parser = parser;
   }
 
@@ -66,56 +50,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     // only onRequest is used
   }
 
-  @Override
-  public RequestEventListener onRequest(RequestEvent requestEvent) {
-    if (requestEvent.getType() == RequestEvent.Type.START) {
-      Span span = serverHandler.handleReceive(extractor, requestEvent.getContainerRequest());
-      return new TracingRequestEventListener(span, tracer.withSpanInScope(span));
-    }
-    return null;
-  }
-
-  static final class Adapter extends HttpServerAdapter<ContainerRequest, RequestEvent> {
-
-    @Override public String method(ContainerRequest request) {
-      return request.getMethod();
-    }
-
-    @Override public String path(ContainerRequest request) {
-      String result = request.getPath(false);
-      return result.indexOf('/') == 0 ? result : "/" + result;
-    }
-
-    @Override public String url(ContainerRequest request) {
-      return request.getUriInfo().getRequestUri().toString();
-    }
-
-    @Override public String requestHeader(ContainerRequest request, String name) {
-      return request.getHeaderString(name);
-    }
-
-    @Override public String methodFromResponse(RequestEvent event) {
-      return event.getContainerRequest().getMethod();
-    }
-
-    @Override public String route(RequestEvent event) {
-      return (String) event.getContainerRequest().getProperty("http.route");
-    }
-
-    @Override @Nullable public Integer statusCode(RequestEvent response) {
-      int result = statusCodeAsInt(response);
-      return result != 0 ? result : null;
-    }
-
-    @Override public int statusCodeAsInt(RequestEvent event) {
-      ContainerResponse response = event.getContainerResponse();
-      if (response == null) return 0;
-      return response.getStatus();
-    }
-
-    // NOTE: this currently lacks remote socket parsing even though some platforms might work. For
-    // example, org.glassfish.grizzly.http.server.Request.getRemoteAddr or
-    // HttpServletRequest.getRemoteAddr
+  @Override public RequestEventListener onRequest(RequestEvent event) {
+    if (event.getType() != RequestEvent.Type.START) return null;
+    Span span = handler.handleReceive(new HttpServerRequest(event.getContainerRequest()));
+    return new TracingRequestEventListener(span, tracer.withSpanInScope(span));
   }
 
   class TracingRequestEventListener implements RequestEventListener {
@@ -171,7 +109,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           if (maybeHttpRoute != null) {
             event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
           }
-          serverHandler.handleSend(event, event.getException(), span);
+          handler.handleSend(new HttpServerResponse(event), event.getException(), span);
           break;
         default:
       }
@@ -181,5 +119,64 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   static boolean async(RequestEvent event) {
     return event.getUriInfo().getMatchedResourceMethod().isManagedAsyncDeclared()
       || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared();
+  }
+
+  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+    final ContainerRequest delegate;
+
+    HttpServerRequest(ContainerRequest delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public String method() {
+      return delegate.getMethod();
+    }
+
+    @Override public String path() {
+      String result = delegate.getPath(false);
+      return result.indexOf('/') == 0 ? result : "/" + result;
+    }
+
+    @Override public String url() {
+      return delegate.getUriInfo().getRequestUri().toString();
+    }
+
+    @Override public String header(String name) {
+      return delegate.getHeaderString(name);
+    }
+
+    // NOTE: this currently lacks remote socket parsing even though some platforms might work. For
+    // example, org.glassfish.grizzly.http.server.Request.getRemoteAddr or
+    // HttpServletRequest.getRemoteAddr
+  }
+
+  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+    final RequestEvent delegate;
+
+    HttpServerResponse(RequestEvent delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public String method() {
+      return delegate.getContainerRequest().getMethod();
+    }
+
+    @Override public String route() {
+      return (String) delegate.getContainerRequest().getProperty("http.route");
+    }
+
+    @Override public int statusCode() {
+      ContainerResponse response = delegate.getContainerResponse();
+      if (response == null) return 0;
+      return response.getStatus();
+    }
   }
 }
