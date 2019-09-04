@@ -23,7 +23,14 @@ import brave.internal.Nullable;
  * @since 5.7
  */
 public abstract class HttpServerResponse {
-  /** Returns the underlying http response object. */
+  /**
+   * Returns the underlying http response object. Ex. {@code javax.servlet.http.HttpServletResponse}
+   *
+   * <p>Note: Some implementations are composed of multiple types, such as a response and an object
+   * representing the matched route. Moreover, an implementation may change the type returned due to
+   * refactoring. Unless you control the implementation, cast carefully (ex using {@code instance
+   * of}) instead of presuming a specific type will always be returned.
+   */
   public abstract Object unwrap();
 
   /** @see HttpAdapter#methodFromResponse(Object) */
