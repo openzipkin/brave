@@ -39,10 +39,11 @@ public class HttpClientHandlerTest {
   List<Span> spans = new ArrayList<>();
   HttpTracing httpTracing;
   HttpSampler sampler = HttpSampler.TRACE_ID;
-  @Mock HttpClientAdapter<Object, Object> adapter;
-  @Mock TraceContext.Injector<Object> injector;
-  Object request = new Object();
-  HttpClientHandler<Object, Object> handler;
+  @Mock HttpClientAdapter<HttpClientRequest, HttpClientResponse> adapter;
+  @Mock TraceContext.Injector<HttpClientRequest> injector;
+  @Mock HttpClientRequest request;
+  @Mock HttpClientResponse response;
+  HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   @Before public void init() {
     httpTracing = HttpTracing.newBuilder(
@@ -112,7 +113,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_injectsTheTraceContext_onTheCarrier() {
-    Object customCarrier = new Object();
+    HttpClientRequest customCarrier = mock(HttpClientRequest.class);
     TraceContext context = handler.handleSend(injector, customCarrier, request).context();
 
     verify(injector).inject(context, customCarrier);
@@ -134,5 +135,18 @@ public class HttpClientHandlerTest {
     assertThat(spans)
       .extracting(Span::remoteServiceName)
       .containsNull();
+  }
+
+  @Test public void externalTimestamps() {
+    List<zipkin2.Span> spans = new ArrayList<>();
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
+
+    try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
+      handler = HttpClientHandler.create(HttpTracing.create(tracing));
+      brave.Span span = handler.handleSend(request);
+      handler.handleReceive(response, null, span);
+    }
+    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 }

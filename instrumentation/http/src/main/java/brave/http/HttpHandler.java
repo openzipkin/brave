@@ -40,7 +40,13 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
     }
 
     // all of the above parsing happened before a timestamp on the span
-    return span.start();
+    long timestamp = adapter.startTimestamp(request);
+    if (timestamp == 0L) {
+      span.start();
+    } else {
+      span.start(timestamp);
+    }
+    return span;
   }
 
   /** parses remote IP:port and tags while the span is in scope (for logging for example) */
@@ -48,6 +54,7 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
 
   void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
+    long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
     try {
       Scope ws = currentTraceContext.maybeScope(span.context());
       try {
@@ -56,15 +63,19 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
         ws.close(); // close the scope before finishing the span
       }
     } finally {
-      finishInNullScope(span);
+      finishInNullScope(span, finishTimestamp);
     }
   }
 
   /** Clears the scope to prevent remote reporters from accidentally tracing */
-  void finishInNullScope(Span span) {
+  void finishInNullScope(Span span, long timestamp) {
     Scope ws = currentTraceContext.maybeScope(null);
     try {
-      span.finish();
+      if (timestamp == 0L) {
+        span.finish();
+      } else {
+        span.finish(timestamp);
+      }
     } finally {
       ws.close();
     }

@@ -57,7 +57,8 @@ public class HttpParser {
   // prevent basic HTTP info from being visible. A cost of this is another tag, but it is small with
   // very limited cardinality. Moreover, users who care strictly about size can override this.
   public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-    customizer.name(spanName(adapter, req));
+    String name = spanName(adapter, req);
+    if (name != null) customizer.name(name);
     String method = adapter.method(req);
     if (method != null) customizer.tag("http.method", method);
     String path = adapter.path(req);

@@ -55,6 +55,11 @@ public abstract class HttpClientRequest {
   /** @see HttpAdapter#requestHeader(Object, String) */
   @Nullable public abstract String header(String name);
 
+  /** @see HttpAdapter#startTimestamp(Object) */
+  public long startTimestamp() {
+    return 0L;
+  }
+
   /** @see #SETTER */
   @Nullable public abstract void header(String name, String value);
 
