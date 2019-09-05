@@ -54,6 +54,7 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
 
   void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
+    long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
     try {
       Scope ws = currentTraceContext.maybeScope(span.context());
       try {
@@ -62,7 +63,7 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
         ws.close(); // close the scope before finishing the span
       }
     } finally {
-      finishInNullScope(span, adapter.finishTimestamp(response));
+      finishInNullScope(span, finishTimestamp);
     }
   }
 
