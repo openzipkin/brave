@@ -20,9 +20,18 @@ import brave.propagation.Propagation.Setter;
  * Marks an interface for use in {@link HttpClientHandler#handleSend(HttpClientRequest)}. This gives
  * a standard type to consider when parsing an outgoing context.
  *
+ * <h3>Why does this extend {@link HttpClientAdapter}?</h3>
+ *
+ * <p>We'd normally expect {@link HttpClientRequest} and {@link HttpClientResponse} to be used
+ * directly, so not need an adapter. However, doing so would imply duplicating types that use
+ * adapters, including {@link HttpClientParser} and {@link HttpSampler}. Retrofiting this as an
+ * adapter allows this type to be used in existing parsers and samplers, avoiding code duplication.
+ *
+ * @see HttpClientResponse
  * @since 5.7
  */
-public abstract class HttpClientRequest {
+// Void type used to force generics to fail handling the wrong side
+public abstract class HttpClientRequest extends HttpClientAdapter<Object, Void> {
   static final Setter<HttpClientRequest, String> SETTER = new Setter<HttpClientRequest, String>() {
     @Override public void put(HttpClientRequest carrier, String key, String value) {
       carrier.header(key, value);
@@ -65,5 +74,64 @@ public abstract class HttpClientRequest {
 
   @Override public String toString() {
     return unwrap().toString();
+  }
+
+  // Begin request adapter methods
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String method(Object request) {
+    if (request == unwrap()) return method();
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String url(Object request) {
+    if (request == unwrap()) return url();
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String requestHeader(Object request, String name) {
+    if (request == unwrap()) return header(name);
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String path(Object request) {
+    if (request == unwrap()) return path();
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final long startTimestamp(Object request) {
+    if (request == unwrap()) return startTimestamp();
+    return 0L;
+  }
+
+  // Skip response adapter methods
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String methodFromResponse(Void response) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String route(Void response) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final int statusCodeAsInt(Void response) {
+    return 0;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final Integer statusCode(Void response) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final long finishTimestamp(Void response) {
+    return 0L;
   }
 }

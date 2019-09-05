@@ -20,9 +20,11 @@ import brave.internal.Nullable;
  * Marks an interface for use in {@link HttpClientHandler#handleReceive(Object, Throwable, Span)}.
  * This gives a standard type to consider when parsing an incoming context.
  *
+ * @see HttpClientRequest
  * @since 5.7
  */
-public abstract class HttpClientResponse {
+// Void type used to force generics to fail handling the wrong side
+public abstract class HttpClientResponse extends HttpClientAdapter<Void, Object> {
   /**
    * Returns the underlying http response object. Ex. {@code org.apache.http.HttpResponse}
    *
@@ -53,5 +55,64 @@ public abstract class HttpClientResponse {
 
   @Override public String toString() {
     return unwrap().toString();
+  }
+
+  // Skip request adapter methods
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String method(Void request) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String path(Void request) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String url(Void request) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String requestHeader(Void request, String name) {
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final long startTimestamp(Void request) {
+    return 0L;
+  }
+
+  // Begin response adapter methods
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String methodFromResponse(Object response) {
+    if (response == unwrap()) return method();
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final String route(Object response) {
+    if (response == unwrap()) return route();
+    return null;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final Integer statusCode(Object response) {
+    int result = statusCodeAsInt(response);
+    return result == 0 ? null : result;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final int statusCodeAsInt(Object response) {
+    if (response == unwrap()) return statusCode();
+    return 0;
+  }
+
+  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
+  @Deprecated @Override public final long finishTimestamp(Object response) {
+    if (response == unwrap()) return finishTimestamp();
+    return 0L;
   }
 }

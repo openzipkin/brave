@@ -40,11 +40,11 @@ public class HttpHandlerTest {
   @Mock brave.Span span;
   @Mock SpanCustomizer spanCustomizer;
   Object request = new Object(), response = new Object();
-  HttpHandler<Object, Object, HttpAdapter<Object, Object>> handler;
+  HttpHandler handler;
 
   @Before public void init() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override void parseRequest(Object request, Span span) {
+    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
+      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
       }
     };
     when(span.context()).thenReturn(context);
@@ -54,29 +54,29 @@ public class HttpHandlerTest {
   @Test public void handleStart_nothingOnNoop_success() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleStart(request, span);
+    handler.handleStart(adapter, request, span);
 
     verify(span, never()).start();
   }
 
   @Test public void handleStart_parsesTagsInScope() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override void parseRequest(Object request, Span span) {
+    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
+      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
         assertThat(currentTraceContext.get()).isNotNull();
       }
     };
 
-    handler.handleStart(request, span);
+    handler.handleStart(adapter, request, span);
   }
 
   @Test public void handleStart_addsRemoteEndpointWhenParsed() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser()) {
-      @Override void parseRequest(Object request, Span span) {
+    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
+      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
         span.remoteIpAndPort("1.2.3.4", 0);
       }
     };
 
-    handler.handleStart(request, span);
+    handler.handleStart(adapter, request, span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 0);
   }
@@ -84,7 +84,7 @@ public class HttpHandlerTest {
   @Test public void handleFinish_nothingOnNoop_success() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleFinish(response, null, span);
+    handler.handleFinish(adapter, response, null, span);
 
     verify(span, never()).finish();
   }
@@ -92,7 +92,7 @@ public class HttpHandlerTest {
   @Test public void handleFinish_nothingOnNoop_error() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleFinish(null, new RuntimeException("drat"), span);
+    handler.handleFinish(adapter, null, new RuntimeException("drat"), span);
 
     verify(span, never()).finish();
   }
@@ -101,7 +101,7 @@ public class HttpHandlerTest {
     when(adapter.statusCodeAsInt(response)).thenReturn(404);
     when(span.customizer()).thenReturn(spanCustomizer);
 
-    handler.handleFinish(response, null, span);
+    handler.handleFinish(adapter, response, null, span);
 
     verify(spanCustomizer).tag("http.status_code", "404");
     verify(spanCustomizer).tag("error", "404");
@@ -109,17 +109,17 @@ public class HttpHandlerTest {
   }
 
   @Test public void handleFinish_parsesTagsInScope() {
-    handler = new HttpHandler(currentTraceContext, adapter, new HttpParser() {
+    handler = new HttpHandler(currentTraceContext, new HttpParser() {
       @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
         SpanCustomizer customizer) {
         assertThat(currentTraceContext.get()).isNotNull();
       }
     }) {
-      @Override void parseRequest(Object request, Span span) {
+      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
       }
     };
 
-    handler.handleFinish(response, null, span);
+    handler.handleFinish(adapter, response, null, span);
   }
 
   @Test public void handleFinish_finishesWhenSpanNotInScope() {
@@ -128,7 +128,7 @@ public class HttpHandlerTest {
       return null;
     }).when(span).finish();
 
-    handler.handleFinish(response, null, span);
+    handler.handleFinish(adapter, response, null, span);
   }
 
   @Test public void handleFinish_finishesWhenSpanNotInScope_clearingIfNecessary() {
@@ -141,7 +141,7 @@ public class HttpHandlerTest {
     when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
 
     try {
-      handler.handleFinish(response, null, span);
+      handler.handleFinish(adapter, response, null, span);
       failBecauseExceptionWasNotThrown(RuntimeException.class);
     } catch (RuntimeException e) {
       verify(span).finish();

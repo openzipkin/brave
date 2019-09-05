@@ -18,23 +18,20 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 
-abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
-
+abstract class HttpHandler {
   final CurrentTraceContext currentTraceContext;
-  final A adapter;
   final HttpParser parser;
 
-  HttpHandler(CurrentTraceContext currentTraceContext, A adapter, HttpParser parser) {
+  HttpHandler(CurrentTraceContext currentTraceContext, HttpParser parser) {
     this.currentTraceContext = currentTraceContext;
-    this.adapter = adapter;
     this.parser = parser;
   }
 
-  Span handleStart(Req request, Span span) {
+  <Req> Span handleStart(HttpAdapter<Req, ?> adapter, Req request, Span span) {
     if (span.isNoop()) return span;
     Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      parseRequest(request, span);
+      parseRequest(adapter, request, span);
     } finally {
       ws.close();
     }
@@ -50,9 +47,10 @@ abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
   }
 
   /** parses remote IP:port and tags while the span is in scope (for logging for example) */
-  abstract void parseRequest(Req request, Span span);
+  abstract <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span);
 
-  void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
+  <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
+    @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
     long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
     try {
