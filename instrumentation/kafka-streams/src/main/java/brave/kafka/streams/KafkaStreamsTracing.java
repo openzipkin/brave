@@ -29,16 +29,13 @@ import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Predicate;
-import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.kstream.ValueMapperWithKey;
-import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
-import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 
@@ -98,13 +95,13 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .process(kafkaStreamsTracing.processor("my-processor", myProcessor);
+   *        .process(kafkaStreamsTracing.processor("my-processor", myProcessorSupplier);
    * }</pre>
    *
    * @see TracingKafkaClientSupplier
    */
-  public <K, V> ProcessorSupplier<K, V> processor(String spanName, Processor<K, V> processor) {
-    return new TracingProcessorSupplier<>(this, spanName, processor);
+  public <K, V> ProcessorSupplier<K, V> processor(String spanName, ProcessorSupplier<K, V> processorSupplier) {
+    return new TracingProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
   /**
@@ -114,13 +111,13 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.transformer("my-transformer", myTransformer)
+   *        .transform(kafkaStreamsTracing.transformer("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
    */
   public <K, V, R> TransformerSupplier<K, V, R> transformer(String spanName,
-    Transformer<K, V, R> transformer) {
-    return new TracingTransformerSupplier<>(this, spanName, transformer);
+    TransformerSupplier<K, V, R> transformerSupplier) {
+    return new TracingTransformerSupplier<>(this, spanName, transformerSupplier);
   }
 
   /**
@@ -130,13 +127,13 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transformValues(kafkaStreamsTracing.valueTransformer("my-transformer", myTransformer)
+   *        .transformValues(kafkaStreamsTracing.valueTransformer("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
    */
   public <V, VR> ValueTransformerSupplier<V, VR> valueTransformer(String spanName,
-    ValueTransformer<V, VR> valueTransformer) {
-    return new TracingValueTransformerSupplier<>(this, spanName, valueTransformer);
+    ValueTransformerSupplier<V, VR> valueTransformerSupplier) {
+    return new TracingValueTransformerSupplier<>(this, spanName, valueTransformerSupplier);
   }
 
   /**
@@ -146,14 +143,14 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transformValues(kafkaStreamsTracing.valueTransformerWithKey("my-transformer", myTransformer)
+   *        .transformValues(kafkaStreamsTracing.valueTransformerWithKey("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
    */
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(
     String spanName,
-    ValueTransformerWithKey<K, V, VR> valueTransformerWithKey) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName, valueTransformerWithKey);
+    ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKeySupplier) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, valueTransformerWithKeySupplier);
   }
 
   /**
@@ -168,7 +165,8 @@ public final class KafkaStreamsTracing {
    * }</pre>
    */
   public <K, V> ProcessorSupplier<K, V> foreach(String spanName, ForeachAction<K, V> action) {
-    return new TracingProcessorSupplier<>(this, spanName, new AbstractProcessor<K, V>() {
+    return new TracingProcessorSupplier<>(this, spanName, () ->
+      new AbstractProcessor<K, V>() {
       @Override public void process(K key, V value) {
         action.apply(key, value);
       }
@@ -189,7 +187,7 @@ public final class KafkaStreamsTracing {
    */
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> peek(String spanName,
     ForeachAction<K, V> action) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, () ->
       new AbstractTracingValueTransformerWithKey<K, V, V>() {
         @Override public V transform(K key, V value) {
           action.apply(key, value);
@@ -218,7 +216,7 @@ public final class KafkaStreamsTracing {
    * }</pre>
    */
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, () ->
       new AbstractTracingValueTransformerWithKey<K, V, V>() {
         @Override public V transform(K key, V value) {
           return value;
@@ -240,7 +238,7 @@ public final class KafkaStreamsTracing {
    */
   public <K, V, KR, VR> TransformerSupplier<K, V, KeyValue<KR, VR>> map(String spanName,
     KeyValueMapper<K, V, KeyValue<KR, VR>> mapper) {
-    return new TracingTransformerSupplier<>(this, spanName,
+    return new TracingTransformerSupplier<>(this, spanName, () ->
       new AbstractTracingTransformer<K, V, KeyValue<KR, VR>>() {
         @Override public KeyValue<KR, VR> transform(K key, V value) {
           return mapper.apply(key, value);
@@ -356,7 +354,7 @@ public final class KafkaStreamsTracing {
    */
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> mapValues(String spanName,
     ValueMapperWithKey<K, V, VR> mapper) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, () ->
       new AbstractTracingValueTransformerWithKey<K, V, VR>() {
         @Override public VR transform(K readOnlyKey, V value) {
           return mapper.apply(readOnlyKey, value);
@@ -378,7 +376,7 @@ public final class KafkaStreamsTracing {
    */
   public <V, VR> ValueTransformerSupplier<V, VR> mapValues(String spanName,
     ValueMapper<V, VR> mapper) {
-    return new TracingValueTransformerSupplier<>(this, spanName,
+    return new TracingValueTransformerSupplier<>(this, spanName, () ->
       new AbstractTracingValueTransformer<V, VR>() {
         @Override public VR transform(V value) {
           return mapper.apply(value);

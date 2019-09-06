@@ -191,17 +191,17 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
-        "forward-1",
-        new AbstractProcessor<String, String>() {
-          @Override
-          public void process(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+        "forward-1", () ->
+          new AbstractProcessor<String, String>() {
+            @Override
+            public void process(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
             }
-          }
-        });
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
 
@@ -634,17 +634,17 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
-        "forward-1",
-        new AbstractProcessor<String, String>() {
-          @Override
-          public void process(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+        "forward-1", () ->
+          new AbstractProcessor<String, String>() {
+            @Override
+            public void process(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
             }
-          }
-        });
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
 
@@ -674,29 +674,29 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "transformer-1",
-        new Transformer<String, String, KeyValue<String, String>>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public KeyValue<String, String> transform(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return KeyValue.pair(key, value);
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return KeyValue.pair(key, value);
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -731,29 +731,29 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "double-transformer-1",
-        new Transformer<String, String, Iterable<KeyValue<String, String>>>() {
-          ProcessorContext context;
+        "double-transformer-1", () ->
+          new Transformer<String, String, Iterable<KeyValue<String, String>>>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public Iterable<KeyValue<String, String>> transform(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return Arrays.asList(KeyValue.pair(key, value), KeyValue.pair(key, value));
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public Iterable<KeyValue<String, String>> transform(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return Arrays.asList(KeyValue.pair(key, value), KeyValue.pair(key, value));
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -793,29 +793,29 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
-        "transformer-1",
-        new Transformer<String, String, KeyValue<String, String>>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public KeyValue<String, String> transform(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return KeyValue.pair(key, value);
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return KeyValue.pair(key, value);
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -847,29 +847,29 @@ public class ITKafkaStreamsTracing {
   public void should_create_spans_from_stream_with_tracing_valueTransformer() throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
-        "transformer-1",
-        new ValueTransformer<String, String>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new ValueTransformer<String, String>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public String transform(String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return value;
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public String transform(String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return value;
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -1015,29 +1015,29 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
-        "transformer-1",
-        new ValueTransformer<String, String>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new ValueTransformer<String, String>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public String transform(String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return value;
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public String transform(String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return value;
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -1070,29 +1070,29 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
-        "transformer-1",
-        new ValueTransformerWithKey<String, String, String>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new ValueTransformerWithKey<String, String, String>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public String transform(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return value;
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public String transform(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return value;
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
@@ -1127,29 +1127,29 @@ public class ITKafkaStreamsTracing {
     throws Exception {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
-        "transformer-1",
-        new ValueTransformerWithKey<String, String, String>() {
-          ProcessorContext context;
+        "transformer-1", () ->
+          new ValueTransformerWithKey<String, String, String>() {
+            ProcessorContext context;
 
-          @Override
-          public void init(ProcessorContext context) {
-            this.context = context;
-          }
-
-          @Override
-          public String transform(String key, String value) {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
             }
-            return value;
-          }
 
-          @Override
-          public void close() {
-          }
-        });
+            @Override
+            public String transform(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              return value;
+            }
+
+            @Override
+            public void close() {
+            }
+          });
 
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";

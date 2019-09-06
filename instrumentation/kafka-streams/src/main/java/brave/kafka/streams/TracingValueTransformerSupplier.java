@@ -19,18 +19,18 @@ import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 class TracingValueTransformerSupplier<V, VR> implements ValueTransformerSupplier<V, VR> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
-  final ValueTransformer<V, VR> delegateTransformer;
+  final ValueTransformerSupplier<V, VR> delegateTransformerSupplier;
 
   TracingValueTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
     String spanName,
-    ValueTransformer<V, VR> delegateTransformer) {
+    ValueTransformerSupplier<V, VR> delegateTransformerSupplier) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
-    this.delegateTransformer = delegateTransformer;
+    this.delegateTransformerSupplier = delegateTransformerSupplier;
   }
 
   /** This wraps transform method to enable tracing. */
   @Override public ValueTransformer<V, VR> get() {
-    return new TracingValueTransformer<>(kafkaStreamsTracing, spanName, delegateTransformer);
+    return new TracingValueTransformer<>(kafkaStreamsTracing, spanName, delegateTransformerSupplier.get());
   }
 }

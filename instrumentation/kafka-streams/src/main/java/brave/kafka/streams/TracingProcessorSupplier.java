@@ -20,18 +20,18 @@ class TracingProcessorSupplier<K, V> implements ProcessorSupplier<K, V> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
-  final Processor<K, V> delegateProcessor;
+  final ProcessorSupplier<K, V> delegateProcessorSupplier;
 
   TracingProcessorSupplier(KafkaStreamsTracing kafkaStreamsTracing,
     String spanName,
-    Processor<K, V> delegateProcessor) {
+    ProcessorSupplier<K, V> processorSupplier) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
-    this.delegateProcessor = delegateProcessor;
+    this.delegateProcessorSupplier = processorSupplier;
   }
 
   /** This wraps process method to enable tracing. */
   @Override public Processor<K, V> get() {
-    return new TracingProcessor<>(kafkaStreamsTracing, spanName, delegateProcessor);
+    return new TracingProcessor<>(kafkaStreamsTracing, spanName, delegateProcessorSupplier.get());
   }
 }

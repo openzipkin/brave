@@ -65,76 +65,76 @@ abstract class BaseTracingTest {
 
   ProcessorSupplier<String, String> fakeProcessorSupplier =
     kafkaStreamsTracing.processor(
-      "forward-1",
-      new AbstractProcessor<String, String>() {
-        @Override
-        public void process(String key, String value) {
-          context().forward(key, value);
-        }
-      });
+      "forward-1", () ->
+        new AbstractProcessor<String, String>() {
+          @Override
+          public void process(String key, String value) {
+            context().forward(key, value);
+          }
+        });
 
   TransformerSupplier<String, String, KeyValue<String, String>> fakeTransformerSupplier =
     kafkaStreamsTracing.transformer(
-      "transformer-1",
-      new Transformer<String, String, KeyValue<String, String>>() {
-        ProcessorContext context;
+      "transformer-1", () ->
+        new Transformer<String, String, KeyValue<String, String>>() {
+          ProcessorContext context;
 
-        @Override
-        public void init(ProcessorContext context) {
-          this.context = context;
-        }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-        @Override
-        public KeyValue<String, String> transform(String key, String value) {
-          return KeyValue.pair(key, value);
-        }
+          @Override
+          public KeyValue<String, String> transform(String key, String value) {
+            return KeyValue.pair(key, value);
+          }
 
-        @Override
-        public void close() {
-        }
-      });
+          @Override
+          public void close() {
+          }
+        });
 
   ValueTransformerSupplier<String, String> fakeValueTransformerSupplier =
     kafkaStreamsTracing.valueTransformer(
-      "value-transformer-1",
-      new ValueTransformer<String, String>() {
-        ProcessorContext context;
+      "value-transformer-1", () ->
+        new ValueTransformer<String, String>() {
+          ProcessorContext context;
 
-        @Override
-        public void init(ProcessorContext context) {
-          this.context = context;
-        }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-        @Override
-        public String transform(String value) {
-          return value;
-        }
+          @Override
+          public String transform(String value) {
+            return value;
+          }
 
-        @Override
-        public void close() {
-        }
-      });
+          @Override
+          public void close() {
+          }
+        });
 
   ValueTransformerWithKeySupplier<String, String, String> fakeValueTransformerWithKeySupplier =
     kafkaStreamsTracing.valueTransformerWithKey(
-      "value-transformer-1",
-      new ValueTransformerWithKey<String, String, String>() {
-        ProcessorContext context;
+      "value-transformer-1", () ->
+        new ValueTransformerWithKey<String, String, String>() {
+          ProcessorContext context;
 
-        @Override
-        public void init(ProcessorContext context) {
-          this.context = context;
-        }
+          @Override
+          public void init(ProcessorContext context) {
+            this.context = context;
+          }
 
-        @Override
-        public String transform(String key, String value) {
-          return value;
-        }
+          @Override
+          public String transform(String key, String value) {
+            return value;
+          }
 
-        @Override
-        public void close() {
-        }
-      });
+          @Override
+          public void close() {
+          }
+        });
 
   @After
   public void tearDown() {

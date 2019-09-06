@@ -20,18 +20,18 @@ class TracingValueTransformerWithKeySupplier<K, V, VR> implements
   ValueTransformerWithKeySupplier<K, V, VR> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
-  final ValueTransformerWithKey<K, V, VR> delegateTransformer;
+  final ValueTransformerWithKeySupplier<K, V, VR> delegateTransformerSupplier;
 
   TracingValueTransformerWithKeySupplier(KafkaStreamsTracing kafkaStreamsTracing,
     String spanName,
-    ValueTransformerWithKey<K, V, VR> delegateTransformer) {
+    ValueTransformerWithKeySupplier<K, V, VR> delegateTransformerSupplier) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
-    this.delegateTransformer = delegateTransformer;
+    this.delegateTransformerSupplier = delegateTransformerSupplier;
   }
 
   /** This wraps transform method to enable tracing. */
   @Override public ValueTransformerWithKey<K, V, VR> get() {
-    return new TracingValueTransformerWithKey<>(kafkaStreamsTracing, spanName, delegateTransformer);
+    return new TracingValueTransformerWithKey<>(kafkaStreamsTracing, spanName, delegateTransformerSupplier.get());
   }
 }
