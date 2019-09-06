@@ -44,35 +44,36 @@ import brave.sampler.Sampler;
  * @param <Resp> the native http response type of the client.
  * @since 4.3
  */
-public final class HttpClientHandler<Req, Resp>
-  extends HttpHandler<Req, Resp, HttpClientAdapter<Req, Resp>> {
-
+public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   /** @since 5.7 */
   public static HttpClientHandler<HttpClientRequest, HttpClientResponse> create(
     HttpTracing httpTracing) {
-    return new HttpClientHandler<>(httpTracing, HttpClientAdapter.LEGACY);
+    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
+    return new HttpClientHandler<>(httpTracing, null);
   }
 
   /** @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable. */
   @Deprecated
   public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
     HttpClientAdapter<Req, Resp> adapter) {
+    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
+    if (adapter == null) throw new NullPointerException("adapter == null");
     return new HttpClientHandler<>(httpTracing, adapter);
   }
 
   final Tracer tracer;
+  @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
   final HttpSampler httpSampler;
   @Nullable final String serverName;
   final Injector<HttpClientRequest> defaultInjector;
-  final HttpClientHandler<HttpClientRequest, HttpClientResponse> defaultHandler;
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
     super(
       httpTracing.tracing().currentTraceContext(),
-      adapter,
       httpTracing.clientParser()
     );
+    this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
     this.httpSampler = httpTracing.clientSampler();
@@ -80,9 +81,6 @@ public final class HttpClientHandler<Req, Resp>
     // The following allows us to add the method: handleSend(HttpClientRequest request) without
     // duplicating logic from the superclass or deprecated handleReceive methods.
     this.defaultInjector = httpTracing.tracing().propagation().injector(HttpClientRequest.SETTER);
-    this.defaultHandler = adapter == HttpClientAdapter.LEGACY // special casing prevents recursion
-      ? (HttpClientHandler<HttpClientRequest, HttpClientResponse>) this
-      : new HttpClientHandler<>(httpTracing, HttpClientAdapter.LEGACY);
   }
 
   /**
@@ -95,7 +93,13 @@ public final class HttpClientHandler<Req, Resp>
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
-    return handleSend(request, defaultHandler.nextSpan(request));
+    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
+    return handleSend(new HttpClientRequest.Adapter(request), nextSpan(adapter));
+  }
+
+  Span handleSend(HttpClientRequest.Adapter adapter, Span span) {
+    defaultInjector.inject(span.context(), adapter.delegate);
+    return handleStart(adapter, adapter.unwrapped, span);
   }
 
   /**
@@ -105,7 +109,8 @@ public final class HttpClientHandler<Req, Resp>
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request, Span span) {
-    return defaultHandler.handleSend(defaultInjector, request, request, span);
+    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
+    return handleSend(adapter, span);
   }
 
   /**
@@ -156,10 +161,10 @@ public final class HttpClientHandler<Req, Resp>
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
-    return handleStart(request, span);
+    return handleStart(adapter, request, span);
   }
 
-  @Override void parseRequest(Req request, Span span) {
+  @Override <Req1> void parseRequest(HttpAdapter<Req1, ?> adapter, Req1 request, Span span) {
     span.kind(Span.Kind.CLIENT);
     if (serverName != null) span.remoteServiceName(serverName);
     parser.request(adapter, request, span.customizer());
@@ -172,7 +177,18 @@ public final class HttpClientHandler<Req, Resp>
    * @since 4.4
    */
   public Span nextSpan(Req request) {
+    // nextSpan can be called independently when interceptors control lifecycle directly. In these
+    // cases, it is possible to have HttpClientRequest as an argument.
+    if (request instanceof HttpClientRequest) {
+      return nextSpan(new HttpClientRequest.Adapter((HttpClientRequest) request));
+    }
     Sampler override = httpSampler.toSampler(adapter, request, sampler);
+    return tracer.withSampler(override).nextSpan();
+  }
+
+  // Special-cased for HttpClientRequest type which is also an adapter
+  Span nextSpan(HttpClientRequest.Adapter adapter) {
+    Sampler override = httpSampler.toSampler(adapter, adapter.unwrapped, sampler);
     return tracer.withSampler(override).nextSpan();
   }
 
@@ -185,6 +201,12 @@ public final class HttpClientHandler<Req, Resp>
    * @see HttpClientParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    handleFinish(response, error, span);
+    if (response instanceof HttpClientResponse) {
+      HttpClientResponse.Adapter adapter =
+        new HttpClientResponse.Adapter((HttpClientResponse) response);
+      handleFinish(adapter, adapter.unwrapped, error, span);
+    } else {
+      handleFinish(adapter, response, error, span);
+    }
   }
 }

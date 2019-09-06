@@ -25,6 +25,32 @@ regardless of purpose, whether that is primary or secondary sampling, or tag
 parsing.
 
 All of this led to the introduction of `HttpClientRequest`, `HttpClientResponse`,
-`HttpServerRequest` and `HttpServerResponse` types in Brave 5.7, along with
-`HttpClientAdapter.LEGACY` and `HttpServerAdapter.LEGACY` which allows integration with existing
-sampler and parser code.
+`HttpServerRequest` and `HttpServerResponse` types in Brave 5.7.
+
+### Backported Adapters
+Our new types like `HttpServerRequest` do not need adapters as they expose
+fields like `url()` directly. However, since Brave 4, types such as
+`HttpServerParser` and `HttpSampler` have been documented and exposed to users
+as a function of an adapter and an underlying type (ex `HttpServletRequest`).
+
+Ex. `HttpClientParser.request(adapter, req, span)`
+```java
+<Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer span);
+```
+
+In order to integrate with these, and reduce code duplication, we backported
+`HttpClientHandler` and `HttpServerHandler` to use special adapters which wrap
+the new default types as an adapter. Call sites, like
+`parser.request(adapter, request, delegate)`, receive that adapter and the
+result of `unwrap()` as the request or response parameter. This allows existing
+parsers, that received `HttpServletRequest` for example, to continue to receive
+the same parameters and not break.
+
+A small design decision was made to incur an extra allocation to implement
+adapters via wrapping as opposed to subclassing. The rationale is that one
+extra allocation of what is often thousands is not a big deal vs the confusion
+of adding more surface to the public api of the new types like
+`HttpServerRequest`. For example, if we had `HttpServerRequest` implement
+`HttpServerAdapter`, when users look at public methods exposed, they would see
+all of the public methods defined in the adapter. This would cause confusion,
+something worse than adding an object allocation on these paths.

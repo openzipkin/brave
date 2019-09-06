@@ -21,6 +21,7 @@ import brave.propagation.Propagation.Getter;
  * Marks an interface for use in {@link HttpServerHandler#handleReceive(HttpServerRequest)}. This
  * gives a standard type to consider when parsing an incoming context.
  *
+ * @see HttpServerResponse
  * @since 5.7
  */
 public abstract class HttpServerRequest {
@@ -72,6 +73,98 @@ public abstract class HttpServerRequest {
   }
 
   @Override public String toString() {
-    return unwrap().toString();
+    // unwrap() returning null is a bug, but don't NPE during toString()
+    return "HttpServerRequest{" + unwrap() + "}";
+  }
+
+  /**
+   * <h3>Why do we need an {@link HttpServerAdapter}?</h3>
+   *
+   * <p>We'd normally expect {@link HttpServerRequest} and {@link HttpServerResponse} to be used
+   * directly, so not need an adapter. However, doing so would imply duplicating types that use
+   * adapters, including {@link HttpServerParser} and {@link HttpSampler}. An adapter allows this
+   * type to be used in existing parsers and samplers, avoiding code duplication.
+   */
+  // Intentionally hidden; Void type used to force generics to fail handling the wrong side
+  static final class Adapter extends brave.http.HttpServerAdapter<Object, Void> {
+    final HttpServerRequest delegate;
+    final Object unwrapped;
+
+    Adapter(HttpServerRequest delegate) {
+      if (delegate == null) throw new NullPointerException("delegate == null");
+      this.delegate = delegate;
+      this.unwrapped = delegate.unwrap();
+      if (unwrapped == null) throw new NullPointerException("delegate.unwrap() == null");
+    }
+
+    @Override public final boolean parseClientIpAndPort(Object req, Span span) {
+      if (req == unwrapped) {
+        if (parseClientIpFromXForwardedFor(req, span)) return true;
+        return delegate.parseClientIpAndPort(span);
+      }
+      return false;
+    }
+
+    @Override public final String method(Object request) {
+      if (request == unwrapped) return delegate.method();
+      return null;
+    }
+
+    @Override public final String url(Object request) {
+      if (request == unwrapped) return delegate.url();
+      return null;
+    }
+
+    @Override public final String requestHeader(Object request, String name) {
+      if (request == unwrapped) return delegate.header(name);
+      return null;
+    }
+
+    @Override public final String path(Object request) {
+      if (request == unwrapped) return delegate.path();
+      return null;
+    }
+
+    @Override public final long startTimestamp(Object request) {
+      if (request == unwrapped) return delegate.startTimestamp();
+      return 0L;
+    }
+
+    // Skip response adapter methods
+
+    @Override public final String methodFromResponse(Void response) {
+      return null;
+    }
+
+    @Override public final String route(Void response) {
+      return null;
+    }
+
+    @Override public final int statusCodeAsInt(Void response) {
+      return 0;
+    }
+
+    @Override public final Integer statusCode(Void response) {
+      return null;
+    }
+
+    @Override public final long finishTimestamp(Void response) {
+      return 0L;
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
+
+    @Override public boolean equals(Object o) { // implemented to make testing easier
+      if (o == this) return true;
+      if (!(o instanceof Adapter)) return false;
+      Adapter that = (Adapter) o;
+      return delegate == that.delegate;
+    }
+
+    @Override public int hashCode() {
+      return delegate.hashCode();
+    }
   }
 }

@@ -14,6 +14,7 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.propagation.SamplingFlags;
@@ -27,9 +28,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Answers.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -42,12 +47,17 @@ import static org.mockito.Mockito.when;
 public class HttpServerHandlerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracer tracer;
-  @Mock HttpSampler sampler;
-  @Mock HttpServerAdapter<HttpServerRequest, HttpServerResponse> adapter;
-  @Mock TraceContext.Extractor<HttpServerRequest> extractor;
-  @Mock HttpServerRequest request;
-  @Mock HttpServerResponse response;
-  HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  @Spy HttpSampler sampler = HttpSampler.TRACE_ID;
+  @Spy HttpServerParser parser = new HttpServerParser();
+  @Mock HttpServerAdapter<Object, Object> adapter;
+  @Mock TraceContext.Extractor<Object> extractor;
+  @Mock Object request;
+  @Mock Object response;
+  HttpServerHandler<Object, Object> handler;
+
+  @Mock(answer = CALLS_REAL_METHODS) HttpServerRequest defaultRequest;
+  @Mock(answer = CALLS_REAL_METHODS) HttpServerResponse defaultResponse;
+  HttpServerHandler<HttpServerRequest, HttpServerResponse> defaultHandler;
 
   @Before public void init() {
     HttpTracing httpTracing = HttpTracing.newBuilder(
@@ -55,12 +65,16 @@ public class HttpServerHandlerTest {
         .currentTraceContext(ThreadLocalCurrentTraceContext.create())
         .spanReporter(spans::add)
         .build()
-    ).serverSampler(sampler).build();
+    ).serverSampler(sampler).serverParser(parser).build();
     tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing, adapter);
 
     when(adapter.method(request)).thenReturn("GET");
     doCallRealMethod().when(adapter).parseClientIpAndPort(eq(request), isA(brave.Span.class));
+
+    when(defaultRequest.unwrap()).thenReturn(request);
+    when(defaultResponse.unwrap()).thenReturn(response);
+    defaultHandler = HttpServerHandler.create(httpTracing);
   }
 
   @After public void close() {
@@ -74,7 +88,7 @@ public class HttpServerHandlerTest {
     when(adapter.method(request)).thenReturn("GET");
     when(span.customizer()).thenReturn(spanCustomizer);
 
-    handler.handleStart(request, span);
+    handler.handleStart(adapter, request, span);
 
     verify(spanCustomizer).name("GET");
     verify(spanCustomizer).tag("http.method", "GET");
@@ -155,15 +169,41 @@ public class HttpServerHandlerTest {
   }
 
   @Test public void externalTimestamps() {
-    List<zipkin2.Span> spans = new ArrayList<>();
-    when(request.startTimestamp()).thenReturn(123000L);
-    when(response.finishTimestamp()).thenReturn(124000L);
+    when(defaultRequest.startTimestamp()).thenReturn(123000L);
+    when(defaultResponse.finishTimestamp()).thenReturn(124000L);
 
-    try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
-      handler = HttpServerHandler.create(HttpTracing.create(tracing));
-      Span span = handler.handleReceive(request);
-      handler.handleSend(response, null, span);
-    }
+    Span span = handler.handleReceive(defaultRequest);
+    defaultHandler.handleSend(defaultResponse, null, span);
+
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+  }
+
+  @Test public void handleReceive_samplerSeesUnwrappedType() {
+    defaultHandler.handleReceive(defaultRequest);
+
+    verify(sampler).trySample(new HttpServerRequest.Adapter(defaultRequest), request);
+  }
+
+  @Test public void handleReceive_parserSeesUnwrappedType() {
+    defaultHandler.handleReceive(defaultRequest);
+
+    HttpServerRequest.Adapter adapter = new HttpServerRequest.Adapter(defaultRequest);
+    verify(parser).request(eq(adapter), eq(request), any(SpanCustomizer.class));
+  }
+
+  @Test public void handleSend_parserSeesUnwrappedType() {
+    brave.Span span = defaultHandler.handleReceive(defaultRequest);
+    defaultHandler.handleSend(defaultResponse, null, span);
+
+    HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
+    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+  }
+
+  @Test public void handleSend_parserSeesUnwrappedType_oldHandler() {
+    brave.Span span = handler.handleReceive(defaultRequest);
+    handler.handleSend(defaultResponse, null, span);
+
+    HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
+    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
   }
 }
