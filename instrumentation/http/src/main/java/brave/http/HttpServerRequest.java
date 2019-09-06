@@ -61,7 +61,7 @@ public abstract class HttpServerRequest {
    * Override and return true when it is possible to parse the {@link Span#remoteIpAndPort(String,
    * int) remote IP and port} from the {@link #unwrap() delegate}. Defaults to false.
    *
-   * @see Adapter#parseClientIpAndPort(Object, Span)
+   * @see HttpServerAdapter#parseClientIpAndPort(Object, Span)
    */
   public boolean parseClientIpAndPort(Span span) {
     return false;
