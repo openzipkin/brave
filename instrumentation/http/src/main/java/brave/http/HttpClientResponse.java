@@ -23,8 +23,7 @@ import brave.internal.Nullable;
  * @see HttpClientRequest
  * @since 5.7
  */
-// Void type used to force generics to fail handling the wrong side
-public abstract class HttpClientResponse extends HttpClientAdapter<Void, Object> {
+public abstract class HttpClientResponse {
   /**
    * Returns the underlying http response object. Ex. {@code org.apache.http.HttpResponse}
    *
@@ -54,65 +53,91 @@ public abstract class HttpClientResponse extends HttpClientAdapter<Void, Object>
   }
 
   @Override public String toString() {
-    return unwrap().toString();
+    // unwrap() returning null is a bug, but don't NPE during toString()
+    return "HttpServerResponse{" + unwrap() + "}";
   }
 
-  // Skip request adapter methods
+  /**
+   * <h3>Why do we need an {@link HttpClientAdapter}?</h3>
+   *
+   * <p>We'd normally expect {@link HttpClientRequest} and {@link HttpClientResponse} to be used
+   * directly, so not need an adapter. However, doing so would imply duplicating types that use
+   * adapters, including {@link HttpClientParser} and {@link HttpSampler}. An adapter allows this
+   * type to be used in existing parsers and samplers, avoiding code duplication.
+   */
+  // Intentionally hidden; Void type used to force generics to fail handling the wrong side
+  static final class Adapter extends brave.http.HttpClientAdapter<Void, Object> {
+    final HttpClientResponse delegate;
+    final Object unwrapped;
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String method(Void request) {
-    return null;
-  }
+    Adapter(HttpClientResponse delegate) {
+      if (delegate == null) throw new NullPointerException("delegate == null");
+      this.delegate = delegate;
+      this.unwrapped = delegate.unwrap();
+      if (unwrapped == null) throw new NullPointerException("delegate.unwrap() == null");
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String path(Void request) {
-    return null;
-  }
+    // Skip request adapter methods
+    @Override public final String method(Void request) {
+      return null;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String url(Void request) {
-    return null;
-  }
+    @Override public final String path(Void request) {
+      return null;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String requestHeader(Void request, String name) {
-    return null;
-  }
+    @Override public final String url(Void request) {
+      return null;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final long startTimestamp(Void request) {
-    return 0L;
-  }
+    @Override public final String requestHeader(Void request, String name) {
+      return null;
+    }
 
-  // Begin response adapter methods
+    @Override public final long startTimestamp(Void request) {
+      return 0L;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String methodFromResponse(Object response) {
-    if (response == unwrap()) return method();
-    return null;
-  }
+    // Begin response adapter methods
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final String route(Object response) {
-    if (response == unwrap()) return route();
-    return null;
-  }
+    @Override public final String methodFromResponse(Object response) {
+      if (response == unwrapped) return delegate.method();
+      return null;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final Integer statusCode(Object response) {
-    int result = statusCodeAsInt(response);
-    return result == 0 ? null : result;
-  }
+    @Override public final String route(Object response) {
+      if (response == unwrapped) return delegate.route();
+      return null;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final int statusCodeAsInt(Object response) {
-    if (response == unwrap()) return statusCode();
-    return 0;
-  }
+    @Override public final Integer statusCode(Object response) {
+      int result = statusCodeAsInt(response);
+      return result == 0 ? null : result;
+    }
 
-  /** @deprecated this only exists to bridge this type to existing samplers and parsers. */
-  @Deprecated @Override public final long finishTimestamp(Object response) {
-    if (response == unwrap()) return finishTimestamp();
-    return 0L;
+    @Override public final int statusCodeAsInt(Object response) {
+      if (response == unwrapped) return delegate.statusCode();
+      return 0;
+    }
+
+    @Override public final long finishTimestamp(Object response) {
+      if (response == unwrapped) return delegate.finishTimestamp();
+      return 0L;
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
+
+    @Override public boolean equals(Object o) { // implemented to make testing easier
+      if (o == this) return true;
+      if (!(o instanceof Adapter)) return false;
+      Adapter that = (Adapter) o;
+      return delegate == that.delegate;
+    }
+
+    @Override public int hashCode() {
+      return delegate.hashCode();
+    }
   }
 }

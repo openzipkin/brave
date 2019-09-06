@@ -178,17 +178,32 @@ public class HttpServerHandlerTest {
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 
-  @Test public void defaultRequest_samplerSeesUnwrappedType() {
+  @Test public void handleReceive_samplerSeesUnwrappedType() {
     defaultHandler.handleReceive(defaultRequest);
 
-    verify(sampler).trySample(defaultRequest, request);
+    verify(sampler).trySample(new HttpServerRequest.Adapter(defaultRequest), request);
   }
 
-  @Test public void defaultRequest_parserSeesUnwrappedType() {
+  @Test public void handleReceive_parserSeesUnwrappedType() {
+    defaultHandler.handleReceive(defaultRequest);
+
+    HttpServerRequest.Adapter adapter = new HttpServerRequest.Adapter(defaultRequest);
+    verify(parser).request(eq(adapter), eq(request), any(SpanCustomizer.class));
+  }
+
+  @Test public void handleSend_parserSeesUnwrappedType() {
     brave.Span span = defaultHandler.handleReceive(defaultRequest);
     defaultHandler.handleSend(defaultResponse, null, span);
 
-    verify(parser).request(eq(defaultRequest), eq(request), any(SpanCustomizer.class));
-    verify(parser).response(eq(defaultResponse), eq(response), isNull(), any(SpanCustomizer.class));
+    HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
+    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+  }
+
+  @Test public void handleSend_parserSeesUnwrappedType_oldHandler() {
+    brave.Span span = handler.handleReceive(defaultRequest);
+    handler.handleSend(defaultResponse, null, span);
+
+    HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
+    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
   }
 }

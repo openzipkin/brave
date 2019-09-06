@@ -61,7 +61,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
 
   final Tracer tracer;
   final HttpSampler sampler;
-  @Nullable final HttpServerAdapter<Req, Resp> adapter; // null when using standard types
+  @Nullable final HttpServerAdapter<Req, Resp> adapter; // null when using default types
   final TraceContext.Extractor<HttpServerRequest> defaultExtractor;
 
   HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
@@ -86,8 +86,9 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
    * @since 5.7
    */
   public Span handleReceive(HttpServerRequest request) {
-    Span span = nextSpan(request, defaultExtractor.extract(request), request.unwrap());
-    return handleStart(request, request.unwrap(), span);
+    HttpServerRequest.Adapter adapter = new HttpServerRequest.Adapter(request);
+    Span span = nextSpan(adapter, defaultExtractor.extract(request), adapter.unwrapped);
+    return handleStart(adapter, adapter.unwrapped, span);
   }
 
   /**
@@ -149,8 +150,9 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (response instanceof HttpServerResponse) {
-      HttpServerResponse serverResponse = (HttpServerResponse) response;
-      handleFinish(serverResponse, serverResponse.unwrap(), error, span);
+      HttpServerResponse.Adapter adapter =
+        new HttpServerResponse.Adapter((HttpServerResponse) response);
+      handleFinish(adapter, adapter.unwrapped, error, span);
     } else {
       handleFinish(adapter, response, error, span);
     }

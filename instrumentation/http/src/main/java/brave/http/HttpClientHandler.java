@@ -62,7 +62,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   }
 
   final Tracer tracer;
-  @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using standard types
+  @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
   final HttpSampler httpSampler;
   @Nullable final String serverName;
@@ -93,7 +93,13 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
-    return handleSend(request, nextSpan(request));
+    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
+    return handleSend(new HttpClientRequest.Adapter(request), nextSpan(adapter));
+  }
+
+  Span handleSend(HttpClientRequest.Adapter adapter, Span span) {
+    defaultInjector.inject(span.context(), adapter.delegate);
+    return handleStart(adapter, adapter.unwrapped, span);
   }
 
   /**
@@ -103,8 +109,8 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request, Span span) {
-    defaultInjector.inject(span.context(), request);
-    return handleStart(request, request.unwrap(), span);
+    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
+    return handleSend(adapter, span);
   }
 
   /**
@@ -171,14 +177,18 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 4.4
    */
   public Span nextSpan(Req request) {
-    if (request instanceof HttpClientRequest) return nextSpan((HttpClientRequest) request);
+    // nextSpan can be called independently when interceptors control lifecycle directly. In these
+    // cases, it is possible to have HttpClientRequest as an argument.
+    if (request instanceof HttpClientRequest) {
+      return nextSpan(new HttpClientRequest.Adapter((HttpClientRequest) request));
+    }
     Sampler override = httpSampler.toSampler(adapter, request, sampler);
     return tracer.withSampler(override).nextSpan();
   }
 
   // Special-cased for HttpClientRequest type which is also an adapter
-  Span nextSpan(HttpClientRequest request) {
-    Sampler override = httpSampler.toSampler(request, request.unwrap(), sampler);
+  Span nextSpan(HttpClientRequest.Adapter adapter) {
+    Sampler override = httpSampler.toSampler(adapter, adapter.unwrapped, sampler);
     return tracer.withSampler(override).nextSpan();
   }
 
@@ -192,8 +202,9 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
     if (response instanceof HttpClientResponse) {
-      HttpClientResponse clientResponse = (HttpClientResponse) response;
-      handleFinish(clientResponse, clientResponse.unwrap(), error, span);
+      HttpClientResponse.Adapter adapter =
+        new HttpClientResponse.Adapter((HttpClientResponse) response);
+      handleFinish(adapter, adapter.unwrapped, error, span);
     } else {
       handleFinish(adapter, response, error, span);
     }
