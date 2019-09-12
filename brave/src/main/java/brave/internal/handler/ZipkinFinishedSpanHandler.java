@@ -24,11 +24,13 @@ import zipkin2.reporter.Reporter;
 public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   final Reporter<zipkin2.Span> spanReporter;
   final MutableSpanConverter converter;
+  final boolean alwaysReportSpans;
 
   public ZipkinFinishedSpanHandler(Reporter<zipkin2.Span> spanReporter,
-    ErrorParser errorParser, String serviceName, String ip, int port) {
+    ErrorParser errorParser, String serviceName, String ip, int port, boolean alwaysReportSpans) {
     this.spanReporter = spanReporter;
     this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
+    this.alwaysReportSpans = alwaysReportSpans;
   }
 
   /**
@@ -37,7 +39,7 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
    * Otherwise, we could accidentally send 100% data.
    */
   @Override public boolean handle(TraceContext context, MutableSpan span) {
-    if (!Boolean.TRUE.equals(context.sampled())) return true;
+    if (!alwaysReportSpans && !Boolean.TRUE.equals(context.sampled())) return true;
 
     Span.Builder builderWithContextData = Span.newBuilder()
       .traceId(context.traceIdString())

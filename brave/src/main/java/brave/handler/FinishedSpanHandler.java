@@ -128,7 +128,7 @@ public abstract class FinishedSpanHandler {
 
   /**
    * When true, all spans become real spans even if they aren't sampled remotely. This allows
-   * firehose instances (such as metrics) to consider attributes that are not always visible
+   * finished span handlers (such as metrics) to consider attributes that are not always visible
    * before-the-fact, such as http paths. Defaults to false and affects {@link
    * TraceContext#sampledLocal()}.
    *
