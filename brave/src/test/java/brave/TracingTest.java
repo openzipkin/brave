@@ -152,6 +152,22 @@ public class TracingTest {
     }
   }
 
+  @Test public void alwaysReportSpans_reportsEvenWhenUnsampled() {
+    TraceContext sampledLocal =
+      TraceContext.newBuilder().traceId(1).spanId(1).sampledLocal(true).build();
+
+    List<Span> spans = new ArrayList<>();
+    try (Tracing tracing = Tracing.newBuilder()
+      .spanReporter(spans::add)
+      .sampler(Sampler.NEVER_SAMPLE)
+      .alwaysReportSpans()
+      .build()) {
+      tracing.tracer().toSpan(sampledLocal).start().finish();
+    }
+
+    assertThat(spans).isNotEmpty();
+  }
+
   @Test public void finishedSpanHandler_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 

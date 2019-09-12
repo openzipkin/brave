@@ -14,6 +14,7 @@
 package brave;
 
 import brave.handler.FinishedSpanHandler;
+import brave.internal.InternalPropagation;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -22,6 +23,7 @@ import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -141,7 +143,7 @@ public abstract class Tracing implements Closeable {
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
-    boolean traceId128Bit = false, supportsJoin = true;
+    boolean traceId128Bit = false, supportsJoin = true, alwaysReportSpans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
     // Intentional dupes would be surprising. Be very careful when adding features here that no
@@ -337,8 +339,8 @@ public abstract class Tracing implements Closeable {
      * #spanReporter(Reporter) span reporter} to {@link Reporter#NOOP} to avoid redundant conversion
      * overhead.
      *
+     * @see #alwaysReportSpans()
      * @see TraceContext#sampledLocal()
-     * @since 5.4
      */
     public Builder addFinishedSpanHandler(FinishedSpanHandler finishedSpanHandler) {
       if (finishedSpanHandler == null) {
@@ -347,6 +349,31 @@ public abstract class Tracing implements Closeable {
       if (finishedSpanHandler != FinishedSpanHandler.NOOP) { // lenient on config bug
         this.finishedSpanHandlers.add(finishedSpanHandler);
       }
+      return this;
+    }
+
+    /**
+     * When true, all spans {@link TraceContext#sampledLocal() sampled locally} are reported to the
+     * {@link #spanReporter(Reporter) span reporter}, even if they aren't sampled remotely. Defaults
+     * to false.
+     *
+     * <p>The primary use case is to implement a sampling overlay, such as boosting the sample rate
+     * for a subset of the network depending on the value of an {@link ExtraFieldPropagation extra
+     * field}. This means that data will report when either the trace is normally sampled, or
+     * secondarily sampled via a custom header.
+     *
+     * <p>This is simpler than {@link #addFinishedSpanHandler(FinishedSpanHandler)}, because you
+     * don't have to duplicate transport mechanics already implemented in the {@link
+     * #spanReporter(Reporter) span reporter}. However, this assumes your backend can properly
+     * process the partial traces implied when using conditional sampling. For example, if your
+     * sampling condition is not consistent on a call tree, the resulting data could appear broken.
+     *
+     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see TraceContext#sampledLocal()
+     * @since 5.8
+     */
+    public Builder alwaysReportSpans() {
+      this.alwaysReportSpans = true;
       return this;
     }
 
@@ -396,7 +423,7 @@ public abstract class Tracing implements Closeable {
 
       FinishedSpanHandler zipkinHandler = builder.spanReporter != Reporter.NOOP
         ? new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
-        builder.localServiceName, builder.localIp, builder.localPort)
+        builder.localServiceName, builder.localIp, builder.localPort, builder.alwaysReportSpans)
         : FinishedSpanHandler.NOOP;
 
       FinishedSpanHandler finishedSpanHandler =
