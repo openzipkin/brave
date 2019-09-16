@@ -16,8 +16,8 @@ response as many response objects lacked a property bag.
 
 Then, we noticed people wanting to do more during extraction than look at
 headers. For example, Netflix wanted to inspect the http path to make a
-secondary sampling decision. Without a known http request type, this couldn't
-be accomplished portably.
+[secondary sampling](https://github.com/openzipkin-contrib/zipkin-secondary-sampling) decision.
+Without a known http request type, this couldn't be accomplished portably.
 
 Finally, we noticed zipkin-go side-step this problem by defining a top-level
 type for http requests and responses. This allows the same object to be used
