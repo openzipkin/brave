@@ -14,7 +14,6 @@
 package brave;
 
 import brave.handler.FinishedSpanHandler;
-import brave.internal.InternalPropagation;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
