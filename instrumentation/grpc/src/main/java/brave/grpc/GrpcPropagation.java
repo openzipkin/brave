@@ -138,7 +138,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
   }
 
-  static final class TagsFactory extends PropagationFieldsFactory<Tags> {
+  static final class TagsFactory extends PropagationFieldsFactory<String, String, Tags> {
     @Override public Class<Tags> type() {
       return Tags.class;
     }
@@ -159,7 +159,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
     return new Tags(extracted, parentMethod);
   }
 
-  static final class Tags extends MapPropagationFields {
+  static final class Tags extends MapPropagationFields<String, String> {
     final String parentMethod;
 
     Tags() {

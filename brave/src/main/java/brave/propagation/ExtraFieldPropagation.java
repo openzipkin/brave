@@ -246,14 +246,14 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (extracted == null) throw new NullPointerException("extracted == null");
     TraceContext extractedContext = extracted.context();
     if (extractedContext != null) return getAll(extractedContext);
-    PropagationFields fields = TraceContext.findExtra(Extra.class, extracted.extra());
+    Extra fields = TraceContext.findExtra(Extra.class, extracted.extra());
     return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
   /** Returns a mapping of any fields in the trace context. */
   public static Map<String, String> getAll(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    PropagationFields fields = context.findExtra(Extra.class);
+    Extra fields = context.findExtra(Extra.class);
     return fields != null ? fields.toMap() : Collections.emptyMap();
   }
 
@@ -435,7 +435,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     return result;
   }
 
-  static final class ExtraFactory extends PropagationFieldsFactory<Extra> {
+  static final class ExtraFactory extends PropagationFieldsFactory<String, String, Extra> {
     final String[] fieldNames;
 
     ExtraFactory(String[] fieldNames) {

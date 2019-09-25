@@ -19,17 +19,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Copy-on-write keeps propagation changes in a child context from affecting its parent */
-public class PredefinedPropagationFields extends PropagationFields {
-
+public class PredefinedPropagationFields extends PropagationFields<String, String> {
   final String[] fieldNames;
   volatile String[] values; // guarded by this, copy on write
 
   protected PredefinedPropagationFields(String... fieldNames) {
+    if (fieldNames == null) throw new NullPointerException("fieldNames == null");
+    if (fieldNames.length == 0) throw new NullPointerException("fieldNames is empty");
+    for (int i = 0; i < fieldNames.length; i++) {
+      if (fieldNames[i] == null) throw new NullPointerException("fieldNames[" + i + "] == null");
+      if (fieldNames[i].isEmpty()) throw new NullPointerException("fieldNames[" + i + "] is empty");
+    }
     this.fieldNames = fieldNames;
   }
 
   protected PredefinedPropagationFields(PredefinedPropagationFields parent, String... fieldNames) {
-    this.fieldNames = fieldNames;
+    this(fieldNames);
     checkSameFields(parent);
     this.values = parent.values;
   }
@@ -42,17 +47,34 @@ public class PredefinedPropagationFields extends PropagationFields {
   public String get(int index) {
     if (index >= fieldNames.length) return null;
 
-    String[] elements;
-    synchronized (this) {
-      elements = values;
-    }
+    String[] elements = values;
     return elements != null ? elements[index] : null;
+  }
+
+  @Override public void forEach(FieldConsumer<String, String> fieldConsumer) {
+    String[] elements = values;
+    if (elements == null) return;
+
+    for (int i = 0, length = fieldNames.length; i < length; i++) {
+      String value = elements[i];
+      if (value == null) continue;
+      fieldConsumer.accept(fieldNames[i], value);
+    }
   }
 
   @Override public final void put(String name, String value) {
     int index = indexOf(name);
     if (index == -1) return;
     put(index, value);
+  }
+
+  @Override public boolean isEmpty() {
+    String[] elements = values;
+    if (elements == null) return true;
+    for (String value : elements) {
+      if (value != null) return false;
+    }
+    return true;
   }
 
   public final void put(int index, String value) {
@@ -96,20 +118,19 @@ public class PredefinedPropagationFields extends PropagationFields {
   }
 
   @Override public final Map<String, String> toMap() {
-    String[] elements;
-    synchronized (this) {
-      elements = values;
-    }
-
+    String[] elements = values;
     if (elements == null) return Collections.emptyMap();
 
-    Map<String, String> contents = new LinkedHashMap<>();
-    for (int i = 0, length = fieldNames.length; i < length; i++) {
-      String maybeValue = elements[i];
-      if (maybeValue == null) continue;
-      contents.put(fieldNames[i], maybeValue);
+    MapFieldConsumer result = new MapFieldConsumer();
+    forEach(result);
+    return result;
+  }
+
+  static final class MapFieldConsumer extends LinkedHashMap<String, String>
+    implements FieldConsumer<String, String> {
+    @Override public void accept(String key, String value) {
+      put(key, value);
     }
-    return Collections.unmodifiableMap(contents);
   }
 
   int indexOf(String name) {
@@ -119,7 +140,12 @@ public class PredefinedPropagationFields extends PropagationFields {
     return -1;
   }
 
+  @Override public String toString() {
+    return getClass().getSimpleName() + toMap();
+  }
+
   @Override public int hashCode() { // for unit tests
+    String[] values = this.values;
     return values == null ? 0 : Arrays.hashCode(values);
   }
 
@@ -127,6 +153,7 @@ public class PredefinedPropagationFields extends PropagationFields {
     if (o == this) return true;
     if (!(o instanceof PredefinedPropagationFields)) return false;
     PredefinedPropagationFields that = (PredefinedPropagationFields) o;
-    return values == null ? that.values == null : Arrays.equals(values, that.values);
+    String[] values = this.values, thatValues = that.values;
+    return values == null ? thatValues == null : Arrays.equals(values, thatValues);
   }
 }

@@ -17,27 +17,31 @@ import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPropagationFields> {
-  @Override protected PropagationFieldsFactory<MapPropagationFields> newFactory() {
-    return new PropagationFieldsFactory<MapPropagationFields>() {
-      @Override public Class<MapPropagationFields> type() {
-        return MapPropagationFields.class;
+public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<String, String, Extra> {
+  public MapPropagationFieldsTest() {
+    super("one", "two", "1", "2", "3");
+  }
+
+  @Override protected PropagationFieldsFactory<String, String, Extra> newFactory() {
+    return new PropagationFieldsFactory<String, String, Extra>() {
+      @Override public Class<Extra> type() {
+        return Extra.class;
       }
 
-      @Override public MapPropagationFields create() {
-        return new MapPropagationFields();
+      @Override public Extra create() {
+        return new Extra();
       }
 
-      @Override protected MapPropagationFields create(MapPropagationFields parent) {
-        return new MapPropagationFields(parent);
+      @Override protected Extra create(Extra parent) {
+        return new Extra(parent);
       }
     };
   }
 
   @Test public void put_allows_arbitrary_field() {
-    MapPropagationFields fields = factory.create();
+    MapPropagationFields<String, String> fields = factory.create();
 
     fields.put("balloon-color", "red");
 
@@ -46,7 +50,7 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPr
   }
 
   @Test public void put_idempotent() {
-    MapPropagationFields fields = factory.create();
+    MapPropagationFields<String, String> fields = factory.create();
 
     fields.put("balloon-color", "red");
     Map<String, String> fieldsMap = fields.values;
@@ -61,14 +65,21 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<MapPr
   }
 
   @Test public void unmodifiable() {
-    MapPropagationFields fields = factory.create();
+    MapPropagationFields<String, String> fields = factory.create();
 
-    fields.put(FIELD1, "a");
+    fields.put(keyOne, "a");
 
-    try {
-      fields.values.put(FIELD1, "b");
-      failBecauseExceptionWasNotThrown(UnsupportedOperationException.class);
-    } catch (UnsupportedOperationException e) {
-    }
+    assertThatThrownBy(() -> fields.values.put(keyOne, "b"))
+      .isInstanceOf(UnsupportedOperationException.class);
+  }
+}
+
+final class Extra extends MapPropagationFields<String, String> {
+  Extra() {
+    super();
+  }
+
+  Extra(Extra parent) {
+    super(parent);
   }
 }
