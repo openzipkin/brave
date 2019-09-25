@@ -78,11 +78,11 @@
     <errorprone.version>2.3.3</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.16.0</zipkin.version>
-    <zipkin-reporter.version>2.10.2</zipkin-reporter.version>
+    <zipkin.version>2.17.0</zipkin.version>
+    <zipkin-reporter.version>2.10.3</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring4.version>4.3.24.RELEASE</spring4.version>
+    <spring4.version>4.3.25.RELEASE</spring4.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
@@ -94,17 +94,17 @@
     <kafka.version>2.3.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.6</kafka-junit.version>
-    <activemq.version>5.15.9</activemq.version>
-    <spring-rabbit.version>1.7.13.RELEASE</spring-rabbit.version>
+    <activemq.version>5.15.10</activemq.version>
+    <spring-rabbit.version>1.7.14.RELEASE</spring-rabbit.version>
 
-    <finagle.version>19.6.0</finagle.version>
+    <finagle.version>19.9.0</finagle.version>
     <log4j.version>2.12.1</log4j.version>
-    <okhttp.version>4.0.0</okhttp.version>
-    <httpclient.version>4.5.9</httpclient.version>
+    <okhttp.version>4.2.0</okhttp.version>
+    <httpclient.version>4.5.10</httpclient.version>
 
-    <grpc.version>1.22.0</grpc.version>
+    <grpc.version>1.23.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.35.Final</netty.version>
+    <netty.version>4.1.38.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.12</junit.version>
@@ -122,7 +122,7 @@
     <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
     <maven-source-plugin.version>3.1.0</maven-source-plugin.version>
-    <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
+    <maven-javadoc-plugin.version>3.1.1</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
     <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
@@ -221,7 +221,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>4.4.11</version>
+        <version>4.4.12</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -251,7 +251,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.26</version>
+        <version>1.7.28</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
@@ -373,7 +373,7 @@
           <artifactId>maven</artifactId>
           <version>0.7.6</version>
           <configuration>
-            <maven>3.6.1</maven>
+            <maven>3.6.2</maven>
           </configuration>
         </plugin>
 
@@ -429,7 +429,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-invoker-plugin</artifactId>
-          <version>3.2.0</version>
+          <version>3.2.1</version>
           <configuration>
             <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
             <settingsFile>${main.basedir}/src/it/settings.xml</settingsFile>
@@ -454,7 +454,7 @@
         <plugin>
           <groupId>org.apache.felix</groupId>
           <artifactId>maven-bundle-plugin</artifactId>
-          <version>4.2.0</version>
+          <version>4.2.1</version>
           <configuration>
             <obrRepository>NONE</obrRepository>
             <instructions>
