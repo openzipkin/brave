@@ -38,7 +38,7 @@ import brave.sampler.RateLimitingSampler;
  *
  * @since 4.4
  */
-public final class HttpRuleSampler extends HttpSampler {
+public final class HttpRuleSampler extends HttpSampler implements HttpRequestSampler {
   /** @since 4.4 */
   public static Builder newBuilder() {
     return new Builder();
@@ -95,6 +95,10 @@ public final class HttpRuleSampler extends HttpSampler {
 
   HttpRuleSampler(ParameterizedSampler<MethodAndPath> sampler) {
     this.sampler = sampler;
+  }
+
+  @Override public Boolean trySample(HttpRequest request) {
+    return trySample(request.method(), request.path());
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {

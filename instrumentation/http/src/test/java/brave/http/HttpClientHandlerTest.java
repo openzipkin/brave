@@ -84,7 +84,8 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(new HttpClientRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(null);
 
     assertThat(handler.handleSend(injector, request))
       .extracting(brave.Span::isNoop, s -> s.context().parentId())
@@ -104,7 +105,8 @@ public class HttpClientHandlerTest {
 
   @Test public void handleSend_makesRequestBasedSamplingDecision() {
     // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(adapter, request)).thenReturn(false);
+    when(sampler.trySample(new HttpClientRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(false);
 
     assertThat(handler.handleSend(injector, request).isNoop())
       .isTrue();
@@ -124,7 +126,8 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_addsClientAddressWhenOnlyServiceName() {
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(new HttpClientRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(null);
 
     httpTracing = httpTracing.clientOf("remote-service");
 
@@ -136,7 +139,8 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSend_skipsClientAddressWhenUnparsed() {
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(new HttpClientRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(null);
 
     handler.handleSend(injector, request).finish();
 
@@ -146,8 +150,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void externalTimestamps() {
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(defaultRequest);
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
     when(defaultRequest.startTimestamp()).thenReturn(123000L);
     when(defaultResponse.finishTimestamp()).thenReturn(124000L);
 
@@ -157,42 +160,36 @@ public class HttpClientHandlerTest {
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 
-  @Test public void handleSend_samplerSeesUnwrappedType() {
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(defaultRequest);
-    when(sampler.trySample(adapter, request)).thenReturn(null);
-
+  @Test public void handleSend_samplerSeesHttpClientRequest() {
     defaultHandler.handleSend(defaultRequest);
 
-    verify(sampler).trySample(adapter, request);
+    verify(sampler).trySample(defaultRequest);
   }
 
-  @Test public void nextSpan_samplerSeesUnwrappedType() {
+  @Test public void nextSpan_samplerSeesHttpClientRequest() {
     defaultHandler.nextSpan(defaultRequest);
 
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(defaultRequest);
-    verify(sampler).trySample(adapter, request);
+    verify(sampler).trySample(defaultRequest);
   }
 
   @Test public void nextSpan_samplerSeesUnwrappedType_oldHandler() {
-    handler.nextSpan(defaultRequest);
+    handler.nextClientSpan(defaultRequest);
 
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(defaultRequest);
-    verify(sampler).trySample(adapter, request);
+    verify(sampler).trySample(defaultRequest);
   }
 
   @Test public void handleSend_parserSeesUnwrappedType() {
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(defaultRequest);
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
 
     brave.Span span = defaultHandler.handleSend(defaultRequest);
     defaultHandler.handleReceive(defaultResponse, null, span);
 
+    HttpClientRequest.ToHttpAdapter adapter = new HttpClientRequest.ToHttpAdapter(defaultRequest);
     verify(parser).request(eq(adapter), eq(request), any(SpanCustomizer.class));
   }
 
   @Test public void handleReceive_parserSeesUnwrappedType() {
-    HttpClientRequest.Adapter requestAdapter = new HttpClientRequest.Adapter(defaultRequest);
-    when(sampler.trySample(requestAdapter, request)).thenReturn(null);
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
 
     brave.Span span = defaultHandler.handleSend(defaultRequest);
     defaultHandler.handleReceive(defaultResponse, null, span);
@@ -202,8 +199,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleReceive_parserSeesUnwrappedType_oldHandler() {
-    HttpClientRequest.Adapter requestAdapter = new HttpClientRequest.Adapter(defaultRequest);
-    when(sampler.trySample(requestAdapter, request)).thenReturn(null);
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
 
     brave.Span span = handler.handleSend(defaultRequest);
     handler.handleReceive(defaultResponse, null, span);

@@ -47,7 +47,7 @@ import static org.mockito.Mockito.when;
 public class HttpServerHandlerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracer tracer;
-  @Spy HttpSampler sampler = HttpSampler.TRACE_ID;
+  @Mock HttpSampler sampler;
   @Spy HttpServerParser parser = new HttpServerParser();
   @Mock HttpServerAdapter<Object, Object> adapter;
   @Mock TraceContext.Extractor<Object> extractor;
@@ -100,7 +100,8 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
     // request sampler abstains (trace ID sampler will say true)
-    when(sampler.trySample(adapter, request)).thenReturn(null);
+    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(null);
 
     Span newSpan = handler.handleReceive(extractor, request);
     assertThat(newSpan.isNoop()).isFalse();
@@ -150,7 +151,8 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
     // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(adapter, request)).thenReturn(false);
+    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(false);
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
       .isTrue();
@@ -162,13 +164,16 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
     // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(adapter, request)).thenReturn(false);
+    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
+      .thenReturn(false);
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
       .isTrue();
   }
 
   @Test public void externalTimestamps() {
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
+
     when(defaultRequest.startTimestamp()).thenReturn(123000L);
     when(defaultResponse.finishTimestamp()).thenReturn(124000L);
 
@@ -179,19 +184,25 @@ public class HttpServerHandlerTest {
   }
 
   @Test public void handleReceive_samplerSeesUnwrappedType() {
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
+
     defaultHandler.handleReceive(defaultRequest);
 
-    verify(sampler).trySample(new HttpServerRequest.Adapter(defaultRequest), request);
+    verify(sampler).trySample(defaultRequest);
   }
 
   @Test public void handleReceive_parserSeesUnwrappedType() {
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
+
     defaultHandler.handleReceive(defaultRequest);
 
-    HttpServerRequest.Adapter adapter = new HttpServerRequest.Adapter(defaultRequest);
+    HttpServerRequest.ToHttpAdapter adapter = new HttpServerRequest.ToHttpAdapter(defaultRequest);
     verify(parser).request(eq(adapter), eq(request), any(SpanCustomizer.class));
   }
 
   @Test public void handleSend_parserSeesUnwrappedType() {
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
+
     brave.Span span = defaultHandler.handleReceive(defaultRequest);
     defaultHandler.handleSend(defaultResponse, null, span);
 
@@ -200,6 +211,8 @@ public class HttpServerHandlerTest {
   }
 
   @Test public void handleSend_parserSeesUnwrappedType_oldHandler() {
+    when(sampler.trySample(defaultRequest)).thenReturn(null);
+
     brave.Span span = handler.handleReceive(defaultRequest);
     handler.handleSend(defaultResponse, null, span);
 
