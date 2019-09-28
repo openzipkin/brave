@@ -122,16 +122,6 @@ public abstract class HttpServerRequest extends HttpRequest {
     @Override public final String toString() {
       return delegate.toString();
     }
-
-    @Override public final boolean equals(Object o) { // implemented to make testing easier
-      if (o == this) return true;
-      if (!(o instanceof ToHttpAdapter)) return false;
-      return delegate.equals(((ToHttpAdapter) o).delegate);
-    }
-
-    @Override public final int hashCode() {
-      return delegate.hashCode();
-    }
   }
 
   @Deprecated static final class FromHttpAdapter<Req> extends HttpServerRequest {
@@ -147,6 +137,10 @@ public abstract class HttpServerRequest extends HttpRequest {
 
     @Override public Object unwrap() {
       return request;
+    }
+
+    @Override public long startTimestamp() {
+      return adapter.startTimestamp(request);
     }
 
     @Override public String method() {
@@ -171,16 +165,6 @@ public abstract class HttpServerRequest extends HttpRequest {
 
     @Override public final String toString() {
       return request.toString();
-    }
-
-    @Override public final boolean equals(Object o) { // implemented to make testing easier
-      if (o == this) return true;
-      if (!(o instanceof HttpServerRequest.FromHttpAdapter)) return false;
-      return request.equals(((HttpServerRequest.FromHttpAdapter) o).request);
-    }
-
-    @Override public final int hashCode() {
-      return request.hashCode();
     }
   }
 }

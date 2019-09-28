@@ -17,6 +17,8 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
+import brave.http.HttpServerRequest.FromHttpAdapter;
+import brave.http.HttpServerRequest.ToHttpAdapter;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -111,8 +113,7 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
     // request sampler abstains (trace ID sampler will say true)
-    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
-      .thenReturn(null);
+    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
 
     Span newSpan = handler.handleReceive(extractor, request);
     assertThat(newSpan.isNoop()).isFalse();
@@ -158,8 +159,7 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
     // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
-      .thenReturn(false);
+    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(false);
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
       .isTrue();
@@ -172,8 +172,7 @@ public class HttpServerHandlerTest {
       .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
 
     // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
-      .thenReturn(false);
+    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(false);
 
     assertThat(handler.handleReceive(extractor, request).isNoop())
       .isTrue();
@@ -202,15 +201,12 @@ public class HttpServerHandlerTest {
 
     defaultHandler.handleReceive(defaultRequest);
 
-    HttpServerRequest.ToHttpAdapter adapter = new HttpServerRequest.ToHttpAdapter(defaultRequest);
-    verify(parser).request(eq(adapter), eq(request), any(SpanCustomizer.class));
+    verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
   }
 
   @Test public void handleSend_oldHandler() {
     when(extractor.extract(request)).thenReturn(TraceContextOrSamplingFlags.EMPTY);
-    // request sampler abstains (trace ID sampler will say true)
-    when(sampler.trySample(new HttpServerRequest.FromHttpAdapter<>(adapter, request)))
-      .thenReturn(null);
+    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
 
     brave.Span span = handler.handleReceive(extractor, request);
     handler.handleSend(response, null, span);
