@@ -86,16 +86,16 @@ You can change the sampling policy by specifying it in the `HttpTracing`
 component. The default implementation is `HttpRuleSampler`, which allows
 you to declare rules based on http patterns.
 
-Ex. Here's a sampler that traces 80% requests to /foo and 10% of POST
-requests to /bar. This doesn't start new traces for requests to favicon
-(which many browsers automatically fetch). Other requests will use a
-global rate provided by the tracing component.
+Ex. Here's a sampler that traces 100 requests per second to /foo and 10
+POST requests to /bar per second. This doesn't start new traces for
+requests to favicon (which many browsers automatically fetch). Other
+requests will use a global rate provided by the tracing component.
 
 ```java
 httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
-  .addRule(null, "/favicon", 0.0f)
-  .addRule(null, "/foo", 0.8f)
-  .addRule("POST", "/bar", 0.1f)
+  .addRuleWithRate(null, "/favicon", 0)
+  .addRuleWithRate(null, "/foo", 100)
+  .addRuleWithRate("POST", "/bar", 10)
   .build());
 ```
 

@@ -54,7 +54,6 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {
@@ -87,10 +86,9 @@ public class AspectJSamplerTest {
   static class Config {
   }
 
-  @Component
-  @Aspect
-  static class TracingAspect {
-    DeclarativeSampler<Traced> declarativeSampler = DeclarativeSampler.create(Traced::sampleRate);
+  @Component @Aspect static class TracingAspect {
+    DeclarativeSampler<Traced> declarativeSampler =
+      DeclarativeSampler.createWithRate(Traced::sampleRate);
 
     @Around("@annotation(traced)")
     public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
@@ -117,11 +115,11 @@ public class AspectJSamplerTest {
     @Traced public void traced() {
     }
 
-    @Traced(sampleRate = 0.0f) public void notTraced() {
+    @Traced(sampleRate = 0) public void notTraced() {
     }
   }
 
   @Retention(RetentionPolicy.RUNTIME) public @interface Traced {
-    float sampleRate() default 1.0f;
+    int sampleRate() default 10;
   }
 }

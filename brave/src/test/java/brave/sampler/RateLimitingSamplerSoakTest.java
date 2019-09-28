@@ -34,11 +34,11 @@ import static org.assertj.core.data.Percentage.withPercentage;
 @RunWith(Theories.class)
 public class RateLimitingSamplerSoakTest {
 
-  @DataPoints public static final int[] SAMPLE_RESERVOIRS = {1, 11, 101, 1001, 1_000_001};
+  @DataPoints public static final int[] SAMPLE_RATE = {1, 11, 101, 1001, 1_000_001};
 
-  /** This test will take a little over a second per reservoir */
-  @Theory public void retainsPerSampleRate(int reservoir) throws Exception {
-    Sampler sampler = RateLimitingSampler.create(reservoir);
+  /** This test will take a little over a second */
+  @Theory public void retainsPerSampleRate(int rate) throws Exception {
+    Sampler sampler = RateLimitingSampler.create(rate);
 
     // We want to make sure we fill up the entire second, so
     long startTick = System.nanoTime();
@@ -59,8 +59,8 @@ public class RateLimitingSamplerSoakTest {
 
     Runnable loopAndSample = () -> {
       do {
-        if (reservoir > 10) {  // execute one tenth of our reservoir
-          for (int j = 0; j < reservoir / 10; j++) sample.run();
+        if (rate > 10) {  // execute one tenth of our rate
+          for (int j = 0; j < rate / 10; j++) sample.run();
         } else {// don't divide by 10!
           sample.run();
         }
@@ -79,7 +79,7 @@ public class RateLimitingSamplerSoakTest {
     service.awaitTermination(1, TimeUnit.SECONDS);
 
     assertThat(passed.get())
-      .isCloseTo(reservoir, withPercentage(0.01)); // accomodates flakes in CI
+      .isCloseTo(rate, withPercentage(0.01)); // accomodates flakes in CI
     assumeThat(hitLastDecisecond.get())
       .withFailMessage("ran out of samples before the end of the second")
       .isTrue();

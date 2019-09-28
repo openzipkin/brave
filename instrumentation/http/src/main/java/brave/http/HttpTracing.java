@@ -15,7 +15,6 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.Tracing;
-import zipkin2.Endpoint;
 
 public class HttpTracing { // Not final as it previously was not. This allows mocks and similar.
   public static HttpTracing create(Tracing tracing) {
@@ -50,8 +49,8 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
    * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
    * }</pre>
    *
-   * @see HttpClientAdapter#parseServerIpAndPort(Object, Endpoint.Builder)
-   * @see brave.Span#remoteEndpoint(Endpoint)
+   * @see HttpClientHandler
+   * @see brave.Span#remoteServiceName(String)
    */
   public String serverName() {
     return serverName;
@@ -137,7 +136,7 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
         }
       };
       this.clientSampler = HttpSampler.TRACE_ID;
-      this.serverSampler(HttpSampler.TRACE_ID);
+      this.serverSampler = HttpSampler.TRACE_ID;
     }
 
     Builder(HttpTracing source) {
@@ -189,7 +188,6 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
     /** @see HttpTracing#clientSampler() */
     public Builder clientSampler(HttpSampler clientSampler) {
       if (clientSampler == null) throw new NullPointerException("clientSampler == null");
-
       this.clientSampler = clientSampler;
       return this;
     }

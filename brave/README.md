@@ -260,7 +260,7 @@ policy. Here's how they might work internally.
 
 ```java
 // derives a sample rate from an annotation on a java method
-DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRate);
+DeclarativeSampler<Traced> sampler = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
 @Around("@annotation(traced)")
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {

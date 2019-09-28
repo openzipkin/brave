@@ -55,14 +55,14 @@ public abstract class Sampler {
   public abstract boolean isSampled(long traceId);
 
   /**
-   * Returns a sampler, given a rate expressed as a percentage.
+   * Returns a sampler, given a probability expressed as a percentage.
    *
    * <p>The sampler returned is good for low volumes of traffic (<100K requests), as it is precise.
    * If you have high volumes of traffic, consider {@link BoundarySampler}.
    *
-   * @param rate minimum sample rate is 0.01, or 1% of traces
+   * @param probability probability a trace will be sampled. minimum is 0.01, or 1% of traces
    */
-  public static Sampler create(float rate) {
-    return CountingSampler.create(rate);
+  public static Sampler create(float probability) {
+    return CountingSampler.create(probability);
   }
 }

@@ -133,7 +133,7 @@ public abstract class ITHttpServer extends ITHttp {
     String path = "/foo";
 
     httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
-      .addRule(null, path, 0.0f)
+      .addRuleWithProbability(null, path, 0.0f)
       .build()).build();
     init();
 

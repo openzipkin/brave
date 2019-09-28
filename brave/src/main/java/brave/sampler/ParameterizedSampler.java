@@ -15,6 +15,7 @@ package brave.sampler;
 
 import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,31 +23,58 @@ import java.util.List;
  * example, you could write rules to look at an HTTP method and path, or a RabbitMQ routing key and
  * queue name.
  *
- * <p>This looks at runtime parameters to see if they {@link Rule#matches(Object) match} a rule. If
- * all calls to a java method should have the same sample rate, consider {@link DeclarativeSampler}
- * instead.
+ * <p>This looks at runtime parameters to see if they {@link Matcher#matches(Object) match} a rule.
+ * If all calls to a java method should have the same sample rate, consider {@link
+ * DeclarativeSampler} instead.
  *
  * @param <P> The type that encloses parameters associated with a sample rate. For example, this
- * could be a pair of http and method..
+ * could be a pair of http and method.
+ * @since 4.4
  */
 public final class ParameterizedSampler<P> {
-  public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
-    if (rules == null) throw new NullPointerException("rules == null");
-    return new ParameterizedSampler<>(rules);
+  /** @since 5.8 */
+  public interface Matcher<P> {
+    /** Returns true if this rule matches the input parameters */
+    boolean matches(P parameters);
   }
 
-  public static abstract class Rule<P> {
-    final Sampler sampler;
+  /** @since 5.8 */
+  public static <P> Builder<P> newBuilder() {
+    return new Builder<>();
+  }
 
-    /**
-     * @param rate percentage of requests to start traces for. 1.0 is 100%
-     */
-    protected Rule(float rate) {
-      sampler = CountingSampler.create(rate);
+  /** @since 5.8 */
+  public static final class Builder<P> {
+    final List<R<P>> rules = new ArrayList<>();
+
+    /** @since 5.8 */
+    public Builder<P> addRule(Matcher<P> matcher, Sampler sampler) {
+      if (matcher == null) throw new NullPointerException("matcher == null");
+      if (sampler == null) throw new NullPointerException("sampler == null");
+      rules.add(new R<>(matcher, sampler));
+      return this;
     }
 
-    /** Returns true if this rule matches the input parameters */
-    public abstract boolean matches(P parameters);
+    public ParameterizedSampler<P> build() {
+      return new ParameterizedSampler<>(rules);
+    }
+
+    Builder() {
+    }
+  }
+
+  static class R<P> {
+    final Matcher<P> matcher;
+    final Sampler sampler;
+
+    R(Matcher<P> matcher, Sampler sampler) {
+      this.matcher = matcher;
+      this.sampler = sampler;
+    }
+
+    boolean matches(P parameters) {
+      return matcher.matches(parameters);
+    }
 
     SamplingFlags isSampled() {
       return sampler.isSampled(0L) // counting sampler ignores the input
@@ -55,17 +83,38 @@ public final class ParameterizedSampler<P> {
     }
   }
 
-  final List<? extends Rule<P>> rules;
+  final List<? extends R<P>> rules;
 
-  ParameterizedSampler(List<? extends Rule<P>> rules) {
+  ParameterizedSampler(List<? extends R<P>> rules) {
     this.rules = rules;
   }
 
   public SamplingFlags sample(@Nullable P parameters) {
     if (parameters == null) return SamplingFlags.EMPTY;
-    for (Rule<P> rule : rules) {
+    for (R<P> rule : rules) {
       if (rule.matches(parameters)) return rule.isSampled();
     }
     return SamplingFlags.EMPTY;
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated since 5.8, use {@link #newBuilder()}
+   */
+  public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
+    if (rules == null) throw new NullPointerException("rules == null");
+    return new ParameterizedSampler<>(rules);
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link Builder#addRule(Matcher, Sampler)}
+   */
+  @Deprecated public static abstract class Rule<P> extends R<P> implements Matcher<P> {
+    protected Rule(float probability) {
+      super(null, CountingSampler.create(probability));
+    }
+
+    @Override public abstract boolean matches(P parameters);
   }
 }

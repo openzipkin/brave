@@ -31,32 +31,33 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class CountingSampler extends Sampler {
 
   /**
-   * @param rate 0 means never sample, 1 means always sample. Otherwise minimum sample rate is 0.01,
-   * or 1% of traces
+   * @param probability probability a request will result in a new trace. 0 means never sample, 1
+   * means always sample. Minimum probability is 0.01, or 1% of traces
    */
-  public static Sampler create(final float rate) {
-    if (rate == 0) return NEVER_SAMPLE;
-    if (rate == 1.0) return ALWAYS_SAMPLE;
-    if (rate < 0.01f || rate > 1) {
-      throw new IllegalArgumentException("rate should be between 0.01 and 1: was " + rate);
+  public static Sampler create(final float probability) {
+    if (probability == 0) return NEVER_SAMPLE;
+    if (probability == 1.0) return ALWAYS_SAMPLE;
+    if (probability < 0.01f || probability > 1) {
+      throw new IllegalArgumentException(
+        "probability should be between 0.01 and 1: was " + probability);
     }
-    return new CountingSampler(rate);
+    return new CountingSampler(probability);
   }
 
   private final AtomicInteger counter;
   private final BitSet sampleDecisions;
 
-  /** Fills a bitset with decisions according to the supplied rate. */
-  CountingSampler(float rate) {
-    this(rate, new Random());
+  /** Fills a bitset with decisions according to the supplied probability. */
+  CountingSampler(float probability) {
+    this(probability, new Random());
   }
 
   /**
-   * Fills a bitset with decisions according to the supplied rate with the supplied {@link Random}.
+   * Fills a bitset with decisions according to the probability using the supplied {@link Random}.
    */
-  CountingSampler(float rate, Random random) {
+  CountingSampler(float probability, Random random) {
     counter = new AtomicInteger();
-    int outOf100 = (int) (rate * 100.0f);
+    int outOf100 = (int) (probability * 100.0f);
     this.sampleDecisions = randomBitSet(100, outOf100, random);
   }
 

@@ -33,25 +33,25 @@ public abstract class SamplerTest {
    */
   static final int INPUT_SIZE = 100000;
 
-  abstract Sampler newSampler(float rate);
+  abstract Sampler newSampler(float probability);
 
-  abstract Percentage expectedErrorRate();
+  abstract Percentage expectedErrorProbability();
 
   @Rule
   public ExpectedException thrown = ExpectedException.none();
 
   @DataPoints
-  public static final float[] SAMPLE_RATES = {0.01f, 0.5f, 0.9f};
+  public static final float[] SAMPLE_PROBABILITIES = {0.01f, 0.5f, 0.9f};
 
   @Theory
-  public void retainsPerSampleRate(float sampleRate) {
-    final Sampler sampler = newSampler(sampleRate);
+  public void retainsPerSampleProbability(float sampleProbability) {
+    final Sampler sampler = newSampler(sampleProbability);
 
     // parallel to ensure there aren't any unsynchronized race conditions
     long passed = new Random().longs(INPUT_SIZE).parallel().filter(sampler::isSampled).count();
 
     assertThat(passed)
-      .isCloseTo((long) (INPUT_SIZE * sampleRate), expectedErrorRate());
+      .isCloseTo((long) (INPUT_SIZE * sampleProbability), expectedErrorProbability());
   }
 
   @Test
@@ -70,14 +70,14 @@ public abstract class SamplerTest {
   }
 
   @Test
-  public void rateCantBeNegative() {
+  public void probabilityCantBeNegative() {
     thrown.expect(IllegalArgumentException.class);
 
     newSampler(-1.0f);
   }
 
   @Test
-  public void rateCantBeOverOne() {
+  public void probabilityCantBeOverOne() {
     thrown.expect(IllegalArgumentException.class);
 
     newSampler(1.1f);

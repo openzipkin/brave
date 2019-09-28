@@ -151,7 +151,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
   @Test public void customSampler() throws Exception {
     close();
     httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 0.0f)
+      .addRuleWithProbability(null, "/foo", 0.0f)
       .build()).build();
     client = newClient(server.getPort());
 
