@@ -134,8 +134,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)} to handle any difference
-   * between carrier and request via wrapping in {@link HttpClientRequest}.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request) {
     return handleSend(injector, carrier, request, nextSpan(request));
@@ -143,8 +142,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}, as this allows more
-   * advanced samplers to be used.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}.
    */
   @Deprecated public Span handleSend(Injector<Req> injector, Req request, Span span) {
     return handleSend(injector, request, request, span);
@@ -152,8 +150,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)} to handle any difference
-   * between carrier and request via wrapping in {@link HttpClientRequest}.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
