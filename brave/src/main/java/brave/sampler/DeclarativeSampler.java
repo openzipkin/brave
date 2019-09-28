@@ -41,24 +41,36 @@ import java.util.concurrent.ConcurrentMap;
  * @param <M> The type that uniquely identifies this method, specifically for tracing. Most often a
  * trace annotation, but could also be a {@link java.lang.reflect.Method} or another declarative
  * reference such as {@code javax.ws.rs.container.ResourceInfo}.
+ * @since 4.4
  */
-public final class DeclarativeSampler<M> {
-  public static <M> DeclarativeSampler<M> create(RateForMethod<M> rateForMethod) {
-    return new DeclarativeSampler<>(rateForMethod);
-  }
-
-  public interface RateForMethod<M> {
-    /** Returns null if there's no configured rate for this method */
+public abstract class DeclarativeSampler<M> {
+  /** @since 5.8 */
+  public interface ProbabilityOfMethod<M> {
+    /** Returns null if there's no configured sample probability of this method */
     @Nullable Float get(M method);
   }
 
-  // this assumes input are compared by identity as typically annotations do not override hashCode
-  final ConcurrentMap<M, Sampler> methodsToSamplers = new ConcurrentHashMap<>();
-  final RateForMethod<M> rateForMethod;
-
-  DeclarativeSampler(RateForMethod<M> rateForMethod) {
-    this.rateForMethod = rateForMethod;
+  /** @since 5.8 */
+  public interface RateOfMethod<M> {
+    /** Returns null if there's no configured sample rate (in traces per second) of this method */
+    @Nullable Integer get(M method);
   }
+
+  /* @since 5.8 */
+  public static <M> DeclarativeSampler<M> createWithProbability(
+    ProbabilityOfMethod<M> probabilityOfMethod) {
+    if (probabilityOfMethod == null) throw new NullPointerException("probabilityOfMethod == null");
+    return new DeclarativeCountingSampler<>(probabilityOfMethod);
+  }
+
+  /* @since 5.8 */
+  public static <M> DeclarativeSampler<M> createWithRate(RateOfMethod<M> rateOfMethod) {
+    if (rateOfMethod == null) throw new NullPointerException("rateOfMethod == null");
+    return new DeclarativeRateLimitingSampler<>(rateOfMethod);
+  }
+
+  // this assumes input are compared by identity as typically annotations do not override hashCode
+  final ConcurrentMap<M, Sampler> methodToSamplers = new ConcurrentHashMap<>();
 
   /**
    * Used with {@link brave.Tracer#withSampler(Sampler)} to override the default sampling decision.
@@ -75,6 +87,7 @@ public final class DeclarativeSampler<M> {
    *
    * @param method input to the sampling function
    * @return false if there was no rate associated with the input
+   * @since 4.4
    */
   public Sampler toSampler(M method) {
     if (method == null) throw new NullPointerException("method == null");
@@ -97,11 +110,12 @@ public final class DeclarativeSampler<M> {
    * Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
    *
    * // This code looks the same as if there was no declarative override
-   * brave.Span span = tracer.nextSpan().name("").start();
+   * brave.Span span = tracer.nextSpan().start();
    * }</pre>
    *
    * @param method input to the sampling function
    * @param fallback when there is no rate for the input, usually {@link brave.Tracing#sampler()}
+   * @since 4.19
    */
   public Sampler toSampler(M method, Sampler fallback) {
     if (method == null) throw new NullPointerException("method == null");
@@ -117,18 +131,17 @@ public final class DeclarativeSampler<M> {
 
   public SamplingFlags sample(@Nullable M method) {
     if (method == null) return SamplingFlags.EMPTY;
-    Sampler sampler = methodsToSamplers.get(method);
+    Sampler sampler = methodToSamplers.get(method);
     if (sampler == NULL_SENTINEL) return SamplingFlags.EMPTY;
     if (sampler != null) return sample(sampler);
 
-    Float rate = rateForMethod.get(method);
-    if (rate == null) {
-      methodsToSamplers.put(method, NULL_SENTINEL);
+    sampler = samplerOfMethod(method);
+    if (sampler == null) {
+      methodToSamplers.put(method, NULL_SENTINEL);
       return SamplingFlags.EMPTY;
     }
 
-    sampler = CountingSampler.create(rate);
-    Sampler previousSampler = methodsToSamplers.putIfAbsent(method, sampler);
+    Sampler previousSampler = methodToSamplers.putIfAbsent(method, sampler);
     if (previousSampler != null) sampler = previousSampler; // lost race, use the existing counter
     return sample(sampler);
   }
@@ -145,4 +158,60 @@ public final class DeclarativeSampler<M> {
       throw new AssertionError();
     }
   };
+
+  @Nullable abstract Sampler samplerOfMethod(M method);
+
+  static final class DeclarativeCountingSampler<M> extends DeclarativeSampler<M> {
+    final ProbabilityOfMethod<M> probabilityOfMethod;
+
+    DeclarativeCountingSampler(ProbabilityOfMethod<M> probabilityOfMethod) {
+      this.probabilityOfMethod = probabilityOfMethod;
+    }
+
+    @Override Sampler samplerOfMethod(M method) {
+      Float probability = probabilityOfMethod.get(method);
+      if (probability == null) return null;
+      return CountingSampler.create(probability);
+    }
+
+    @Override public String toString() {
+      return "DeclarativeCountingSampler{" + probabilityOfMethod + "}";
+    }
+  }
+
+  static final class DeclarativeRateLimitingSampler<M> extends DeclarativeSampler<M> {
+    final RateOfMethod<M> rateOfMethod;
+
+    DeclarativeRateLimitingSampler(RateOfMethod<M> rateOfMethod) {
+      this.rateOfMethod = rateOfMethod;
+    }
+
+    @Override Sampler samplerOfMethod(M method) {
+      Integer rate = rateOfMethod.get(method);
+      if (rate == null) return null;
+      return RateLimitingSampler.create(rate);
+    }
+
+    @Override public String toString() {
+      return "DeclarativeRateLimitingSampler{" + rateOfMethod + "}";
+    }
+  }
+
+  DeclarativeSampler() {
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated since 5.8, use {@link #createWithProbability(ProbabilityOfMethod)}
+   */
+  public static <M> DeclarativeSampler<M> create(RateForMethod<M> rateForMethod) {
+    return createWithProbability(rateForMethod);
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated since 5.8, use {@link ProbabilityOfMethod}
+   */
+  public interface RateForMethod<M> extends ProbabilityOfMethod<M> {
+  }
 }

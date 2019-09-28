@@ -19,16 +19,15 @@ import org.junit.Test;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 public class BoundarySamplerTest extends SamplerTest {
-  @Override Sampler newSampler(float rate) {
-    return BoundarySampler.create(rate);
+  @Override Sampler newSampler(float probability) {
+    return BoundarySampler.create(probability);
   }
 
-  @Override Percentage expectedErrorRate() {
+  @Override Percentage expectedErrorProbability() {
     return withPercentage(10);
   }
 
-  @Test
-  public void acceptsOneInTenThousandSampleRate() {
+  @Test public void acceptsOneInTenThousandProbability() {
     newSampler(0.0001f);
   }
 }

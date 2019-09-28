@@ -22,7 +22,7 @@ import java.util.Random;
  *
  * <h3>Implementation</h3>
  *
- * <p>This uses modulo 10000 arithmetic, which allows a minimum sample rate of 0.01%. Trace id
+ * <p>This uses modulo 10000 arithmetic, which allows a minimum probability of 0.01%. Trace id
  * collision was noticed in practice in the Twitter front-end cluster. A random salt is here to
  * defend against nodes in the same cluster sampling exactly the same subset of trace ids. The goal
  * was full 64-bit coverage of trace IDs on multi-host deployments.
@@ -33,16 +33,17 @@ public final class BoundarySampler extends Sampler {
   static final long SALT = new Random().nextLong();
 
   /**
-   * @param rate 0 means never sample, 1 means always sample. Otherwise minimum sample rate is
-   * 0.0001, or 0.01% of traces
+   * @param probability 0 means never sample, 1 means always sample. Otherwise minimum probability
+   * is 0.0001, or 0.01% of traces
    */
-  public static Sampler create(float rate) {
-    if (rate == 0) return Sampler.NEVER_SAMPLE;
-    if (rate == 1.0) return ALWAYS_SAMPLE;
-    if (rate < 0.0001f || rate > 1) {
-      throw new IllegalArgumentException("rate should be between 0.0001 and 1: was " + rate);
+  public static Sampler create(float probability) {
+    if (probability == 0) return Sampler.NEVER_SAMPLE;
+    if (probability == 1.0) return ALWAYS_SAMPLE;
+    if (probability < 0.0001f || probability > 1) {
+      throw new IllegalArgumentException(
+        "probability should be between 0.0001 and 1: was " + probability);
     }
-    final long boundary = (long) (rate * 10000); // safe cast as less <= 1
+    final long boundary = (long) (probability * 10000); // safe cast as less <= 1
     return new BoundarySampler(boundary);
   }
 

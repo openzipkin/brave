@@ -20,88 +20,129 @@ import java.lang.annotation.RetentionPolicy;
 import org.junit.Before;
 import org.junit.Test;
 
+import static brave.sampler.DeclarativeSampler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeclarativeSamplerTest {
 
   DeclarativeSampler<Traced> declarativeSampler =
-    DeclarativeSampler.create(t -> t.enabled() ? t.sampleRate() : null);
+    DeclarativeSampler.createWithProbability(t -> t.enabled() ? t.sampleProbability() : null);
 
   @Before public void clear() {
-    declarativeSampler.methodsToSamplers.clear();
+    declarativeSampler.methodToSamplers.clear();
   }
 
   @Test public void honorsSampleRate() {
-    assertThat(declarativeSampler.sample(traced(1.0f, true)))
+    DeclarativeSampler<Traced> declarativeSampler =
+      DeclarativeSampler.createWithRate(Traced::sampleRate);
+
+    assertThat(declarativeSampler.sample(traced(0.0f, 1, true)))
       .isEqualTo(SamplingFlags.SAMPLED);
 
-    assertThat(declarativeSampler.sample(traced(0.0f, true)))
+    assertThat(declarativeSampler.sample(traced(0.0f, 0, true)))
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
+  @Test public void honorsSampleProbability() {
+    DeclarativeSampler<Traced> declarativeSampler =
+      DeclarativeSampler.createWithProbability(Traced::sampleProbability);
+
+    assertThat(declarativeSampler.sample(traced(1.0f, 0, true)))
+      .isEqualTo(SamplingFlags.SAMPLED);
+
+    assertThat(declarativeSampler.sample(traced(0.0f, 0, true)))
+      .isEqualTo(SamplingFlags.NOT_SAMPLED);
+  }
+
+  @Test public void unmatched() {
+    DeclarativeSampler<Object> declarativeSampler = DeclarativeSampler.createWithRate(o -> null);
+
+    assertThat(declarativeSampler.sample(new Object()))
+      .isEqualTo(SamplingFlags.EMPTY);
+
+    // this decision is cached
+    assertThat(declarativeSampler.methodToSamplers)
+      .containsValue(NULL_SENTINEL);
+  }
+
   @Test public void acceptsFallback() {
-    assertThat(declarativeSampler.sample(traced(1.0f, false)))
+    assertThat(declarativeSampler.sample(traced(1.0f, 0, false)))
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void toSampler() {
-    assertThat(declarativeSampler.toSampler(traced(1.0f, true)).isSampled(0L))
+    assertThat(declarativeSampler.toSampler(traced(1.0f, 0, true)).isSampled(0L))
       .isTrue();
 
-    assertThat(declarativeSampler.toSampler(traced(0.0f, true)).isSampled(0L))
+    assertThat(declarativeSampler.toSampler(traced(0.0f, 0, true)).isSampled(0L))
       .isFalse();
 
     // check not enabled is false
-    assertThat(declarativeSampler.toSampler(traced(1.0f, false)).isSampled(0L))
+    assertThat(declarativeSampler.toSampler(traced(1.0f, 0, false)).isSampled(0L))
       .isFalse();
   }
 
   @Test public void toSampler_fallback() {
-    Sampler withFallback = declarativeSampler.toSampler(traced(1.0f, false), Sampler.ALWAYS_SAMPLE);
+    Sampler withFallback =
+      declarativeSampler.toSampler(traced(0.0f, 0, false), Sampler.ALWAYS_SAMPLE);
+
+    assertThat(withFallback.isSampled(0L))
+      .isTrue();
+  }
+
+  @Test public void toSampler_fallback_notUsed() {
+    Sampler withFallback =
+      declarativeSampler.toSampler(traced(1.0f, 0, true), Sampler.NEVER_SAMPLE);
 
     assertThat(withFallback.isSampled(0L))
       .isTrue();
   }
 
   @Test public void samplerLoadsLazy() {
-    assertThat(declarativeSampler.methodsToSamplers)
+    assertThat(declarativeSampler.methodToSamplers)
       .isEmpty();
 
-    declarativeSampler.sample(traced(1.0f, true));
+    declarativeSampler.sample(traced(1.0f, 0, true));
 
-    assertThat(declarativeSampler.methodsToSamplers)
+    assertThat(declarativeSampler.methodToSamplers)
       .hasSize(1);
 
-    declarativeSampler.sample(traced(0.0f, true));
+    declarativeSampler.sample(traced(0.0f, 0, true));
 
-    assertThat(declarativeSampler.methodsToSamplers)
+    assertThat(declarativeSampler.methodToSamplers)
       .hasSize(2);
   }
 
   @Test public void cardinalityIsPerAnnotationNotInvocation() {
-    Traced traced = traced(1.0f, true);
+    Traced traced = traced(1.0f, 0, true);
 
     declarativeSampler.sample(traced);
     declarativeSampler.sample(traced);
     declarativeSampler.sample(traced);
 
-    assertThat(declarativeSampler.methodsToSamplers)
+    assertThat(declarativeSampler.methodToSamplers)
       .hasSize(1);
   }
 
   @Retention(RetentionPolicy.RUNTIME) public @interface Traced {
-    float sampleRate() default 1.0f;
+    float sampleProbability() default 1.0f;
+
+    int sampleRate() default 0;
 
     boolean enabled() default true;
   }
 
-  static Traced traced(float sampleRate, boolean enabled) {
+  static Traced traced(float sampleProbability, int sampleRate, boolean enabled) {
     return new Traced() {
       @Override public Class<? extends Annotation> annotationType() {
         return Traced.class;
       }
 
-      @Override public float sampleRate() {
+      @Override public float sampleProbability() {
+        return sampleProbability;
+      }
+
+      @Override public int sampleRate() {
         return sampleRate;
       }
 

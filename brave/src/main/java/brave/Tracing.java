@@ -356,10 +356,10 @@ public abstract class Tracing implements Closeable {
      * {@link #spanReporter(Reporter) span reporter}, even if they aren't sampled remotely. Defaults
      * to false.
      *
-     * <p>The primary use case is to implement a sampling overlay, such as boosting the sample rate
-     * for a subset of the network depending on the value of an {@link ExtraFieldPropagation extra
-     * field}. This means that data will report when either the trace is normally sampled, or
-     * secondarily sampled via a custom header.
+     * <p>The primary use case is to implement a <a href="https://github.com/openzipkin-contrib/zipkin-secondary-sampling">sampling
+     * overlay</a>, such as boosting the sample rate for a subset of the network depending on the
+     * value of an {@link ExtraFieldPropagation extra field}. This means that data will report when
+     * either the trace is normally sampled, or secondarily sampled via a custom header.
      *
      * <p>This is simpler than {@link #addFinishedSpanHandler(FinishedSpanHandler)}, because you
      * don't have to duplicate transport mechanics already implemented in the {@link

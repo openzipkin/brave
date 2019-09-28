@@ -19,16 +19,15 @@ import org.junit.Test;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 public class CountingSamplerTest extends SamplerTest {
-  @Override Sampler newSampler(float rate) {
-    return CountingSampler.create(rate);
+  @Override Sampler newSampler(float probability) {
+    return CountingSampler.create(probability);
   }
 
-  @Override Percentage expectedErrorRate() {
+  @Override Percentage expectedErrorProbability() {
     return withPercentage(0);
   }
 
-  @Test
-  public void sampleRateMinimumOnePercent() throws Exception {
+  @Test public void probabilityMinimumOnePercent() {
     thrown.expect(IllegalArgumentException.class);
     newSampler(0.0001f);
   }
