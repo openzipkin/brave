@@ -17,7 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
-import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 
 /**
@@ -66,7 +66,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
   final Tracer tracer;
   final HttpRequestSampler sampler;
   @Nullable final HttpServerAdapter<Req, Resp> adapter; // null when using default types
-  final TraceContext.Extractor<HttpServerRequest> defaultExtractor;
+  final Extractor<HttpServerRequest> defaultExtractor;
 
   HttpServerHandler(HttpTracing httpTracing, HttpServerAdapter<Req, Resp> adapter) {
     super(
@@ -96,21 +96,17 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}, as this allows more
-   * advanced samplers to be used.
+   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}
    */
-  @Deprecated
-  public Span handleReceive(TraceContext.Extractor<Req> extractor, Req request) {
+  @Deprecated public Span handleReceive(Extractor<Req> extractor, Req request) {
     return handleReceive(extractor, request, request);
   }
 
   /**
    * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)} to handle any difference
-   * between carrier and request via wrapping in {@link HttpServerRequest}.
+   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}
    */
-  @Deprecated
-  public <C> Span handleReceive(TraceContext.Extractor<C> extractor, C carrier, Req request) {
+  @Deprecated public <C> Span handleReceive(Extractor<C> extractor, C carrier, Req request) {
     HttpServerRequest serverRequest;
     if (request instanceof HttpServerRequest) {
       serverRequest = (HttpServerRequest) request;
