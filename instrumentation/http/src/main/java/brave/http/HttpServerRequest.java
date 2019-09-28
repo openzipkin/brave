@@ -14,7 +14,6 @@
 package brave.http;
 
 import brave.Span;
-import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 
 /**
@@ -24,7 +23,7 @@ import brave.propagation.Propagation.Getter;
  * @see HttpServerResponse
  * @since 5.7
  */
-public abstract class HttpServerRequest {
+public abstract class HttpServerRequest extends HttpRequest {
   static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
     @Override public String get(HttpServerRequest carrier, String key) {
       return carrier.header(key);
@@ -36,28 +35,6 @@ public abstract class HttpServerRequest {
   };
 
   /**
-   * Returns the underlying http request object. Ex. {@code javax.servlet.http.HttpServletRequest}
-   *
-   * <p>Note: Some implementations are composed of multiple types, such as a request and a socket
-   * address of the client. Moreover, an implementation may change the type returned due to
-   * refactoring. Unless you control the implementation, cast carefully (ex using {@code instance
-   * of}) instead of presuming a specific type will always be returned.
-   */
-  public abstract Object unwrap();
-
-  /** @see HttpAdapter#method(Object) */
-  @Nullable public abstract String method();
-
-  /** @see HttpAdapter#path(Object) */
-  @Nullable public abstract String path();
-
-  /** @see HttpAdapter#url(Object) */
-  @Nullable public abstract String url();
-
-  /** @see HttpAdapter#requestHeader(Object, String) */
-  @Nullable public abstract String header(String name);
-
-  /**
    * Override and return true when it is possible to parse the {@link Span#remoteIpAndPort(String,
    * int) remote IP and port} from the {@link #unwrap() delegate}. Defaults to false.
    *
@@ -67,30 +44,20 @@ public abstract class HttpServerRequest {
     return false;
   }
 
-  /** @see HttpAdapter#startTimestamp(Object) */
-  public long startTimestamp() {
-    return 0L;
-  }
-
-  @Override public String toString() {
-    // unwrap() returning null is a bug, but don't NPE during toString()
-    return "HttpServerRequest{" + unwrap() + "}";
-  }
-
   /**
    * <h3>Why do we need an {@link HttpServerAdapter}?</h3>
    *
-   * <p>We'd normally expect {@link HttpServerRequest} and {@link HttpServerResponse} to be used
-   * directly, so not need an adapter. However, doing so would imply duplicating types that use
-   * adapters, including {@link HttpServerParser} and {@link HttpSampler}. An adapter allows this
-   * type to be used in existing parsers and samplers, avoiding code duplication.
+   * <p>We'd normally expect {@link HttpServerRequest} to be used directly, so not need an adapter.
+   * However, parsing hasn't yet been converted to this type. Even if it was, there are public apis
+   * that still accept instances of adapters. A bridge is needed until deprecated methods are
+   * removed.
    */
-  // Intentionally hidden; Void type used to force generics to fail handling the wrong side
-  static final class Adapter extends brave.http.HttpServerAdapter<Object, Void> {
+  // Intentionally hidden; Void type used to force generics to fail handling the wrong side.
+  @Deprecated static final class ToHttpAdapter extends brave.http.HttpServerAdapter<Object, Void> {
     final HttpServerRequest delegate;
     final Object unwrapped;
 
-    Adapter(HttpServerRequest delegate) {
+    ToHttpAdapter(HttpServerRequest delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
       this.delegate = delegate;
       this.unwrapped = delegate.unwrap();
@@ -103,6 +70,11 @@ public abstract class HttpServerRequest {
         return delegate.parseClientIpAndPort(span);
       }
       return false;
+    }
+
+    @Override public final long startTimestamp(Object request) {
+      if (request == unwrapped) return delegate.startTimestamp();
+      return 0L;
     }
 
     @Override public final String method(Object request) {
@@ -123,11 +95,6 @@ public abstract class HttpServerRequest {
     @Override public final String path(Object request) {
       if (request == unwrapped) return delegate.path();
       return null;
-    }
-
-    @Override public final long startTimestamp(Object request) {
-      if (request == unwrapped) return delegate.startTimestamp();
-      return 0L;
     }
 
     // Skip response adapter methods
@@ -152,19 +119,52 @@ public abstract class HttpServerRequest {
       return 0L;
     }
 
-    @Override public String toString() {
+    @Override public final String toString() {
       return delegate.toString();
     }
+  }
 
-    @Override public boolean equals(Object o) { // implemented to make testing easier
-      if (o == this) return true;
-      if (!(o instanceof Adapter)) return false;
-      Adapter that = (Adapter) o;
-      return delegate == that.delegate;
+  @Deprecated static final class FromHttpAdapter<Req> extends HttpServerRequest {
+    final HttpServerAdapter<Req, ?> adapter;
+    final Req request;
+
+    FromHttpAdapter(HttpServerAdapter<Req, ?> adapter, Req request) {
+      if (adapter == null) throw new NullPointerException("adapter == null");
+      this.adapter = adapter;
+      if (request == null) throw new NullPointerException("request == null");
+      this.request = request;
     }
 
-    @Override public int hashCode() {
-      return delegate.hashCode();
+    @Override public Object unwrap() {
+      return request;
+    }
+
+    @Override public long startTimestamp() {
+      return adapter.startTimestamp(request);
+    }
+
+    @Override public String method() {
+      return adapter.method(request);
+    }
+
+    @Override public String path() {
+      return adapter.path(request);
+    }
+
+    @Override public String url() {
+      return adapter.url(request);
+    }
+
+    @Override public String header(String name) {
+      return adapter.requestHeader(request, name);
+    }
+
+    @Override public boolean parseClientIpAndPort(Span span) {
+      return adapter.parseClientIpAndPort(request, span);
+    }
+
+    @Override public final String toString() {
+      return request.toString();
     }
   }
 }

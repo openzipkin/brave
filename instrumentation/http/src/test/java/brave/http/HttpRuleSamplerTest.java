@@ -26,6 +26,9 @@ public class HttpRuleSamplerTest {
   @Mock HttpClientAdapter<Object, Object> adapter;
   Object request = new Object();
 
+  @Mock HttpClientRequest httpClientRequest;
+  @Mock HttpServerRequest httpServerRequest;
+
   @Test public void onPath() {
     HttpSampler sampler = HttpRuleSampler.newBuilder()
       .addRuleWithProbability(null, "/foo", 1.0f)
@@ -35,6 +38,18 @@ public class HttpRuleSamplerTest {
     when(adapter.path(request)).thenReturn("/foo");
 
     assertThat(sampler.trySample(adapter, request))
+      .isTrue();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isTrue();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
       .isTrue();
   }
 
@@ -72,6 +87,18 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(adapter, request))
       .isFalse();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isFalse();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isFalse();
   }
 
   @Test public void onPath_sampled_prefix() {
@@ -83,6 +110,18 @@ public class HttpRuleSamplerTest {
     when(adapter.path(request)).thenReturn("/foo/abcd");
 
     assertThat(sampler.trySample(adapter, request))
+      .isFalse();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo/abcd");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isFalse();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo/abcd");
+
+    assertThat(sampler.trySample(httpServerRequest))
       .isFalse();
   }
 
@@ -96,6 +135,18 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(adapter, request))
       .isNull();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/bar");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/bar");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull();
   }
 
   @Test public void onMethodAndPath_sampled() {
@@ -107,6 +158,18 @@ public class HttpRuleSamplerTest {
     when(adapter.path(request)).thenReturn("/foo");
 
     assertThat(sampler.trySample(adapter, request))
+      .isTrue();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isTrue();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
       .isTrue();
   }
 
@@ -120,6 +183,18 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(adapter, request))
       .isTrue();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo/abcd");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isTrue();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo/abcd");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isTrue();
   }
 
   @Test public void onMethodAndPath_unsampled() {
@@ -131,6 +206,18 @@ public class HttpRuleSamplerTest {
     when(adapter.path(request)).thenReturn("/foo");
 
     assertThat(sampler.trySample(adapter, request))
+      .isFalse();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isFalse();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
       .isFalse();
   }
 
@@ -144,6 +231,18 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(adapter, request))
       .isNull();
+
+    when(httpClientRequest.method()).thenReturn("POST");
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("POST");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull();
   }
 
   @Test public void onMethodAndPath_doesntMatch_path() {
@@ -156,6 +255,18 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(adapter, request))
       .isNull();
+
+    when(httpClientRequest.method()).thenReturn("GET");
+    when(httpClientRequest.path()).thenReturn("/bar");
+
+    assertThat(sampler.trySample(httpClientRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/bar");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull();
   }
 
   @Test public void nullOnParseFailure() {
@@ -165,6 +276,10 @@ public class HttpRuleSamplerTest {
 
     // not setting up mocks means they return null which is like a parse fail
     assertThat(sampler.trySample(adapter, request))
+      .isNull();
+    assertThat(sampler.trySample(httpClientRequest))
+      .isNull();
+    assertThat(sampler.trySample(httpServerRequest))
       .isNull();
   }
 }

@@ -69,7 +69,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   final Tracer tracer;
   @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
-  final HttpSampler httpSampler;
+  final HttpRequestSampler httpSampler;
   @Nullable final Tracer samplingTracer;
   @Nullable final String serverName;
   final Injector<HttpClientRequest> defaultInjector;
@@ -82,10 +82,10 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
-    this.httpSampler = httpTracing.clientSampler();
-    if (httpSampler == HttpSampler.TRACE_ID) {
+    this.httpSampler = httpTracing.clientRequestSampler();
+    if (httpSampler == HttpRequestSampler.TRACE_ID) {
       samplingTracer = tracer;
-    } else if (httpSampler == HttpSampler.NEVER_SAMPLE) {
+    } else if (httpSampler == HttpRequestSampler.NEVER_SAMPLE) {
       samplingTracer = sampler == NEVER_SAMPLE ? tracer : tracer.withSampler(NEVER_SAMPLE);
     } else {
       samplingTracer = null;
@@ -106,13 +106,8 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
-    return handleSend(adapter, nextClientSpan(adapter, request.unwrap()));
-  }
-
-  Span handleSend(HttpClientRequest.Adapter adapter, Span span) {
-    defaultInjector.inject(span.context(), adapter.delegate);
-    return handleStart(adapter, adapter.unwrapped, span);
+    if (request == null) throw new NullPointerException("request == null");
+    return handleSend(request, nextClientSpan(request));
   }
 
   /**
@@ -122,8 +117,10 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request, Span span) {
-    HttpClientRequest.Adapter adapter = new HttpClientRequest.Adapter(request);
-    return handleSend(adapter, span);
+    if (request == null) throw new NullPointerException("request == null");
+    if (span == null) throw new NullPointerException("span == null");
+    defaultInjector.inject(span.context(), request);
+    return handleStart(new HttpClientRequest.ToHttpAdapter(request), request.unwrap(), span);
   }
 
   /**
@@ -137,8 +134,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)} to handle any difference
-   * between carrier and request via wrapping in {@link HttpClientRequest}.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request) {
     return handleSend(injector, carrier, request, nextSpan(request));
@@ -146,8 +142,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}, as this allows more
-   * advanced samplers to be used.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}.
    */
   @Deprecated public Span handleSend(Injector<Req> injector, Req request, Span span) {
     return handleSend(injector, request, request, span);
@@ -155,8 +150,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)} to handle any difference
-   * between carrier and request via wrapping in {@link HttpClientRequest}.
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
@@ -170,26 +164,33 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   }
 
   /**
+   * @since 4.4
+   * @deprecated since 5.8 use {@link #nextClientSpan(HttpClientRequest)}
+   */
+  @Deprecated public Span nextSpan(Req request) {
+    // nextSpan can be called independently when interceptors control lifecycle directly. In these
+    // cases, it is possible to have HttpClientRequest as an argument.
+    HttpClientRequest clientRequest;
+    if (request instanceof HttpClientRequest) {
+      clientRequest = (HttpClientRequest) request;
+    } else {
+      clientRequest = new HttpClientRequest.FromHttpAdapter<>(adapter, request);
+    }
+    return nextClientSpan(clientRequest);
+  }
+
+  /**
    * Creates a potentially noop span representing this request. This is used when you need to
    * provision a span in a different scope than where the request is executed.
    *
-   * @since 4.4
+   * @since 5.8
    */
-  public Span nextSpan(Req request) {
+  // Renamed to avoid generics clash when <Req> is HttpClientRequest.
+  public Span nextClientSpan(HttpClientRequest request) {
     if (request == null) throw new NullPointerException("request == null");
-    // nextSpan can be called independently when interceptors control lifecycle directly. In these
-    // cases, it is possible to have HttpClientRequest as an argument.
-    if (request instanceof HttpClientRequest) {
-      HttpClientRequest clientRequest = (HttpClientRequest) request;
-      return nextClientSpan(new HttpClientRequest.Adapter(clientRequest), clientRequest.unwrap());
-    }
-    return nextClientSpan(adapter, request);
-  }
-
-  <Req1> Span nextClientSpan(HttpClientAdapter<Req1, ?> adapter, Req1 req1) {
     Tracer scoped = samplingTracer != null ? samplingTracer : tracer.withSampler(new Sampler() {
       @Override public boolean isSampled(long traceId) {
-        Boolean decision = httpSampler.trySample(adapter, req1);
+        Boolean decision = httpSampler.trySample(request);
         if (decision == null) return sampler.isSampled(traceId);
         return decision;
       }

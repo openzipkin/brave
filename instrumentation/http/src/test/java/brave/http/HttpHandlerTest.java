@@ -25,7 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -140,11 +140,9 @@ public class HttpHandlerTest {
   @Test public void handleFinish_finishedEvenIfAdapterThrows() {
     when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
 
-    try {
-      handler.handleFinish(adapter, response, null, span);
-      failBecauseExceptionWasNotThrown(RuntimeException.class);
-    } catch (RuntimeException e) {
-      verify(span).finish();
-    }
+    assertThatThrownBy(() -> handler.handleFinish(adapter, response, null, span))
+      .isInstanceOf(RuntimeException.class);
+
+    verify(span).finish();
   }
 }

@@ -28,11 +28,17 @@ import brave.internal.Nullable;
  * }</pre>
  *
  * @see HttpRuleSampler
+ * @deprecated Since 5.8, use {@link HttpRequestSampler} instead.
  */
+@Deprecated
 // abstract class as you can't lambda generic methods anyway. This lets us make helpers in the future
-public abstract class HttpSampler {
+public abstract class HttpSampler implements HttpRequestSampler {
   /** Ignores the request and uses the {@link brave.sampler.Sampler trace ID instead}. */
   public static final HttpSampler TRACE_ID = new HttpSampler() {
+    @Override public Boolean trySample(HttpRequest request) {
+      return null;
+    }
+
     @Override @Nullable public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return null;
     }
@@ -48,6 +54,10 @@ public abstract class HttpSampler {
    * out client requests made during bootstrap.
    */
   public static final HttpSampler NEVER_SAMPLE = new HttpSampler() {
+    @Override public Boolean trySample(HttpRequest request) {
+      return false;
+    }
+
     @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return false;
     }
@@ -57,9 +67,97 @@ public abstract class HttpSampler {
     }
   };
 
+  @Override @Nullable public Boolean trySample(HttpRequest request) {
+    HttpAdapter<Object, Void> adapter;
+    if (request instanceof HttpClientRequest) {
+      adapter = new HttpClientRequest.ToHttpAdapter((HttpClientRequest) request);
+    } else {
+      adapter = new HttpServerRequest.ToHttpAdapter((HttpServerRequest) request);
+    }
+    return trySample(adapter, request.unwrap());
+  }
+
   /**
    * Returns an overriding sampling decision for a new trace. Return null ignore the request and use
    * the {@link brave.sampler.Sampler trace ID sampler}.
    */
   @Nullable public abstract <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request);
+
+  static HttpSampler fromHttpRequestSampler(HttpRequestSampler sampler) {
+    if (sampler == null) throw new NullPointerException("sampler == null");
+    if (sampler == HttpRequestSampler.TRACE_ID) return HttpSampler.TRACE_ID;
+    if (sampler == HttpRequestSampler.NEVER_SAMPLE) return HttpSampler.NEVER_SAMPLE;
+    return sampler instanceof HttpSampler ? (HttpSampler) sampler
+      : new HttpRequestSamplerAdapter(sampler);
+  }
+
+  static HttpRequestSampler toHttpRequestSampler(HttpRequestSampler sampler) {
+    if (sampler == null) throw new NullPointerException("sampler == null");
+    if (sampler == HttpSampler.TRACE_ID) return HttpRequestSampler.TRACE_ID;
+    if (sampler == HttpSampler.NEVER_SAMPLE) return HttpRequestSampler.NEVER_SAMPLE;
+    return sampler;
+  }
+
+  static final class HttpRequestSamplerAdapter extends HttpSampler {
+    final HttpRequestSampler delegate;
+
+    HttpRequestSamplerAdapter(HttpRequestSampler delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Boolean trySample(HttpRequest request) {
+      return delegate.trySample(request);
+    }
+
+    @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+      if (adapter == null) throw new NullPointerException("adapter == null");
+      if (request == null) throw new NullPointerException("request == null");
+      // This can be called independently when interceptors control lifecycle directly. In these
+      // cases, it is possible to have an HttpRequest as an argument.
+      if (request instanceof HttpRequest) {
+        return delegate.trySample((HttpRequest) request);
+      }
+      return delegate.trySample(new FromHttpAdapter<>(adapter, request));
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
+  }
+
+  @Deprecated static final class FromHttpAdapter<Req> extends HttpRequest {
+    final HttpAdapter<Req, ?> adapter;
+    final Req request;
+
+    FromHttpAdapter(HttpAdapter<Req, ?> adapter, Req request) {
+      if (adapter == null) throw new NullPointerException("adapter == null");
+      this.adapter = adapter;
+      if (request == null) throw new NullPointerException("request == null");
+      this.request = request;
+    }
+
+    @Override public Object unwrap() {
+      return request;
+    }
+
+    @Override public String method() {
+      return adapter.method(request);
+    }
+
+    @Override public String path() {
+      return adapter.path(request);
+    }
+
+    @Override public String url() {
+      return adapter.url(request);
+    }
+
+    @Override public String header(String name) {
+      return adapter.requestHeader(request, name);
+    }
+
+    @Override public String toString() {
+      return request.toString();
+    }
+  }
 }
