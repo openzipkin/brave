@@ -38,6 +38,7 @@ import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
+import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpServer extends ITHttp {
@@ -133,7 +134,7 @@ public abstract class ITHttpServer extends ITHttp {
     String path = "/foo";
 
     httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, path, 0.0f)
+      .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
       .build()).build();
     init();
 
