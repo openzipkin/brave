@@ -44,11 +44,18 @@ import static brave.sampler.Matchers.and;
  *   .putRule(and(methodIsEqualTo("POST"), pathStartsWith("/bar")), RateLimitingSampler.create(10))
  *   .build());
  * }</pre>
- * <pre>{@code
  *
+ * <p>Ex. Here's a custom matcher for the endpoint "/play&country=US"
+ *
+ * <p><pre>{@code
+ * Matcher<HttpRequest> playInTheUSA = request -> {
+ *   if (!"/play".equals(request.path())) return false;
+ *   String url = request.url();
+ *   if (url == null) return false;
+ *   String query = URI.create(url).getQuery();
+ *   return query != null && query.contains("country=US");
+ * };
  * }</pre>
- *
- * <p>Note that the path is a prefix, so "/foo" will match "/foo/abcd".
  *
  * <h3>Implementation notes</h3>
  * Be careful when implementing matchers as {@link HttpRequest} methods can return null.

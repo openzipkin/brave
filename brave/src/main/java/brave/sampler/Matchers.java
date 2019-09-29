@@ -67,7 +67,7 @@ public final class Matchers {
 
   static <P> Matcher<P> composite(Matcher<P>[] matchers, boolean and) {
     if (matchers == null) throw new NullPointerException("matchers == null");
-    if (matchers.length == 0) throw new NullPointerException("matchers is empty");
+    if (matchers.length == 0) return neverMatch();
     for (int i = 0; i < matchers.length; i++) {
       if (matchers[i] == null) throw new NullPointerException("matchers[" + i + "] == null");
     }
