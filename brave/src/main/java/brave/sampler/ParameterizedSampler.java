@@ -15,8 +15,9 @@ package brave.sampler;
 
 import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is an implementation of how to decide whether to trace a request using ordered rules. For
@@ -32,9 +33,15 @@ import java.util.List;
  * @since 4.4
  */
 public final class ParameterizedSampler<P> {
-  /** @since 5.8 */
+  /**
+   * Returns true if this rule matches the input parameters
+   *
+   * <p>Implement {@link #hashCode()} and {@link #equals(Object)} if you want to replace existing
+   * rules by something besides object identity.
+   *
+   * @since 5.8
+   */
   public interface Matcher<P> {
-    /** Returns true if this rule matches the input parameters */
     boolean matches(P parameters);
   }
 
@@ -45,18 +52,40 @@ public final class ParameterizedSampler<P> {
 
   /** @since 5.8 */
   public static final class Builder<P> {
-    final List<R<P>> rules = new ArrayList<>();
+    final Map<Matcher<P>, Sampler> rules = new LinkedHashMap<>();
 
     /** @since 5.8 */
-    public Builder<P> addRule(Matcher<P> matcher, Sampler sampler) {
+    public Builder<P> removeRule(Matcher<P> matcher) {
+      if (matcher == null) throw new NullPointerException("matcher == null");
+      rules.remove(matcher);
+      return this;
+    }
+
+    /**
+     * Adds or replaces all rules in this sampler with those of the input.
+     *
+     * @since 5.8
+     */
+    public Builder<P> putAllRules(ParameterizedSampler<P> sampler) {
+      if (sampler == null) throw new NullPointerException("sampler == null");
+      for (R<P> rule : sampler.rules) putRule(rule.matcher, rule.sampler);
+      return this;
+    }
+
+    /**
+     * Adds or replaces the sampler of the input matcher.
+     *
+     * @since 5.8
+     */
+    public Builder<P> putRule(Matcher<P> matcher, Sampler sampler) {
       if (matcher == null) throw new NullPointerException("matcher == null");
       if (sampler == null) throw new NullPointerException("sampler == null");
-      rules.add(new R<>(matcher, sampler));
+      rules.put(matcher, sampler);
       return this;
     }
 
     public ParameterizedSampler<P> build() {
-      return new ParameterizedSampler<>(rules);
+      return new ParameterizedSampler<>(this);
     }
 
     Builder() {
@@ -71,28 +100,26 @@ public final class ParameterizedSampler<P> {
       this.matcher = matcher;
       this.sampler = sampler;
     }
-
-    boolean matches(P parameters) {
-      return matcher.matches(parameters);
-    }
-
-    SamplingFlags isSampled() {
-      return sampler.isSampled(0L) // counting sampler ignores the input
-        ? SamplingFlags.SAMPLED
-        : SamplingFlags.NOT_SAMPLED;
-    }
   }
 
-  final List<? extends R<P>> rules;
+  final R<P>[] rules; // array avoids Map overhead at runtime
 
-  ParameterizedSampler(List<? extends R<P>> rules) {
-    this.rules = rules;
+  ParameterizedSampler(Builder<P> builder) {
+    this.rules = new R[builder.rules.size()];
+    int i = 0;
+    for (Map.Entry<Matcher<P>, Sampler> rule : builder.rules.entrySet()) {
+      rules[i++] = new R<>(rule.getKey(), rule.getValue());
+    }
   }
 
   public SamplingFlags sample(@Nullable P parameters) {
     if (parameters == null) return SamplingFlags.EMPTY;
     for (R<P> rule : rules) {
-      if (rule.matches(parameters)) return rule.isSampled();
+      if (rule.matcher.matches(parameters)) {
+        return rule.sampler.isSampled(0L) // counting sampler ignores the input
+          ? SamplingFlags.SAMPLED
+          : SamplingFlags.NOT_SAMPLED;
+      }
     }
     return SamplingFlags.EMPTY;
   }
@@ -103,12 +130,16 @@ public final class ParameterizedSampler<P> {
    */
   public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
     if (rules == null) throw new NullPointerException("rules == null");
-    return new ParameterizedSampler<>(rules);
+    Builder<P> builder = newBuilder();
+    for (Rule<P> rule : rules) {
+      builder.putRule(rule.matcher, rule.sampler);
+    }
+    return builder.build();
   }
 
   /**
    * @since 4.4
-   * @deprecated Since 5.8, use {@link Builder#addRule(Matcher, Sampler)}
+   * @deprecated Since 5.8, use {@link Builder#putRule(Matcher, Sampler)}
    */
   @Deprecated public static abstract class Rule<P> extends R<P> implements Matcher<P> {
     protected Rule(float probability) {
