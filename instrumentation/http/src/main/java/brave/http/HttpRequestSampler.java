@@ -49,21 +49,6 @@ public interface HttpRequestSampler {
   };
 
   /**
-   * Returns true to always start new traces for http requests.
-   *
-   * @since 5.8
-   */
-  HttpRequestSampler ALWAYS_SAMPLE = new HttpRequestSampler() {
-    @Override @Nullable public Boolean trySample(HttpRequest request) {
-      return true;
-    }
-
-    @Override public String toString() {
-      return "AlwaysSample";
-    }
-  };
-
-  /**
    * Returns false to never start new traces for http requests. For example, you may wish to only
    * capture traces if they originated from an inbound server request. Such a policy would filter
    * out client requests made during bootstrap.

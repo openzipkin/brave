@@ -34,6 +34,7 @@ import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
+import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -149,14 +150,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void customSampler() throws Exception {
+    String path = "/foo";
+
     close();
     httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, "/foo", 0.0f)
+      .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
       .build()).build();
     client = newClient(server.getPort());
 
     server.enqueue(new MockResponse());
-    get(client, "/foo");
+    get(client, path);
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap())

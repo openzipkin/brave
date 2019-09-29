@@ -14,7 +14,6 @@
 package brave.sampler;
 
 import brave.propagation.SamplingFlags;
-import brave.sampler.ParameterizedSampler.Matcher;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
