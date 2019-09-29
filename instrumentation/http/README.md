@@ -92,10 +92,12 @@ requests to favicon (which many browsers automatically fetch). Other
 requests will use a global rate provided by the tracing component.
 
 ```java
+
+
 httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
-  .putRuleWithRate(null, "/favicon", 0)
-  .putRuleWithRate(null, "/foo", 100)
-  .putRuleWithRate("POST", "/bar", 10)
+  .putRule(pathStartsWith("/favicon"), Sampler.NEVER_SAMPLE)
+  .putRule(pathStartsWith("/foo"), RateLimitingSampler.create(100))
+  .putRule(and(methodIsEqualTo("POST"), pathStartsWith("/bar")), RateLimitingSampler.create(10))
   .build());
 ```
 

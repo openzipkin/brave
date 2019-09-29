@@ -30,21 +30,10 @@ import java.util.Map;
  *
  * @param <P> The type that encloses parameters associated with a sample rate. For example, this
  * could be a pair of http and method.
+ * @see Matcher
  * @since 4.4
  */
 public final class ParameterizedSampler<P> {
-  /**
-   * Returns true if this rule matches the input parameters
-   *
-   * <p>Implement {@link #hashCode()} and {@link #equals(Object)} if you want to replace existing
-   * rules by something besides object identity.
-   *
-   * @since 5.8
-   */
-  public interface Matcher<P> {
-    boolean matches(P parameters);
-  }
-
   /** @since 5.8 */
   public static <P> Builder<P> newBuilder() {
     return new Builder<>();
@@ -53,13 +42,6 @@ public final class ParameterizedSampler<P> {
   /** @since 5.8 */
   public static final class Builder<P> {
     final Map<Matcher<P>, Sampler> rules = new LinkedHashMap<>();
-
-    /** @since 5.8 */
-    public Builder<P> removeRule(Matcher<P> matcher) {
-      if (matcher == null) throw new NullPointerException("matcher == null");
-      rules.remove(matcher);
-      return this;
-    }
 
     /**
      * Adds or replaces all rules in this sampler with those of the input.

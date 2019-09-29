@@ -13,11 +13,15 @@
  */
 package brave.http;
 
+import brave.sampler.Sampler;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import static brave.http.HttpRequestMatchers.methodEquals;
+import static brave.http.HttpRequestMatchers.pathStartsWith;
+import static brave.sampler.Matchers.and;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -31,7 +35,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onPath() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, "/foo", 1.0f)
+      .putRule(pathStartsWith("/foo"), Sampler.ALWAYS_SAMPLE)
       .build();
 
     when(adapter.path(request)).thenReturn("/foo");
@@ -47,55 +51,23 @@ public class HttpRuleSamplerTest {
     when(httpServerRequest.path()).thenReturn("/foo");
 
     assertThat(sampler.trySample(httpServerRequest))
-      .isTrue();
-  }
-
-  @Test public void onPath_rate() {
-    HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithRate(null, "/foo", 1)
-      .build();
-
-    when(adapter.path(request)).thenReturn("/foo");
-
-    assertThat(sampler.trySample(adapter, request))
       .isTrue();
   }
 
   @Test public void onPath_unsampled() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, "/foo", 0.0f)
+      .putRule(pathStartsWith("/foo"), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.path(request)).thenReturn("/foo");
 
     assertThat(sampler.trySample(adapter, request))
-      .isFalse();
-  }
-
-  @Test public void onPath_unsampled_rate() {
-    HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithRate(null, "/foo", 0)
-      .build();
-
-    when(adapter.path(request)).thenReturn("/foo");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isFalse();
-
-    when(httpClientRequest.path()).thenReturn("/foo");
-
-    assertThat(sampler.trySample(httpClientRequest))
-      .isFalse();
-
-    when(httpServerRequest.path()).thenReturn("/foo");
-
-    assertThat(sampler.trySample(httpServerRequest))
       .isFalse();
   }
 
   @Test public void onPath_sampled_prefix() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, "/foo", 0.0f)
+      .putRule(pathStartsWith("/foo"), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.path(request)).thenReturn("/foo/abcd");
@@ -116,7 +88,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onPath_doesntMatch() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability(null, "/foo", 0.0f)
+      .putRule(pathStartsWith("/foo"), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.path(request)).thenReturn("/bar");
@@ -137,7 +109,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onMethodAndPath_sampled() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 1.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.ALWAYS_SAMPLE)
       .build();
 
     when(adapter.method(request)).thenReturn("GET");
@@ -161,7 +133,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onMethodAndPath_sampled_prefix() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 1.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.ALWAYS_SAMPLE)
       .build();
 
     when(adapter.method(request)).thenReturn("GET");
@@ -185,7 +157,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onMethodAndPath_unsampled() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.method(request)).thenReturn("GET");
@@ -209,7 +181,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onMethodAndPath_doesntMatch_method() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.method(request)).thenReturn("POST");
@@ -230,7 +202,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void onMethodAndPath_doesntMatch_path() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
     when(adapter.method(request)).thenReturn("GET");
@@ -254,7 +226,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void nullOnParseFailure() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
     // not setting up mocks means they return null which is like a parse fail
@@ -268,7 +240,7 @@ public class HttpRuleSamplerTest {
 
   @Test public void putAllRules() {
     HttpRuleSampler base = HttpRuleSampler.newBuilder()
-      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
     HttpRuleSampler extended = HttpRuleSampler.newBuilder()
