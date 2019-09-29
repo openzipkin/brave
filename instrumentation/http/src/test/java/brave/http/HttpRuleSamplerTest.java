@@ -282,4 +282,9 @@ public class HttpRuleSamplerTest {
     assertThat(sampler.trySample(httpServerRequest))
       .isNull();
   }
+
+  // empty may sound unintuitive, but it allows use of the same type when always deferring
+  @Test public void noRulesOk() {
+    HttpRuleSampler.<Boolean>newBuilder().build();
+  }
 }

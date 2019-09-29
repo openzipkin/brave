@@ -83,7 +83,6 @@ public final class ParameterizedSampler<P> {
     }
 
     public ParameterizedSampler<P> build() {
-      if (rules.isEmpty()) throw new IllegalArgumentException("no rules");
       return new ParameterizedSampler<>(this);
     }
 

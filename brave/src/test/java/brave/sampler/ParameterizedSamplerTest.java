@@ -80,4 +80,9 @@ public class ParameterizedSamplerTest {
       .build()
     );
   }
+
+  // empty may sound unintuitive, but it allows use of the same type when always deferring
+  @Test public void noRulesOk() {
+    ParameterizedSampler.<Boolean>newBuilder().build();
+  }
 }
