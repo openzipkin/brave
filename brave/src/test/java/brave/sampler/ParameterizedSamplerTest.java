@@ -58,27 +58,31 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void toBuilder_composes() {
+  @Test public void putAllRules() {
     Matcher<Void> one = v -> false;
     Matcher<Void> two = v -> true;
     Matcher<Void> three = v -> Boolean.FALSE;
     Matcher<Void> four = v -> Boolean.TRUE;
-    ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
+    ParameterizedSampler<Void> base = ParameterizedSampler.<Void>newBuilder()
       .putRule(one, Sampler.ALWAYS_SAMPLE)
       .putRule(two, Sampler.NEVER_SAMPLE)
       .putRule(three, Sampler.ALWAYS_SAMPLE)
-      .build().toBuilder()
-      .removeRule(two)
+      .build();
+
+    ParameterizedSampler<Void> extended = ParameterizedSampler.<Void>newBuilder()
+      .putAllRules(base)
       .putRule(one, Sampler.NEVER_SAMPLE)
       .putRule(four, Sampler.ALWAYS_SAMPLE)
       .build();
 
-    assertThat(sampler).usingRecursiveComparison().isEqualTo(ParameterizedSampler.<Void>newBuilder()
-      .putRule(one, Sampler.NEVER_SAMPLE)
-      .putRule(three, Sampler.ALWAYS_SAMPLE)
-      .putRule(four, Sampler.ALWAYS_SAMPLE)
-      .build()
-    );
+    assertThat(extended).usingRecursiveComparison()
+      .isEqualTo(ParameterizedSampler.<Void>newBuilder()
+        .putRule(one, Sampler.NEVER_SAMPLE)
+        .putRule(two, Sampler.NEVER_SAMPLE)
+        .putRule(three, Sampler.ALWAYS_SAMPLE)
+        .putRule(four, Sampler.ALWAYS_SAMPLE)
+        .build()
+      );
   }
 
   // empty may sound unintuitive, but it allows use of the same type when always deferring

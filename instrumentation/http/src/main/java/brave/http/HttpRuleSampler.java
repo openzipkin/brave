@@ -44,22 +44,9 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
     return new Builder();
   }
 
-  /** @since 5.8 */
-  public Builder toBuilder() {
-    return new Builder(this);
-  }
-
   /** @since 4.4 */
   public static final class Builder {
-    final ParameterizedSampler.Builder<MethodAndPath> delegate;
-
-    Builder() {
-      delegate = ParameterizedSampler.newBuilder();
-    }
-
-    Builder(HttpRuleSampler sampler) {
-      delegate = sampler.delegate.toBuilder();
-    }
+    final ParameterizedSampler.Builder<MethodAndPath> delegate = ParameterizedSampler.newBuilder();
 
     /**
      * @since 4.4
@@ -79,6 +66,17 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
      */
     public Builder removeRule(@Nullable String method, String path) {
       delegate.removeRule(new MethodAndPathMatcher(method, path));
+      return this;
+    }
+
+    /**
+     * Adds or replaces all rules in this sampler with those of the input.
+     *
+     * @since 5.8
+     */
+    public Builder putAllRules(HttpRuleSampler sampler) {
+      if (sampler == null) throw new NullPointerException("sampler == null");
+      delegate.putAllRules(sampler.delegate);
       return this;
     }
 
@@ -109,6 +107,9 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
 
     public HttpRuleSampler build() {
       return new HttpRuleSampler(delegate.build());
+    }
+
+    Builder() {
     }
   }
 

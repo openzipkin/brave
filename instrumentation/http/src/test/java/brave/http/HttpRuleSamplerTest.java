@@ -283,6 +283,22 @@ public class HttpRuleSamplerTest {
       .isNull();
   }
 
+  @Test public void putAllRules() {
+    HttpRuleSampler base = HttpRuleSampler.newBuilder()
+      .putRuleWithProbability("GET", "/foo", 0.0f)
+      .build();
+
+    HttpRuleSampler extended = HttpRuleSampler.newBuilder()
+      .putAllRules(base)
+      .build();
+
+    when(httpServerRequest.method()).thenReturn("POST");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(extended.trySample(httpServerRequest))
+      .isNull();
+  }
+
   // empty may sound unintuitive, but it allows use of the same type when always deferring
   @Test public void noRulesOk() {
     HttpRuleSampler.<Boolean>newBuilder().build();

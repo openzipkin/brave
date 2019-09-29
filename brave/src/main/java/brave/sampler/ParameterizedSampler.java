@@ -51,15 +51,6 @@ public final class ParameterizedSampler<P> {
   }
 
   /** @since 5.8 */
-  public Builder<P> toBuilder() {
-    Builder<P> builder = newBuilder();
-    for (R<P> rule : rules) {
-      builder.putRule(rule.matcher, rule.sampler);
-    }
-    return builder;
-  }
-
-  /** @since 5.8 */
   public static final class Builder<P> {
     final Map<Matcher<P>, Sampler> rules = new LinkedHashMap<>();
 
@@ -67,6 +58,17 @@ public final class ParameterizedSampler<P> {
     public Builder<P> removeRule(Matcher<P> matcher) {
       if (matcher == null) throw new NullPointerException("matcher == null");
       rules.remove(matcher);
+      return this;
+    }
+
+    /**
+     * Adds or replaces all rules in this sampler with those of the input.
+     *
+     * @since 5.8
+     */
+    public Builder<P> putAllRules(ParameterizedSampler<P> sampler) {
+      if (sampler == null) throw new NullPointerException("sampler == null");
+      for (R<P> rule : sampler.rules) putRule(rule.matcher, rule.sampler);
       return this;
     }
 
