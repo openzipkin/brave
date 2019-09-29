@@ -28,9 +28,9 @@ import brave.sampler.RateLimitingSampler;
  * tracing component}.
  * <pre>{@code
  * httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
- *   .addRuleWithRate(null, "/favicon", 0)
- *   .addRuleWithRate(null, "/foo", 100)
- *   .addRuleWithRate("POST", "/bar", 10)
+ *   .putRuleWithRate(null, "/favicon", 0)
+ *   .putRuleWithRate(null, "/foo", 100)
+ *   .putRuleWithRate("POST", "/bar", 10)
  *   .build());
  * }</pre>
  *
@@ -44,57 +44,78 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
     return new Builder();
   }
 
+  /** @since 5.8 */
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   /** @since 4.4 */
   public static final class Builder {
-    ParameterizedSampler.Builder<MethodAndPath> delegate = ParameterizedSampler.newBuilder();
+    final ParameterizedSampler.Builder<MethodAndPath> delegate;
+
+    Builder() {
+      delegate = ParameterizedSampler.newBuilder();
+    }
+
+    Builder(HttpRuleSampler sampler) {
+      delegate = sampler.delegate.toBuilder();
+    }
 
     /**
      * @since 4.4
-     * @deprecated Since 5.8, use {@link #addRuleWithProbability(String, String, float)}
+     * @deprecated Since 5.8, use {@link #putRuleWithProbability(String, String, float)}
      */
     // overload was considered and dismissed as it could result in those who used the integer 1 to
     // express 1.0, as in 100% probability, to accidentally match a rate of 1 request per second.
     @Deprecated public Builder addRule(@Nullable String method, String path, float probability) {
-      return addRuleWithProbability(method, path, probability);
+      return putRuleWithProbability(method, path, probability);
     }
 
     /**
-     * Assigns a probability to all requests that match the input.
+     * Removes any rule associated with the method and path.
+     *
+     * @param method if null, any method is accepted
+     * @param path all paths starting with this string are accepted
+     */
+    public Builder removeRule(@Nullable String method, String path) {
+      delegate.removeRule(new MethodAndPathMatcher(method, path));
+      return this;
+    }
+
+    /**
+     * Replaces any rule matching the method and path with a sample probability.
      *
      * @param method if null, any method is accepted
      * @param path all paths starting with this string are accepted
      * @param probability probability that requests that match the method and path will be sampled.
      * Expressed as a percentage. Ex 1.0 is 100%.
      */
-    public Builder addRuleWithProbability(@Nullable String method, String path, float probability) {
-      delegate.addRule(new MethodAndPathMatcher(method, path), CountingSampler.create(probability));
+    public Builder putRuleWithProbability(@Nullable String method, String path, float probability) {
+      delegate.putRule(new MethodAndPathMatcher(method, path), CountingSampler.create(probability));
       return this;
     }
 
     /**
-     * Assigns a sample rate to all requests that match the input.
+     * Replaces any rule matching the method and path with a sample rate.
      *
      * @param method if null, any method is accepted
      * @param path all paths starting with this string are accepted
      * @param rate max traces per second for requests that match the method and path.
      */
-    public Builder addRuleWithRate(@Nullable String method, String path, int rate) {
-      delegate.addRule(new MethodAndPathMatcher(method, path), RateLimitingSampler.create(rate));
+    public Builder putRuleWithRate(@Nullable String method, String path, int rate) {
+      delegate.putRule(new MethodAndPathMatcher(method, path), RateLimitingSampler.create(rate));
       return this;
     }
 
     public HttpRuleSampler build() {
       return new HttpRuleSampler(delegate.build());
     }
-
-    Builder() {
-    }
   }
 
-  final ParameterizedSampler<MethodAndPath> sampler;
+  final ParameterizedSampler<MethodAndPath> delegate;
 
-  HttpRuleSampler(ParameterizedSampler<MethodAndPath> sampler) {
-    this.sampler = sampler;
+  HttpRuleSampler(ParameterizedSampler<MethodAndPath> delegate) {
+    this.delegate = delegate;
   }
 
   @Override public Boolean trySample(HttpRequest request) {
@@ -107,7 +128,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
 
   @Nullable Boolean trySample(@Nullable String method, @Nullable String path) {
     if (method == null || path == null) return null; // use default if we couldn't parse
-    return sampler.sample(new MethodAndPath(method, path)).sampled();
+    return delegate.sample(new MethodAndPath(method, path)).sampled();
   }
 
   static final class MethodAndPath {
@@ -132,6 +153,22 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
     @Override public boolean matches(MethodAndPath parameters) {
       if (method != null && !method.equals(parameters.method)) return false;
       return parameters.path.startsWith(path);
+    }
+
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof MethodAndPathMatcher)) return false;
+      MethodAndPathMatcher that = (MethodAndPathMatcher) o;
+      return (method == null ? that.method == null : method.equals(that.method))
+        && path.equals(that.path);
+    }
+
+    @Override public int hashCode() {
+      int h = 1;
+      h ^= (method == null) ? 0 : method.hashCode();
+      h *= 1000003;
+      h ^= path.hashCode();
+      return h;
     }
   }
 }

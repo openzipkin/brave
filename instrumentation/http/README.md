@@ -93,9 +93,9 @@ requests will use a global rate provided by the tracing component.
 
 ```java
 httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
-  .addRuleWithRate(null, "/favicon", 0)
-  .addRuleWithRate(null, "/foo", 100)
-  .addRuleWithRate("POST", "/bar", 10)
+  .putRuleWithRate(null, "/favicon", 0)
+  .putRuleWithRate(null, "/foo", 100)
+  .putRuleWithRate("POST", "/bar", 10)
   .build());
 ```
 

@@ -14,6 +14,7 @@
 package brave.sampler;
 
 import brave.propagation.SamplingFlags;
+import brave.sampler.ParameterizedSampler.Matcher;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,7 +23,7 @@ public class ParameterizedSamplerTest {
 
   @Test public void matchesParameters() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
-      .addRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
+      .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
 
     assertThat(sampler.sample(true))
@@ -31,7 +32,7 @@ public class ParameterizedSamplerTest {
 
   @Test public void emptyOnNoMatch() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
-      .addRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
+      .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
 
     assertThat(sampler.sample(false))
@@ -40,7 +41,7 @@ public class ParameterizedSamplerTest {
 
   @Test public void emptyOnNull() {
     ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
-      .addRule(v -> true, Sampler.ALWAYS_SAMPLE)
+      .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
       .build();
 
     assertThat(sampler.sample(null))
@@ -49,11 +50,34 @@ public class ParameterizedSamplerTest {
 
   @Test public void multipleRules() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
-      .addRule(v -> false, Sampler.ALWAYS_SAMPLE) // doesn't match
-      .addRule(v -> true, Sampler.NEVER_SAMPLE) // match
+      .putRule(v -> false, Sampler.ALWAYS_SAMPLE) // doesn't match
+      .putRule(v -> true, Sampler.NEVER_SAMPLE) // match
       .build();
 
     assertThat(sampler.sample(true))
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
+  }
+
+  @Test public void toBuilder_composes() {
+    Matcher<Void> one = v -> false;
+    Matcher<Void> two = v -> true;
+    Matcher<Void> three = v -> Boolean.FALSE;
+    Matcher<Void> four = v -> Boolean.TRUE;
+    ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
+      .putRule(one, Sampler.ALWAYS_SAMPLE)
+      .putRule(two, Sampler.NEVER_SAMPLE)
+      .putRule(three, Sampler.ALWAYS_SAMPLE)
+      .build().toBuilder()
+      .removeRule(two)
+      .putRule(one, Sampler.NEVER_SAMPLE)
+      .putRule(four, Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    assertThat(sampler).usingRecursiveComparison().isEqualTo(ParameterizedSampler.<Void>newBuilder()
+      .putRule(one, Sampler.NEVER_SAMPLE)
+      .putRule(three, Sampler.ALWAYS_SAMPLE)
+      .putRule(four, Sampler.ALWAYS_SAMPLE)
+      .build()
+    );
   }
 }
