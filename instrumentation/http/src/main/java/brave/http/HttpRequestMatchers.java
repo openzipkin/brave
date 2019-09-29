@@ -23,16 +23,18 @@ import brave.sampler.Matchers;
  * @since 5.8
  */
 public final class HttpRequestMatchers {
+
+  /** Matcher for case-sensitive HTTP methods, such as "GET" and "POST" */
   public static Matcher<HttpRequest> methodEquals(String method) {
     if (method == null) throw new NullPointerException("method == null");
     if (method.isEmpty()) throw new NullPointerException("method is empty");
-    return new MethodIsEqualTo(method);
+    return new MethodEquals(method);
   }
 
-  static final class MethodIsEqualTo implements Matcher<HttpRequest> {
+  static final class MethodEquals implements Matcher<HttpRequest> {
     final String method;
 
-    MethodIsEqualTo(String method) {
+    MethodEquals(String method) {
       this.method = method;
     }
 
@@ -42,8 +44,8 @@ public final class HttpRequestMatchers {
 
     @Override public boolean equals(Object o) {
       if (o == this) return true;
-      if (!(o instanceof MethodIsEqualTo)) return false;
-      MethodIsEqualTo that = (MethodIsEqualTo) o;
+      if (!(o instanceof MethodEquals)) return false;
+      MethodEquals that = (MethodEquals) o;
       return method.equals(that.method);
     }
 
@@ -52,7 +54,7 @@ public final class HttpRequestMatchers {
     }
 
     @Override public String toString() {
-      return "Method(" + method + ")";
+      return "MethodEquals(" + method + ")";
     }
   }
 

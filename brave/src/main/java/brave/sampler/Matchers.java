@@ -13,7 +13,10 @@
  */
 package brave.sampler;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Convenience functions to compose matchers for {@link ParameterizedSampler}.
@@ -56,13 +59,33 @@ public final class Matchers {
   }
 
   /** @since 5.8 */
+  public static <P> Matcher<P> and(Iterable<? extends Matcher<P>> matchers) {
+    return and(toArray(matchers));
+  }
+
+  /** @since 5.8 */
   public static <P> Matcher<P> and(Matcher<P>... matchers) {
     return composite(matchers, true);
   }
 
   /** @since 5.8 */
+  public static <P> Matcher<P> or(Iterable<? extends Matcher<P>> matchers) {
+    return or(toArray(matchers));
+  }
+
+  /** @since 5.8 */
   public static <P> Matcher<P> or(Matcher<P>... matchers) {
     return composite(matchers, false);
+  }
+
+  static <P> Matcher[] toArray(Iterable<? extends Matcher<P>> matchers) {
+    if (matchers == null) throw new NullPointerException("matchers == null");
+    if (matchers instanceof Collection) {
+      return (Matcher[]) ((Collection) matchers).toArray(new Matcher[0]);
+    }
+    List<Matcher<P>> result = new ArrayList<>();
+    for (Matcher<P> matcher : matchers) result.add(matcher);
+    return result.toArray(new Matcher[0]);
   }
 
   static <P> Matcher<P> composite(Matcher<P>[] matchers, boolean and) {
@@ -72,30 +95,44 @@ public final class Matchers {
       if (matchers[i] == null) throw new NullPointerException("matchers[" + i + "] == null");
     }
     if (matchers.length == 1) return matchers[0];
-    return new Composite<>(matchers, and);
+    return and ? new And<>(matchers) : new Or<>(matchers);
   }
 
-  static final class Composite<P> implements Matcher<P> {
+  static class And<P> implements Matcher<P> {
     final Matcher<P>[] matchers; // Array ensures no iterators are created at runtime
-    final boolean and;
 
-    Composite(Matcher<P>[] matchers, boolean and) {
+    And(Matcher<P>[] matchers) {
       this.matchers = Arrays.copyOf(matchers, matchers.length);
-      this.and = and;
     }
 
     @Override public boolean matches(P parameters) {
-      boolean or = false;
       for (Matcher<P> matcher : matchers) {
-        boolean next = matcher.matches(parameters);
-        if (!next && and) return false;
-        if (next) or = true;
+        if (!matcher.matches(parameters)) return false;
       }
-      return or;
+      return true;
     }
 
     @Override public String toString() {
-      return (and ? "And" : "Or") + "(" + Arrays.toString(matchers) + ")";
+      return "And(" + Arrays.toString(matchers) + ")";
+    }
+  }
+
+  static class Or<P> implements Matcher<P> {
+    final Matcher<P>[] matchers; // Array ensures no iterators are created at runtime
+
+    Or(Matcher<P>[] matchers) {
+      this.matchers = Arrays.copyOf(matchers, matchers.length);
+    }
+
+    @Override public boolean matches(P parameters) {
+      for (Matcher<P> matcher : matchers) {
+        if (matcher.matches(parameters)) return true;
+      }
+      return false;
+    }
+
+    @Override public String toString() {
+      return "Or(" + Arrays.toString(matchers) + ")";
     }
   }
 }

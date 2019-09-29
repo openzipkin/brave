@@ -21,6 +21,7 @@ import static brave.sampler.Matchers.alwaysMatch;
 import static brave.sampler.Matchers.and;
 import static brave.sampler.Matchers.neverMatch;
 import static brave.sampler.Matchers.or;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -77,5 +78,22 @@ public class MatchersTest {
     Matcher<Void> two = b -> false;
     Matcher<Void> three = b -> false;
     assertThat(or(one, two, three).matches(null)).isFalse();
+  }
+
+  @Test public void toArray_list() {
+    Matcher<Void> one = b -> true;
+    Matcher<Void> two = b -> false;
+    Matcher<Void> three = b -> true;
+    assertThat(Matchers.toArray(asList(one, two, three)))
+      .containsExactly(one, two, three);
+  }
+
+  @Test public void toArray_iterable() {
+    Matcher<Void> one = b -> true;
+    Matcher<Void> two = b -> false;
+    Matcher<Void> three = b -> true;
+
+    assertThat(Matchers.toArray(() -> asList(one, two, three).iterator()))
+      .containsExactly(one, two, three);
   }
 }
