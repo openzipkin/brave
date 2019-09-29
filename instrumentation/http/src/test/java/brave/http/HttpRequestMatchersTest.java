@@ -33,6 +33,13 @@ public class HttpRequestMatchersTest {
     assertThat(methodEquals("GET").matches(httpRequest)).isTrue();
   }
 
+  /** Emphasize that this is pre-baked for RFC complaint requests. */
+  @Test public void methodEquals_unmatched_mixedCase() {
+    when(httpRequest.method()).thenReturn("PoSt");
+
+    assertThat(methodEquals("POST").matches(httpRequest)).isFalse();
+  }
+
   @Test public void methodEquals_unmatched() {
     when(httpRequest.method()).thenReturn("POST");
 
