@@ -46,7 +46,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
 
   /** @since 4.4 */
   public static final class Builder {
-    final ParameterizedSampler.Builder<MethodAndPath> delegate = ParameterizedSampler.newBuilder();
+    final ParameterizedSampler.Builder<HttpRequest> delegate = ParameterizedSampler.newBuilder();
 
     /**
      * @since 4.4
@@ -65,7 +65,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
      * @param path all paths starting with this string are accepted
      */
     public Builder removeRule(@Nullable String method, String path) {
-      delegate.removeRule(new MethodAndPathMatcher(method, path));
+      delegate.removeRule(new HttpRequestMatcher(method, path));
       return this;
     }
 
@@ -89,7 +89,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
      * Expressed as a percentage. Ex 1.0 is 100%.
      */
     public Builder putRuleWithProbability(@Nullable String method, String path, float probability) {
-      delegate.putRule(new MethodAndPathMatcher(method, path), CountingSampler.create(probability));
+      delegate.putRule(new HttpRequestMatcher(method, path), CountingSampler.create(probability));
       return this;
     }
 
@@ -101,7 +101,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
      * @param rate max traces per second for requests that match the method and path.
      */
     public Builder putRuleWithRate(@Nullable String method, String path, int rate) {
-      delegate.putRule(new MethodAndPathMatcher(method, path), RateLimitingSampler.create(rate));
+      delegate.putRule(new HttpRequestMatcher(method, path), RateLimitingSampler.create(rate));
       return this;
     }
 
@@ -113,53 +113,39 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
     }
   }
 
-  final ParameterizedSampler<MethodAndPath> delegate;
+  final ParameterizedSampler<HttpRequest> delegate;
 
-  HttpRuleSampler(ParameterizedSampler<MethodAndPath> delegate) {
+  HttpRuleSampler(ParameterizedSampler<HttpRequest> delegate) {
     this.delegate = delegate;
   }
 
   @Override public Boolean trySample(HttpRequest request) {
-    return trySample(request.method(), request.path());
+    return delegate.sample(request).sampled();
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-    return trySample(adapter.method(request), adapter.path(request));
+    return trySample(new FromHttpAdapter<>(adapter, request));
   }
 
-  @Nullable Boolean trySample(@Nullable String method, @Nullable String path) {
-    if (method == null || path == null) return null; // use default if we couldn't parse
-    return delegate.sample(new MethodAndPath(method, path)).sampled();
-  }
-
-  static final class MethodAndPath {
-    final String method;
-    final String path;
-
-    MethodAndPath(String method, String path) {
-      this.method = method;
-      this.path = path;
-    }
-  }
-
-  static final class MethodAndPathMatcher implements ParameterizedSampler.Matcher<MethodAndPath> {
+  static final class HttpRequestMatcher implements ParameterizedSampler.Matcher<HttpRequest> {
     @Nullable final String method;
     final String path;
 
-    MethodAndPathMatcher(@Nullable String method, String path) {
+    HttpRequestMatcher(@Nullable String method, String path) {
       this.method = method;
       this.path = path;
     }
 
-    @Override public boolean matches(MethodAndPath parameters) {
-      if (method != null && !method.equals(parameters.method)) return false;
-      return parameters.path.startsWith(path);
+    @Override public boolean matches(HttpRequest request) {
+      if (method != null && !method.equals(request.method())) return false;
+      String requestPath = request.path();
+      return requestPath != null && requestPath.startsWith(path);
     }
 
     @Override public boolean equals(Object o) {
       if (o == this) return true;
-      if (!(o instanceof MethodAndPathMatcher)) return false;
-      MethodAndPathMatcher that = (MethodAndPathMatcher) o;
+      if (!(o instanceof HttpRequestMatcher)) return false;
+      HttpRequestMatcher that = (HttpRequestMatcher) o;
       return (method == null ? that.method == null : method.equals(that.method))
         && path.equals(that.path);
     }
