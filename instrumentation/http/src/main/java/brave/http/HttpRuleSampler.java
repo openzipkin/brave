@@ -130,7 +130,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
   }
 
   @Override public Boolean trySample(HttpRequest request) {
-    return delegate.sample(request).sampled();
+    return delegate.trySample(request);
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
