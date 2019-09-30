@@ -40,6 +40,8 @@ import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
+import static brave.sampler.SamplerFunctions.deferDecision;
+import static brave.sampler.SamplerFunctions.neverSample;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -446,6 +448,12 @@ public class TracerTest {
 
   @Test public void nextSpan_defaultsToMakeNewTrace() {
     assertThat(tracer.nextSpan().context().parentId()).isNull();
+    assertThat(tracer.nextSpan(deferDecision(), false).context().parentId()).isNull();
+  }
+
+  @Test public void nextSpan_usesSampler() {
+    assertThat(tracer.nextSpan().context().parentId()).isNull();
+    assertThat(tracer.nextSpan(neverSample(), false).context().sampled()).isFalse();
   }
 
   @Test public void nextSpan_extractedNothing_makesChildOfCurrent() {
@@ -543,11 +551,16 @@ public class TracerTest {
   }
 
   @Test public void startScopedSpan_isInScope() {
-    RealScopedSpan current = (RealScopedSpan) tracer.startScopedSpan("foo");
+    assertRealRoot(tracer.startScopedSpan("foo"));
+    assertRealRoot(tracer.startScopedSpan("foo", deferDecision(), false));
+  }
 
+  void assertRealRoot(ScopedSpan current) {
     try {
       assertThat(tracer.currentSpan().context())
-        .isEqualTo(current.context);
+        .isEqualTo(current.context());
+      assertThat(tracer.currentSpan().context().parentIdAsLong())
+        .isZero();
       assertThat(tracer.currentSpanCustomizer())
         .isNotEqualTo(NoopSpanCustomizer.INSTANCE);
     } finally {
@@ -559,12 +572,11 @@ public class TracerTest {
   }
 
   @Test public void startScopedSpan_noopIsInScope() {
-    tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
-    NoopScopedSpan current = (NoopScopedSpan) tracer.startScopedSpan("foo");
+    ScopedSpan current = tracer.startScopedSpan("foo", neverSample(), false);
 
     try {
       assertThat(tracer.currentSpan().context())
-        .isEqualTo(current.context);
+        .isEqualTo(current.context());
       assertThat(tracer.currentSpanCustomizer())
         .isSameAs(NoopSpanCustomizer.INSTANCE);
     } finally {
@@ -634,6 +646,7 @@ public class TracerTest {
     }).spanReporter(new Reporter<zipkin2.Span>() {
       @Override public void report(zipkin2.Span span) {
       }
+
       @Override public String toString() {
         return "MyReporter";
       }

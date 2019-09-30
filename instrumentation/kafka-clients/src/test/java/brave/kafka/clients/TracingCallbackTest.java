@@ -14,7 +14,7 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import brave.sampler.Sampler;
+import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 
 public class TracingCallbackTest extends BaseTracingTest {
   @Test public void create_returns_input_on_noop() {
-    Span span = tracing.tracer().withSampler(Sampler.NEVER_SAMPLE).nextSpan();
+    Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     Callback delegate = mock(Callback.class);
     Callback tracingCallback = TracingCallback.create(delegate, span, current);

@@ -20,8 +20,8 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
 import brave.sampler.Sampler;
-
-import static brave.sampler.Sampler.NEVER_SAMPLE;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -69,8 +69,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   final Tracer tracer;
   @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
-  final HttpRequestSampler httpSampler;
-  @Nullable final Tracer samplingTracer;
+  final SamplerFunction<HttpRequest> httpSampler;
   @Nullable final String serverName;
   final Injector<HttpClientRequest> defaultInjector;
 
@@ -83,13 +82,6 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
     this.httpSampler = httpTracing.clientRequestSampler();
-    if (httpSampler == HttpRequestSampler.TRACE_ID) {
-      samplingTracer = tracer;
-    } else if (httpSampler == HttpRequestSampler.NEVER_SAMPLE) {
-      samplingTracer = sampler == NEVER_SAMPLE ? tracer : tracer.withSampler(NEVER_SAMPLE);
-    } else {
-      samplingTracer = null;
-    }
     this.serverName = !"".equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
     // The following allows us to add the method: handleSend(HttpClientRequest request) without
     // duplicating logic from the superclass or deprecated handleReceive methods.
@@ -188,14 +180,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   // Renamed to avoid generics clash when <Req> is HttpClientRequest.
   public Span nextClientSpan(HttpClientRequest request) {
     if (request == null) throw new NullPointerException("request == null");
-    Tracer scoped = samplingTracer != null ? samplingTracer : tracer.withSampler(new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        Boolean decision = httpSampler.trySample(request);
-        if (decision == null) return sampler.isSampled(traceId);
-        return decision;
-      }
-    });
-    return scoped.nextSpan();
+    return tracer.nextSpan(httpSampler, request);
   }
 
   /**

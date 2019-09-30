@@ -26,6 +26,7 @@ import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -70,7 +71,7 @@ public abstract class Tracing implements Closeable {
    * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether the
    * overhead of tracing will occur and/or if a trace will be reported to Zipkin.
    *
-   * @see Tracer#withSampler(Sampler)
+   * @see Tracer#nextSpan(SamplerFunction, Object) for temporary overrides
    */
   abstract public Sampler sampler();
 
@@ -255,7 +256,7 @@ public abstract class Tracing implements Closeable {
      * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether
      * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
      *
-     * @see Tracer#withSampler(Sampler) for temporary overrides
+     * @see Tracer#nextSpan(SamplerFunction, Object) for temporary overrides
      */
     public Builder sampler(Sampler sampler) {
       if (sampler == null) throw new NullPointerException("sampler == null");

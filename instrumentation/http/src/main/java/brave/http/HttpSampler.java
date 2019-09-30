@@ -14,6 +14,8 @@
 package brave.http;
 
 import brave.internal.Nullable;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.
@@ -28,11 +30,12 @@ import brave.internal.Nullable;
  * }</pre>
  *
  * @see HttpRuleSampler
- * @deprecated Since 5.8, use {@link HttpRequestSampler} instead.
+ * @see SamplerFunction
+ * @deprecated Since 5.8, use {@code RequestSampler<HttpRequest>}.
  */
 @Deprecated
 // abstract class as you can't lambda generic methods anyway. This lets us make helpers in the future
-public abstract class HttpSampler implements HttpRequestSampler {
+public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
   /** Ignores the request and uses the {@link brave.sampler.Sampler trace ID instead}. */
   public static final HttpSampler TRACE_ID = new HttpSampler() {
     @Override public Boolean trySample(HttpRequest request) {
@@ -83,25 +86,25 @@ public abstract class HttpSampler implements HttpRequestSampler {
    */
   @Nullable public abstract <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request);
 
-  static HttpSampler fromHttpRequestSampler(HttpRequestSampler sampler) {
+  static HttpSampler fromHttpRequestSampler(SamplerFunction<HttpRequest> sampler) {
     if (sampler == null) throw new NullPointerException("sampler == null");
-    if (sampler == HttpRequestSampler.TRACE_ID) return HttpSampler.TRACE_ID;
-    if (sampler == HttpRequestSampler.NEVER_SAMPLE) return HttpSampler.NEVER_SAMPLE;
+    if (sampler.equals(SamplerFunctions.deferDecision())) return HttpSampler.TRACE_ID;
+    if (sampler.equals(SamplerFunctions.neverSample())) return HttpSampler.NEVER_SAMPLE;
     return sampler instanceof HttpSampler ? (HttpSampler) sampler
       : new HttpRequestSamplerAdapter(sampler);
   }
 
-  static HttpRequestSampler toHttpRequestSampler(HttpRequestSampler sampler) {
+  static SamplerFunction<HttpRequest> toHttpRequestSampler(SamplerFunction<HttpRequest> sampler) {
     if (sampler == null) throw new NullPointerException("sampler == null");
-    if (sampler == HttpSampler.TRACE_ID) return HttpRequestSampler.TRACE_ID;
-    if (sampler == HttpSampler.NEVER_SAMPLE) return HttpRequestSampler.NEVER_SAMPLE;
+    if (sampler == HttpSampler.TRACE_ID) return SamplerFunctions.deferDecision();
+    if (sampler == HttpSampler.NEVER_SAMPLE) return SamplerFunctions.neverSample();
     return sampler;
   }
 
   static final class HttpRequestSamplerAdapter extends HttpSampler {
-    final HttpRequestSampler delegate;
+    final SamplerFunction<HttpRequest> delegate;
 
-    HttpRequestSamplerAdapter(HttpRequestSampler delegate) {
+    HttpRequestSamplerAdapter(SamplerFunction<HttpRequest> delegate) {
       this.delegate = delegate;
     }
 

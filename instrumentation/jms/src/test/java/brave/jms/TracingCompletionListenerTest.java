@@ -14,7 +14,7 @@
 package brave.jms;
 
 import brave.Span;
-import brave.sampler.Sampler;
+import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.CompletionListener;
 import javax.jms.Message;
 import org.junit.Test;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 
 public class TracingCompletionListenerTest extends JmsTest {
   @Test public void create_returns_input_on_noop() {
-    Span span = tracing.tracer().withSampler(Sampler.NEVER_SAMPLE).nextSpan();
+    Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
