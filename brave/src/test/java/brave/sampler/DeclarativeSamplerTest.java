@@ -33,8 +33,7 @@ public class DeclarativeSamplerTest {
   }
 
   @Test public void honorsSampleRate() {
-    DeclarativeSampler<Traced> declarativeSampler =
-      DeclarativeSampler.createWithRate(Traced::sampleRate);
+    declarativeSampler = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
     assertThat(declarativeSampler.sample(traced(0.0f, 1, true)))
       .isEqualTo(SamplingFlags.SAMPLED);
@@ -44,14 +43,18 @@ public class DeclarativeSamplerTest {
   }
 
   @Test public void honorsSampleProbability() {
-    DeclarativeSampler<Traced> declarativeSampler =
-      DeclarativeSampler.createWithProbability(Traced::sampleProbability);
+    declarativeSampler = DeclarativeSampler.createWithProbability(Traced::sampleProbability);
 
     assertThat(declarativeSampler.sample(traced(1.0f, 0, true)))
       .isEqualTo(SamplingFlags.SAMPLED);
 
     assertThat(declarativeSampler.sample(traced(0.0f, 0, true)))
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
+  }
+
+  @Test public void nullOnNull() {
+    assertThat(declarativeSampler.trySample(null))
+      .isNull();
   }
 
   @Test public void unmatched() {

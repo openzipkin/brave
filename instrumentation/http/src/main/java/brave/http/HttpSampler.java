@@ -71,6 +71,7 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
   };
 
   @Override @Nullable public Boolean trySample(HttpRequest request) {
+    if (request == null) return null;
     HttpAdapter<Object, Void> adapter;
     if (request instanceof HttpClientRequest) {
       adapter = new HttpClientRequest.ToHttpAdapter((HttpClientRequest) request);
@@ -114,7 +115,7 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
 
     @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       if (adapter == null) throw new NullPointerException("adapter == null");
-      if (request == null) throw new NullPointerException("request == null");
+      if (request == null) return null;
       // This can be called independently when interceptors control lifecycle directly. In these
       // cases, it is possible to have an HttpRequest as an argument.
       if (request instanceof HttpRequest) {

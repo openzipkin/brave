@@ -23,6 +23,34 @@ import brave.internal.Nullable;
  */
 public final class SamplerFunctions {
   /**
+   * Returns a function that returns null on null input instead of invoking the delegate with null.
+   *
+   * @since 5.8
+   */
+  public static <T> SamplerFunction<T> nullSafe(SamplerFunction<T> delegate) {
+    if (delegate == null) throw new NullPointerException("delegate == null");
+    if (delegate instanceof Constants || delegate instanceof NullSafe) return delegate;
+    return new NullSafe<>(delegate);
+  }
+
+  static final class NullSafe<T> implements SamplerFunction<T> {
+    final SamplerFunction<T> delegate;
+
+    NullSafe(SamplerFunction<T> delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Boolean trySample(T arg) {
+      if (arg == null) return null;
+      return delegate.trySample(arg);
+    }
+
+    @Override public String toString() {
+      return "NullSafe(" + delegate + ")";
+    }
+  }
+
+  /**
    * Ignores the argument and returns null. This is typically used to defer to the {@link
    * brave.Tracing#sampler() trace ID sampler}.
    *

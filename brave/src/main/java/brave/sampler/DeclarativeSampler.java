@@ -78,7 +78,8 @@ public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
    *
    * @since 5.8
    */
-  @Override public @Nullable Boolean trySample(M method) {
+  @Override public @Nullable Boolean trySample(@Nullable M method) {
+    if (method == null) return null;
     Sampler sampler = methodToSamplers.get(method);
     if (sampler == NULL_SENTINEL) return null;
     if (sampler != null) return sampler.isSampled(0L); // counting sampler ignores the input
@@ -186,6 +187,7 @@ public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
    * @deprecated Since 5.8, use {@link #trySample(Object)}
    */
   @Deprecated public SamplingFlags sample(@Nullable M method) {
+    if (method == null) return SamplingFlags.EMPTY;
     return SamplingFlags.Builder.build(trySample(method));
   }
 }

@@ -38,9 +38,9 @@ public interface SamplerFunction<T> {
    * Returns an overriding sampling decision for a new trace. Returning null is typically used to
    * defer to the {@link brave.Tracing#sampler() trace ID sampler}.
    *
-   * @param arg parameter to evaluate for a sampling decision.
+   * @param arg parameter to evaluate for a sampling decision. null input results in a null result
    * @return true to sample a new trace or false to deny. Null defers the decision.
    * @since 5.8
    */
-  @Nullable Boolean trySample(T arg);
+  @Nullable Boolean trySample(@Nullable T arg);
 }

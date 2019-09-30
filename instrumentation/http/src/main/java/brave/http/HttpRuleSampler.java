@@ -135,6 +135,7 @@ public final class HttpRuleSampler extends HttpSampler implements SamplerFunctio
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    if (request == null) return null;
     return trySample(new FromHttpAdapter<>(adapter, request));
   }
 }
