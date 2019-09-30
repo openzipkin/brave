@@ -112,7 +112,7 @@ public class HttpTracingFactoryBeanTest {
       + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
       + "  </property>\n"
       + "  <property name=\"clientSampler\">\n"
-      + "    <bean class=\"brave.sampler.RequestSamplers\" factory-method=\"neverSample\"/>\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
@@ -145,7 +145,7 @@ public class HttpTracingFactoryBeanTest {
       + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
       + "  </property>\n"
       + "  <property name=\"serverSampler\">\n"
-      + "    <bean class=\"brave.sampler.RequestSamplers\" factory-method=\"neverSample\"/>\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
