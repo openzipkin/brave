@@ -14,26 +14,13 @@
 package brave.dubbo.rpc;
 
 import brave.Span;
-import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
 import java.util.Map;
 
-// intentionally not yet public until we add tag parsing functionality
 final class DubboClientRequest extends RpcClientRequest implements DubboRequest {
-  static final Setter<DubboClientRequest, String> SETTER =
-    new Setter<DubboClientRequest, String>() {
-      @Override public void put(DubboClientRequest request, String key, String value) {
-        request.propagationField(key, value);
-      }
-
-      @Override public String toString() {
-        return "DubboClientRequest::propagationField";
-      }
-    };
-
   final Invoker<?> invoker;
   final Invocation invocation;
   final Map<String, String> attachments;
@@ -61,25 +48,24 @@ final class DubboClientRequest extends RpcClientRequest implements DubboRequest 
   }
 
   /**
-   * Returns the method name of the invocation or the first string arg of an "$invoke" or
-   * "$invokeAsync" method.
+   * Returns the method name of the invocation or the first string arg of an "$invoke" method.
    */
   @Override public String method() {
     return DubboParser.method(invocation);
   }
 
   /**
-   * Returns the {@link URL#getServiceInterface() service interface} of the invocation.
+   * Returns the {@link URL#getServiceInterface() service interface} of the invoker.
    */
   @Override public String service() {
-    return DubboParser.service(invocation);
+    return DubboParser.service(invoker);
   }
 
-  boolean parseRemoteIpAndPort(Span span) {
+  @Override public boolean parseRemoteIpAndPort(Span span) {
     return DubboParser.parseRemoteIpAndPort(span);
   }
 
-  void propagationField(String keyName, String value) {
+  @Override protected void propagationField(String keyName, String value) {
     attachments.put(keyName, value);
   }
 }

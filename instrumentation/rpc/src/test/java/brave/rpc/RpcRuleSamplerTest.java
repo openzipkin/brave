@@ -32,8 +32,8 @@ public class RpcRuleSamplerTest {
 
   @Mock RpcServerRequest request;
   RpcRuleSampler sampler = RpcRuleSampler.newBuilder()
-    .putRule(methodEquals("health"), Sampler.ALWAYS_SAMPLE)
-    .build();
+      .putRule(methodEquals("health"), Sampler.ALWAYS_SAMPLE)
+      .build();
 
   @Test public void matches() {
     Map<Sampler, Boolean> samplerToAnswer = new LinkedHashMap<>();
@@ -42,71 +42,71 @@ public class RpcRuleSamplerTest {
 
     samplerToAnswer.forEach((sampler, answer) -> {
       this.sampler = RpcRuleSampler.newBuilder()
-        .putRule(methodEquals("health"), sampler)
-        .build();
+          .putRule(methodEquals("health"), sampler)
+          .build();
 
       when(request.method()).thenReturn("health");
 
       assertThat(this.sampler.trySample(request))
-        .isEqualTo(answer);
+          .isEqualTo(answer);
 
       // consistent answer
       assertThat(this.sampler.trySample(request))
-        .isEqualTo(answer);
+          .isEqualTo(answer);
     });
   }
 
   @Test public void nullOnNull() {
     assertThat(sampler.trySample(null))
-      .isNull();
+        .isNull();
   }
 
   @Test public void unmatched() {
     sampler = RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("log"), Sampler.ALWAYS_SAMPLE)
-      .build();
+        .putRule(methodEquals("log"), Sampler.ALWAYS_SAMPLE)
+        .build();
 
     assertThat(sampler.trySample(request))
-      .isNull();
+        .isNull();
 
     when(request.method()).thenReturn("health");
 
     // consistent answer
     assertThat(sampler.trySample(request))
-      .isNull();
+        .isNull();
   }
 
   @Test public void exampleCustomMatcher() {
     Matcher<RpcRequest> playInTheUSA = request -> (!"health".equals(request.method()));
 
     sampler = RpcRuleSampler.newBuilder()
-      .putRule(playInTheUSA, RateLimitingSampler.create(100))
-      .build();
+        .putRule(playInTheUSA, RateLimitingSampler.create(100))
+        .build();
 
     when(request.method()).thenReturn("log");
 
     assertThat(sampler.trySample(request))
-      .isTrue();
+        .isTrue();
 
     when(request.method()).thenReturn("health");
 
     assertThat(sampler.trySample(request))
-      .isNull(); // unmatched because country is health
+        .isNull(); // unmatched because country is health
   }
 
   @Test public void putAllRules() {
     RpcRuleSampler base = RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("health"), Sampler.NEVER_SAMPLE)
-      .build();
+        .putRule(methodEquals("health"), Sampler.NEVER_SAMPLE)
+        .build();
 
     sampler = RpcRuleSampler.newBuilder()
-      .putAllRules(base)
-      .build();
+        .putAllRules(base)
+        .build();
 
     when(request.method()).thenReturn("log");
 
     assertThat(sampler.trySample(request))
-      .isNull();
+        .isNull();
   }
 
   // empty may sound unintuitive, but it allows use of the same type when always deferring

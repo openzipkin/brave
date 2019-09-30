@@ -20,7 +20,14 @@ import zipkin2.reporter.Reporter;
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class RpcTracingClassLoaderTest {
+// Mockito tests eagerly log which triggers the log4j log manager, which then makes this run fail if
+// run in the same JVM. The easy workaround is to move this to IT, which forces another JVM.
+//
+// Other workarounds:
+// * Stop using log4j2 as we don't need it anyway
+// * Stop using the log4j2 log manager, at least in this project
+// * Do some engineering like this: https://stackoverflow.com/a/28657203/2232476
+public class ITRpcTracingClassLoader {
   @Test public void unloadable_afterClose() {
     assertRunIsUnloadable(ClosesRpcTracing.class, getClass().getClassLoader());
   }

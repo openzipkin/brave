@@ -13,26 +13,39 @@
  */
 package brave.grpc;
 
-import brave.propagation.Propagation.Getter;
 import brave.rpc.RpcServerRequest;
+import brave.rpc.RpcTracing;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
+import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.ServerInterceptor;
 import java.util.Map;
 
-// intentionally not yet public until we add tag parsing functionality
-final class GrpcServerRequest extends RpcServerRequest {
-  static final Getter<GrpcServerRequest, String> GETTER = new Getter<GrpcServerRequest, String>() {
-    @Override public String get(GrpcServerRequest request, String key) {
-      return request.propagationField(key);
-    }
-
-    @Override public String toString() {
-      return "GrpcServerRequest::propagationField";
-    }
-  };
-
+/**
+ * Allows access gRPC specific aspects of a server request during sampling and parsing.
+ *
+ * <p>Here's an example that adds default tags, and if gRPC, the {@linkplain
+ * MethodDescriptor#getType() method type}:
+ * <pre>{@code
+ * Tag<GrpcServerRequest> methodType = new Tag<GrpcServerRequest>("grpc.method_type") {
+ *   protected String parseValue(GrpcServerRequest input, TraceContext context) {
+ *     return input.call().getMethodDescriptor().getType().name();
+ *   }
+ * };
+ * rpcTracing = rpcTracingBuilder.serverResponseParser((res, context, span) -> {
+ *   RpcResponseParser.DEFAULT.parse(res, context, span);
+ *     if (res instanceof GrpcServerRequest) {
+ *       methodType.tag((GrpcServerRequest) res, span);
+ *     }
+ *   }).build();
+ * }</pre>
+ *
+ * @see GrpcServerResponse
+ * @see RpcTracing#serverRequestParser()
+ * @since 5.12
+ */
+public class GrpcServerRequest extends RpcServerRequest {
   final Map<String, Key<String>> nameToKey;
   final ServerCall<?, ?> call;
   final Metadata headers;
@@ -79,7 +92,7 @@ final class GrpcServerRequest extends RpcServerRequest {
     return headers;
   }
 
-  String propagationField(String keyName) {
+  @Override protected String propagationField(String keyName) {
     if (keyName == null) throw new NullPointerException("keyName == null");
     Key<String> key = nameToKey.get(keyName);
     if (key == null) {

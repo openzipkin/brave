@@ -13,24 +13,13 @@
  */
 package brave.dubbo;
 
-import brave.propagation.Propagation;
+import brave.Span;
 import brave.rpc.RpcServerRequest;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 
 final class DubboServerRequest extends RpcServerRequest implements DubboRequest {
-  static final Propagation.Getter<DubboServerRequest, String> GETTER =
-    new Propagation.Getter<DubboServerRequest, String>() {
-      @Override public String get(DubboServerRequest request, String key) {
-        return request.propagationField(key);
-      }
-
-      @Override public String toString() {
-        return "DubboServerRequest::propagationField";
-      }
-    };
-
   final Invoker<?> invoker;
   final Invocation invocation;
 
@@ -66,10 +55,14 @@ final class DubboServerRequest extends RpcServerRequest implements DubboRequest 
    * Returns the {@link URL#getServiceInterface() service interface} of the invocation.
    */
   @Override public String service() {
-    return DubboParser.service(invocation);
+    return DubboParser.service(invoker);
   }
 
-  String propagationField(String keyName) {
+  @Override public boolean parseRemoteIpAndPort(Span span) {
+    return DubboParser.parseRemoteIpAndPort(span);
+  }
+
+  @Override protected String propagationField(String keyName) {
     return invocation.getAttachment(keyName);
   }
 }

@@ -18,11 +18,35 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.propagation.TraceContext;
+import brave.rpc.RpcResponse;
+import brave.rpc.RpcResponseParser;
+import brave.rpc.RpcTracing;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
-public class GrpcParser extends MessageProcessor {
+/** @deprecated Since 5.12 use parsers in {@link RpcTracing}. */
+@Deprecated
+public class GrpcParser extends MessageProcessor implements RpcResponseParser {
+  static final RpcResponseParser LEGACY_RESPONSE_PARSER = new GrpcParser();
+
+  @Override
+  public void parse(RpcResponse response, TraceContext context, SpanCustomizer span) {
+    Status status = null;
+    Metadata trailers = null;
+    if (response instanceof GrpcClientResponse) {
+      status = ((GrpcClientResponse) response).status();
+      trailers = ((GrpcClientResponse) response).trailers();
+    } else if (response instanceof GrpcServerResponse) {
+      status = ((GrpcServerResponse) response).status();
+      trailers = ((GrpcServerResponse) response).trailers();
+    } else {
+      assert false : "expected a GrpcClientResponse or GrpcServerResponse: " + response;
+    }
+    onClose(status, trailers, span);
+  }
+
   /**
    * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
    *
@@ -51,8 +75,6 @@ public class GrpcParser extends MessageProcessor {
 
   /**
    * Override to change what data from the status or trailers are parsed into the span modeling it.
-   * By default, this tags "grpc.status_code" when it is not OK, and "error" if there was no {@link
-   * Status#getCause()}.
    *
    * <p><em>Note</em>: {@link Status#getCause()} will be set as {@link Span#error(Throwable)} by
    * default. You don't need to parse it here.

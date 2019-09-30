@@ -15,10 +15,13 @@ package brave.grpc;
 
 import brave.CurrentSpanCustomizer;
 import brave.SpanCustomizer;
+import brave.Tag;
 import brave.internal.Nullable;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.rpc.RpcRequest;
+import brave.rpc.RpcRequestParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import brave.test.ITRemote;
@@ -250,30 +253,9 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
   }
 
-  @Test public void customSampler() throws IOException {
-    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
-      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
-      .build()).build();
-    grpcTracing = GrpcTracing.create(rpcTracing);
-    init();
-
-    // unsampled
-    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
-    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
-
-    // sampled
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-      .isEqualTo("helloworld.greeter/sayhello");
-
-    // @After will also check that sayHelloWithManyReplies was not sampled
-  }
-
   // Make sure we work well with bad user interceptors.
 
-  @Test public void userInterceptor_ThrowsOnStartCall() throws IOException {
+  @Test public void userInterceptor_throwsOnStartCall() throws IOException {
     init(new ServerInterceptor() {
       @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
         ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
@@ -389,6 +371,55 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
       "grpc.message_send.9",
       "grpc.message_send.10"
     );
+  }
+
+  /* RpcTracing-specific feature tests */
+
+  @Test public void customSampler() throws IOException {
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
+      .build()).build();
+    grpcTracing = GrpcTracing.create(rpcTracing);
+    init();
+
+    // unsampled
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
+
+    // sampled
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
+      .isEqualTo("helloworld.greeter/sayhello");
+
+    // @After will also check that sayHelloWithManyReplies was not sampled
+  }
+
+  @Test public void customParser() throws IOException {
+    Tag<GrpcServerRequest> methodType = new Tag<GrpcServerRequest>("grpc.method_type") {
+      @Override protected String parseValue(GrpcServerRequest input, TraceContext context) {
+        return input.call().getMethodDescriptor().getType().name();
+      }
+    };
+    RpcRequestParser customRequestParser = new RpcRequestParser() {
+      @Override public void parse(RpcRequest res, TraceContext context, SpanCustomizer span) {
+        RpcRequestParser.DEFAULT.parse(res, context, span);
+        if (res instanceof GrpcServerRequest) {
+          methodType.tag((GrpcServerRequest) res, span);
+        }
+      }
+    };
+
+    grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
+      .serverRequestParser(customRequestParser)
+      .build());
+    init();
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+      .containsEntry("grpc.method_type", "UNARY");
   }
 
   Channel clientWithB3SingleHeader(TraceContext parent) {

@@ -44,9 +44,9 @@ final class DubboParser {
     Map<Integer, String> result = new LinkedHashMap<>();
     for (Field field : RpcException.class.getDeclaredFields()) {
       if (Modifier.isPublic(field.getModifiers())
-        && Modifier.isStatic(field.getModifiers())
-        && Modifier.isFinal(field.getModifiers())
-        && field.getType() == int.class
+          && Modifier.isStatic(field.getModifiers())
+          && Modifier.isFinal(field.getModifiers())
+          && field.getType() == int.class
       ) {
         try {
           result.put((Integer) field.get(null), field.getName());
@@ -84,13 +84,11 @@ final class DubboParser {
   }
 
   /**
-   * Returns the {@link URL#getServiceInterface() service interface} of the invocation.
+   * Returns the {@link URL#getServiceInterface() service interface} of the invoker.
    *
    * <p>This was chosen as the {@link URL#getServiceName() service name} is deprecated for it.
    */
-  @Nullable static String service(Invocation invocation) {
-    Invoker<?> invoker = invocation.getInvoker();
-    if (invoker == null) return null;
+  @Nullable static String service(Invoker<?> invoker) {
     URL url = invoker.getUrl();
     if (url == null) return null;
     String service = url.getServiceInterface();
@@ -102,8 +100,8 @@ final class DubboParser {
     InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
     if (remoteAddress == null) return false;
     return span.remoteIpAndPort(
-      Platform.get().getHostString(remoteAddress),
-      remoteAddress.getPort()
+        Platform.get().getHostString(remoteAddress),
+        remoteAddress.getPort()
     );
   }
 

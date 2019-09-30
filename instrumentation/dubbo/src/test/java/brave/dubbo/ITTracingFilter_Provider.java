@@ -13,13 +13,16 @@
  */
 package brave.dubbo;
 
+import brave.Tag;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
+import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +44,8 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
       String arg = (String) args[0];
       if (arg.equals("bad")) throw new IllegalArgumentException();
       return currentTraceContext.get() != null
-        ? currentTraceContext.get().traceIdString()
-        : "";
+          ? currentTraceContext.get().traceIdString()
+          : "";
     });
     init();
     server.start();
@@ -54,9 +57,9 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.setUrl(url);
 
     DubboBootstrap.getInstance().application(application)
-      .service(server.service)
-      .reference(client)
-      .start();
+        .service(server.service)
+        .reference(client)
+        .start();
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
@@ -97,7 +100,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Test public void currentSpanVisibleToImpl() {
     assertThat(client.get().sayHello("jorge"))
-      .isNotEmpty();
+        .isNotEmpty();
 
     reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
@@ -112,21 +115,23 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.get().sayHello("jorge");
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-      .isEqualTo("brave.dubbo.greeterservice/sayhello");
+        .isEqualTo("brave.dubbo.greeterservice/sayhello");
   }
 
   @Test public void addsErrorTagOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
-      .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class);
 
     reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
   }
 
+  /* RpcTracing-specific feature tests */
+
   @Test public void customSampler() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
-      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
-      .build()).build();
+        .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+        .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+        .build()).build();
     init().setRpcTracing(rpcTracing);
 
     // unsampled
@@ -137,5 +142,29 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
     // @After will also check that sayGoodbye was not sampled
+  }
+
+  @Test public void customParser() {
+    Tag<DubboResponse> javaValue = new Tag<DubboResponse>("dubbo.result_value") {
+      @Override protected String parseValue(DubboResponse input, TraceContext context) {
+        Result result = input.result();
+        if (result == null) return null;
+        return String.valueOf(result.getValue());
+      }
+    };
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing)
+        .serverResponseParser((res, context, span) -> {
+          RpcResponseParser.DEFAULT.parse(res, context, span);
+          if (res instanceof DubboResponse) {
+            javaValue.tag((DubboResponse) res, span);
+          }
+        }).build();
+    init().setRpcTracing(rpcTracing);
+
+    String javaResult = client.get().sayHello("jorge");
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+        .containsEntry("dubbo.result_value", javaResult);
   }
 }

@@ -17,9 +17,12 @@ import brave.Clock;
 import brave.CurrentSpanCustomizer;
 import brave.ScopedSpan;
 import brave.SpanCustomizer;
+import brave.Tag;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.rpc.RpcRequest;
+import brave.rpc.RpcRequestParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import brave.test.ITRemote;
@@ -186,29 +189,6 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     for (int i = 0; i < 2; i++) {
       assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
     }
-  }
-
-  @Test public void customSampler() {
-    closeClient(client);
-
-    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
-      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
-      .build()).build();
-
-    grpcTracing = GrpcTracing.create(rpcTracing);
-    client = newClient();
-
-    // unsampled
-    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
-    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
-
-    // sampled
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("helloworld.greeter/sayhello");
-    // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
   @Test public void reportsClientKindToZipkin() {
@@ -507,6 +487,59 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
+  }
+
+  /* RpcTracing-specific feature tests */
+
+  @Test public void customSampler() {
+    closeClient(client);
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
+      .build()).build();
+
+    grpcTracing = GrpcTracing.create(rpcTracing);
+    client = newClient();
+
+    // unsampled
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
+
+    // sampled
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
+      .isEqualTo("helloworld.greeter/sayhello");
+    // @After will also check that sayHelloWithManyReplies was not sampled
+  }
+
+  @Test public void customParser() {
+    closeClient(client);
+
+    Tag<GrpcClientRequest> methodType = new Tag<GrpcClientRequest>("grpc.method_type") {
+      @Override protected String parseValue(GrpcClientRequest input, TraceContext context) {
+        return input.methodDescriptor().getType().name();
+      }
+    };
+    RpcRequestParser customRequestParser = new RpcRequestParser() {
+      @Override public void parse(RpcRequest res, TraceContext context, SpanCustomizer span) {
+        RpcRequestParser.DEFAULT.parse(res, context, span);
+        if (res instanceof GrpcClientRequest) {
+          methodType.tag((GrpcClientRequest) res, span);
+        }
+      }
+    };
+
+    grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
+      .clientRequestParser(customRequestParser)
+      .build());
+    client = newClient();
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
+      .containsEntry("grpc.method_type", "UNARY");
   }
 
   static final class StreamObserverAdapter implements StreamObserver<HelloReply> {

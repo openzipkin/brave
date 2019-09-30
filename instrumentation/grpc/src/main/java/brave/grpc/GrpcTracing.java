@@ -15,11 +15,15 @@ package brave.grpc;
 
 import brave.Tracing;
 import brave.propagation.Propagation;
+import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcTracing;
 import io.grpc.ClientInterceptor;
 import io.grpc.Metadata;
 import io.grpc.ServerInterceptor;
 import java.util.Map;
+
+import static brave.grpc.GrpcParser.LEGACY_RESPONSE_PARSER;
 
 public final class GrpcTracing {
   public static GrpcTracing create(Tracing tracing) {
@@ -31,7 +35,10 @@ public final class GrpcTracing {
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return newBuilder(RpcTracing.create(tracing));
+    return newBuilder(RpcTracing.newBuilder(tracing)
+      .clientResponseParser(LEGACY_RESPONSE_PARSER)
+      .serverResponseParser(LEGACY_RESPONSE_PARSER)
+      .build());
   }
 
   public static Builder newBuilder(RpcTracing rpcTracing) {
@@ -39,9 +46,7 @@ public final class GrpcTracing {
   }
 
   public static final class Builder {
-    final RpcTracing rpcTracing;
-    GrpcClientParser clientParser = new GrpcClientParser();
-    GrpcServerParser serverParser = new GrpcServerParser();
+    RpcTracing rpcTracing;
     boolean grpcPropagationFormatEnabled = false;
 
     // for interop with old parsers
@@ -55,23 +60,39 @@ public final class GrpcTracing {
 
     Builder(GrpcTracing grpcTracing) {
       rpcTracing = grpcTracing.rpcTracing;
-      clientParser = grpcTracing.clientParser;
-      serverParser = grpcTracing.serverParser;
       clientMessageProcessor = grpcTracing.clientMessageProcessor;
       serverMessageProcessor = grpcTracing.serverMessageProcessor;
     }
 
+    /**
+     * @see GrpcClientRequest
+     * @see GrpcClientResponse
+     * @deprecated Since 5.12 use {@link RpcTracing.Builder#clientRequestParser(RpcRequestParser)}
+     * or {@link RpcTracing.Builder#clientResponseParser(RpcResponseParser)}.
+     */
+    @Deprecated
     public Builder clientParser(GrpcClientParser clientParser) {
       if (clientParser == null) throw new NullPointerException("clientParser == null");
-      this.clientParser = clientParser;
-      this.clientMessageProcessor = clientParser;
+      clientMessageProcessor = clientParser;
+      rpcTracing = rpcTracing.toBuilder()
+        .clientRequestParser(clientParser)
+        .clientResponseParser(clientParser).build();
       return this;
     }
 
+    /**
+     * @see GrpcServerRequest
+     * @see GrpcServerResponse
+     * @deprecated Since 5.12 use {@link RpcTracing.Builder#serverRequestParser(RpcRequestParser)}
+     * or {@link RpcTracing.Builder#serverResponseParser(RpcResponseParser)}.
+     */
+    @Deprecated
     public Builder serverParser(GrpcServerParser serverParser) {
       if (serverParser == null) throw new NullPointerException("serverParser == null");
-      this.serverParser = serverParser;
-      this.serverMessageProcessor = serverParser;
+      serverMessageProcessor = serverParser;
+      rpcTracing = rpcTracing.toBuilder()
+        .serverRequestParser(serverParser)
+        .serverResponseParser(serverParser).build();
       return this;
     }
 
@@ -101,8 +122,6 @@ public final class GrpcTracing {
 
   final RpcTracing rpcTracing;
   final Propagation<String> propagation;
-  final GrpcClientParser clientParser;
-  final GrpcServerParser serverParser;
   final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
 
@@ -118,8 +137,6 @@ public final class GrpcTracing {
       propagation = rpcTracing.tracing().propagation();
     }
     nameToKey = GrpcPropagation.nameToKey(propagation);
-    clientParser = builder.clientParser;
-    serverParser = builder.serverParser;
     clientMessageProcessor = builder.clientMessageProcessor;
     serverMessageProcessor = builder.serverMessageProcessor;
   }

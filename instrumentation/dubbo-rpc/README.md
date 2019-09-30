@@ -85,3 +85,19 @@ Make sure the following line is in `META-INF/dubbo/com.alibaba.dubbo.common.exte
 ```
 tracing=com.yourcompany.dubbo.TracingExtensionFactory
 ```
+
+### Custom parsing
+
+The `DubboRequest` and `DubboResponse` types can be used to add Dubbo-specific
+data even with the portable parser code.
+
+Here is an example that adds default tags, and if Dubbo, Java arguments:
+```java
+rpcTracing = rpcTracingBuilder
+  .clientRequestParser((req, context, span) -> {
+     RpcRequestParser.DEFAULT.parse(req, context, span);
+     if (req instanceof DubboRequest) {
+       tagArguments(((DubboRequest) req).invocation().getArguments());
+     }
+  }).build();
+```

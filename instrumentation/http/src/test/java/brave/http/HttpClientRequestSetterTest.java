@@ -13,7 +13,7 @@
  */
 package brave.http;
 
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.test.propagation.PropagationSetterTest;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -52,8 +52,7 @@ public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClien
     };
   }
 
-  @Override protected Propagation.Setter<HttpClientRequest
-    , String> setter() {
+  @Override protected Setter<HttpClientRequest, String> setter() {
     return SETTER;
   }
 

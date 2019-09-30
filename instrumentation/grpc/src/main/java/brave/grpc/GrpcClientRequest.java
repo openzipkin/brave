@@ -13,8 +13,8 @@
  */
 package brave.grpc;
 
-import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
+import brave.rpc.RpcTracing;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -24,18 +24,30 @@ import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import java.util.Map;
 
-// intentionally not yet public until we add tag parsing functionality
-final class GrpcClientRequest extends RpcClientRequest {
-  static final Setter<GrpcClientRequest, String> SETTER = new Setter<GrpcClientRequest, String>() {
-    @Override public void put(GrpcClientRequest request, String key, String value) {
-      request.propagationField(key, value);
-    }
-
-    @Override public String toString() {
-      return "GrpcClientRequest::propagationField";
-    }
-  };
-
+/**
+ * Allows access gRPC specific aspects of a client request during sampling and parsing.
+ *
+ * <p>Here's an example that adds default tags, and if gRPC, the {@linkplain
+ * MethodDescriptor#getType() method type}:
+ * <pre>{@code
+ * Tag<GrpcClientRequest> methodType = new Tag<GrpcClientRequest>("grpc.method_type") {
+ *   protected String parseValue(GrpcClientRequest input, TraceContext context) {
+ *     return input.methodDescriptor().getType().name();
+ *   }
+ * };
+ * rpcTracing = rpcTracingBuilder.clientResponseParser((res, context, span) -> {
+ *   RpcResponseParser.DEFAULT.parse(res, context, span);
+ *     if (res instanceof GrpcClientRequest) {
+ *       methodType.tag((GrpcClientRequest) res, span);
+ *     }
+ *   }).build();
+ * }</pre>
+ *
+ * @see GrpcClientResponse
+ * @see RpcTracing#clientRequestParser()
+ * @since 5.12
+ */
+public final class GrpcClientRequest extends RpcClientRequest {
   final Map<String, Key<String>> nameToKey;
   final MethodDescriptor<?, ?> methodDescriptor;
   final CallOptions callOptions;
@@ -101,7 +113,7 @@ final class GrpcClientRequest extends RpcClientRequest {
   }
 
   /**
-   * Returns the {@linkplain Metadata headers}  passed to {@link ClientCall#start(ClientCall.Listener,
+   * Returns the {@linkplain Metadata headers} passed to {@link ClientCall#start(ClientCall.Listener,
    * Metadata)}.
    *
    * @since 5.12
@@ -110,7 +122,8 @@ final class GrpcClientRequest extends RpcClientRequest {
     return headers;
   }
 
-  void propagationField(String keyName, String value) {
+  @Override protected void propagationField(String keyName, String value) {
+
     if (keyName == null) throw new NullPointerException("keyName == null");
     if (value == null) throw new NullPointerException("value == null");
     Key<String> key = nameToKey.get(keyName);

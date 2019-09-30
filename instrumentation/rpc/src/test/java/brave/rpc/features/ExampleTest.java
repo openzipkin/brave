@@ -32,11 +32,11 @@ public class ExampleTest {
   // This mainly shows that we don't accidentally rely on package-private access
   @Test public void showConstruction() {
     rpcTracing = RpcTracing.newBuilder(tracing)
-      .serverSampler(RpcRuleSampler.newBuilder()
-        .putRule(serviceEquals("scribe"), Sampler.NEVER_SAMPLE)
-        .putRule(methodEquals("Report"), RateLimitingSampler.create(100))
-        .build())
-      .clientSampler(SamplerFunctions.neverSample())
-      .build();
+        .serverSampler(RpcRuleSampler.newBuilder()
+            .putRule(serviceEquals("scribe"), Sampler.NEVER_SAMPLE)
+            .putRule(methodEquals("Report"), RateLimitingSampler.create(100))
+            .build())
+        .clientSampler(SamplerFunctions.neverSample())
+        .build();
   }
 }

@@ -27,14 +27,13 @@ import static org.mockito.Mockito.when;
 public class DubboClientRequestTest {
   Invoker invoker = mock(Invoker.class);
   Invocation invocation = mock(Invocation.class);
-  URL url = mock(URL.class);
+  URL url = URL.valueOf("dubbo://localhost:6666?scope=remote&interface=brave.dubbo.GreeterService");
   Map<String, String> attachments = new LinkedHashMap<>();
   DubboClientRequest request = new DubboClientRequest(invoker, invocation, attachments);
 
   @Test public void service() {
     when(invocation.getInvoker()).thenReturn(invoker);
     when(invoker.getUrl()).thenReturn(url);
-    when(url.getServiceInterface()).thenReturn("brave.dubbo.GreeterService");
 
     assertThat(request.service())
       .isEqualTo("brave.dubbo.GreeterService");

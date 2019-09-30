@@ -20,18 +20,20 @@ import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.RemotingException;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
 import com.alibaba.dubbo.remoting.exchange.ResponseFuture;
+import com.alibaba.dubbo.rpc.Result;
 
 /** Ensures any callbacks finish the span. */
 final class FinishSpanResponseFuture implements ResponseFuture {
   final ResponseFuture delegate;
-  final Span span;
+  final FinishSpan finishSpan;
   final CurrentTraceContext currentTraceContext;
   final @Nullable TraceContext callbackContext;
 
-  FinishSpanResponseFuture(ResponseFuture delegate, TracingFilter filter, Span span,
+  FinishSpanResponseFuture(
+    ResponseFuture delegate, TracingFilter filter, DubboRequest request, Result result, Span span,
     @Nullable TraceContext callbackContext) {
     this.delegate = delegate;
-    this.span = span;
+    this.finishSpan = FinishSpan.create(filter, request, result, span);
     this.currentTraceContext = filter.currentTraceContext;
     this.callbackContext = callbackContext;
     // Ensures even if no callback added later, for example when a consumer, we finish the span
@@ -48,7 +50,7 @@ final class FinishSpanResponseFuture implements ResponseFuture {
 
   @Override public void setCallback(ResponseCallback callback) {
     delegate.setCallback(
-      TracingResponseCallback.create(callback, span, currentTraceContext, callbackContext)
+      TracingResponseCallback.create(callback, finishSpan, currentTraceContext, callbackContext)
     );
   }
 

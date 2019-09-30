@@ -35,8 +35,7 @@ public class GrpcClientResponseTest {
     new GrpcClientRequest(singletonMap("b3", b3Key), methodDescriptor, callOptions, call, headers);
   Status status = Status.CANCELLED;
   Metadata trailers = new Metadata();
-  Throwable error;
-  GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, error);
+  GrpcClientResponse response = new GrpcClientResponse(request, status, trailers);
 
   @Test public void request() {
     assertThat(response.request()).isSameAs(request);
@@ -58,17 +57,10 @@ public class GrpcClientResponseTest {
     assertThat(response.error()).isNull();
   }
 
-  @Test public void error() {
-    RuntimeException error = new RuntimeException("noodles");
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, error);
-
-    assertThat(response.error()).isSameAs(error);
-  }
-
   @Test public void error_fromStatus() {
     RuntimeException error = new RuntimeException("noodles");
     status = Status.fromThrowable(error);
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, null);
+    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers);
 
     assertThat(response.error()).isSameAs(error);
     assertThat(response.errorCode()).isEqualTo("UNKNOWN");
@@ -76,7 +68,7 @@ public class GrpcClientResponseTest {
 
   @Test public void errorCode_nullWhenOk() {
     status = Status.OK;
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, null);
+    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers);
 
     assertThat(response.errorCode()).isNull();
   }

@@ -15,6 +15,7 @@ package brave.dubbo;
 
 import brave.rpc.RpcClientRequest;
 import brave.rpc.RpcServerRequest;
+import brave.rpc.RpcTracing;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 
@@ -35,11 +36,14 @@ import org.apache.dubbo.rpc.Invoker;
  * <p>Note: Do not implement this type directly. An implementation will be
  * either as {@link RpcClientRequest} or an {@link RpcServerRequest}.
  *
+ * @see RpcTracing#clientRequestParser()
+ * @see RpcTracing#serverRequestParser()
+ * @see DubboResponse
  * @since 5.12
  */
 // Note: Unlike Alibaba Dubbo, Apache Dubbo is Java 8+.
 // This means we can add default methods later should needs arise.
-interface DubboRequest { // TODO: make public after #999
+public interface DubboRequest {
   Invoker<?> invoker();
 
   Invocation invocation();

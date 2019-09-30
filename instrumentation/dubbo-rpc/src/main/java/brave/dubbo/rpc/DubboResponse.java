@@ -14,6 +14,9 @@
 package brave.dubbo.rpc;
 
 import brave.internal.Nullable;
+import brave.rpc.RpcClientResponse;
+import brave.rpc.RpcServerResponse;
+import brave.rpc.RpcTracing;
 import com.alibaba.dubbo.rpc.Result;
 
 /**
@@ -33,9 +36,15 @@ import com.alibaba.dubbo.rpc.Result;
  *   }).build();
  * }</pre>
  *
+ * <p>Note: Do not implement this type directly. An implementation will be
+ * either as {@link RpcClientResponse} or an {@link RpcServerResponse}.
+ *
+ * @see RpcTracing#clientResponseParser()
+ * @see RpcTracing#serverResponseParser()
+ * @see DubboResponse
  * @since 5.12
  */
-interface DubboResponse { // TODO: make public after #999
+public interface DubboResponse {
   DubboRequest request();
 
   @Nullable Result result();
