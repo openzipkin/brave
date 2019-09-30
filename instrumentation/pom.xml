@@ -35,6 +35,7 @@
     <module>benchmarks</module>
     <module>http</module>
     <module>http-tests</module>
+    <module>dubbo</module>
     <module>dubbo-rpc</module>
     <module>grpc</module>
     <module>httpasyncclient</module>
