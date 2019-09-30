@@ -19,6 +19,7 @@ import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 
 /**
  * This standardizes a way to instrument http servers, particularly in a way that encourages use of
@@ -64,7 +65,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
   }
 
   final Tracer tracer;
-  final HttpRequestSampler sampler;
+  final SamplerFunction<HttpRequest> sampler;
   @Nullable final HttpServerAdapter<Req, Resp> adapter; // null when using default types
   final Extractor<HttpServerRequest> defaultExtractor;
 

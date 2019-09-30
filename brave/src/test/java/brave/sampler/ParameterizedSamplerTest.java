@@ -47,6 +47,15 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
+  @Test public void nullOnNull() {
+    ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
+      .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    assertThat(sampler.trySample(null))
+      .isNull();
+  }
+
   @Test public void multipleRules() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
       .putRule(v -> false, Sampler.ALWAYS_SAMPLE) // doesn't match

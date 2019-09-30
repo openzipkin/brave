@@ -22,6 +22,7 @@ import brave.http.HttpServerRequest.ToHttpAdapter;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -57,7 +58,7 @@ public class HttpServerHandlerTest {
   @Mock Object request;
   @Mock Object response;
 
-  @Mock HttpRequestSampler requestSampler;
+  @Mock SamplerFunction<HttpRequest> requestSampler;
   HttpTracing defaultHttpTracing;
   HttpServerHandler<HttpServerRequest, HttpServerResponse> defaultHandler;
 

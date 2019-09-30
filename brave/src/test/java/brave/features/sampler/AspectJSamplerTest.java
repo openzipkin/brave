@@ -16,9 +16,9 @@ package brave.features.sampler;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -87,17 +87,14 @@ public class AspectJSamplerTest {
   }
 
   @Component @Aspect static class TracingAspect {
-    DeclarativeSampler<Traced> declarativeSampler =
-      DeclarativeSampler.createWithRate(Traced::sampleRate);
+    SamplerFunction<Traced> samplerFunction = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
     @Around("@annotation(traced)")
     public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-      // When there is no trace in progress, this overrides the decision based on the annotation
-      Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-      Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
+      Tracer tracer = tracing.get().tracer();
 
-      // This code looks the same as if there was no declarative override
-      ScopedSpan span = tracer.startScopedSpan("");
+      // When there is no trace in progress, this overrides the decision based on the annotation
+      ScopedSpan span = tracer.startScopedSpan(spanName(pjp), samplerFunction, traced);
       try {
         return pjp.proceed();
       } catch (RuntimeException | Error e) {
@@ -121,5 +118,9 @@ public class AspectJSamplerTest {
 
   @Retention(RetentionPolicy.RUNTIME) public @interface Traced {
     int sampleRate() default 10;
+  }
+
+  static String spanName(ProceedingJoinPoint pjp) {
+    return pjp.getSignature().getName();
   }
 }

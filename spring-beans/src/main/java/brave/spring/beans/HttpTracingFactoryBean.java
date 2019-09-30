@@ -15,10 +15,11 @@ package brave.spring.beans;
 
 import brave.Tracing;
 import brave.http.HttpClientParser;
-import brave.http.HttpRequestSampler;
+import brave.http.HttpRequest;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
+import brave.sampler.SamplerFunction;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
@@ -28,7 +29,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
   Tracing tracing;
   HttpClientParser clientParser;
   HttpServerParser serverParser;
-  HttpRequestSampler clientSampler, serverSampler;
+  SamplerFunction<HttpRequest> clientSampler, serverSampler;
   List<HttpTracingCustomizer> customizers;
 
   @Override public HttpTracing getObject() {
@@ -63,11 +64,11 @@ public class HttpTracingFactoryBean implements FactoryBean {
     this.serverParser = serverParser;
   }
 
-  public void setClientSampler(HttpRequestSampler clientSampler) {
+  public void setClientSampler(SamplerFunction<HttpRequest> clientSampler) {
     this.clientSampler = clientSampler;
   }
 
-  public void setServerSampler(HttpRequestSampler serverSampler) {
+  public void setServerSampler(SamplerFunction<HttpRequest> serverSampler) {
     this.serverSampler = serverSampler;
   }
 

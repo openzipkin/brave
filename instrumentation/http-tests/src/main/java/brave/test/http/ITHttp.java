@@ -13,6 +13,7 @@
  */
 package brave.test.http;
 
+import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
@@ -118,6 +119,10 @@ public abstract class ITHttp {
     .addScopeDecorator(StrictScopeDecorator.create())
     .build();
   protected HttpTracing httpTracing;
+
+  protected Tracer tracer() {
+    return httpTracing.tracing().tracer();
+  }
 
   /**
    * This closes the current instance of tracing, to prevent it from being accidentally visible to

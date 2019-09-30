@@ -66,6 +66,17 @@ public class HttpRuleSamplerTest {
     });
   }
 
+  @Test public void nullOnNull() {
+    HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
+      .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    assertThat(ruleSampler.trySample(adapter, null))
+      .isNull();
+    assertThat(ruleSampler.trySample(null))
+      .isNull();
+  }
+
   @Test public void unmatched() {
     HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)

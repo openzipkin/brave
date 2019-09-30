@@ -15,6 +15,8 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
 
 import static brave.http.HttpSampler.fromHttpRequestSampler;
 import static brave.http.HttpSampler.toHttpRequestSampler;
@@ -79,13 +81,16 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
 
   /**
    * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
-   * the {@link HttpRequestSampler#TRACE_ID trace ID instead}.
+   * the {@link SamplerFunctions#deferDecision() trace ID instead}.
    *
    * <p>This decision happens when a trace was not yet started in process. For example, you may be
    * making an http request as a part of booting your application. You may want to opt-out of
    * tracing client requests that did not originate from a server request.
+   *
+   * @see SamplerFunctions
+   * @since 5.8
    */
-  public HttpRequestSampler clientRequestSampler() {
+  public SamplerFunction<HttpRequest> clientRequestSampler() {
     return clientSampler;
   }
 
@@ -96,13 +101,16 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
 
   /**
    * Returns an overriding sampling decision for a new trace. Defaults to ignore the request and use
-   * the {@link HttpRequestSampler#TRACE_ID trace ID instead}.
+   * the {@link SamplerFunctions#deferDecision() trace ID instead}.
    *
    * <p>This decision happens when trace IDs were not in headers, or a sampling decision has not
    * yet been made. For example, if a trace is already in progress, this function is not called. You
    * can implement this to skip paths that you never want to trace.
+   *
+   * @see SamplerFunctions
+   * @since 5.8
    */
-  public HttpRequestSampler serverRequestSampler() {
+  public SamplerFunction<HttpRequest> serverRequestSampler() {
     return serverSampler;
   }
 
@@ -114,7 +122,7 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
   final HttpClientParser clientParser;
   final String serverName;
   final HttpServerParser serverParser;
-  final HttpRequestSampler clientSampler, serverSampler;
+  final SamplerFunction<HttpRequest> clientSampler, serverSampler;
 
   HttpTracing(Builder builder) {
     this.tracing = builder.tracing;
@@ -130,7 +138,7 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
     HttpClientParser clientParser;
     String serverName;
     HttpServerParser serverParser;
-    HttpRequestSampler clientSampler, serverSampler;
+    SamplerFunction<HttpRequest> clientSampler, serverSampler;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
@@ -148,8 +156,8 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
           return errorParser;
         }
       };
-      this.clientSampler = HttpRequestSampler.TRACE_ID;
-      this.serverSampler = HttpRequestSampler.TRACE_ID;
+      this.clientSampler = SamplerFunctions.deferDecision();
+      this.serverSampler = SamplerFunctions.deferDecision();
     }
 
     Builder(HttpTracing source) {
@@ -198,26 +206,34 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
       return this;
     }
 
-    /** @deprecated Since 5.8, use {@link #clientSampler(HttpRequestSampler)} */
+    /** @deprecated Since 5.8, use {@link #clientSampler(SamplerFunction)} */
     public Builder clientSampler(HttpSampler clientSampler) {
       if (clientSampler == null) throw new NullPointerException("clientSampler == null");
-      return clientSampler((HttpRequestSampler) clientSampler);
+      return clientSampler((SamplerFunction<HttpRequest>) clientSampler);
     }
 
-    /** @see HttpTracing#clientRequestSampler() */
-    public Builder clientSampler(HttpRequestSampler clientSampler) {
+    /**
+     * @see SamplerFunctions
+     * @see HttpTracing#clientRequestSampler()
+     * @since 5.8
+     */
+    public Builder clientSampler(SamplerFunction<HttpRequest> clientSampler) {
       if (clientSampler == null) throw new NullPointerException("clientSampler == null");
       this.clientSampler = toHttpRequestSampler(clientSampler);
       return this;
     }
 
-    /** @deprecated Since 5.8, use {@link #serverSampler(HttpRequestSampler)} */
+    /** @deprecated Since 5.8, use {@link #serverSampler(SamplerFunction)} */
     public Builder serverSampler(HttpSampler serverSampler) {
-      return serverSampler((HttpRequestSampler) serverSampler);
+      return serverSampler((SamplerFunction<HttpRequest>) serverSampler);
     }
 
-    /** @see HttpTracing#serverRequestSampler() */
-    public Builder serverSampler(HttpRequestSampler serverSampler) {
+    /**
+     * @see SamplerFunctions
+     * @see HttpTracing#serverRequestSampler()
+     * @since 5.8
+     */
+    public Builder serverSampler(SamplerFunction<HttpRequest> serverSampler) {
       if (serverSampler == null) throw new NullPointerException("serverSampler == null");
       this.serverSampler = toHttpRequestSampler(serverSampler);
       return this;

@@ -19,6 +19,7 @@ import brave.sampler.CountingSampler;
 import brave.sampler.Matcher;
 import brave.sampler.ParameterizedSampler;
 import brave.sampler.RateLimitingSampler;
+import brave.sampler.SamplerFunction;
 import brave.sampler.Sampler;
 
 import static brave.http.HttpRequestMatchers.methodEquals;
@@ -62,7 +63,7 @@ import static brave.sampler.Matchers.and;
  *
  * @since 4.4
  */
-public final class HttpRuleSampler extends HttpSampler implements HttpRequestSampler {
+public final class HttpRuleSampler extends HttpSampler implements SamplerFunction<HttpRequest> {
   /** @since 4.4 */
   public static Builder newBuilder() {
     return new Builder();
@@ -134,6 +135,7 @@ public final class HttpRuleSampler extends HttpSampler implements HttpRequestSam
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    if (request == null) return null;
     return trySample(new FromHttpAdapter<>(adapter, request));
   }
 }

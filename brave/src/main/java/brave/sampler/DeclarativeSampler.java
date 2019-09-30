@@ -13,6 +13,7 @@
  */
 package brave.sampler;
 
+import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.SamplingFlags;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,7 +44,7 @@ import java.util.concurrent.ConcurrentMap;
  * reference such as {@code javax.ws.rs.container.ResourceInfo}.
  * @since 4.4
  */
-public abstract class DeclarativeSampler<M> {
+public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
   /** @since 5.8 */
   public interface ProbabilityOfMethod<M> {
     /** Returns null if there's no configured sample probability of this method */
@@ -73,83 +74,25 @@ public abstract class DeclarativeSampler<M> {
   final ConcurrentMap<M, Sampler> methodToSamplers = new ConcurrentHashMap<>();
 
   /**
-   * Used with {@link brave.Tracer#withSampler(Sampler)} to override the default sampling decision.
+   * {@inheritDoc}
    *
-   * <p>Ex:
-   * <pre>{@code
-   * // When there is no trace in progress, this decides using an annotation
-   * Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-   * Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
-   *
-   * // This code looks the same as if there was no declarative override
-   * Span span = tracer.nextSpan().name(name).start();
-   * }</pre>
-   *
-   * @param method input to the sampling function
-   * @return false if there was no rate associated with the input
-   * @since 4.4
+   * @since 5.8
    */
-  public Sampler toSampler(M method) {
-    if (method == null) throw new NullPointerException("method == null");
-    return new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        Boolean decision = sample(method).sampled();
-        return decision != null ? decision : false;
-      }
-    };
-  }
-
-  /**
-   * Like {@link #toSampler(Object)}, except allows a fallback decision, usually from {@link
-   * brave.Tracing#sampler()}, when there was no rate for an input
-   *
-   * <p>Ex:
-   * <pre>{@code
-   * // When there is no trace in progress, this decides using an annotation
-   * Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced, tracing.sampler());
-   * Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
-   *
-   * // This code looks the same as if there was no declarative override
-   * brave.Span span = tracer.nextSpan().start();
-   * }</pre>
-   *
-   * @param method input to the sampling function
-   * @param fallback when there is no rate for the input, usually {@link brave.Tracing#sampler()}
-   * @since 4.19
-   */
-  public Sampler toSampler(M method, Sampler fallback) {
-    if (method == null) throw new NullPointerException("method == null");
-    if (fallback == null) throw new NullPointerException("fallback == null");
-    return new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        Boolean decision = sample(method).sampled();
-        if (decision == null) return fallback.isSampled(traceId);
-        return decision;
-      }
-    };
-  }
-
-  public SamplingFlags sample(@Nullable M method) {
-    if (method == null) return SamplingFlags.EMPTY;
+  @Override public @Nullable Boolean trySample(@Nullable M method) {
+    if (method == null) return null;
     Sampler sampler = methodToSamplers.get(method);
-    if (sampler == NULL_SENTINEL) return SamplingFlags.EMPTY;
-    if (sampler != null) return sample(sampler);
+    if (sampler == NULL_SENTINEL) return null;
+    if (sampler != null) return sampler.isSampled(0L); // counting sampler ignores the input
 
     sampler = samplerOfMethod(method);
     if (sampler == null) {
       methodToSamplers.put(method, NULL_SENTINEL);
-      return SamplingFlags.EMPTY;
+      return null;
     }
 
     Sampler previousSampler = methodToSamplers.putIfAbsent(method, sampler);
     if (previousSampler != null) sampler = previousSampler; // lost race, use the existing counter
-    return sample(sampler);
-  }
-
-  private SamplingFlags sample(Sampler sampler) {
-    return sampler.isSampled(0L) // counting sampler ignores the input
-      ? SamplingFlags.SAMPLED
-      : SamplingFlags.NOT_SAMPLED;
+    return sampler.isSampled(0L); // counting sampler ignores the input
   }
 
   /** Prevents us from recomputing a method that had no configured factory */
@@ -213,5 +156,38 @@ public abstract class DeclarativeSampler<M> {
    * @deprecated since 5.8, use {@link ProbabilityOfMethod}
    */
   public interface RateForMethod<M> extends ProbabilityOfMethod<M> {
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link Tracer#startScopedSpan(String, SamplerFunction, Object)}
+   */
+  @Deprecated public Sampler toSampler(M method) {
+    return toSampler(method, Sampler.NEVER_SAMPLE);
+  }
+
+  /**
+   * @since 4.19
+   * @deprecated Since 5.8, use {@link Tracer#startScopedSpan(String, SamplerFunction, Object)}
+   */
+  @Deprecated public Sampler toSampler(M method, Sampler fallback) {
+    if (fallback == null) throw new NullPointerException("fallback == null");
+    if (method == null) return fallback;
+    return new Sampler() {
+      @Override public boolean isSampled(long traceId) {
+        Boolean decision = trySample(method);
+        if (decision == null) return fallback.isSampled(traceId);
+        return decision;
+      }
+    };
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link #trySample(Object)}
+   */
+  @Deprecated public SamplingFlags sample(@Nullable M method) {
+    if (method == null) return SamplingFlags.EMPTY;
+    return SamplingFlags.Builder.build(trySample(method));
   }
 }

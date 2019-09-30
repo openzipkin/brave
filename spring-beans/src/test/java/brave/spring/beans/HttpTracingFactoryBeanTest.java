@@ -15,11 +15,11 @@ package brave.spring.beans;
 
 import brave.Tracing;
 import brave.http.HttpClientParser;
-import brave.http.HttpRequestSampler;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
+import brave.sampler.SamplerFunctions;
 import org.junit.After;
 import org.junit.Test;
 
@@ -112,13 +112,13 @@ public class HttpTracingFactoryBeanTest {
       + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
       + "  </property>\n"
       + "  <property name=\"clientSampler\">\n"
-      + "    <util:constant static-field=\"brave.http.HttpRequestSampler.NEVER_SAMPLE\"/>\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
 
     assertThat(context.getBean("httpTracing", HttpTracing.class).clientRequestSampler())
-      .isEqualTo(HttpRequestSampler.NEVER_SAMPLE);
+      .isEqualTo(SamplerFunctions.neverSample());
   }
 
   @Test public void serverSampler() {
@@ -145,13 +145,13 @@ public class HttpTracingFactoryBeanTest {
       + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
       + "  </property>\n"
       + "  <property name=\"serverSampler\">\n"
-      + "    <util:constant static-field=\"brave.http.HttpRequestSampler.NEVER_SAMPLE\"/>\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
 
     assertThat(context.getBean("httpTracing", HttpTracing.class).serverRequestSampler())
-      .isEqualTo(HttpRequestSampler.NEVER_SAMPLE);
+      .isEqualTo(SamplerFunctions.neverSample());
   }
 
   public static final HttpTracingCustomizer CUSTOMIZER_ONE = mock(HttpTracingCustomizer.class);

@@ -34,6 +34,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static brave.sampler.SamplerFunctions.neverSample;
+import static brave.sampler.SamplerFunctions.nullSafe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -51,13 +53,13 @@ public class RequestSamplingTest {
     .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
     // server starts traces under the path /api
-    .serverSampler(new HttpSampler() {
+    .serverSampler(nullSafe(new HttpSampler() {
       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
         return adapter.path(request).startsWith("/api");
       }
-    })
+    }))
     // client doesn't start new traces
-    .clientSampler(HttpSampler.NEVER_SAMPLE)
+    .clientSampler(neverSample())
     .build();
 
   OkHttpClient client = new OkHttpClient();

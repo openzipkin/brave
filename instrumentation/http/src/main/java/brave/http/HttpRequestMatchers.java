@@ -17,7 +17,7 @@ import brave.sampler.Matcher;
 import brave.sampler.Matchers;
 
 /**
- * Null safe matchers for use in {@link HttpRequestSampler}.
+ * Null safe matchers for use in {@link HttpRuleSampler}.
  *
  * @see Matchers
  * @since 5.8

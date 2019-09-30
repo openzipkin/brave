@@ -14,8 +14,6 @@
 package brave.sampler;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
 
 import static brave.sampler.Matchers.alwaysMatch;
 import static brave.sampler.Matchers.and;
@@ -24,7 +22,6 @@ import static brave.sampler.Matchers.or;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@RunWith(MockitoJUnitRunner.class)
 public class MatchersTest {
   @Test public void alwaysMatch_matched() {
     assertThat(alwaysMatch().matches(null)).isTrue();

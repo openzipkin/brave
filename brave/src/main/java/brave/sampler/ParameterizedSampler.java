@@ -33,7 +33,7 @@ import java.util.Map;
  * @see Matcher
  * @since 4.4
  */
-public final class ParameterizedSampler<P> {
+public final class ParameterizedSampler<P> implements SamplerFunction<P> {
   /** @since 5.8 */
   public static <P> Builder<P> newBuilder() {
     return new Builder<>();
@@ -95,12 +95,11 @@ public final class ParameterizedSampler<P> {
   }
 
   /**
-   * Returns an overriding sampling decision for a new trace. Return null ignore the parameters and
-   * use the {@link brave.sampler.Sampler trace ID sampler}.
+   * {@inheritDoc}
    *
    * @since 5.8
    */
-  public @Nullable Boolean trySample(P parameters) {
+  @Override public @Nullable Boolean trySample(P parameters) {
     if (parameters == null) return null;
     for (R<P> rule : rules) {
       if (rule.matcher.matches(parameters)) {
@@ -110,17 +109,19 @@ public final class ParameterizedSampler<P> {
     return null;
   }
 
-  public SamplingFlags sample(@Nullable P parameters) {
-    Boolean result = trySample(parameters);
-    if (result == null) return SamplingFlags.EMPTY;
-    return result ? SamplingFlags.SAMPLED : SamplingFlags.NOT_SAMPLED;
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link #trySample(Object)}
+   */
+  @Deprecated public SamplingFlags sample(@Nullable P parameters) {
+    return SamplingFlags.Builder.build(trySample(parameters));
   }
 
   /**
    * @since 4.4
    * @deprecated since 5.8, use {@link #newBuilder()}
    */
-  public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
+  @Deprecated public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
     if (rules == null) throw new NullPointerException("rules == null");
     Builder<P> builder = newBuilder();
     for (Rule<P> rule : rules) {

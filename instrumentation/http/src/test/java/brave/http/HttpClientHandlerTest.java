@@ -19,6 +19,8 @@ import brave.Tracing;
 import brave.http.HttpClientRequest.FromHttpAdapter;
 import brave.http.HttpClientRequest.ToHttpAdapter;
 import brave.propagation.TraceContext;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +57,7 @@ public class HttpClientHandlerTest {
   @Mock Object request;
   @Mock Object response;
 
-  @Mock HttpRequestSampler requestSampler;
+  @Mock SamplerFunction<HttpRequest> requestSampler;
   HttpTracing defaultHttpTracing;
   HttpClientHandler<HttpClientRequest, HttpClientResponse> defaultHandler;
 
@@ -173,7 +175,7 @@ public class HttpClientHandlerTest {
 
     defaultHandler =
       HttpClientHandler.create(HttpTracing.newBuilder(Tracing.newBuilder().sampler(sampler).build())
-        .clientSampler(HttpRequestSampler.TRACE_ID).build());
+        .clientSampler(SamplerFunctions.deferDecision()).build());
 
     assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
 
@@ -185,7 +187,7 @@ public class HttpClientHandlerTest {
 
     defaultHandler =
       HttpClientHandler.create(HttpTracing.newBuilder(Tracing.newBuilder().sampler(sampler).build())
-        .clientSampler(HttpRequestSampler.NEVER_SAMPLE).build());
+        .clientSampler(SamplerFunctions.neverSample()).build());
 
     assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
 

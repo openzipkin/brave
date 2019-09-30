@@ -260,16 +260,12 @@ policy. Here's how they might work internally.
 
 ```java
 // derives a sample rate from an annotation on a java method
-DeclarativeSampler<Traced> sampler = DeclarativeSampler.createWithRate(Traced::sampleRate);
+SamplerFunction<Traced> samplerFunction = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
 @Around("@annotation(traced)")
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-  // When there is no trace in progress, this decides using an annotation
-  Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-  Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
-
-  // This code looks the same as if there was no declarative override
-  ScopedSpan span = tracer.startScopedSpan(spanName(pjp));
+  // When there is no trace in progress, this overrides the decision based on the annotation
+  ScopedSpan span = tracer.startScopedSpan(spanName(pjp), samplerFunction, traced);
   try {
     return pjp.proceed();
   } catch (RuntimeException | Error e) {
@@ -288,23 +284,21 @@ is. For example, you might not want to trace requests to static resources
 such as images, or you might want to trace all requests to a new api.
 
 Most users will use a framework interceptor which automates this sort of
-policy. Here's how they might work internally.
+policy.
 
+Here's a simplified version of how this might work internally.
 ```java
-Sampler fallback = tracing.sampler();
+SamplerFunction<Request> requestBased = (request) -> {
+  if (request.url().startsWith("/experimental")) {
+    return true;
+  } else if (request.url().startsWith("/static")) {
+    return false;
+  }
+  return null;
+};
 
 Span nextSpan(final Request input) {
-  Sampler requestBased = Sampler() {
-    @Override public boolean isSampled(long traceId) {
-      if (input.url().startsWith("/experimental")) {
-        return true;
-      } else if (input.url().startsWith("/static")) {
-        return false;
-      }
-      return fallback.isSampled(traceId);
-    }
-  };
-  return tracer.withSampler(requestBased).nextSpan();
+  return tracer.nextSpan(requestBased, input);
 }
 ```
 

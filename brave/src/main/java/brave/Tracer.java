@@ -28,8 +28,8 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
-import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +41,9 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
 import static brave.internal.Lists.concatImmutableLists;
+import static brave.propagation.SamplingFlags.EMPTY;
+import static brave.propagation.SamplingFlags.NOT_SAMPLED;
+import static brave.propagation.SamplingFlags.SAMPLED;
 
 /**
  * Using a tracer, you can create a root span capturing the critical path of a request. Child spans
@@ -118,18 +121,11 @@ public class Tracer {
   }
 
   /**
-   * Use this to temporarily override the sampler used when starting new traces. This also serves
-   * advanced scenarios, such as {@link DeclarativeSampler declarative sampling}.
-   *
-   * <p>Simple example:
-   * <pre>{@code
-   * // Ensures new traces are always started
-   * Tracer tracer = tracing.tracer().withSampler(Sampler.ALWAYS_SAMPLE);
-   * }</pre>
-   *
-   * @see DeclarativeSampler
+   * @since 4.19
+   * @deprecated Since 5.8, use {@link #nextSpan(SamplerFunction, Object)}  or {@link
+   * #startScopedSpan(String, SamplerFunction, Object)}
    */
-  public Tracer withSampler(Sampler sampler) {
+  @Deprecated public Tracer withSampler(Sampler sampler) {
     if (sampler == null) throw new NullPointerException("sampler == null");
     return new Tracer(
       clock,
@@ -152,7 +148,7 @@ public class Tracer {
    * #nextSpan()}.
    */
   public Span newTrace() {
-    return _toSpan(newRootContext());
+    return _toSpan(newRootContext(0));
   }
 
   /**
@@ -180,6 +176,7 @@ public class Tracer {
    * @see Propagation
    * @see Extractor#extract(Object)
    * @see TraceContextOrSamplingFlags#context()
+   * @see #nextSpan(TraceContextOrSamplingFlags)
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
@@ -203,8 +200,8 @@ public class Tracer {
     return _toSpan(decorateContext(parent, parent.spanId(), 0L));
   }
 
-  TraceContext newRootContext() {
-    return decorateContext(0, 0L, 0L, 0L, 0L, 0L, Collections.emptyList());
+  TraceContext newRootContext(int flags) {
+    return decorateContext(flags, 0L, 0L, 0L, 0L, 0L, Collections.emptyList());
   }
 
   /**
@@ -312,7 +309,7 @@ public class Tracer {
    *
    * @see Propagation
    * @see Extractor#extract(Object)
-   * @see TraceContextOrSamplingFlags
+   * @see #nextSpan(SamplerFunction, Object)
    */
   // TODO: BRAVE6 a MutableTraceContext object is cleaner especially here, as we can represent a
   // partial result, such as trace id without span ID without declaring a special type. Also, the
@@ -496,6 +493,46 @@ public class Tracer {
   }
 
   /**
+   * Like {@link #startScopedSpan(String)} except when there is no trace in process, the sampler
+   * {@link SamplerFunction#trySample(Object) triggers} against the supplied argument.
+   *
+   * @param name the {@link Span#name(String) span name}
+   * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
+   * @param arg parameter to {@link SamplerFunction#trySample(Object)}
+   * @see #nextSpan(SamplerFunction, Object)
+   * @since 5.8
+   */
+  public <T> ScopedSpan startScopedSpan(String name, SamplerFunction<T> samplerFunction, T arg) {
+    if (name == null) throw new NullPointerException("name == null");
+    return newScopedSpan(name, nextContext(samplerFunction, arg));
+  }
+
+  /**
+   * Like {@link #nextSpan()} except when there is no trace in process, the sampler {@link
+   * SamplerFunction#trySample(Object) triggers} against the supplied argument.
+   *
+   * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
+   * @param arg parameter to {@link SamplerFunction#trySample(Object)}
+   * @see #startScopedSpan(String, SamplerFunction, Object)
+   * @see #nextSpan(TraceContextOrSamplingFlags)
+   * @since 5.8
+   */
+  public <T> Span nextSpan(SamplerFunction<T> samplerFunction, T arg) {
+    return _toSpan(nextContext(samplerFunction, arg));
+  }
+
+  <T> TraceContext nextContext(SamplerFunction<T> samplerFunction, T arg) {
+    if (samplerFunction == null) throw new NullPointerException("samplerFunction == null");
+    if (arg == null) throw new NullPointerException("arg == null");
+    TraceContext parent = currentTraceContext.get();
+    if (parent != null) return decorateContext(parent, parent.spanId(), 0L);
+
+    Boolean sampled = samplerFunction.trySample(arg);
+    SamplingFlags flags = sampled != null ? (sampled ? SAMPLED : NOT_SAMPLED) : EMPTY;
+    return newRootContext(InternalPropagation.instance.flags(flags));
+  }
+
+  /**
    * Same as {@link #startScopedSpan(String)}, except ignores the current trace context.
    *
    * <p>Use this when you are creating a scoped span in a method block where the parent was
@@ -506,8 +543,11 @@ public class Tracer {
     if (name == null) throw new NullPointerException("name == null");
     if (parent == null) parent = currentTraceContext.get();
     TraceContext context =
-      parent != null ? decorateContext(parent, parent.spanId(), 0L) : newRootContext();
+      parent != null ? decorateContext(parent, parent.spanId(), 0L) : newRootContext(0);
+    return newScopedSpan(name, context);
+  }
 
+  ScopedSpan newScopedSpan(String name, TraceContext context) {
     Scope scope = currentTraceContext.newScope(context);
     if (isNoop(context)) return new NoopScopedSpan(context, scope);
 
