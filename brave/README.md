@@ -288,7 +288,7 @@ policy.
 
 Here's a simplified version of how this might work internally.
 ```java
-SamplerFunction<Request> parametersSampler = (request) -> {
+SamplerFunction<Request> requestBased = (request) -> {
   if (request.url().startsWith("/experimental")) {
     return true;
   } else if (request.url().startsWith("/static")) {
