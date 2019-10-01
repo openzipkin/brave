@@ -16,30 +16,39 @@ package brave.grpc;
 import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.Propagation;
+import brave.rpc.RpcTracing;
 import io.grpc.ClientInterceptor;
 import io.grpc.Metadata;
 import io.grpc.ServerInterceptor;
 
 public final class GrpcTracing {
   public static GrpcTracing create(Tracing tracing) {
-    if (tracing == null) throw new NullPointerException("tracing == null");
-    return new Builder(tracing).build();
+    return newBuilder(tracing).build();
+  }
+
+  public static GrpcTracing create(RpcTracing rpcTracing) {
+    return newBuilder(rpcTracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
+    return newBuilder(RpcTracing.create(tracing));
+  }
+
+  public static Builder newBuilder(RpcTracing rpcTracing) {
+    return new Builder(rpcTracing);
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final RpcTracing rpcTracing;
     GrpcClientParser clientParser;
     GrpcServerParser serverParser;
     boolean grpcPropagationFormatEnabled = false;
 
-    Builder(Tracing tracing) {
-      this.tracing = tracing;
+    Builder(RpcTracing rpcTracing) {
+      if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
+      this.rpcTracing = rpcTracing;
       // override to re-use any custom error parser from the tracing component
-      ErrorParser errorParser = tracing.errorParser();
+      ErrorParser errorParser = rpcTracing.tracing().errorParser();
       clientParser = new GrpcClientParser() {
         @Override protected ErrorParser errorParser() {
           return errorParser;
@@ -70,11 +79,10 @@ public final class GrpcTracing {
      * Default is false.
      *
      * <p>This wraps an existing propagation implementation, but prefers extracting
-     * "grpc-trace-bin"
-     * and "grpc-tags-bin" when parsing gRPC metadata. The incoming service method is propagated to
-     * outgoing client requests and written in the tags context as the key named "method".
-     * Regardless of whether "grpc-trace-bin" was parsed, it is speculatively written on outgoing
-     * requests.
+     * "grpc-trace-bin" and "grpc-tags-bin" when parsing gRPC metadata. The incoming service method
+     * is propagated to outgoing client requests and written in the tags context as the key named
+     * "method". Regardless of whether "grpc-trace-bin" was parsed, it is speculatively written on
+     * outgoing requests.
      *
      * <p>Warning: the format of both "grpc-trace-bin" and "grpc-tags-bin" are version 0. As such,
      * consider this feature experimental.
@@ -89,16 +97,16 @@ public final class GrpcTracing {
     }
   }
 
-  final Tracing tracing;
+  final RpcTracing rpcTracing;
   final Propagation<Metadata.Key<String>> propagation;
   final GrpcClientParser clientParser;
   final GrpcServerParser serverParser;
   final boolean grpcPropagationFormatEnabled;
 
   GrpcTracing(Builder builder) { // intentionally hidden constructor
-    tracing = builder.tracing;
+    rpcTracing = builder.rpcTracing;
     grpcPropagationFormatEnabled = builder.grpcPropagationFormatEnabled;
-    Propagation.Factory propagationFactory = tracing.propagationFactory();
+    Propagation.Factory propagationFactory = rpcTracing.tracing().propagationFactory();
     if (grpcPropagationFormatEnabled) {
       propagationFactory = GrpcPropagation.newFactory(propagationFactory);
     }
@@ -108,7 +116,7 @@ public final class GrpcTracing {
   }
 
   public Builder toBuilder() {
-    return new Builder(tracing)
+    return new Builder(rpcTracing)
       .clientParser(clientParser)
       .serverParser(serverParser);
   }

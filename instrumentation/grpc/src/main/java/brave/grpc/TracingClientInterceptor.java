@@ -18,6 +18,9 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext.Injector;
+import brave.rpc.RpcClientRequest;
+import brave.rpc.RpcRequest;
+import brave.sampler.SamplerFunction;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -43,11 +46,13 @@ final class TracingClientInterceptor implements ClientInterceptor {
     };
 
   final Tracer tracer;
+  final SamplerFunction<RpcRequest> sampler;
   final Injector<Metadata> injector;
   final GrpcClientParser parser;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
-    tracer = grpcTracing.tracing.tracer();
+    tracer = grpcTracing.rpcTracing.tracing().tracer();
+    sampler = grpcTracing.rpcTracing.clientSampler();
     injector = grpcTracing.propagation.injector(SETTER);
     parser = grpcTracing.clientParser;
   }
@@ -62,7 +67,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
     final MethodDescriptor<ReqT, RespT> method, final CallOptions callOptions,
     final Channel next) {
-    Span span = tracer.nextSpan();
+    Span span = tracer.nextSpan(sampler, new GrpcClientRequest(method.getFullMethodName()));
     SpanInScope scope = tracer.withSpanInScope(span);
     try {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {

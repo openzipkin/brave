@@ -22,6 +22,8 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.grpc.CallOptions;
@@ -57,6 +59,7 @@ import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
+import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.entry;
@@ -71,9 +74,10 @@ public class ITTracingClientInterceptor {
    * like those using blocking clients, happen on the main thread.
    */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+  Tracer tracer = tracing.tracer();
 
-  GrpcTracing tracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
-  Tracer tracer = tracing.tracing.tracer();
+  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
   TestServer server = new TestServer();
   ManagedChannel client;
 
@@ -104,7 +108,7 @@ public class ITTracingClientInterceptor {
   };
 
   ManagedChannel newClient() {
-    return newClient(tracing.newClientInterceptor());
+    return newClient(grpcTracing.newClientInterceptor());
   }
 
   ManagedChannel newClient(ClientInterceptor... clientInterceptors) {
@@ -186,7 +190,7 @@ public class ITTracingClientInterceptor {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagates_sampledFalse() throws Exception {
-    tracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
+    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     closeClient(client);
     client = newClient();
 
@@ -279,7 +283,7 @@ public class ITTracingClientInterceptor {
           };
         }
       },
-      tracing.newClientInterceptor()
+      grpcTracing.newClientInterceptor()
     );
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -291,17 +295,17 @@ public class ITTracingClientInterceptor {
 
   @Test public void clientParserTest() throws Exception {
     closeClient(client);
-    tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
+    grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
-        if (tracing.tracing.currentTraceContext().get() != null) {
+        if (tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_sent.visible", "true");
         }
       }
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
         span.tag("grpc.message_received", message.toString());
-        if (tracing.tracing.currentTraceContext().get() != null) {
+        if (tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_received.visible", "true");
         }
       }
@@ -323,10 +327,9 @@ public class ITTracingClientInterceptor {
     );
   }
 
-  @Test
-  public void clientParserTestStreamingResponse() throws Exception {
+  @Test public void clientParserTestStreamingResponse() throws Exception {
     closeClient(client);
-    tracing = tracing.toBuilder().clientParser(new GrpcClientParser() {
+    grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
       int receiveCount = 0;
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
@@ -342,6 +345,26 @@ public class ITTracingClientInterceptor {
     Span span = takeSpan();
     // all response messages are tagged to the same span
     assertThat(span.tags()).hasSize(10);
+  }
+
+  @Test public void customSampler() throws Exception {
+    closeClient(client);
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("SayHelloWithManyReplies"), Sampler.NEVER_SAMPLE)
+      .build()).build();
+
+    grpcTracing = GrpcTracing.create(rpcTracing);
+    client = newClient();
+
+    // unsampled
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST);
+
+    // sampled
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(takeSpan().name()).isEqualTo("helloworld.greeter/sayhello");
+    // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {

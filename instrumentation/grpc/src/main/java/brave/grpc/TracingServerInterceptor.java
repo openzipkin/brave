@@ -17,49 +17,44 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.grpc.GrpcPropagation.Tags;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcRequest;
+import brave.sampler.SamplerFunction;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.Metadata;
-import io.grpc.Metadata.Key;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 
 import static brave.grpc.GrpcPropagation.RPC_METHOD;
+import static brave.grpc.GrpcServerRequest.GETTER;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
-  static final Propagation.Getter<Metadata, Key<String>> GETTER =
-    new Propagation.Getter<Metadata, Key<String>>() { // retrolambda no like
-      @Override public String get(Metadata metadata, Key<String> key) {
-        return metadata.get(key);
-      }
-
-      @Override public String toString() {
-        return "Metadata::get";
-      }
-    };
-
   final Tracer tracer;
-  final Extractor<Metadata> extractor;
+  final Extractor<GrpcServerRequest> extractor;
+  final SamplerFunction<RpcRequest> sampler;
   final GrpcServerParser parser;
   final boolean grpcPropagationFormatEnabled;
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
-    tracer = grpcTracing.tracing.tracer();
+    tracer = grpcTracing.rpcTracing.tracing().tracer();
     extractor = grpcTracing.propagation.extractor(GETTER);
+    sampler = grpcTracing.rpcTracing.serverSampler();
     parser = grpcTracing.serverParser;
     grpcPropagationFormatEnabled = grpcTracing.grpcPropagationFormatEnabled;
   }
 
   @Override
-  public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
-    final Metadata headers, final ServerCallHandler<ReqT, RespT> next) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(headers);
+  public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+    Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+    GrpcServerRequest grpcRequest =
+      new GrpcServerRequest(call.getMethodDescriptor().getFullMethodName(), headers);
+
+    TraceContextOrSamplingFlags extracted = extractor.extract(grpcRequest);
     Span span = extracted.context() != null
       ? tracer.joinSpan(extracted.context())
       : tracer.nextSpan(extracted);

@@ -60,6 +60,28 @@ overrideSpanName = new GrpcClientParser() {
 };
 ```
 
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+server and client requests.
+
+You can use an [RpcRuleSampler](../rpc/README.md) to override this based on
+gRPC service or method names.
+
+Ex. Here's a sampler that traces 100 "GetUserToken" requests per second. This
+doesn't start new traces for requests to the health check service. Other
+requests will use a global rate provided by the tracing component.
+
+```java
+import static brave.rpc.RpcRequestMatchers.*;
+
+rpcTracing = rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
+  .putRule(serviceEquals("grpc.health.v1.Health"), Sampler.NEVER_SAMPLE)
+  .putRule(methodEquals("GetUserToken"), RateLimitingSampler.create(100))
+  .build()).build();
+
+grpcTracing = GrpcTracing.create(rpcTracing);
+```
+
 ## gRPC Propagation Format (Census interop)
 
 gRPC defines a [binary encoded propagation format](https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md) which is implemented
