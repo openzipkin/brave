@@ -45,13 +45,14 @@ public class GrpcPropagationBenchmarks {
   static final Propagation<Metadata.Key<String>> b3 =
     B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE);
   static final Injector<Metadata> b3Injector = b3.injector(TracingClientInterceptor.SETTER);
-  static final Extractor<Metadata> b3Extractor = b3.extractor(TracingServerInterceptor.GETTER);
+  static final Extractor<GrpcServerRequest> b3Extractor = b3.extractor(GrpcServerRequest.GETTER);
 
   static final Propagation.Factory bothFactory = GrpcPropagation.newFactory(B3Propagation.FACTORY);
   static final Propagation<Metadata.Key<String>> both =
     bothFactory.create(AsciiMetadataKeyFactory.INSTANCE);
   static final Injector<Metadata> bothInjector = both.injector(TracingClientInterceptor.SETTER);
-  static final Extractor<Metadata> bothExtractor = both.extractor(TracingServerInterceptor.GETTER);
+  static final Extractor<GrpcServerRequest> bothExtractor =
+    both.extractor(GrpcServerRequest.GETTER);
 
   static final TraceContext context = TraceContext.newBuilder()
     .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -61,16 +62,18 @@ public class GrpcPropagationBenchmarks {
     .build();
   static final TraceContext contextWithTags = bothFactory.decorate(context);
 
-  static final Metadata incomingB3 = new Metadata();
-  static final Metadata incomingBoth = new Metadata();
-  static final Metadata incomingBothNoTags = new Metadata();
-  static final Metadata nothingIncoming = new Metadata();
+  static final String fullMethodName = "helloworld.Greeter/SayHello";
+  static final GrpcServerRequest
+    incomingB3 = new GrpcServerRequest(fullMethodName, new Metadata()),
+    incomingBoth = new GrpcServerRequest(fullMethodName, new Metadata()),
+    incomingBothNoTags = new GrpcServerRequest(fullMethodName, new Metadata()),
+    nothingIncoming = new GrpcServerRequest(fullMethodName, new Metadata());
 
   static {
     PropagationFields.put(contextWithTags, "method", "helloworld.Greeter/SayHello", Tags.class);
-    b3Injector.inject(context, incomingB3);
-    bothInjector.inject(contextWithTags, incomingBoth);
-    bothInjector.inject(context, incomingBothNoTags);
+    b3Injector.inject(context, incomingB3.metadata);
+    bothInjector.inject(contextWithTags, incomingBoth.metadata);
+    bothInjector.inject(context, incomingBothNoTags.metadata);
   }
 
   @Benchmark public void inject_b3() {
