@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Copyright 2013-2019 The OpenZipkin Authors
@@ -21,36 +22,16 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
-  <name>Brave Instrumentation: Alibaba Dubbo</name>
+  <artifactId>brave-instrumentation-rpc</artifactId>
+  <name>Brave Instrumentation: Rpc Adapters</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
-    <!-- Use brave-instrumentation-dubbo for Apache Dubbo 2.7+, not this module. -->
-    <dubbo.version>2.6.7</dubbo.version>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-rpc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.alibaba</groupId>
-      <artifactId>dubbo</artifactId>
-      <version>${dubbo.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- Prevent classpath problems in IDE running tests -->
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
-      <version>${netty.version}</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
@@ -61,14 +42,27 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+      </plugin>
+      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.dubbo.rpc</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <configuration>
+              <archive>
+                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                <manifestEntries>
+                  <Automatic-Module-Name>brave.rpc</Automatic-Module-Name>
+                </manifestEntries>
+              </archive>
+            </configuration>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

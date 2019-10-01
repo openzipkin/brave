@@ -39,6 +39,10 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-rpc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
       <version>${project.version}</version>
     </dependency>
