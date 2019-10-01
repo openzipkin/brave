@@ -58,7 +58,7 @@ public class RpcRequestMatchersTest {
   @Test public void serviceEquals_unmatched_mixedCase() {
     when(request.service()).thenReturn("grpc.health.v1.Health");
 
-    assertThat(serviceEquals("grpc.health.v1.Health").matches(request)).isFalse();
+    assertThat(serviceEquals("grpc.health.v1.health").matches(request)).isFalse();
   }
 
   @Test public void serviceEquals_unmatched() {
