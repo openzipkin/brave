@@ -57,7 +57,7 @@ final class GrpcServerRequest extends RpcServerRequest {
     return fullMethodName.substring(0, index);
   }
 
-  @Nullable String metadata(Metadata.Key<String> key) {
+  @Nullable <T> T metadata(Metadata.Key<T> key) {
     return metadata.get(key);
   }
 }
