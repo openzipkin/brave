@@ -24,11 +24,11 @@ final class GrpcServerRequest extends RpcServerRequest {
   static final Getter<GrpcServerRequest, Metadata.Key<String>> GETTER =
     new Getter<GrpcServerRequest, Metadata.Key<String>>() { // retrolambda no like
       @Override public String get(GrpcServerRequest request, Metadata.Key<String> key) {
-        return request.metadata(key);
+        return request.getMetadata(key);
       }
 
       @Override public String toString() {
-        return "GrpcServerRequest::metadata";
+        return "GrpcServerRequest::getMetadata";
       }
     };
 
@@ -54,7 +54,7 @@ final class GrpcServerRequest extends RpcServerRequest {
     return GrpcParser.service(fullMethodName);
   }
 
-  @Nullable <T> T metadata(Metadata.Key<T> key) {
+  @Nullable <T> T getMetadata(Metadata.Key<T> key) {
     return metadata.get(key);
   }
 }

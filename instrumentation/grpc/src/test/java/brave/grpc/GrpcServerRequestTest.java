@@ -26,11 +26,11 @@ public class GrpcServerRequestTest {
   @Test public void metadata() {
     request.metadata.put(b3Key, "1");
 
-    assertThat(request.metadata(b3Key))
+    assertThat(request.getMetadata(b3Key))
       .isEqualTo("1");
   }
 
   @Test public void metadata_null() {
-    assertThat(request.metadata(b3Key)).isNull();
+    assertThat(request.getMetadata(b3Key)).isNull();
   }
 }

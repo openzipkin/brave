@@ -29,7 +29,7 @@ final class GrpcClientRequest extends RpcClientRequest {
       }
 
       @Override public String toString() {
-        return "GrpcClientRequest::metadata";
+        return "GrpcClientRequest::setMetadata";
       }
     };
 

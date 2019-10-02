@@ -125,8 +125,8 @@ final class GrpcPropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       Tags tags = null;
       if (carrier instanceof GrpcServerRequest) {
-        tags = extractTags(((GrpcServerRequest) carrier).metadata(GRPC_TAGS_BIN));
-        byte[] bytes = ((GrpcServerRequest) carrier).metadata(GRPC_TRACE_BIN);
+        tags = extractTags(((GrpcServerRequest) carrier).getMetadata(GRPC_TAGS_BIN));
+        byte[] bytes = ((GrpcServerRequest) carrier).getMetadata(GRPC_TRACE_BIN);
         if (bytes != null) {
           TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
           if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);
