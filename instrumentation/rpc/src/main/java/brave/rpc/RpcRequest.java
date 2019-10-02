@@ -38,7 +38,7 @@ public abstract class RpcRequest {
   public abstract Object unwrap();
 
   /**
-   * The unqualified, case-sensitive method name. Prefer the name defined in IDL or to any mapped
+   * The unqualified, case-sensitive method name. Prefer the name defined in IDL to any mapped
    * {@link Method#getName() Java method name}.
    *
    * <p>Examples
@@ -56,8 +56,8 @@ public abstract class RpcRequest {
   @Nullable public abstract String method();
 
   /**
-   * The fully-qualified, case-sensitive service path. Prefer the name defined in IDL or to any
-   * mapped {@link Package#getName() Java package name}.
+   * The fully-qualified, case-sensitive service path. Prefer the name defined in IDL to any mapped
+   * {@link Package#getName() Java package name}.
    *
    * <p>Examples
    * <pre><ul>

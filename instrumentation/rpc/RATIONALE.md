@@ -18,7 +18,7 @@ requests to an "auth service" or a "play" method.
 
 ## Examples please?
 `rpc.method` - The unqualified, case-sensitive method name. Prefer the name
-defined in IDL or to any mapped Java method name.
+defined in IDL to any mapped Java method name.
 
 Examples
 * gRPC - full method "grpc.health.v1.Health/Check" returns "Check"
@@ -26,7 +26,7 @@ Examples
 * Apache Thrift - full method "scribe.Log" returns "Log"
 
 `rpc.service` - The fully-qualified, case-sensitive service path. Prefer the
-name defined in IDL or to any mapped Java package name.
+name defined in IDL to any mapped Java package name.
 
 Examples
 * gRPC - full method "grpc.health.v1.Health/Check" returns "grpc.health.v1.Health"
