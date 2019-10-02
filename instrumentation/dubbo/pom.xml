@@ -37,7 +37,22 @@
       <groupId>org.apache.dubbo</groupId>
       <artifactId>dubbo</artifactId>
       <version>${dubbo.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.javassist</groupId>
+          <artifactId>javassist</artifactId>
+        </exclusion>
+      </exclusions>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- Attempt to work around bug where in Travis, methods are looked at on the wrong type.
+Caused by: org.apache.dubbo.common.bytecode.NoSuchMethodException: Not found method "sayHello" in class org.apache.dubbo.rpc.service.GenericService.
+    -->
+    <dependency>
+      <groupId>org.javassist</groupId>
+      <artifactId>javassist</artifactId>
+      <version>3.25.0-GA</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
