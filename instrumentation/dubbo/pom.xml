@@ -13,7 +13,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
@@ -22,13 +24,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>brave-instrumentation-dubbo</artifactId>
-  <name>Brave Instrumentation:brave-instrumentation-dubbo</name>
+  <name>Brave Instrumentation: Apache Dubbo</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
 
+    <!-- TODO: re-enable failsafe when upgrade to 2.7.4 -->
     <dubbo.version>2.7.3</dubbo.version>
   </properties>
 
@@ -39,6 +42,7 @@
       <version>${dubbo.version}</version>
       <scope>provided</scope>
     </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
@@ -48,6 +52,18 @@
 
   <build>
     <plugins>
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <!-- TODO: remove when upgrade to 2.7.4. On Travis Ubuntu slave, this fails in 2.7.3 as methods are looked at on the wrong type.
+Caused by: org.apache.dubbo.common.bytecode.NoSuchMethodException: Not found method "sayHello" in class org.apache.dubbo.rpc.service.GenericService.
+          -->
+          <execution>
+            <id>integration-test</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>
