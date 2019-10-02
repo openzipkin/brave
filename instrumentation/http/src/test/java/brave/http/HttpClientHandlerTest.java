@@ -209,7 +209,7 @@ public class HttpClientHandlerTest {
   @Test public void nextSpan_samplerSeesUnwrappedType_oldHandler() {
     when(sampler.trySample(defaultRequest)).thenReturn(null);
 
-    handler.nextClientSpan(defaultRequest);
+    handler.nextSpan(defaultRequest);
 
     verify(sampler).trySample(defaultRequest);
   }
