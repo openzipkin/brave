@@ -22,7 +22,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
-  <name>Brave Instrumentation: Dubbo RPC</name>
+  <name>Brave Instrumentation: Alibaba Dubbo</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
