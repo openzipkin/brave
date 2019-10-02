@@ -59,6 +59,7 @@
 Caused by: org.apache.dubbo.common.bytecode.NoSuchMethodException: Not found method "sayHello" in class org.apache.dubbo.rpc.service.GenericService.
           -->
           <execution>
+            <id>integration-test</id>
             <phase>none</phase>
           </execution>
         </executions>
