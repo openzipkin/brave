@@ -17,20 +17,21 @@ extraction. Among these were the desire to create a sampling rule to match
 requests to an "auth service" or a "play" method.
 
 ## Examples please?
-`rpc.method` - The unqualified, case-sensitive method name, defined in IDL or
-the corresponding protocol.
+`rpc.method` - The unqualified, case-sensitive method name. Prefer the name
+defined in IDL or to any mapped Java method name.
 
 Examples
 * gRPC - full method "grpc.health.v1.Health/Check" returns "Check"
+* Apache Dubbo - "demo.service.DemoService#sayHello()" command returns "demo.service.DemoService"
 * Apache Thrift - full method "scribe.Log" returns "Log"
-* Redis - "EXISTS" command returns "EXISTS"
 
-`rpc.service` - The fully-qualified, case-sensitive service path as defined in IDL.
+`rpc.service` - The fully-qualified, case-sensitive service path. Prefer the
+name defined in IDL or to any mapped Java package name.
 
 Examples
 * gRPC - full method "grpc.health.v1.Health/Check" returns "grpc.health.v1.Health"
+* Apache Dubbo - "demo.service.DemoService#sayHello()" command returns "demo.service.DemoService"
 * Apache Thrift - full method "scribe.Log" returns "scribe"
-* Redis - "EXISTS" command returns null
 
 ### Why not parameters?
 It was easier to start with these because the `method` and `service` properties
@@ -44,14 +45,17 @@ be defined declaratively.
 ### Why use `rpc.method` and `rpc.service`?
 To reduce friction, we wanted to use names already in practice. For example,
 `method` and `service` are fairly common in IDL such as Apache Thrift and gRPC.
-Moreover, there are established practice of `method` and `service` in tools
-such as [Prometheus gRPC monitoring](https://github.com/grpc-ecosystem/go-grpc-prometheus#labels).
+These names are also used in non-IDL based RPC, such as Apache Dubbo. Moreover,
+there are established practice of `method` and `service` in tools such as
+[Prometheus gRPC monitoring](https://github.com/grpc-ecosystem/go-grpc-prometheus#labels).
 
 While there could be confusion around `rpc.method` vs Java method, that exists
-anyway and is easy to explain. `rpc.service` unfortunately conflicts with our
-term `Endpoint.serviceName`, but only if you ignore the `Endpoint` prefix.
-Given this, we feel it is conventional, fits in with existing practice and
-doesn't add enough confusion to create new terms.
+anyway and is easy to explain: When IDL exists, prefer its service and method
+name to any matched Java names. 
+
+`rpc.service` unfortunately conflicts with our term `Endpoint.serviceName`, but
+only if you ignore the `Endpoint` prefix. Given this, we feel it fits in with
+existing practice and doesn't add enough confusion to create new terms.
 
 ### Wait.. not everything has a `service` namespace?
 

@@ -38,32 +38,38 @@ public abstract class RpcRequest {
   public abstract Object unwrap();
 
   /**
-   * The unqualified, case-sensitive method name, defined in IDL or the corresponding protocol.
+   * The unqualified, case-sensitive method name. Prefer the name defined in IDL or to any mapped
+   * {@link Method#getName() Java method name}.
    *
    * <p>Examples
    * <pre><ul>
    *   <li>gRPC - full method "grpc.health.v1.Health/Check" returns "Check"</li>
+   *   <li>Apache Dubbo - "demo.service.DemoService#sayHello()" command returns "sayHello"</li>
    *   <li>Apache Thrift - full method "scribe.Log" returns "Log"</li>
-   *   <li>Redis - "EXISTS" command returns "EXISTS"</li>
    * </ul></pre>
    *
-   * <p>Note: This is not the same as the {@link Method#getName() Java method name}.
+   * <p>Note: For IDL based services, such as Protocol Buffers, this may be different than the
+   * {@link Method#getName() Java method name}, or in a different case format.
    *
    * @return the RPC method name or null if unreadable.
    */
   @Nullable public abstract String method();
 
   /**
-   * The fully-qualified, case-sensitive service path as defined in IDL.
+   * The fully-qualified, case-sensitive service path. Prefer the name defined in IDL or to any
+   * mapped {@link Package#getName() Java package name}.
    *
    * <p>Examples
    * <pre><ul>
    *   <li>gRPC - full method "grpc.health.v1.Health/Check" returns "grpc.health.v1.Health"</li>
+   *   <li>Apache Dubbo - "demo.service.DemoService#sayHello()" command returns "demo.service.DemoService"</li>
    *   <li>Apache Thrift - full method "scribe.Log" returns "scribe"</li>
-   *   <li>Redis - "EXISTS" command returns null</li>
    * </ul></pre>
    *
-   * <p>Note: This is not the deployment {@link Span#remoteServiceName(String) service name}.
+   * <p>Note: For IDL based services, such as Protocol Buffers, this may be different than the
+   * {@link Package#getName() Java package name}, or in a different case format. Also, this is the
+   * definition of the service, not its deployment {@link Span#remoteServiceName(String) service
+   * name}.
    *
    * @return the RPC namespace or null if unreadable.
    */
