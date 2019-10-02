@@ -23,6 +23,9 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -42,15 +45,23 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class GrpcPropagationBenchmarks {
+  static final MethodDescriptor<Void, Void> methodDescriptor =
+    MethodDescriptor.<Void, Void>newBuilder()
+      .setType(MethodDescriptor.MethodType.UNARY)
+      .setFullMethodName("helloworld.Greeter/SayHello")
+      .setRequestMarshaller(VoidMarshaller.INSTANCE)
+      .setResponseMarshaller(VoidMarshaller.INSTANCE)
+      .build();
+
   static final Propagation<Metadata.Key<String>> b3 =
     B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE);
-  static final Injector<Metadata> b3Injector = b3.injector(TracingClientInterceptor.SETTER);
+  static final Injector<GrpcClientRequest> b3Injector = b3.injector(GrpcClientRequest.SETTER);
   static final Extractor<GrpcServerRequest> b3Extractor = b3.extractor(GrpcServerRequest.GETTER);
 
   static final Propagation.Factory bothFactory = GrpcPropagation.newFactory(B3Propagation.FACTORY);
   static final Propagation<Metadata.Key<String>> both =
     bothFactory.create(AsciiMetadataKeyFactory.INSTANCE);
-  static final Injector<Metadata> bothInjector = both.injector(TracingClientInterceptor.SETTER);
+  static final Injector<GrpcClientRequest> bothInjector = both.injector(GrpcClientRequest.SETTER);
   static final Extractor<GrpcServerRequest> bothExtractor =
     both.extractor(GrpcServerRequest.GETTER);
 
@@ -62,23 +73,25 @@ public class GrpcPropagationBenchmarks {
     .build();
   static final TraceContext contextWithTags = bothFactory.decorate(context);
 
-  static final String fullMethodName = "helloworld.Greeter/SayHello";
   static final GrpcServerRequest
-    incomingB3 = new GrpcServerRequest(fullMethodName, new Metadata()),
-    incomingBoth = new GrpcServerRequest(fullMethodName, new Metadata()),
-    incomingBothNoTags = new GrpcServerRequest(fullMethodName, new Metadata()),
-    nothingIncoming = new GrpcServerRequest(fullMethodName, new Metadata());
+    incomingB3 = new GrpcServerRequest(methodDescriptor, new Metadata()),
+    incomingBoth = new GrpcServerRequest(methodDescriptor, new Metadata()),
+    incomingBothNoTags = new GrpcServerRequest(methodDescriptor, new Metadata()),
+    nothingIncoming = new GrpcServerRequest(methodDescriptor, new Metadata());
 
   static {
     PropagationFields.put(contextWithTags, "method", "helloworld.Greeter/SayHello", Tags.class);
-    b3Injector.inject(context, incomingB3.metadata);
-    bothInjector.inject(contextWithTags, incomingBoth.metadata);
-    bothInjector.inject(context, incomingBothNoTags.metadata);
+    b3Injector.inject(context,
+      new GrpcClientRequest(methodDescriptor).metadata(incomingB3.metadata));
+    bothInjector.inject(contextWithTags,
+      new GrpcClientRequest(methodDescriptor).metadata(incomingBoth.metadata));
+    bothInjector.inject(context,
+      new GrpcClientRequest(methodDescriptor).metadata(incomingBothNoTags.metadata));
   }
 
   @Benchmark public void inject_b3() {
-    Metadata carrier = new Metadata();
-    b3Injector.inject(context, carrier);
+    GrpcClientRequest request = new GrpcClientRequest(methodDescriptor).metadata(new Metadata());
+    b3Injector.inject(context, request);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_b3() {
@@ -90,13 +103,13 @@ public class GrpcPropagationBenchmarks {
   }
 
   @Benchmark public void inject_both() {
-    Metadata carrier = new Metadata();
-    bothInjector.inject(contextWithTags, carrier);
+    GrpcClientRequest request = new GrpcClientRequest(methodDescriptor).metadata(new Metadata());
+    bothInjector.inject(contextWithTags, request);
   }
 
   @Benchmark public void inject_both_no_tags() {
-    Metadata carrier = new Metadata();
-    bothInjector.inject(context, carrier);
+    GrpcClientRequest request = new GrpcClientRequest(methodDescriptor).metadata(new Metadata());
+    bothInjector.inject(context, request);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_both() {
@@ -119,5 +132,17 @@ public class GrpcPropagationBenchmarks {
       .build();
 
     new Runner(opt).run();
+  }
+
+  enum VoidMarshaller implements MethodDescriptor.Marshaller<Void> {
+    INSTANCE;
+
+    @Override public InputStream stream(Void value) {
+      return new ByteArrayInputStream(new byte[0]);
+    }
+
+    @Override public Void parse(InputStream stream) {
+      return null;
+    }
   }
 }

@@ -358,7 +358,8 @@ public class ITTracingClientInterceptor {
     client = newClient();
 
     // unsampled
-    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST);
+    assertThat(GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST))
+      .hasNext(); // Request is lazy, so you must invoke the iterator
 
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);

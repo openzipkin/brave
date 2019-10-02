@@ -14,7 +14,6 @@
 package brave.grpc;
 
 import brave.SpanCustomizer;
-import brave.Tracer;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.internal.Nullable;
@@ -338,14 +337,15 @@ public class ITTracingServerInterceptor {
   }
 
   @Test public void customSampler() throws Exception {
-    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("SayHelloWithManyReplies"), Sampler.NEVER_SAMPLE)
       .build()).build();
     grpcTracing = GrpcTracing.create(rpcTracing);
     init();
 
     // unsampled
-    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST);
+    assertThat(GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST))
+      .hasNext(); // Request is lazy, so you must invoke the iterator
 
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);

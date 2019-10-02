@@ -14,7 +14,7 @@ To enable tracing for a gRPC application, add the interceptors when
 constructing the client and server bindings:
 
 ```java
-grpcTracing = GrpcTracing.create(tracing);
+grpcTracing = GrpcTracing.create(rpcTracing);
 
 Server server = ServerBuilder.forPort(serverPort)
     .addService(ServerInterceptors.intercept(

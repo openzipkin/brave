@@ -13,15 +13,32 @@
  */
 package brave.grpc;
 
+import brave.internal.Nullable;
+import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
+import io.grpc.ClientCall;
+import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 
 // intentionally not yet public until we add tag parsing functionality
 final class GrpcClientRequest extends RpcClientRequest {
-  final String fullMethodName;
+  static final Setter<GrpcClientRequest, Metadata.Key<String>> SETTER =
+    new Setter<GrpcClientRequest, Metadata.Key<String>>() { // retrolambda no like
+      @Override public void put(GrpcClientRequest request, Metadata.Key<String> key, String value) {
+        request.metadata(key, value);
+      }
 
-  GrpcClientRequest(String fullMethodName) {
-    if (fullMethodName == null) throw new NullPointerException("fullMethodName == null");
-    this.fullMethodName = fullMethodName;
+      @Override public String toString() {
+        return "GrpcClientRequest::metadata";
+      }
+    };
+
+  final String fullMethodName;
+  @Nullable volatile Metadata metadata; // nullable due to lifecycle of gRPC request
+
+  GrpcClientRequest(MethodDescriptor<?, ?> methodDescriptor) {
+    if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
+    this.fullMethodName = methodDescriptor.getFullMethodName();
   }
 
   @Override public Object unwrap() {
@@ -29,14 +46,26 @@ final class GrpcClientRequest extends RpcClientRequest {
   }
 
   @Override public String method() {
-    int index = fullMethodName.lastIndexOf('/');
-    if (index == -1) return null;
-    return fullMethodName.substring(index);
+    return GrpcParser.method(fullMethodName);
   }
 
   @Override public String service() {
-    int index = fullMethodName.lastIndexOf('/');
-    if (index == -1) return null;
-    return fullMethodName.substring(0, index);
+    return GrpcParser.service(fullMethodName);
+  }
+
+  /** Call on {@link ClientCall#start(ClientCall.Listener, Metadata)} */
+  GrpcClientRequest metadata(Metadata metadata) {
+    this.metadata = metadata;
+    return this;
+  }
+
+  <T> void metadata(Metadata.Key<T> key, T value) {
+    Metadata metadata = this.metadata;
+    if (metadata == null) {
+      assert false : "This code should never be called when null";
+      return;
+    }
+    metadata.removeAll(key);
+    metadata.put(key, value);
   }
 }

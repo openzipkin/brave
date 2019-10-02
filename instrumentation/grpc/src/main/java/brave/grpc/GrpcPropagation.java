@@ -103,11 +103,11 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
 
     @Override public void inject(TraceContext traceContext, C carrier) {
-      if (carrier instanceof Metadata) {
+      if (carrier instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(traceContext);
-        ((Metadata) carrier).put(GRPC_TRACE_BIN, serialized);
+        ((GrpcClientRequest) carrier).metadata(GRPC_TRACE_BIN, serialized);
         Tags tags = traceContext.findExtra(Tags.class);
-        if (tags != null) ((Metadata) carrier).put(GRPC_TAGS_BIN, tags.toMap());
+        if (tags != null) ((GrpcClientRequest) carrier).metadata(GRPC_TAGS_BIN, tags.toMap());
       }
       delegate.inject(traceContext, carrier);
     }

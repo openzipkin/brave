@@ -51,13 +51,9 @@ final class TracingServerInterceptor implements ServerInterceptor {
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
     Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    GrpcServerRequest grpcRequest =
-      new GrpcServerRequest(call.getMethodDescriptor().getFullMethodName(), headers);
-
-    TraceContextOrSamplingFlags extracted = extractor.extract(grpcRequest);
-    Span span = extracted.context() != null
-      ? tracer.joinSpan(extracted.context())
-      : tracer.nextSpan(extracted);
+    GrpcServerRequest request = new GrpcServerRequest(call.getMethodDescriptor(), headers);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
+    Span span = nextSpan(extracted, request);
 
     // If grpc propagation is enabled, make sure we refresh the server method
     if (grpcPropagationFormatEnabled) {
@@ -82,6 +78,20 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     // This ensures the server implementation can see the span in scope
     return new ScopingServerCallListener<>(tracer, span, result, parser);
+  }
+
+  /** Creates a potentially noop span representing this request */
+  // This is the same code as HttpServerHandler.nextSpan
+  // TODO: pull this into RpcServerHandler when stable https://github.com/openzipkin/brave/pull/999
+  Span nextSpan(TraceContextOrSamplingFlags extracted, GrpcServerRequest request) {
+    Boolean sampled = extracted.sampled();
+    // only recreate the context if the sampler made a decision
+    if (sampled == null && (sampled = sampler.trySample(request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
+    }
+    return extracted.context() != null
+      ? tracer.joinSpan(extracted.context())
+      : tracer.nextSpan(extracted);
   }
 
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {

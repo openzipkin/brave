@@ -17,6 +17,7 @@ import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.rpc.RpcServerRequest;
 import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 
 // intentionally not yet public until we add tag parsing functionality
 final class GrpcServerRequest extends RpcServerRequest {
@@ -27,16 +28,16 @@ final class GrpcServerRequest extends RpcServerRequest {
       }
 
       @Override public String toString() {
-        return "Metadata::get";
+        return "GrpcServerRequest::metadata";
       }
     };
 
   final String fullMethodName;
   final Metadata metadata;
 
-  GrpcServerRequest(String fullMethodName, Metadata metadata) {
-    if (fullMethodName == null) throw new NullPointerException("fullMethodName == null");
-    this.fullMethodName = fullMethodName;
+  GrpcServerRequest(MethodDescriptor<?, ?> methodDescriptor, Metadata metadata) {
+    if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
+    this.fullMethodName = methodDescriptor.getFullMethodName();
     if (metadata == null) throw new NullPointerException("metadata == null");
     this.metadata = metadata;
   }
@@ -46,15 +47,11 @@ final class GrpcServerRequest extends RpcServerRequest {
   }
 
   @Override public String method() {
-    int index = fullMethodName.lastIndexOf('/');
-    if (index == -1) return null;
-    return fullMethodName.substring(index);
+    return GrpcParser.method(fullMethodName);
   }
 
   @Override public String service() {
-    int index = fullMethodName.lastIndexOf('/');
-    if (index == -1) return null;
-    return fullMethodName.substring(0, index);
+    return GrpcParser.service(fullMethodName);
   }
 
   @Nullable <T> T metadata(Metadata.Key<T> key) {

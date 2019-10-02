@@ -16,6 +16,7 @@ package brave.grpc;
 import brave.ErrorParser;
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
@@ -67,5 +68,17 @@ public class GrpcParser {
       span.tag("grpc.status_code", code);
       span.tag("error", code);
     }
+  }
+
+  static @Nullable String method(String fullMethodName) {
+    int index = fullMethodName.lastIndexOf('/');
+    if (index == -1 || index == 0) return null;
+    return fullMethodName.substring(index + 1);
+  }
+
+  static @Nullable String service(String fullMethodName) {
+    int index = fullMethodName.lastIndexOf('/');
+    if (index == -1 || index == 0) return null;
+    return fullMethodName.substring(0, index);
   }
 }
