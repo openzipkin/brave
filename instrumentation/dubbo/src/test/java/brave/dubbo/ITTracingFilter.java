@@ -16,6 +16,7 @@ package brave.dubbo;
 import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -41,6 +42,7 @@ public abstract class ITTracingFilter {
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   Tracing tracing;
+  RpcTracing rpcTracing;
   ApplicationConfig application = new ApplicationConfig("brave");
   TestServer server = new TestServer(application);
   ReferenceConfig<GreeterService> client;
@@ -80,6 +82,14 @@ public abstract class ITTracingFilter {
       .getExtension("tracing"))
       .setTracing(tracing);
     this.tracing = tracing;
+  }
+
+  void setRpcTracing(RpcTracing rpcTracing) {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing"))
+      .setRpcTracing(rpcTracing);
+    this.tracing = rpcTracing.tracing();
+    this.rpcTracing = rpcTracing;
   }
 
   /** Call this to block until a span was reported */

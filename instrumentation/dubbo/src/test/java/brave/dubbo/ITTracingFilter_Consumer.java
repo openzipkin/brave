@@ -16,7 +16,8 @@ package brave.dubbo;
 import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.sampler.Sampler;
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.config.ReferenceConfig;
@@ -27,6 +28,10 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -50,7 +55,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     wrongClient.setInterface(GraterService.class);
     wrongClient.setUrl(url);
 
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    setTracing(tracingBuilder(ALWAYS_SAMPLE).build());
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
@@ -129,7 +134,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagates_sampledFalse() throws Exception {
-    setTracing(tracingBuilder(Sampler.NEVER_SAMPLE).build());
+    setTracing(tracingBuilder(NEVER_SAMPLE).build());
 
     client.get().sayHello("jorge");
     TraceContextOrSamplingFlags extracted = server.takeRequest();
@@ -197,5 +202,21 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       .isEqualTo("1");
     assertThat(span.tags().get("error"))
       .contains("Not found exported service");
+  }
+
+  @Test public void customSampler() throws Exception {
+    setRpcTracing(RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+      .build()).build());
+
+    // unsampled
+    client.get().sayGoodbye("jorge");
+
+    // sampled
+    client.get().sayHello("jorge");
+
+    assertThat(takeSpan().name()).endsWith("sayhello");
+    // @After will also check that sayGoodbye was not sampled
   }
 }

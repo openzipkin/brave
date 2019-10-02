@@ -18,25 +18,27 @@ import brave.test.propagation.PropagationSetterTest;
 import io.grpc.Metadata;
 import java.util.Collections;
 
-import static brave.grpc.TracingClientInterceptor.SETTER;
+import static brave.grpc.GrpcClientRequest.SETTER;
+import static brave.grpc.TestObjects.METHOD_DESCRIPTOR;
 
-public class MetadataSetterTest extends PropagationSetterTest<Metadata, Metadata.Key<String>> {
-  Metadata carrier = new Metadata();
+public class GrpcClientRequestSetterTest
+  extends PropagationSetterTest<GrpcClientRequest, Metadata.Key<String>> {
+  GrpcClientRequest request = new GrpcClientRequest(METHOD_DESCRIPTOR).metadata(new Metadata());
 
   @Override public AsciiMetadataKeyFactory keyFactory() {
     return AsciiMetadataKeyFactory.INSTANCE;
   }
 
-  @Override protected Metadata carrier() {
-    return carrier;
+  @Override protected GrpcClientRequest carrier() {
+    return request;
   }
 
-  @Override protected Propagation.Setter<Metadata, Metadata.Key<String>> setter() {
+  @Override protected Propagation.Setter<GrpcClientRequest, Metadata.Key<String>> setter() {
     return SETTER;
   }
 
-  @Override protected Iterable<String> read(Metadata carrier, Metadata.Key<String> key) {
-    Iterable<String> result = carrier.getAll(key);
+  @Override protected Iterable<String> read(GrpcClientRequest request, Metadata.Key<String> key) {
+    Iterable<String> result = request.metadata.getAll(key);
     return result != null ? result : Collections.emptyList();
   }
 }

@@ -103,11 +103,11 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
 
     @Override public void inject(TraceContext traceContext, C carrier) {
-      if (carrier instanceof Metadata) {
+      if (carrier instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(traceContext);
-        ((Metadata) carrier).put(GRPC_TRACE_BIN, serialized);
+        ((GrpcClientRequest) carrier).setMetadata(GRPC_TRACE_BIN, serialized);
         Tags tags = traceContext.findExtra(Tags.class);
-        if (tags != null) ((Metadata) carrier).put(GRPC_TAGS_BIN, tags.toMap());
+        if (tags != null) ((GrpcClientRequest) carrier).setMetadata(GRPC_TAGS_BIN, tags.toMap());
       }
       delegate.inject(traceContext, carrier);
     }
@@ -124,9 +124,9 @@ final class GrpcPropagation<K> implements Propagation<K> {
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
       Tags tags = null;
-      if (carrier instanceof Metadata) {
-        tags = extractTags(((Metadata) carrier).get(GRPC_TAGS_BIN));
-        byte[] bytes = ((Metadata) carrier).get(GRPC_TRACE_BIN);
+      if (carrier instanceof GrpcServerRequest) {
+        tags = extractTags(((GrpcServerRequest) carrier).getMetadata(GRPC_TAGS_BIN));
+        byte[] bytes = ((GrpcServerRequest) carrier).getMetadata(GRPC_TRACE_BIN);
         if (bytes != null) {
           TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
           if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);

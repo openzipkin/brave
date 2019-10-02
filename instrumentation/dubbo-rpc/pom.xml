@@ -34,6 +34,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-rpc</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.alibaba</groupId>
       <artifactId>dubbo</artifactId>
       <version>${dubbo.version}</version>

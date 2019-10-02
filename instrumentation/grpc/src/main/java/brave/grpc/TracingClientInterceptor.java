@@ -16,8 +16,9 @@ package brave.grpc;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext.Injector;
+import brave.rpc.RpcRequest;
+import brave.sampler.SamplerFunction;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -28,26 +29,18 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
+import static brave.grpc.GrpcClientRequest.SETTER;
+
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingClientInterceptor implements ClientInterceptor {
-  static final Setter<Metadata, Metadata.Key<String>> SETTER =
-    new Setter<Metadata, Metadata.Key<String>>() { // retrolambda no like
-      @Override public void put(Metadata metadata, Metadata.Key<String> key, String value) {
-        metadata.removeAll(key);
-        metadata.put(key, value);
-      }
-
-      @Override public String toString() {
-        return "Metadata::put";
-      }
-    };
-
   final Tracer tracer;
-  final Injector<Metadata> injector;
+  final SamplerFunction<RpcRequest> sampler;
+  final Injector<GrpcClientRequest> injector;
   final GrpcClientParser parser;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
-    tracer = grpcTracing.tracing.tracer();
+    tracer = grpcTracing.rpcTracing.tracing().tracer();
+    sampler = grpcTracing.rpcTracing.clientSampler();
     injector = grpcTracing.propagation.injector(SETTER);
     parser = grpcTracing.clientParser;
   }
@@ -59,16 +52,17 @@ final class TracingClientInterceptor implements ClientInterceptor {
    * to wrap the executor with one that's aware of the current context.
    */
   @Override
-  public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-    final MethodDescriptor<ReqT, RespT> method, final CallOptions callOptions,
-    final Channel next) {
-    Span span = tracer.nextSpan();
+  public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
+    CallOptions callOptions, Channel next) {
+    GrpcClientRequest request = new GrpcClientRequest(method);
+    Span span = tracer.nextSpan(sampler, request);
+
     SpanInScope scope = tracer.withSpanInScope(span);
     try {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-        @Override
-        public void start(Listener<RespT> responseListener, Metadata headers) {
-          injector.inject(span.context(), headers);
+        @Override public void start(Listener<RespT> responseListener, Metadata headers) {
+          request.metadata = headers;
+          injector.inject(span.context(), request);
           span.kind(Span.Kind.CLIENT).start();
           SpanInScope scope = tracer.withSpanInScope(span);
           try { // retrolambda can't resolve this try/finally

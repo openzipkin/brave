@@ -48,6 +48,7 @@
     <module>mysql8</module>
     <module>okhttp3</module>
     <module>p6spy</module>
+    <module>rpc</module>
     <module>servlet</module>
     <module>sparkjava</module>
     <module>spring-rabbit</module>

@@ -18,9 +18,11 @@ import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Platform;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcRequest;
+import brave.rpc.RpcTracing;
+import brave.sampler.SamplerFunction;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -37,14 +39,19 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
+import static brave.dubbo.DubboClientRequest.SETTER;
+import static brave.dubbo.DubboServerRequest.GETTER;
+import static brave.sampler.SamplerFunctions.deferDecision;
+
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
 
   Tracer tracer;
-  TraceContext.Extractor<Map<String, String>> extractor;
-  TraceContext.Injector<Map<String, String>> injector;
+  TraceContext.Extractor<DubboServerRequest> extractor;
+  TraceContext.Injector<DubboClientRequest> injector;
+  SamplerFunction<RpcRequest> clientSampler = deferDecision(), serverSampler = deferDecision();
   volatile boolean isInit = false;
 
   /**
@@ -53,9 +60,25 @@ public final class TracingFilter implements Filter {
    * injected.
    */
   public void setTracing(Tracing tracing) {
+    if (tracing == null) throw new NullPointerException("rpcTracing == null");
     tracer = tracing.tracer();
     extractor = tracing.propagation().extractor(GETTER);
     injector = tracing.propagation().injector(SETTER);
+    isInit = true;
+  }
+
+  /**
+   * {@link ExtensionLoader} supplies the tracing implementation which must be named "rpcTracing".
+   * For example, if using the {@link SpringExtensionFactory}, only a bean named "rpcTracing" will
+   * be injected.
+   */
+  public void setRpcTracing(RpcTracing rpcTracing) {
+    if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
+    tracer = rpcTracing.tracing().tracer();
+    extractor = rpcTracing.tracing().propagation().extractor(GETTER);
+    injector = rpcTracing.tracing().propagation().injector(SETTER);
+    clientSampler = rpcTracing.clientSampler();
+    serverSampler = rpcTracing.serverSampler();
     isInit = true;
   }
 
@@ -67,16 +90,18 @@ public final class TracingFilter implements Filter {
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;
     final Span span;
     if (kind.equals(Kind.CLIENT)) {
-      span = tracer.nextSpan();
-      // if use  invocation.getAttachments(),when A service invoke B service,B service then invoke C service,the parentId  of C service span  is A
-      // because   invocation add attachments from rpcContext in org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141),so what we do will be override
-      //injector.inject(span.context(), invocation.getAttachments());
-      injector.inject(span.context(),  RpcContext.getContext().getAttachments());
+      // When A service invoke B service, then B service then invoke C service, the parentId of the
+      // C service span is A when read from invocation.getAttachments(). This is because
+      // AbstractInvoker adds attachments via RpcContext.getContext(), not the invocation.
+      // See org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141) from v2.7.3
+      Map<String, String> attachments = RpcContext.getContext().getAttachments();
+      DubboClientRequest request = new DubboClientRequest(invocation, attachments);
+      span = tracer.nextSpan(clientSampler, request);
+      injector.inject(span.context(), request);
     } else {
-      TraceContextOrSamplingFlags extracted = extractor.extract(invocation.getAttachments());
-      span = extracted.context() != null
-        ? tracer.joinSpan(extracted.context())
-        : tracer.nextSpan(extracted);
+      DubboServerRequest request = new DubboServerRequest(invocation, invocation.getAttachments());
+      TraceContextOrSamplingFlags extracted = extractor.extract(request);
+      span = nextSpan(extracted, request);
     }
 
     if (!span.isNoop()) {
@@ -98,7 +123,7 @@ public final class TracingFilter implements Filter {
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
       if (!isOneway && future instanceof FutureAdapter) {
         deferFinish = true;
-        ((FutureAdapter<Object>)future).whenComplete((v, t) -> {
+        ((FutureAdapter<Object>) future).whenComplete((v, t) -> {
           if (t != null) {
             onError(t, span);
             span.finish();
@@ -120,6 +145,20 @@ public final class TracingFilter implements Filter {
     }
   }
 
+  /** Creates a potentially noop span representing this request */
+  // This is the same code as HttpServerHandler.nextSpan
+  // TODO: pull this into RpcServerHandler when stable https://github.com/openzipkin/brave/pull/999
+  Span nextSpan(TraceContextOrSamplingFlags extracted, DubboServerRequest request) {
+    Boolean sampled = extracted.sampled();
+    // only recreate the context if the sampler made a decision
+    if (sampled == null && (sampled = serverSampler.trySample(request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
+    }
+    return extracted.context() != null
+      ? tracer.joinSpan(extracted.context())
+      : tracer.nextSpan(extracted);
+  }
+
   static void parseRemoteAddress(RpcContext rpcContext, Span span) {
     InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
     if (remoteAddress == null) return;
@@ -132,32 +171,4 @@ public final class TracingFilter implements Filter {
       span.tag("dubbo.error_code", Integer.toString(((RpcException) error).getCode()));
     }
   }
-
-  static final Propagation.Getter<Map<String, String>, String> GETTER =
-    new Propagation.Getter<Map<String, String>, String>() {
-      @Override
-      public String get(Map<String, String> carrier, String key) {
-        return carrier.get(key);
-      }
-
-      @Override
-      public String toString() {
-        return "Map::get";
-      }
-    };
-
-  static final Propagation.Setter<Map<String, String>, String> SETTER =
-    new Propagation.Setter<Map<String, String>, String>() {
-      @Override
-      public void put(Map<String, String> carrier, String key, String value) {
-        carrier.put(key, value);
-      }
-
-      @Override
-      public String toString() {
-        return "Map::set";
-      }
-    };
-
-
 }

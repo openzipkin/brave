@@ -27,34 +27,52 @@ dubbo.provider.filter=tracing
 dubbo.consumer.filter=tracing
 ```
 
-### Registering the `brave.Tracing` extension with Spring
-Most typically, the `brave.Tracing` extension is provided by Spring, so
-have this in place before proceeding. The bean must be named "tracing"
+### Registering the `brave.rpc.RpcTracing` extension with Spring
+Most typically, the `brave.rpc.RpcTracing` extension is provided by Spring, so
+have this in place before proceeding. The bean must be named "rpcTracing"
 
 Here's an example in [XML](../../spring-beans/README.md).
 
-### Registering the `brave.Tracing` extension with Java
+### Registering the `brave.rpc.RpcTracing` extension with Java
 Dubbo supports custom extensions. You can supply your own instance of
 tracing by creating and registering an extension factory:
 
-#### create an extension factory that returns `brave.Tracing`
+#### create an extension factory that returns `brave.rpc.RpcTracing`
 
 ```java
 package com.yourcompany.dubbo;
 
 import brave.Tracing;
+import brave.rpc.RpcTracing;
+import brave.rpc.RpcRuleSampler;
 import com.alibaba.dubbo.common.extension.ExtensionFactory;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.Span;
 
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.sampler.Matchers.and;
+
 public class TracingExtensionFactory implements ExtensionFactory {
 
   @Override public <T> T getExtension(Class<T> type, String name) {
-    if (type != Tracing.class) return null;
-    return (T) Tracing.newBuilder()
-                      .localServiceName("my-service")
-                      .spanReporter(spanReporter())
-                      .build();
+    if (type != RpcTracing.class) return null;
+
+    return (T) RpcTracing.newBuilder(tracing())
+                         .serverSampler(serverSampler())
+                         .build();
+  }
+
+  RpcRuleSampler serverSampler() {
+    return RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("sayHello"), Sampler.NEVER_SAMPLE)
+      .build();
+  }
+
+  Tracing tracing() {
+    return Tracing.newBuilder()
+                  .localServiceName("my-service")
+                  .spanReporter(spanReporter())
+                  .build();
   }
 
   // NOTE: The reporter should be closed with a shutdown hook

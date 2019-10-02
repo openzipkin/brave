@@ -16,6 +16,8 @@ package brave.dubbo.rpc;
 import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -29,6 +31,10 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
@@ -200,5 +206,21 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     Span span = takeSpan();
     assertThat(span.kind())
       .isEqualTo(Span.Kind.CLIENT);
+  }
+
+  @Test public void customSampler() throws Exception {
+    setRpcTracing(RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+      .build()).build());
+
+    // unsampled
+    client.get().sayGoodbye("jorge");
+
+    // sampled
+    client.get().sayHello("jorge");
+
+    assertThat(takeSpan().name()).endsWith("sayhello");
+    // @After will also check that sayGoodbye was not sampled
   }
 }

@@ -29,7 +29,8 @@ Here's a brief overview of what's packaged here:
 * [vertx-web](vertx-web/README.md) - Tracing routing context handler for [Vert.x Web](http://vertx.io/docs/vertx-web/js/)
 
 Here are other tools we provide for configuring or testing instrumentation:
-* [http](http/README.md) - `HttpTracing` that allows portable configuration of http instrumentation
+* [rpc](rpc/README.md) - `RpcTracing` that allows portable configuration of RPC instrumentation
+* [http](http/README.md) - `HttpTracing` that allows portable configuration of HTTP instrumentation
 * [http-tests](http-tests/README.md) - Interop test suit that all http client and server instrumentation must pass
 * [spring-beans](../spring-beans/README.md) - This allows you to setup tracing with XML instead of custom code.
 * [benchmarks](benchmarks/README.md) - JMH microbenchmarks that measure instrumentation overhead
