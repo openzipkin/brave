@@ -35,6 +35,10 @@ Here are some example beans using the factories in this module:
     </property>
   </bean>
 
+  <bean id="rpcTracing" class="brave.spring.beans.RpcTracingFactoryBean">
+    <property name="rpcTracing" ref="tracing"/>
+  </bean>
+
   <bean id="httpTracing" class="brave.spring.beans.HttpTracingFactoryBean">
     <property name="tracing" ref="tracing"/>
   </bean>

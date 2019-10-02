@@ -17,7 +17,6 @@ import brave.internal.Platform;
 import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.dubbo.common.constants.CommonConstants;
@@ -59,6 +58,7 @@ class TestServer {
           throw new AssertionError("interrupted sleeping " + delay);
         }
       }
+
       RpcContext context = RpcContext.getContext();
       DubboServerRequest request =
         new DubboServerRequest(context.getInvocation(), context.getAttachments());

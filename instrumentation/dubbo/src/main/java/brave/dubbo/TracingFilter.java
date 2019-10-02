@@ -59,7 +59,7 @@ public final class TracingFilter implements Filter {
    * example, if using the {@link SpringExtensionFactory}, only a bean named "tracing" will be
    * injected.
    */
-  public synchronized void setTracing(Tracing tracing) {
+  public void setTracing(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("rpcTracing == null");
     tracer = tracing.tracer();
     extractor = tracing.propagation().extractor(GETTER);
@@ -72,7 +72,7 @@ public final class TracingFilter implements Filter {
    * For example, if using the {@link SpringExtensionFactory}, only a bean named "rpcTracing" will
    * be injected.
    */
-  public synchronized void setRpcTracing(RpcTracing rpcTracing) {
+  public void setRpcTracing(RpcTracing rpcTracing) {
     if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
     tracer = rpcTracing.tracing().tracer();
     extractor = rpcTracing.tracing().propagation().extractor(GETTER);
@@ -90,8 +90,10 @@ public final class TracingFilter implements Filter {
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;
     final Span span;
     if (kind.equals(Kind.CLIENT)) {
-      // if use  invocation.getAttachments(),when A service invoke B service,B service then invoke C service,the parentId  of C service span  is A
-      // because   invocation add attachments from rpcContext in org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141),so what we do will be override
+      // When A service invoke B service, then B service then invoke C service, the parentId of the
+      // C service span is A when read from invocation.getAttachments(). This is because
+      // AbstractInvoker adds attachments via RpcContext.getContext(), not the invocation.
+      // See org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141) from v2.7.3
       Map<String, String> attachments = RpcContext.getContext().getAttachments();
       DubboClientRequest request = new DubboClientRequest(invocation, attachments);
       span = tracer.nextSpan(clientSampler, request);

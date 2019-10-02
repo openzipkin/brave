@@ -16,6 +16,7 @@ package brave.dubbo.rpc;
 import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -40,6 +41,7 @@ public abstract class ITTracingFilter {
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   Tracing tracing;
+  RpcTracing rpcTracing;
   TestServer server = new TestServer();
   ReferenceConfig<GreeterService> client;
 
@@ -78,6 +80,14 @@ public abstract class ITTracingFilter {
       .getExtension("tracing"))
       .setTracing(tracing);
     this.tracing = tracing;
+  }
+
+  void setRpcTracing(RpcTracing rpcTracing) {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing"))
+      .setRpcTracing(rpcTracing);
+    this.tracing = rpcTracing.tracing();
+    this.rpcTracing = rpcTracing;
   }
 
   /** Call this to block until a span was reported */
