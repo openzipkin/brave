@@ -1,5 +1,13 @@
 # brave-instrumentation-rpc rationale
 
+## `RpcRequest` overview
+
+The `RpcRequest` type is a model adapter, used initially for sampling, but in
+the future can be used to parse data into the span model, for example to
+portably create a span name without special knowledge of the RPC library. This
+is repeating the work we did in HTTP, which allows allows library agnostic
+data and sampling policy.
+
 ## `RpcRequest` initially with `method()` and `service()` properties
 
 ### Why in general?
@@ -57,5 +65,21 @@ concatenation through a `full method name` as exists in gRPC.
 
 We can have the talk about what an idiomatic term could be for a fully
 qualified method name. Only gRPC uses the term `full method name`, so it isn't
-as clean to lift that term up, vs other names such as `service` than exist in
-multiple tools such as Apache Thrift. For now, concat on your own.
+as clean to lift that term up, vs other names such as `service` that exist in
+multiple tools such as Apache Thrift.
+
+Meanwhile, in gRPC, the full method name can be composed using `Matchers.and()`
+```java
+rpcTracing = rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
+  .putRule(and(serviceEquals("users.UserService"), methodEquals("GetUserToken")), RateLimitingSampler.create(100))
+  .build()).build();
+
+grpcTracing = GrpcTracing.create(rpcTracing);
+```
+
+### But my span name is already what I want!
+It is subtle, but important to note that `RpcRequest` is an input type used in
+parameterized sampling. This happens before a span name is chosen. Moreover, a
+future change will allow parsing into a span name from the same type. In other
+words, `RpcRequest` is an intermediate model that must evaluate properties
+before a span exists.

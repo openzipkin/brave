@@ -72,11 +72,13 @@ doesn't start new traces for requests to the health check service. Other
 requests will use a global rate provided by the tracing component.
 
 ```java
-import static brave.rpc.RpcRequestMatchers.*;
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Matchers.and;
 
 rpcTracing = rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
   .putRule(serviceEquals("grpc.health.v1.Health"), Sampler.NEVER_SAMPLE)
-  .putRule(methodEquals("GetUserToken"), RateLimitingSampler.create(100))
+  .putRule(and(serviceEquals("users.UserService"), methodEquals("GetUserToken")), RateLimitingSampler.create(100))
   .build()).build();
 
 grpcTracing = GrpcTracing.create(rpcTracing);

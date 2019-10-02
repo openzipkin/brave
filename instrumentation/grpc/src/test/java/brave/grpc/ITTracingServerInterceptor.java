@@ -63,6 +63,8 @@ import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -338,14 +340,15 @@ public class ITTracingServerInterceptor {
 
   @Test public void customSampler() throws Exception {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), Sampler.NEVER_SAMPLE)
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
       .build()).build();
     grpcTracing = GrpcTracing.create(rpcTracing);
     init();
 
     // unsampled
-    assertThat(GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST))
-      .hasNext(); // Request is lazy, so you must invoke the iterator
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
 
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);

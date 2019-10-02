@@ -60,6 +60,9 @@ import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.entry;
@@ -74,7 +77,7 @@ public class ITTracingClientInterceptor {
    * like those using blocking clients, happen on the main thread.
    */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+  Tracing tracing = tracingBuilder(ALWAYS_SAMPLE).build();
   Tracer tracer = tracing.tracer();
 
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
@@ -190,7 +193,7 @@ public class ITTracingClientInterceptor {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagates_sampledFalse() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
+    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).build());
     closeClient(client);
     client = newClient();
 
@@ -351,15 +354,16 @@ public class ITTracingClientInterceptor {
     closeClient(client);
 
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), Sampler.NEVER_SAMPLE)
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
       .build()).build();
 
     grpcTracing = GrpcTracing.create(rpcTracing);
     client = newClient();
 
     // unsampled
-    assertThat(GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST))
-      .hasNext(); // Request is lazy, so you must invoke the iterator
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
 
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);

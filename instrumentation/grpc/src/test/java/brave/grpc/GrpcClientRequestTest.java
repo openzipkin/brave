@@ -26,7 +26,7 @@ public class GrpcClientRequestTest {
   Metadata.Key<String> b3Key = AsciiMetadataKeyFactory.INSTANCE.create("b3");
 
   @Test public void metadata() {
-    request.metadata(metadata).metadata(b3Key, "1");
+    request.metadata(metadata).setMetadata(b3Key, "1");
 
     assertThat(metadata.get(b3Key))
       .isEqualTo("1");
@@ -35,14 +35,15 @@ public class GrpcClientRequestTest {
   @Test public void metadata_replace() {
     metadata.put(b3Key, "0");
 
-    request.metadata(metadata).metadata(b3Key, "1");
+    request.metadata(metadata).setMetadata(b3Key, "1");
 
     assertThat(request.metadata.get(b3Key))
       .isEqualTo("1");
   }
 
   @Test public void metadata_null() {
-    assertThatThrownBy(() -> request.metadata(b3Key, "1")) // doesn't NPE
+    assertThatThrownBy(() -> request.setMetadata(b3Key, "1"))
+      .isNotInstanceOf(NullPointerException.class)
       .hasMessage("This code should never be called when null");
   }
 }

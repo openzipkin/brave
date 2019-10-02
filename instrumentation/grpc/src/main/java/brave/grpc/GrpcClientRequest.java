@@ -25,7 +25,7 @@ final class GrpcClientRequest extends RpcClientRequest {
   static final Setter<GrpcClientRequest, Metadata.Key<String>> SETTER =
     new Setter<GrpcClientRequest, Metadata.Key<String>>() { // retrolambda no like
       @Override public void put(GrpcClientRequest request, Metadata.Key<String> key, String value) {
-        request.metadata(key, value);
+        request.setMetadata(key, value);
       }
 
       @Override public String toString() {
@@ -59,7 +59,7 @@ final class GrpcClientRequest extends RpcClientRequest {
     return this;
   }
 
-  <T> void metadata(Metadata.Key<T> key, T value) {
+  <T> void setMetadata(Metadata.Key<T> key, T value) {
     Metadata metadata = this.metadata;
     if (metadata == null) {
       assert false : "This code should never be called when null";
