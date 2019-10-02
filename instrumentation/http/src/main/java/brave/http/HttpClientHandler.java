@@ -21,7 +21,6 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
-import brave.sampler.SamplerFunctions;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -99,7 +98,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    */
   public Span handleSend(HttpClientRequest request) {
     if (request == null) throw new NullPointerException("request == null");
-    return handleSend(request, nextClientSpan(request));
+    return handleSend(request, tracer.nextSpan(httpSampler, request));
   }
 
   /**
@@ -157,7 +156,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   /**
    * @since 4.4
-   * @deprecated since 5.8 use {@link #nextClientSpan(HttpClientRequest)}
+   * @deprecated since 5.8 use {@link Tracer#nextSpan(SamplerFunction, Object)}
    */
   @Deprecated public Span nextSpan(Req request) {
     // nextSpan can be called independently when interceptors control lifecycle directly. In these
@@ -168,19 +167,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     } else {
       clientRequest = new HttpClientRequest.FromHttpAdapter<>(adapter, request);
     }
-    return nextClientSpan(clientRequest);
-  }
-
-  /**
-   * Creates a potentially noop span representing this request. This is used when you need to
-   * provision a span in a different scope than where the request is executed.
-   *
-   * @since 5.8
-   */
-  // Renamed to avoid generics clash when <Req> is HttpClientRequest.
-  public Span nextClientSpan(HttpClientRequest request) {
-    if (request == null) throw new NullPointerException("request == null");
-    return tracer.nextSpan(httpSampler, request);
+    return tracer.nextSpan(httpSampler, clientRequest);
   }
 
   /**
