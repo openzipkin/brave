@@ -69,7 +69,7 @@ for Spring WebMVC 2.5) add controller information to your spans.
 Here's an example of using the synchronous handler, which works with Spring 2.5+
 ```xml
 <mvc:interceptors>
-  <bean class="brave.spring.servlet.SpanCustomizingHandlerInterceptor"/>
+  <bean class="brave.spring.webmvc.SpanCustomizingHandlerInterceptor"/>
 </mvc:interceptors>
 ```
 
