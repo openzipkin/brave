@@ -15,13 +15,21 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
+import java.io.Closeable;
 
 import static brave.http.HttpSampler.fromHttpRequestSampler;
 import static brave.http.HttpSampler.toHttpRequestSampler;
 
-public class HttpTracing { // Not final as it previously was not. This allows mocks and similar.
+/**
+ * Instances built via {@link #create(Tracing)} or {@link #newBuilder(Tracing)} are registered
+ * automatically such that statically configured instrumentation like HTTP clients can use {@link
+ * #current()}.
+ */
+// Not final as it previously was not. This allows mocks and similar.
+public class HttpTracing implements Closeable {
   public static HttpTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
@@ -131,6 +139,7 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
     this.serverParser = builder.serverParser;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    maybeSetCurrent();
   }
 
   public static final class Builder {
@@ -241,6 +250,34 @@ public class HttpTracing { // Not final as it previously was not. This allows mo
 
     public HttpTracing build() {
       return new HttpTracing(this);
+    }
+  }
+
+  // volatile for get visibility. writes guarded by HttpTracing.class. Object to ensure unloadable
+  static volatile Object current = null;
+
+  /**
+   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static HttpTracing current() {
+    return (HttpTracing) current;
+  }
+
+  private void maybeSetCurrent() {
+    if (current != null) return;
+    synchronized (HttpTracing.class) {
+      if (current == null) current = this;
+    }
+  }
+
+  /** @since 5.9 */
+  @Override public void close() {
+    if (current != this) return;
+    // don't blindly set most recent to null as there could be a race
+    synchronized (HttpTracing.class) {
+      if (current == this) current = null;
     }
   }
 }

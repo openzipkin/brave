@@ -14,11 +14,19 @@
 package brave.rpc;
 
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
+import java.io.Closeable;
 
-/** @since 5.8 */
-public class RpcTracing {
+/**
+ * Instances built via {@link #create(Tracing)} or {@link #newBuilder(Tracing)} are registered
+ * automatically such that statically configured instrumentation like HTTP clients can use {@link
+ * #current()}.
+ *
+ * @since 5.8
+ */
+public class RpcTracing implements Closeable {
   /** @since 5.8 */
   public static RpcTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
@@ -78,6 +86,7 @@ public class RpcTracing {
     this.tracing = builder.tracing;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    maybeSetCurrent();
   }
 
   public static final class Builder {
@@ -121,6 +130,34 @@ public class RpcTracing {
 
     public RpcTracing build() {
       return new RpcTracing(this);
+    }
+  }
+
+  // volatile for get visibility. writes guarded by HttpTracing.class. Object to ensure unloadable
+  static volatile Object current = null;
+
+  /**
+   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static RpcTracing current() {
+    return (RpcTracing) current;
+  }
+
+  private void maybeSetCurrent() {
+    if (current != null) return;
+    synchronized (RpcTracing.class) {
+      if (current == null) current = this;
+    }
+  }
+
+  /** @since 5.9 */
+  @Override public void close() {
+    if (current != this) return;
+    // don't blindly set most recent to null as there could be a race
+    synchronized (RpcTracing.class) {
+      if (current == this) current = null;
     }
   }
 }

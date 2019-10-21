@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
@@ -40,6 +42,19 @@ public class TracingTest {
       return true;
     }
   };
+
+  @Before @After public void close() {
+    // in case another test leaks, we close before any methods here
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
+  }
+
+  @Test public void current() {
+    try (Tracing current = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      assertThat(Tracing.current()).isNotNull();
+    }
+    assertThat(Tracing.current()).isNull();
+  }
 
   /**
    * This behavior could be problematic as downstream services may report spans based on propagated

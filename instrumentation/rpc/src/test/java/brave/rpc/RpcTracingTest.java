@@ -14,6 +14,8 @@
 package brave.rpc;
 
 import brave.Tracing;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.deferDecision;
@@ -23,6 +25,19 @@ import static org.mockito.Mockito.mock;
 
 public class RpcTracingTest {
   Tracing tracing = mock(Tracing.class);
+
+  @Before @After public void close() {
+    // in case another test leaks, we close before any methods here
+    RpcTracing current = RpcTracing.current();
+    if (current != null) current.close();
+  }
+
+  @Test public void current() {
+    try (RpcTracing current = RpcTracing.create(tracing)) {
+      assertThat(RpcTracing.current()).isNotNull();
+    }
+    assertThat(RpcTracing.current()).isNull();
+  }
 
   @Test public void defaultSamplersDefer() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).build();

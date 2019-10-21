@@ -34,8 +34,9 @@ import org.jvnet.animal_sniffer.IgnoreJRERequirement;
  */
 public abstract class Platform {
   private static final Platform PLATFORM = findPlatform();
-  private static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
 
+  // Lazy init as a constant eagerly initializes hooks like log4j2 even when the tracer is no-op
+  volatile Logger logger;
   volatile String linkLocalIp;
 
   /** Guards {@link InetSocketAddress#getHostString()}, as it isn't available until Java 7 */
@@ -76,18 +77,27 @@ public abstract class Platform {
 
   /** Like {@link Logger#log(Level, String) */
   public void log(String msg, @Nullable Throwable thrown) {
-    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
-    LOG.log(Level.FINE, msg, thrown);
+    Logger logger = logger();
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    logger.log(Level.FINE, msg, thrown);
   }
 
   /** Like {@link Logger#log(Level, String, Object)}, except with a throwable arg */
   public void log(String msg, Object param1, @Nullable Throwable thrown) {
-    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    Logger logger = logger();
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
     Object[] params = {param1};
     lr.setParameters(params);
     if (thrown != null) lr.setThrown(thrown);
-    LOG.log(lr);
+    logger.log(lr);
+  }
+
+  Logger logger() {
+    Logger result = this.logger;
+    if (result != null) return result;
+    // synchronization not needed as worst case we overwrite the field twice
+    return this.logger = Logger.getLogger(brave.Tracer.class.getName());
   }
 
   /** Attempt to match the host runtime to a capable Platform implementation. */
