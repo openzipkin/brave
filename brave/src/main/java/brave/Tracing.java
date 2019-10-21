@@ -33,6 +33,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
@@ -49,6 +50,8 @@ import zipkin2.reporter.Sender;
  * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<Tracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
 
   public static Builder newBuilder() {
     return new Builder();
@@ -97,8 +100,14 @@ public abstract class Tracing implements Closeable {
 
   abstract public ErrorParser errorParser();
 
-  // volatile for visibility on get. writes guarded by Tracing.class
-  static volatile Tracing current = null;
+  /**
+   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static Tracing current() {
+    return (Tracing) CURRENT.get();
+  }
 
   /**
    * Returns the most recently created tracer if its component hasn't been closed. null otherwise.
@@ -106,7 +115,7 @@ public abstract class Tracing implements Closeable {
    * <p>This object should not be cached.
    */
   @Nullable public static Tracer currentTracer() {
-    Tracing tracing = current;
+    Tracing tracing = current();
     return tracing != null ? tracing.tracer() : null;
   }
 
@@ -126,15 +135,6 @@ public abstract class Tracing implements Closeable {
    */
   public abstract void setNoop(boolean noop);
 
-  /**
-   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
-   *
-   * <p>This object should not be cached.
-   */
-  @Nullable public static Tracing current() {
-    return current;
-  }
-
   /** Ensures this component can be garbage collected, by making it not {@link #current()} */
   @Override abstract public void close();
 
@@ -146,6 +146,7 @@ public abstract class Tracing implements Closeable {
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false, supportsJoin = true, alwaysReportSpans = false;
+    boolean trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
     Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
@@ -374,6 +375,22 @@ public abstract class Tracing implements Closeable {
       return this;
     }
 
+    /**
+     * When true, this logs the caller which orphaned a span to the category "brave.Tracer" at
+     * {@link Level#FINE}. Defaults to false.
+     *
+     * <p>If you see data with the annotation "brave.flush", you may have an instrumentation bug.
+     * To see which code was involved, set this and ensure the logger {@link Tracing} is at {@link
+     * Level#FINE}. Do not do this in production as tracking orphaned data incurs higher overhead.
+     *
+     * @see FinishedSpanHandler#supportsOrphans()
+     * @since 5.9
+     */
+    public Builder trackOrphans() {
+      this.trackOrphans = true;
+      return this;
+    }
+
     public Tracing build() {
       if (clock == null) clock = Platform.get().clock();
       if (localIp == null) localIp = Platform.get().linkLocalIp();
@@ -442,7 +459,7 @@ public abstract class Tracing implements Closeable {
         builder.clock,
         builder.propagationFactory,
         finishedSpanHandler,
-        new PendingSpans(clock, orphanedSpanHandler, noop),
+        new PendingSpans(clock, orphanedSpanHandler, builder.trackOrphans, noop),
         builder.sampler,
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
@@ -450,7 +467,8 @@ public abstract class Tracing implements Closeable {
         finishedSpanHandler.alwaysSampleLocal(),
         noop
       );
-      maybeSetCurrent();
+      // assign current IFF there's no instance already current
+      CURRENT.compareAndSet(null, this);
     }
 
     @Override public Tracer tracer() {
@@ -485,23 +503,13 @@ public abstract class Tracing implements Closeable {
       this.noop.set(noop);
     }
 
-    private void maybeSetCurrent() {
-      if (current != null) return;
-      synchronized (Tracing.class) {
-        if (current == null) current = this;
-      }
-    }
-
     @Override public String toString() {
       return tracer.toString();
     }
 
     @Override public void close() {
-      if (current != this) return;
-      // don't blindly set most recent to null as there could be a race
-      synchronized (Tracing.class) {
-        if (current == this) current = null;
-      }
+      // only set null if we are the outer-most instance
+      CURRENT.compareAndSet(this, null);
     }
   }
 

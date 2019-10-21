@@ -14,11 +14,23 @@
 package brave.rpc;
 
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
+import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicReference;
 
-/** @since 5.8 */
-public class RpcTracing {
+/**
+ * Instances built via {@link #create(Tracing)} or {@link #newBuilder(Tracing)} are registered
+ * automatically such that statically configured instrumentation like HTTP clients can use {@link
+ * #current()}.
+ *
+ * @since 5.8
+ */
+public class RpcTracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<RpcTracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
+
   /** @since 5.8 */
   public static RpcTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
@@ -78,6 +90,8 @@ public class RpcTracing {
     this.tracing = builder.tracing;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    // assign current IFF there's no instance already current
+    CURRENT.compareAndSet(null, this);
   }
 
   public static final class Builder {
@@ -122,5 +136,20 @@ public class RpcTracing {
     public RpcTracing build() {
       return new RpcTracing(this);
     }
+  }
+
+  /**
+   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static RpcTracing current() {
+    return (RpcTracing) CURRENT.get();
+  }
+
+  /** @since 5.9 */
+  @Override public void close() {
+    // only set null if we are the outer-most instance
+    CURRENT.compareAndSet(this, null);
   }
 }

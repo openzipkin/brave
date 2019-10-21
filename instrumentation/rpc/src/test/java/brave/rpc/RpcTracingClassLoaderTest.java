@@ -11,23 +11,24 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave;
+package brave.rpc;
 
+import brave.Tracing;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TracingClassLoaderTest {
-
+public class RpcTracingClassLoaderTest {
   @Test public void unloadable_afterClose() {
-    assertRunIsUnloadable(ClosesTracing.class, getClass().getClassLoader());
+    assertRunIsUnloadable(ClosesRpcTracing.class, getClass().getClassLoader());
   }
 
-  static class ClosesTracing implements Runnable {
+  static class ClosesRpcTracing implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+           RpcTracing rpcTracing = RpcTracing.create(tracing)) {
       }
     }
   }
@@ -38,8 +39,9 @@ public class TracingClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
-        tracing.tracer().newTrace().start().finish();
+      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+           RpcTracing rpcTracing = RpcTracing.create(tracing)) {
+        rpcTracing.serverSampler().trySample(null);
       }
     }
   }
@@ -50,8 +52,10 @@ public class TracingClassLoaderTest {
 
   static class ForgetClose implements Runnable {
     @Override public void run() {
-      Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
-      assertThat(Tracing.current()).isNotNull();
+      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+        RpcTracing.create(tracing);
+        assertThat(RpcTracing.current()).isNotNull();
+      }
     }
   }
 }

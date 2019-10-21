@@ -795,9 +795,10 @@ testing instrumentation, use [StrictScopeDecorator](src/main/java/brave/propagat
 errors on known scoping problems.
 
 If you see data with the annotation `brave.flush`, you may have an
-instrumentation bug. To see more information, set the Java logger named
-`brave.internal.recorder.PendingSpans` to FINE level. Do not do this in
-production as tracking abandoned data incurs higher overhead.
+instrumentation bug. To see which code was involved, set
+`Tracing.Builder.trackOrphans()` and ensure the logger `brave.Tracer` is at
+'FINE' level. Do not do this in production as tracking orphaned data incurs
+higher overhead.
 
 Note: When using log4j2, set the following to ensure log settings apply:
 `-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager`

@@ -11,8 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave;
+package brave.http;
 
+import brave.Tracing;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,42 +25,38 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
-public class CurrentTracingTest {
+// copy of tests in CurrentTracingTest as same pattern is used
+public class CurrentHttpTracingTest {
+  Tracing tracing = mock(Tracing.class);
+
   @Before public void reset() {
-    Tracing.CURRENT.set(null);
+    HttpTracing.CURRENT.set(null);
   }
 
   @After public void close() {
-    Tracing current = Tracing.current();
+    HttpTracing current = HttpTracing.current();
     if (current != null) current.close();
   }
 
   @Test public void defaultsToNull() {
-    assertThat(Tracing.current()).isNull();
-  }
-
-  @Test public void defaultsToNull_currentTracer() {
-    assertThat(Tracing.currentTracer()).isNull();
+    assertThat(HttpTracing.current()).isNull();
   }
 
   @Test public void autoRegisters() {
-    Tracing tracing = Tracing.newBuilder().build();
+    HttpTracing current = HttpTracing.create(tracing);
 
-    assertThat(Tracing.current())
-      .isSameAs(tracing);
-
-    assertThat(Tracing.currentTracer())
-      .isSameAs(tracing.tracer());
+    assertThat(HttpTracing.current())
+      .isSameAs(current);
   }
 
   @Test public void setsNotCurrentOnClose() {
     autoRegisters();
 
-    Tracing.current().close();
+    HttpTracing.current().close();
 
-    assertThat(Tracing.current()).isNull();
-    assertThat(Tracing.currentTracer()).isNull();
+    assertThat(HttpTracing.current()).isNull();
   }
 
   @Test public void canSetCurrentAgain() {
@@ -69,16 +66,16 @@ public class CurrentTracingTest {
   }
 
   @Test public void onlyRegistersOnce() throws InterruptedException {
-    final Tracing[] threadValues = new Tracing[10]; // array ref for thread-safe setting
+    final HttpTracing[] threadValues = new HttpTracing[10]; // array ref for thread-safe setting
 
     List<Thread> getOrSet = new ArrayList<>(20);
 
     for (int i = 0; i < 10; i++) {
       final int index = i;
-      getOrSet.add(new Thread(() -> threadValues[index] = Tracing.current()));
+      getOrSet.add(new Thread(() -> threadValues[index] = HttpTracing.current()));
     }
     for (int i = 10; i < 20; i++) {
-      getOrSet.add(new Thread(() -> Tracing.newBuilder().build().tracer()));
+      getOrSet.add(new Thread(() -> HttpTracing.create(tracing)));
     }
 
     // make it less predictable
@@ -90,10 +87,10 @@ public class CurrentTracingTest {
       thread.join();
     }
 
-    Set<Tracing> tracers = new LinkedHashSet<>(Arrays.asList(threadValues));
-    tracers.remove(null);
-    // depending on race, we should have either one tracer or no tracer
-    assertThat(tracers.isEmpty() || tracers.size() == 1)
+    Set<HttpTracing> httpTracings = new LinkedHashSet<>(Arrays.asList(threadValues));
+    httpTracings.remove(null);
+    // depending on race, we should have either one instance or none
+    assertThat(httpTracings.isEmpty() || httpTracings.size() == 1)
       .isTrue();
   }
 }

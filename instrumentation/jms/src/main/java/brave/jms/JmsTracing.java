@@ -47,10 +47,13 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
 
 /** Use this class to decorate your Jms consumer / producer and enable Tracing. */
 public final class JmsTracing {
-  private static final Logger LOG = Logger.getLogger(JmsTracing.class.getName());
-
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
+
+  // Use nested class to ensure logger isn't initialized unless it is accessed once.
+  private static final class LoggerHolder {
+    static final Logger LOG = Logger.getLogger(JmsTracing.class.getName());
+  }
 
   static final Getter<Message, String> GETTER = new Getter<Message, String>() {
     @Override public String get(Message message, String name) {
@@ -115,6 +118,9 @@ public final class JmsTracing {
   final Extractor<Message> extractor;
   final String remoteServiceName;
   final Set<String> propagationKeys;
+
+  // Lazy init as a constant eagerly initializes hooks like log4j2 even when the tracer is no-op
+  static volatile Logger logger;
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.tracing;
@@ -275,11 +281,12 @@ public final class JmsTracing {
    * @param one if present, will end up as {@code {1}} in the format string
    */
   static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
-    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    Logger logger = LoggerHolder.LOG;
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
     Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
     lr.setParameters(params);
     lr.setThrown(thrown);
-    LOG.log(lr);
+    logger.log(lr);
   }
 }

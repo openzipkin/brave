@@ -19,9 +19,9 @@ import brave.Tracing;
 import brave.http.HttpClientRequest.FromHttpAdapter;
 import brave.http.HttpClientRequest.ToHttpAdapter;
 import brave.propagation.TraceContext;
+import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import brave.sampler.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -32,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Span;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
@@ -173,9 +174,9 @@ public class HttpClientHandlerTest {
   @Test public void handleSend_traceIdSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
-    defaultHandler =
-      HttpClientHandler.create(HttpTracing.newBuilder(Tracing.newBuilder().sampler(sampler).build())
-        .clientSampler(SamplerFunctions.deferDecision()).build());
+    defaultHandler = HttpClientHandler.create(HttpTracing.newBuilder(
+      Tracing.newBuilder().sampler(sampler).spanReporter(Reporter.NOOP).build()
+    ).clientSampler(SamplerFunctions.deferDecision()).build());
 
     assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
 
@@ -185,9 +186,9 @@ public class HttpClientHandlerTest {
   @Test public void handleSend_neverSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
-    defaultHandler =
-      HttpClientHandler.create(HttpTracing.newBuilder(Tracing.newBuilder().sampler(sampler).build())
-        .clientSampler(SamplerFunctions.neverSample()).build());
+    defaultHandler = HttpClientHandler.create(HttpTracing.newBuilder(
+      Tracing.newBuilder().sampler(sampler).spanReporter(Reporter.NOOP).build())
+      .clientSampler(SamplerFunctions.neverSample()).build());
 
     assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
 
