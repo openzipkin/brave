@@ -33,6 +33,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
@@ -49,6 +50,8 @@ import zipkin2.reporter.Sender;
  * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<Tracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
 
   public static Builder newBuilder() {
     return new Builder();
@@ -97,16 +100,13 @@ public abstract class Tracing implements Closeable {
 
   abstract public ErrorParser errorParser();
 
-  // volatile for get visibility. writes guarded by Tracing.class. Object to ensure unloadable
-  static volatile Object current = null;
-
   /**
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
    *
    * <p>This object should not be cached.
    */
   @Nullable public static Tracing current() {
-    return (Tracing) current;
+    return (Tracing) CURRENT.get();
   }
 
   /**
@@ -115,7 +115,7 @@ public abstract class Tracing implements Closeable {
    * <p>This object should not be cached.
    */
   @Nullable public static Tracer currentTracer() {
-    Tracing tracing = (Tracing) current;
+    Tracing tracing = current();
     return tracing != null ? tracing.tracer() : null;
   }
 
@@ -467,7 +467,8 @@ public abstract class Tracing implements Closeable {
         finishedSpanHandler.alwaysSampleLocal(),
         noop
       );
-      maybeSetCurrent();
+      // assign current IFF there's no instance already current
+      CURRENT.compareAndSet(null, this);
     }
 
     @Override public Tracer tracer() {
@@ -502,23 +503,13 @@ public abstract class Tracing implements Closeable {
       this.noop.set(noop);
     }
 
-    private void maybeSetCurrent() {
-      if (current != null) return;
-      synchronized (Tracing.class) {
-        if (current == null) current = this;
-      }
-    }
-
     @Override public String toString() {
       return tracer.toString();
     }
 
     @Override public void close() {
-      if (current != this) return;
-      // don't blindly set most recent to null as there could be a race
-      synchronized (Tracing.class) {
-        if (current == this) current = null;
-      }
+      // only set null if we are the outer-most instance
+      CURRENT.compareAndSet(this, null);
     }
   }
 

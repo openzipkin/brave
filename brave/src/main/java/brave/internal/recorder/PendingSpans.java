@@ -139,8 +139,6 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       );
 
       if (caller != null) {
-        // Verification of this is done manually because log4j2 in our test classpath makes it too
-        // complex to test otherwise.
         String message = isEmpty
           ? "Span " + context + " was allocated but never used"
           : "Span " + context + " neither finished nor flushed before GC";

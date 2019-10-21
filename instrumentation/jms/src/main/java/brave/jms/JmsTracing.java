@@ -50,6 +50,11 @@ public final class JmsTracing {
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
 
+  // Use nested class to ensure logger isn't initialized unless it is accessed once.
+  private static final class LoggerHolder {
+    static final Logger LOG = Logger.getLogger(JmsTracing.class.getName());
+  }
+
   static final Getter<Message, String> GETTER = new Getter<Message, String>() {
     @Override public String get(Message message, String name) {
       try {
@@ -276,19 +281,12 @@ public final class JmsTracing {
    * @param one if present, will end up as {@code {1}} in the format string
    */
   static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
-    Logger logger = logger();
+    Logger logger = LoggerHolder.LOG;
     if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
     Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
     lr.setParameters(params);
     lr.setThrown(thrown);
     logger.log(lr);
-  }
-
-  static Logger logger() {
-    Logger result = logger;
-    if (result != null) return result;
-    // synchronization not needed as worst case we overwrite the field twice
-    return logger = Logger.getLogger(JmsTracing.class.getName());
   }
 }

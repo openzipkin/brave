@@ -18,6 +18,7 @@ import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Instances built via {@link #create(Tracing)} or {@link #newBuilder(Tracing)} are registered
@@ -27,6 +28,9 @@ import java.io.Closeable;
  * @since 5.8
  */
 public class RpcTracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<RpcTracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
+
   /** @since 5.8 */
   public static RpcTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
@@ -86,7 +90,8 @@ public class RpcTracing implements Closeable {
     this.tracing = builder.tracing;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
-    maybeSetCurrent();
+    // assign current IFF there's no instance already current
+    CURRENT.compareAndSet(null, this);
   }
 
   public static final class Builder {
@@ -133,31 +138,18 @@ public class RpcTracing implements Closeable {
     }
   }
 
-  // volatile for get visibility. writes guarded by HttpTracing.class. Object to ensure unloadable
-  static volatile Object current = null;
-
   /**
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
    *
    * <p>This object should not be cached.
    */
   @Nullable public static RpcTracing current() {
-    return (RpcTracing) current;
-  }
-
-  private void maybeSetCurrent() {
-    if (current != null) return;
-    synchronized (RpcTracing.class) {
-      if (current == null) current = this;
-    }
+    return (RpcTracing) CURRENT.get();
   }
 
   /** @since 5.9 */
   @Override public void close() {
-    if (current != this) return;
-    // don't blindly set most recent to null as there could be a race
-    synchronized (RpcTracing.class) {
-      if (current == this) current = null;
-    }
+    // only set null if we are the outer-most instance
+    CURRENT.compareAndSet(this, null);
   }
 }

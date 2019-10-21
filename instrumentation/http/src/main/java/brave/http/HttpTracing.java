@@ -19,6 +19,7 @@ import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static brave.http.HttpSampler.fromHttpRequestSampler;
 import static brave.http.HttpSampler.toHttpRequestSampler;
@@ -30,6 +31,9 @@ import static brave.http.HttpSampler.toHttpRequestSampler;
  */
 // Not final as it previously was not. This allows mocks and similar.
 public class HttpTracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<HttpTracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
+
   public static HttpTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
@@ -139,7 +143,8 @@ public class HttpTracing implements Closeable {
     this.serverParser = builder.serverParser;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
-    maybeSetCurrent();
+    // assign current IFF there's no instance already current
+    CURRENT.compareAndSet(null, this);
   }
 
   public static final class Builder {
@@ -253,31 +258,18 @@ public class HttpTracing implements Closeable {
     }
   }
 
-  // volatile for get visibility. writes guarded by HttpTracing.class. Object to ensure unloadable
-  static volatile Object current = null;
-
   /**
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
    *
    * <p>This object should not be cached.
    */
   @Nullable public static HttpTracing current() {
-    return (HttpTracing) current;
-  }
-
-  private void maybeSetCurrent() {
-    if (current != null) return;
-    synchronized (HttpTracing.class) {
-      if (current == null) current = this;
-    }
+    return (HttpTracing) CURRENT.get();
   }
 
   /** @since 5.9 */
   @Override public void close() {
-    if (current != this) return;
-    // don't blindly set most recent to null as there could be a race
-    synchronized (HttpTracing.class) {
-      if (current == this) current = null;
-    }
+    // only set null if we are the outer-most instance
+    CURRENT.compareAndSet(this, null);
   }
 }

@@ -14,8 +14,6 @@
 package brave.http;
 
 import brave.Tracing;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.deferDecision;
@@ -25,19 +23,6 @@ import static org.mockito.Mockito.mock;
 
 public class HttpTracingTest {
   Tracing tracing = mock(Tracing.class);
-
-  @Before @After public void close() {
-    // in case another test leaks, we close before any methods here
-    HttpTracing current = HttpTracing.current();
-    if (current != null) current.close();
-  }
-
-  @Test public void current() {
-    try (HttpTracing current = HttpTracing.create(tracing)) {
-      assertThat(HttpTracing.current()).isNotNull();
-    }
-    assertThat(HttpTracing.current()).isNull();
-  }
 
   @Test public void defaultSamplersDefer() {
     HttpTracing rpcTracing = HttpTracing.newBuilder(tracing).build();
