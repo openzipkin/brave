@@ -14,6 +14,8 @@
 package brave.jms;
 
 import brave.internal.Platform;
+import zipkin2.Call;
+
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -76,7 +78,8 @@ final class PropertyFilter {
       String name = out.get(i).toString();
       try {
         message.setObjectProperty(name, out.get(i + 1));
-      } catch (JMSException e) {
+      } catch (Throwable e) {
+        Call.propagateIfFatal(e);
         log(e, "error setting property {0} on message {1}", name, message);
         // continue on error when re-setting properties as it is better than not.
       }
