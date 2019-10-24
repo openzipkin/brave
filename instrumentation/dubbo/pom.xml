@@ -29,8 +29,7 @@
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
 
-    <!-- TODO: re-enable failsafe when upgrade to 2.7.4 -->
-    <dubbo.version>2.7.3</dubbo.version>
+    <dubbo.version>2.7.4</dubbo.version>
   </properties>
 
   <dependencies>
@@ -54,18 +53,6 @@
 
   <build>
     <plugins>
-      <plugin>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <executions>
-          <!-- TODO: remove when upgrade to 2.7.4. On Travis Ubuntu slave, this fails in 2.7.3 as methods are looked at on the wrong type.
-Caused by: org.apache.dubbo.common.bytecode.NoSuchMethodException: Not found method "sayHello" in class org.apache.dubbo.rpc.service.GenericService.
-          -->
-          <execution>
-            <id>integration-test</id>
-            <phase>none</phase>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>

@@ -441,6 +441,7 @@
             <profiles>
               <profile>!release</profile>
             </profiles>
+            <useLocalRepository>true</useLocalRepository>
             <localRepositoryPath>${project.build.directory}/local-repo</localRepositoryPath>
             <postBuildHookScript>verify</postBuildHookScript>
             <addTestClassPath>true</addTestClassPath>
