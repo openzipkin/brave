@@ -124,8 +124,6 @@
       </plugin>
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
-        <!-- extraArtifacts broke in 3.0.0 https://issues.apache.org/jira/browse/MINVOKER-227 -->
-        <version>2.0.0</version>
         <configuration>
           <extraArtifacts>
             <extraArtifact>io.grpc:grpc-all:1.2.0:jar</extraArtifact>
