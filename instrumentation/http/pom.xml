@@ -40,6 +40,7 @@
   </dependencies>
 
   <build>
+    <!-- OSGi and Java Modules configuration -->
     <plugins>
       <plugin>
         <groupId>org.apache.felix</groupId>
@@ -52,6 +53,7 @@
             <id>default-jar</id>
             <configuration>
               <archive>
+                <!-- Include the MANIFEST.MF maven-bundle-plugin generates from bnd.bnd -->
                 <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
                 <manifestEntries>
                   <Automatic-Module-Name>brave.http</Automatic-Module-Name>

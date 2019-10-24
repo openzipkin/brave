@@ -1,5 +1,4 @@
 Import-Package: \
-  !zipkin2.internal,\
   *
 Export-Package: \
 	brave,\
