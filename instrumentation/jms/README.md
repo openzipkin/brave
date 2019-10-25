@@ -14,7 +14,7 @@ Under the scenes:
 ## Setup
 First, setup the generic Jms component like this:
 ```java
-jmsTracing = JmsTracing.newBuilder(tracing)
+jmsTracing = JmsTracing.newBuilder(messagingTracing)
                        .remoteServiceName("my-broker")
                        .build();
 ```

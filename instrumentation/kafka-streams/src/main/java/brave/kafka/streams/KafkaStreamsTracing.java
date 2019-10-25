@@ -17,6 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Properties;

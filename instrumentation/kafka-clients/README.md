@@ -7,7 +7,7 @@ Add decorators for Kafka producer and consumer to enable tracing.
 ## Setup
 First, setup the generic Kafka component like this:
 ```java
-kafkaTracing = KafkaTracing.newBuilder(tracing)
+kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
                            .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
                            .build();
@@ -20,7 +20,7 @@ TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 tracingProducer.send(new ProducerRecord<K, V>("my-topic", key, value));
 ```
 
-Same goes for the consumer : 
+Same goes for the consumer :
 ```java
 Consumer<K, V> consumer = new KafkaConsumer<>(settings);
 TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);

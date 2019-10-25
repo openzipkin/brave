@@ -37,6 +37,10 @@
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-messaging</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-kafka-clients</artifactId>
       <version>${project.version}</version>
     </dependency>

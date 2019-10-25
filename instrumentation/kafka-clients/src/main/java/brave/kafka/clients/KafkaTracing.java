@@ -16,6 +16,7 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -37,23 +38,32 @@ import static brave.kafka.clients.KafkaPropagation.TEST_CONTEXT;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
-
   public static KafkaTracing create(Tracing tracing) {
-    return new Builder(tracing).build();
+    return newBuilder(tracing).build();
+  }
+
+  /** @since 5.9 */
+  public static KafkaTracing create(MessagingTracing messagingTracing) {
+    return newBuilder(messagingTracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
+    return newBuilder(MessagingTracing.create(tracing));
+  }
+
+  /** @since 5.9 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(messagingTracing);
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
     boolean writeB3SingleFormat;
 
-    Builder(Tracing tracing) {
-      if (tracing == null) throw new NullPointerException("tracing == null");
-      this.tracing = tracing;
+    Builder(MessagingTracing messagingTracing) {
+      if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
+      this.messagingTracing = messagingTracing;
     }
 
     /**
@@ -88,9 +98,9 @@ public final class KafkaTracing {
   final String remoteServiceName;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
+    this.tracing = builder.messagingTracing.tracing();
     this.extractor = tracing.propagation().extractor(KafkaPropagation.GETTER);
-    List<String> keyList = builder.tracing.propagation().keys();
+    List<String> keyList = tracing.propagation().keys();
     // Use a more efficient injector if we are only propagating a single header
     if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
       TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();

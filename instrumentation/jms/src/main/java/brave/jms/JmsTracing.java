@@ -17,6 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
@@ -88,20 +89,30 @@ public final class JmsTracing {
   };
 
   public static JmsTracing create(Tracing tracing) {
-    return new Builder(tracing).build();
+    return newBuilder(tracing).build();
+  }
+
+  /** @since 5.9 */
+  public static JmsTracing create(MessagingTracing messagingTracing) {
+    return newBuilder(messagingTracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
+    return newBuilder(MessagingTracing.create(tracing));
+  }
+
+  /** @since 5.9 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(messagingTracing);
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final MessagingTracing messagingTracing;
     String remoteServiceName = "jms";
 
-    Builder(Tracing tracing) {
-      if (tracing == null) throw new NullPointerException("tracing == null");
-      this.tracing = tracing;
+    Builder(MessagingTracing messagingTracing) {
+      if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
+      this.messagingTracing = messagingTracing;
     }
 
     /**
@@ -126,7 +137,7 @@ public final class JmsTracing {
   static volatile Logger logger;
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
+    this.tracing = builder.messagingTracing.tracing();
     this.extractor = tracing.propagation().extractor(GETTER);
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(tracing.propagation().keys());
