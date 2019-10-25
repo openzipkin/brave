@@ -26,14 +26,14 @@ import brave.internal.Nullable;
 public abstract class MessagingRequest extends Request {
   /**
    * The unqualified, case-sensitive semantic message operation name. The currently defined names
-   * are "send", "receive", "bulk-send" and "bulk-receive".
+   * are "send" and "receive".
    *
    * <p>Examples:
    * <pre><ul>
-   *   <li>Amazon SQS - {@code AmazonSQS.sendMessageBatch()} returns "bulk-send" as it can send many messages</li>
-   *   <li>JMS - {@code MessageProducer.send()} returns "send" as it only sends one message</li>
-   *   <li>Kafka - {@code Consumer.poll()} returns "bulk-receive" as it can receive many messages</li>
-   *   <li>RabbitMQ - {@code Consumer.handleDelivery()} returns "receive" as the callback receives only one message</li>
+   *   <li>Amazon SQS - {@code AmazonSQS.sendMessageBatch()} is a "send" operation</li>
+   *   <li>JMS - {@code MessageProducer.send()} is a "send" operation</li>
+   *   <li>Kafka - {@code Consumer.poll()} is a "receive" operation</li>
+   *   <li>RabbitMQ - {@code Consumer.handleDelivery()} is a "receive" operation</li>
    * </ul></pre>
    *
    * <p>Note: There is no constant set of operations, yet. Even when there is a constant set, there

@@ -64,7 +64,7 @@ public class MessagingRuleSamplerTest {
 
   @Test public void unmatched() {
     sampler = MessagingRuleSampler.newBuilder()
-      .putRule(operationEquals("bulk-receive"), Sampler.ALWAYS_SAMPLE)
+      .putRule(operationEquals("send"), Sampler.ALWAYS_SAMPLE)
       .build();
 
     assertThat(sampler.trySample(request))
@@ -84,7 +84,7 @@ public class MessagingRuleSamplerTest {
       .putRule(playInTheUSA, RateLimitingSampler.create(100))
       .build();
 
-    when(request.operation()).thenReturn("bulk-receive");
+    when(request.operation()).thenReturn("send");
 
     assertThat(sampler.trySample(request))
       .isTrue();
@@ -104,7 +104,7 @@ public class MessagingRuleSamplerTest {
       .putAllRules(base)
       .build();
 
-    when(request.operation()).thenReturn("bulk-receive");
+    when(request.operation()).thenReturn("send");
 
     assertThat(sampler.trySample(request))
       .isNull();
