@@ -139,12 +139,7 @@ public final class JmsTracing {
     this.producerMessageAdapter = JmsAdapter.JmsMessageProducerAdapter.create(this);
     this.injector = new Injector<Message>() {
       @Override public void inject(TraceContext traceContext, Message carrier) {
-        try {
-          PropertyFilter.MESSAGE.filterProperties(carrier, propagationKeys);
-          carrier.setStringProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
-        } catch (JMSException e) {
-          // don't crash on wonky exceptions!
-        }
+        setNextParent(carrier, traceContext);
       }
 
       @Override
@@ -237,7 +232,23 @@ public final class JmsTracing {
   //  return extracted;
   //}
 
-  Destination destination(Message message) {
+  /**
+   * We currently serialize the context as a "b3" message property. We can't add the context as an
+   * Object property because JMS only supports "primitive objects, String, Map and List types".
+   *
+   * <p>Using {@link MessageListener} is preferred where possible, as we can coordinate without
+   * writing "b3", which notably saves us from losing data in {@link TraceContext#extra()}.
+   */
+  void setNextParent(Message message, TraceContext context) {
+    addB3SingleHeader(message, context);
+  }
+
+  /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
+  static void addB3SingleHeader(Message message, TraceContext context) {
+    SETTER.put(message, "b3", writeB3SingleFormatWithoutParentId(context));
+  }
+
+  @Nullable static Destination destination(Message message) {
     try {
       return message.getJMSDestination();
     } catch (JMSException e) {

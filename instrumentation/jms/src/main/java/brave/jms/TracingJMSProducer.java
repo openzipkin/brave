@@ -20,6 +20,7 @@ import brave.messaging.MessageProducerAdapter;
 import brave.messaging.MessagingProducerHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import java.io.Serializable;
 import java.util.Map;
@@ -29,6 +30,7 @@ import javax.jms.Destination;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
 
+import static brave.jms.JmsTracing.log;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
 @JMS2_0 final class TracingJMSProducer
@@ -45,6 +47,20 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     }
   };
 
+  static final Setter<JMSProducer, String> SETTER = new Setter<JMSProducer, String>() {
+    @Override public void put(JMSProducer message, String name, String value) {
+      try {
+        message.setProperty(name, value);
+      } catch (RuntimeException e) {
+        log(e, "error setting property {0} on message {1}", name, message);
+      }
+    }
+
+    @Override public String toString() {
+      return "Message::setStringProperty";
+    }
+  };
+
   final Tracer tracer;
   final CurrentTraceContext current;
 
@@ -57,13 +73,12 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
       jmsTracing.msgTracing.tracing().propagation().extractor(GETTER),
       new TraceContext.Injector<JMSProducer>() {
         @Override public void inject(TraceContext traceContext, JMSProducer carrier) {
-          PropertyFilter.JMS_PRODUCER.filterProperties(carrier, jmsTracing.propagationKeys);
-          carrier.setProperty("b3", writeB3SingleFormatWithoutParentId(traceContext));
+          SETTER.put(carrier, "b3", writeB3SingleFormatWithoutParentId(traceContext));
         }
 
         @Override
         public String toString() {
-          return "Message::setStringProperty(\"b3\",singleHeaderFormatWithoutParent)";
+          return "JMSProducer::setProperty(\"b3\",singleHeaderFormatWithoutParent)";
         }
       });
     this.tracer = jmsTracing.msgTracing.tracing().tracer();
