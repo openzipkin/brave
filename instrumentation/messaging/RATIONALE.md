@@ -1,5 +1,32 @@
 # brave-instrumentation-messaging rationale
 
+## Why clear trace state headers prior to invoking message processors?
+
+When instrumentation intercept invocation of a message processor, they clear
+trace state headers (`Propagation.keys()`) before invoking a listener with a
+span in scope. This is due to ordering precedence of tools like
+`KafkaTracing.nextSpan(record)`.
+
+Tools that extract incoming state from message requests prioritize headers
+over the current span (`Tracer.currentSpan()`). This is to prevent an
+accidentally leaked span (due to lack of `Scope.close()`) to become the parent
+of all spans, creating a huge trace. This logic is the same in RPC server
+instrumentation. When we are in control of invoking the message listener, we
+can guarantee no mistakes by clearing the headers first.
+
+We don't do this in server processing, eventhough Finagle used to to this.
+There is no specific reason that we were never as defensive there, except that
+we provide not tools like `ServletTracing.nextSpan(request)` because users
+don't typically pass server requests through stages as they do with messaging.
+
+One problem with clearing headers with JMS implementations. JMS requires you
+to clear all headers before setting them, and there is no command to clear a
+single header. This process is expensive as you have to read all the headers
+first and replay them without the keys you want to key. An alternate approach
+we have not tried is to set empty instead of the more difficult and fragile
+"clear first" process. This could be used only in JMS, as other products have
+the ability to clear headers, not just set them.
+
 ## Why not `send-batch` and `receive-batch` operations?
 
 The choices of operation names to promote split partitioning and indexing of
