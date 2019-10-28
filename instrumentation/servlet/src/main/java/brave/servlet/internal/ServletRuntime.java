@@ -28,7 +28,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-import zipkin2.Call;
+
+import static brave.internal.Throwables.propagateIfFatal;
 
 /**
  * Access to servlet version-specific features
@@ -199,7 +200,7 @@ public abstract class ServletRuntime {
           getStatusMethod = clazz.getMethod("getStatus");
           return (int) ((Method) getStatusMethod).invoke(response);
         } catch (Throwable throwable) {
-          Call.propagateIfFatal(throwable);
+          propagateIfFatal(throwable);
           getStatusMethod = RETURN_NULL;
           return 0;
         } finally {
@@ -214,7 +215,7 @@ public abstract class ServletRuntime {
       try {
         return (int) ((Method) getStatusMethod).invoke(response);
       } catch (Throwable throwable) {
-        Call.propagateIfFatal(throwable);
+        propagateIfFatal(throwable);
         Map<Class<?>, Object> replacement = new LinkedHashMap<>(classesToCheck);
         replacement.put(clazz, RETURN_NULL);
         classToGetStatus.set(replacement); // prefer overriding on failure
