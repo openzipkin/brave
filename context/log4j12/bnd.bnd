@@ -1,0 +1,6 @@
+# We use brave.internal.Nullable and brave.internal.propagation.CorrelationFieldScopeDecorator
+Import-Package: \
+  !brave.internal*,\
+  *
+Export-Package: \
+  brave.context.log4j12

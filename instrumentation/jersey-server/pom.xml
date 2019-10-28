@@ -26,6 +26,9 @@
   <name>Brave Instrumentation: Jersey Server 2.x</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.jersey.server</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Jersey 2.7 -> 2.25 are Java 7. We don't currently compile against Jersey 2.26+
          https://jersey.github.io/documentation/latest/modules-and-dependencies.html#d0e560
@@ -83,19 +86,4 @@
       <version>1.1.1</version>
     </dependency>
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.jersey.server</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

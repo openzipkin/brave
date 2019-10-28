@@ -1,0 +1,4 @@
+Import-Package: \
+  *
+Export-Package: \
+  brave.jaxrs2

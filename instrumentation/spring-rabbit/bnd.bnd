@@ -3,4 +3,4 @@ Import-Package: \
   !brave.internal*,\
   *
 Export-Package: \
-  brave.http
+  brave.spring.rabbit

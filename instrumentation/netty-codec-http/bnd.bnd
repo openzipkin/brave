@@ -1,0 +1,6 @@
+# We use brave.internal.Nullable and brave.internal.Platform
+Import-Package: \
+  !brave.internal*,\
+  *
+Export-Package: \
+  brave.netty.http

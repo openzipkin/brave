@@ -26,6 +26,9 @@
   <name>Brave Instrumentation: Netty Http Codec</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.netty.http</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Netty 4.x requires Java 6+ https://netty.io/wiki/requirements-for-4.x.html -->
     <main.java.version>1.6</main.java.version>
@@ -51,19 +54,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.netty.http</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>
