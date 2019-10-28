@@ -26,6 +26,7 @@ import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
+import static brave.internal.Throwables.propagateIfFatal;
 
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
@@ -126,10 +127,11 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     try {
       send.apply(delegate, destination, message);
-    } catch (RuntimeException | Error e) {
-      span.error(e);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      span.error(t);
       span.finish();
-      throw e;
+      throw t;
     } finally {
       ws.close();
       if (oldCompletionListener != null) {

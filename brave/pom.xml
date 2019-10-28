@@ -39,6 +39,8 @@
     <dependency>
       <groupId>io.zipkin.zipkin2</groupId>
       <artifactId>zipkin</artifactId>
+      <!-- TODO: should this be marked optional?
+           Brave APIs, except builder.spanReporter, shouldn't return or accept zipkin2 types -->
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>

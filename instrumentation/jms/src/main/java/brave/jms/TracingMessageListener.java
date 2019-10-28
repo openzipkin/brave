@@ -22,6 +22,7 @@ import javax.jms.Message;
 import javax.jms.MessageListener;
 
 import static brave.Span.Kind.CONSUMER;
+import static brave.internal.Throwables.propagateIfFatal;
 
 /**
  * When {@link #addConsumerSpan} this creates 2 spans:
@@ -61,6 +62,7 @@ final class TracingMessageListener implements MessageListener {
     try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
       delegate.onMessage(message);
     } catch (Throwable t) {
+      propagateIfFatal(t);
       listenerSpan.error(t);
       throw t;
     } finally {

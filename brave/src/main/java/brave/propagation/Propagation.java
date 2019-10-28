@@ -106,6 +106,8 @@ public interface Propagation<K> {
    * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
    * successive calls should clear these fields first.
    *
+   * <p><em>Note:</em> Depending on the format, keys returned may not all be mandatory.
+   *
    * <p><em>Note:</em> If your implementation carries "extra fields", such as correlation IDs, do
    * not return the names of those fields here. If you do, they will be deleted, which can interfere
    * with user headers.
@@ -113,6 +115,7 @@ public interface Propagation<K> {
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata
   // * allow a single-pass over an iterator (ex OpenTracing has no getter in TextMap)
+  // * detection of if a context is likely to be present in a request object
   List<K> keys();
 
   /**

@@ -13,16 +13,13 @@
  */
 package brave.jms;
 
-import brave.internal.Platform;
-import zipkin2.Call;
-
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
-import javax.jms.JMSException;
 import javax.jms.Message;
 
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jms.JmsTracing.log;
 
 // Similar to https://github.com/apache/camel/blob/b9a3117f19dd19abd2ea8b789c42c3e86fe4c488/components/camel-jms/src/main/java/org/apache/camel/component/jms/JmsMessageHelper.java
@@ -46,8 +43,9 @@ final class PropertyFilter {
     Enumeration<?> names;
     try {
       names = message.getPropertyNames();
-    } catch (JMSException e) {
-      Platform.get().log("error getting property names from {0}", message, e);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      log(t, "error getting property names from {0}", message, null);
       return;
     }
 
@@ -56,8 +54,9 @@ final class PropertyFilter {
       Object value;
       try {
         value = message.getObjectProperty(name);
-      } catch (JMSException e) {
-        log(e, "error getting property {0} from message {1}", name, message);
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error getting property {0} from message {1}", name, message);
         return;
       }
       if (!namesToClear.contains(name) && value != null) {
@@ -69,8 +68,9 @@ final class PropertyFilter {
     // redo the properties to keep
     try {
       message.clearProperties();
-    } catch (JMSException e) {
-      Platform.get().log("error clearing properties of {0}", message, e);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      log(t, "error clearing properties of {0}", message, null);
       return;
     }
 
@@ -78,9 +78,9 @@ final class PropertyFilter {
       String name = out.get(i).toString();
       try {
         message.setObjectProperty(name, out.get(i + 1));
-      } catch (Throwable e) {
-        Call.propagateIfFatal(e);
-        log(e, "error setting property {0} on message {1}", name, message);
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error setting property {0} on message {1}", name, message);
         // continue on error when re-setting properties as it is better than not.
       }
     }

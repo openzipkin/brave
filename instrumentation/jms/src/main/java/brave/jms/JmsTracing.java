@@ -43,9 +43,10 @@ import javax.jms.XAConnectionFactory;
 import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
 
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 
-/** Use this class to decorate your Jms consumer / producer and enable Tracing. */
+/** Use this class to decorate your JMS consumer / producer and enable Tracing. */
 public final class JmsTracing {
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
@@ -59,8 +60,9 @@ public final class JmsTracing {
     @Override public String get(Message message, String name) {
       try {
         return message.getStringProperty(name);
-      } catch (JMSException e) {
-        log(e, "error getting property {0} from message {1}", name, message);
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error getting property {0} from message {1}", name, message);
         return null;
       }
     }
@@ -74,8 +76,9 @@ public final class JmsTracing {
     @Override public void put(Message message, String name, String value) {
       try {
         message.setStringProperty(name, value);
-      } catch (JMSException e) {
-        log(e, "error setting property {0} on message {1}", name, message);
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error setting property {0} on message {1}", name, message);
       }
     }
 
@@ -237,8 +240,9 @@ public final class JmsTracing {
   @Nullable static Destination destination(Message message) {
     try {
       return message.getJMSDestination();
-    } catch (JMSException e) {
-      log(e, "error destination of message {0}", message, null);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      log(t, "error getting destination of message {0}", message, null);
     }
     return null;
   }
@@ -255,8 +259,9 @@ public final class JmsTracing {
       } else if (destination instanceof Topic) {
         span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
       }
-    } catch (JMSException e) {
-      log(e, "error getting destination name from {0}", destination, null);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      log(t, "error getting destination name from {0}", destination, null);
     }
   }
 
@@ -269,7 +274,8 @@ public final class JmsTracing {
    * <pre>{@code
    * try {
    *    return message.getStringProperty(name);
-   *  } catch (JMSException e) {
+   *  } catch (Throwable t) {
+   *    Call.propagateIfFatal(e);
    *    log(e, "error getting property {0} from message {1}", name, message);
    *    return null;
    *  }
