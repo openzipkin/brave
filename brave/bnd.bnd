@@ -1,8 +1,8 @@
 Import-Package: \
   *
 Export-Package: \
-	brave,\
+  brave,\
   brave.handler,\
-	brave.propagation,\
-	brave.sampler,\
-	brave.internal;braveinternal=true;mandatory:=braveinternal
+  brave.propagation,\
+  brave.sampler,\
+  brave.internal;braveinternal=true;mandatory:=braveinternal
