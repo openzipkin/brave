@@ -26,6 +26,9 @@
   <name>Brave Instrumentation: JMS</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.jms</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
@@ -76,16 +79,6 @@
 
   <build>
     <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.jms</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>

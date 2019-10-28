@@ -26,6 +26,9 @@
   <name>Brave Instrumentation: OkHttp v3.x</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.okhttp3</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
   </properties>
 
@@ -51,19 +54,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.okhttp3</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>
