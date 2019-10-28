@@ -28,6 +28,9 @@
   <name>Brave Context: JDK Flight Recorder</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.context.jfr</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>11</main.java.version>
   </properties>
@@ -44,33 +47,6 @@
           </compilerArgs>
         </configuration>
       </plugin>
-
-      <!-- OSGi and Java Modules configuration -->
-      <plugin>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>maven-bundle-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <configuration>
-              <archive>
-                <!-- Include the MANIFEST.MF maven-bundle-plugin generates from bnd.bnd -->
-                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                <manifestEntries>
-                  <Automatic-Module-Name>brave.context.jfr</Automatic-Module-Name>
-                </manifestEntries>
-              </archive>
-            </configuration>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
       <plugin>
         <groupId>net.orfjackal.retrolambda</groupId>
         <artifactId>retrolambda-maven-plugin</artifactId>

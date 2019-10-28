@@ -28,6 +28,9 @@
   <name>Brave Context: RxJava 2</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.context.rxjava2</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- RxJava 2.x continues support for Java 1.6 and Android 2.3+ -->
     <main.java.version>1.6</main.java.version>
@@ -60,33 +63,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <!-- OSGi and Java Modules configuration -->
-      <plugin>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>maven-bundle-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <configuration>
-              <archive>
-                <!-- Include the MANIFEST.MF maven-bundle-plugin generates from bnd.bnd -->
-                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                <manifestEntries>
-                  <Automatic-Module-Name>brave.context.rxjava2</Automatic-Module-Name>
-                </manifestEntries>
-              </archive>
-            </configuration>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>
