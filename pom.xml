@@ -129,6 +129,7 @@
     <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
     <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
+    <maven-bundle-plugin.version>4.2.1</maven-bundle-plugin.version>
     <license-maven-plugin.version>3.0</license-maven-plugin.version>
   </properties>
 
@@ -401,6 +402,12 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+          <configuration>
+            <archive>
+              <!-- prevents huge pom file from also being added to the jar under META-INF/maven -->
+              <addMavenDescriptor>false</addMavenDescriptor>
+            </archive>
+          </configuration>
         </plugin>
 
         <plugin>
@@ -455,25 +462,6 @@
               <goals>
                 <goal>install</goal>
                 <goal>run</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.felix</groupId>
-          <artifactId>maven-bundle-plugin</artifactId>
-          <version>4.2.1</version>
-          <configuration>
-            <obrRepository>NONE</obrRepository>
-            <instructions>
-              <_include>-bnd.bnd</_include>
-            </instructions>
-          </configuration>
-          <executions>
-            <execution>
-              <phase>process-classes</phase>
-              <goals>
-                <goal>manifest</goal>
               </goals>
             </execution>
           </executions>
@@ -787,6 +775,21 @@
           <plugin>
             <groupId>org.apache.felix</groupId>
             <artifactId>maven-bundle-plugin</artifactId>
+            <version>${maven-bundle-plugin.version}</version>
+            <configuration>
+              <obrRepository>NONE</obrRepository>
+              <instructions>
+                <_include>-bnd.bnd</_include>
+              </instructions>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>process-classes</phase>
+                <goals>
+                  <goal>manifest</goal>
+                </goals>
+              </execution>
+            </executions>
           </plugin>
           <plugin>
             <artifactId>maven-jar-plugin</artifactId>
@@ -796,8 +799,7 @@
                 <configuration>
                   <archive>
                     <!-- Include the MANIFEST.MF maven-bundle-plugin generates from bnd.bnd -->
-                    <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF
-                    </manifestFile>
+                    <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
                     <manifestEntries>
                       <Automatic-Module-Name>${module.name}</Automatic-Module-Name>
                     </manifestEntries>
