@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class TracingCallbackTest extends BaseTracingTest {
-  @Test public void create_returns_input_on_noop() {
+  @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     Callback delegate =
@@ -36,7 +36,6 @@ public class TracingCallbackTest extends BaseTracingTest {
     Callback tracingCallback = TracingCallback.create(delegate, span, current);
 
     tracingCallback.onCompletion(null, null);
-    //assertThat(tracingCallback).isSameAs(delegate);
   }
 
   @Test public void on_completion_should_finish_span() {

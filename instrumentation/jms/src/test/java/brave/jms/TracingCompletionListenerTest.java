@@ -24,14 +24,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class TracingCompletionListenerTest extends JmsTest {
-  @Test public void create_returns_input_on_noop() {
+  @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
-    CompletionListener delegate = mock(CompletionListener.class);
+    CompletionListener delegate = new CompletionListener() {
+      @Override public void onCompletion(Message message) {
+        assertThat(tracing.tracer().currentSpan()).isEqualTo(span);
+      }
+
+      @Override public void onException(Message message, Exception exception) {
+      }
+    };
     CompletionListener tracingCompletionListener =
       TracingCompletionListener.create(delegate, span, current);
 
-    assertThat(tracingCompletionListener).isSameAs(delegate);
+    tracingCompletionListener.onCompletion(null);
   }
 
   @Test public void on_completion_should_finish_span() throws Exception {
