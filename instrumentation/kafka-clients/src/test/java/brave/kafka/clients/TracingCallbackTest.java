@@ -18,20 +18,24 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class TracingCallbackTest extends BaseTracingTest {
-  @Test public void create_returns_input_on_noop() {
+  @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
-    Callback delegate = mock(Callback.class);
+    Callback delegate =
+        (metadata, exception) -> assertThat(tracing.tracer().currentSpan()).isEqualTo(span);
     Callback tracingCallback = TracingCallback.create(delegate, span, current);
 
-    assertThat(tracingCallback).isSameAs(delegate);
+    tracingCallback.onCompletion(null, null);
   }
 
   @Test public void on_completion_should_finish_span() {
