@@ -18,46 +18,43 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class TracingCallbackTest extends BaseTracingTest {
   @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     Callback delegate =
-        (metadata, exception) -> assertThat(tracing.tracer().currentSpan()).isEqualTo(span);
+      (metadata, exception) -> assertThat(tracing.tracer().currentSpan()).isEqualTo(span);
     Callback tracingCallback = TracingCallback.create(delegate, span, current);
 
     tracingCallback.onCompletion(null, null);
   }
 
-  @Test public void on_completion_should_finish_span() {
+  @Test public void on_completion_should_finish_span() throws InterruptedException {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback tracingCallback = TracingCallback.create(null, span, current);
     tracingCallback.onCompletion(createRecordMetadata(), null);
 
-    assertThat(spans.getFirst()).isNotNull();
+    assertThat(spans.take()).isNotNull();
   }
 
-  @Test public void on_completion_should_tag_if_exception() {
+  @Test public void on_completion_should_tag_if_exception() throws InterruptedException {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback tracingCallback = TracingCallback.create(null, span, current);
     tracingCallback.onCompletion(null, new Exception("Test exception"));
 
-    assertThat(spans.getFirst().tags())
+    assertThat(spans.take().tags())
       .containsEntry("error", "Test exception");
   }
 
-  @Test public void on_completion_should_forward_then_finish_span() {
+  @Test public void on_completion_should_forward_then_finish_span() throws InterruptedException {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);
@@ -66,7 +63,7 @@ public class TracingCallbackTest extends BaseTracingTest {
     tracingCallback.onCompletion(md, null);
 
     verify(delegate).onCompletion(md, null);
-    assertThat(spans.getFirst()).isNotNull();
+    assertThat(spans.take()).isNotNull();
   }
 
   @Test public void on_completion_should_have_span_in_scope() {
@@ -77,7 +74,8 @@ public class TracingCallbackTest extends BaseTracingTest {
     TracingCallback.create(delegate, span, current).onCompletion(createRecordMetadata(), null);
   }
 
-  @Test public void on_completion_should_forward_then_tag_if_exception() {
+  @Test public void on_completion_should_forward_then_tag_if_exception()
+    throws InterruptedException {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);
@@ -88,7 +86,7 @@ public class TracingCallbackTest extends BaseTracingTest {
 
     verify(delegate).onCompletion(md, e);
 
-    assertThat(spans.getFirst().tags())
+    assertThat(spans.take().tags())
       .containsEntry("error", "Test exception");
   }
 

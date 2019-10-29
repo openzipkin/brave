@@ -103,12 +103,12 @@ public class TracingConsumerTest extends BaseTracingTest {
       .extracting(ConsumerRecord::headers)
       .flatExtracting(TracingConsumerTest::lastHeaders)
       .extracting(Map.Entry::getKey)
-      .contains("X-B3-TraceId", "X-B3-SpanId");
+      .containsOnly("b3");
   }
 
   @Test
   public void should_createChildOfTraceHeaders() throws Exception {
-    addB3Headers(fakeRecord);
+    addB3MultiHeaders(fakeRecord);
     consumer.addRecord(fakeRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
@@ -117,7 +117,11 @@ public class TracingConsumerTest extends BaseTracingTest {
     assertThat(poll)
       .extracting(ConsumerRecord::headers)
       .flatExtracting(TracingConsumerTest::lastHeaders)
-      .contains(entry("X-B3-TraceId", TRACE_ID), entry("X-B3-ParentSpanId", SPAN_ID));
+      .hasSize(1)
+      .allSatisfy(e -> {
+        assertThat(e.getKey()).isEqualTo("b3");
+        assertThat(e.getValue()).startsWith(TRACE_ID);
+      });
   }
 
   @Test

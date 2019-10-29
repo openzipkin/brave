@@ -27,6 +27,30 @@ TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
 tracingConsumer.poll(10);
 ```
 
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+producer and consumer requests.
+
+You can use an [MessagingRuleSampler](../messaging/README.md) to override this
+based on Kafka service or method names.
+
+Ex. Here's a sampler that traces 100 consumer requests per second, except for
+the "alerts" topic. Other requests will use a global rate provided by the
+`Tracing` component.
+
+```java
+import brave.sampler.Matchers;
+
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+
+messagingTracingBuilder.consumerSampler(MessagingRuleSampler.newBuilder()
+  .putRule(channelNameEquals("alerts"), Sampler.NEVER_SAMPLE)
+  .putRule(Matchers.alwaysMatch(), RateLimitingSampler.create(100))
+  .build());
+
+kafkaTracing = KafkaTracing.create(messagingTracing);
+```
+
 ## What's happening?
 Typically, there are three spans involved in message tracing:
 * If a message producer is traced, it completes a PRODUCER span per record

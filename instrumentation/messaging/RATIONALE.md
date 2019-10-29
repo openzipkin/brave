@@ -29,9 +29,9 @@ the ability to clear headers, not just set them.
 
 ## Why not `send-batch` and `receive-batch` operations?
 
-The choices of operation names to promote split partitioning and indexing of
-messaging traces. Hence, we should be careful to only choose operations that
-add value, and not choose ones that distract.
+Partitioning, indexing and aggregation of messaging traces are split by the
+cardinality of operation names. Hence, we should be careful to only choose
+operations that add value, and not choose ones that distract.
 
 Batch operation names currently causes more confusion than they clear: on the
 send side, batching may occur underneath and it could confuse users to suggest

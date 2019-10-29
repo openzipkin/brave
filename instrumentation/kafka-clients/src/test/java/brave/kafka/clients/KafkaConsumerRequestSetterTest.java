@@ -17,29 +17,30 @@ import brave.propagation.Propagation;
 import brave.test.propagation.PropagationSetterTest;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import static brave.kafka.clients.KafkaPropagation.SETTER;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class HeadersSetterTest extends PropagationSetterTest<Headers, String> {
-  Headers carrier = new RecordHeaders();
+public class KafkaConsumerRequestSetterTest
+  extends PropagationSetterTest<KafkaConsumerRequest, String> {
+  KafkaConsumerRequest carrier = new KafkaConsumerRequest(
+    new ConsumerRecord<>("topic", 0, 1L, "key", "value")
+  );
 
   @Override public Propagation.KeyFactory<String> keyFactory() {
     return Propagation.KeyFactory.STRING;
   }
 
-  @Override protected Headers carrier() {
+  @Override protected KafkaConsumerRequest carrier() {
     return carrier;
   }
 
-  @Override protected Propagation.Setter<Headers, String> setter() {
-    return SETTER;
+  @Override protected Propagation.Setter<KafkaConsumerRequest, String> setter() {
+    return KafkaConsumerRequest::setHeader;
   }
 
-  @Override protected Iterable<String> read(Headers carrier, String key) {
-    return StreamSupport.stream(carrier.headers(key).spliterator(), false)
+  @Override protected Iterable<String> read(KafkaConsumerRequest carrier, String key) {
+    return StreamSupport.stream(carrier.delegate.headers().headers(key).spliterator(), false)
       .map(h -> new String(h.value(), UTF_8))
       .collect(Collectors.toList());
   }
