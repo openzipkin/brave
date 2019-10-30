@@ -36,9 +36,7 @@ public final class B3Propagation<K> implements Propagation<K> {
     /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormat(TraceContext)}. */
     SINGLE,
     /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormatWithoutParentId(TraceContext)}. */
-    SINGLE_NO_PARENT,
-    /** The trace context is redundantly encoded in both {@link #MULTI} and {@link #SINGLE} formats. */
-    BOTH
+    SINGLE_NO_PARENT
   }
 
   public static final Propagation.Factory FACTORY = newFactoryBuilder().build();
@@ -53,13 +51,13 @@ public final class B3Propagation<K> implements Propagation<K> {
    */
   public static final class FactoryBuilder {
     Format injectFormat = Format.MULTI;
-    final Map<Span.Kind, Format> kindToInjectFormat = new LinkedHashMap<>();
+    final Map<Span.Kind, Format[]> kindToInjectFormats = new LinkedHashMap<>();
 
     FactoryBuilder() {
-      kindToInjectFormat.put(Span.Kind.CLIENT, Format.MULTI);
-      kindToInjectFormat.put(Span.Kind.SERVER, Format.MULTI);
-      kindToInjectFormat.put(Span.Kind.PRODUCER, Format.SINGLE_NO_PARENT);
-      kindToInjectFormat.put(Span.Kind.CONSUMER, Format.SINGLE_NO_PARENT);
+      kindToInjectFormats.put(Span.Kind.CLIENT, new Format[] {Format.MULTI});
+      kindToInjectFormats.put(Span.Kind.SERVER, new Format[] {Format.MULTI});
+      kindToInjectFormats.put(Span.Kind.PRODUCER, new Format[] {Format.SINGLE_NO_PARENT});
+      kindToInjectFormats.put(Span.Kind.CONSUMER, new Format[] {Format.SINGLE_NO_PARENT});
     }
 
     /** Overrides the default format of {@link Format#MULTI}. */
@@ -69,11 +67,25 @@ public final class B3Propagation<K> implements Propagation<K> {
       return this;
     }
 
-    /** Overrides the format used for the indicated {@link Request#kind() span kind}. */
+    /** Overrides the injection format used for the indicated {@link Request#kind() span kind}. */
     public FactoryBuilder injectFormat(Span.Kind kind, Format format) {
       if (kind == null) throw new NullPointerException("kind == null");
       if (format == null) throw new NullPointerException("format == null");
-      kindToInjectFormat.put(kind, format);
+      kindToInjectFormats.put(kind, new Format[] {format});
+      return this;
+    }
+
+    /**
+     * Like {@link #injectFormat}, but writes multiple formats.
+     *
+     * For example, you can set {@link Span.Kind#CLIENT} spans to inject both {@link Format#MULTI}
+     * and {@link Format#SINGLE}, for transition use cases.
+     */
+    public FactoryBuilder injectFormats(Span.Kind kind, Format format1, Format format2) {
+      if (kind == null) throw new NullPointerException("kind == null");
+      if (format1 == null) throw new NullPointerException("format1 == null");
+      if (format2 == null) throw new NullPointerException("format2 == null");
+      kindToInjectFormats.put(kind, new Format[] {format1, format2});
       return this;
     }
 
@@ -105,8 +117,8 @@ public final class B3Propagation<K> implements Propagation<K> {
   static final String FLAGS_NAME = "X-B3-Flags";
   final K b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
-  final Format injectFormat;
-  final Map<Span.Kind, Format> kindToInjectFormat;
+  final Format[] injectFormats;
+  final Map<Span.Kind, Format[]> kindToInjectFormats;
 
   B3Propagation(KeyFactory<K> keyFactory, Factory factory) {
     this.b3Key = keyFactory.create("b3");
@@ -118,8 +130,8 @@ public final class B3Propagation<K> implements Propagation<K> {
     this.fields = Collections.unmodifiableList(
       asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
-    this.injectFormat = factory.injectFormat;
-    this.kindToInjectFormat = factory.kindToInjectFormat;
+    this.injectFormats = new Format[] {factory.injectFormat};
+    this.kindToInjectFormats = factory.kindToInjectFormats;
   }
 
   @Override public List<K> keys() {
@@ -141,22 +153,29 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
 
     @Override public void inject(TraceContext traceContext, C carrier) {
-      Format format = propagation.injectFormat;
+      Format[] formats = propagation.injectFormats;
       if (carrier instanceof Request) {
         Span.Kind kind = ((Request) carrier).kind();
-        format = propagation.kindToInjectFormat.get(kind);
+        formats = propagation.kindToInjectFormats.get(kind);
       }
 
-      if (format == Format.SINGLE_NO_PARENT) {
-        setter.put(carrier, propagation.b3Key, writeB3SingleFormatWithoutParentId(traceContext));
-        return;
+      for (Format format : formats) {
+        switch (format) {
+          case SINGLE:
+            setter.put(carrier, propagation.b3Key, writeB3SingleFormat(traceContext));
+            break;
+          case SINGLE_NO_PARENT:
+            setter.put(carrier, propagation.b3Key,
+              writeB3SingleFormatWithoutParentId(traceContext));
+            break;
+          case MULTI:
+            injectMulti(traceContext, carrier);
+            break;
+        }
       }
+    }
 
-      if (format == Format.SINGLE || format == Format.BOTH) {
-        setter.put(carrier, propagation.b3Key, writeB3SingleFormat(traceContext));
-        if (format == Format.SINGLE) return;
-      }
-
+    void injectMulti(TraceContext traceContext, C carrier) {
       setter.put(carrier, propagation.traceIdKey, traceContext.traceIdString());
       setter.put(carrier, propagation.spanIdKey, traceContext.spanIdString());
       String parentId = traceContext.parentIdString();
@@ -221,11 +240,11 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   static final class Factory extends Propagation.Factory {
     final Format injectFormat;
-    final LinkedHashMap<Span.Kind, Format> kindToInjectFormat;
+    final Map<Span.Kind, Format[]> kindToInjectFormats;
 
     Factory(FactoryBuilder builder) {
       this.injectFormat = builder.injectFormat;
-      this.kindToInjectFormat = new LinkedHashMap<>(builder.kindToInjectFormat);
+      this.kindToInjectFormats = new LinkedHashMap<>(builder.kindToInjectFormats);
     }
 
     @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {

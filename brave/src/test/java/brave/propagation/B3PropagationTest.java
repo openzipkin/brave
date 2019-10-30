@@ -91,7 +91,7 @@ public class B3PropagationTest {
 
   @Test public void canConfigureBasedOnKind() {
     Propagation<String> propagation = B3Propagation.newFactoryBuilder()
-      .injectFormat(Span.Kind.CLIENT, B3Propagation.Format.BOTH)
+      .injectFormats(Span.Kind.CLIENT, B3Propagation.Format.SINGLE, B3Propagation.Format.MULTI)
       .build().create(Propagation.KeyFactory.STRING);
 
     ClientRequest request = new ClientRequest();
