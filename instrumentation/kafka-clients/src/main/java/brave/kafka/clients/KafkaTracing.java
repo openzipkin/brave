@@ -106,6 +106,10 @@ public final class KafkaTracing {
     this.remoteServiceName = builder.remoteServiceName;
   }
 
+  public Tracing tracing() {
+    return tracing;
+  }
+
   /**
    * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. This span is
    * injected onto each message so it becomes the parent when a processor later calls {@link
