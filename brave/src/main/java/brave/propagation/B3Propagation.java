@@ -20,6 +20,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 import static java.util.Arrays.asList;
@@ -232,9 +233,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // try to extract single-header format
       String b3 = getter.get(carrier, propagation.b3Key);
-      if (b3 == null) return TraceContextOrSamplingFlags.EMPTY;
-
-      TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3);
+      TraceContextOrSamplingFlags extracted = b3 != null ? parseB3SingleFormat(b3) : null;
       if (extracted != null) return extracted;
 
       // Start by looking at the sampled state as this is used regardless
