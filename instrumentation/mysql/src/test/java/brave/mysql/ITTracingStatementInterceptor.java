@@ -34,6 +34,7 @@ import static org.junit.Assume.assumeTrue;
 
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
+  static final String QUERY2 = "select\n 'hello world'";
 
   /** JDBC is synchronous and we aren't using thread pools: everything happens on the main thread */
   ArrayList<Span> spans = new ArrayList<>();
@@ -91,6 +92,15 @@ public class ITTracingStatementInterceptor {
   @Test
   public void defaultSpanNameIsOperationName() throws Exception {
     prepareExecuteSelect(QUERY);
+
+    assertThat(spans)
+      .extracting(Span::name)
+      .containsExactly("select");
+  }
+
+  @Test
+  public void defaultSpanNameIsOperationName2() throws Exception {
+    prepareExecuteSelect(QUERY2);
 
     assertThat(spans)
       .extracting(Span::name)

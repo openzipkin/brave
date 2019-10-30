@@ -50,7 +50,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
     if (interceptedStatement instanceof PreparedStatement) {
       sql = ((PreparedStatement) interceptedStatement).getPreparedSql();
     }
-    int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
+    int spaceIndex = Math.min(sql.indexOf(' '), sql.indexOf('\n')); // Allow span names of single-word statements like COMMIT
     span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
     parseServerIpAndPort(connection, span);
