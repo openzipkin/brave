@@ -15,7 +15,6 @@ package brave.propagation;
 
 import brave.Request;
 import brave.Span;
-import brave.propagation.B3SinglePropagation.B3SingleExtractor;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -221,12 +220,10 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   static final class B3Extractor<C, K> implements TraceContext.Extractor<C> {
     final B3Propagation<K> propagation;
-    final B3SingleExtractor<C, K> singleExtractor;
     final Getter<C, K> getter;
 
     B3Extractor(B3Propagation<K> propagation, Getter<C, K> getter) {
       this.propagation = propagation;
-      this.singleExtractor = new B3SingleExtractor<>(propagation.b3Key, getter);
       this.getter = getter;
     }
 
@@ -234,8 +231,11 @@ public final class B3Propagation<K> implements Propagation<K> {
       if (carrier == null) throw new NullPointerException("carrier == null");
 
       // try to extract single-header format
-      TraceContextOrSamplingFlags extracted = singleExtractor.extract(carrier);
-      if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) return extracted;
+      String b3 = getter.get(carrier, propagation.b3Key);
+      if (b3 == null) return TraceContextOrSamplingFlags.EMPTY;
+
+      TraceContextOrSamplingFlags extracted = B3SingleFormat.parseB3SingleFormat(b3);
+      if (extracted != null) return extracted;
 
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
