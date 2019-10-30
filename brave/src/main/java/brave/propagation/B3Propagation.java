@@ -176,7 +176,7 @@ public final class B3Propagation<K> implements Propagation<K> {
       this.setter = setter;
     }
 
-    @Override public void inject(TraceContext traceContext, C carrier) {
+    @Override public void inject(TraceContext context, C carrier) {
       Format[] formats = propagation.injectFormats;
       if (carrier instanceof Request) {
         Span.Kind kind = ((Request) carrier).spanKind();
@@ -186,30 +186,27 @@ public final class B3Propagation<K> implements Propagation<K> {
       for (Format format : formats) {
         switch (format) {
           case SINGLE:
-            setter.put(carrier, propagation.b3Key, writeB3SingleFormat(traceContext));
+            setter.put(carrier, propagation.b3Key, writeB3SingleFormat(context));
             break;
           case SINGLE_NO_PARENT:
-            setter.put(carrier, propagation.b3Key,
-              writeB3SingleFormatWithoutParentId(traceContext));
+            setter.put(carrier, propagation.b3Key, writeB3SingleFormatWithoutParentId(context));
             break;
           case MULTI:
-            injectMulti(traceContext, carrier);
+            injectMulti(context, carrier);
             break;
         }
       }
     }
 
-    void injectMulti(TraceContext traceContext, C carrier) {
-      setter.put(carrier, propagation.traceIdKey, traceContext.traceIdString());
-      setter.put(carrier, propagation.spanIdKey, traceContext.spanIdString());
-      String parentId = traceContext.parentIdString();
-      if (parentId != null) {
-        setter.put(carrier, propagation.parentSpanIdKey, parentId);
-      }
-      if (traceContext.debug()) {
+    void injectMulti(TraceContext context, C carrier) {
+      setter.put(carrier, propagation.traceIdKey, context.traceIdString());
+      setter.put(carrier, propagation.spanIdKey, context.spanIdString());
+      String parentId = context.parentIdString();
+      if (parentId != null) setter.put(carrier, propagation.parentSpanIdKey, parentId);
+      if (context.debug()) {
         setter.put(carrier, propagation.debugKey, "1");
-      } else if (traceContext.sampled() != null) {
-        setter.put(carrier, propagation.sampledKey, traceContext.sampled() ? "1" : "0");
+      } else if (context.sampled() != null) {
+        setter.put(carrier, propagation.sampledKey, context.sampled() ? "1" : "0");
       }
     }
   }
