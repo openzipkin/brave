@@ -36,7 +36,7 @@ public abstract class HttpClientRequest extends HttpRequest {
     }
   };
 
-  @Override public final Span.Kind kind() {
+  @Override public final Span.Kind spanKind() {
     return Span.Kind.CLIENT;
   }
 

@@ -143,7 +143,7 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
       this.request = request;
     }
 
-    @Override public Span.Kind kind() {
+    @Override public Span.Kind spanKind() {
       return kind;
     }
 

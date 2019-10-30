@@ -31,7 +31,7 @@ import brave.sampler.SamplerFunction;
  */
 public abstract class Request {
   /** The remote {@link Span.Kind} describing the direction and type of the request. */
-  public abstract Span.Kind kind();
+  public abstract Span.Kind spanKind();
 
   /**
    * Returns the underlying request object or {@code this} if there is none. Here are some request

@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class RequestTest {
   @Test public void toString_mentionsDelegate() {
     class IceCreamRequest extends Request {
-      @Override public Span.Kind kind() {
+      @Override public Span.Kind spanKind() {
         return Span.Kind.SERVER;
       }
 
@@ -38,7 +38,7 @@ public class RequestTest {
         return null;
       }
 
-      @Override public Span.Kind kind() {
+      @Override public Span.Kind spanKind() {
         return Span.Kind.SERVER;
       }
     }

@@ -22,7 +22,7 @@ import brave.Span;
  * @since 5.8
  */
 public abstract class RpcClientRequest extends RpcRequest {
-  @Override public final Span.Kind kind() {
+  @Override public final Span.Kind spanKind() {
     return Span.Kind.CLIENT;
   }
 }
