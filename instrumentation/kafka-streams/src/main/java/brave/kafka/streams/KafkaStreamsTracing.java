@@ -42,18 +42,26 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
 
-  final Tracing tracing;
+  final KafkaTracing kafkaTracing;
   final TraceContext.Extractor<Headers> extractor;
   final TraceContext.Injector<Headers> injector;
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(KafkaStreamsPropagation.GETTER);
-    this.injector = tracing.propagation().injector(KafkaStreamsPropagation.SETTER);
+    this.kafkaTracing = builder.kafkaTracing;
+    this.extractor = kafkaTracing.tracing().propagation().extractor(KafkaStreamsPropagation.GETTER);
+    this.injector = kafkaTracing.tracing().propagation().injector(KafkaStreamsPropagation.SETTER);
   }
 
   public static KafkaStreamsTracing create(Tracing tracing) {
-    return new KafkaStreamsTracing.Builder(tracing).build();
+    return new KafkaStreamsTracing.Builder(KafkaTracing.create(tracing)).build();
+  }
+
+  public static KafkaStreamsTracing create(KafkaTracing kafkaTracing) {
+    return new KafkaStreamsTracing.Builder(kafkaTracing).build();
+  }
+
+  public KafkaTracing kafkaTracing() {
+    return kafkaTracing;
   }
 
   /**
@@ -65,7 +73,6 @@ public final class KafkaStreamsTracing {
    * accepted.
    */
   public KafkaClientSupplier kafkaClientSupplier() {
-    final KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
     return new TracingKafkaClientSupplier(kafkaTracing);
   }
 
@@ -391,7 +398,7 @@ public final class KafkaStreamsTracing {
 
   Span nextSpan(ProcessorContext context) {
     TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
-    Span result = tracing.tracer().nextSpan(extracted);
+    Span result = kafkaTracing.tracing().tracer().nextSpan(extracted);
     if (!result.isNoop()) {
       addTags(context, result);
     }
@@ -399,11 +406,11 @@ public final class KafkaStreamsTracing {
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final KafkaTracing kafkaTracing;
 
-    Builder(Tracing tracing) {
-      if (tracing == null) throw new NullPointerException("tracing == null");
-      this.tracing = tracing;
+    Builder(KafkaTracing kafkaTracing) {
+      if (kafkaTracing == null) throw new NullPointerException("kafkaTracing == null");
+      this.kafkaTracing = kafkaTracing;
     }
 
     public KafkaStreamsTracing build() {

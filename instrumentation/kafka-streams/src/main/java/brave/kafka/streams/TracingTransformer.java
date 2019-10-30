@@ -30,7 +30,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
   TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     Transformer<K, V, R> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.tracing.tracer();
+    this.tracer = kafkaStreamsTracing.kafkaTracing().tracing().tracer();
     this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
