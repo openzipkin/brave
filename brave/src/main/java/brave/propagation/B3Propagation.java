@@ -47,7 +47,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   /**
    * Defaults to {@link Format#MULTI} for client/server spans and {@link Format#SINGLE_NO_PARENT}
-   * for messaging. Non-request spans, such as message processors, default to {@link Format#SINGLE}.
+   * for messaging. Non-remote spans, such as message processors, default to {@link Format#SINGLE}.
    */
   public static final class FactoryBuilder {
     Format injectFormat = Format.SINGLE;
