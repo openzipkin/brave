@@ -67,7 +67,7 @@ public final class B3Propagation<K> implements Propagation<K> {
       return this;
     }
 
-    /** Overrides the injection format used for the indicated {@link Request#kind() span kind}. */
+    /** Overrides the injection format used for the indicated {@link Request#spanKind() span kind}. */
     public FactoryBuilder injectFormat(Span.Kind kind, Format format) {
       if (kind == null) throw new NullPointerException("kind == null");
       if (format == null) throw new NullPointerException("format == null");
@@ -85,6 +85,10 @@ public final class B3Propagation<K> implements Propagation<K> {
       if (kind == null) throw new NullPointerException("kind == null");
       if (format1 == null) throw new NullPointerException("format1 == null");
       if (format2 == null) throw new NullPointerException("format2 == null");
+      if (format1.equals(format2)) throw new IllegalArgumentException("format1 == format2");
+      if (!format1.equals(Format.MULTI) && !format2.equals(Format.MULTI)){
+        throw new IllegalArgumentException("One argument must be Format.MULTI");
+      }
       kindToInjectFormats.put(kind, new Format[] {format1, format2});
       return this;
     }
@@ -155,7 +159,7 @@ public final class B3Propagation<K> implements Propagation<K> {
     @Override public void inject(TraceContext traceContext, C carrier) {
       Format[] formats = propagation.injectFormats;
       if (carrier instanceof Request) {
-        Span.Kind kind = ((Request) carrier).kind();
+        Span.Kind kind = ((Request) carrier).spanKind();
         formats = propagation.kindToInjectFormats.get(kind);
       }
 

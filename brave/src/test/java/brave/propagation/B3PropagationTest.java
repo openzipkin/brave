@@ -15,19 +15,60 @@ package brave.propagation;
 
 import brave.Request;
 import brave.Span;
+import brave.propagation.B3Propagation.Format;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class B3PropagationTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build();
 
+  @Test public void injectFormat() {
+    B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
+      .injectFormat(Format.SINGLE)
+      .build();
+
+    assertThat(factory.injectFormat)
+      .isEqualTo(Format.SINGLE);
+  }
+
+  @Test public void injectKindFormat() {
+    B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
+      .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
+      .build();
+
+    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
+      .containsExactly(Format.SINGLE);
+  }
+
+  @Test public void injectKindFormats() {
+    B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
+      .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
+      .build();
+
+    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
+      .containsExactly(Format.SINGLE, Format.MULTI);
+  }
+
+  @Test public void injectKindFormats_cantBeSame() {
+    assertThatThrownBy(() -> B3Propagation.newFactoryBuilder()
+      .injectFormats(Span.Kind.CLIENT, Format.MULTI, Format.MULTI))
+      .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test public void injectKindFormats_cantBeBothSingle() {
+    assertThatThrownBy(() -> B3Propagation.newFactoryBuilder()
+      .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.SINGLE_NO_PARENT))
+      .isInstanceOf(IllegalArgumentException.class);
+  }
+
   static class ClientRequest extends Request {
     final Map<String, String> headers = new LinkedHashMap<>();
 
-    @Override public Span.Kind kind() {
+    @Override public Span.Kind spanKind() {
       return Span.Kind.CLIENT;
     }
 
@@ -54,7 +95,7 @@ public class B3PropagationTest {
   static class ProducerRequest extends Request {
     final Map<String, String> headers = new LinkedHashMap<>();
 
-    @Override public Span.Kind kind() {
+    @Override public Span.Kind spanKind() {
       return Span.Kind.PRODUCER;
     }
 
@@ -78,7 +119,7 @@ public class B3PropagationTest {
 
   @Test public void canConfigureSingle() {
     Propagation<String> propagation = B3Propagation.newFactoryBuilder()
-      .injectFormat(B3Propagation.Format.SINGLE_NO_PARENT)
+      .injectFormat(Format.SINGLE_NO_PARENT)
       .build().create(Propagation.KeyFactory.STRING);
 
     Map<String, String> request = new LinkedHashMap<>(); // not a brave.Request
@@ -91,7 +132,7 @@ public class B3PropagationTest {
 
   @Test public void canConfigureBasedOnKind() {
     Propagation<String> propagation = B3Propagation.newFactoryBuilder()
-      .injectFormats(Span.Kind.CLIENT, B3Propagation.Format.SINGLE, B3Propagation.Format.MULTI)
+      .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build().create(Propagation.KeyFactory.STRING);
 
     ClientRequest request = new ClientRequest();
