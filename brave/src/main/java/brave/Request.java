@@ -40,8 +40,8 @@ public abstract class Request {
    *
    * <p>Note: Some implementations are composed of multiple types, such as a request and a socket
    * address of the client. Moreover, an implementation may change the type returned due to
-   * refactoring. Unless you control the implementation, cast carefully (ex using {@code instance
-   * of}) instead of presuming a specific type will always be returned.
+   * refactoring. Unless you control the implementation, cast carefully (ex using {@code
+   * instanceof}) instead of presuming a specific type will always be returned.
    *
    * @since 5.9
    */
