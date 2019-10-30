@@ -34,7 +34,10 @@ import static brave.propagation.Propagation.KeyFactory.STRING;
  */
 public interface Propagation<K> {
   Propagation<String> B3_STRING = B3Propagation.FACTORY.create(STRING);
-  Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.create(STRING);
+  /**
+   * @deprecated Since 5.9, use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
+   */
+  @Deprecated Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.create(STRING);
 
   abstract class Factory {
     /**

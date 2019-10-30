@@ -34,6 +34,10 @@ public abstract class HttpServerRequest extends HttpRequest {
     }
   };
 
+  @Override public final Span.Kind spanKind() {
+    return Span.Kind.SERVER;
+  }
+
   /**
    * Override and return true when it is possible to parse the {@link Span#remoteIpAndPort(String,
    * int) remote IP and port} from the {@link #unwrap() delegate}. Defaults to false.

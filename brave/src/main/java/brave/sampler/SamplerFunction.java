@@ -13,6 +13,7 @@
  */
 package brave.sampler;
 
+import brave.Request;
 import brave.internal.Nullable;
 
 /**
@@ -29,6 +30,7 @@ import brave.internal.Nullable;
  *
  * @param <T> type of the input, for example a request or method
  * @see SamplerFunctions
+ * @see Request
  * @since 5.8
  */
 // interface, not abstract type, to allow backporting of existing samplers.

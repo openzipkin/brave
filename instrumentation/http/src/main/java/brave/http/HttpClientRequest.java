@@ -13,6 +13,7 @@
  */
 package brave.http;
 
+import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
@@ -34,6 +35,10 @@ public abstract class HttpClientRequest extends HttpRequest {
       return "HttpClientRequest::header";
     }
   };
+
+  @Override public final Span.Kind spanKind() {
+    return Span.Kind.CLIENT;
+  }
 
   /**
    * Sets a request header with the indicated name. Null values are unsupported.

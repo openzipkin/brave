@@ -13,6 +13,7 @@
  */
 package brave.http;
 
+import brave.Span;
 import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
@@ -132,12 +133,18 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
   @Deprecated static final class FromHttpAdapter<Req> extends HttpRequest {
     final HttpAdapter<Req, ?> adapter;
     final Req request;
+    final Span.Kind kind;
 
     FromHttpAdapter(HttpAdapter<Req, ?> adapter, Req request) {
       if (adapter == null) throw new NullPointerException("adapter == null");
       this.adapter = adapter;
+      this.kind = adapter instanceof HttpServerAdapter ? Span.Kind.SERVER : Span.Kind.CLIENT;
       if (request == null) throw new NullPointerException("request == null");
       this.request = request;
+    }
+
+    @Override public Span.Kind spanKind() {
+      return kind;
     }
 
     @Override public Object unwrap() {

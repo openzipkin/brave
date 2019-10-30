@@ -11,25 +11,21 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.rpc;
+package brave;
 
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class RpcRequestTest {
+public class RequestTest {
   @Test public void toString_mentionsDelegate() {
-    class IceCreamRequest extends RpcRequest {
+    class IceCreamRequest extends Request {
+      @Override public Span.Kind spanKind() {
+        return Span.Kind.SERVER;
+      }
+
       @Override public Object unwrap() {
         return "chocolate";
-      }
-
-      @Override public String method() {
-        return null;
-      }
-
-      @Override public String service() {
-        return null;
       }
     }
     assertThat(new IceCreamRequest())
@@ -37,17 +33,13 @@ public class RpcRequestTest {
   }
 
   @Test public void toString_doesntStackoverflowWhenUnwrapIsNull() {
-    class BuggyRequest extends RpcRequest {
+    class BuggyRequest extends Request {
       @Override public Object unwrap() {
         return null;
       }
 
-      @Override public String method() {
-        return null;
-      }
-
-      @Override public String service() {
-        return null;
+      @Override public Span.Kind spanKind() {
+        return Span.Kind.SERVER;
       }
     }
     assertThat(new BuggyRequest())

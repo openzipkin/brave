@@ -13,6 +13,7 @@
  */
 package brave.http;
 
+import brave.Request;
 import brave.internal.Nullable;
 
 /**
@@ -22,17 +23,7 @@ import brave.internal.Nullable;
  * @see HttpServerRequest
  * @since 5.8
  */
-public abstract class HttpRequest {
-  /**
-   * Returns the underlying http request object. Ex. {@code org.apache.http.HttpRequest}
-   *
-   * <p>Note: Some implementations are composed of multiple types, such as a request and a socket
-   * address of the client. Moreover, an implementation may change the type returned due to
-   * refactoring. Unless you control the implementation, cast carefully (ex using {@code instance
-   * of}) instead of presuming a specific type will always be returned.
-   */
-  public abstract Object unwrap();
-
+public abstract class HttpRequest extends Request {
   /** @see HttpAdapter#startTimestamp(Object) */
   public long startTimestamp() {
     return 0L;
@@ -49,13 +40,6 @@ public abstract class HttpRequest {
 
   /** @see HttpAdapter#requestHeader(Object, String) */
   @Nullable public abstract String header(String name);
-
-  @Override public String toString() {
-    Object unwrapped = unwrap();
-    // unwrap() returning null is a bug. It could also return this. don't NPE or stack overflow!
-    if (unwrapped == null || unwrapped == this) return getClass().getSimpleName();
-    return getClass().getSimpleName() + "{" + unwrapped + "}";
-  }
 
   HttpRequest() { // sealed type: only client and server
   }

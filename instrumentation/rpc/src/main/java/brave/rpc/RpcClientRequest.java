@@ -13,6 +13,8 @@
  */
 package brave.rpc;
 
+import brave.Span;
+
 /**
  * Marks an interface for use in injection and {@link RpcRuleSampler}. This gives a standard type
  * to consider when parsing an outgoing context.
@@ -20,4 +22,7 @@ package brave.rpc;
  * @since 5.8
  */
 public abstract class RpcClientRequest extends RpcRequest {
+  @Override public final Span.Kind spanKind() {
+    return Span.Kind.CLIENT;
+  }
 }
