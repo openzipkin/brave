@@ -17,7 +17,7 @@ import brave.Request;
 import brave.Span;
 import brave.propagation.B3SinglePropagation.B3SingleExtractor;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,7 +51,7 @@ public final class B3Propagation<K> implements Propagation<K> {
    */
   public static final class FactoryBuilder {
     Format injectFormat = Format.MULTI;
-    final Map<Span.Kind, Format[]> kindToInjectFormats = new LinkedHashMap<>();
+    final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(Span.Kind.class);
 
     FactoryBuilder() {
       kindToInjectFormats.put(Span.Kind.CLIENT, new Format[] {Format.MULTI});
@@ -244,7 +244,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
     Factory(FactoryBuilder builder) {
       this.injectFormat = builder.injectFormat;
-      this.kindToInjectFormats = new LinkedHashMap<>(builder.kindToInjectFormats);
+      this.kindToInjectFormats = new EnumMap<>(builder.kindToInjectFormats);
     }
 
     @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
