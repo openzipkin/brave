@@ -26,6 +26,45 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class B3PropagationTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build();
 
+  @Test public void keys_defaultToAll() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .build().create(Propagation.KeyFactory.STRING);
+
+    assertThat(propagation.keys()).containsExactly(
+      "b3",
+      "X-B3-TraceId",
+      "X-B3-SpanId",
+      "X-B3-ParentSpanId",
+      "X-B3-Sampled",
+      "X-B3-Flags"
+    );
+  }
+
+  @Test public void keys_withoutB3Single() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(Span.Kind.PRODUCER, Format.MULTI)
+      .injectFormat(Span.Kind.CONSUMER, Format.MULTI)
+      .build().create(Propagation.KeyFactory.STRING);
+
+    assertThat(propagation.keys()).containsExactly(
+      "X-B3-TraceId",
+      "X-B3-SpanId",
+      "X-B3-ParentSpanId",
+      "X-B3-Sampled",
+      "X-B3-Flags"
+    );
+  }
+
+  @Test public void keys_onlyB3Single() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(Format.SINGLE)
+      .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
+      .injectFormat(Span.Kind.SERVER, Format.SINGLE)
+      .build().create(Propagation.KeyFactory.STRING);
+
+    assertThat(propagation.keys()).containsOnly("b3");
+  }
+
   @Test public void injectFormat() {
     B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
       .injectFormat(Format.SINGLE)

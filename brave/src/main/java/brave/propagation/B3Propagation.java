@@ -76,7 +76,7 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
 
     /**
-     * Like {@link #injectFormat}, but writes multiple formats.
+     * Like {@link #injectFormat}, but writes two formats.
      *
      * For example, you can set {@link Span.Kind#CLIENT} spans to inject both {@link Format#MULTI}
      * and {@link Format#SINGLE}, for transition use cases.
@@ -86,7 +86,7 @@ public final class B3Propagation<K> implements Propagation<K> {
       if (format1 == null) throw new NullPointerException("format1 == null");
       if (format2 == null) throw new NullPointerException("format2 == null");
       if (format1.equals(format2)) throw new IllegalArgumentException("format1 == format2");
-      if (!format1.equals(Format.MULTI) && !format2.equals(Format.MULTI)){
+      if (!format1.equals(Format.MULTI) && !format2.equals(Format.MULTI)) {
         throw new IllegalArgumentException("One argument must be Format.MULTI");
       }
       kindToInjectFormats.put(kind, new Format[] {format1, format2});
@@ -131,11 +131,31 @@ public final class B3Propagation<K> implements Propagation<K> {
     this.parentSpanIdKey = keyFactory.create(PARENT_SPAN_ID_NAME);
     this.sampledKey = keyFactory.create(SAMPLED_NAME);
     this.debugKey = keyFactory.create(FLAGS_NAME);
-    this.fields = Collections.unmodifiableList(
-      asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
-    );
     this.injectFormats = new Format[] {factory.injectFormat};
     this.kindToInjectFormats = factory.kindToInjectFormats;
+
+    // Scan for all formats in use
+    boolean injectsMulti = factory.injectFormat.equals(Format.MULTI);
+    boolean injectsSingle = !injectsMulti;
+    for (Format[] formats : kindToInjectFormats.values()) {
+      for (Format format : formats) {
+        if (format.equals(Format.MULTI)) injectsMulti = true;
+        if (!format.equals(Format.MULTI)) injectsSingle = true;
+      }
+    }
+
+    // Convert the formats into a list of possible fields
+    if (injectsMulti && injectsSingle) {
+      this.fields = Collections.unmodifiableList(
+        asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+      );
+    } else if (injectsMulti) {
+      this.fields = Collections.unmodifiableList(
+        asList(traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
+      );
+    } else {
+      this.fields = Collections.singletonList(b3Key);
+    }
   }
 
   @Override public List<K> keys() {
