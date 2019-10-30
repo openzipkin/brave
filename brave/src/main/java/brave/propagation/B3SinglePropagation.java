@@ -16,8 +16,12 @@ package brave.propagation;
 import java.util.Collections;
 import java.util.List;
 
-/** Implements the propagation format described in {@link B3SingleFormat}. */
-public final class B3SinglePropagation<K> implements Propagation<K> {
+/**
+ * Implements the propagation format described in {@link B3SingleFormat}.
+ *
+ * @deprecated Since 5.9, use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
+ */
+@Deprecated public final class B3SinglePropagation<K> implements Propagation<K> {
 
   public static final Factory FACTORY = new Factory() {
     @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {

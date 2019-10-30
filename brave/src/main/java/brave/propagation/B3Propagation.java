@@ -13,31 +13,74 @@
  */
 package brave.propagation;
 
+import brave.Request;
+import brave.Span;
 import brave.propagation.B3SinglePropagation.B3SingleExtractor;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
+import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
 import static java.util.Arrays.asList;
 
 /**
- * Implements <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3
- * Propagation</a>
+ * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3Propagation<K> implements Propagation<K> {
+  /** Describes the formats used to inject headers. */
+  enum Format {
+    /** The trace context is encoded with a several fields prefixed with "x-b3-". */
+    MULTI,
+    /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormat(TraceContext)}. */
+    SINGLE,
+    /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormatWithoutParentId(TraceContext)}. */
+    SINGLE_NO_PARENT,
+    /** The trace context is redundantly encoded in both {@link #MULTI} and {@link #SINGLE} formats. */
+    BOTH
+  }
 
-  public static final Propagation.Factory FACTORY = new Propagation.Factory() {
-    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
-      return new B3Propagation<>(keyFactory);
+  public static final Propagation.Factory FACTORY = newFactoryBuilder().build();
+
+  public static FactoryBuilder newFactoryBuilder() {
+    return new FactoryBuilder();
+  }
+
+  /**
+   * Defaults to {@link Format#MULTI} for client/server spans and {@link Format#SINGLE_NO_PARENT}
+   * for messaging. Non-request spans default to {@link Format#MULTI}.
+   */
+  public static final class FactoryBuilder {
+    Format injectFormat = Format.MULTI;
+    final Map<Span.Kind, Format> kindToInjectFormat = new LinkedHashMap<>();
+
+    FactoryBuilder() {
+      kindToInjectFormat.put(Span.Kind.CLIENT, Format.MULTI);
+      kindToInjectFormat.put(Span.Kind.SERVER, Format.MULTI);
+      kindToInjectFormat.put(Span.Kind.PRODUCER, Format.SINGLE_NO_PARENT);
+      kindToInjectFormat.put(Span.Kind.CONSUMER, Format.SINGLE_NO_PARENT);
     }
 
-    @Override public boolean supportsJoin() {
-      return true;
+    /** Overrides the default format of {@link Format#MULTI}. */
+    public FactoryBuilder injectFormat(Format format) {
+      if (format == null) throw new NullPointerException("format == null");
+      injectFormat = format;
+      return this;
     }
 
-    @Override public String toString() {
-      return "B3PropagationFactory";
+    /** Overrides the format used for the indicated {@link Request#kind() span kind}. */
+    public FactoryBuilder injectFormat(Span.Kind kind, Format format) {
+      if (kind == null) throw new NullPointerException("kind == null");
+      if (format == null) throw new NullPointerException("format == null");
+      kindToInjectFormat.put(kind, format);
+      return this;
     }
-  };
+
+    public Propagation.Factory build() {
+      return new B3Propagation.Factory(this);
+    }
+  }
 
   /**
    * 128 or 64-bit trace ID lower-hex encoded into 32 or 16 characters (required)
@@ -62,8 +105,10 @@ public final class B3Propagation<K> implements Propagation<K> {
   static final String FLAGS_NAME = "X-B3-Flags";
   final K b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
+  final Format injectFormat;
+  final Map<Span.Kind, Format> kindToInjectFormat;
 
-  B3Propagation(KeyFactory<K> keyFactory) {
+  B3Propagation(KeyFactory<K> keyFactory, Factory factory) {
     this.b3Key = keyFactory.create("b3");
     this.traceIdKey = keyFactory.create(TRACE_ID_NAME);
     this.spanIdKey = keyFactory.create(SPAN_ID_NAME);
@@ -73,6 +118,8 @@ public final class B3Propagation<K> implements Propagation<K> {
     this.fields = Collections.unmodifiableList(
       asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
     );
+    this.injectFormat = factory.injectFormat;
+    this.kindToInjectFormat = factory.kindToInjectFormat;
   }
 
   @Override public List<K> keys() {
@@ -94,6 +141,22 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
 
     @Override public void inject(TraceContext traceContext, C carrier) {
+      Format format = propagation.injectFormat;
+      if (carrier instanceof Request) {
+        Span.Kind kind = ((Request) carrier).kind();
+        format = propagation.kindToInjectFormat.get(kind);
+      }
+
+      if (format == Format.SINGLE_NO_PARENT) {
+        setter.put(carrier, propagation.b3Key, writeB3SingleFormatWithoutParentId(traceContext));
+        return;
+      }
+
+      if (format == Format.SINGLE || format == Format.BOTH) {
+        setter.put(carrier, propagation.b3Key, writeB3SingleFormat(traceContext));
+        if (format == Format.SINGLE) return;
+      }
+
       setter.put(carrier, propagation.traceIdKey, traceContext.traceIdString());
       setter.put(carrier, propagation.spanIdKey, traceContext.spanIdString());
       String parentId = traceContext.parentIdString();
@@ -153,6 +216,28 @@ public final class B3Propagation<K> implements Propagation<K> {
         return TraceContextOrSamplingFlags.create(result.build());
       }
       return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
+    }
+  }
+
+  static final class Factory extends Propagation.Factory {
+    final Format injectFormat;
+    final LinkedHashMap<Span.Kind, Format> kindToInjectFormat;
+
+    Factory(FactoryBuilder builder) {
+      this.injectFormat = builder.injectFormat;
+      this.kindToInjectFormat = new LinkedHashMap<>(builder.kindToInjectFormat);
+    }
+
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
+      return new B3Propagation<>(keyFactory, this);
+    }
+
+    @Override public boolean supportsJoin() {
+      return true;
+    }
+
+    @Override public String toString() {
+      return "B3PropagationFactory";
     }
   }
 }
