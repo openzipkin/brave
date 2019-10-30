@@ -47,10 +47,10 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   /**
    * Defaults to {@link Format#MULTI} for client/server spans and {@link Format#SINGLE_NO_PARENT}
-   * for messaging. Non-request spans default to {@link Format#MULTI}.
+   * for messaging. Non-request spans, such as message processors, default to {@link Format#SINGLE}.
    */
   public static final class FactoryBuilder {
-    Format injectFormat = Format.MULTI;
+    Format injectFormat = Format.SINGLE;
     final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(Span.Kind.class);
 
     FactoryBuilder() {

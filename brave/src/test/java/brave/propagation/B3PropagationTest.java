@@ -42,6 +42,7 @@ public class B3PropagationTest {
 
   @Test public void keys_withoutB3Single() {
     Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(Format.MULTI)
       .injectFormat(Span.Kind.PRODUCER, Format.MULTI)
       .injectFormat(Span.Kind.CONSUMER, Format.MULTI)
       .build().create(Propagation.KeyFactory.STRING);
@@ -57,7 +58,6 @@ public class B3PropagationTest {
 
   @Test public void keys_onlyB3Single() {
     Propagation<String> propagation = B3Propagation.newFactoryBuilder()
-      .injectFormat(Format.SINGLE)
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .injectFormat(Span.Kind.SERVER, Format.SINGLE)
       .build().create(Propagation.KeyFactory.STRING);
@@ -67,11 +67,11 @@ public class B3PropagationTest {
 
   @Test public void injectFormat() {
     B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
-      .injectFormat(Format.SINGLE)
+      .injectFormat(Format.MULTI)
       .build();
 
     assertThat(factory.injectFormat)
-      .isEqualTo(Format.SINGLE);
+      .isEqualTo(Format.MULTI);
   }
 
   @Test public void injectKindFormat() {
