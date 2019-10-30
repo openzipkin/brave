@@ -27,7 +27,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -110,8 +109,9 @@ public final class KafkaTracing {
     this.remoteServiceName = builder.remoteServiceName;
   }
 
-  public Tracing tracing() {
-    return tracing;
+  /** @since 5.9 exposed for Kafka Streams tracing. */
+  public MessagingTracing messagingTracing() {
+    return messagingTracing;
   }
 
   /**
@@ -173,10 +173,8 @@ public final class KafkaTracing {
     return tracer.nextSpan(extracted);
   }
 
-  // BRAVE6: consider a messaging variant of extraction which clears headers as they are read.
-  // this could prevent having to go back and clear them later. Another option is to encourage,
-  // then special-case single header propagation. When there's only 1 propagation key, you don't
-  // need to do a loop!
+  // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
+  // multi, or visa versa.
   void clearHeaders(Headers headers) {
     // Headers::remove creates and consumes an iterator each time. This does one loop instead.
     for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {

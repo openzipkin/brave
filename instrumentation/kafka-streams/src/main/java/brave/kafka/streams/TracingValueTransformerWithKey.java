@@ -30,7 +30,7 @@ class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKe
   TracingValueTransformerWithKey(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     ValueTransformerWithKey<K, V, VR> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.kafkaTracing().tracing().tracer();
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
