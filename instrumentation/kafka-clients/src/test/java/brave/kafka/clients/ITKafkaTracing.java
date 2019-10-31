@@ -312,7 +312,14 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
+    checkB3Unsampled(records);
 
+    // since the producer was unsampled, the consumer should be unsampled also due to propagation
+
+    // @After will also check that both the producer and consumer were not sampled
+  }
+
+  void checkB3Unsampled(ConsumerRecords<String, String> records) {
     // Check that the injected context was not sampled
     assertThat(records)
       .extracting(ConsumerRecord::headers)
@@ -322,10 +329,6 @@ public class ITKafkaTracing {
         assertThat(e.getKey()).isEqualTo("b3");
         assertThat(e.getValue()).endsWith("-0");
       });
-
-    // since the producer was unsampled, the consumer should be unsampled also due to propagation
-
-    // @After will also check that both the producer and consumer were not sampled
   }
 
   @Test public void customSampler_consumer() throws Exception {
@@ -347,8 +350,9 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
+    checkB3Unsampled(records);
 
-    // @After will also check that both the consumer was not sampled
+    // @After will also check that the consumer was not sampled
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {

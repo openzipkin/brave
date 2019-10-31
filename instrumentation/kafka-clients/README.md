@@ -32,7 +32,7 @@ The default sampling policy is to use the default (trace ID) sampler for
 producer and consumer requests.
 
 You can use an [MessagingRuleSampler](../messaging/README.md) to override this
-based on Kafka service or method names.
+based on Kafka topic names.
 
 Ex. Here's a sampler that traces 100 consumer requests per second, except for
 the "alerts" topic. Other requests will use a global rate provided by the
