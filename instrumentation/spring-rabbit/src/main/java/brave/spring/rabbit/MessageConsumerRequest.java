@@ -15,45 +15,45 @@ package brave.spring.rabbit;
 
 import brave.Span;
 import brave.internal.Nullable;
-import brave.messaging.ProducerRequest;
+import brave.messaging.ConsumerRequest;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 
 // intentionally not yet public until we add tag parsing functionality
-final class MessageProducerRequest extends ProducerRequest {
-  static final Getter<MessageProducerRequest, String> GETTER =
-    new Getter<MessageProducerRequest, String>() {
-      @Override public String get(MessageProducerRequest request, String name) {
+final class MessageConsumerRequest extends ConsumerRequest {
+  static final Getter<MessageConsumerRequest, String> GETTER =
+    new Getter<MessageConsumerRequest, String>() {
+      @Override public String get(MessageConsumerRequest request, String name) {
         return request.getHeader(name);
       }
 
       @Override public String toString() {
-        return "MessageProducerRequest::getHeader";
+        return "MessageConsumerRequest::getHeader";
       }
     };
 
-  static final Setter<MessageProducerRequest, String> SETTER =
-    new Setter<MessageProducerRequest, String>() {
-      @Override public void put(MessageProducerRequest request, String name, String value) {
+  static final Setter<MessageConsumerRequest, String> SETTER =
+    new Setter<MessageConsumerRequest, String>() {
+      @Override public void put(MessageConsumerRequest request, String name, String value) {
         request.setHeader(name, value);
       }
 
       @Override public String toString() {
-        return "MessageProducerRequest::setHeader";
+        return "MessageConsumerRequest::setHeader";
       }
     };
 
   final Message delegate;
 
-  MessageProducerRequest(Message delegate) {
+  MessageConsumerRequest(Message delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     this.delegate = delegate;
   }
 
   @Override public Span.Kind spanKind() {
-    return Span.Kind.PRODUCER;
+    return Span.Kind.CONSUMER;
   }
 
   @Override public Object unwrap() {
@@ -61,7 +61,7 @@ final class MessageProducerRequest extends ProducerRequest {
   }
 
   @Override public String operation() {
-    return "send";
+    return "receive";
   }
 
   @Override public String channelKind() {

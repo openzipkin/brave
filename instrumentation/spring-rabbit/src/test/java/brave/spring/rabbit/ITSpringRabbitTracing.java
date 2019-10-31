@@ -14,6 +14,7 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.ArrayList;
@@ -203,39 +204,39 @@ public class ITSpringRabbitTracing {
   }
 
   @Configuration
-  public static class CommonRabbitConfig {
+  static class CommonRabbitConfig {
     @Bean
-    public ConnectionFactory connectionFactory() {
+    ConnectionFactory connectionFactory() {
       CachingConnectionFactory result = new CachingConnectionFactory();
       result.setAddresses("127.0.0.1");
       return result;
     }
 
     @Bean
-    public Exchange exchange() {
+    Exchange exchange() {
       return ExchangeBuilder.topicExchange("test-exchange").durable(true).build();
     }
 
     @Bean
-    public Queue queue() {
+    Queue queue() {
       return new Queue("test-queue");
     }
 
     @Bean
-    public Binding binding(Exchange exchange, Queue queue) {
+    Binding binding(Exchange exchange, Queue queue) {
       return BindingBuilder.bind(queue).to(exchange).with("test.binding").noargs();
     }
 
     @Bean
-    public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
+    AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
       return new RabbitAdmin(connectionFactory);
     }
   }
 
   @Configuration
-  public static class RabbitProducerConfig {
+  static class RabbitProducerConfig {
     @Bean
-    public Tracing tracing(BlockingQueue<Span> producerSpans) {
+    Tracing tracing(BlockingQueue<Span> producerSpans) {
       return Tracing.newBuilder()
         .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
           .addScopeDecorator(StrictScopeDecorator.create())
@@ -246,17 +247,17 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
+    SpringRabbitTracing springRabbitTracing(Tracing tracing) {
       return SpringRabbitTracing.create(tracing);
     }
 
     @Bean
-    public BlockingQueue<Span> producerSpans() {
+    BlockingQueue<Span> producerSpans() {
       return new LinkedBlockingQueue<>();
     }
 
     @Bean
-    public RabbitTemplate newRabbitTemplate(
+    RabbitTemplate newRabbitTemplate(
       ConnectionFactory connectionFactory,
       SpringRabbitTracing springRabbitTracing
     ) {
@@ -266,7 +267,7 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public RabbitTemplate decorateRabbitTemplate(
+    RabbitTemplate decorateRabbitTemplate(
       ConnectionFactory connectionFactory,
       SpringRabbitTracing springRabbitTracing
     ) {
@@ -276,14 +277,14 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public HelloWorldProducer tracingRabbitProducer_new(
+    HelloWorldProducer tracingRabbitProducer_new(
       @Qualifier("newRabbitTemplate") RabbitTemplate newRabbitTemplate
     ) {
       return new HelloWorldProducer(newRabbitTemplate);
     }
 
     @Bean
-    public HelloWorldProducer tracingRabbitProducer_decorate(
+    HelloWorldProducer tracingRabbitProducer_decorate(
       @Qualifier("decorateRabbitTemplate") RabbitTemplate newRabbitTemplate
     ) {
       return new HelloWorldProducer(newRabbitTemplate);
@@ -292,9 +293,9 @@ public class ITSpringRabbitTracing {
 
   @EnableRabbit
   @Configuration
-  public static class RabbitConsumerConfig {
+  static class RabbitConsumerConfig {
     @Bean
-    public Tracing tracing(BlockingQueue<Span> consumerSpans) {
+    Tracing tracing(BlockingQueue<Span> consumerSpans) {
       return Tracing.newBuilder()
         .localServiceName("spring-amqp-consumer")
         .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
@@ -305,17 +306,22 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public SpringRabbitTracing springRabbitTracing(Tracing tracing) {
-      return SpringRabbitTracing.create(tracing);
+    MessagingTracing messagingTracing(Tracing tracing) {
+      return MessagingTracing.create(tracing);
     }
 
     @Bean
-    public BlockingQueue<Span> consumerSpans() {
+    SpringRabbitTracing springRabbitTracing(MessagingTracing messagingTracing) {
+      return SpringRabbitTracing.create(messagingTracing);
+    }
+
+    @Bean
+    BlockingQueue<Span> consumerSpans() {
       return new LinkedBlockingQueue<>();
     }
 
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+    SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
       ConnectionFactory connectionFactory,
       SpringRabbitTracing springRabbitTracing
     ) {
@@ -328,13 +334,13 @@ public class ITSpringRabbitTracing {
     }
 
     @Bean
-    public HelloWorldConsumer helloWorldRabbitConsumer() {
+    HelloWorldConsumer helloWorldRabbitConsumer() {
       return new HelloWorldConsumer();
     }
   }
 
-  private static class HelloWorldProducer {
-    private final RabbitTemplate newRabbitTemplate;
+  static class HelloWorldProducer {
+    final RabbitTemplate newRabbitTemplate;
 
     HelloWorldProducer(RabbitTemplate newRabbitTemplate) {
       this.newRabbitTemplate = newRabbitTemplate;
@@ -349,31 +355,31 @@ public class ITSpringRabbitTracing {
     }
   }
 
-  private static class HelloWorldConsumer {
-    private CountDownLatch countDownLatch;
-    private Message capturedMessage;
+  static class HelloWorldConsumer {
+    CountDownLatch countDownLatch;
+    Message capturedMessage;
 
     HelloWorldConsumer() {
       this.countDownLatch = new CountDownLatch(1);
     }
 
     @RabbitListener(queues = "test-queue")
-    public void testReceiveRabbit(Message message) {
+    void testReceiveRabbit(Message message) {
       this.capturedMessage = message;
       this.countDownLatch.countDown();
     }
 
-    public void reset() {
+    void reset() {
       this.countDownLatch = new CountDownLatch(1);
       this.capturedMessage = null;
     }
 
-    public CountDownLatch getCountDownLatch() {
+    CountDownLatch getCountDownLatch() {
       return countDownLatch;
     }
   }
 
-  private static class ITSpringAmqpTracingTestFixture {
+  static class ITSpringAmqpTracingTestFixture {
     ApplicationContext producerContext;
     ApplicationContext consumerContext;
     BlockingQueue<Span> producerSpans;
@@ -386,46 +392,46 @@ public class ITSpringRabbitTracing {
       consumerSpans = (BlockingQueue<Span>) consumerContext.getBean("consumerSpans");
     }
 
-    private void reset() {
+    void reset() {
       HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.reset();
       producerSpans.clear();
       consumerSpans.clear();
     }
 
-    private ApplicationContext producerSpringContext() {
+    ApplicationContext producerSpringContext() {
       return createContext(CommonRabbitConfig.class, RabbitProducerConfig.class);
     }
 
-    private ApplicationContext createContext(Class... configurationClasses) {
+    ApplicationContext createContext(Class... configurationClasses) {
       AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
       producerContext.register(configurationClasses);
       producerContext.refresh();
       return producerContext;
     }
 
-    private ApplicationContext consumerSpringContext() {
+    ApplicationContext consumerSpringContext() {
       return createContext(CommonRabbitConfig.class, RabbitConsumerConfig.class);
     }
 
-    private void produceMessage() {
+    void produceMessage() {
       HelloWorldProducer rabbitProducer =
         producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
-    private void produceMessageFromDefault() {
+    void produceMessageFromDefault() {
       HelloWorldProducer rabbitProducer =
         producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
       rabbitProducer.send();
     }
 
-    private void awaitMessageConsumed() throws InterruptedException {
+    void awaitMessageConsumed() throws InterruptedException {
       HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       consumer.getCountDownLatch().await();
     }
 
-    private Message capturedMessage() {
+    Message capturedMessage() {
       HelloWorldConsumer consumer = consumerContext.getBean(HelloWorldConsumer.class);
       return consumer.capturedMessage;
     }
