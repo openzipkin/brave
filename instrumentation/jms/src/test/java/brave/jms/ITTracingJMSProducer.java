@@ -14,7 +14,10 @@
 package brave.jms;
 
 import brave.ScopedSpan;
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
+import brave.sampler.Sampler;
 import java.util.Collections;
 import java.util.Map;
 import javax.jms.CompletionListener;
@@ -29,6 +32,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,12 +49,17 @@ public class ITTracingJMSProducer extends JmsTest {
 
   @Before public void setup() {
     context = jms.newContext();
+    consumer = context.createConsumer(jms.queue);
+
+    setupTracedProducer(jmsTracing);
+  }
+
+  void setupTracedProducer(JmsTracing jmsTracing) {
+    if (tracedContext != null) tracedContext.close();
     tracedContext = jmsTracing.connectionFactory(jms.factory)
       .createContext(JMSContext.AUTO_ACKNOWLEDGE);
-
     producer = tracedContext.createProducer();
     existingProperties.forEach(producer::setProperty);
-    consumer = context.createConsumer(jms.queue);
   }
 
   @After public void tearDownTraced() {
@@ -145,6 +154,25 @@ public class ITTracingJMSProducer extends JmsTest {
     assertThat(producerSpan.timestampAsLong()).isPositive();
     assertThat(producerSpan.durationAsLong()).isPositive();
     assertThat(producerSpan.tags()).containsKeys("onCompletion");
+  }
+
+  @Test public void customSampler() throws Exception {
+    setupTracedProducer(JmsTracing.create(MessagingTracing.newBuilder(tracing)
+      .producerSampler(MessagingRuleSampler.newBuilder()
+        .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
+        .build()).build()));
+
+    producer.send(jms.queue, "foo");
+
+    Message received = consumer.receive();
+
+    assertThat(propertiesToMap(received))
+      .containsAllEntriesOf(existingProperties)
+      .containsKey("b3")
+      // Check that the injected context was not sampled
+      .satisfies(m -> assertThat(m.get("b3")).endsWith("-0"));
+
+    // @After will also check that the producer was not sampled
   }
 
   // TODO: find a way to test error callbacks. See ITJms_2_0_TracingMessageProducer.should_complete_on_error_callback
