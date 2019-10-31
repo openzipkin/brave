@@ -29,9 +29,9 @@ abstract class TracingFilter<K, V, R> {
   final boolean filterNot;
   ProcessorContext processorContext;
 
-  TracingFilter(KafkaStreamsTracing tracing, String spanName,
+  TracingFilter(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     Predicate<K, V> delegatePredicate, boolean filterNot) {
-    this.kafkaStreamsTracing = tracing;
+    this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegatePredicate = delegatePredicate;
