@@ -25,7 +25,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.GETTER;
+import static brave.jms.MessagePropagation.GETTER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITJms_2_0_TracingMessageConsumer} */

@@ -16,27 +16,35 @@ package brave.jms;
 import brave.Span;
 import brave.Tracer;
 import brave.internal.Nullable;
+import brave.messaging.MessagingRequest;
+import brave.messaging.ProducerRequest;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import javax.jms.Destination;
+import brave.sampler.SamplerFunction;
 
-abstract class TracingProducer<P, M> {
-  final P delegate;
+abstract class TracingProducer<R extends ProducerRequest> {
   final JmsTracing jmsTracing;
   final Tracer tracer;
   final CurrentTraceContext current;
+  final Extractor<R> extractor;
+  final Injector<R> injector;
+  final SamplerFunction<MessagingRequest> sampler;
   @Nullable final String remoteServiceName;
 
-  TracingProducer(P delegate, JmsTracing jmsTracing) {
-    this.delegate = delegate;
+  TracingProducer(Extractor<R> extractor, Injector<R> injector, JmsTracing jmsTracing) {
     this.jmsTracing = jmsTracing;
     this.tracer = jmsTracing.tracing.tracer();
     this.current = jmsTracing.tracing.currentTraceContext();
+    this.extractor = extractor;
+    this.injector = injector;
+    this.sampler = jmsTracing.producerSampler;
     this.remoteServiceName = jmsTracing.remoteServiceName;
   }
 
-  Span createAndStartProducerSpan(Destination destination, M message) {
+  Span createAndStartProducerSpan(R request) {
     TraceContext maybeParent = current.get();
     // Unlike message consumers, we try current span before trying extraction. This is the proper
     // order because the span in scope should take precedence over a potentially stale header entry.
@@ -46,26 +54,20 @@ abstract class TracingProducer<P, M> {
     // a clear.
     Span span;
     if (maybeParent == null) {
-      span = tracer.nextSpan(extract(message));
+      TraceContextOrSamplingFlags extracted = extractor.extract(request);
+      span = jmsTracing.nextMessagingSpan(sampler, request, extracted);
     } else {
       span = tracer.newChild(maybeParent);
     }
 
     if (!span.isNoop()) {
       span.kind(Span.Kind.PRODUCER).name("send");
-      if (destination == null) destination = destination(message);
-      if (destination != null) jmsTracing.tagQueueOrTopic(destination, span);
+      jmsTracing.tagQueueOrTopic(request, span);
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       span.start();
     }
 
-    addB3SingleHeader(message, span.context());
+    injector.inject(span.context(), request);
     return span;
   }
-
-  abstract void addB3SingleHeader(M message, TraceContext context);
-
-  abstract TraceContextOrSamplingFlags extract(M message);
-
-  @Nullable abstract Destination destination(M message);
 }

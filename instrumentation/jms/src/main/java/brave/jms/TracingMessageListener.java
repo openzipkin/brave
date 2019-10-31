@@ -17,12 +17,17 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
+import brave.messaging.MessagingRequest;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.internal.Throwables.propagateIfFatal;
+import static brave.jms.MessageParser.destination;
 
 /**
  * When {@link #addConsumerSpan} this creates 2 spans:
@@ -34,7 +39,6 @@ import static brave.internal.Throwables.propagateIfFatal;
  * <p>{@link #addConsumerSpan} should only be set when the message consumer is not traced.
  */
 final class TracingMessageListener implements MessageListener {
-
   /** Creates a message listener which also adds a consumer span. */
   static MessageListener create(MessageListener delegate, JmsTracing jmsTracing) {
     if (delegate instanceof TracingMessageListener) return delegate;
@@ -45,6 +49,9 @@ final class TracingMessageListener implements MessageListener {
   final JmsTracing jmsTracing;
   final Tracing tracing;
   final Tracer tracer;
+  final Extractor<MessageConsumerRequest> extractor;
+  final Injector<MessageConsumerRequest> injector;
+  final SamplerFunction<MessagingRequest> sampler;
   final String remoteServiceName;
   final boolean addConsumerSpan;
 
@@ -52,7 +59,10 @@ final class TracingMessageListener implements MessageListener {
     this.delegate = delegate;
     this.jmsTracing = jmsTracing;
     this.tracing = jmsTracing.tracing;
-    this.tracer = jmsTracing.tracing.tracer();
+    this.tracer = jmsTracing.tracer;
+    this.extractor = jmsTracing.messageConsumerExtractor;
+    this.sampler = jmsTracing.consumerSampler;
+    this.injector = jmsTracing.messageConsumerInjector;
     this.remoteServiceName = jmsTracing.remoteServiceName;
     this.addConsumerSpan = addConsumerSpan;
   }
@@ -72,17 +82,22 @@ final class TracingMessageListener implements MessageListener {
 
   Span startMessageListenerSpan(Message message) {
     if (!addConsumerSpan) return jmsTracing.nextSpan(message).name("on-message").start();
-    TraceContextOrSamplingFlags extracted = jmsTracing.extractAndClearMessage(message);
+
+    MessageConsumerRequest request = new MessageConsumerRequest(message, destination(message));
+
+    TraceContextOrSamplingFlags extracted =
+      jmsTracing.extractAndClearProperties(extractor, request, message);
+    Span consumerSpan = jmsTracing.nextMessagingSpan(sampler, request, extracted);
 
     // JMS has no visibility of the incoming message, which incidentally could be local!
-    Span consumerSpan = tracer.nextSpan(extracted).kind(CONSUMER).name("receive");
+    consumerSpan.kind(CONSUMER).name("receive");
     Span listenerSpan = tracer.newChild(consumerSpan.context());
 
     if (!consumerSpan.isNoop()) {
       long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
       consumerSpan.start(timestamp);
       if (remoteServiceName != null) consumerSpan.remoteServiceName(remoteServiceName);
-      jmsTracing.tagQueueOrTopic(message, consumerSpan);
+      jmsTracing.tagQueueOrTopic(request, consumerSpan);
       long consumerFinish = timestamp + 1L; // save a clock reading
       consumerSpan.finish(consumerFinish);
 

@@ -37,7 +37,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.SETTER;
+import static brave.jms.MessagePropagation.SETTER;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
