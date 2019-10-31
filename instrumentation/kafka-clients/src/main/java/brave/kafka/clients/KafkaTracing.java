@@ -89,6 +89,7 @@ public final class KafkaTracing {
   final Tracer tracer;
   final Extractor<KafkaProducerRequest> producerExtractor;
   final Extractor<KafkaConsumerRequest> consumerExtractor;
+  final Extractor<Headers> processorExtractor;
   final Injector<KafkaProducerRequest> producerInjector;
   final Injector<KafkaConsumerRequest> consumerInjector;
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
@@ -101,6 +102,7 @@ public final class KafkaTracing {
     Propagation<String> propagation = messagingTracing.tracing().propagation();
     this.producerExtractor = propagation.extractor(KafkaProducerRequest::getHeader);
     this.consumerExtractor = propagation.extractor(KafkaConsumerRequest::getHeader);
+    this.processorExtractor = propagation.extractor(KafkaPropagation.GETTER);
     this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
     this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
     this.producerSampler = messagingTracing.producerSampler();
@@ -138,17 +140,18 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    KafkaConsumerRequest request = new KafkaConsumerRequest(record);
+    // Eventhough the type is ConsumerRecord, this is not a (remote) consumer span. Only "poll"
+    // events create consumer spans. Since this is a processor span, we use the normal sampler.
     TraceContextOrSamplingFlags extracted =
-      extractAndClearHeaders(consumerExtractor, request, record.headers());
-    Span result = nextSpan(consumerSampler, request, extracted);
+      extractAndClearHeaders(processorExtractor, record.headers(), record.headers());
+    Span result = tracer.nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(record, result);
     }
     return result;
   }
 
-  <R extends MessagingRequest> TraceContextOrSamplingFlags extractAndClearHeaders(
+  <R> TraceContextOrSamplingFlags extractAndClearHeaders(
     Extractor<R> extractor, R request, Headers headers
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
