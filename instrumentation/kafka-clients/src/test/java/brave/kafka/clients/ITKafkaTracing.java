@@ -313,6 +313,16 @@ public class ITKafkaTracing {
 
     assertThat(records).hasSize(1);
 
+    // Check that the injected context was not sampled
+    assertThat(records)
+      .extracting(ConsumerRecord::headers)
+      .flatExtracting(TracingConsumerTest::lastHeaders)
+      .hasSize(1)
+      .allSatisfy(e -> {
+        assertThat(e.getKey()).isEqualTo("b3");
+        assertThat(e.getValue()).endsWith("-0");
+      });
+
     // since the producer was unsampled, the consumer should be unsampled also due to propagation
 
     // @After will also check that both the producer and consumer were not sampled
