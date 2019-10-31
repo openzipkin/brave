@@ -80,8 +80,8 @@
     <errorprone.version>2.3.3</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.17.0</zipkin.version>
-    <zipkin-reporter.version>2.10.3</zipkin-reporter.version>
+    <zipkin.version>2.19.0</zipkin.version>
+    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
     <spring4.version>4.3.25.RELEASE</spring4.version>
@@ -101,7 +101,7 @@
 
     <finagle.version>19.9.0</finagle.version>
     <log4j.version>2.12.1</log4j.version>
-    <okhttp.version>4.2.0</okhttp.version>
+    <okhttp.version>4.2.2</okhttp.version>
     <httpclient.version>4.5.10</httpclient.version>
 
     <grpc.version>1.23.0</grpc.version>

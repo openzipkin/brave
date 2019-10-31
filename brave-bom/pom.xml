@@ -29,8 +29,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.17.0</zipkin.version>
-    <zipkin-reporter.version>2.10.3</zipkin-reporter.version>
+    <zipkin.version>2.19.0</zipkin.version>
+    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
   </properties>
 
   <organization>
