@@ -50,13 +50,13 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
     }
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      VR transform = delegateTransformer.transform(v);
-      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
-      return transform;
+      return delegateTransformer.transform(v);
     } catch (RuntimeException | Error e) {
       span.error(e); // finish as an exception means the callback won't finish the span
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
       span.finish();
     }
   }
