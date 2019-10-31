@@ -285,15 +285,18 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
     try (MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
       .consumerSampler(consumerSampler)
-      .build();
-         Session session = JmsTracing.create(messagingTracing).connection(jms.connection)
-           .createSession(false, Session.AUTO_ACKNOWLEDGE);
-         MessageConsumer consumer = session.createConsumer(jms.queue)
-    ) {
+      .build()) {
+
+      // JMS 1.1 didn't have auto-closeable. tearDownTraced closes these
+      tracedQueueSession = JmsTracing.create(messagingTracing)
+        .queueConnection(jms.queueConnection)
+        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      messageConsumer = tracedQueueSession.createConsumer(jms.queue);
+
       queueSender.send(message);
 
       // Check that the message headers are not sampled
-      assertThat(consumer.receive().getStringProperty("b3"))
+      assertThat(messageConsumer.receive().getStringProperty("b3"))
         .endsWith("-0");
     }
 

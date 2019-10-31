@@ -218,19 +218,23 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Test public void customSampler() throws Exception {
+    queueSender.close();
+    tracedQueueSession.close();
+
     MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
       .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
       .build();
 
     try (MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
       .producerSampler(producerSampler)
-      .build();
-         QueueSession session = JmsTracing.create(messagingTracing)
-           .queueConnection(jms.queueConnection)
-           .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
-         QueueSender sender = session.createSender(jms.queue)
-    ) {
-      sender.send(message);
+      .build()) {
+      // JMS 1.1 didn't have auto-closeable. tearDownTraced closes these
+      tracedQueueSession = JmsTracing.create(messagingTracing)
+        .queueConnection(jms.queueConnection)
+        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      queueSender = tracedQueueSession.createSender(jms.queue);
+
+      queueSender.send(message);
     }
 
     Message received = queueReceiver.receive();
