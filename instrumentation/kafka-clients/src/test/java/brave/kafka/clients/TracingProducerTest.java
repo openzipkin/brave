@@ -18,20 +18,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.producer.MockProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Test;
 import zipkin2.Span;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class TracingProducerTest extends BaseTracingTest {
   MockProducer<Object, String> mockProducer = new MockProducer<>();
   KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
-  Producer<Object, String> tracingProducer = kafkaTracing.producer(mockProducer);
+  TracingProducer<Object, String> tracingProducer =
+    (TracingProducer<Object, String>) kafkaTracing.producer(mockProducer);
 
   @Test public void should_add_b3_headers_to_records() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
@@ -41,78 +40,50 @@ public class TracingProducerTest extends BaseTracingTest {
       .map(Header::key)
       .collect(Collectors.toList());
 
-    List<String> expectedHeaders = Arrays.asList(
-      "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
-
-    assertThat(headerKeys).containsAll(expectedHeaders);
+    assertThat(headerKeys).containsOnly("b3");
   }
 
-  @Test public void should_add_b3_headers_to_records_and_try_to_extract() {
-    ProducerRecord<Object, String> record =
-      new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+  @Test public void should_add_b3_headers_when_other_headers_exist() throws InterruptedException {
+    ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     record.headers().add("tx-id", "1".getBytes());
     tracingProducer.send(record);
+    mockProducer.completeNext();
 
-    List<String> headerKeys = mockProducer.history().stream()
-      .flatMap(records -> Arrays.stream(records.headers().toArray()))
-      .map(Header::key)
-      .collect(Collectors.toList());
-
-    List<String> expectedHeaders = Arrays.asList(
-      "X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
-
-    assertThat(headerKeys).containsAll(expectedHeaders);
+    Span producerSpan = takeSpan(spans);
+    assertThat(lastHeaders(mockProducer))
+      .containsEntry("tx-id", "1")
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_add_parent_trace_when_context_exist() {
+  @Test public void should_inject_child_context() throws InterruptedException {
     ScopedSpan scopedSpan = tracing.tracer().startScopedSpan("main");
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    mockProducer.completeNext();
     scopedSpan.finish();
 
-    List<String> headerKeys = mockProducer.history().stream()
-      .flatMap(records -> Arrays.stream(records.headers().toArray()))
-      .map(Header::key)
-      .collect(Collectors.toList());
+    Span producerSpan = takeSpan(spans);
+    assertThat(lastHeaders(mockProducer))
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
 
-    List<String> expectedHeaders = Arrays.asList(
-      "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
-
-    assertThat(headerKeys).containsAll(expectedHeaders);
+    assertThat(producerSpan.parentId())
+      .isEqualTo(takeSpan(spans).id());
   }
 
-  @Test public void should_add_parent_trace_when_context_injected_on_headers() {
+  @Test public void should_add_parent_trace_when_context_injected_on_headers()
+    throws InterruptedException {
     brave.Span span = tracing.tracer().newTrace().start();
     ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
-    kafkaTracing.injector.inject(span.context(), record.headers());
+    tracingProducer.injector.inject(span.context(), new KafkaProducerRequest(record));
+    tracingProducer.send(record);
+    mockProducer.completeNext();
     span.finish();
 
-    tracingProducer.send(record);
+    Span producerSpan = takeSpan(spans);
+    assertThat(lastHeaders(mockProducer))
+      .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
 
-    List<String> headerKeys = mockProducer.history().stream()
-      .flatMap(records -> Arrays.stream(records.headers().toArray()))
-      .map(Header::key)
-      .collect(Collectors.toList());
-
-    List<String> expectedHeaders = Arrays.asList(
-      "X-B3-TraceId", "X-B3-ParentSpanId", "X-B3-SpanId", "X-B3-Sampled");
-
-    assertThat(headerKeys).containsAll(expectedHeaders);
-  }
-
-  @Test public void should_add_b3_single_header_to_message() {
-    tracingProducer = KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
-      .producer(mockProducer);
-
-    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
-
-    List<Header> headers = mockProducer.history().stream()
-      .flatMap(records -> Arrays.stream(records.headers().toArray()))
-      .collect(Collectors.toList());
-
-    assertThat(headers).hasSize(1);
-    assertThat(headers.get(0).key()).isEqualTo("b3");
-    assertThat(new String(headers.get(0).value(), UTF_8))
-      .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
+    assertThat(producerSpan.parentId())
+      .isEqualTo(takeSpan(spans).id());
   }
 
   @Test public void should_call_wrapped_producer() {

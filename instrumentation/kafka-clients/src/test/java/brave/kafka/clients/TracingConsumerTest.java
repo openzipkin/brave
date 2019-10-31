@@ -13,7 +13,6 @@
  */
 package brave.kafka.clients;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -71,7 +70,7 @@ public class TracingConsumerTest extends BaseTracingTest {
   public void should_call_wrapped_poll_and_close_spans_with_duration() {
     consumer.addRecord(fakeRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
-    tracingConsumer.poll(Duration.ofMillis(10));
+    tracingConsumer.poll(10);
 
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
@@ -103,12 +102,12 @@ public class TracingConsumerTest extends BaseTracingTest {
       .extracting(ConsumerRecord::headers)
       .flatExtracting(TracingConsumerTest::lastHeaders)
       .extracting(Map.Entry::getKey)
-      .contains("X-B3-TraceId", "X-B3-SpanId");
+      .containsOnly("b3");
   }
 
   @Test
   public void should_createChildOfTraceHeaders() throws Exception {
-    addB3Headers(fakeRecord);
+    addB3MultiHeaders(fakeRecord);
     consumer.addRecord(fakeRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
@@ -117,7 +116,11 @@ public class TracingConsumerTest extends BaseTracingTest {
     assertThat(poll)
       .extracting(ConsumerRecord::headers)
       .flatExtracting(TracingConsumerTest::lastHeaders)
-      .contains(entry("X-B3-TraceId", TRACE_ID), entry("X-B3-ParentSpanId", SPAN_ID));
+      .hasSize(1)
+      .allSatisfy(e -> {
+        assertThat(e.getKey()).isEqualTo("b3");
+        assertThat(e.getValue()).startsWith(TRACE_ID);
+      });
   }
 
   @Test

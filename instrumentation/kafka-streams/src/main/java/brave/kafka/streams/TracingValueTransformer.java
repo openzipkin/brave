@@ -30,7 +30,7 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
   TracingValueTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     ValueTransformer<V, VR> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.kafkaTracing().tracing().tracer();
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
@@ -50,13 +50,13 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
     }
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      VR transform = delegateTransformer.transform(v);
-      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
-      return transform;
+      return delegateTransformer.transform(v);
     } catch (RuntimeException | Error e) {
       span.error(e); // finish as an exception means the callback won't finish the span
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
       span.finish();
     }
   }

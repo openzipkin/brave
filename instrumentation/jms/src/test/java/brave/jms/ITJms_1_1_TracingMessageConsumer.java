@@ -13,6 +13,9 @@
  */
 package brave.jms;
 
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
+import brave.sampler.Sampler;
 import java.util.Collections;
 import java.util.Map;
 import javax.jms.BytesMessage;
@@ -36,8 +39,9 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.GETTER;
-import static brave.jms.JmsTracing.SETTER;
+import static brave.jms.MessagePropagation.GETTER;
+import static brave.jms.MessagePropagation.SETTER;
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
@@ -269,5 +273,33 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
     assertThat(received.getStringProperty("b3"))
       .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+  }
+
+  @Test public void receive_customSampler() throws Exception {
+    queueReceiver.close();
+    tracedSession.close();
+
+    MessagingRuleSampler consumerSampler = MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
+      .build();
+
+    try (MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
+      .consumerSampler(consumerSampler)
+      .build()) {
+
+      // JMS 1.1 didn't have auto-closeable. tearDownTraced closes these
+      tracedQueueSession = JmsTracing.create(messagingTracing)
+        .queueConnection(jms.queueConnection)
+        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      messageConsumer = tracedQueueSession.createConsumer(jms.queue);
+
+      queueSender.send(message);
+
+      // Check that the message headers are not sampled
+      assertThat(messageConsumer.receive().getStringProperty("b3"))
+        .endsWith("-0");
+    }
+
+    // @After will also check that the consumer was not sampled
   }
 }

@@ -29,10 +29,10 @@ abstract class TracingFilter<K, V, R> {
   final boolean filterNot;
   ProcessorContext processorContext;
 
-  TracingFilter(KafkaStreamsTracing tracing, String spanName,
+  TracingFilter(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     Predicate<K, V> delegatePredicate, boolean filterNot) {
-    this.kafkaStreamsTracing = tracing;
-    this.tracer = kafkaStreamsTracing.kafkaTracing().tracing().tracer();
+    this.kafkaStreamsTracing = kafkaStreamsTracing;
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegatePredicate = delegatePredicate;
     this.filterNot = filterNot;
@@ -61,6 +61,8 @@ abstract class TracingFilter<K, V, R> {
       span.error(e); // finish as an exception means the callback won't finish the span
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
       span.finish();
     }
   }

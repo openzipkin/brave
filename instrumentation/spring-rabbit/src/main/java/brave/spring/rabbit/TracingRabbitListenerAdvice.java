@@ -18,7 +18,11 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.messaging.MessagingRequest;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import com.rabbitmq.client.Channel;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -49,12 +53,18 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
   final SpringRabbitTracing springRabbitTracing;
   final Tracing tracing;
   final Tracer tracer;
+  final Extractor<MessageConsumerRequest> extractor;
+  final Injector<MessageConsumerRequest> injector;
+  final SamplerFunction<MessagingRequest> sampler;
   @Nullable final String remoteServiceName;
 
   TracingRabbitListenerAdvice(SpringRabbitTracing springRabbitTracing) {
     this.springRabbitTracing = springRabbitTracing;
     this.tracing = springRabbitTracing.tracing;
     this.tracer = tracing.tracer();
+    this.extractor = springRabbitTracing.consumerExtractor;
+    this.sampler = springRabbitTracing.consumerSampler;
+    this.injector = springRabbitTracing.consumerInjector;
     this.remoteServiceName = springRabbitTracing.remoteServiceName;
   }
 
@@ -64,10 +74,13 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
     Message message = (Message) methodInvocation.getArguments()[1];
-    TraceContextOrSamplingFlags extracted = springRabbitTracing.extractAndClearHeaders(message);
+    MessageConsumerRequest request = new MessageConsumerRequest(message);
+
+    TraceContextOrSamplingFlags extracted =
+      springRabbitTracing.extractAndClearHeaders(extractor, request, message);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
-    Span consumerSpan = tracer.nextSpan(extracted);
+    Span consumerSpan = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);
     Span listenerSpan = tracer.newChild(consumerSpan.context());
 
     if (!consumerSpan.isNoop()) {

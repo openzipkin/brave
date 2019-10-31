@@ -13,13 +13,17 @@
  */
 package brave.spring.rabbit;
 
+import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.B3SingleFormat;
+import brave.messaging.MessagingRequest;
+import brave.messaging.MessagingTracing;
+import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,9 +37,6 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
-import static brave.spring.rabbit.SpringRabbitPropagation.B3_SINGLE_TEST_HEADERS;
-import static brave.spring.rabbit.SpringRabbitPropagation.TEST_CONTEXT;
-
 /**
  * Factory for Brave instrumented Spring Rabbit classes.
  */
@@ -47,21 +48,30 @@ public final class SpringRabbitTracing {
     RABBIT_QUEUE = "rabbit.queue";
 
   public static SpringRabbitTracing create(Tracing tracing) {
-    if (tracing == null) throw new NullPointerException("tracing == null");
-    return new Builder(tracing).build();
+    return newBuilder(tracing).build();
+  }
+
+  /** @since 5.9 */
+  public static SpringRabbitTracing create(MessagingTracing messagingTracing) {
+    return newBuilder(messagingTracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
+    return newBuilder(MessagingTracing.create(tracing));
+  }
+
+  /** @since 5.9 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(messagingTracing);
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final MessagingTracing messagingTracing;
     String remoteServiceName = "rabbitmq";
-    boolean writeB3SingleFormat;
 
-    Builder(Tracing tracing) {
-      this.tracing = tracing;
+    Builder(MessagingTracing messagingTracing) {
+      if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
+      this.messagingTracing = messagingTracing;
     }
 
     /**
@@ -74,13 +84,10 @@ public final class SpringRabbitTracing {
     }
 
     /**
-     * When true, only writes a single {@link B3SingleFormat b3 header} for outbound propagation.
-     *
-     * <p>Use this to reduce overhead. Note: normal {@link Tracing#propagation()} is used to parse
-     * incoming headers. The implementation must be able to read "b3" headers.
+     * @deprecated as of v5.9, this is ignored because single format is default for messaging. Use
+     * {@link B3Propagation#newFactoryBuilder()} to change the default.
      */
-    public Builder writeB3SingleFormat(boolean writeB3SingleFormat) {
-      this.writeB3SingleFormat = writeB3SingleFormat;
+    @Deprecated public Builder writeB3SingleFormat(boolean writeB3SingleFormat) {
       return this;
     }
 
@@ -90,28 +97,30 @@ public final class SpringRabbitTracing {
   }
 
   final Tracing tracing;
-  final Extractor<MessageProperties> extractor;
-  final Injector<MessageProperties> injector;
-  final List<String> propagationKeys;
+  final Tracer tracer;
+  final Extractor<MessageProducerRequest> producerExtractor;
+  final Extractor<MessageConsumerRequest> consumerExtractor;
+  final Extractor<MessageProperties> processorExtractor;
+  final Injector<MessageProducerRequest> producerInjector;
+  final Injector<MessageConsumerRequest> consumerInjector;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
+  final String[] propagationKeys;
   final String remoteServiceName;
   final Field beforePublishPostProcessorsField;
 
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(SpringRabbitPropagation.GETTER);
-    List<String> keyList = builder.tracing.propagation().keys();
-    // Use a more efficient injector if we are only propagating a single header
-    if (builder.writeB3SingleFormat || keyList.equals(Propagation.B3_SINGLE_STRING.keys())) {
-      TraceContext testExtraction = extractor.extract(B3_SINGLE_TEST_HEADERS).context();
-      if (!TEST_CONTEXT.equals(testExtraction)) {
-        throw new IllegalArgumentException(
-          "SpringRabbitTracing.Builder.writeB3SingleFormat set, but Tracing.Builder.propagationFactory cannot parse this format!");
-      }
-      this.injector = SpringRabbitPropagation.B3_SINGLE_INJECTOR;
-    } else {
-      this.injector = tracing.propagation().injector(SpringRabbitPropagation.SETTER);
-    }
-    this.propagationKeys = keyList;
+    this.tracing = builder.messagingTracing.tracing();
+    this.tracer = tracing.tracer();
+    MessagingTracing messagingTracing = builder.messagingTracing;
+    Propagation<String> propagation = tracing.propagation();
+    this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
+    this.consumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
+    this.processorExtractor = propagation.extractor(SpringRabbitPropagation.GETTER);
+    this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
+    this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
+    this.producerSampler = messagingTracing.producerSampler();
+    this.consumerSampler = messagingTracing.consumerSampler();
+    this.propagationKeys = propagation.keys().toArray(new String[0]);
     this.remoteServiceName = builder.remoteServiceName;
     Field beforePublishPostProcessorsField = null;
     try {
@@ -204,17 +213,33 @@ public final class SpringRabbitTracing {
     return factory;
   }
 
-  TraceContextOrSamplingFlags extractAndClearHeaders(Message message) {
-    MessageProperties messageProperties = message.getMessageProperties();
-    TraceContextOrSamplingFlags extracted = extractor.extract(messageProperties);
-    Map<String, Object> headers = messageProperties.getHeaders();
-    clearHeaders(headers);
+  <R> TraceContextOrSamplingFlags extractAndClearHeaders(
+    Extractor<R> extractor, R request, Message message
+  ) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
+    // Clear any propagation keys present in the headers
+    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+      MessageProperties properties = message.getMessageProperties();
+      if (properties != null) clearHeaders(properties.getHeaders());
+    }
     return extracted;
   }
 
-  void clearHeaders(Map<String, Object> headers) {
-    for (int i = 0, length = propagationKeys.size(); i < length; i++) {
-      headers.remove(propagationKeys.get(i));
+  /** Creates a potentially noop remote span representing this request */
+  Span nextMessagingSpan(
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
+  ) {
+    Boolean sampled = extracted.sampled();
+    // only recreate the context if the messaging sampler made a decision
+    if (sampled == null && (sampled = sampler.trySample(request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
     }
+    return tracer.nextSpan(extracted);
+  }
+
+  void clearHeaders(Map<String, Object> headers) {
+    for (String key : propagationKeys) headers.remove(key);
   }
 }

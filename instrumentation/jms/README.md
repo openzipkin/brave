@@ -14,7 +14,7 @@ Under the scenes:
 ## Setup
 First, setup the generic Jms component like this:
 ```java
-jmsTracing = JmsTracing.newBuilder(tracing)
+jmsTracing = JmsTracing.newBuilder(messagingTracing)
                        .remoteServiceName("my-broker")
                        .build();
 ```
@@ -31,6 +31,30 @@ producer.send(message);
 of hooks. `JMSConsumer.receive()` followed by `Message.getBody()` is the
 most compatible alternative. If you desire other routes, please raise an
 issue or join https://gitter.im/openzipkin/zipkin
+
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+producer and consumer requests.
+
+You can use an [MessagingRuleSampler](../messaging/README.md) to override this
+based on JMS destination names.
+
+Ex. Here's a sampler that traces 100 consumer requests per second, except for
+the "alerts" topic. Other requests will use a global rate provided by the
+`Tracing` component.
+
+```java
+import brave.sampler.Matchers;
+
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+
+messagingTracingBuilder.consumerSampler(MessagingRuleSampler.newBuilder()
+  .putRule(channelNameEquals("alerts"), Sampler.NEVER_SAMPLE)
+  .putRule(Matchers.alwaysMatch(), RateLimitingSampler.create(100))
+  .build());
+
+jmsTracing = JmsTracing.create(messagingTracing);
+```
 
 ## What's happening?
 Typically, there are three spans involved in message tracing:

@@ -262,6 +262,8 @@ public class HttpTracing implements Closeable {
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
    *
    * <p>This object should not be cached.
+   *
+   * @since 5.9
    */
   @Nullable public static HttpTracing current() {
     return (HttpTracing) CURRENT.get();

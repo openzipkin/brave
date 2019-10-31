@@ -15,11 +15,17 @@ package brave.kafka.streams;
 
 import brave.Span;
 import brave.SpanCustomizer;
+import brave.Tracer;
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Properties;
+import java.util.Set;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
@@ -43,25 +49,27 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 public final class KafkaStreamsTracing {
 
   final KafkaTracing kafkaTracing;
+  final Tracer tracer;
+  final Set<String> propagationKeys;
   final TraceContext.Extractor<Headers> extractor;
   final TraceContext.Injector<Headers> injector;
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.kafkaTracing = builder.kafkaTracing;
-    this.extractor = kafkaTracing.tracing().propagation().extractor(KafkaStreamsPropagation.GETTER);
-    this.injector = kafkaTracing.tracing().propagation().injector(KafkaStreamsPropagation.SETTER);
+    this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
+    Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
+    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
+    this.extractor = propagation.extractor(KafkaStreamsPropagation.GETTER);
+    this.injector = propagation.injector(KafkaStreamsPropagation.SETTER);
   }
 
   public static KafkaStreamsTracing create(Tracing tracing) {
-    return new KafkaStreamsTracing.Builder(KafkaTracing.create(tracing)).build();
+    return create(KafkaTracing.create(tracing));
   }
 
+  /** @since 5.9 */
   public static KafkaStreamsTracing create(KafkaTracing kafkaTracing) {
-    return new KafkaStreamsTracing.Builder(kafkaTracing).build();
-  }
-
-  public KafkaTracing kafkaTracing() {
-    return kafkaTracing;
+    return new Builder(kafkaTracing).build();
   }
 
   /**
@@ -107,7 +115,8 @@ public final class KafkaStreamsTracing {
    *
    * @see TracingKafkaClientSupplier
    */
-  public <K, V> ProcessorSupplier<K, V> processor(String spanName, ProcessorSupplier<K, V> processorSupplier) {
+  public <K, V> ProcessorSupplier<K, V> processor(String spanName,
+    ProcessorSupplier<K, V> processorSupplier) {
     return new TracingProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
@@ -157,7 +166,8 @@ public final class KafkaStreamsTracing {
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(
     String spanName,
     ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKeySupplier) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName, valueTransformerWithKeySupplier);
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName,
+      valueTransformerWithKeySupplier);
   }
 
   /**
@@ -174,10 +184,10 @@ public final class KafkaStreamsTracing {
   public <K, V> ProcessorSupplier<K, V> foreach(String spanName, ForeachAction<K, V> action) {
     return new TracingProcessorSupplier<>(this, spanName, () ->
       new AbstractProcessor<K, V>() {
-      @Override public void process(K key, V value) {
-        action.apply(key, value);
-      }
-    });
+        @Override public void process(K key, V value) {
+          action.apply(key, value);
+        }
+      });
   }
 
   /**
@@ -398,11 +408,25 @@ public final class KafkaStreamsTracing {
 
   Span nextSpan(ProcessorContext context) {
     TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
-    Span result = kafkaTracing.tracing().tracer().nextSpan(extracted);
+    // Clear any propagation keys present in the headers
+    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+      clearHeaders(context.headers());
+    }
+    Span result = tracer.nextSpan(extracted);
     if (!result.isNoop()) {
       addTags(context, result);
     }
     return result;
+  }
+
+  // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
+  // multi, or visa versa.
+  void clearHeaders(Headers headers) {
+    // Headers::remove creates and consumes an iterator each time. This does one loop instead.
+    for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
+      Header next = i.next();
+      if (propagationKeys.contains(next.key())) i.remove();
+    }
   }
 
   public static final class Builder {

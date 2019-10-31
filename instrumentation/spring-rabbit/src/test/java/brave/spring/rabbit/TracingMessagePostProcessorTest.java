@@ -19,7 +19,6 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,8 +51,9 @@ public class TracingMessagePostProcessorTest {
 
     Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
+    assertThat(spans.get(0).parentId()).isEqualTo(parent.spanIdString());
     Map<String, Object> headers = postProcessMessage.getMessageProperties().getHeaders();
-    assertThat(headers).containsEntry("X-B3-ParentSpanId", "0000000000000001");
+    assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
   }
 
   @Test public void should_prefer_current_span() {
@@ -70,18 +70,18 @@ public class TracingMessagePostProcessorTest {
       postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
     }
 
+    assertThat(spans.get(0).parentId()).isEqualTo(parent.spanIdString());
     Map<String, Object> headers = postProcessMessage.getMessageProperties().getHeaders();
-    assertThat(headers).containsEntry("X-B3-ParentSpanId", "0000000000000002");
+    assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
   }
 
   @Test public void should_add_b3_headers_to_message() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
-    List<String> expectedHeaders = Arrays.asList("X-B3-TraceId", "X-B3-SpanId", "X-B3-Sampled");
     Set<String> headerKeys = postProcessMessage.getMessageProperties().getHeaders().keySet();
 
-    assertThat(headerKeys).containsAll(expectedHeaders);
+    assertThat(headerKeys).containsExactly("b3");
   }
 
   @Test public void should_add_b3_single_header_to_message() {

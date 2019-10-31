@@ -29,7 +29,7 @@ import javax.jms.XATopicConnection;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.junit.Test;
 
-import static brave.jms.JmsTracing.SETTER;
+import static brave.jms.MessagePropagation.SETTER;
 import static java.util.Arrays.asList;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;

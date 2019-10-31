@@ -15,8 +15,11 @@ package brave.kafka.clients;
 
 import brave.Span;
 import brave.Tracing;
+import brave.messaging.MessagingRequest;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -36,7 +39,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Headers;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
@@ -47,7 +49,9 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final Consumer<K, V> delegate;
   final KafkaTracing kafkaTracing;
   final Tracing tracing;
-  final Injector<Headers> injector;
+  final Extractor<KafkaConsumerRequest> extractor;
+  final SamplerFunction<MessagingRequest> sampler;
+  final Injector<KafkaConsumerRequest> injector;
   final String remoteServiceName;
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
@@ -62,8 +66,10 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   TracingConsumer(Consumer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
     this.kafkaTracing = kafkaTracing;
-    this.tracing = kafkaTracing.tracing;
-    this.injector = kafkaTracing.injector;
+    this.tracing = kafkaTracing.messagingTracing.tracing();
+    this.extractor = kafkaTracing.consumerExtractor;
+    this.sampler = kafkaTracing.consumerSampler;
+    this.injector = kafkaTracing.consumerInjector;
     this.remoteServiceName = kafkaTracing.remoteServiceName;
   }
 
@@ -84,15 +90,16 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
       List<ConsumerRecord<K, V>> recordsInPartition = records.records(partition);
       for (int i = 0, length = recordsInPartition.size(); i < length; i++) {
         ConsumerRecord<K, V> record = recordsInPartition.get(i);
+        KafkaConsumerRequest request = new KafkaConsumerRequest(record);
         TraceContextOrSamplingFlags extracted =
-          kafkaTracing.extractAndClearHeaders(record.headers());
+          kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // make or reuse a span for this topic
-        if (extracted.samplingFlags() != null && extracted.extra().isEmpty()) {
+        if (extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
           Span span = consumerSpansForTopic.get(topic);
           if (span == null) {
-            span = tracing.tracer().nextSpan(extracted);
+            span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
             if (!span.isNoop()) {
               setConsumerSpan(topic, span);
               // incur timestamp overhead only once
@@ -103,9 +110,9 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             consumerSpansForTopic.put(topic, span);
           }
-          injector.inject(span.context(), record.headers());
+          injector.inject(span.context(), request);
         } else { // we extracted request-scoped data, so cannot share a consumer span.
-          Span span = tracing.tracer().nextSpan(extracted);
+          Span span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
           if (!span.isNoop()) {
             setConsumerSpan(topic, span);
             // incur timestamp overhead only once
@@ -114,7 +121,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             span.start(timestamp).finish(timestamp); // span won't be shared by other records
           }
-          injector.inject(span.context(), record.headers());
+          injector.inject(span.context(), request);
         }
       }
     }

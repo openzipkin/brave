@@ -30,7 +30,7 @@ class TracingProcessor<K, V> implements Processor<K, V> {
   TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
     String spanName, Processor<K, V> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.kafkaTracing().tracing().tracer();
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegateProcessor = delegateProcessor;
   }
@@ -51,11 +51,12 @@ class TracingProcessor<K, V> implements Processor<K, V> {
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       delegateProcessor.process(k, v);
-      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
     } catch (RuntimeException | Error e) {
       span.error(e); // finish as an exception means the callback won't finish the span
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
       span.finish();
     }
   }

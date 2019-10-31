@@ -14,7 +14,10 @@
 package brave.jms;
 
 import brave.ScopedSpan;
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
+import brave.sampler.Sampler;
 import java.util.Collections;
 import java.util.Map;
 import javax.jms.BytesMessage;
@@ -37,7 +40,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.SETTER;
+import static brave.jms.MessagePropagation.SETTER;
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -211,5 +215,34 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
     }
 
     assertThat(takeSpan().tags()).containsKey("error");
+  }
+
+  @Test public void customSampler() throws Exception {
+    queueSender.close();
+    tracedQueueSession.close();
+
+    MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
+      .build();
+
+    try (MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
+      .producerSampler(producerSampler)
+      .build()) {
+      // JMS 1.1 didn't have auto-closeable. tearDownTraced closes these
+      tracedQueueSession = JmsTracing.create(messagingTracing)
+        .queueConnection(jms.queueConnection)
+        .createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+      queueSender = tracedQueueSession.createSender(jms.queue);
+
+      queueSender.send(message);
+    }
+
+    Message received = queueReceiver.receive();
+
+    assertThat(propertiesToMap(received)).containsKey("b3")
+      // Check that the injected context was not sampled
+      .satisfies(m -> assertThat(m.get("b3")).endsWith("-0"));
+
+    // @After will also check that the producer was not sampled
   }
 }

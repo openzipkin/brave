@@ -15,13 +15,16 @@ package brave.jms;
 
 import brave.Span;
 import brave.SpanCustomizer;
+import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
+import brave.messaging.MessagingRequest;
+import brave.messaging.MessagingTracing;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.logging.Level;
@@ -29,14 +32,11 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
-import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
-import javax.jms.Queue;
 import javax.jms.QueueConnection;
-import javax.jms.Topic;
 import javax.jms.TopicConnection;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
@@ -44,7 +44,8 @@ import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
 
 import static brave.internal.Throwables.propagateIfFatal;
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
+import static brave.jms.MessageParser.destination;
+import static brave.jms.MessagePropagation.GETTER;
 
 /** Use this class to decorate your JMS consumer / producer and enable Tracing. */
 public final class JmsTracing {
@@ -56,52 +57,46 @@ public final class JmsTracing {
     static final Logger LOG = Logger.getLogger(JmsTracing.class.getName());
   }
 
-  static final Getter<Message, String> GETTER = new Getter<Message, String>() {
-    @Override public String get(Message message, String name) {
+  // Use nested class to ensure we only check once per classloader
+  private static final class JmsTypes {
+    static final boolean HAS_JMS_PRODUCER = hasJMSProducer();
+
+    static boolean hasJMSProducer() {
       try {
-        return message.getStringProperty(name);
+        Class.forName("javax.jms.JMSProducer");
+        return true; // intentionally doesn't not access the type prior to the above guard
       } catch (Throwable t) {
         propagateIfFatal(t);
-        log(t, "error getting property {0} from message {1}", name, message);
-        return null;
+        return false;
       }
     }
-
-    @Override public String toString() {
-      return "Message::getStringProperty";
-    }
-  };
-
-  static final Setter<Message, String> SETTER = new Setter<Message, String>() {
-    @Override public void put(Message message, String name, String value) {
-      try {
-        message.setStringProperty(name, value);
-      } catch (Throwable t) {
-        propagateIfFatal(t);
-        log(t, "error setting property {0} on message {1}", name, message);
-      }
-    }
-
-    @Override public String toString() {
-      return "Message::setStringProperty";
-    }
-  };
+  }
 
   public static JmsTracing create(Tracing tracing) {
-    return new Builder(tracing).build();
+    return newBuilder(tracing).build();
+  }
+
+  /** @since 5.9 */
+  public static JmsTracing create(MessagingTracing messagingTracing) {
+    return newBuilder(messagingTracing).build();
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return new Builder(tracing);
+    return newBuilder(MessagingTracing.create(tracing));
+  }
+
+  /** @since 5.9 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(messagingTracing);
   }
 
   public static final class Builder {
-    final Tracing tracing;
+    final MessagingTracing messagingTracing;
     String remoteServiceName = "jms";
 
-    Builder(Tracing tracing) {
-      if (tracing == null) throw new NullPointerException("tracing == null");
-      this.tracing = tracing;
+    Builder(MessagingTracing messagingTracing) {
+      if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
+      this.messagingTracing = messagingTracing;
     }
 
     /**
@@ -118,16 +113,40 @@ public final class JmsTracing {
   }
 
   final Tracing tracing;
-  final Extractor<Message> extractor;
+  final Tracer tracer;
+  final Extractor<MessageProducerRequest> messageProducerExtractor;
+  final Injector<MessageProducerRequest> messageProducerInjector;
+  final Extractor<MessageConsumerRequest> messageConsumerExtractor;
+  final Injector<MessageConsumerRequest> messageConsumerInjector;
+  final Extractor<Message> processorExtractor;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
   final Set<String> propagationKeys;
 
-  // Lazy init as a constant eagerly initializes hooks like log4j2 even when the tracer is no-op
-  static volatile Logger logger;
+  // raw types to avoid accessing JMS 2.0 types unless we are sure they are present
+  // Caching here instead of deferring further as there is overhead creating extractors and
+  // injectors, particularly when decorated with extra fields or secondary sampling.
+  @Nullable final Extractor jmsProducerExtractor;
+  @Nullable final Injector jmsProducerInjector;
 
   JmsTracing(Builder builder) { // intentionally hidden constructor
-    this.tracing = builder.tracing;
-    this.extractor = tracing.propagation().extractor(GETTER);
+    this.tracing = builder.messagingTracing.tracing();
+    this.tracer = tracing.tracer();
+    Propagation<String> propagation = tracing.propagation();
+    if (JmsTypes.HAS_JMS_PRODUCER) {
+      this.jmsProducerExtractor = propagation.extractor(JMSProducerRequest.GETTER);
+      this.jmsProducerInjector = propagation.injector(JMSProducerRequest.SETTER);
+    } else {
+      this.jmsProducerExtractor = null;
+      this.jmsProducerInjector = null;
+    }
+    this.messageProducerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
+    this.messageProducerInjector = propagation.injector(MessageProducerRequest.SETTER);
+    this.messageConsumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
+    this.messageConsumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
+    this.processorExtractor = tracing.propagation().extractor(GETTER);
+    this.producerSampler = builder.messagingTracing.producerSampler();
+    this.consumerSampler = builder.messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
     this.propagationKeys = new LinkedHashSet<>(tracing.propagation().keys());
   }
@@ -199,69 +218,52 @@ public final class JmsTracing {
    * <p>In general, prefer {@link MessageListener} for processing messages, as it is more efficient
    * and less lossy with regards to context data.
    *
-   * <p>This creates a child from identifiers extracted from the message message, or a new span if
-   * one couldn't be extracted.
+   * <p>This creates a child from identifiers extracted from the message properties, or a new span
+   * if one couldn't be extracted.
    */
   public Span nextSpan(Message message) {
-    TraceContextOrSamplingFlags extracted = extractAndClearMessage(message);
-    Span result = tracing.tracer().nextSpan(extracted);
+    TraceContextOrSamplingFlags extracted =
+      extractAndClearProperties(processorExtractor, message, message);
+    Span result = tracer.nextSpan(extracted); // Processor spans use the normal sampler.
 
     // When an upstream context was not present, lookup keys are unlikely added
     if (extracted.context() == null && !result.isNoop()) {
-      tagQueueOrTopic(message, result);
+      // simplify code by re-using an existing MessagingRequest impl
+      tagQueueOrTopic(new MessageConsumerRequest(message, destination(message)), result);
     }
     return result;
   }
 
-  TraceContextOrSamplingFlags extractAndClearMessage(Message message) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(message);
+  <R> TraceContextOrSamplingFlags extractAndClearProperties(
+    Extractor<R> extractor, R request, Message message
+  ) {
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
     // message writable
     PropertyFilter.filterProperties(message, propagationKeys);
     return extracted;
   }
 
-  /**
-   * We currently serialize the context as a "b3" message property. We can't add the context as an
-   * Object property because JMS only supports "primitive objects, String, Map and List types".
-   *
-   * <p>Using {@link MessageListener} is preferred where possible, as we can coordinate without
-   * writing "b3", which notably saves us from losing data in {@link TraceContext#extra()}.
-   */
-  void setNextParent(Message message, TraceContext context) {
-    addB3SingleHeader(message, context);
-  }
-
-  /** This is only safe to call after {@link JmsTracing#extractAndClearMessage(Message)} */
-  static void addB3SingleHeader(Message message, TraceContext context) {
-    SETTER.put(message, "b3", writeB3SingleFormatWithoutParentId(context));
-  }
-
-  @Nullable static Destination destination(Message message) {
-    try {
-      return message.getJMSDestination();
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      log(t, "error getting destination of message {0}", message, null);
+  /** Creates a potentially noop remote span representing this request */
+  Span nextMessagingSpan(
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
+  ) {
+    Boolean sampled = extracted.sampled();
+    // only recreate the context if the messaging sampler made a decision
+    if (sampled == null && (sampled = sampler.trySample(request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
     }
-    return null;
+    return tracer.nextSpan(extracted);
   }
 
-  void tagQueueOrTopic(Message message, SpanCustomizer span) {
-    Destination destination = destination(message);
-    if (destination != null) tagQueueOrTopic(destination, span);
-  }
-
-  void tagQueueOrTopic(Destination destination, SpanCustomizer span) {
-    try {
-      if (destination instanceof Queue) {
-        span.tag(JMS_QUEUE, ((Queue) destination).getQueueName());
-      } else if (destination instanceof Topic) {
-        span.tag(JMS_TOPIC, ((Topic) destination).getTopicName());
-      }
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      log(t, "error getting destination name from {0}", destination, null);
+  void tagQueueOrTopic(MessagingRequest request, SpanCustomizer span) {
+    String channelKind = request.channelKind();
+    if ("queue".equals(channelKind)) {
+      span.tag(JMS_QUEUE, request.channelName());
+    } else if ("topic".equals(channelKind)) {
+      span.tag(JMS_TOPIC, request.channelName());
     }
   }
 
