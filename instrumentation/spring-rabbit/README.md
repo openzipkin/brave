@@ -27,6 +27,33 @@ public SpringRabbitTracing springRabbitTracing(MessagingTracing messagingTracing
 }
 ```
 
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+producer and consumer requests.
+
+You can use an [MessagingRuleSampler](../messaging/README.md) to override this
+based on JMS destination names.
+
+Ex. Here's a sampler that traces 100 consumer requests per second, except for
+the "alerts" topic. Other requests will use a global rate provided by the
+`Tracing` component.
+
+```java
+import brave.sampler.Matchers;
+
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+
+@Bean
+public MessagingTracing messagingTracing(Tracing tracing) {
+  return MessagingTracing.newBuilder(tracing)
+    .consumerSampler(MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals("alerts"), Sampler.NEVER_SAMPLE)
+      .putRule(Matchers.alwaysMatch(), RateLimitingSampler.create(100))
+      .build())
+    .build();
+}
+```
+
 ### Message Producer
 This module contains a tracing interceptor for [RabbitTemplate](https://docs.spring.io/spring-amqp/api/org/springframework/amqp/rabbit/core/RabbitTemplate.html).
 `TracingMessagePostProcessor` adds trace headers to outgoing rabbit messages.
