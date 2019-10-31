@@ -99,7 +99,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         if (extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
           Span span = consumerSpansForTopic.get(topic);
           if (span == null) {
-            span = kafkaTracing.nextSpan(sampler, request, extracted);
+            span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
             if (!span.isNoop()) {
               setConsumerSpan(topic, span);
               // incur timestamp overhead only once
@@ -112,7 +112,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           }
           injector.inject(span.context(), request);
         } else { // we extracted request-scoped data, so cannot share a consumer span.
-          Span span = kafkaTracing.nextSpan(sampler, request, extracted);
+          Span span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
           if (!span.isNoop()) {
             setConsumerSpan(topic, span);
             // incur timestamp overhead only once

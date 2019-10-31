@@ -162,8 +162,8 @@ public final class KafkaTracing {
     return extracted;
   }
 
-  /** Creates a potentially noop span representing this request */
-  Span nextSpan(
+  /** Creates a potentially noop remote span representing this request */
+  Span nextMessagingSpan(
     SamplerFunction<MessagingRequest> sampler,
     MessagingRequest request,
     TraceContextOrSamplingFlags extracted

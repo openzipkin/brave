@@ -105,7 +105,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     if (maybeParent == null) {
       TraceContextOrSamplingFlags extracted =
         kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
-      span = kafkaTracing.nextSpan(sampler, request, extracted);
+      span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
     } else { // If we have a span in scope assume headers were cleared before
       span = tracer.newChild(maybeParent);
     }
