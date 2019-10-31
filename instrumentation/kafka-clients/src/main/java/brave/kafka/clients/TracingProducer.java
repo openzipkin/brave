@@ -42,7 +42,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   final Producer<K, V> delegate;
   final KafkaTracing kafkaTracing;
-  final CurrentTraceContext current;
+  final CurrentTraceContext currentTraceContext;
   final Tracer tracer;
   final Extractor<KafkaProducerRequest> extractor;
   final SamplerFunction<MessagingRequest> sampler;
@@ -52,10 +52,10 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   TracingProducer(Producer<K, V> delegate, KafkaTracing kafkaTracing) {
     this.delegate = delegate;
     this.kafkaTracing = kafkaTracing;
-    this.current = kafkaTracing.messagingTracing.tracing().currentTraceContext();
+    this.currentTraceContext = kafkaTracing.messagingTracing.tracing().currentTraceContext();
     this.tracer = kafkaTracing.messagingTracing.tracing().tracer();
     this.extractor = kafkaTracing.producerExtractor;
-    this.sampler = kafkaTracing.messagingTracing.producerSampler();
+    this.sampler = kafkaTracing.producerSampler;
     this.injector = kafkaTracing.producerInjector;
     this.remoteServiceName = kafkaTracing.remoteServiceName;
   }
@@ -95,7 +95,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   public Future<RecordMetadata> send(ProducerRecord<K, V> record, @Nullable Callback callback) {
     KafkaProducerRequest request = new KafkaProducerRequest(record);
 
-    TraceContext maybeParent = current.get();
+    TraceContext maybeParent = currentTraceContext.get();
     // Unlike message consumers, we try current span before trying extraction. This is the proper
     // order because the span in scope should take precedence over a potentially stale header entry.
     //
@@ -123,7 +123,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     injector.inject(span.context(), request);
 
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return delegate.send(record, TracingCallback.create(callback, span, current));
+      return delegate.send(record, TracingCallback.create(callback, span, currentTraceContext));
     } catch (RuntimeException | Error e) {
       span.error(e).finish(); // finish as an exception means the callback won't finish the span
       throw e;
