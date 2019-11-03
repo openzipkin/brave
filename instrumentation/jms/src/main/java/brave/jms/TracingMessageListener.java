@@ -69,14 +69,18 @@ final class TracingMessageListener implements MessageListener {
 
   @Override public void onMessage(Message message) {
     Span listenerSpan = startMessageListenerSpan(message);
-    try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
+    SpanInScope ws = tracer.withSpanInScope(listenerSpan);
+    Throwable error = null;
+    try {
       delegate.onMessage(message);
     } catch (Throwable t) {
       propagateIfFatal(t);
-      listenerSpan.error(t);
+      error = t;
       throw t;
     } finally {
+      if (error != null) listenerSpan.error(error);
       listenerSpan.finish();
+      ws.close();
     }
   }
 

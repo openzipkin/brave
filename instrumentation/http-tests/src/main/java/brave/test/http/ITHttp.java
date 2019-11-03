@@ -21,7 +21,6 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,7 +30,6 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,7 +92,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public abstract class ITHttp {
   public static final String EXTRA_KEY = "user-id";
-  static final String CONTEXT_LEAK = "context.leak";
 
   /**
    * When testing servers or asynchronous clients, spans are reported on a worker thread. In order
@@ -109,9 +106,6 @@ public abstract class ITHttp {
     assertThat(result)
       .withFailMessage("Span was not reported")
       .isNotNull();
-    assertThat(result.annotations())
-      .extracting(Annotation::value)
-      .doesNotContain(CONTEXT_LEAK);
     return result;
   }
 
@@ -154,23 +148,7 @@ public abstract class ITHttp {
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-      .spanReporter(s -> {
-        // make sure the context was cleared prior to finish.. no leaks!
-        TraceContext current = httpTracing.tracing().currentTraceContext().get();
-        boolean contextLeak = false;
-        if (current != null) {
-          // add annotation in addition to throwing, in case we are off the main thread
-          if (current.spanIdString().equals(s.id())) {
-            s = s.toBuilder().addAnnotation(s.timestampAsLong(), CONTEXT_LEAK).build();
-            contextLeak = true;
-          }
-        }
-        spans.add(s);
-        // throw so that we can see the path to the code that leaked the context
-        if (contextLeak) {
-          throw new AssertionError(CONTEXT_LEAK + " on " + Thread.currentThread().getName());
-        }
-      })
+      .spanReporter(spans::add)
       .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_KEY))
       .currentTraceContext(currentTraceContext)
       .sampler(sampler);

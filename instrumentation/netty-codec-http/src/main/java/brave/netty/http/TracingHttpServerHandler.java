@@ -53,13 +53,15 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).set(spanInScope);
 
     // Place the span in scope so that downstream code can read trace IDs
+    Throwable error = null;
     try {
       ctx.fireChannelRead(msg);
-      spanInScope.close();
     } catch (RuntimeException | Error e) {
-      spanInScope.close();
-      span.error(e).finish(); // the request abended, so finish the span;
+      error = e;
       throw e;
+    } finally {
+      if (error != null) span.error(error).finish();
+      spanInScope.close();
     }
   }
 
@@ -82,8 +84,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       t = e;
       throw e;
     } finally {
-      spanInScope.close(); // clear scope before reporting
       handler.handleSend(new HttpServerResponse(response), t, span);
+      spanInScope.close();
     }
   }
 

@@ -114,7 +114,9 @@ public final class TracingFilter implements Filter {
     }
 
     boolean isOneway = false, deferFinish = false;
-    try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) {
+    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
+    Throwable error = null;
+    try {
       Result result = invoker.invoke(invocation);
       if (result.hasException()) {
         onError(result.getException(), span);
@@ -134,14 +136,16 @@ public final class TracingFilter implements Filter {
       }
       return result;
     } catch (Error | RuntimeException e) {
-      onError(e, span);
+      error = e;
       throw e;
     } finally {
+      if (error != null) onError(error, span);
       if (isOneway) {
         span.flush();
       } else if (!deferFinish) {
         span.finish();
       }
+      scope.close();
     }
   }
 

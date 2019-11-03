@@ -101,21 +101,22 @@ import static brave.internal.Throwables.propagateIfFatal;
     if (oldCompletionListener != null) {
       delegate.setAsync(TracingCompletionListener.create(oldCompletionListener, span, current));
     }
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
+    Throwable error = null;
     try {
       send.apply(delegate, destination, message);
     } catch (Throwable t) {
       propagateIfFatal(t);
-      span.error(t);
-      span.finish();
+      error = t;
       throw t;
     } finally {
-      ws.close();
       if (oldCompletionListener != null) {
         delegate.setAsync(oldCompletionListener);
-      } else {
+      } else if (error == null) {
         span.finish();
       }
+      if (error != null) span.error(error).finish();
+      ws.close();
     }
   }
 

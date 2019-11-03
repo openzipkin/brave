@@ -100,16 +100,16 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           spanInScope = tracer.withSpanInScope(span);
           break;
         case FINISHED:
-          // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
-          // Don't close the scope unless it is a synchronous method.
-          if (!async && (maybeSpanInScope = spanInScope) != null) {
-            maybeSpanInScope.close();
-          }
           String maybeHttpRoute = route(event.getContainerRequest());
           if (maybeHttpRoute != null) {
             event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
           }
           handler.handleSend(new HttpServerResponse(event), event.getException(), span);
+          // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
+          // Don't close the scope unless it is a synchronous method.
+          if (!async && (maybeSpanInScope = spanInScope) != null) {
+            maybeSpanInScope.close();
+          }
           break;
         default:
       }

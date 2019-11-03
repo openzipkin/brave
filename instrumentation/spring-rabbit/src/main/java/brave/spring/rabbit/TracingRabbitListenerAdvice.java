@@ -15,7 +15,6 @@ package brave.spring.rabbit;
 
 import brave.Span;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
@@ -96,13 +95,17 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
       listenerSpan.name("on-message").start(consumerFinish);
     }
 
-    try (SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
+    Tracer.SpanInScope ws = tracer.withSpanInScope(listenerSpan);
+    Throwable error = null;
+    try {
       return methodInvocation.proceed();
     } catch (Throwable t) {
-      listenerSpan.error(t);
+      error = t;
       throw t;
     } finally {
+      if (error != null) listenerSpan.error(error);
       listenerSpan.finish();
+      ws.close();
     }
   }
 

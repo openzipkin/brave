@@ -58,6 +58,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
     Span span = tracer.nextSpan(sampler, request);
 
     SpanInScope scope = tracer.withSpanInScope(span);
+    Throwable error = null;
     try {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
         @Override public void start(Listener<RespT> responseListener, Metadata headers) {
@@ -84,9 +85,10 @@ final class TracingClientInterceptor implements ClientInterceptor {
         }
       };
     } catch (RuntimeException | Error e) {
-      span.error(e).finish();
+      error = e;
       throw e;
     } finally {
+      if (error != null) span.error(error).finish();
       scope.close();
     }
   }
@@ -115,8 +117,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
         super.onClose(status, trailers);
         parser.onClose(status, trailers, span.customizer());
       } finally {
-        scope.close();
         span.finish();
+        scope.close();
       }
     }
   }
