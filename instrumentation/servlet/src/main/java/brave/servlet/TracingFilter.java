@@ -84,12 +84,12 @@ public final class TracingFilter implements Filter {
       error = e;
       throw e;
     } finally {
-      scope.close();
       if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
         servlet.handleAsync(handler, httpRequest, httpResponse, span);
       } else { // we have a synchronous response, so we can finish the span
         handler.handleSend(servlet.httpServerResponse(httpRequest, httpResponse), error, span);
       }
+      scope.close();
     }
   }
 

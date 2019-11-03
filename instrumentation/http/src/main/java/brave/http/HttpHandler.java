@@ -53,28 +53,19 @@ abstract class HttpHandler {
     @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
     long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
-    try {
-      Scope ws = currentTraceContext.maybeScope(span.context());
-      try {
-        parser.response(adapter, response, error, span.customizer());
-      } finally {
-        ws.close(); // close the scope before finishing the span
-      }
-    } finally {
-      finishInNullScope(span, finishTimestamp);
-    }
-  }
 
-  /** Clears the scope to prevent remote reporters from accidentally tracing */
-  void finishInNullScope(Span span, long timestamp) {
-    Scope ws = currentTraceContext.maybeScope(null);
+    // Scope the trace context so that log statements are valid and also parse code can use
+    // Tracer.currentSpan() as necessary.
+    Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      if (timestamp == 0L) {
+      parser.response(adapter, response, error, span.customizer());
+    } finally {
+      // See instrumentation/RATIONALE.md for why we call finish in scope
+      if (finishTimestamp == 0L) {
         span.finish();
       } else {
-        span.finish(timestamp);
+        span.finish(finishTimestamp);
       }
-    } finally {
       ws.close();
     }
   }

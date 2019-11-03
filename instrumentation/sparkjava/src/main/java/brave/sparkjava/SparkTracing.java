@@ -52,19 +52,21 @@ public final class SparkTracing {
     return (request, response) -> {
       Span span = tracer.currentSpan();
       if (span == null) return;
-      ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
       handler.handleSend(new HttpServerResponse(response, request.requestMethod()), null, span);
+      ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
     };
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
     return (error, request, response) -> {
-      Span span = tracer.currentSpan();
-      if (span != null) {
-        ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+      try {
+        delegate.handle(error, request, response);
+      } finally {
+        Span span = tracer.currentSpan();
+        if (span == null) return;
         handler.handleSend(new HttpServerResponse(response, request.requestMethod()), error, span);
+        ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
       }
-      delegate.handle(error, request, response);
     };
   }
 

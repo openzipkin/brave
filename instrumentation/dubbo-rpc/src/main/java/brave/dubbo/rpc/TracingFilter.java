@@ -117,7 +117,9 @@ public final class TracingFilter implements Filter {
     }
 
     boolean isOneway = false, deferFinish = false;
-    try (CurrentTraceContext.Scope scope = current.newScope(span.context())) {
+    CurrentTraceContext.Scope scope = current.newScope(span.context());
+    Throwable error = null;
+    try {
       Result result = invoker.invoke(invocation);
       isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
       if (!span.isNoop()) {
@@ -125,14 +127,16 @@ public final class TracingFilter implements Filter {
       }
       return result;
     } catch (Error | RuntimeException e) {
-      onError(e, span);
+      error = e;
       throw e;
     } finally {
+      if (error != null) onError(error, span);
       if (isOneway) {
         span.flush();
       } else if (!deferFinish) {
         span.finish();
       }
+      scope.close();
     }
   }
 

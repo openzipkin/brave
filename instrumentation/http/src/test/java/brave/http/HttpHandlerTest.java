@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 public class HttpHandlerTest {
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
+  TraceContext context2 = TraceContext.newBuilder().traceId(1L).spanId(11L).build();
   @Mock HttpAdapter<Object, Object> adapter;
   @Mock brave.Span span;
   @Mock SpanCustomizer spanCustomizer;
@@ -122,18 +123,18 @@ public class HttpHandlerTest {
     handler.handleFinish(adapter, response, null, span);
   }
 
-  @Test public void handleFinish_finishesWhenSpanNotInScope() {
+  @Test public void handleFinish_finishesWithSpanInScope() {
     doAnswer(invocation -> {
-      assertThat(currentTraceContext.get()).isNull();
+      assertThat(currentTraceContext.get()).isEqualTo(span.context());
       return null;
     }).when(span).finish();
 
     handler.handleFinish(adapter, response, null, span);
   }
 
-  @Test public void handleFinish_finishesWhenSpanNotInScope_clearingIfNecessary() {
-    try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(context)) {
-      handleFinish_finishesWhenSpanNotInScope();
+  @Test public void handleFinish_finishesWithSpanInScope_resettingIfNecessary() {
+    try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(context2)) {
+      handleFinish_finishesWithSpanInScope();
     }
   }
 

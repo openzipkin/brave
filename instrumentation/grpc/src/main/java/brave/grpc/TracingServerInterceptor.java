@@ -66,13 +66,14 @@ final class TracingServerInterceptor implements ServerInterceptor {
     // startCall invokes user interceptors, so we place the span in scope here
     ServerCall.Listener<ReqT> result;
     SpanInScope scope = tracer.withSpanInScope(span);
-    try { // retrolambda can't resolve this try/finally
+    Throwable error = null;
+    try {
       result = next.startCall(new TracingServerCall<>(span, call), headers);
     } catch (RuntimeException | Error e) {
-      span.error(e);
-      span.finish();
+      error = e;
       throw e;
     } finally {
+      if (error != null) span.error(error).finish();
       scope.close();
     }
 
@@ -94,6 +95,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
       : tracer.nextSpan(extracted);
   }
 
+  // TODO: this looks like it should be scoping, but isn't. Revisit
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
     final Span span;
 
@@ -152,15 +154,16 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     @Override public void onHalfClose() {
       SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      Throwable error = null;
+      try {
         delegate().onHalfClose();
       } catch (RuntimeException | Error e) {
-        // If there was an exception executing onHalfClose, we don't expect other lifecycle
-        // commands to succeed. Accordingly, we close the span
-        span.error(e);
-        span.finish();
+        error = e;
         throw e;
       } finally {
+        // If there was an exception executing onHalfClose, we don't expect other lifecycle
+        // commands to succeed. Accordingly, we close the span
+        if (error != null) span.error(error).finish();
         scope.close();
       }
     }
