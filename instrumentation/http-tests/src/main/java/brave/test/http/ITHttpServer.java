@@ -31,18 +31,21 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.http.HttpHeaders;
 import okio.Buffer;
+import org.eclipse.jetty.util.log.Log;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
+import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
 
   @Before public void setup() throws Exception {
+    Log.setLog(new Log4J2Log());
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
@@ -131,7 +134,7 @@ public abstract class ITHttpServer extends ITHttp {
     String path = "/foo";
 
     httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
-      .addRule(null, path, 0.0f)
+      .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
       .build()).build();
     init();
 

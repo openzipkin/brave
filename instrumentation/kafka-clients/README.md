@@ -7,7 +7,7 @@ Add decorators for Kafka producer and consumer to enable tracing.
 ## Setup
 First, setup the generic Kafka component like this:
 ```java
-kafkaTracing = KafkaTracing.newBuilder(tracing)
+kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
                            .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
                            .build();
@@ -20,11 +20,35 @@ TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 tracingProducer.send(new ProducerRecord<K, V>("my-topic", key, value));
 ```
 
-Same goes for the consumer : 
+Same goes for the consumer :
 ```java
 Consumer<K, V> consumer = new KafkaConsumer<>(settings);
 TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
 tracingConsumer.poll(10);
+```
+
+## Sampling Policy
+The default sampling policy is to use the default (trace ID) sampler for
+producer and consumer requests.
+
+You can use an [MessagingRuleSampler](../messaging/README.md) to override this
+based on Kafka topic names.
+
+Ex. Here's a sampler that traces 100 consumer requests per second, except for
+the "alerts" topic. Other requests will use a global rate provided by the
+`Tracing` component.
+
+```java
+import brave.sampler.Matchers;
+
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+
+messagingTracingBuilder.consumerSampler(MessagingRuleSampler.newBuilder()
+  .putRule(channelNameEquals("alerts"), Sampler.NEVER_SAMPLE)
+  .putRule(Matchers.alwaysMatch(), RateLimitingSampler.create(100))
+  .build());
+
+kafkaTracing = KafkaTracing.create(messagingTracing);
 ```
 
 ## What's happening?

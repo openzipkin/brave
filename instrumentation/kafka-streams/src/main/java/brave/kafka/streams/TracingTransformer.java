@@ -30,7 +30,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
   TracingTransformer(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     Transformer<K, V, R> delegateTransformer) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.tracing.tracer();
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegateTransformer = delegateTransformer;
   }
@@ -49,15 +49,19 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
       span.start();
     }
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      R transform = delegateTransformer.transform(k, v);
-      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
-      return transform;
+    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
+    Throwable error = null;
+    try {
+      return delegateTransformer.transform(k, v);
     } catch (RuntimeException | Error e) {
-      span.error(e); // finish as an exception means the callback won't finish the span
+      error = e;
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
+      if (error != null) span.error(error);
       span.finish();
+      ws.close();
     }
   }
 

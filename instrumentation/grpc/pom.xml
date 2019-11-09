@@ -17,7 +17,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -25,13 +25,16 @@
   <name>Brave Instrumentation: gRPC</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.grpc</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- grpc < 1.15 supports java 6 https://github.com/grpc/grpc-java/issues/3961 -->
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
-    <protobuf.version>3.7.1</protobuf.version>
-    <opencensus.version>0.23.0</opencensus.version>
+    <protobuf.version>3.9.0</protobuf.version>
+    <opencensus.version>0.24.0</opencensus.version>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 
@@ -40,6 +43,10 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-rpc</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-all</artifactId>
@@ -85,17 +92,9 @@
         <version>${os-maven-plugin.version}</version>
       </extension>
     </extensions>
+
     <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.grpc</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
+      <!-- Integration test old gRPC version -->
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
@@ -120,8 +119,6 @@
       </plugin>
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
-        <!-- extraArtifacts broke in 3.0.0 https://issues.apache.org/jira/browse/MINVOKER-227 -->
-        <version>2.0.0</version>
         <configuration>
           <extraArtifacts>
             <extraArtifact>io.grpc:grpc-all:1.2.0:jar</extraArtifact>

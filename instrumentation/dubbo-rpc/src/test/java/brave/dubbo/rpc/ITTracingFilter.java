@@ -16,6 +16,7 @@ package brave.dubbo.rpc;
 import brave.Tracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -27,16 +28,20 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
+  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
   Tracing tracing;
+  RpcTracing rpcTracing;
   TestServer server = new TestServer();
   ReferenceConfig<GreeterService> client;
 
@@ -75,6 +80,14 @@ public abstract class ITTracingFilter {
       .getExtension("tracing"))
       .setTracing(tracing);
     this.tracing = tracing;
+  }
+
+  void setRpcTracing(RpcTracing rpcTracing) {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing"))
+      .setRpcTracing(rpcTracing);
+    this.tracing = rpcTracing.tracing();
+    this.rpcTracing = rpcTracing;
   }
 
   /** Call this to block until a span was reported */

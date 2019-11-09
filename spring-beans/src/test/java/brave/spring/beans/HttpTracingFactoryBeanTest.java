@@ -14,12 +14,12 @@
 package brave.spring.beans;
 
 import brave.Tracing;
-import brave.TracingCustomizer;
 import brave.http.HttpClientParser;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
+import brave.sampler.SamplerFunctions;
 import org.junit.After;
 import org.junit.Test;
 
@@ -105,6 +105,22 @@ public class HttpTracingFactoryBeanTest {
       .isEqualTo(HttpSampler.NEVER_SAMPLE);
   }
 
+  @Test public void clientRequestSampler() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"clientSampler\">\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class).clientRequestSampler())
+      .isEqualTo(SamplerFunctions.neverSample());
+  }
+
   @Test public void serverSampler() {
     context = new XmlBeans(""
       + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
@@ -120,6 +136,22 @@ public class HttpTracingFactoryBeanTest {
     assertThat(context.getBean("httpTracing", HttpTracing.class))
       .extracting("serverSampler")
       .isEqualTo(HttpSampler.NEVER_SAMPLE);
+  }
+
+  @Test public void serverRequestSampler() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"serverSampler\">\n"
+      + "    <bean class=\"brave.sampler.SamplerFunctions\" factory-method=\"neverSample\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class).serverRequestSampler())
+      .isEqualTo(SamplerFunctions.neverSample());
   }
 
   public static final HttpTracingCustomizer CUSTOMIZER_ONE = mock(HttpTracingCustomizer.class);

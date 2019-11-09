@@ -20,7 +20,8 @@ import brave.propagation.TraceContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import zipkin2.Call;
+
+import static brave.internal.Throwables.propagateIfFatal;
 
 /**
  * When {@code noop}, this drops input spans by returning false. Otherwise, it logs exceptions
@@ -58,7 +59,7 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
     try {
       return doHandle(context, span);
     } catch (Throwable t) {
-      Call.propagateIfFatal(t);
+      propagateIfFatal(t);
       Platform.get().log("error handling {0}", context, t);
       return false;
     }

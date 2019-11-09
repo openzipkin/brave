@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-parent</artifactId>
@@ -35,6 +35,7 @@
     <module>benchmarks</module>
     <module>http</module>
     <module>http-tests</module>
+    <module>dubbo</module>
     <module>dubbo-rpc</module>
     <module>grpc</module>
     <module>httpasyncclient</module>
@@ -42,11 +43,13 @@
     <module>jaxrs2</module>
     <module>jersey-server</module>
     <module>jms</module>
+    <module>messaging</module>
     <module>mysql</module>
     <module>mysql6</module>
     <module>mysql8</module>
     <module>okhttp3</module>
     <module>p6spy</module>
+    <module>rpc</module>
     <module>servlet</module>
     <module>sparkjava</module>
     <module>spring-rabbit</module>

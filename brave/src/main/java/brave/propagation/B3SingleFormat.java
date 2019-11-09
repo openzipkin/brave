@@ -52,7 +52,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
  * Reminder: debug (previously {@code X-B3-Flags: 1}), is a boosted sample signal which is recorded
  * to ensure it reaches the collector tier. See {@link TraceContext#debug()}.
  *
- * <p>See <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3 Propagation</a>
+ * <p>See <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
 public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid

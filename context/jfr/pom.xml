@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-context-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -26,6 +26,9 @@
   <name>Brave Context: JDK Flight Recorder</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.context.jfr</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>11</main.java.version>
   </properties>
@@ -40,16 +43,6 @@
             <arg>--add-modules</arg>
             <arg>jdk.jfr</arg>
           </compilerArgs>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.context.jfr</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
         </configuration>
       </plugin>
       <plugin>

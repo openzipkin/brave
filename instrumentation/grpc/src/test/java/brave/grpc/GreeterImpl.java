@@ -32,7 +32,7 @@ class GreeterImpl extends GreeterGrpc.GreeterImplBase {
   final SpanCustomizer spanCustomizer;
 
   GreeterImpl(@Nullable GrpcTracing grpcTracing) {
-    tracing = grpcTracing != null ? grpcTracing.tracing : null;
+    tracing = grpcTracing != null ? grpcTracing.rpcTracing.tracing() : null;
     spanCustomizer =
       tracing != null ? CurrentSpanCustomizer.create(tracing) : NoopSpanCustomizer.INSTANCE;
   }

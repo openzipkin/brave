@@ -15,106 +15,127 @@ package brave.http;
 
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.sampler.CountingSampler;
+import brave.sampler.Matcher;
 import brave.sampler.ParameterizedSampler;
-import java.util.ArrayList;
-import java.util.List;
+import brave.sampler.RateLimitingSampler;
+import brave.sampler.SamplerFunction;
+import brave.sampler.Sampler;
+
+import static brave.http.HttpRequestMatchers.methodEquals;
+import static brave.http.HttpRequestMatchers.pathStartsWith;
+import static brave.sampler.Matchers.and;
 
 /**
  * Assigns sample rates to http routes.
  *
- * <p>Ex. Here's a sampler that traces 80% requests to /foo and 10% of POST requests to /bar. Other
- * requests will use a global rate provided by the {@link Tracing tracing component}.
- * <pre>{@code
+ * <p>Ex. Here's a sampler that traces 100 requests per second to /foo and 10 POST requests to /bar
+ * per second. This doesn't start new traces for requests to favicon (which many browsers
+ * automatically fetch). Other requests will use a global rate provided by the {@link Tracing
+ * tracing component}.
+ *
+ * <p><pre>{@code
+ * import static brave.http.HttpRequestMatchers.methodIsEqualTo;
+ * import static brave.http.HttpRequestMatchers.pathStartsWith;
+ * import static brave.sampler.Matchers.and;
+ *
  * httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
- *   .addRule(null, "/foo", 0.8f)
- *   .addRule("POST", "/bar", 0.1f)
+ *   .putRule(pathStartsWith("/favicon"), Sampler.NEVER_SAMPLE)
+ *   .putRule(pathStartsWith("/foo"), RateLimitingSampler.create(100))
+ *   .putRule(and(methodIsEqualTo("POST"), pathStartsWith("/bar")), RateLimitingSampler.create(10))
  *   .build());
  * }</pre>
  *
- * <p>Note that the path is a prefix, so "/foo" will match "/foo/abcd".
+ * <p>Ex. Here's a custom matcher for the endpoint "/play&country=US"
+ *
+ * <p><pre>{@code
+ * Matcher<HttpRequest> playInTheUSA = request -> {
+ *   if (!"/play".equals(request.path())) return false;
+ *   String url = request.url();
+ *   if (url == null) return false;
+ *   String query = URI.create(url).getQuery();
+ *   return query != null && query.contains("country=US");
+ * };
+ * }</pre>
+ *
+ * <h3>Implementation notes</h3>
+ * Be careful when implementing matchers as {@link HttpRequest} methods can return null.
+ *
+ * @since 4.4
  */
-public final class HttpRuleSampler extends HttpSampler {
-
+public final class HttpRuleSampler extends HttpSampler implements SamplerFunction<HttpRequest> {
+  /** @since 4.4 */
   public static Builder newBuilder() {
     return new Builder();
   }
 
+  /** @since 4.4 */
   public static final class Builder {
-    final List<MethodAndPathRule> rules = new ArrayList<>();
+    final ParameterizedSampler.Builder<HttpRequest> delegate = ParameterizedSampler.newBuilder();
 
     /**
-     * Assigns a sample rate to all requests that match the input.
-     *
-     * @param method if null, any method is accepted
-     * @param path all paths starting with this string are accepted
-     * @param rate percentage of requests to start traces for. 1.0 is 100%
+     * @since 4.4
+     * @deprecated Since 5.8, use {@link #putRule(Matcher, Sampler)}
      */
-    public Builder addRule(@Nullable String method, String path, float rate) {
-      rules.add(new MethodAndPathRule(method, path, rate));
+    @Deprecated public Builder addRule(@Nullable String method, String path, float probability) {
+      if (path == null) throw new NullPointerException("path == null");
+      Sampler sampler = CountingSampler.create(probability);
+      if (method == null) {
+        delegate.putRule(pathStartsWith(path), RateLimitingSampler.create(10));
+        return this;
+      }
+      delegate.putRule(and(methodEquals(method), pathStartsWith(path)), sampler);
       return this;
     }
 
-    public HttpSampler build() {
-      return new HttpRuleSampler(rules);
+    /**
+     * Adds or replaces all rules in this sampler with those of the input.
+     *
+     * @since 5.8
+     */
+    public Builder putAllRules(HttpRuleSampler sampler) {
+      if (sampler == null) throw new NullPointerException("sampler == null");
+      delegate.putAllRules(sampler.delegate);
+      return this;
+    }
+
+    /**
+     * Adds or replaces the sampler for the matcher.
+     *
+     * <p>Ex.
+     * <pre>{@code
+     * import static brave.http.HttpRequestMatchers.pathStartsWith;
+     *
+     * builder.putRule(pathStartsWith("/api"), RateLimitingSampler.create(10));
+     * }</pre>
+     *
+     * @since 5.8
+     */
+    public Builder putRule(Matcher<HttpRequest> matcher, Sampler sampler) {
+      delegate.putRule(matcher, sampler);
+      return this;
+    }
+
+    public HttpRuleSampler build() {
+      return new HttpRuleSampler(delegate.build());
     }
 
     Builder() {
     }
   }
 
-  final ParameterizedSampler<MethodAndPath> sampler;
+  final ParameterizedSampler<HttpRequest> delegate;
 
-  HttpRuleSampler(List<MethodAndPathRule> rules) {
-    this.sampler = ParameterizedSampler.create(rules);
+  HttpRuleSampler(ParameterizedSampler<HttpRequest> delegate) {
+    this.delegate = delegate;
+  }
+
+  @Override public Boolean trySample(HttpRequest request) {
+    return delegate.trySample(request);
   }
 
   @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-    String method = adapter.method(request);
-    String path = adapter.path(request);
-    if (method == null || path == null) return null; // use default if we couldn't parse
-    return sampler.sample(new MethodAndPath(method, path)).sampled();
-  }
-
-  static final class MethodAndPath {
-
-    final String method;
-    final String path;
-
-    MethodAndPath(String method, String path) {
-      this.method = method;
-      this.path = path;
-    }
-
-    @Override public boolean equals(Object o) {
-      if (o == this) return true;
-      if (!(o instanceof MethodAndPath)) return false;
-      MethodAndPath that = (MethodAndPath) o;
-      return method.equals(that.method) && path.equals(that.path);
-    }
-
-    @Override public int hashCode() {
-      int h = 1;
-      h *= 1000003;
-      h ^= method.hashCode();
-      h *= 1000003;
-      h ^= path.hashCode();
-      return h;
-    }
-  }
-
-  static final class MethodAndPathRule extends ParameterizedSampler.Rule<MethodAndPath> {
-    @Nullable final String method;
-    final String path;
-
-    MethodAndPathRule(@Nullable String method, String path, float rate) {
-      super(rate);
-      this.method = method;
-      this.path = path;
-    }
-
-    @Override public boolean matches(MethodAndPath parameters) {
-      if (method != null && !method.equals(parameters.method)) return false;
-      return parameters.path.startsWith(path);
-    }
+    if (request == null) return null;
+    return trySample(new FromHttpAdapter<>(adapter, request));
   }
 }

@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave</artifactId>
@@ -27,6 +27,9 @@
   <description>Brave: Core Libary</description>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave</module.name>
+
     <main.basedir>${project.basedir}/..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
@@ -39,6 +42,8 @@
     <dependency>
       <groupId>io.zipkin.zipkin2</groupId>
       <artifactId>zipkin</artifactId>
+      <!-- TODO: should this be marked optional?
+           Brave APIs, except builder.spanReporter, shouldn't return or accept zipkin2 types -->
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
@@ -91,7 +96,7 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.2.0</version>
+      <version>1.2.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -111,34 +116,12 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
   <build>
     <plugins>
       <plugin>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>maven-bundle-plugin</artifactId>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-invoker-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <configuration>
-              <archive>
-                <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                <manifestEntries>
-                  <Automatic-Module-Name>brave</Automatic-Module-Name>
-                </manifestEntries>
-              </archive>
-            </configuration>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

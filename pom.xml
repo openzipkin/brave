@@ -19,7 +19,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>5.6.12-SNAPSHOT</version>
+  <version>5.9.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -78,11 +78,11 @@
     <errorprone.version>2.3.3</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.16.0</zipkin.version>
-    <zipkin-reporter.version>2.10.2</zipkin-reporter.version>
+    <zipkin.version>2.19.0</zipkin.version>
+    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring4.version>4.3.24.RELEASE</spring4.version>
+    <spring4.version>4.3.25.RELEASE</spring4.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
@@ -94,17 +94,17 @@
     <kafka.version>2.3.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.6</kafka-junit.version>
-    <activemq.version>5.15.9</activemq.version>
-    <spring-rabbit.version>1.7.13.RELEASE</spring-rabbit.version>
+    <activemq.version>5.15.10</activemq.version>
+    <spring-rabbit.version>1.7.14.RELEASE</spring-rabbit.version>
 
-    <finagle.version>19.6.0</finagle.version>
-    <log4j.version>2.12.0</log4j.version>
-    <okhttp.version>4.0.0</okhttp.version>
-    <httpclient.version>4.5.9</httpclient.version>
+    <finagle.version>19.9.0</finagle.version>
+    <log4j.version>2.12.1</log4j.version>
+    <okhttp.version>4.2.2</okhttp.version>
+    <httpclient.version>4.5.10</httpclient.version>
 
-    <grpc.version>1.22.0</grpc.version>
+    <grpc.version>1.23.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.35.Final</netty.version>
+    <netty.version>4.1.38.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.12</junit.version>
@@ -122,11 +122,12 @@
     <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
     <maven-source-plugin.version>3.1.0</maven-source-plugin.version>
-    <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
+    <maven-javadoc-plugin.version>3.1.1</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
     <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
+    <maven-bundle-plugin.version>4.2.1</maven-bundle-plugin.version>
     <license-maven-plugin.version>3.0</license-maven-plugin.version>
   </properties>
 
@@ -179,6 +180,16 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-messaging</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-rpc</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-servlet</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -221,7 +232,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>4.4.11</version>
+        <version>4.4.12</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -251,7 +262,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.26</version>
+        <version>1.7.28</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
@@ -373,7 +384,7 @@
           <artifactId>maven</artifactId>
           <version>0.7.6</version>
           <configuration>
-            <maven>3.6.1</maven>
+            <maven>3.6.2</maven>
           </configuration>
         </plugin>
 
@@ -394,6 +405,12 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+          <configuration>
+            <archive>
+              <!-- prevents huge pom file from also being added to the jar under META-INF/maven -->
+              <addMavenDescriptor>false</addMavenDescriptor>
+            </archive>
+          </configuration>
         </plugin>
 
         <plugin>
@@ -429,13 +446,14 @@
         </plugin>
         <plugin>
           <artifactId>maven-invoker-plugin</artifactId>
-          <version>3.2.0</version>
+          <version>3.2.1</version>
           <configuration>
             <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
             <settingsFile>${main.basedir}/src/it/settings.xml</settingsFile>
             <profiles>
               <profile>!release</profile>
             </profiles>
+            <useLocalRepository>true</useLocalRepository>
             <localRepositoryPath>${project.build.directory}/local-repo</localRepositoryPath>
             <postBuildHookScript>verify</postBuildHookScript>
             <addTestClassPath>true</addTestClassPath>
@@ -447,25 +465,6 @@
               <goals>
                 <goal>install</goal>
                 <goal>run</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.felix</groupId>
-          <artifactId>maven-bundle-plugin</artifactId>
-          <version>4.2.0</version>
-          <configuration>
-            <obrRepository>NONE</obrRepository>
-            <instructions>
-              <_include>-bnd.bnd</_include>
-            </instructions>
-          </configuration>
-          <executions>
-            <execution>
-              <phase>process-classes</phase>
-              <goals>
-                <goal>manifest</goal>
               </goals>
             </execution>
           </executions>
@@ -567,6 +566,16 @@
             </java.util.logging.manager>
           </systemPropertyVariables>
         </configuration>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-eclipse-plugin</artifactId>
@@ -617,7 +626,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[11,12)</version>
+                  <version>[11,14)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -676,9 +685,10 @@
 
   <profiles>
     <profile>
+      <!-- don't JDK 13 until https://github.com/google/error-prone/issues/1106 -->
       <id>error-prone-9+</id>
       <activation>
-        <jdk>[9,)</jdk>
+        <jdk>[9,12)</jdk>
         <activeByDefault>false</activeByDefault>
       </activation>
       <build>
@@ -730,14 +740,22 @@
               </execution>
             </executions>
           </plugin>
-          <!-- Creates javadoc jar -->
+
+          <!-- Creates javadoc jar, skipping internal classes -->
           <plugin>
             <artifactId>maven-javadoc-plugin</artifactId>
             <version>${maven-javadoc-plugin.version}</version>
             <configuration>
+              <sourceFileExcludes>
+                <exclude>**/internal/*.java</exclude>
+                <exclude>**/Internal*.java</exclude>
+              </sourceFileExcludes>
+              <excludePackageNames>*.internal.*</excludePackageNames>
               <failOnError>false</failOnError>
               <!-- hush pedantic warnings: we don't put param and return on everything! -->
               <doclint>none</doclint>
+              <!-- While we publish modules, our source is pre-Java9 so tell javadoc that. -->
+              <source>8</source>
             </configuration>
             <executions>
               <execution>
@@ -746,6 +764,62 @@
                   <goal>jar</goal>
                 </goals>
                 <phase>package</phase>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>module-info</id>
+      <!-- Build profiles can only consider static properties, such as files or ENV variables.
+           To conditionally add module information, we use existence of bnd.bnd. This allows
+           irrelevant packages such as tests and benchmarks to quietly opt-out.
+           http://maven.apache.org/guides/introduction/introduction-to-profiles.html -->
+      <activation>
+        <file>
+          <exists>bnd.bnd</exists>
+        </file>
+      </activation>
+      <build>
+        <plugins>
+          <!-- OSGi and Java Modules configuration -->
+          <plugin>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>maven-bundle-plugin</artifactId>
+            <version>${maven-bundle-plugin.version}</version>
+            <configuration>
+              <obrRepository>NONE</obrRepository>
+              <instructions>
+                <_include>-bnd.bnd</_include>
+              </instructions>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>process-classes</phase>
+                <goals>
+                  <goal>manifest</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-jar-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>default-jar</id>
+                <configuration>
+                  <archive>
+                    <!-- Include the MANIFEST.MF maven-bundle-plugin generates from bnd.bnd -->
+                    <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                    <manifestEntries>
+                      <Automatic-Module-Name>${module.name}</Automatic-Module-Name>
+                    </manifestEntries>
+                  </archive>
+                </configuration>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>

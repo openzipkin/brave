@@ -13,6 +13,9 @@
  */
 package brave.jms;
 
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
+import brave.sampler.Sampler;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 import javax.jms.JMSException;
@@ -25,7 +28,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.GETTER;
+import static brave.jms.MessagePropagation.GETTER;
+import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITJms_2_0_TracingMessageConsumer} */
@@ -40,10 +44,16 @@ public class ITTracingJMSConsumer extends JmsTest {
 
   @Before public void setup() {
     context = jms.newContext();
+    producer = context.createProducer();
+
+    setupTracedConsumer(jmsTracing);
+  }
+
+  void setupTracedConsumer(JmsTracing jmsTracing) {
+    if (consumer != null) consumer.close();
+    if (tracedContext != null) tracedContext.close();
     tracedContext = jmsTracing.connectionFactory(jms.factory)
       .createContext(JMSContext.AUTO_ACKNOWLEDGE);
-
-    producer = context.createProducer();
     consumer = tracedContext.createConsumer(jms.queue);
   }
 
@@ -151,5 +161,20 @@ public class ITTracingJMSConsumer extends JmsTest {
 
     assertThat(received.getStringProperty("b3"))
       .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+  }
+
+  @Test public void receive_customSampler() throws Exception {
+    setupTracedConsumer(JmsTracing.create(MessagingTracing.newBuilder(tracing)
+      .consumerSampler(MessagingRuleSampler.newBuilder()
+        .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
+        .build()).build()));
+
+    producer.send(jms.queue, "foo");
+
+    // Check that the message headers are not sampled
+    assertThat(consumer.receive().getStringProperty("b3"))
+      .endsWith("-0");
+
+    // @After will also check that the consumer was not sampled
   }
 }

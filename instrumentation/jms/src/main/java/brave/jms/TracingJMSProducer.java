@@ -15,10 +15,6 @@ package brave.jms;
 
 import brave.Span;
 import brave.Tracer.SpanInScope;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContextOrSamplingFlags;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
@@ -27,38 +23,20 @@ import javax.jms.Destination;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
 
-import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
+import static brave.internal.Throwables.propagateIfFatal;
 
-@JMS2_0 final class TracingJMSProducer extends TracingProducer<JMSProducer, JMSProducer>
+@JMS2_0 final class TracingJMSProducer extends TracingProducer<JMSProducerRequest>
   implements JMSProducer {
 
-  static final Getter<JMSProducer, String> GETTER = new Getter<JMSProducer, String>() {
-    @Override public String get(JMSProducer carrier, String key) {
-      return carrier.getStringProperty(key);
-    }
-
-    @Override public String toString() {
-      return "JMSProducer::getStringProperty";
-    }
-  };
-
-  final Extractor<JMSProducer> extractor;
+  final JMSProducer delegate;
 
   TracingJMSProducer(JMSProducer delegate, JmsTracing jmsTracing) {
-    super(delegate, jmsTracing);
-    this.extractor = jmsTracing.tracing.propagation().extractor(GETTER);
-  }
-
-  @Override void addB3SingleHeader(JMSProducer message, TraceContext context) {
-    message.setProperty("b3", writeB3SingleFormatWithoutParentId(context));
-  }
-
-  @Override TraceContextOrSamplingFlags extract(JMSProducer message) {
-    return extractor.extract(message);
-  }
-
-  @Override Destination destination(JMSProducer producer) {
-    return null; // there's no implicit destination
+    super(
+      jmsTracing.jmsProducerExtractor,
+      jmsTracing.jmsProducerInjector,
+      jmsTracing
+    );
+    this.delegate = delegate;
   }
 
   // Partial function pattern as this needs to work before java 8 method references
@@ -118,25 +96,27 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
   }
 
   void send(Send send, Destination destination, Object message) {
-    Span span = createAndStartProducerSpan(destination, this);
+    Span span = createAndStartProducerSpan(new JMSProducerRequest(this, destination));
     final CompletionListener oldCompletionListener = getAsync();
     if (oldCompletionListener != null) {
       delegate.setAsync(TracingCompletionListener.create(oldCompletionListener, span, current));
     }
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
+    Throwable error = null;
     try {
       send.apply(delegate, destination, message);
-    } catch (RuntimeException | Error e) {
-      span.error(e);
-      span.finish();
-      throw e;
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      error = t;
+      throw t;
     } finally {
-      ws.close();
       if (oldCompletionListener != null) {
         delegate.setAsync(oldCompletionListener);
-      } else {
+      } else if (error == null) {
         span.finish();
       }
+      if (error != null) span.error(error).finish();
+      ws.close();
     }
   }
 

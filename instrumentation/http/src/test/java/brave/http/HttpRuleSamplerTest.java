@@ -13,12 +13,21 @@
  */
 package brave.http;
 
+import brave.sampler.Matcher;
+import brave.sampler.RateLimitingSampler;
+import brave.sampler.Sampler;
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.assertj.core.api.Java6Assertions.assertThat;
+import static brave.http.HttpRequestMatchers.methodEquals;
+import static brave.http.HttpRequestMatchers.pathStartsWith;
+import static brave.sampler.Matchers.and;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -26,121 +35,139 @@ public class HttpRuleSamplerTest {
   @Mock HttpClientAdapter<Object, Object> adapter;
   Object request = new Object();
 
-  @Test public void onPath() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 1.0f)
-      .build();
+  @Mock HttpClientRequest httpClientRequest;
+  @Mock HttpServerRequest httpServerRequest;
 
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/foo");
+  @Test public void matches() {
+    Map<Sampler, Boolean> samplerToAnswer = new LinkedHashMap<>();
+    samplerToAnswer.put(Sampler.ALWAYS_SAMPLE, true);
+    samplerToAnswer.put(Sampler.NEVER_SAMPLE, false);
 
-    assertThat(sampler.trySample(adapter, request))
-      .isTrue();
+    samplerToAnswer.forEach((sampler, answer) -> {
+      HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
+        .putRule(pathStartsWith("/foo"), sampler)
+        .build();
+
+      when(adapter.path(request)).thenReturn("/foo");
+
+      assertThat(ruleSampler.trySample(adapter, request))
+        .isEqualTo(answer);
+
+      when(httpClientRequest.path()).thenReturn("/foo");
+
+      assertThat(ruleSampler.trySample(httpClientRequest))
+        .isEqualTo(answer);
+
+      when(httpServerRequest.path()).thenReturn("/foo");
+
+      // consistent answer
+      assertThat(ruleSampler.trySample(httpServerRequest))
+        .isEqualTo(answer);
+    });
   }
 
-  @Test public void onPath_sampled() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 0.0f)
+  @Test public void nullOnNull() {
+    HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
+      .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
       .build();
 
-    when(adapter.method(request)).thenReturn("GET");
+    assertThat(ruleSampler.trySample(adapter, null))
+      .isNull();
+    assertThat(ruleSampler.trySample(null))
+      .isNull();
+  }
+
+  @Test public void unmatched() {
+    HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
+      .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
+      .build();
+
     when(adapter.path(request)).thenReturn("/foo");
 
-    assertThat(sampler.trySample(adapter, request))
+    assertThat(ruleSampler.trySample(adapter, request))
+      .isNull();
+
+    when(httpClientRequest.path()).thenReturn("/foo");
+
+    assertThat(ruleSampler.trySample(httpClientRequest))
+      .isNull();
+
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    // consistent answer
+    assertThat(ruleSampler.trySample(httpServerRequest))
+      .isNull();
+  }
+
+  @Test public void exampleCustomMatcher() {
+    Matcher<HttpRequest> playInTheUSA = request -> {
+      if (!"/play".equals(request.path())) return false;
+      String url = request.url();
+      if (url == null) return false;
+      String query = URI.create(url).getQuery();
+      return query != null && query.contains("country=US");
+    };
+
+    HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
+      .putRule(playInTheUSA, RateLimitingSampler.create(100))
+      .build();
+
+    when(httpServerRequest.path()).thenReturn("/play");
+    when(httpServerRequest.url())
+      .thenReturn("https://movies/play?user=gumby&country=US&device=iphone");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isTrue();
+
+    when(httpServerRequest.path()).thenReturn("/play");
+    when(httpServerRequest.url())
+      .thenReturn("https://movies/play?user=gumby&country=ES&device=iphone");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull(); // unmatched because country isn't ES
+  }
+
+  /** Tests deprecated method */
+  @Test public void addRule() {
+    HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
+      .addRule("GET", "/foo", 0.0f)
+      .build();
+
+    when(httpServerRequest.method()).thenReturn("POST");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
       .isFalse();
   }
 
-  @Test public void onPath_sampled_prefix() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 0.0f)
+  @Test public void putAllRules() {
+    HttpRuleSampler base = HttpRuleSampler.newBuilder()
+      .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
 
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/foo/abcd");
+    HttpRuleSampler extended = HttpRuleSampler.newBuilder()
+      .putAllRules(base)
+      .build();
 
-    assertThat(sampler.trySample(adapter, request))
+    when(httpServerRequest.method()).thenReturn("POST");
+
+    assertThat(extended.trySample(httpServerRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(extended.trySample(httpServerRequest))
       .isFalse();
   }
 
-  @Test public void onPath_doesntMatch() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 0.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/bar");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isNull();
-  }
-
-  @Test public void onMethodAndPath_sampled() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 1.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/foo");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isTrue();
-  }
-
-  @Test public void onMethodAndPath_sampled_prefix() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 1.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/foo/abcd");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isTrue();
-  }
-
-  @Test public void onMethodAndPath_unsampled() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 0.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/foo");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isFalse();
-  }
-
-  @Test public void onMethodAndPath_doesntMatch_method() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 0.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("POST");
-    when(adapter.path(request)).thenReturn("/foo");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isNull();
-  }
-
-  @Test public void onMethodAndPath_doesntMatch_path() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 0.0f)
-      .build();
-
-    when(adapter.method(request)).thenReturn("GET");
-    when(adapter.path(request)).thenReturn("/bar");
-
-    assertThat(sampler.trySample(adapter, request))
-      .isNull();
-  }
-
-  @Test public void nullOnParseFailure() {
-    HttpSampler sampler = HttpRuleSampler.newBuilder()
-      .addRule("GET", "/foo", 0.0f)
-      .build();
-
-    // not setting up mocks means they return null which is like a parse fail
-    assertThat(sampler.trySample(adapter, request))
-      .isNull();
+  // empty may sound unintuitive, but it allows use of the same type when always deferring
+  @Test public void noRulesOk() {
+    HttpRuleSampler.<Boolean>newBuilder().build();
   }
 }

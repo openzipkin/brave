@@ -26,7 +26,6 @@ import javax.jms.Message;
 @JMS2_0 final class TracingCompletionListener implements CompletionListener {
   static CompletionListener create(CompletionListener delegate, Span span,
     CurrentTraceContext current) {
-    if (span.isNoop()) return delegate; // save allocation overhead
     return new TracingCompletionListener(delegate, span, current);
   }
 
@@ -41,19 +40,23 @@ import javax.jms.Message;
   }
 
   @Override public void onCompletion(Message message) {
-    try (Scope ws = current.maybeScope(span.context())) {
+    Scope ws = current.maybeScope(span.context());
+    try {
       delegate.onCompletion(message);
     } finally {
       span.finish();
+      ws.close();
     }
   }
 
   @Override public void onException(Message message, Exception exception) {
+    Scope ws = current.maybeScope(span.context());
     try {
       delegate.onException(message, exception);
-      span.error(exception);
     } finally {
+      span.error(exception);
       span.finish();
+      ws.close();
     }
   }
 }

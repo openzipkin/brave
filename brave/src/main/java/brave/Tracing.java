@@ -22,13 +22,18 @@ import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
@@ -45,6 +50,8 @@ import zipkin2.reporter.Sender;
  * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
+  // AtomicReference<Object> instead of AtomicReference<Tracing> to ensure unloadable
+  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
 
   public static Builder newBuilder() {
     return new Builder();
@@ -69,7 +76,7 @@ public abstract class Tracing implements Closeable {
    * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether the
    * overhead of tracing will occur and/or if a trace will be reported to Zipkin.
    *
-   * @see Tracer#withSampler(Sampler)
+   * @see Tracer#nextSpan(SamplerFunction, Object) for temporary overrides
    */
   abstract public Sampler sampler();
 
@@ -93,8 +100,14 @@ public abstract class Tracing implements Closeable {
 
   abstract public ErrorParser errorParser();
 
-  // volatile for visibility on get. writes guarded by Tracing.class
-  static volatile Tracing current = null;
+  /**
+   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
+   *
+   * <p>This object should not be cached.
+   */
+  @Nullable public static Tracing current() {
+    return (Tracing) CURRENT.get();
+  }
 
   /**
    * Returns the most recently created tracer if its component hasn't been closed. null otherwise.
@@ -102,7 +115,7 @@ public abstract class Tracing implements Closeable {
    * <p>This object should not be cached.
    */
   @Nullable public static Tracer currentTracer() {
-    Tracing tracing = current;
+    Tracing tracing = current();
     return tracing != null ? tracing.tracer() : null;
   }
 
@@ -122,15 +135,6 @@ public abstract class Tracing implements Closeable {
    */
   public abstract void setNoop(boolean noop);
 
-  /**
-   * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
-   *
-   * <p>This object should not be cached.
-   */
-  @Nullable public static Tracing current() {
-    return current;
-  }
-
   /** Ensures this component can be garbage collected, by making it not {@link #current()} */
   @Override abstract public void close();
 
@@ -141,16 +145,11 @@ public abstract class Tracing implements Closeable {
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
-    boolean traceId128Bit = false, supportsJoin = true;
+    boolean traceId128Bit = false, supportsJoin = true, alwaysReportSpans = false;
+    boolean trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    // Intentional dupes would be surprising. Be very careful when adding features here that no
-    // other list parameter extends FinishedSpanHandler. If it did, it could be accidentally added
-    // result in dupes here. Any component that provides a FinishedSpanHandler needs to be
-    // explicitly documented to not be added also here, to avoid dupes. That or mark a provider
-    // method protected, but still the user could accidentally create a dupe by misunderstanding and
-    // overriding public so they can add it here.
-    ArrayList<FinishedSpanHandler> finishedSpanHandlers = new ArrayList<>();
+    Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
 
     /**
      * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
@@ -254,7 +253,7 @@ public abstract class Tracing implements Closeable {
      * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether
      * the overhead of tracing will occur and/or if a trace will be reported to Zipkin.
      *
-     * @see Tracer#withSampler(Sampler) for temporary overrides
+     * @see Tracer#nextSpan(SamplerFunction, Object) for temporary overrides
      */
     public Builder sampler(Sampler sampler) {
       if (sampler == null) throw new NullPointerException("sampler == null");
@@ -337,16 +336,58 @@ public abstract class Tracing implements Closeable {
      * #spanReporter(Reporter) span reporter} to {@link Reporter#NOOP} to avoid redundant conversion
      * overhead.
      *
+     * @param handler skipped if {@link FinishedSpanHandler#NOOP} or already added
+     * @see #alwaysReportSpans()
      * @see TraceContext#sampledLocal()
-     * @since 5.4
      */
-    public Builder addFinishedSpanHandler(FinishedSpanHandler finishedSpanHandler) {
-      if (finishedSpanHandler == null) {
-        throw new NullPointerException("finishedSpanHandler == null");
+    public Builder addFinishedSpanHandler(FinishedSpanHandler handler) {
+      if (handler == null) throw new NullPointerException("finishedSpanHandler == null");
+      if (handler != FinishedSpanHandler.NOOP) { // lenient on config bug
+        if (!finishedSpanHandlers.add(handler)) {
+          Platform.get().log("Please check configuration as %s was added twice", handler, null);
+        }
       }
-      if (finishedSpanHandler != FinishedSpanHandler.NOOP) { // lenient on config bug
-        this.finishedSpanHandlers.add(finishedSpanHandler);
-      }
+      return this;
+    }
+
+    /**
+     * When true, all spans {@link TraceContext#sampledLocal() sampled locally} are reported to the
+     * {@link #spanReporter(Reporter) span reporter}, even if they aren't sampled remotely. Defaults
+     * to false.
+     *
+     * <p>The primary use case is to implement a <a href="https://github.com/openzipkin-contrib/zipkin-secondary-sampling">sampling
+     * overlay</a>, such as boosting the sample rate for a subset of the network depending on the
+     * value of an {@link ExtraFieldPropagation extra field}. This means that data will report when
+     * either the trace is normally sampled, or secondarily sampled via a custom header.
+     *
+     * <p>This is simpler than {@link #addFinishedSpanHandler(FinishedSpanHandler)}, because you
+     * don't have to duplicate transport mechanics already implemented in the {@link
+     * #spanReporter(Reporter) span reporter}. However, this assumes your backend can properly
+     * process the partial traces implied when using conditional sampling. For example, if your
+     * sampling condition is not consistent on a call tree, the resulting data could appear broken.
+     *
+     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see TraceContext#sampledLocal()
+     * @since 5.8
+     */
+    public Builder alwaysReportSpans() {
+      this.alwaysReportSpans = true;
+      return this;
+    }
+
+    /**
+     * When true, this logs the caller which orphaned a span to the category "brave.Tracer" at
+     * {@link Level#FINE}. Defaults to false.
+     *
+     * <p>If you see data with the annotation "brave.flush", you may have an instrumentation bug.
+     * To see which code was involved, set this and ensure the logger {@link Tracing} is at {@link
+     * Level#FINE}. Do not do this in production as tracking orphaned data incurs higher overhead.
+     *
+     * @see FinishedSpanHandler#supportsOrphans()
+     * @since 5.9
+     */
+    public Builder trackOrphans() {
+      this.trackOrphans = true;
       return this;
     }
 
@@ -396,13 +437,13 @@ public abstract class Tracing implements Closeable {
 
       FinishedSpanHandler zipkinHandler = builder.spanReporter != Reporter.NOOP
         ? new ZipkinFinishedSpanHandler(builder.spanReporter, errorParser,
-        builder.localServiceName, builder.localIp, builder.localPort)
+        builder.localServiceName, builder.localIp, builder.localPort, builder.alwaysReportSpans)
         : FinishedSpanHandler.NOOP;
 
       FinishedSpanHandler finishedSpanHandler =
         zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler, noop);
 
-      ArrayList<FinishedSpanHandler> orphanedSpanHandlers = new ArrayList<>();
+      Set<FinishedSpanHandler> orphanedSpanHandlers = new LinkedHashSet<>();
       for (FinishedSpanHandler handler : builder.finishedSpanHandlers) {
         if (handler.supportsOrphans()) orphanedSpanHandlers.add(handler);
       }
@@ -418,7 +459,7 @@ public abstract class Tracing implements Closeable {
         builder.clock,
         builder.propagationFactory,
         finishedSpanHandler,
-        new PendingSpans(clock, orphanedSpanHandler, noop),
+        new PendingSpans(clock, orphanedSpanHandler, builder.trackOrphans, noop),
         builder.sampler,
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
@@ -426,7 +467,8 @@ public abstract class Tracing implements Closeable {
         finishedSpanHandler.alwaysSampleLocal(),
         noop
       );
-      maybeSetCurrent();
+      // assign current IFF there's no instance already current
+      CURRENT.compareAndSet(null, this);
     }
 
     @Override public Tracer tracer() {
@@ -461,28 +503,18 @@ public abstract class Tracing implements Closeable {
       this.noop.set(noop);
     }
 
-    private void maybeSetCurrent() {
-      if (current != null) return;
-      synchronized (Tracing.class) {
-        if (current == null) current = this;
-      }
-    }
-
     @Override public String toString() {
       return tracer.toString();
     }
 
     @Override public void close() {
-      if (current != this) return;
-      // don't blindly set most recent to null as there could be a race
-      synchronized (Tracing.class) {
-        if (current == this) current = null;
-      }
+      // only set null if we are the outer-most instance
+      CURRENT.compareAndSet(this, null);
     }
   }
 
   static FinishedSpanHandler zipkinReportingFinishedSpanHandler(
-    ArrayList<FinishedSpanHandler> input, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
+    Set<FinishedSpanHandler> input, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
     ArrayList<FinishedSpanHandler> defensiveCopy = new ArrayList<>(input);
     // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
     if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);

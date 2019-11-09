@@ -26,9 +26,8 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CurrentTracingTest {
-  @Before
-  public void reset() {
-    Tracing.current = null;
+  @Before public void reset() {
+    Tracing.CURRENT.set(null);
   }
 
   @After public void close() {

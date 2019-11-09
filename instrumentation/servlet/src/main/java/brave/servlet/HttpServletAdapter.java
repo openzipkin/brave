@@ -15,13 +15,20 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerAdapter;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.internal.Nullable;
+import brave.servlet.internal.ServletRuntime;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
-/** This can also parse the remote IP of the client. */
-// public for others like sparkjava to use
+/**
+ * This can also parse the remote IP of the client.
+ *
+ * @deprecated Since 5.7, use {@link HttpServerRequest} and {@link HttpServerResponse} instead.
+ */
+@Deprecated
 public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, HttpServletResponse> {
 
   /**

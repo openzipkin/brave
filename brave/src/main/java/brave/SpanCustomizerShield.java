@@ -15,7 +15,6 @@ package brave;
 
 /** This reduces exposure of methods on {@link Span} to those exposed on {@link SpanCustomizer}. */
 final class SpanCustomizerShield implements SpanCustomizer {
-
   final Span delegate;
 
   SpanCustomizerShield(Span delegate) {
@@ -37,8 +36,7 @@ final class SpanCustomizerShield implements SpanCustomizer {
     return this;
   }
 
-  @Override
-  public String toString() {
-    return "SpanCustomizer(" + delegate.toString() + ")";
+  @Override public String toString() {
+    return "SpanCustomizer(" + delegate + ")";
   }
 }

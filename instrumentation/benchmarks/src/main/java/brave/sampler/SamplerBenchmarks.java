@@ -55,10 +55,10 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 public class SamplerBenchmarks {
 
   /**
-   * Sample rate is a percentage expressed as a float. So, 0.001 is 0.1% (let one in a 1000nd pass).
+   * Probability is a percentage expressed as a float. So, 0.001 is 0.1% (let one in a 1000nd pass).
    * Zero effectively disables tracing.
    *
-   * <p>Here are default sample rates from actual implementations:
+   * <p>Here are default sample probabilities from actual implementations:
    * <pre>
    * <ul>
    *   <li>Finagle Scala Tracer: 0.001</li>
@@ -68,10 +68,10 @@ public class SamplerBenchmarks {
    * </ul>
    * </pre>
    */
-  static final float SAMPLE_RATE = 0.01f;
+  static final float SAMPLE_PROBABILITY = 0.01f;
 
   /**
-   * The reservior is a measure of how many traces per second.
+   * The rate is a measure of how many traces per second.
    *
    * <p>Here are default sample rates from actual implementations:
    * <pre>
@@ -81,7 +81,7 @@ public class SamplerBenchmarks {
    * </ul>
    * </pre>
    */
-  static final int SAMPLE_RESERVOIR = 1;
+  static final int SAMPLE_RATE = 1;
 
   @State(Scope.Benchmark)
   public static class Args {
@@ -98,20 +98,20 @@ public class SamplerBenchmarks {
     return SAMPLER_BOUNDARY.isSampled(args.traceId);
   }
 
-  static final Sampler SAMPLER_BOUNDARY = BoundarySampler.create(SAMPLE_RATE);
+  static final Sampler SAMPLER_BOUNDARY = BoundarySampler.create(SAMPLE_PROBABILITY);
 
   @Benchmark public boolean sampler_counting(Args args) {
     return SAMPLER_RATE.isSampled(args.traceId);
   }
 
   // Use fixed-seed Random so performance of runs can be compared.
-  static final Sampler SAMPLER_RATE = new CountingSampler(SAMPLE_RATE, new Random(1000));
+  static final Sampler SAMPLER_RATE = new CountingSampler(SAMPLE_PROBABILITY, new Random(1000));
 
   @Benchmark public boolean sampler_rateLimited_1(Args args) {
     return SAMPLER_RATE_LIMITED.isSampled(args.traceId);
   }
 
-  static final Sampler SAMPLER_RATE_LIMITED = RateLimitingSampler.create(SAMPLE_RESERVOIR);
+  static final Sampler SAMPLER_RATE_LIMITED = RateLimitingSampler.create(SAMPLE_RATE);
 
   @Benchmark public boolean sampler_rateLimited_100(Args args) {
     return SAMPLER_RATE_LIMITED_100.isSampled(args.traceId);
@@ -123,7 +123,7 @@ public class SamplerBenchmarks {
     return RESERVOIR_RATE_LIMITED.take();
   }
 
-  static final Reservoir RESERVOIR_RATE_LIMITED = new Reservoir(SAMPLE_RESERVOIR);
+  static final Reservoir RESERVOIR_RATE_LIMITED = new Reservoir(SAMPLE_RATE);
 
   @Benchmark public boolean sampler_rateLimited_100_xray(Args args) {
     return RESERVOIR_RATE_LIMITED_100.take();
@@ -135,7 +135,7 @@ public class SamplerBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + SamplerBenchmarks.class.getSimpleName() + ".*rate.*")
+      .include(".*" + SamplerBenchmarks.class.getSimpleName())
       .build();
 
     new Runner(opt).run();

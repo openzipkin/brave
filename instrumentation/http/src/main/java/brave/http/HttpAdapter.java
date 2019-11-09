@@ -13,15 +13,22 @@
  */
 package brave.http;
 
+import brave.Clock;
+import brave.Span;
 import brave.internal.Nullable;
+import brave.propagation.TraceContext;
 import java.net.URI;
 
 public abstract class HttpAdapter<Req, Resp> {
-
   /**
    * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
    *
    * <p>Conventionally associated with the key "http.method"
+   *
+   * <h3>Note</h3>
+   * <p>It is part of the <a href="https://tools.ietf.org/html/rfc7231#section-4.1">HTTP RFC</a>
+   * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
+   * integration tests fail, but you will surprise any consumers who expect compliant results.
    */
   @Nullable public abstract String method(Req request);
 
@@ -49,6 +56,28 @@ public abstract class HttpAdapter<Req, Resp> {
 
   /** Returns one value corresponding to the specified header, or null. */
   @Nullable public abstract String requestHeader(Req request, String name);
+
+  /**
+   * The timestamp in epoch microseconds of the beginning of this request or zero to take this
+   * implicitly from the current clock. Defaults to zero.
+   *
+   * <p>This is helpful in two scenarios: late parsing and avoiding redundant timestamp overhead.
+   * If a server span, this helps reach the "original" beginning of the request, which is always
+   * prior to parsing.
+   *
+   * <p>Note: Overriding has the same problems as using {@link brave.Span#start(long)}. For
+   * example, it can result in negative duration if the clock used is allowed to correct backwards.
+   * It can also result in misalignments in the trace, unless {@link brave.Tracing.Builder#clock(Clock)}
+   * uses the same implementation.
+   *
+   * @see #finishTimestamp(Object)
+   * @see brave.Span#start(long)
+   * @see brave.Tracing#clock(TraceContext)
+   * @since 5.7
+   */
+  public long startTimestamp(Req request) {
+    return 0L;
+  }
 
   /**
    * Like {@link #method(Object)} except used in response parsing.
@@ -82,17 +111,42 @@ public abstract class HttpAdapter<Req, Resp> {
    * <p>Conventionally associated with the key "http.status_code"
    *
    * @see #statusCodeAsInt(Object)
+   * @deprecated Since 5.7, use {@link #statusCodeAsInt(Object)} which prevents boxing.
    */
-  @Nullable public abstract Integer statusCode(Resp response);
+  @Deprecated @Nullable public abstract Integer statusCode(Resp response);
 
   /**
    * Like {@link #statusCode(Object)} except returns a primitive where zero implies absent.
    *
    * <p>Using this method usually avoids allocation, so is encouraged when parsing data.
+   *
+   * @since 4.16
    */
   public int statusCodeAsInt(Resp response) {
     Integer maybeStatus = statusCode(response);
     return maybeStatus != null ? maybeStatus : 0;
+  }
+
+  /**
+   * The timestamp in epoch microseconds of the end of this request or zero to take this implicitly
+   * from the current clock. Defaults to zero.
+   *
+   * <p>This is helpful in two scenarios: late parsing and avoiding redundant timestamp overhead.
+   * For example, you can asynchronously handle span completion without losing precision of the
+   * actual end.
+   *
+   * <p>Note: Overriding has the same problems as using {@link Span#finish(long)}. For
+   * example, it can result in negative duration if the clock used is allowed to correct backwards.
+   * It can also result in misalignments in the trace, unless {@link brave.Tracing.Builder#clock(Clock)}
+   * uses the same implementation.
+   *
+   * @see #startTimestamp(Object)
+   * @see brave.Span#finish(long)
+   * @see brave.Tracing#clock(TraceContext)
+   * @since 5.7
+   */
+  public long finishTimestamp(Resp response) {
+    return 0L;
   }
 
   HttpAdapter() {

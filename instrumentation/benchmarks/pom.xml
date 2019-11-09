@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-benchmarks</artifactId>
@@ -55,7 +55,7 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-xray-recorder-sdk-core</artifactId>
-      <version>2.2.1</version>
+      <version>2.3.0</version>
     </dependency>
 
     <dependency>

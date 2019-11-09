@@ -16,7 +16,6 @@ package brave.httpasyncclient;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.apache.http.HttpHost;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -28,13 +27,12 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingHttpAsyncClientBuilderTest {
-  @Mock HttpRequestWrapper request;
   @Mock brave.Span span;
 
   @Test public void parseTargetAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
-    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(null, span);
 
     verify(span).isNoop();
     verifyNoMoreInteractions(span);
@@ -43,10 +41,9 @@ public class TracingHttpAsyncClientBuilderTest {
   @Test public void parseTargetAddress_prefersAddress() throws UnknownHostException {
     when(span.isNoop()).thenReturn(false);
     when(span.remoteIpAndPort("1.2.3.4", -1)).thenReturn(true);
-    when(request.getTarget()).thenReturn(
-      new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http"));
+    HttpHost host = new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http");
 
-    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(host, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", -1);
@@ -55,9 +52,9 @@ public class TracingHttpAsyncClientBuilderTest {
 
   @Test public void parseTargetAddress_acceptsHostname() {
     when(span.isNoop()).thenReturn(false);
-    when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4"));
+    HttpHost host = new HttpHost("1.2.3.4");
 
-    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(host, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", -1);
@@ -68,9 +65,9 @@ public class TracingHttpAsyncClientBuilderTest {
     when(span.isNoop()).thenReturn(false);
     when(span.remoteIpAndPort("1.2.3.4", 9999)).thenReturn(true);
 
-    when(request.getTarget()).thenReturn(new HttpHost("1.2.3.4", 9999));
+    HttpHost host = new HttpHost("1.2.3.4", 9999);
 
-    TracingHttpAsyncClientBuilder.parseTargetAddress(request, span);
+    TracingHttpAsyncClientBuilder.parseTargetAddress(host, span);
 
     verify(span).isNoop();
     verify(span).remoteIpAndPort("1.2.3.4", 9999);

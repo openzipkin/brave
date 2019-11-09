@@ -18,19 +18,24 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PredefinedPropagationFieldsTest
-  extends PropagationFieldsFactoryTest<PredefinedPropagationFields> {
-  @Override protected PropagationFieldsFactory<PredefinedPropagationFields> newFactory() {
-    return new PropagationFieldsFactory<PredefinedPropagationFields>() {
+  extends PropagationFieldsFactoryTest<String, String, PredefinedPropagationFields> {
+  public PredefinedPropagationFieldsTest() {
+    super("one", "two", "1", "2", "3");
+  }
+
+  @Override
+  protected PropagationFieldsFactory<String, String, PredefinedPropagationFields> newFactory() {
+    return new PropagationFieldsFactory<String, String, PredefinedPropagationFields>() {
       @Override public Class<PredefinedPropagationFields> type() {
         return PredefinedPropagationFields.class;
       }
 
       @Override public PredefinedPropagationFields create() {
-        return new PredefinedPropagationFields(FIELD1, FIELD2);
+        return new PredefinedPropagationFields(keyOne, keyTwo);
       }
 
       @Override protected PredefinedPropagationFields create(PredefinedPropagationFields parent) {
-        return new PredefinedPropagationFields(parent, FIELD1, FIELD2);
+        return new PredefinedPropagationFields(parent, keyOne, keyTwo);
       }
     };
   }
@@ -54,14 +59,14 @@ public class PredefinedPropagationFieldsTest
   @Test public void put_idempotent() {
     PredefinedPropagationFields fields = factory.create();
 
-    fields.put("foo", "red");
+    fields.put(keyOne, "red");
     String[] fieldsArray = fields.values;
 
-    fields.put("foo", "red");
+    fields.put(keyOne, "red");
     assertThat(fields.values)
       .isSameAs(fieldsArray);
 
-    fields.put("foo", "blue");
+    fields.put(keyOne, "blue");
     assertThat(fields.values)
       .isNotSameAs(fieldsArray);
   }
@@ -79,7 +84,7 @@ public class PredefinedPropagationFieldsTest
 
     assertThat(fields.toMap())
       .hasSize(1)
-      .containsEntry(FIELD2, "a");
+      .containsEntry(keyTwo, "a");
   }
 
   @Test public void toMap_two_index() {
@@ -89,7 +94,7 @@ public class PredefinedPropagationFieldsTest
 
     assertThat(fields.toMap())
       .hasSize(2)
-      .containsEntry(FIELD1, "1")
-      .containsEntry(FIELD2, "a");
+      .containsEntry(keyOne, "1")
+      .containsEntry(keyTwo, "a");
   }
 }

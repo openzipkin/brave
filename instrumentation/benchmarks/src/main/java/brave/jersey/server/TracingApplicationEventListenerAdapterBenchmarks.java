@@ -13,6 +13,7 @@
  */
 package brave.jersey.server;
 
+import brave.jersey.server.TracingApplicationEventListener.HttpServerResponse;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -58,10 +59,10 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
       return uriInfo;
     }
   };
-  ContainerResponse response = new ContainerResponse(request, new ServerResponse());
   RequestEvent event = new RequestEventImpl.Builder()
     .setContainerRequest(request)
-    .setContainerResponse(response).build(RequestEvent.Type.FINISHED);
+    .setContainerResponse(new ContainerResponse(request, new ServerResponse()))
+    .build(RequestEvent.Type.FINISHED);
 
   FakeExtendedUriInfo nestedUriInfo = new FakeExtendedUriInfo(URI.create("/"),
     Arrays.asList(
@@ -71,15 +72,24 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
       new PathTemplate("/nested")
     )
   );
-
-  TracingApplicationEventListener.Adapter adapter = new TracingApplicationEventListener.Adapter();
+  ContainerRequest nestedRequest = new ContainerRequest(
+    URI.create("/"), null, null, null, new MapPropertiesDelegate()
+  ) {
+    @Override public ExtendedUriInfo getUriInfo() {
+      return nestedUriInfo;
+    }
+  };
+  RequestEvent nestedEvent = new RequestEventImpl.Builder()
+    .setContainerRequest(nestedRequest)
+    .setContainerResponse(new ContainerResponse(request, new ServerResponse()))
+    .build(RequestEvent.Type.FINISHED);
 
   @Benchmark public String parseRoute() {
-    return adapter.route(event);
+    return new HttpServerResponse(event).route();
   }
 
   @Benchmark public String parseRoute_nested() {
-    return adapter.route(event);
+    return new HttpServerResponse(nestedEvent).route();
   }
 
   // Convenience main entry-point

@@ -27,8 +27,6 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Similar to Finagle's deadline span map, except this is GC pressure as opposed to timeout driven.
@@ -44,17 +42,18 @@ import java.util.logging.Logger;
  * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
  */
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
-  private static final Logger LOG = Logger.getLogger(PendingSpans.class.getName());
-
   // Even though we only put by RealKey, we allow get and remove by LookupKey
   final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
   final Clock clock;
   final FinishedSpanHandler orphanedSpanHandler;
+  final boolean trackOrphans;
   final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, AtomicBoolean noop) {
+  public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans,
+    AtomicBoolean noop) {
     this.clock = clock;
     this.orphanedSpanHandler = orphanedSpanHandler;
+    this.trackOrphans = trackOrphans;
     this.noop = noop;
   }
 
@@ -79,7 +78,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
 
-    if (LOG.isLoggable(Level.FINE)) {
+    if (trackOrphans) {
       newSpan.caller =
         new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
     }
@@ -143,7 +142,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
         String message = isEmpty
           ? "Span " + context + " was allocated but never used"
           : "Span " + context + " neither finished nor flushed before GC";
-        LOG.log(Level.FINE, message, caller);
+        Platform.get().log(message, caller);
       }
       if (isEmpty) continue;
 

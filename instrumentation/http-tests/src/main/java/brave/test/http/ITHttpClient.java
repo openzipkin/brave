@@ -22,6 +22,7 @@ import brave.http.HttpRuleSampler;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunctions;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -34,6 +35,7 @@ import org.junit.Test;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
+import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -117,10 +119,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
-    Tracer tracer = httpTracing.tracing().tracer().withSampler(Sampler.NEVER_SAMPLE);
     server.enqueue(new MockResponse());
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
+    ScopedSpan parent = tracer().startScopedSpan("test", SamplerFunctions.neverSample(), false);
     try {
       ExtraFieldPropagation.set(parent.context(), EXTRA_KEY, "joey");
       get(client, "/foo");
@@ -149,14 +150,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void customSampler() throws Exception {
+    String path = "/foo";
+
     close();
     httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
-      .addRule(null, "/foo", 0.0f)
+      .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
       .build()).build();
     client = newClient(server.getPort());
 
     server.enqueue(new MockResponse());
-    get(client, "/foo");
+    get(client, path);
 
     RecordedRequest request = server.takeRequest();
     assertThat(request.getHeaders().toMultimap())

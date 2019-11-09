@@ -6,7 +6,9 @@ tracing with only XML
 Bean Factories exist for the following types:
 * EndpointFactoryBean - for configuring the service name, IP etc representing this host
 * TracingFactoryBean - wires most together, like reporter and log integration
-* HttpTracingFactoryBean - for http tagging and sampling policy
+* RpcTracingFactoryBean - for RPC tagging and sampling policy
+* HttpTracingFactoryBean - for HTTP tagging and sampling policy
+* MessagingTracingFactoryBean - for messaging tagging and sampling policy
 * CurrentTraceContextFactoryBean - for scope decorations such as MDC (logging) field correlation
 * ExtraFieldPropagationFactoryBean - for propagating extra fields over headers, like "customer-id"
 
@@ -36,6 +38,14 @@ Here are some example beans using the factories in this module:
 
   <bean id="httpTracing" class="brave.spring.beans.HttpTracingFactoryBean">
     <property name="tracing" ref="tracing"/>
+  </bean>
+
+  <bean id="rpcTracing" class="brave.spring.beans.RpcTracingFactoryBean">
+    <property name="rpcTracing" ref="tracing"/>
+  </bean>
+
+  <bean id="messagingTracing" class="brave.spring.beans.MessagingTracingFactoryBean">
+    <property name="messagingTracing" ref="tracing"/>
   </bean>
 ```
 

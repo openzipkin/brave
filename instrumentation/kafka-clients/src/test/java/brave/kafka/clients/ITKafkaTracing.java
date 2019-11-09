@@ -15,6 +15,8 @@ package brave.kafka.clients;
 
 import brave.Tracing;
 import brave.internal.HexCodec;
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictScopeDecorator;
@@ -22,6 +24,7 @@ import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
+import brave.sampler.Sampler;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
@@ -50,7 +53,10 @@ import zipkin2.DependencyLink;
 import zipkin2.Span;
 import zipkin2.internal.DependencyLinker;
 
+import static brave.kafka.clients.BaseTracingTest.takeSpan;
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
@@ -128,8 +134,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(2);
-    Span producerSpan1 = takeProducerSpan(), producerSpan2 = takeProducerSpan();
-    Span consumerSpan1 = takeConsumerSpan(), consumerSpan2 = takeConsumerSpan();
+    Span producerSpan1 = takeSpan(producerSpans), producerSpan2 = takeSpan(producerSpans);
+    Span consumerSpan1 = takeSpan(consumerSpans), consumerSpan2 = takeSpan(consumerSpans);
 
     // Check to see the trace is continued between the producer and the consumer
     // we don't know the order the spans will come in. Correlate with the tag instead.
@@ -163,8 +169,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(10);
-    takeConsumerSpan();
-    takeConsumerSpan();
+    takeSpan(consumerSpans);
+    takeSpan(consumerSpans);
     // producerSpans empty as not traced
   }
 
@@ -178,8 +184,8 @@ public class ITKafkaTracing {
     consumer.poll(10000);
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(takeConsumerSpan());
-    allSpans.add(takeProducerSpan());
+    allSpans.add(takeSpan(consumerSpans));
+    allSpans.add(takeSpan(producerSpans));
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
@@ -198,8 +204,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeProducerSpan();
-    Span consumerSpan = takeConsumerSpan();
+    Span producerSpan = takeSpan(producerSpans);
+    Span consumerSpan = takeSpan(consumerSpans);
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span processor = consumerTracing.nextSpan(record);
@@ -213,7 +219,7 @@ public class ITKafkaTracing {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      Span processorSpan = takeConsumerSpan();
+      Span processorSpan = takeSpan(consumerSpans);
       assertThat(processorSpan.id())
         .isNotEqualTo(consumerSpan.id());
     }
@@ -274,8 +280,8 @@ public class ITKafkaTracing {
     ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeProducerSpan();
-    Span consumerSpan = takeConsumerSpan();
+    Span producerSpan = takeSpan(producerSpans);
+    Span consumerSpan = takeSpan(consumerSpans);
 
     assertThat(producerSpan.traceId())
       .isEqualTo(consumerSpan.traceId());
@@ -285,6 +291,68 @@ public class ITKafkaTracing {
 
       assertThat(forProcessor.traceIdString()).isEqualTo(consumerSpan.traceId());
     }
+  }
+
+  @Test public void customSampler_producer() throws Exception {
+    String topic = testName.getMethodName();
+
+    producerTracing = KafkaTracing.create(MessagingTracing.newBuilder(
+      Tracing.newBuilder().spanReporter(producerSpans::add).build()
+    ).producerSampler(MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals(topic), Sampler.NEVER_SAMPLE)
+      .build()).build());
+
+    producer = createTracingProducer();
+    consumer = createTracingConsumer();
+
+    producer.send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE)).get();
+
+    // intentionally using deprecated method as we are checking the same class in an invoker test
+    // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
+    ConsumerRecords<String, String> records = consumer.poll(10_000L);
+
+    assertThat(records).hasSize(1);
+    checkB3Unsampled(records);
+
+    // since the producer was unsampled, the consumer should be unsampled also due to propagation
+
+    // @After will also check that both the producer and consumer were not sampled
+  }
+
+  void checkB3Unsampled(ConsumerRecords<String, String> records) {
+    // Check that the injected context was not sampled
+    assertThat(records)
+      .extracting(ConsumerRecord::headers)
+      .flatExtracting(TracingConsumerTest::lastHeaders)
+      .hasSize(1)
+      .allSatisfy(e -> {
+        assertThat(e.getKey()).isEqualTo("b3");
+        assertThat(e.getValue()).endsWith("-0");
+      });
+  }
+
+  @Test public void customSampler_consumer() throws Exception {
+    String topic = testName.getMethodName();
+
+    consumerTracing = KafkaTracing.create(MessagingTracing.newBuilder(
+      Tracing.newBuilder().spanReporter(consumerSpans::add).build()
+    ).consumerSampler(MessagingRuleSampler.newBuilder()
+      .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
+      .build()).build());
+
+    producer = kafkaRule.helper().createStringProducer(); // intentionally don't trace the producer
+    consumer = createTracingConsumer();
+
+    producer.send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE)).get();
+
+    // intentionally using deprecated method as we are checking the same class in an invoker test
+    // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
+    ConsumerRecords<String, String> records = consumer.poll(10_000L);
+
+    assertThat(records).hasSize(1);
+    checkB3Unsampled(records);
+
+    // @After will also check that the consumer was not sampled
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {
@@ -301,27 +369,5 @@ public class ITKafkaTracing {
   Producer<String, String> createTracingProducer() {
     KafkaProducer<String, String> producer = kafkaRule.helper().createStringProducer();
     return producerTracing.producer(producer);
-  }
-
-  /** Call this to block until a span was reported */
-  Span takeProducerSpan() throws InterruptedException {
-    Span result = producerSpans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Producer span was not reported")
-      .isNotNull();
-    // ensure the span finished
-    assertThat(result.durationAsLong()).isPositive();
-    return result;
-  }
-
-  /** Call this to block until a span was reported */
-  Span takeConsumerSpan() throws InterruptedException {
-    Span result = consumerSpans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Consumer span was not reported")
-      .isNotNull();
-    // ensure the span finished
-    assertThat(result.durationAsLong()).isPositive();
-    return result;
   }
 }

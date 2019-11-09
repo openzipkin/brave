@@ -13,8 +13,10 @@
  */
 package brave.http;
 
+import brave.Span;
 import brave.internal.Nullable;
-import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.
@@ -29,11 +31,18 @@ import brave.sampler.Sampler;
  * }</pre>
  *
  * @see HttpRuleSampler
+ * @see SamplerFunction
+ * @deprecated Since 5.8, use {@code RequestSampler<HttpRequest>}.
  */
+@Deprecated
 // abstract class as you can't lambda generic methods anyway. This lets us make helpers in the future
-public abstract class HttpSampler {
+public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
   /** Ignores the request and uses the {@link brave.sampler.Sampler trace ID instead}. */
   public static final HttpSampler TRACE_ID = new HttpSampler() {
+    @Override public Boolean trySample(HttpRequest request) {
+      return null;
+    }
+
     @Override @Nullable public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return null;
     }
@@ -49,6 +58,10 @@ public abstract class HttpSampler {
    * out client requests made during bootstrap.
    */
   public static final HttpSampler NEVER_SAMPLE = new HttpSampler() {
+    @Override public Boolean trySample(HttpRequest request) {
+      return false;
+    }
+
     @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
       return false;
     }
@@ -58,25 +71,104 @@ public abstract class HttpSampler {
     }
   };
 
+  @Override @Nullable public Boolean trySample(HttpRequest request) {
+    if (request == null) return null;
+    HttpAdapter<Object, Void> adapter;
+    if (request instanceof HttpClientRequest) {
+      adapter = new HttpClientRequest.ToHttpAdapter((HttpClientRequest) request);
+    } else {
+      adapter = new HttpServerRequest.ToHttpAdapter((HttpServerRequest) request);
+    }
+    return trySample(adapter, request.unwrap());
+  }
+
   /**
    * Returns an overriding sampling decision for a new trace. Return null ignore the request and use
    * the {@link brave.sampler.Sampler trace ID sampler}.
    */
   @Nullable public abstract <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request);
 
-  /**
-   * Used internally by {@link HttpClientHandler} to override the default sampling decision when
-   * starting a new trace for an http client request.
-   */
-  <Req> Sampler toSampler(HttpAdapter<Req, ?> adapter, Req request, Sampler delegate) {
-    if (this == TRACE_ID) return delegate;
-    if (this == NEVER_SAMPLE) return Sampler.NEVER_SAMPLE;
-    return new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        Boolean decision = trySample(adapter, request);
-        if (decision == null) return delegate.isSampled(traceId);
-        return decision;
+  static HttpSampler fromHttpRequestSampler(SamplerFunction<HttpRequest> sampler) {
+    if (sampler == null) throw new NullPointerException("sampler == null");
+    if (sampler.equals(SamplerFunctions.deferDecision())) return HttpSampler.TRACE_ID;
+    if (sampler.equals(SamplerFunctions.neverSample())) return HttpSampler.NEVER_SAMPLE;
+    return sampler instanceof HttpSampler ? (HttpSampler) sampler
+      : new HttpRequestSamplerAdapter(sampler);
+  }
+
+  static SamplerFunction<HttpRequest> toHttpRequestSampler(SamplerFunction<HttpRequest> sampler) {
+    if (sampler == null) throw new NullPointerException("sampler == null");
+    if (sampler == HttpSampler.TRACE_ID) return SamplerFunctions.deferDecision();
+    if (sampler == HttpSampler.NEVER_SAMPLE) return SamplerFunctions.neverSample();
+    return sampler;
+  }
+
+  static final class HttpRequestSamplerAdapter extends HttpSampler {
+    final SamplerFunction<HttpRequest> delegate;
+
+    HttpRequestSamplerAdapter(SamplerFunction<HttpRequest> delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Boolean trySample(HttpRequest request) {
+      return delegate.trySample(request);
+    }
+
+    @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+      if (adapter == null) throw new NullPointerException("adapter == null");
+      if (request == null) return null;
+      // This can be called independently when interceptors control lifecycle directly. In these
+      // cases, it is possible to have an HttpRequest as an argument.
+      if (request instanceof HttpRequest) {
+        return delegate.trySample((HttpRequest) request);
       }
-    };
+      return delegate.trySample(new FromHttpAdapter<>(adapter, request));
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
+  }
+
+  @Deprecated static final class FromHttpAdapter<Req> extends HttpRequest {
+    final HttpAdapter<Req, ?> adapter;
+    final Req request;
+    final Span.Kind kind;
+
+    FromHttpAdapter(HttpAdapter<Req, ?> adapter, Req request) {
+      if (adapter == null) throw new NullPointerException("adapter == null");
+      this.adapter = adapter;
+      this.kind = adapter instanceof HttpServerAdapter ? Span.Kind.SERVER : Span.Kind.CLIENT;
+      if (request == null) throw new NullPointerException("request == null");
+      this.request = request;
+    }
+
+    @Override public Span.Kind spanKind() {
+      return kind;
+    }
+
+    @Override public Object unwrap() {
+      return request;
+    }
+
+    @Override public String method() {
+      return adapter.method(request);
+    }
+
+    @Override public String path() {
+      return adapter.path(request);
+    }
+
+    @Override public String url() {
+      return adapter.url(request);
+    }
+
+    @Override public String header(String name) {
+      return adapter.requestHeader(request, name);
+    }
+
+    @Override public String toString() {
+      return request.toString();
+    }
   }
 }

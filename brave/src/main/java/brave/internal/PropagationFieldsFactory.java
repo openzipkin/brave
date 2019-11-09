@@ -16,7 +16,7 @@ package brave.internal;
 import brave.propagation.TraceContext;
 import java.util.List;
 
-public abstract class PropagationFieldsFactory<P extends PropagationFields> extends
+public abstract class PropagationFieldsFactory<K, V, P extends PropagationFields<K, V>> extends
   ExtraFactory<P> {
 
   @Override protected abstract P create();

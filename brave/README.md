@@ -260,16 +260,12 @@ policy. Here's how they might work internally.
 
 ```java
 // derives a sample rate from an annotation on a java method
-DeclarativeSampler<Traced> sampler = DeclarativeSampler.create(Traced::sampleRate);
+SamplerFunction<Traced> samplerFunction = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
 @Around("@annotation(traced)")
 public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-  // When there is no trace in progress, this decides using an annotation
-  Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-  Tracer tracer = tracing.tracer().withSampler(decideUsingAnnotation);
-
-  // This code looks the same as if there was no declarative override
-  ScopedSpan span = tracer.startScopedSpan(spanName(pjp));
+  // When there is no trace in progress, this overrides the decision based on the annotation
+  ScopedSpan span = tracer.startScopedSpan(spanName(pjp), samplerFunction, traced);
   try {
     return pjp.proceed();
   } catch (RuntimeException | Error e) {
@@ -288,23 +284,21 @@ is. For example, you might not want to trace requests to static resources
 such as images, or you might want to trace all requests to a new api.
 
 Most users will use a framework interceptor which automates this sort of
-policy. Here's how they might work internally.
+policy.
 
+Here's a simplified version of how this might work internally.
 ```java
-Sampler fallback = tracing.sampler();
+SamplerFunction<Request> requestBased = (request) -> {
+  if (request.url().startsWith("/experimental")) {
+    return true;
+  } else if (request.url().startsWith("/static")) {
+    return false;
+  }
+  return null;
+};
 
 Span nextSpan(final Request input) {
-  Sampler requestBased = Sampler() {
-    @Override public boolean isSampled(long traceId) {
-      if (input.url().startsWith("/experimental")) {
-        return true;
-      } else if (input.url().startsWith("/static")) {
-        return false;
-      }
-      return fallback.isSampled(traceId);
-    }
-  };
-  return tracer.withSampler(requestBased).nextSpan();
+  return tracer.nextSpan(requestBased, input);
 }
 ```
 
@@ -801,9 +795,10 @@ testing instrumentation, use [StrictScopeDecorator](src/main/java/brave/propagat
 errors on known scoping problems.
 
 If you see data with the annotation `brave.flush`, you may have an
-instrumentation bug. To see more information, set the Java logger named
-`brave.internal.recorder.PendingSpans` to FINE level. Do not do this in
-production as tracking abandoned data incurs higher overhead.
+instrumentation bug. To see which code was involved, set
+`Tracing.Builder.trackOrphans()` and ensure the logger `brave.Tracer` is at
+'FINE' level. Do not do this in production as tracking orphaned data incurs
+higher overhead.
 
 Note: When using log4j2, set the following to ensure log settings apply:
 `-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager`

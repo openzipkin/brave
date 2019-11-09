@@ -20,6 +20,8 @@ import brave.internal.Nullable;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -60,6 +62,9 @@ import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,13 +78,13 @@ public class ITTracingServerInterceptor {
 
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
 
-  GrpcTracing grpcTracing;
+  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
   Server server;
   ManagedChannel client;
 
   @Before public void setup() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
 
@@ -218,7 +223,7 @@ public class ITTracingServerInterceptor {
       public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
         Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         testLogger.info("in span!");
-        fromUserInterceptor.set(grpcTracing.tracing.currentTraceContext().get());
+        fromUserInterceptor.set(tracing.currentTraceContext().get());
         return next.startCall(call, headers);
       }
     });
@@ -286,14 +291,14 @@ public class ITTracingServerInterceptor {
     grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
-        if (grpcTracing.tracing.currentTraceContext().get() != null) {
+        if (tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_sent.visible", "true");
         }
       }
 
       @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
         span.tag("grpc.message_received", message.toString());
-        if (grpcTracing.tracing.currentTraceContext().get() != null) {
+        if (tracing.currentTraceContext().get() != null) {
           span.tag("grpc.message_received.visible", "true");
         }
       }
@@ -331,6 +336,25 @@ public class ITTracingServerInterceptor {
     // all response messages are tagged to the same span
     Span span = takeSpan();
     assertThat(span.tags()).hasSize(10);
+  }
+
+  @Test public void customSampler() throws Exception {
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
+      .build()).build();
+    grpcTracing = GrpcTracing.create(rpcTracing);
+    init();
+
+    // unsampled
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
+
+    // sampled
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(takeSpan().name()).isEqualTo("helloworld.greeter/sayhello");
+    // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {

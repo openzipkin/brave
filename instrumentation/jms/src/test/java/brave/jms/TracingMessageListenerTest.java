@@ -25,7 +25,7 @@ import org.junit.After;
 import org.junit.Test;
 import zipkin2.Span;
 
-import static brave.jms.JmsTracing.SETTER;
+import static brave.jms.MessagePropagation.SETTER;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
 import static org.assertj.core.api.Assertions.assertThat;

@@ -19,6 +19,7 @@ import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.List;
+import org.junit.Before;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
@@ -26,25 +27,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
 
-  protected F factory = newFactory();
+  protected F factory;
+  protected Propagation.Factory propagationFactory;
+  protected TraceContext context;
 
   protected abstract F newFactory();
 
-  protected final Propagation.Factory propagationFactory = new Propagation.Factory() {
-    @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-      return B3Propagation.FACTORY.create(keyFactory);
-    }
+  @Before public void setup() {
+    factory = newFactory();
+    propagationFactory = new Propagation.Factory() {
+      @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+        return B3Propagation.FACTORY.create(keyFactory);
+      }
 
-    @Override public TraceContext decorate(TraceContext context) {
-      return factory.decorate(context);
-    }
-  };
-
-  protected TraceContext context = propagationFactory.decorate(TraceContext.newBuilder()
-    .traceId(1L)
-    .spanId(2L)
-    .sampled(true)
-    .build());
+      @Override public TraceContext decorate(TraceContext context) {
+        return factory.decorate(context);
+      }
+    };
+    context = propagationFactory.decorate(TraceContext.newBuilder()
+      .traceId(1L)
+      .spanId(2L)
+      .sampled(true)
+      .build());
+  }
 
   @Test public void decorate_empty() {
     assertThat(factory.decorate(contextWithExtra(context, asList(1L))).extra())

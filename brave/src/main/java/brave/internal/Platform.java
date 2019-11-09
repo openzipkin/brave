@@ -34,7 +34,6 @@ import org.jvnet.animal_sniffer.IgnoreJRERequirement;
  */
 public abstract class Platform {
   private static final Platform PLATFORM = findPlatform();
-  private static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
 
   volatile String linkLocalIp;
 
@@ -74,20 +73,27 @@ public abstract class Platform {
     return PLATFORM;
   }
 
+  // Use nested class to ensure logger isn't initialized unless it is accessed once.
+  private static final class LoggerHolder {
+    static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
+  }
+
   /** Like {@link Logger#log(Level, String) */
   public void log(String msg, @Nullable Throwable thrown) {
-    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
-    LOG.log(Level.FINE, msg, thrown);
+    Logger logger = LoggerHolder.LOG;
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    logger.log(Level.FINE, msg, thrown);
   }
 
   /** Like {@link Logger#log(Level, String, Object)}, except with a throwable arg */
   public void log(String msg, Object param1, @Nullable Throwable thrown) {
-    if (!LOG.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    Logger logger = LoggerHolder.LOG;
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
     Object[] params = {param1};
     lr.setParameters(params);
     if (thrown != null) lr.setThrown(thrown);
-    LOG.log(lr);
+    logger.log(lr);
   }
 
   /** Attempt to match the host runtime to a capable Platform implementation. */

@@ -29,7 +29,6 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
-
   @Override protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result = TracingHttpAsyncClientBuilder.create(httpTracing).build();
     result.start();

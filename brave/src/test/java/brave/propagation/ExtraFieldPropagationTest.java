@@ -14,7 +14,6 @@
 package brave.propagation;
 
 import brave.Tracing;
-import brave.internal.PropagationFields;
 import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -145,8 +144,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    PropagationFields fields = context.findExtra(Extra.class);
-    fields.put("x-vcap-request-id", uuid);
+    Extra extra = context.findExtra(Extra.class);
+    extra.put("x-vcap-request-id", uuid);
 
     injector.inject(context, carrier);
 
@@ -154,9 +153,9 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    PropagationFields fields = context.findExtra(Extra.class);
-    fields.put("x-vcap-request-id", uuid);
-    fields.put("x-amzn-trace-id", awsTraceId);
+    Extra extra = context.findExtra(Extra.class);
+    extra.put("x-vcap-request-id", uuid);
+    extra.put("x-amzn-trace-id", awsTraceId);
 
     injector.inject(context, carrier);
 
@@ -172,9 +171,9 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    PropagationFields fields = context.findExtra(Extra.class);
-    fields.put("x-vcap-request-id", uuid);
-    fields.put("country-code", "FO");
+    Extra extra = context.findExtra(Extra.class);
+    extra.put("x-vcap-request-id", uuid);
+    extra.put("country-code", "FO");
 
     injector.inject(context, carrier);
 
@@ -193,8 +192,8 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
-    assertThat(fields.toMap())
+    Extra extra = (Extra) extracted.context().extra().get(0);
+    assertThat(extra.toMap())
       .containsEntry("x-amzn-trace-id", awsTraceId);
   }
 
@@ -209,8 +208,8 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
-    assertThat(fields.toMap())
+    Extra extra = (Extra) extracted.context().extra().get(0);
+    assertThat(extra.toMap())
       .containsEntry("x-amzn-trace-id", awsTraceId)
       .containsEntry("x-vcap-request-id", uuid);
   }
@@ -232,8 +231,8 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PropagationFields fields = (PropagationFields) extracted.context().extra().get(0);
-    assertThat(fields.toMap())
+    Extra extra = (Extra) extracted.context().extra().get(0);
+    assertThat(extra.toMap())
       .containsEntry("country-code", "FO")
       .containsEntry("x-vcap-request-id", uuid);
   }

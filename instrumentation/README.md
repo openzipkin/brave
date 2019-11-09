@@ -5,7 +5,8 @@ example, the directory "servlet" includes the artifact "brave-instrumentation-se
 
 Here's a brief overview of what's packaged here:
 
-* [dubbo-rpc](dubbo-rpc/README.md) - Tracing filter for RPC providers and consumers in [Dubbo](http://dubbo.io/books/dubbo-user-book-en/)
+* [dubbo](dubbo/README.md) - Tracing filter for RPC providers and consumers in [Apache Dubbo](http://dubbo.apache.org/en-us/)
+* [dubbo-rpc](dubbo-rpc/README.md) - Tracing filter for RPC providers and consumers in [Alibaba Dubbo](http://dubbo.io/books/dubbo-user-book-en/)
 * [grpc](grpc/README.md) - Tracing client and server interceptors for [grpc](github.com/grpc/grpc-java)
 * [httpasyncclient](httpasyncclient/README.md) - Tracing decorator for [Apache HttpClient](https://hc.apache.org/httpcomponents-asyncclient-dev/) 4.0+
 * [httpclient](httpclient/README.md) - Tracing decorator for [Apache HttpClient](http://hc.apache.org/httpcomponents-client-4.4.x/index.html) 4.3+
@@ -28,8 +29,10 @@ Here's a brief overview of what's packaged here:
 * [vertx-web](vertx-web/README.md) - Tracing routing context handler for [Vert.x Web](http://vertx.io/docs/vertx-web/js/)
 
 Here are other tools we provide for configuring or testing instrumentation:
-* [http](http/README.md) - `HttpTracing` that allows portable configuration of http instrumentation
+* [http](http/README.md) - `HttpTracing` that allows portable configuration of HTTP instrumentation
 * [http-tests](http-tests/README.md) - Interop test suit that all http client and server instrumentation must pass
+* [messaging](messaging/README.md) - `MessagingTracing` that allows portable configuration of messaging instrumentation
+* [rpc](rpc/README.md) - `RpcTracing` that allows portable configuration of RPC instrumentation
 * [spring-beans](../spring-beans/README.md) - This allows you to setup tracing with XML instead of custom code.
 * [benchmarks](benchmarks/README.md) - JMH microbenchmarks that measure instrumentation overhead
 

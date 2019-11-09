@@ -14,53 +14,87 @@
 package brave.sampler;
 
 import brave.propagation.SamplingFlags;
-import java.util.function.Function;
 import org.junit.Test;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ParameterizedSamplerTest {
 
   @Test public void matchesParameters() {
-    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(rule(1.0f,
-      Boolean::booleanValue)));
+    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
+      .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
+      .build();
 
     assertThat(sampler.sample(true))
       .isEqualTo(SamplingFlags.SAMPLED);
   }
 
   @Test public void emptyOnNoMatch() {
-    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(rule(1.0f,
-      Boolean::booleanValue)));
+    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
+      .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
+      .build();
 
     assertThat(sampler.sample(false))
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
   @Test public void emptyOnNull() {
-    ParameterizedSampler<Void> sampler = ParameterizedSampler.create(asList(rule(1.0f, v -> true)));
+    ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
+      .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
+      .build();
 
     assertThat(sampler.sample(null))
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
+  @Test public void nullOnNull() {
+    ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
+      .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    assertThat(sampler.trySample(null))
+      .isNull();
+  }
+
   @Test public void multipleRules() {
-    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.create(asList(
-      rule(1.0f, v -> false), // doesn't match
-      rule(0.0f, v -> true) // match
-    ));
+    ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
+      .putRule(v -> false, Sampler.ALWAYS_SAMPLE) // doesn't match
+      .putRule(v -> true, Sampler.NEVER_SAMPLE) // match
+      .build();
 
     assertThat(sampler.sample(true))
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  // we can do this in tests because tests compile against java 8
-  static <P> ParameterizedSampler.Rule<P> rule(float rate, Function<P, Boolean> rule) {
-    return new ParameterizedSampler.Rule<P>(rate) {
-      @Override public boolean matches(P parameters) {
-        return rule.apply(parameters);
-      }
-    };
+  @Test public void putAllRules() {
+    Matcher<Void> one = v -> false;
+    Matcher<Void> two = v -> true;
+    Matcher<Void> three = v -> Boolean.FALSE;
+    Matcher<Void> four = v -> Boolean.TRUE;
+    ParameterizedSampler<Void> base = ParameterizedSampler.<Void>newBuilder()
+      .putRule(one, Sampler.ALWAYS_SAMPLE)
+      .putRule(two, Sampler.NEVER_SAMPLE)
+      .putRule(three, Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    ParameterizedSampler<Void> extended = ParameterizedSampler.<Void>newBuilder()
+      .putAllRules(base)
+      .putRule(one, Sampler.NEVER_SAMPLE)
+      .putRule(four, Sampler.ALWAYS_SAMPLE)
+      .build();
+
+    assertThat(extended).usingRecursiveComparison()
+      .isEqualTo(ParameterizedSampler.<Void>newBuilder()
+        .putRule(one, Sampler.NEVER_SAMPLE)
+        .putRule(two, Sampler.NEVER_SAMPLE)
+        .putRule(three, Sampler.ALWAYS_SAMPLE)
+        .putRule(four, Sampler.ALWAYS_SAMPLE)
+        .build()
+      );
+  }
+
+  // empty may sound unintuitive, but it allows use of the same type when always deferring
+  @Test public void noRulesOk() {
+    ParameterizedSampler.<Boolean>newBuilder().build();
   }
 }

@@ -13,8 +13,12 @@
  */
 package brave.jms;
 
+import brave.messaging.MessagingRuleSampler;
+import brave.messaging.MessagingTracing;
+import brave.sampler.Sampler;
 import java.util.concurrent.CountDownLatch;
 import javax.jms.CompletionListener;
+import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
@@ -23,6 +27,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import zipkin2.Span;
 
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSProducer} */
@@ -105,6 +110,30 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     assertThat(producerSpan.timestampAsLong()).isPositive();
     assertThat(producerSpan.durationAsLong()).isPositive();
     assertThat(producerSpan.tags()).containsKeys("error", "onException");
+  }
+
+  @Test public void customSampler() throws Exception {
+    MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
+      .build();
+
+    try (MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
+      .producerSampler(producerSampler)
+      .build();
+         JMSContext context = JmsTracing.create(messagingTracing)
+           .connectionFactory(((ArtemisJmsTestRule) jms).factory)
+           .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+    ) {
+      context.createProducer().send(jms.queue, "foo");
+    }
+
+    Message received = queueReceiver.receive();
+
+    assertThat(propertiesToMap(received)).containsKey("b3")
+      // Check that the injected context was not sampled
+      .satisfies(m -> assertThat(m.get("b3")).endsWith("-0"));
+
+    // @After will also check that the producer was not sampled
   }
 
   interface JMSAsync {

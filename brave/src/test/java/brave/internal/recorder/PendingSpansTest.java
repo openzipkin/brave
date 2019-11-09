@@ -48,13 +48,12 @@ public class PendingSpansTest {
         spans.add(b.build());
         return true;
       }
-    });
+    }, false);
   }
 
-  void init(FinishedSpanHandler zipkinFinishedSpanHandler) {
+  void init(FinishedSpanHandler zipkinFinishedSpanHandler, boolean trackOrphans) {
     pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L,
-      zipkinFinishedSpanHandler,
-      new AtomicBoolean());
+      zipkinFinishedSpanHandler, trackOrphans, new AtomicBoolean());
   }
 
   @Test
@@ -181,7 +180,7 @@ public class PendingSpansTest {
    * <p>This is a customized version of https://github.com/raphw/weak-lock-free/blob/master/src/test/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMapTest.java
    */
   @Test
-  public void reportOrphanedSpans_afterGC() throws Exception {
+  public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
     PendingSpan span = pendingSpans.getOrCreate(context1, false);
     span.state.name("foo");
@@ -222,7 +221,7 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void noop_afterGC() throws Exception {
+  public void noop_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
     pendingSpans.getOrCreate(context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
@@ -259,12 +258,12 @@ public class PendingSpansTest {
 
   /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
   @Test
-  public void reportOrphanedSpans_whenReporterDies() throws Exception {
+  public void reportOrphanedSpans_whenReporterDies() {
     init(new FinishedSpanHandler() {
       @Override public boolean handle(TraceContext context, MutableSpan span) {
         throw new RuntimeException();
       }
-    });
+    }, false);
 
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(context, false);
@@ -312,7 +311,7 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void orphanContext_dropsExtra() throws Exception {
+  public void orphanContext_dropsExtra() {
     TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
 
     TraceContext[] handledContext = {null};
@@ -321,7 +320,7 @@ public class PendingSpansTest {
         handledContext[0] = context;
         return true;
       }
-    });
+    }, false);
 
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");
@@ -336,8 +335,9 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void orphanContext_includesAllFlags() throws Exception {
-    TraceContext context1 = context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
+  public void orphanContext_includesAllFlags() {
+    TraceContext context1 =
+      context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
 
     TraceContext[] handledContext = {null};
     init(new FinishedSpanHandler() {
@@ -345,7 +345,7 @@ public class PendingSpansTest {
         handledContext[0] = context;
         return true;
       }
-    });
+    }, false);
 
     TraceContext context = context1.toBuilder().build();
     pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");

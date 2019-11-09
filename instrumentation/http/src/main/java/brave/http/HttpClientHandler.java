@@ -18,7 +18,9 @@ import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Injector;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -26,7 +28,7 @@ import brave.sampler.Sampler;
  *
  * <p>This is an example of synchronous instrumentation:
  * <pre>{@code
- * Span span = handler.handleSend(injector, request);
+ * Span span = handler.handleSend(request);
  * Throwable error = null;
  * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
  *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
@@ -43,88 +45,129 @@ import brave.sampler.Sampler;
  * @param <Resp> the native http response type of the client.
  * @since 4.3
  */
-public final class HttpClientHandler<Req, Resp>
-  extends HttpHandler<Req, Resp, HttpClientAdapter<Req, Resp>> {
+public final class HttpClientHandler<Req, Resp> extends HttpHandler {
+  /** @since 5.7 */
+  public static HttpClientHandler<HttpClientRequest, HttpClientResponse> create(
+    HttpTracing httpTracing) {
+    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
+    return new HttpClientHandler<>(httpTracing, null);
+  }
 
+  /**
+   * @since 4.3
+   * @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable.
+   */
+  @Deprecated
   public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
     HttpClientAdapter<Req, Resp> adapter) {
+    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
+    if (adapter == null) throw new NullPointerException("adapter == null");
     return new HttpClientHandler<>(httpTracing, adapter);
   }
 
   final Tracer tracer;
+  @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
-  final HttpSampler httpSampler;
+  final SamplerFunction<HttpRequest> httpSampler;
   @Nullable final String serverName;
+  final Injector<HttpClientRequest> defaultInjector;
 
   HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
     super(
       httpTracing.tracing().currentTraceContext(),
-      adapter,
       httpTracing.clientParser()
     );
+    this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
-    this.httpSampler = httpTracing.clientSampler();
+    this.httpSampler = httpTracing.clientRequestSampler();
     this.serverName = !"".equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
+    // The following allows us to add the method: handleSend(HttpClientRequest request) without
+    // duplicating logic from the superclass or deprecated handleReceive methods.
+    this.defaultInjector = httpTracing.tracing().propagation().injector(HttpClientRequest.SETTER);
   }
 
   /**
    * Starts the client span after assigning it a name and tags. This {@link
-   * TraceContext.Injector#inject(TraceContext, Object) injects} the trace context onto the request
-   * before returning.
+   * Injector#inject(TraceContext, Object) injects} the trace context onto the request before
+   * returning.
    *
    * <p>Call this before sending the request on the wire.
+   *
+   * @since 5.7
    */
-  public Span handleSend(TraceContext.Injector<Req> injector, Req request) {
+  public Span handleSend(HttpClientRequest request) {
+    if (request == null) throw new NullPointerException("request == null");
+    return handleSend(request, tracer.nextSpan(httpSampler, request));
+  }
+
+  /**
+   * Like {@link #handleSend(HttpClientRequest)}, except explicitly controls the span representing
+   * the request.
+   *
+   * @since 5.7
+   */
+  public Span handleSend(HttpClientRequest request, Span span) {
+    if (request == null) throw new NullPointerException("request == null");
+    if (span == null) throw new NullPointerException("span == null");
+    defaultInjector.inject(span.context(), request);
+    return handleStart(new HttpClientRequest.ToHttpAdapter(request), request.unwrap(), span);
+  }
+
+  /**
+   * @since 4.3
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}, as this allows more advanced
+   * samplers to be used.
+   */
+  @Deprecated public Span handleSend(Injector<Req> injector, Req request) {
     return handleSend(injector, request, request);
   }
 
   /**
-   * Like {@link #handleSend(TraceContext.Injector, Object)}, except for when the carrier of trace
-   * data is not the same as the request.
-   *
-   * @see HttpClientParser#request(HttpAdapter, Object, SpanCustomizer)
+   * @since 4.3
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
-  public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request) {
+  @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request) {
     return handleSend(injector, carrier, request, nextSpan(request));
   }
 
   /**
-   * Like {@link #handleSend(TraceContext.Injector, Object)}, except explicitly controls the span
-   * representing the request.
-   *
    * @since 4.4
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}.
    */
-  public Span handleSend(TraceContext.Injector<Req> injector, Req request, Span span) {
+  @Deprecated public Span handleSend(Injector<Req> injector, Req request, Span span) {
     return handleSend(injector, request, request, span);
   }
 
   /**
-   * Like {@link #handleSend(TraceContext.Injector, Object, Object)}, except explicitly controls the
-   * span representing the request.
-   *
    * @since 4.4
+   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
-  public <C> Span handleSend(TraceContext.Injector<C> injector, C carrier, Req request, Span span) {
+  @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
     injector.inject(span.context(), carrier);
-    return handleStart(request, span);
+    return handleStart(adapter, request, span);
   }
 
-  @Override void parseRequest(Req request, Span span) {
+  @Override <Req1> void parseRequest(HttpAdapter<Req1, ?> adapter, Req1 request, Span span) {
     span.kind(Span.Kind.CLIENT);
     if (serverName != null) span.remoteServiceName(serverName);
     parser.request(adapter, request, span.customizer());
   }
 
   /**
-   * Creates a potentially noop span representing this request. This is used when you need to
-   * provision a span in a different scope than where the request is executed.
-   *
    * @since 4.4
+   * @deprecated since 5.8 use {@link Tracer#nextSpan(SamplerFunction, Object)}
    */
-  public Span nextSpan(Req request) {
-    Sampler override = httpSampler.toSampler(adapter, request, sampler);
-    return tracer.withSampler(override).nextSpan();
+  @Deprecated public Span nextSpan(Req request) {
+    // nextSpan can be called independently when interceptors control lifecycle directly. In these
+    // cases, it is possible to have HttpClientRequest as an argument.
+    HttpClientRequest clientRequest;
+    if (request instanceof HttpClientRequest) {
+      clientRequest = (HttpClientRequest) request;
+    } else {
+      clientRequest = new HttpClientRequest.FromHttpAdapter<>(adapter, request);
+    }
+    return tracer.nextSpan(httpSampler, clientRequest);
   }
 
   /**
@@ -134,8 +177,15 @@ public final class HttpClientHandler<Req, Resp>
    * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
    *
    * @see HttpClientParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
+   * @since 4.3
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    handleFinish(response, error, span);
+    if (response instanceof HttpClientResponse) {
+      HttpClientResponse.Adapter adapter =
+        new HttpClientResponse.Adapter((HttpClientResponse) response);
+      handleFinish(adapter, adapter.unwrapped, error, span);
+    } else {
+      handleFinish(adapter, response, error, span);
+    }
   }
 }

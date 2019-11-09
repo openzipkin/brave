@@ -14,10 +14,8 @@
 package brave.http;
 
 import brave.Span;
-import brave.propagation.TraceContext;
 
 public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
-
   /**
    * @deprecated {@link #parseClientIpAndPort} addresses this functionality. This will be removed in
    * Brave v6.
@@ -27,8 +25,8 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
   }
 
   /**
-   * Used by {@link HttpServerHandler#handleReceive(TraceContext.Extractor, Object, Object)} to add
-   * remote socket information about the client. By default, this tries to parse the {@link
+   * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add remote socket
+   * information about the client. By default, this tries to parse the {@link
    * #parseClientIpFromXForwardedFor(Object, Span) forwarded IP}. Override to add client socket
    * information when forwarded info is not available.
    *

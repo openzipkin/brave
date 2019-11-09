@@ -29,10 +29,10 @@ abstract class TracingFilter<K, V, R> {
   final boolean filterNot;
   ProcessorContext processorContext;
 
-  TracingFilter(KafkaStreamsTracing tracing, String spanName,
+  TracingFilter(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
     Predicate<K, V> delegatePredicate, boolean filterNot) {
-    this.kafkaStreamsTracing = tracing;
-    this.tracer = kafkaStreamsTracing.tracing.tracer();
+    this.kafkaStreamsTracing = kafkaStreamsTracing;
+    this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
     this.delegatePredicate = delegatePredicate;
     this.filterNot = filterNot;
@@ -49,7 +49,9 @@ abstract class TracingFilter<K, V, R> {
       span.start();
     }
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
+    Throwable error = null;
+    try {
       if (filterNot ^ delegatePredicate.test(key, value)) {
         span.tag(KAFKA_STREAMS_FILTERED_TAG, "false");
         return result(key, value);
@@ -58,10 +60,14 @@ abstract class TracingFilter<K, V, R> {
         return null; // meaning KV pair will not be forwarded thus effectively filtered
       }
     } catch (RuntimeException | Error e) {
-      span.error(e); // finish as an exception means the callback won't finish the span
+      error = e;
       throw e;
     } finally {
+      // Inject this span so that the next stage uses it as a parent
+      kafkaStreamsTracing.injector.inject(span.context(), processorContext.headers());
+      if (error != null) span.error(error);
       span.finish();
+      ws.close();
     }
   }
 

@@ -18,54 +18,54 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 
-abstract class HttpHandler<Req, Resp, A extends HttpAdapter<Req, Resp>> {
-
+abstract class HttpHandler {
   final CurrentTraceContext currentTraceContext;
-  final A adapter;
   final HttpParser parser;
 
-  HttpHandler(CurrentTraceContext currentTraceContext, A adapter, HttpParser parser) {
+  HttpHandler(CurrentTraceContext currentTraceContext, HttpParser parser) {
     this.currentTraceContext = currentTraceContext;
-    this.adapter = adapter;
     this.parser = parser;
   }
 
-  Span handleStart(Req request, Span span) {
+  <Req> Span handleStart(HttpAdapter<Req, ?> adapter, Req request, Span span) {
     if (span.isNoop()) return span;
     Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      parseRequest(request, span);
+      parseRequest(adapter, request, span);
     } finally {
       ws.close();
     }
 
     // all of the above parsing happened before a timestamp on the span
-    return span.start();
+    long timestamp = adapter.startTimestamp(request);
+    if (timestamp == 0L) {
+      span.start();
+    } else {
+      span.start(timestamp);
+    }
+    return span;
   }
 
   /** parses remote IP:port and tags while the span is in scope (for logging for example) */
-  abstract void parseRequest(Req request, Span span);
+  abstract <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span);
 
-  void handleFinish(@Nullable Resp response, @Nullable Throwable error, Span span) {
+  <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
+    @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
-    try {
-      Scope ws = currentTraceContext.maybeScope(span.context());
-      try {
-        parser.response(adapter, response, error, span.customizer());
-      } finally {
-        ws.close(); // close the scope before finishing the span
-      }
-    } finally {
-      finishInNullScope(span);
-    }
-  }
+    long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
 
-  /** Clears the scope to prevent remote reporters from accidentally tracing */
-  void finishInNullScope(Span span) {
-    Scope ws = currentTraceContext.maybeScope(null);
+    // Scope the trace context so that log statements are valid and also parse code can use
+    // Tracer.currentSpan() as necessary.
+    Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      span.finish();
+      parser.response(adapter, response, error, span.customizer());
     } finally {
+      // See instrumentation/RATIONALE.md for why we call finish in scope
+      if (finishTimestamp == 0L) {
+        span.finish();
+      } else {
+        span.finish(finishTimestamp);
+      }
       ws.close();
     }
   }

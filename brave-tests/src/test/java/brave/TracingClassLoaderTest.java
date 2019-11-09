@@ -17,6 +17,7 @@ import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingClassLoaderTest {
 
@@ -40,6 +41,17 @@ public class TracingClassLoaderTest {
       try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
         tracing.tracer().newTrace().start().finish();
       }
+    }
+  }
+
+  @Test public void unloadable_forgetClose() {
+    assertRunIsUnloadable(ForgetClose.class, getClass().getClassLoader());
+  }
+
+  static class ForgetClose implements Runnable {
+    @Override public void run() {
+      Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      assertThat(Tracing.current()).isNotNull();
     }
   }
 }

@@ -14,6 +14,7 @@
 package brave.jersey.server;
 
 import brave.SpanCustomizer;
+import brave.internal.Nullable;
 import java.util.List;
 import javax.inject.Inject;
 import javax.ws.rs.ext.Provider;
@@ -84,7 +85,7 @@ public class SpanCustomizingApplicationEventListener
    * UriTemplate)}. This code skips redundant slashes from either source caused by Path("/") or
    * Path("").
    */
-  static String route(ContainerRequest request) {
+  @Nullable static String route(ContainerRequest request) {
     ExtendedUriInfo uriInfo = request.getUriInfo();
     List<UriTemplate> templates = uriInfo.getMatchedTemplates();
     int templateCount = templates.size();

@@ -16,6 +16,8 @@ package brave.dubbo.rpc;
 import brave.ScopedSpan;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -23,10 +25,16 @@ import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
@@ -185,5 +193,34 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       .isEqualTo("1");
     assertThat(span.tags().get("error"))
       .contains("Not found exported service");
+  }
+
+  /** Ensures the span completes on asynchronous invocation. */
+  @Test public void test_async_invoke() throws Exception {
+    client.setAsync(true);
+    String jorge = client.get().sayHello("jorge");
+    assertThat(jorge).isNull();
+    Object o = RpcContext.getContext().getFuture().get();
+    assertThat(o).isNotNull();
+
+    Span span = takeSpan();
+    assertThat(span.kind())
+      .isEqualTo(Span.Kind.CLIENT);
+  }
+
+  @Test public void customSampler() throws Exception {
+    setRpcTracing(RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+      .build()).build());
+
+    // unsampled
+    client.get().sayGoodbye("jorge");
+
+    // sampled
+    client.get().sayHello("jorge");
+
+    assertThat(takeSpan().name()).endsWith("sayhello");
+    // @After will also check that sayGoodbye was not sampled
   }
 }

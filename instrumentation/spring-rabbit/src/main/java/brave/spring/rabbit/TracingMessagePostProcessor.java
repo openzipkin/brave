@@ -17,12 +17,14 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
+import brave.messaging.MessagingRequest;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
+import brave.sampler.SamplerFunction;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
-import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 /**
@@ -36,7 +38,9 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
   final Tracing tracing;
   final Tracer tracer;
   final CurrentTraceContext currentTraceContext;
-  final Injector<MessageProperties> injector;
+  final TraceContext.Extractor<MessageProducerRequest> extractor;
+  final SamplerFunction<MessagingRequest> sampler;
+  final Injector<MessageProducerRequest> injector;
   @Nullable final String remoteServiceName;
 
   TracingMessagePostProcessor(SpringRabbitTracing springRabbitTracing) {
@@ -44,11 +48,15 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
     this.tracing = springRabbitTracing.tracing;
     this.tracer = tracing.tracer();
     this.currentTraceContext = tracing.currentTraceContext();
-    this.injector = springRabbitTracing.injector;
+    this.extractor = springRabbitTracing.producerExtractor;
+    this.sampler = springRabbitTracing.producerSampler;
+    this.injector = springRabbitTracing.producerInjector;
     this.remoteServiceName = springRabbitTracing.remoteServiceName;
   }
 
   @Override public Message postProcessMessage(Message message) {
+    MessageProducerRequest request = new MessageProducerRequest(message);
+
     TraceContext maybeParent = currentTraceContext.get();
     // Unlike message consumers, we try current span before trying extraction. This is the proper
     // order because the span in scope should take precedence over a potentially stale header entry.
@@ -57,9 +65,10 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
     // always clear message headers after reading.
     Span span;
     if (maybeParent == null) {
-      span = tracer.nextSpan(springRabbitTracing.extractAndClearHeaders(message));
-    } else {
-      // If we have a span in scope assume headers were cleared before
+      TraceContextOrSamplingFlags extracted =
+        springRabbitTracing.extractAndClearHeaders(extractor, request, message);
+      span = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);
+    } else { // If we have a span in scope assume headers were cleared before
       span = tracer.newChild(maybeParent);
     }
 
@@ -71,7 +80,7 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
       span.start(timestamp).finish(timestamp);
     }
 
-    injector.inject(span.context(), message.getMessageProperties());
+    injector.inject(span.context(), request);
     return message;
   }
 }

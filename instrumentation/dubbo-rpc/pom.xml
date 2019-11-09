@@ -17,27 +17,42 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.6.12-SNAPSHOT</version>
+    <version>5.9.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
-  <name>Brave Instrumentation: Dubbo RPC</name>
+  <name>Brave Instrumentation: Alibaba Dubbo</name>
 
   <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.dubbo.rpc</module.name>
+
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
-    <!-- TODO: not compile compatible with apache dubbo until 2.7.2
-         See https://github.com/apache/incubator-zipkin-brave/issues/867 -->
-    <dubbo.version>2.6.6</dubbo.version>
+    <!-- Use brave-instrumentation-dubbo for Apache Dubbo 2.7+, not this module. -->
+    <dubbo.version>2.6.7</dubbo.version>
   </properties>
 
   <dependencies>
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-rpc</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.alibaba</groupId>
       <artifactId>dubbo</artifactId>
       <version>${dubbo.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Prevent classpath problems in IDE running tests -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>${netty.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -45,19 +60,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>brave.dubbo.rpc</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

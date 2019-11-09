@@ -26,7 +26,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  */
 final class TracingCallback {
   static Callback create(@Nullable Callback delegate, Span span, CurrentTraceContext current) {
-    if (span.isNoop()) return delegate; // save allocation overhead
     if (delegate == null) return new FinishSpan(span);
     return new DelegateAndFinishSpan(delegate, span, current);
   }

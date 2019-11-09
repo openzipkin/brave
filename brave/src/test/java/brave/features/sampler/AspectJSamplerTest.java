@@ -16,9 +16,9 @@ package brave.features.sampler;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -54,7 +54,6 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
       .spanReporter(spans::add)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {
@@ -87,19 +86,15 @@ public class AspectJSamplerTest {
   static class Config {
   }
 
-  @Component
-  @Aspect
-  static class TracingAspect {
-    DeclarativeSampler<Traced> declarativeSampler = DeclarativeSampler.create(Traced::sampleRate);
+  @Component @Aspect static class TracingAspect {
+    SamplerFunction<Traced> samplerFunction = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
     @Around("@annotation(traced)")
     public Object traceThing(ProceedingJoinPoint pjp, Traced traced) throws Throwable {
-      // When there is no trace in progress, this overrides the decision based on the annotation
-      Sampler decideUsingAnnotation = declarativeSampler.toSampler(traced);
-      Tracer tracer = tracing.get().tracer().withSampler(decideUsingAnnotation);
+      Tracer tracer = tracing.get().tracer();
 
-      // This code looks the same as if there was no declarative override
-      ScopedSpan span = tracer.startScopedSpan("");
+      // When there is no trace in progress, this overrides the decision based on the annotation
+      ScopedSpan span = tracer.startScopedSpan(spanName(pjp), samplerFunction, traced);
       try {
         return pjp.proceed();
       } catch (RuntimeException | Error e) {
@@ -117,11 +112,15 @@ public class AspectJSamplerTest {
     @Traced public void traced() {
     }
 
-    @Traced(sampleRate = 0.0f) public void notTraced() {
+    @Traced(sampleRate = 0) public void notTraced() {
     }
   }
 
   @Retention(RetentionPolicy.RUNTIME) public @interface Traced {
-    float sampleRate() default 1.0f;
+    int sampleRate() default 10;
+  }
+
+  static String spanName(ProceedingJoinPoint pjp) {
+    return pjp.getSignature().getName();
   }
 }

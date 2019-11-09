@@ -18,7 +18,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>5.6.12-SNAPSHOT</version>
+  <version>5.9.1-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -29,8 +29,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.16.0</zipkin.version>
-    <zipkin-reporter.version>2.10.2</zipkin-reporter.version>
+    <zipkin.version>2.19.0</zipkin.version>
+    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -139,6 +139,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-dubbo</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -194,6 +199,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-messaging</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-mysql</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -220,6 +230,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-p6spy</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-rpc</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

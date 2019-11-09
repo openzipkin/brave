@@ -36,7 +36,7 @@ public class PendingSpansClassLoaderTest {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true;
           }
-        }, new AtomicBoolean());
+        }, true, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);
@@ -56,7 +56,7 @@ public class PendingSpansClassLoaderTest {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true;
           }
-        }, new AtomicBoolean());
+        }, true, new AtomicBoolean());
 
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       pendingSpans.getOrCreate(context, true);

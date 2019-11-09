@@ -29,7 +29,6 @@ import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
-
   @Override protected CloseableHttpClient newClient(int port) {
     return TracingHttpClientBuilder.create(httpTracing).disableAutomaticRetries().build();
   }

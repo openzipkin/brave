@@ -15,6 +15,7 @@ package brave.jms;
 
 import java.util.Collections;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import javax.jms.TextMessage;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.junit.After;
@@ -22,6 +23,13 @@ import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PropertyFilterTest {
 
@@ -42,6 +50,31 @@ public class PropertyFilterTest {
     PropertyFilter.filterProperties(message, Collections.singleton("b3"));
 
     assertThat(message).isEqualToIgnoringGivenFields(newMessageWithAllTypes(), "processAsExpired");
+  }
+
+  // When brave-instrumentation-jms is wrapped around an AWS SQSConnectionFactory, PropertyFilter.filterProperties()
+  // attempts to re-set properties on the received SQSMessage object. Doing so fails because SQSMessage throws an
+  // IllegalArgumentException if either the property name or value are empty. (Even though the properties came from
+  // SQSMessage to begin with.) Verify the IllegalArgumentException does not escape its try/catch block resulting in the
+  // message silently failing to process.
+  //
+  // https://github.com/awslabs/amazon-sqs-java-messaging-lib/blob/b462bdceac814c56e75ee0ba638b3928ce8adee1/src/main/java/com/amazon/sqs/javamessaging/message/SQSMessage.java#L904-L909
+  @Test public void filterProperties_message_handlesOnSetException() throws Exception {
+    Message message = mock(Message.class);
+    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
+    when(message.getObjectProperty("JMS_SQS_DeduplicationId")).thenReturn("");
+    doThrow(new IllegalArgumentException()).when(message).setObjectProperty(anyString(), eq(""));
+
+    assertThatCode(() -> PropertyFilter.filterProperties(message, Collections.singleton("b3"))).doesNotThrowAnyException();
+  }
+
+  @Test public void filterProperties_message_passesFatalOnSetException() throws Exception {
+    Message message = mock(Message.class);
+    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
+    when(message.getObjectProperty("JMS_SQS_DeduplicationId")).thenReturn("");
+    doThrow(new LinkageError()).when(message).setObjectProperty(anyString(), eq(""));
+
+    assertThatThrownBy(() -> PropertyFilter.filterProperties(message, Collections.singleton("b3"))).isInstanceOf(LinkageError.class);
   }
 
   static TextMessage newMessageWithAllTypes() throws Exception {

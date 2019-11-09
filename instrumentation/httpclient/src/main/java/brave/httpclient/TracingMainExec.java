@@ -15,12 +15,12 @@ package brave.httpclient;
 
 import brave.Span;
 import brave.Tracer;
-import brave.http.HttpClientParser;
+import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.apache.http.HttpException;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -36,31 +36,17 @@ import org.apache.http.protocol.HttpContext;
  * request, so this is where the span is started.
  */
 class TracingMainExec implements ClientExecChain { // not final for subclassing
-  static final Setter<HttpRequestWrapper, String> SETTER = // retrolambda no likey
-    new Setter<HttpRequestWrapper, String>() {
-      @Override public void put(HttpRequestWrapper carrier, String key, String value) {
-        carrier.setHeader(key, value);
-      }
-
-      @Override public String toString() {
-        return "HttpRequestWrapper::setHeader";
-      }
-    };
-  static final HttpAdapter ADAPTER = new HttpAdapter();
-
   final Tracer tracer;
   final CurrentTraceContext currentTraceContext;
-  final HttpClientParser parser;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
   @Nullable final String serverName;
-  final TraceContext.Injector<HttpRequestWrapper> injector;
   final ClientExecChain mainExec;
 
   TracingMainExec(HttpTracing httpTracing, ClientExecChain mainExec) {
     this.tracer = httpTracing.tracing().tracer();
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
     this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
-    this.parser = httpTracing.clientParser();
-    this.injector = httpTracing.tracing().propagation().injector(SETTER);
+    this.handler = HttpClientHandler.create(httpTracing);
     this.mainExec = mainExec;
   }
 
@@ -69,33 +55,18 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     throws IOException, HttpException {
     Span span = tracer.currentSpan();
     if (span != null) {
-      injector.inject(span.context(), request);
-      parseExceptRemote(request, span);
-      span.start();
+      handler.handleSend(new TracingProtocolExec.HttpClientRequest(request), span);
     }
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
-    if (span != null && isRemote(context, span)) {
-      parseRemote(request, span);
-    }
-    return response;
-  }
-
-  // We delay parsing of remote metadata in case the request is served from cache
-  void parseExceptRemote(HttpRequestWrapper request, Span span) {
-    if (!span.isNoop()) {
-      CurrentTraceContext.Scope ws = currentTraceContext.maybeScope(span.context());
-      try {
-        parser.request(ADAPTER, request, span.customizer());
-      } finally {
-        ws.close();
+    if (span != null) {
+      if (isRemote(context, span)) {
+        if (serverName != null) span.remoteServiceName(serverName);
+        HttpAdapter.parseTargetAddress(request, span);
+      } else {
+        span.kind(null); // clear as cache hit
       }
     }
-  }
-
-  void parseRemote(HttpRequestWrapper request, Span span) {
-    HttpAdapter.parseTargetAddress(request, span);
-    span.kind(Span.Kind.CLIENT);
-    if (serverName != null) span.remoteServiceName(serverName);
+    return response;
   }
 
   boolean isRemote(HttpContext context, Span span) {

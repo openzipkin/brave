@@ -13,6 +13,8 @@
  */
 package brave.dubbo.rpc;
 
+import brave.rpc.RpcRuleSampler;
+import brave.rpc.RpcTracing;
 import brave.sampler.Sampler;
 import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
 import com.alibaba.dubbo.config.ApplicationConfig;
@@ -22,6 +24,9 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static brave.rpc.RpcRequestMatchers.methodEquals;
+import static brave.rpc.RpcRequestMatchers.serviceEquals;
+import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -31,6 +36,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Before public void setup() {
     server.service.setFilter("tracing");
+    server.service.setInterface(GreeterService.class);
     server.service.setRef((method, parameterTypes, args) -> {
       JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
       if (arg.getProperty("value").equals("bad")) {
@@ -135,5 +141,21 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
         entry("error", "IllegalArgumentException")
       );
     }
+  }
+
+  @Test public void customSampler() throws Exception {
+    setRpcTracing(RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+      .build()).build());
+
+    // unsampled
+    client.get().sayGoodbye("jorge");
+
+    // sampled
+    client.get().sayHello("jorge");
+
+    assertThat(takeSpan().name()).endsWith("sayhello");
+    // @After will also check that sayGoodbye was not sampled
   }
 }

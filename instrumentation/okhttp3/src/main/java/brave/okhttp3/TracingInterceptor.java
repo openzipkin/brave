@@ -18,9 +18,6 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
@@ -34,16 +31,6 @@ import okhttp3.Response;
  * In cases like that, use {@link TracingCallFactory}.
  */
 public final class TracingInterceptor implements Interceptor {
-  static final Setter<Request.Builder, String> SETTER = new Setter<Request.Builder, String>() {
-    @Override public void put(Request.Builder carrier, String key, String value) {
-      carrier.header(key, value);
-    }
-
-    @Override public String toString() {
-      return "Request.Builder::header";
-    }
-  };
-
   public static Interceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));
   }
@@ -53,27 +40,26 @@ public final class TracingInterceptor implements Interceptor {
   }
 
   final Tracer tracer;
-  final HttpClientHandler<Request, Response> handler;
-  final TraceContext.Injector<Request.Builder> injector;
+  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     tracer = httpTracing.tracing().tracer();
-    handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
-    injector = httpTracing.tracing().propagation().injector(SETTER);
+    handler = HttpClientHandler.create(httpTracing);
   }
 
   @Override public Response intercept(Chain chain) throws IOException {
-    Request request = chain.request();
-    Request.Builder requestBuilder = request.newBuilder();
+    HttpClientRequest request = new HttpClientRequest(chain.request());
 
-    Span span = handler.handleSend(injector, requestBuilder, request);
+    Span span = handler.handleSend(request);
     parseRouteAddress(chain, span);
 
-    Response response = null;
+    HttpClientResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = chain.proceed(requestBuilder.build());
+      Response result = chain.proceed(request.build());
+      response = new HttpClientResponse(result);
+      return result;
     } catch (IOException | RuntimeException | Error e) {
       error = e;
       throw e;
@@ -90,30 +76,57 @@ public final class TracingInterceptor implements Interceptor {
     span.remoteIpAndPort(socketAddress.getHostString(), socketAddress.getPort());
   }
 
-  static final class HttpAdapter extends brave.http.HttpClientAdapter<Request, Response> {
-    @Override public String method(Request request) {
-      return request.method();
+  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+    final Request delegate;
+    Request.Builder builder;
+
+    HttpClientRequest(Request delegate) {
+      this.delegate = delegate;
     }
 
-    @Override public String path(Request request) {
-      return request.url().encodedPath();
+    @Override public Object unwrap() {
+      return delegate;
     }
 
-    @Override public String url(Request request) {
-      return request.url().toString();
+    @Override public String method() {
+      return delegate.method();
     }
 
-    @Override public String requestHeader(Request request, String name) {
-      return request.header(name);
+    @Override public String path() {
+      return delegate.url().encodedPath();
     }
 
-    @Override @Nullable public Integer statusCode(Response response) {
-      int result = statusCodeAsInt(response);
-      return result != 0 ? result : null;
+    @Override public String url() {
+      return delegate.url().toString();
     }
 
-    @Override public int statusCodeAsInt(Response response) {
-      return response.code();
+    @Override public String header(String name) {
+      return delegate.header(name);
+    }
+
+    @Override public void header(String name, String value) {
+      if (builder == null) builder = delegate.newBuilder();
+      builder.header(name, value);
+    }
+
+    Request build() {
+      return builder != null ? builder.build() : delegate;
+    }
+  }
+
+  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+    final Response delegate;
+
+    HttpClientResponse(Response delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public Object unwrap() {
+      return delegate;
+    }
+
+    @Override public int statusCode() {
+      return delegate.code();
     }
   }
 }

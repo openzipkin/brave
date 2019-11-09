@@ -86,16 +86,16 @@ You can change the sampling policy by specifying it in the `HttpTracing`
 component. The default implementation is `HttpRuleSampler`, which allows
 you to declare rules based on http patterns.
 
-Ex. Here's a sampler that traces 80% requests to /foo and 10% of POST
-requests to /bar. This doesn't start new traces for requests to favicon
-(which many browsers automatically fetch). Other requests will use a
-global rate provided by the tracing component.
+Ex. Here's a sampler that traces 100 requests per second to /foo and 10
+POST requests to /bar per second. This doesn't start new traces for
+requests to favicon (which many browsers automatically fetch). Other
+requests will use a global rate provided by the tracing component.
 
 ```java
 httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
-  .addRule(null, "/favicon", 0.0f)
-  .addRule(null, "/foo", 0.8f)
-  .addRule("POST", "/bar", 0.1f)
+  .putRule(pathStartsWith("/favicon"), Sampler.NEVER_SAMPLE)
+  .putRule(pathStartsWith("/foo"), RateLimitingSampler.create(100))
+  .putRule(and(methodIsEqualTo("POST"), pathStartsWith("/bar")), RateLimitingSampler.create(10))
   .build());
 ```
 
@@ -164,25 +164,24 @@ You generally need to...
 ```java
 Span span = handler.handleSend(injector, request); // 1.
 Throwable error = null;
-try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // 2.
+SpanInScope scope = tracer.withSpanInScope(span); // 2.
+try {
   response = invoke(request); // 3.
 } catch (RuntimeException | Error e) {
   error = e; // 4.
   throw e;
 } finally {
   handler.handleReceive(response, error, span); // 5.
+  scope.close();
 }
 ```
 
 ## Http Server
 
 The first step in developing http server instrumentation is implementing
-a `HttpServerAdapter` for your native library. This ensures users can
-portably control tags using `HttpServerParser`. See [HttpServletAdapter](../servlet/src/main/java/brave/servlet/HttpServletAdapter.java)
-as an example (you may even be able to use it!).
-
-Next, you'll need to indicate how to extract trace IDs from the incoming
-request. Often, this is as simple as `Request::getHeader`.
+`brave.HttpServerRequest` and `brave.HttpServerResponse` for your native
+library. This ensures your instrumentation can extract headers, sample and
+control tags.
 
 With these two items, you now have the most important parts needed to
 trace your server library. You'll likely initialize the following in a
@@ -190,8 +189,7 @@ constructor like so:
 ```java
 MyTracingInterceptor(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
-  handler = HttpServerHandler.create(httpTracing, new MyHttpServerAdapter());
-  extractor = httpTracing.tracing().propagation().extractor(Request::getHeader);
+  handler = HttpServerHandler.create(httpTracing);
 }
 ```
 
@@ -208,13 +206,15 @@ You generally need to...
 ```java
 Span span = handler.handleReceive(extractor, request); // 1.
 Throwable error = null;
-try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // 2.
+SpanInScope scope = tracer.withSpanInScope(span); // 2.
+try { // 2.
   response = invoke(request); // 3.
 } catch (RuntimeException | Error e) {
   error = e; // 4.
   throw e;
 } finally {
   handler.handleSend(response, error, span); // 5.
+  scope.close();
 }
 ```
 

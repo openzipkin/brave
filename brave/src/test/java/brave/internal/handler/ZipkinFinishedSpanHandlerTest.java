@@ -30,12 +30,12 @@ public class ZipkinFinishedSpanHandlerTest {
   ZipkinFinishedSpanHandler zipkinFinishedSpanHandler;
 
   @Before public void init() {
-    init(spans::add);
+    init(spans::add, false);
   }
 
-  void init(Reporter<Span> spanReporter) {
+  void init(Reporter<Span> spanReporter, boolean alwaysReportSpans) {
     zipkinFinishedSpanHandler = new ZipkinFinishedSpanHandler(spanReporter, new ErrorParser(),
-      "favistar", "1.2.3.4", 0);
+      "favistar", "1.2.3.4", 0, alwaysReportSpans);
   }
 
   @Test public void reportsSampledSpan() {
@@ -71,5 +71,15 @@ public class ZipkinFinishedSpanHandlerTest {
     zipkinFinishedSpanHandler.handle(context, new MutableSpan());
 
     assertThat(spans).isEmpty();
+  }
+
+  @Test public void alwaysReportSpans_reportUnsampledSpan() {
+    init(spans::add, true);
+
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1).spanId(2).sampled(false).sampledLocal(true).build();
+    zipkinFinishedSpanHandler.handle(context, new MutableSpan());
+
+    assertThat(spans).isNotEmpty();
   }
 }
