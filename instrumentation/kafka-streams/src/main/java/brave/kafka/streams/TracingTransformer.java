@@ -53,7 +53,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
     Throwable error = null;
     try {
       return delegateTransformer.transform(k, v);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {

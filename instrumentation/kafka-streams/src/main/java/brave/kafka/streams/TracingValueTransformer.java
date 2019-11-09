@@ -53,7 +53,7 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
     Throwable error = null;
     try {
       return delegateTransformer.transform(v);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {

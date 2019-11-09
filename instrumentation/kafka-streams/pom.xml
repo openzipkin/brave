@@ -65,6 +65,14 @@
     </dependency>
 
     <dependency>
+      <!-- used to test checked exceptions from transformers -->
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.10</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
       <scope>test</scope>
