@@ -17,6 +17,7 @@ import brave.Span;
 import brave.Tracer;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import zipkin2.Call;
 
 class TracingProcessor<K, V> implements Processor<K, V> {
 
@@ -55,6 +56,7 @@ class TracingProcessor<K, V> implements Processor<K, V> {
       delegateProcessor.process(k, v);
     } catch (RuntimeException | Error e) {
       error = e;
+      Call.propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

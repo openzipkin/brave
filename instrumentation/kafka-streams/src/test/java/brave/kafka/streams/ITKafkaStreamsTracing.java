@@ -63,7 +63,6 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
-import lombok.SneakyThrows;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
@@ -795,10 +794,10 @@ public class ITKafkaStreamsTracing {
             }
 
             @Override
-            @SneakyThrows
             public KeyValue<String, String> transform(String key, String value) {
               // we can throw this checked exception due to Lombok magic
-              throw new FileNotFoundException("file-not-found");
+              doThrowUnsafely(new FileNotFoundException("file-not-found"));
+              return KeyValue.pair(key, value);
             }
 
             @Override
@@ -833,6 +832,13 @@ public class ITKafkaStreamsTracing {
 
     streams.close();
     streams.cleanUp();
+  }
+
+  // Armeria Black Magic copied from
+  // https://github.com/line/armeria/blob/master/core/src/main/java/com/linecorp/armeria/common/util/Exceptions.java#L197
+  @SuppressWarnings("unchecked")
+  private static <E extends Throwable> void doThrowUnsafely(Throwable cause) throws E {
+    throw (E) cause;
   }
 
   @Test

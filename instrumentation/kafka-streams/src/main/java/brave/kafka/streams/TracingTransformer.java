@@ -17,6 +17,7 @@ import brave.Span;
 import brave.Tracer;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import zipkin2.Call;
 
 class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
 
@@ -55,6 +56,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
       return delegateTransformer.transform(k, v);
     } catch (Throwable e) {
       error = e;
+      Call.propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent
