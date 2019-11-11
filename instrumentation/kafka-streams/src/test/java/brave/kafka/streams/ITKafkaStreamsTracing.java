@@ -795,7 +795,6 @@ public class ITKafkaStreamsTracing {
 
             @Override
             public KeyValue<String, String> transform(String key, String value) {
-              // we can throw this checked exception due to Lombok magic
               doThrowUnsafely(new FileNotFoundException("file-not-found"));
               return KeyValue.pair(key, value);
             }

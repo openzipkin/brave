@@ -19,6 +19,8 @@ import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import zipkin2.Call;
 
+import static zipkin2.Call.propagateIfFatal;
+
 class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
@@ -56,7 +58,7 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
       return delegateTransformer.transform(v);
     } catch (Throwable e) {
       error = e;
-      Call.propagateIfFatal(e);
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

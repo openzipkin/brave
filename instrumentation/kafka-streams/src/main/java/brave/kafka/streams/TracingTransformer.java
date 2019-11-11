@@ -19,6 +19,8 @@ import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import zipkin2.Call;
 
+import static zipkin2.Call.propagateIfFatal;
+
 class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
 
   final KafkaStreamsTracing kafkaStreamsTracing;
@@ -56,7 +58,7 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
       return delegateTransformer.transform(k, v);
     } catch (Throwable e) {
       error = e;
-      Call.propagateIfFatal(e);
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent
