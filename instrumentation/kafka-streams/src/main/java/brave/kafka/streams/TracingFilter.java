@@ -17,8 +17,10 @@ import brave.Span;
 import brave.Tracer;
 import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import zipkin2.Call;
 
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
+import static zipkin2.Call.propagateIfFatal;
 
 abstract class TracingFilter<K, V, R> {
 
@@ -59,8 +61,9 @@ abstract class TracingFilter<K, V, R> {
         span.tag(KAFKA_STREAMS_FILTERED_TAG, "true");
         return null; // meaning KV pair will not be forwarded thus effectively filtered
       }
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

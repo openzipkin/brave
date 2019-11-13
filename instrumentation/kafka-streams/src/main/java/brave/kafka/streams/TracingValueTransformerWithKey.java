@@ -17,6 +17,9 @@ import brave.Span;
 import brave.Tracer;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import zipkin2.Call;
+
+import static zipkin2.Call.propagateIfFatal;
 
 class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKey<K, V, VR> {
 
@@ -53,8 +56,9 @@ class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKe
     Throwable error = null;
     try {
       return delegateTransformer.transform(k, v);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

@@ -21,6 +21,7 @@ import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -61,6 +62,7 @@ import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+
 import zipkin2.Annotation;
 import zipkin2.Span;
 
@@ -724,6 +726,118 @@ public class ITKafkaStreamsTracing {
 
     streams.close();
     streams.cleanUp();
+  }
+
+  @Test
+  public void should_throw_exception_upwards() throws Exception {
+    TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
+      kafkaStreamsTracing.transformer(
+        "exception-transformer", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              throw new IllegalArgumentException("illegal-argument");
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan();
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.tags()).containsEntry("error", "illegal-argument");
+
+    assertThat(!streams.state().isRunning());
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_throw_sneaky_exception_upwards() throws Exception {
+    TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
+      kafkaStreamsTracing.transformer(
+        "sneaky-exception-transformer", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              doThrowUnsafely(new FileNotFoundException("file-not-found"));
+              return KeyValue.pair(key, value);
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan();
+    Span spanProcessor = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.tags()).containsEntry("error", "file-not-found");
+
+    assertThat(!streams.state().isRunning());
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  // Armeria Black Magic copied from
+  // https://github.com/line/armeria/blob/master/core/src/main/java/com/linecorp/armeria/common/util/Exceptions.java#L197
+  @SuppressWarnings("unchecked")
+  private static <E extends Throwable> void doThrowUnsafely(Throwable cause) throws E {
+    throw (E) cause;
   }
 
   @Test
