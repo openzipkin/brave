@@ -54,13 +54,25 @@ public final class KafkaTracing {
     return new Builder(messagingTracing);
   }
 
+  /** @since 5.10 **/
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   public static final class Builder {
     final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
+    boolean shareTraceOnConsumption = true;
 
     Builder(MessagingTracing messagingTracing) {
       if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
       this.messagingTracing = messagingTracing;
+    }
+
+    Builder(KafkaTracing kafkaTracing) {
+      this.messagingTracing = kafkaTracing.messagingTracing;
+      this.remoteServiceName = kafkaTracing.remoteServiceName;
+      this.shareTraceOnConsumption = kafkaTracing.shareTraceOnConsumption;
     }
 
     /**
@@ -69,6 +81,12 @@ public final class KafkaTracing {
      */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    /** @since 5.10  **/
+    public Builder shareTraceOnConsumption(boolean shareTraceOnConsumption) {
+      this.shareTraceOnConsumption = shareTraceOnConsumption;
       return this;
     }
 
@@ -95,6 +113,7 @@ public final class KafkaTracing {
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
   final String remoteServiceName;
+  final boolean shareTraceOnConsumption;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
@@ -109,6 +128,7 @@ public final class KafkaTracing {
     this.consumerSampler = messagingTracing.consumerSampler();
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
+    this.shareTraceOnConsumption = builder.shareTraceOnConsumption;
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */
