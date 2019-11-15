@@ -440,7 +440,17 @@ public final class KafkaStreamsTracing {
       this.kafkaTracing = kafkaTracing;
     }
 
-    /** @since 5.10 **/
+    /**
+     * When no trace context or extra fields have been added to an incoming consumed message
+     * propagation, records from the same partition are been traced under the same parent id,
+     * sharing the same trace.
+     *
+     * <b/>If true, this will share a trace for messages received as part of
+     * a batch with no trace context, and create an individual trace by message; leading to 1 trace
+     * per poll operation.
+     *
+     * @since 5.10
+     */
     public Builder shareTraceOnConsumption(boolean shareTraceOnConsumption) {
       this.shareTraceOnConsumption = shareTraceOnConsumption;
       return this;
