@@ -14,6 +14,7 @@
 package brave.kafka.streams;
 
 import brave.Tracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -61,7 +62,8 @@ abstract class BaseTracingTest {
       .build())
     .spanReporter(spans::add)
     .build();
-  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
+  MessagingTracing messagingTracing = MessagingTracing.create(tracing);
+  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(messagingTracing);
 
   ProcessorSupplier<String, String> fakeProcessorSupplier =
     kafkaStreamsTracing.processor(

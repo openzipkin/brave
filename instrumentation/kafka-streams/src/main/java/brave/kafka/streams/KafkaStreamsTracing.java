@@ -90,11 +90,6 @@ public final class KafkaStreamsTracing {
     return new Builder(KafkaTracing.create(messagingTracing));
   }
 
-  /** @since 5.10 */
-  public static Builder newBuilder(KafkaTracing kafkaTracing) {
-    return new Builder(kafkaTracing);
-  }
-
   /**
    * Provides a {@link KafkaClientSupplier} with tracing enabled, hence Producer and Consumer
    * operations will be traced.

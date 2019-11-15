@@ -15,6 +15,7 @@ package brave.kafka.streams;
 
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictScopeDecorator;
@@ -121,6 +122,40 @@ public class ITKafkaStreamsTracing {
 
     producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span span = takeSpan();
+
+    assertThat(span.tags()).containsEntry("kafka.topic", inputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_multiple_span_from_stream_input_topic_whenSharingDisabled() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic).foreach((k, v) -> {
+    });
+    Topology topology = builder.build();
+
+    Tracing tracing = Tracing.newBuilder()
+        .localServiceName("streams-app")
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+            .addScopeDecorator(StrictScopeDecorator.create())
+            .build())
+        .spanReporter(spans::add)
+        .build();
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
+        .shareTraceOnConsumption(false)
+        .build();
+    KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
+
+    producer = createProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
@@ -152,7 +187,8 @@ public class ITKafkaStreamsTracing {
             .build())
         .spanReporter(spans::add)
         .build();
-    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
+    MessagingTracing messagingTracing = MessagingTracing.create(tracing);
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(messagingTracing)
         .shareTraceOnConsumption(true)
         .build();
     KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());

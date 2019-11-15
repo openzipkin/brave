@@ -10,6 +10,7 @@ First, setup the generic Kafka component like this:
 kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
                            .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
+                           .shareTraceOnConsumption(true) // to create a trace with all records consumed in a batch
                            .build();
 ```
 
