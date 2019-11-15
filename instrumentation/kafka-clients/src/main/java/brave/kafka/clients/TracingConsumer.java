@@ -97,7 +97,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
-        // make or reuse a span for this topic
+        // and sharing trace is enabled make or reuse a span for this topic
         if (extracted.equals(TraceContextOrSamplingFlags.EMPTY) && shareTraceOnConsumption) {
           Span span = consumerSpansForTopic.get(topic);
           if (span == null) {
