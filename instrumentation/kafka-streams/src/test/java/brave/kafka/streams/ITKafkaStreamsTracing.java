@@ -62,7 +62,6 @@ import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-
 import zipkin2.Annotation;
 import zipkin2.Span;
 
@@ -122,12 +121,52 @@ public class ITKafkaStreamsTracing {
 
     producer = createProducer();
     producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
 
     waitForStreamToRun(streams);
 
-    Span span = takeSpan();
+    Span first = takeSpan(), second = takeSpan(), third = takeSpan();
 
-    assertThat(span.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(first.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(second.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(third.tags()).containsEntry("kafka.topic", inputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_one_span_from_stream_input_topic_whenSharingEnabled() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic).foreach((k, v) -> {
+    });
+    Topology topology = builder.build();
+
+    Tracing tracing = Tracing.newBuilder()
+        .localServiceName("streams-app")
+        .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+            .addScopeDecorator(StrictScopeDecorator.create())
+            .build())
+        .spanReporter(spans::add)
+        .build();
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
+        .shareTraceOnConsumption(true)
+        .build();
+    KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
+
+    producer = createProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span first = takeSpan();
+
+    assertThat(first.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
     streams.cleanUp();
@@ -135,7 +174,7 @@ public class ITKafkaStreamsTracing {
 
   @Test
   public void should_create_span_from_stream_input_topic_using_kafka_client_supplier()
-    throws Exception {
+      throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
@@ -1310,7 +1349,7 @@ public class ITKafkaStreamsTracing {
       kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
-    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     return properties;
   }

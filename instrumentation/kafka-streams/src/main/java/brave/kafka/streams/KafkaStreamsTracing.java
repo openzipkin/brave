@@ -18,6 +18,7 @@ import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -69,9 +70,29 @@ public final class KafkaStreamsTracing {
     return create(KafkaTracing.create(tracing));
   }
 
+  /** @since 5.10 */
+  public static KafkaStreamsTracing create(MessagingTracing messagingTracing) {
+    return new Builder(KafkaTracing.create(messagingTracing)).build();
+  }
+
   /** @since 5.9 */
   public static KafkaStreamsTracing create(KafkaTracing kafkaTracing) {
     return new Builder(kafkaTracing).build();
+  }
+
+  /** @since 5.10 */
+  public static Builder newBuilder(Tracing tracing) {
+    return new Builder(KafkaTracing.create(tracing));
+  }
+
+  /** @since 5.10 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(KafkaTracing.create(messagingTracing));
+  }
+
+  /** @since 5.10 */
+  public static Builder newBuilder(KafkaTracing kafkaTracing) {
+    return new Builder(kafkaTracing);
   }
 
   /**
