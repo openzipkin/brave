@@ -457,13 +457,13 @@ public final class KafkaStreamsTracing {
     }
 
     /**
-     * When no trace context or extra fields have been added to an incoming consumed message
-     * propagation, records from the same partition are been traced under the same parent id,
-     * sharing the same trace.
+     * Opt-out of sharing poll span when no trace-context or extra propagation field is available on
+     * incoming messages.
      *
-     * <b/>If true, this will share a trace for messages received as part of
-     * a batch with no trace context, and create an individual trace by message; leading to 1 trace
-     * per poll operation.
+     * <b/>If true, a poll root span will be created for all messages without trace-context, and all
+     * following processing spans will be under the same trace.
+     *
+     * <b/>If false, a poll span will be created by message received.
      *
      * @since 5.10
      */
