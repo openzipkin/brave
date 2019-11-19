@@ -198,7 +198,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void supportsPortableCustomization() throws Exception {
-    String uri = "/foo?z=2&yAA=1";
+    String uri = "/foo/bar?z=2&yAA=1";
 
     close();
     httpTracing = httpTracing.toBuilder()
@@ -227,7 +227,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span span = takeSpan();
     assertThat(span.name())
-      .isEqualTo("get /foo");
+      .isEqualTo("get /foo/bar");
 
     assertThat(span.remoteServiceName())
       .isEqualTo("remote-service");
