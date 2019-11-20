@@ -150,7 +150,7 @@ public class ITKafkaStreamsTracing {
         .spanReporter(spans::add)
         .build();
     KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
-        .shareTraceOnConsumption(false)
+        .rootSpanOnReceiveBatch(false)
         .build();
     KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
 
@@ -189,7 +189,7 @@ public class ITKafkaStreamsTracing {
         .build();
     MessagingTracing messagingTracing = MessagingTracing.create(tracing);
     KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(messagingTracing)
-        .shareTraceOnConsumption(true)
+        .rootSpanOnReceiveBatch(true)
         .build();
     KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
 

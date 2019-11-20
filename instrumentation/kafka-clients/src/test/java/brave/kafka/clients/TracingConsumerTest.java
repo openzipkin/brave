@@ -151,7 +151,7 @@ public class TracingConsumerTest extends BaseTracingTest {
 
   @Test
   public void should_create_individual_span_per_topic_whenSharingDisabled() {
-    kafkaTracing = kafkaTracing.toBuilder().shareTraceOnConsumption(false).build();
+    kafkaTracing = kafkaTracing.toBuilder().rootSpanOnReceiveBatch(false).build();
 
     Map<TopicPartition, Long> offsets = new HashMap<>();
     // 2 partitions in the same topic

@@ -62,7 +62,7 @@ public final class KafkaTracing {
   public static final class Builder {
     final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
-    boolean shareTraceOnConsumption = true;
+    boolean rootSpanOnReceiveBatch = true;
 
     Builder(MessagingTracing messagingTracing) {
       if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
@@ -72,7 +72,7 @@ public final class KafkaTracing {
     Builder(KafkaTracing kafkaTracing) {
       this.messagingTracing = kafkaTracing.messagingTracing;
       this.remoteServiceName = kafkaTracing.remoteServiceName;
-      this.shareTraceOnConsumption = kafkaTracing.shareTraceOnConsumption;
+      this.rootSpanOnReceiveBatch = kafkaTracing.rootSpanOnReceiveBatch;
     }
 
     /**
@@ -95,8 +95,8 @@ public final class KafkaTracing {
      *
      * @since 5.10
      */
-    public Builder shareTraceOnConsumption(boolean shareTraceOnConsumption) {
-      this.shareTraceOnConsumption = shareTraceOnConsumption;
+    public Builder rootSpanOnReceiveBatch(boolean rootSpanOnReceiveBatch) {
+      this.rootSpanOnReceiveBatch = rootSpanOnReceiveBatch;
       return this;
     }
 
@@ -123,7 +123,7 @@ public final class KafkaTracing {
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
   final String remoteServiceName;
-  final boolean shareTraceOnConsumption;
+  final boolean rootSpanOnReceiveBatch;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
@@ -138,7 +138,7 @@ public final class KafkaTracing {
     this.consumerSampler = messagingTracing.consumerSampler();
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
-    this.shareTraceOnConsumption = builder.shareTraceOnConsumption;
+    this.rootSpanOnReceiveBatch = builder.rootSpanOnReceiveBatch;
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */

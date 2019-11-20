@@ -57,7 +57,7 @@ public final class KafkaStreamsTracing {
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.kafkaTracing = builder.kafkaTracing.toBuilder()
-        .shareTraceOnConsumption(builder.shareTraceOnConsumption)
+        .rootSpanOnReceiveBatch(builder.rootSpanOnReceiveBatch)
         .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
     Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
@@ -449,7 +449,7 @@ public final class KafkaStreamsTracing {
 
   public static final class Builder {
     final KafkaTracing kafkaTracing;
-    boolean shareTraceOnConsumption = false;
+    boolean rootSpanOnReceiveBatch = false;
 
     Builder(KafkaTracing kafkaTracing) {
       if (kafkaTracing == null) throw new NullPointerException("kafkaTracing == null");
@@ -467,8 +467,8 @@ public final class KafkaStreamsTracing {
      *
      * @since 5.10
      */
-    public Builder shareTraceOnConsumption(boolean shareTraceOnConsumption) {
-      this.shareTraceOnConsumption = shareTraceOnConsumption;
+    public Builder rootSpanOnReceiveBatch(boolean rootSpanOnReceiveBatch) {
+      this.rootSpanOnReceiveBatch = rootSpanOnReceiveBatch;
       return this;
     }
 
