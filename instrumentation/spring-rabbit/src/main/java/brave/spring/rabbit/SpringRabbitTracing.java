@@ -98,6 +98,7 @@ public final class SpringRabbitTracing {
 
   final Tracing tracing;
   final Tracer tracer;
+  final MessagingTracing messagingTracing;
   final Extractor<MessageProducerRequest> producerExtractor;
   final Extractor<MessageConsumerRequest> consumerExtractor;
   final Extractor<MessageProperties> processorExtractor;
@@ -111,6 +112,7 @@ public final class SpringRabbitTracing {
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.messagingTracing.tracing();
     this.tracer = tracing.tracer();
+    this.messagingTracing = builder.messagingTracing;
     MessagingTracing messagingTracing = builder.messagingTracing;
     Propagation<String> propagation = tracing.propagation();
     this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
@@ -237,6 +239,20 @@ public final class SpringRabbitTracing {
       extracted = extracted.sampled(sampled.booleanValue());
     }
     return tracer.nextSpan(extracted);
+  }
+
+  Span newMessagingTrace(
+      SamplerFunction<MessagingRequest> sampler,
+      MessagingRequest request,
+      TraceContextOrSamplingFlags extracted
+  ) {
+    String traceId = null;
+    if (extracted.context() != null) traceId = extracted.context().traceIdString();
+    Boolean sampled = sampler.trySample(request);
+    boolean debug = false;
+    if (extracted.samplingFlags() != null) debug = extracted.samplingFlags().debug();
+    extracted = TraceContextOrSamplingFlags.create(sampled, debug);
+    return tracer.nextSpan(extracted).tag("parent.traceId", traceId);
   }
 
   void clearHeaders(Map<String, Object> headers) {

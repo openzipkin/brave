@@ -192,9 +192,9 @@ public final class KafkaTracing {
 
   /** Creates a potentially noop remote span representing this request */
   Span nextMessagingSpan(
-    SamplerFunction<MessagingRequest> sampler,
-    MessagingRequest request,
-    TraceContextOrSamplingFlags extracted
+      SamplerFunction<MessagingRequest> sampler,
+      MessagingRequest request,
+      TraceContextOrSamplingFlags extracted
   ) {
     Boolean sampled = extracted.sampled();
     // only recreate the context if the messaging sampler made a decision
@@ -202,6 +202,20 @@ public final class KafkaTracing {
       extracted = extracted.sampled(sampled.booleanValue());
     }
     return tracer.nextSpan(extracted);
+  }
+
+  Span newMessagingTrace(
+      SamplerFunction<MessagingRequest> sampler,
+      MessagingRequest request,
+      TraceContextOrSamplingFlags extracted
+  ) {
+    String traceId = null;
+    if (extracted.context() != null) traceId = extracted.context().traceIdString();
+    Boolean sampled = sampler.trySample(request);
+    boolean debug = false;
+    if (extracted.samplingFlags() != null) debug = extracted.samplingFlags().debug();
+    extracted = TraceContextOrSamplingFlags.create(sampled, debug);
+    return tracer.nextSpan(extracted).tag("parent.traceId", traceId);
   }
 
   // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3

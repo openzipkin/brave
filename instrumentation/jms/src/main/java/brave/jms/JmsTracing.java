@@ -113,6 +113,7 @@ public final class JmsTracing {
   }
 
   final Tracing tracing;
+  final MessagingTracing messagingTracing;
   final Tracer tracer;
   final Extractor<MessageProducerRequest> messageProducerExtractor;
   final Injector<MessageProducerRequest> messageProducerInjector;
@@ -132,6 +133,7 @@ public final class JmsTracing {
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.messagingTracing.tracing();
     this.tracer = tracing.tracer();
+    this.messagingTracing = builder.messagingTracing;
     Propagation<String> propagation = tracing.propagation();
     if (JmsTypes.HAS_JMS_PRODUCER) {
       this.jmsProducerExtractor = propagation.extractor(JMSProducerRequest.GETTER);
@@ -256,6 +258,19 @@ public final class JmsTracing {
       extracted = extracted.sampled(sampled.booleanValue());
     }
     return tracer.nextSpan(extracted);
+  }
+  Span newMessagingTrace(
+      SamplerFunction<MessagingRequest> sampler,
+      MessagingRequest request,
+      TraceContextOrSamplingFlags extracted
+  ) {
+    String traceId = null;
+    if (extracted.context() != null) traceId = extracted.context().traceIdString();
+    Boolean sampled = sampler.trySample(request);
+    boolean debug = false;
+    if (extracted.samplingFlags() != null) debug = extracted.samplingFlags().debug();
+    extracted = TraceContextOrSamplingFlags.create(sampled, debug);
+    return tracer.nextSpan(extracted).tag("parent.traceId", traceId);
   }
 
   void tagQueueOrTopic(MessagingRequest request, SpanCustomizer span) {
