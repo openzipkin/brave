@@ -9,7 +9,11 @@ Add decorators for Kafka Streams to enable tracing.
 
 First, setup the generic Kafka Streams component like this:
 ```java
-kafkaStreamsTracing = KafkaStreamsTracing.create(messagingTracing);
+import brave.kafka.streams.KafkaStreamsTracing;
+
+...
+
+kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 ```
 
 To trace a processor in your application use `TracingProcessorSupplier`, provided by instrumentation API:
@@ -47,7 +51,7 @@ builder.stream(inputTopic)
        .to(outputTopic);
 ```
 
-Additional transformer has been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`, `filter`).
+Additional transformers have been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`, `filter`).
 
 ```java
 builder.stream(inputTopic)
@@ -55,9 +59,17 @@ builder.stream(inputTopic)
        .to(outputTopic);
 ```
 
+For flat operations like flatMap, the `flatTransform` method can be used:
+
+```java
+builder.stream(inputTopic)
+       .flatTransform(kafkaStreamsTracing.flatMap("flat-map", mapper))
+       .to(outputTopic);
+```
+
 For more details, [see here](https://github.com/apache/incubator-zipkin-brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
 
-To create a Kafka Streams with Tracing Client Supplier enabled pass your topology and configuration like this:
+To create a Kafka Streams with Tracing Client Supplier enabled, pass your topology and configuration like this:
 
 ```java
 KafkaStreams kafkaStreams = kafkaStreamsTracing.kafkaStreams(topology, streamsConfig);
@@ -68,9 +80,9 @@ Typically, there are at least two spans involved in traces produces by a Kafka S
 * One created by the Consumers that starts a Stream or Table, by `builder.stream(topic)`.
 * One created by the Producer that sends a records to a Stream, by `builder.to(topic)`
 
-By receiving records in a Kafka Streams application with Tracing enabled, the span created once
-a record is received will inject the span context on the headers of the Record, and it will get
-propagated downstream on the Stream topology. As span context is stored in the Record Headers,
+By receiving records in a Kafka Streams application with Tracing enabled, the span created, once
+a record is received, will inject the span context on the headers of the Record, and it will get
+propagated downstream onto the Stream topology. As the span context is stored in the Record Headers,
 the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
 will reference the initial span, and mark the end of a Stream Process.
 

@@ -1051,6 +1051,46 @@ public class ITKafkaStreamsTracing {
   }
 
   @Test
+  public void should_create_spans_from_stream_with_tracing_flatMap() throws Exception {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .flatTransform(kafkaStreamsTracing.flatMap("flat-map-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return Arrays.asList(KeyValue.pair(key, value+"-1"), KeyValue.pair(key, value+"-2"));
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    producer = createProducer();
+    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+
+    waitForStreamToRun(streams);
+
+    Span spanInput = takeSpan(), spanProcessor = takeSpan(), firstSpanOutput = takeSpan(),
+    secondSpanOutput = takeSpan();
+
+    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
+    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(firstSpanOutput.traceId());
+    assertThat(spanProcessor.traceId()).isEqualTo(secondSpanOutput.traceId());
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    assertThat(firstSpanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertThat(secondSpanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
   public void should_create_spans_from_stream_with_tracing_mapValues() throws Exception {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
