@@ -264,6 +264,28 @@ public final class KafkaStreamsTracing {
   }
 
   /**
+   * Create a flatMap transformer, similar to {@link KStream#flatMap(KeyValueMapper)}, where its mapper
+   * action will be recorded in a new span with the indicated name.
+   *
+   * <p>Simple example using Kafka Streams DSL:
+   * <pre>{@code
+   * StreamsBuilder builder = new StreamsBuilder();
+   * builder.stream(inputTopic)
+   *        .flatTransform(kafkaStreamsTracing.flatMap("myflatMap", (k, v) -> ...)
+   *        .to(outputTopic);
+   * }</pre>
+   */
+  public <K, V, KR, VR> TransformerSupplier<K, V, Iterable<KeyValue<KR, VR>>> flatMap(String spanName,
+    KeyValueMapper<K, V, Iterable<KeyValue<KR, VR>>> mapper) {
+    return new TracingTransformerSupplier<>(this, spanName, () ->
+      new AbstractTracingTransformer<K, V, Iterable<KeyValue<KR, VR>>>() {
+        @Override public Iterable<KeyValue<KR, VR>> transform(K key, V value) {
+          return mapper.apply(key, value);
+        }
+      });
+  }
+
+  /**
    * Create a filter transformer.
    *
    * WARNING: this filter implementation uses the Streams transform API, meaning that
