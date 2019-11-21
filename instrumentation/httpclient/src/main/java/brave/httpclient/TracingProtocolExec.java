@@ -81,10 +81,12 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public String path() {
+      if (delegate instanceof HttpRequestWrapper) {
+        return ((HttpRequestWrapper) delegate).getURI().getPath();
+      }
       String result = delegate.getRequestLine().getUri();
-      int begin = result.lastIndexOf('/');
       int queryIndex = result.indexOf('?');
-      return queryIndex == -1 ? result.substring(begin) : result.substring(begin, queryIndex);
+      return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
