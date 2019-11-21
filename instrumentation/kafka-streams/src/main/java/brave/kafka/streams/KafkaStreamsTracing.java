@@ -271,7 +271,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .transform(kafkaStreamsTracing.flatMap("myflatMap", (k, v) -> ...)
+   *        .flatTransform(kafkaStreamsTracing.flatMap("myflatMap", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
    */
