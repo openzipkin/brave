@@ -13,6 +13,16 @@
  */
 package brave.kafka.clients;
 
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
@@ -25,14 +35,6 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
@@ -62,7 +64,7 @@ public final class KafkaTracing {
   public static final class Builder {
     final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
-    boolean rootSpanOnReceiveBatch = true;
+    boolean singleRootSpanOnReceiveBatch = true;
 
     Builder(MessagingTracing messagingTracing) {
       if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
@@ -72,7 +74,7 @@ public final class KafkaTracing {
     Builder(KafkaTracing kafkaTracing) {
       this.messagingTracing = kafkaTracing.messagingTracing;
       this.remoteServiceName = kafkaTracing.remoteServiceName;
-      this.rootSpanOnReceiveBatch = kafkaTracing.rootSpanOnReceiveBatch;
+      this.singleRootSpanOnReceiveBatch = kafkaTracing.singleRootSpanOnReceiveBatch;
     }
 
     /**
@@ -85,18 +87,15 @@ public final class KafkaTracing {
     }
 
     /**
-     * Opt-out of sharing poll span when no trace-context or extra propagation field is available on
-     * incoming messages.
+     * Controls the sharing of a poll span for incoming spans with no trace context.
      *
-     * <b/>If true, a poll root span will be created for all messages without trace-context, and all
-     * following processing spans will be under the same trace.
-     *
-     * <b/>If false, a poll span will be created by message received.
+     * <b/>If true, all the spans received in a poll batch that do not have trace-context will be added 
+     * to a single new poll root span. Otherwise, a poll span will be created for each such message.
      *
      * @since 5.10
      */
-    public Builder rootSpanOnReceiveBatch(boolean rootSpanOnReceiveBatch) {
-      this.rootSpanOnReceiveBatch = rootSpanOnReceiveBatch;
+    public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
+      this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
       return this;
     }
 
@@ -123,7 +122,7 @@ public final class KafkaTracing {
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
   final String remoteServiceName;
-  final boolean rootSpanOnReceiveBatch;
+  final boolean singleRootSpanOnReceiveBatch;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
@@ -138,7 +137,7 @@ public final class KafkaTracing {
     this.consumerSampler = messagingTracing.consumerSampler();
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
-    this.rootSpanOnReceiveBatch = builder.rootSpanOnReceiveBatch;
+    this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */

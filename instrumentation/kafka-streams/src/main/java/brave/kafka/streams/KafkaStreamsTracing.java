@@ -57,7 +57,7 @@ public final class KafkaStreamsTracing {
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.kafkaTracing = builder.kafkaTracing.toBuilder()
-        .rootSpanOnReceiveBatch(builder.rootSpanOnReceiveBatch)
+        .singleRootSpanOnReceiveBatch(builder.singleRootSpanOnReceiveBatch)
         .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
     Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
@@ -449,7 +449,7 @@ public final class KafkaStreamsTracing {
 
   public static final class Builder {
     final KafkaTracing kafkaTracing;
-    boolean rootSpanOnReceiveBatch = false;
+    boolean singleRootSpanOnReceiveBatch = false;
 
     Builder(KafkaTracing kafkaTracing) {
       if (kafkaTracing == null) throw new NullPointerException("kafkaTracing == null");
@@ -457,18 +457,15 @@ public final class KafkaStreamsTracing {
     }
 
     /**
-     * Opt-out of sharing poll span when no trace-context or extra propagation field is available on
-     * incoming messages.
+     * Controls the sharing of a poll span for incoming spans with no trace context.
      *
-     * <b/>If true, a poll root span will be created for all messages without trace-context, and all
-     * following processing spans will be under the same trace.
-     *
-     * <b/>If false, a poll span will be created by message received.
+     * <b/>If true, all the spans received in a poll batch that do not have trace-context will be added 
+     * to a single new poll root span. Otherwise, a poll span will be created for each such message.
      *
      * @since 5.10
      */
-    public Builder rootSpanOnReceiveBatch(boolean rootSpanOnReceiveBatch) {
-      this.rootSpanOnReceiveBatch = rootSpanOnReceiveBatch;
+    public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
+      this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
       return this;
     }
 
