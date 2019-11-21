@@ -1,94 +1,60 @@
 # Brave Kafka Streams instrumentation [EXPERIMENTAL]
 
 Add decorators for Kafka Streams to enable tracing.
-* `TracingKafkaClientSupplier` a client supplier which traces poll and send operations.
-* `TracingProcessorSupplier` completes a span on `process`
-* `TracingTransformerSupplier` completes a span on `transform`
-
+* `TracingKafkaClientSupplier` a client supplier to provide Producers and Consumers with tracing enabled (based on [kafka-clients](../kafka-clients) instrumentation).
+* Processor/Transformers suppliers: 
+    * `TracingProcessorSupplier`
+    * `TracingTransformerSupplier`
+    * `TracingValueTransformerSupplier`
+    * `TracingValueTransformerWithKeySupplier`
+* Kafka Streams operators:
+    * `foreach()`
+    * `peek()`
+    * `mark()`
+    * `map()`
+    * `flatMap()`
+    * `filter()`
+    * `filterNot()`
+    * `markAsFiltered()`
+    * `mapValues()`
+    
 ## Setup
 
 First, setup the generic Kafka Streams component like this:
 ```java
 import brave.kafka.streams.KafkaStreamsTracing;
 
-...
+//...
 
 kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 ```
 
-To trace a processor in your application use `TracingProcessorSupplier`, provided by instrumentation API:
+To trace processors u operators:
 
 ```java
 builder.stream(inputTopic)
-       .processor(kafkaStreamsTracing.processor(
-            "process",
-            customProcessor));
+       .trasformValues(kafkaStreamsTracing.valueTransformer("process", customTransformer))
+       .processor(kafkaStreamsTracing.foreach("foreach", foreachFuncion));
 ```
 
-To trace a transformer, use `TracingTransformerSupplier`, `TracingValueTransformerSupplier`, or `TracingValueTransformerWithValueSupplier` provided by instrumentation API:
-
-```java
-builder.stream(inputTopic)
-       .transform(kafkaStreamsTracing.transformer(
-           "transformer-1",
-           customTransformer))
-       .to(outputTopic);
-```
-
-```java
-builder.stream(inputTopic)
-       .transformValue(kafkaStreamsTracing.valueTransformer(
-           "transform-value",
-           customTransformer))
-       .to(outputTopic);
-```
-
-```java
-builder.stream(inputTopic)
-       .transformValueWithKey(kafkaStreamsTracing.valueTransformerWithKey(
-           "transform-value-with-key",
-           customTransformer))
-       .to(outputTopic);
-```
-
-Additional transformers have been introduced to cover most common Kafka Streams DSL operations (e.g. `map`, `mapValues`, `foreach`, `peek`, `filter`).
-
-```java
-builder.stream(inputTopic)
-       .transform(kafkaStreamsTracing.map("map", mapper))
-       .to(outputTopic);
-```
-
-For flat operations like flatMap, the `flatTransform` method can be used:
-
-```java
-builder.stream(inputTopic)
-       .flatTransform(kafkaStreamsTracing.flatMap("flat-map", mapper))
-       .to(outputTopic);
-```
-
-For more details, [see here](https://github.com/apache/incubator-zipkin-brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
-
-To create a Kafka Streams with Tracing Client Supplier enabled, pass your topology and configuration like this:
+To create a Kafka Streams instance with Tracing on Producers and Consumers:
 
 ```java
 KafkaStreams kafkaStreams = kafkaStreamsTracing.kafkaStreams(topology, streamsConfig);
 ```
 
+For more details, [see here](https://github.com/apache/incubator-zipkin-brave/blob/master/instrumentation/kafka-streams/src/main/java/brave/kafka/streams/KafkaStreamsTracing.java).
+
 ## What's happening?
-Typically, there are at least two spans involved in traces produces by a Kafka Stream application:
-* One created by the Consumers that starts a Stream or Table, by `builder.stream(topic)`.
-* One created by the Producer that sends a records to a Stream, by `builder.to(topic)`
+Kafka Streams applications are based on Kafka Clients (Producer and Consumer API) to poll and send records
+to Kafka Topics. By creating a Kafka Streams instance with Brave instrumentation, `poll` operation by 
+Kafka Consumer, and `send` operations will be traced, creating a trace with inputs/outputs of a processing
+pipeline. These 2 spans (or more, depending on how many `send` operations are running on your pipeline)
+will mark the beginning and end of a record processed by Kafka Streams.
 
-By receiving records in a Kafka Streams application with Tracing enabled, the span created, once
-a record is received, will inject the span context on the headers of the Record, and it will get
-propagated downstream onto the Stream topology. As the span context is stored in the Record Headers,
-the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
-will reference the initial span, and mark the end of a Stream Process.
-
-If intermediate steps on the Stream topology require tracing, then `TracingProcessorSupplier` and
-`TracingTransformerSupplier` will allow you to define a Processor/Transformer where execution is recorded as Span,
-referencing the parent context stored on Headers, if available.
+To map the operators executed along the way (`map`, `flatMap`, `filter`, etc.) operations can be
+replaced by wrappers available on Kafka Streams Tracing API. This operators will extract context
+from Record Headers and add more spans to map processing.
 
 ### Partitioning
 
