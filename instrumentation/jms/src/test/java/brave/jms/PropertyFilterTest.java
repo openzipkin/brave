@@ -61,7 +61,7 @@ public class PropertyFilterTest {
   // https://github.com/awslabs/amazon-sqs-java-messaging-lib/blob/b462bdceac814c56e75ee0ba638b3928ce8adee1/src/main/java/com/amazon/sqs/javamessaging/message/SQSMessage.java#L904-L909
   @Test public void filterProperties_message_handlesOnSetException() throws Exception {
     Message message = mock(Message.class);
-    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Collections.enumeration(Arrays.asList("JMS_SQS_DeduplicationId", "b3"))));
+    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
     when(message.getObjectProperty("JMS_SQS_DeduplicationId")).thenReturn("");
     doThrow(new IllegalArgumentException()).when(message).setObjectProperty(anyString(), eq(""));
 
@@ -70,7 +70,7 @@ public class PropertyFilterTest {
 
   @Test public void filterProperties_message_passesFatalOnSetException() throws Exception {
     Message message = mock(Message.class);
-    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
+    when(message.getPropertyNames()).thenReturn(Collections.enumeration(Arrays.asList("JMS_SQS_DeduplicationId", "b3")));
     when(message.getObjectProperty("JMS_SQS_DeduplicationId")).thenReturn("");
     doThrow(new LinkageError()).when(message).setObjectProperty(anyString(), eq(""));
 
