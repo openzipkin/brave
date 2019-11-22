@@ -56,7 +56,7 @@ final class PropertyFilter {
       return;
     }
 
-    names.forEach( name -> {
+    for (String name: names) {
       Object value;
       try {
         value = message.getObjectProperty(name);
@@ -69,7 +69,7 @@ final class PropertyFilter {
         out.add(name);
         out.add(value);
       }
-    });
+    }
 
     // redo the properties to keep
     try {
