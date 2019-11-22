@@ -94,6 +94,7 @@ final class PropertyFilter {
       byte[] body = new byte[(int) bytesMessage.getBodyLength()];
       bytesMessage.reset();
       bytesMessage.readBytes(body);
+      // setObjectProperty on BytesMessage requires clearing the body otherwise it fails with MessageNotWriteableException
       message.clearBody();
       resetProperties(message, out);
       bytesMessage.writeBytes(body);
