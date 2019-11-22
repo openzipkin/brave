@@ -95,6 +95,7 @@ final class PropertyFilter {
       bytesMessage.writeBytes( body );
       bytesMessage.reset();
     } catch ( JMSException e ) {
+      propagateIfFatal(t);
       log( e, "unable to reset BytesMessage body {0}", message, e );
     }
   }
