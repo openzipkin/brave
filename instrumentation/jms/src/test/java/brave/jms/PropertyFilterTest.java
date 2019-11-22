@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import java.util.Arrays;
 import java.util.Collections;
 import javax.jms.JMSException;
 import javax.jms.Message;
