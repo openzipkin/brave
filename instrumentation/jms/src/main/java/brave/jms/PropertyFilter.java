@@ -52,7 +52,7 @@ final class PropertyFilter {
       return;
     }
     
-    if (disjoint(namesToClear, names)) {
+    if (disjoint(namesToClear, names) && message instanceof BytesMessage) {
       return;
     }
 
@@ -81,10 +81,10 @@ final class PropertyFilter {
     }
 
     // workaround for ActiveMQBytesMessage
-    if ( message instanceof BytesMessage ) {
-      resetBytesMessageProperties( message, out );
+    if (message instanceof BytesMessage) {
+      resetBytesMessageProperties(message, out);
     } else {
-      resetProperties( message, out );
+      resetProperties(message, out);
     }
   }
 
