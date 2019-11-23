@@ -10,7 +10,6 @@ First, setup the generic Kafka component like this:
 kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
                            .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
-                           .singleRootSpanOnReceiveBatch(true) // to share a single root span when starting a trace from consumer
                            .build();
 ```
 
@@ -103,6 +102,14 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
   }
 }
 ```
+
+## Single Root Span on Consumer
+
+When a Tracing Kafka Consumer is processing records that do not have trace-context (i.e. Producer is not tracing)
+it will reuse the same root span `poll` to group all processing of records returned.
+
+If this is not the desired behavior, users can customize it by setting `singleRootSpanOnReceiveBatch` to `false`. 
+This will create a root span `poll` for each record received. 
 
 ## Notes
 * This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
