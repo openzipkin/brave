@@ -13,16 +13,6 @@
  */
 package brave.kafka.clients;
 
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
-
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
@@ -35,6 +25,14 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
@@ -89,7 +87,7 @@ public final class KafkaTracing {
     /**
      * Controls the sharing of a poll span for incoming spans with no trace context.
      *
-     * <b/>If true, all the spans received in a poll batch that do not have trace-context will be added 
+     * <b/>If true, all the spans received in a poll batch that do not have trace-context will be added
      * to a single new poll root span. Otherwise, a poll span will be created for each such message.
      *
      * @since 5.10
