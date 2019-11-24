@@ -18,6 +18,7 @@ import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
+import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -55,7 +56,9 @@ public final class KafkaStreamsTracing {
   final TraceContext.Injector<Headers> injector;
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
-    this.kafkaTracing = builder.kafkaTracing;
+    this.kafkaTracing = builder.kafkaTracing.toBuilder()
+        .singleRootSpanOnReceiveBatch(builder.singleRootSpanOnReceiveBatch)
+        .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
     Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
@@ -67,9 +70,24 @@ public final class KafkaStreamsTracing {
     return create(KafkaTracing.create(tracing));
   }
 
+  /** @since 5.10 */
+  public static KafkaStreamsTracing create(MessagingTracing messagingTracing) {
+    return new Builder(KafkaTracing.create(messagingTracing)).build();
+  }
+
   /** @since 5.9 */
   public static KafkaStreamsTracing create(KafkaTracing kafkaTracing) {
     return new Builder(kafkaTracing).build();
+  }
+
+  /** @since 5.10 */
+  public static Builder newBuilder(Tracing tracing) {
+    return new Builder(KafkaTracing.create(tracing));
+  }
+
+  /** @since 5.10 */
+  public static Builder newBuilder(MessagingTracing messagingTracing) {
+    return new Builder(KafkaTracing.create(messagingTracing));
   }
 
   /**
@@ -453,10 +471,25 @@ public final class KafkaStreamsTracing {
 
   public static final class Builder {
     final KafkaTracing kafkaTracing;
+    boolean singleRootSpanOnReceiveBatch = false;
 
     Builder(KafkaTracing kafkaTracing) {
       if (kafkaTracing == null) throw new NullPointerException("kafkaTracing == null");
       this.kafkaTracing = kafkaTracing;
+    }
+
+    /**
+     * Controls the sharing of a {@code poll} span for incoming spans with no trace context.
+     *
+     * <b/>If true, all the spans received in a {@code poll} batch that do not have trace-context
+     * will be added to a single new poll root span. Otherwise, a {@code poll} span will be created
+     * for each such message.
+     *
+     * @since 5.10
+     */
+    public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
+      this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
+      return this;
     }
 
     public KafkaStreamsTracing build() {

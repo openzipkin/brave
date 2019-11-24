@@ -124,7 +124,7 @@ public class TracingConsumerTest extends BaseTracingTest {
   }
 
   @Test
-  public void should_create_only_one_consumer_span_per_topic() {
+  public void should_create_only_one_consumer_span_per_topic_whenSharingEnabled() {
     Map<TopicPartition, Long> offsets = new HashMap<>();
     // 2 partitions in the same topic
     offsets.put(new TopicPartition(TEST_TOPIC, 0), 0L);
@@ -147,5 +147,33 @@ public class TracingConsumerTest extends BaseTracingTest {
       .hasSize(1)
       .flatExtracting(s -> s.tags().entrySet())
       .containsOnly(entry("kafka.topic", "myTopic"));
+  }
+
+  @Test
+  public void should_create_individual_span_per_topic_whenSharingDisabled() {
+    kafkaTracing = kafkaTracing.toBuilder().singleRootSpanOnReceiveBatch(false).build();
+
+    Map<TopicPartition, Long> offsets = new HashMap<>();
+    // 2 partitions in the same topic
+    offsets.put(new TopicPartition(TEST_TOPIC, 0), 0L);
+    offsets.put(new TopicPartition(TEST_TOPIC, 1), 0L);
+
+    consumer.updateBeginningOffsets(offsets);
+    consumer.assign(offsets.keySet());
+
+    // create 500 messages
+    for (int i = 0; i < 250; i++) {
+      consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 0, i, TEST_KEY, TEST_VALUE));
+      consumer.addRecord(new ConsumerRecord<>(TEST_TOPIC, 1, i, TEST_KEY, TEST_VALUE));
+    }
+
+    Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
+    tracingConsumer.poll(10);
+
+    // only one consumer span reported
+    assertThat(spans)
+        .hasSize(500)
+        .flatExtracting(s -> s.tags().entrySet())
+        .containsOnly(entry("kafka.topic", "myTopic"));
   }
 }

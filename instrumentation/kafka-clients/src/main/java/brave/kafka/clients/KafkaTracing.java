@@ -54,13 +54,25 @@ public final class KafkaTracing {
     return new Builder(messagingTracing);
   }
 
+  /** @since 5.10 **/
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   public static final class Builder {
     final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
+    boolean singleRootSpanOnReceiveBatch = true;
 
     Builder(MessagingTracing messagingTracing) {
       if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
       this.messagingTracing = messagingTracing;
+    }
+
+    Builder(KafkaTracing kafkaTracing) {
+      this.messagingTracing = kafkaTracing.messagingTracing;
+      this.remoteServiceName = kafkaTracing.remoteServiceName;
+      this.singleRootSpanOnReceiveBatch = kafkaTracing.singleRootSpanOnReceiveBatch;
     }
 
     /**
@@ -69,6 +81,20 @@ public final class KafkaTracing {
      */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    /**
+     * Controls the sharing of a {@code poll} span for incoming spans with no trace context.
+     *
+     * <b/>If true, all the spans received in a {@code poll} batch that do not have trace-context
+     * will be added to a single new poll root span. Otherwise, a {@code poll} span will be created
+     * for each such message.
+     *
+     * @since 5.10
+     */
+    public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
+      this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
       return this;
     }
 
@@ -95,6 +121,7 @@ public final class KafkaTracing {
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
   final String remoteServiceName;
+  final boolean singleRootSpanOnReceiveBatch;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
@@ -109,6 +136,7 @@ public final class KafkaTracing {
     this.consumerSampler = messagingTracing.consumerSampler();
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
+    this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */

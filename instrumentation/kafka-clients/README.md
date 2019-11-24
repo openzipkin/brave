@@ -8,7 +8,6 @@ Add decorators for Kafka producer and consumer to enable tracing.
 First, setup the generic Kafka component like this:
 ```java
 kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
-                           .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
                            .build();
 ```
@@ -101,6 +100,37 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
     span.finish(); // ensure the span representing this processing completes.
   }
 }
+```
+
+## Single Root Span on Consumer
+
+When a Tracing Kafka Consumer is processing records that do not have trace-context (i.e. Producer is not tracing)
+it will reuse the same root span `poll` to group all processing of records returned.
+
+```
+trace 1:
+poll
+|- processing1
+|- processing2
+...
++- processing N
+```
+
+If this is not the desired behavior, users can customize it by setting `singleRootSpanOnReceiveBatch` to `false`. 
+This will create a root span `poll` for each record received. 
+
+```
+trace 1:
+poll
++- processing1
+
+trace 2:
+poll
++- processing2
+...
+trace N:
+poll
++- processing N
 ```
 
 ## Notes

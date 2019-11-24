@@ -53,6 +53,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final SamplerFunction<MessagingRequest> sampler;
   final Injector<KafkaConsumerRequest> injector;
   final String remoteServiceName;
+  final boolean singleRootSpanOnReceiveBatch;
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
     new ConsumerRebalanceListener() {
@@ -71,6 +72,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.sampler = kafkaTracing.consumerSampler;
     this.injector = kafkaTracing.consumerInjector;
     this.remoteServiceName = kafkaTracing.remoteServiceName;
+    this.singleRootSpanOnReceiveBatch = kafkaTracing.singleRootSpanOnReceiveBatch;
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -95,8 +97,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
-        // make or reuse a span for this topic
-        if (extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+        // and sharing trace is enabled make or reuse a span for this topic
+        if (extracted.equals(TraceContextOrSamplingFlags.EMPTY) && singleRootSpanOnReceiveBatch) {
           Span span = consumerSpansForTopic.get(topic);
           if (span == null) {
             span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
