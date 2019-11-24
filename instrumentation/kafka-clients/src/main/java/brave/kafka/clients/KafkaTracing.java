@@ -87,8 +87,8 @@ public final class KafkaTracing {
     /**
      * Controls the sharing of a {@code poll} span for incoming spans with no trace context.
      *
-     * <b/>If true, all the spans received in a {@code poll} batch that do not have trace-context
-     * will be added to a single new poll root span. Otherwise, a {@code poll} span will be created
+     * <p>If true, all the spans received in a poll batch that do not have trace-context will be
+     * added to a single new {@code poll} root span. Otherwise, a {@code poll} span will be created
      * for each such message.
      *
      * @since 5.10
