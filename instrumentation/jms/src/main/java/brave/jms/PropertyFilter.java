@@ -51,25 +51,28 @@ final class PropertyFilter {
       return;
     }
     
+    boolean disjoint = true;
     for (String name: names) {
-        if (!namesToClear.contains(name)) {
-            Object value;
-            try {
-                value = message.getObjectProperty( name );
-            } catch ( Throwable t ) {
-                propagateIfFatal( t );
-                log( t, "error getting property {0} from message {1}", name, message );
-                return;
-            }
-            if ( value != null ) {
-                out.add( name );
-                out.add( value );
-            }
+      if (!namesToClear.contains(name)) {
+        Object value;
+        try {
+          value = message.getObjectProperty( name );
+        } catch ( Throwable t ) {
+          propagateIfFatal( t );
+          log( t, "error getting property {0} from message {1}", name, message );
+          return;
         }
+        if ( value != null ) {
+          out.add( name );
+          out.add( value );
+        }
+      } else {
+        disjoint = false;
+      }
     }
-    
-    if (out.isEmpty()) {
-        return;
+
+    if (disjoint) {
+      return;
     }
 
     // redo the properties to keep
