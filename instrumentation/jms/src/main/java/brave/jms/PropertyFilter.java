@@ -53,25 +53,25 @@ final class PropertyFilter {
     
     boolean disjoint = true;
     for (String name: names) {
-      if (!namesToClear.contains(name)) {
-        Object value;
-        try {
-          value = message.getObjectProperty( name );
-        } catch ( Throwable t ) {
-          propagateIfFatal( t );
-          log( t, "error getting property {0} from message {1}", name, message );
-          return;
-        }
-        if ( value != null ) {
-          out.add( name );
-          out.add( value );
-        }
-      } else {
+      if (namesToClear.contains(name)) {
         disjoint = false;
+        continue;
+      }
+      Object value;
+      try {
+        value = message.getObjectProperty(name);
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error getting property {0} from message {1}", name, message);
+        return;
+      }
+      if (value != null) {
+        out.add(name);
+        out.add(value);
       }
     }
 
-    if (disjoint) {
+    if (disjoint && message instanceof BytesMessage) {
       return;
     }
 
@@ -93,6 +93,9 @@ final class PropertyFilter {
   }
 
   private static void resetBytesMessageProperties( Message message, List<Object> out ) {
+    if (out.isEmpty()) {
+      return;
+    }
     try {
       BytesMessage bytesMessage = (BytesMessage) message;
       byte[] body = new byte[(int) bytesMessage.getBodyLength()];
