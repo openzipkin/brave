@@ -22,7 +22,6 @@ import javax.jms.Message;
 
 import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jms.JmsTracing.log;
-import static java.util.Collections.disjoint;
 import static java.util.Collections.list;
 
 // Similar to https://github.com/apache/camel/blob/b9a3117f19dd19abd2ea8b789c42c3e86fe4c488/components/camel-jms/src/main/java/org/apache/camel/component/jms/JmsMessageHelper.java
@@ -52,23 +51,25 @@ final class PropertyFilter {
       return;
     }
     
-    if (disjoint(namesToClear, names) && message instanceof BytesMessage) {
-      return;
-    }
-
     for (String name: names) {
-      Object value;
-      try {
-        value = message.getObjectProperty(name);
-      } catch (Throwable t) {
-        propagateIfFatal(t);
-        log(t, "error getting property {0} from message {1}", name, message);
+        if (!namesToClear.contains(name)) {
+            Object value;
+            try {
+                value = message.getObjectProperty( name );
+            } catch ( Throwable t ) {
+                propagateIfFatal( t );
+                log( t, "error getting property {0} from message {1}", name, message );
+                return;
+            }
+            if ( value != null ) {
+                out.add( name );
+                out.add( value );
+            }
+        }
+    }
+    
+    if (out.isEmpty()) {
         return;
-      }
-      if (!namesToClear.contains(name) && value != null) {
-        out.add(name);
-        out.add(value);
-      }
     }
 
     // redo the properties to keep
