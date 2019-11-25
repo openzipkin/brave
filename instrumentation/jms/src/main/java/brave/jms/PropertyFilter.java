@@ -81,7 +81,7 @@ final class PropertyFilter {
     }
 
     // workaround for ActiveMQBytesMessage
-    if (message instanceof BytesMessage) {
+    if (message instanceof BytesMessage) { // BytesMessage requires clearing the body before reset properties otherwise it fails with MessageNotWriteableException
       resetBytesMessageProperties(message, out);
     } else {
       resetProperties(message, out);
