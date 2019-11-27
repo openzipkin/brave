@@ -51,10 +51,8 @@ final class PropertyFilter {
       return;
     }
     
-    boolean disjoint = true;
     for (String name: names) {
       if (namesToClear.contains(name)) {
-        disjoint = false;
         continue;
       }
       Object value;
@@ -69,10 +67,6 @@ final class PropertyFilter {
         out.add(name);
         out.add(value);
       }
-    }
-
-    if (disjoint && message instanceof BytesMessage) {
-      return;
     }
 
     // redo the properties to keep
