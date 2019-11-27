@@ -192,9 +192,9 @@ public final class KafkaTracing {
 
   /** Creates a potentially noop remote span representing this request */
   Span nextMessagingSpan(
-      SamplerFunction<MessagingRequest> sampler,
-      MessagingRequest request,
-      TraceContextOrSamplingFlags extracted
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
   ) {
     Boolean sampled = extracted.sampled();
     // only recreate the context if the messaging sampler made a decision
@@ -205,9 +205,9 @@ public final class KafkaTracing {
   }
 
   Span newMessagingTrace(
-      SamplerFunction<MessagingRequest> sampler,
-      MessagingRequest request,
-      TraceContextOrSamplingFlags extracted
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
   ) {
     String traceId = null;
     if (extracted.context() != null) traceId = extracted.context().traceIdString();

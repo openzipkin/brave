@@ -260,9 +260,9 @@ public final class JmsTracing {
     return tracer.nextSpan(extracted);
   }
   Span newMessagingTrace(
-      SamplerFunction<MessagingRequest> sampler,
-      MessagingRequest request,
-      TraceContextOrSamplingFlags extracted
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
   ) {
     String traceId = null;
     if (extracted.context() != null) traceId = extracted.context().traceIdString();
