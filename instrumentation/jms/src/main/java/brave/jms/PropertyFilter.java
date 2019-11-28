@@ -52,20 +52,19 @@ final class PropertyFilter {
     }
     
     for (String name: names) {
-      if (namesToClear.contains(name)) {
-        continue;
-      }
-      Object value;
-      try {
-        value = message.getObjectProperty(name);
-      } catch (Throwable t) {
-        propagateIfFatal(t);
-        log(t, "error getting property {0} from message {1}", name, message);
-        return;
-      }
-      if (value != null) {
-        out.add(name);
-        out.add(value);
+      if (!namesToClear.contains(name)) {
+        Object value;
+        try {
+          value = message.getObjectProperty(name);
+        } catch (Throwable t) {
+          propagateIfFatal(t);
+          log(t, "error getting property {0} from message {1}", name, message);
+          return;
+        }
+        if (value != null) {
+          out.add(name);
+          out.add(value);
+        }
       }
     }
 
@@ -87,9 +86,6 @@ final class PropertyFilter {
   }
 
   private static void resetBytesMessageProperties( Message message, List<Object> out ) {
-    if (out.isEmpty()) {
-      return;
-    }
     try {
       BytesMessage bytesMessage = (BytesMessage) message;
       byte[] body = new byte[(int) bytesMessage.getBodyLength()];
