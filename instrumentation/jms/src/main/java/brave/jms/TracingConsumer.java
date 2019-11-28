@@ -23,6 +23,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import javax.jms.Destination;
 import javax.jms.Message;
+import javax.jms.BytesMessage;
 
 abstract class TracingConsumer<C> {
   final C delegate;
@@ -62,6 +63,9 @@ abstract class TracingConsumer<C> {
       span.start(timestamp).finish(timestamp);
     }
     injector.inject(span.context(), request);
+    if (message instanceof BytesMessage) {
+      (BytesMessage message).reset();
+    }
   }
 
   abstract @Nullable Destination destination(Message message);
