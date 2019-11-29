@@ -209,13 +209,27 @@ public final class KafkaTracing {
     MessagingRequest request,
     TraceContextOrSamplingFlags extracted
   ) {
-    String traceId = null;
-    if (extracted.context() != null) traceId = extracted.context().traceIdString();
-    Boolean sampled = sampler.trySample(request);
-    boolean debug = false;
-    if (extracted.samplingFlags() != null) debug = extracted.samplingFlags().debug();
-    extracted = TraceContextOrSamplingFlags.create(sampled, debug);
-    return tracer.nextSpan(extracted).tag("parent.traceId", traceId);
+    String traceId = null, spanId = null;
+    if (extracted.context() != null) {
+      traceId = extracted.context().traceIdString();
+      if (extracted.context().spanIdString() != null) {
+        spanId = extracted.context().spanIdString();
+      }
+    }
+    Boolean sampled = extracted.sampled();
+    if (sampled == null && (sampled = sampler.trySample(request)) != null) {
+      extracted = extracted.sampled(sampled.booleanValue());
+    }
+    Span span;
+    if (extracted.samplingFlags() != null) {
+      extracted = TraceContextOrSamplingFlags.create(extracted.samplingFlags());
+      span = tracer.nextSpan(extracted);
+    } else {
+      span = tracer.newTrace();
+    }
+    if (traceId != null) span.tag("parent.trace_id", traceId);
+    if (spanId != null) span.tag("parent.span_id", spanId);
+    return span;
   }
 
   // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3

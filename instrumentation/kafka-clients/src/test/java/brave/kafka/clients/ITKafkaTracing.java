@@ -29,7 +29,10 @@ import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -295,20 +298,17 @@ public class ITKafkaTracing {
 
   @Test
   public void creates_a_newTrace_when_flagEnabled() throws Exception {
-    consumerTracing = KafkaTracing.create(
+    consumerTracing = KafkaTracing.newBuilder(
       MessagingTracing.newBuilder(
         Tracing.newBuilder()
           .spanReporter(consumerSpans::add)
           .build())
         .newTraceOnReceive(true)
-        .build());
+        .build())
+    .singleRootSpanOnReceiveBatch(false)
+    .build();
     producerTracing = KafkaTracing.create(Tracing.newBuilder()
       .spanReporter(producerSpans::add)
-      .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-          return new TraceIdOnlyPropagation<>(keyFactory);
-        }
-      })
       .build());
 
     producer = createTracingProducer();
@@ -324,8 +324,12 @@ public class ITKafkaTracing {
     Span producerSpan = takeSpan(producerSpans);
     Span consumerSpan = takeSpan(consumerSpans);
 
-    assertThat(producerSpan.traceId())
-      .isNotEqualTo(consumerSpan.traceId());
+    assertThat(producerSpan.traceId()).isNotEqualTo(consumerSpan.traceId());
+    Map<String, String> tags = new LinkedHashMap<>();
+    tags.put("kafka.topic", testName.getMethodName());
+    tags.put("parent.trace_id", producerSpan.traceId());
+    tags.put("parent.span_id", producerSpan.id());
+    assertThat(consumerSpan.tags()).isEqualTo(tags);
   }
 
   @Test public void customSampler_producer() throws Exception {

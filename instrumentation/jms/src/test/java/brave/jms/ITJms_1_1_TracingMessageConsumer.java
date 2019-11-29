@@ -232,7 +232,8 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
     Map<String, String> tags = new HashMap<>();
     tags.put("jms.queue", jms.destinationName);
-    tags.put("parent.traceId", parentId);
+    tags.put("parent.trace_id", parentId);
+    tags.put("parent.span_id", parentId);
     assertThat(consumerSpan.tags()).isEqualTo(tags);
   }
 
