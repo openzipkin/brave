@@ -21,12 +21,8 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
-import javax.jms.BytesMessage;
 import javax.jms.Destination;
-import javax.jms.JMSException;
 import javax.jms.Message;
-
-import static brave.jms.JmsTracing.log;
 
 abstract class TracingConsumer<C> {
   final C delegate;
@@ -66,13 +62,6 @@ abstract class TracingConsumer<C> {
       span.start(timestamp).finish(timestamp);
     }
     injector.inject(span.context(), request);
-    if (message instanceof BytesMessage) {
-      try {
-        ((BytesMessage) message).reset();
-      } catch (JMSException e) {
-        log(e, "Unable to reset message {0}", message, null);
-      }
-    }
   }
 
   abstract @Nullable Destination destination(Message message);
