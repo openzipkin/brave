@@ -13,12 +13,10 @@
  */
 package brave.jaxrs2;
 
-import brave.Span;
 import brave.test.http.ITHttpAsyncClient;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.Ignore;
 
-import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.InvocationCallback;
@@ -32,8 +30,7 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
       .register(TracingClientFilter.create(httpTracing))
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
-      .executorService(httpTracing.tracing().currentTraceContext()
-        .executorService(Executors.newCachedThreadPool()))
+      .executorService(currentTraceContext.executorService(Executors.newCachedThreadPool()))
       .build();
   }
 
@@ -42,17 +39,9 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override protected void get(Client client, String pathIncludingQuery) {
-    try {
-      client.target(url(pathIncludingQuery))
-        .request(MediaType.TEXT_PLAIN_TYPE)
-        .get(String.class);
-    } catch (ProcessingException ex) {
-      Span span = tracer().currentSpan();
-      if (null != span) {
-        span.error(ex).finish();
-      }
-      throw ex;
-    }
+    client.target(url(pathIncludingQuery))
+      .request(MediaType.TEXT_PLAIN_TYPE)
+      .get(String.class);
   }
 
   @Override protected void getAsync(Client client, String pathIncludingQuery) {
@@ -64,10 +53,6 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
         }
 
         @Override public void failed(Throwable throwable) {
-          Span span = tracer().currentSpan();
-          if (null != span) {
-            span.error(throwable).finish();
-          }
           throwable.printStackTrace();
         }
       });
@@ -75,17 +60,18 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
 
   @Override
   protected void post(Client client, String pathIncludingQuery, String body) {
-      try {
-        client.target(url(pathIncludingQuery))
-          .request(MediaType.TEXT_PLAIN_TYPE)
-          .post(Entity.text(body), String.class);
-      } catch (ProcessingException ex) {
-        Span span = tracer().currentSpan();
-        if (null != span) {
-          span.error(ex).finish();
-        }
-        throw ex;
-      }
+    client.target(url(pathIncludingQuery))
+      .request(MediaType.TEXT_PLAIN_TYPE)
+      .post(Entity.text(body), String.class);
+  }
+
+
+  @Override @Ignore("automatic error propagation is impossible")
+  public void reportsSpanOnTransportException() {
+  }
+
+  @Override @Ignore("automatic error propagation is impossible")
+  public void addsErrorTagOnTransportException() {
   }
 
   @Override @Ignore("blind to the implementation of redirects")
