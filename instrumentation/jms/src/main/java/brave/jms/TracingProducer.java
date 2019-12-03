@@ -53,8 +53,9 @@ abstract class TracingProducer<R extends ProducerRequest> {
     // sending one. At any rate, as long as we are using b3-single format, this is an overwrite not
     // a clear.
     Span span;
+    TraceContextOrSamplingFlags extracted = null;
     if (maybeParent == null) {
-      TraceContextOrSamplingFlags extracted = extractor.extract(request);
+      extracted = extractor.extract(request);
       span = jmsTracing.nextMessagingSpan(sampler, request, extracted);
     } else {
       span = tracer.newChild(maybeParent);

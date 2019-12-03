@@ -98,6 +98,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         KafkaConsumerRequest request = new KafkaConsumerRequest(record);
         TraceContextOrSamplingFlags extracted =
           kafkaTracing.extractAndClearTraceIdHeaders(extractor, request, record.headers());
+//TODO        TraceContextOrSamplingFlags extracted = extractor.extract(request);
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // and sharing trace is enabled make or reuse a span for this topic
@@ -115,6 +116,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             consumerSpansForTopic.put(topic, span);
           }
+ //TODO         kafkaTracing.clearHeaders(extracted, record.headers());
           injector.inject(span.context(), request);
         } else { // we extracted request-scoped data, so cannot share a consumer span.
           Span span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
@@ -126,6 +128,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
             }
             span.start(timestamp).finish(timestamp); // span won't be shared by other records
           }
+         //TODO kafkaTracing.clearHeaders(extracted, record.headers());
           injector.inject(span.context(), request);
         }
       }

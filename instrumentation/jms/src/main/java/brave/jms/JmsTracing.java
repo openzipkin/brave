@@ -236,6 +236,7 @@ public final class JmsTracing {
   public Span nextSpan(Message message) {
     TraceContextOrSamplingFlags extracted =
       extractAndClearTraceIdProperties(processorExtractor, message, message);
+ //TODO   TraceContextOrSamplingFlags extracted = processorExtractor.extract(message);
     Span result = tracer.nextSpan(extracted); // Processor spans use the normal sampler.
 
     // When an upstream context was not present, lookup keys are unlikely added
@@ -254,6 +255,10 @@ public final class JmsTracing {
     // message writable
     PropertyFilter.filterProperties(message, traceIdProperties);
     return extracted;
+//TODO  void clearProperties(Message message) {
+//    if (!TraceContextOrSamplingFlags.EMPTY.equals(extracted)) {
+//      PropertyFilter.filterProperties(message, propagationKeys);
+//    }
   }
 
   /** Creates a potentially noop remote span representing this request */

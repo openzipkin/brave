@@ -245,12 +245,23 @@ public class JmsTracingTest extends ITJms {
     assertThat(testSpanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
+<<<<<<< HEAD
   @Test public void nextSpan_should_clear_propagation_headers() {
     Propagation.B3_STRING.injector(SETTER).inject(parent, message);
     Propagation.B3_SINGLE_STRING.injector(SETTER).inject(parent, message);
 
     jmsTracing.nextSpan(message);
     assertThat(ITJms.propertiesToMap(message)).isEmpty();
+=======
+  @Test public void nextSpan_should_not_clear_propagation_headers() throws Exception {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).debug(true).build();
+    Propagation.B3_STRING.injector(SETTER).inject(context, message);
+    Propagation.B3_SINGLE_STRING.injector(SETTER).inject(context, message);
+
+    jmsTracing.nextSpan(message);
+    assertThat(JmsTest.propertiesToMap(message)).isNotEmpty();
+>>>>>>> baba417ef... refactor: from extractAndClear and later inject to extract and later clearAndInject
   }
 
   @Test public void nextSpan_should_retain_baggage_headers() throws JMSException {

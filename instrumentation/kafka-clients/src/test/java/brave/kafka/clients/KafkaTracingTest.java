@@ -112,6 +112,12 @@ public class KafkaTracingTest extends KafkaTest {
     kafkaTracing.nextSpan(consumerRecord);
     assertThat(consumerRecord.headers().headers(BAGGAGE_FIELD_KEY)).isNotEmpty();
   }
+//  @Test public void nextSpan_should_clear_propagation_headers() {
+//    addB3MultiHeaders(fakeRecord);
+//
+//    kafkaTracing.nextSpan(fakeRecord);
+//    assertThat(fakeRecord.headers().toArray()).isEmpty();
+//  }
 
   @Test public void nextSpan_should_not_clear_other_headers() {
     consumerRecord.headers().add("foo", new byte[0]);

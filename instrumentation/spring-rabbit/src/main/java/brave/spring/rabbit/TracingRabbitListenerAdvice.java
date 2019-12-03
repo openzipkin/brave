@@ -77,6 +77,7 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
 
     TraceContextOrSamplingFlags extracted =
       springRabbitTracing.extractAndClearTraceIdHeaders(extractor, request, message);
+//TODO      extractor.extract(request);
 
     // named for BlockingQueueConsumer.nextMessage, which we can't currently see
     Span consumerSpan = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);

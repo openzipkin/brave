@@ -194,6 +194,7 @@ public final class KafkaTracing {
     // events create consumer spans. Since this is a processor span, we use the normal sampler.
     TraceContextOrSamplingFlags extracted =
       extractAndClearTraceIdHeaders(processorExtractor, record.headers(), record.headers());
+//TODO        processorExtractor.extract(record.headers());
     Span result = tracer.nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(record, result);
@@ -201,6 +202,7 @@ public final class KafkaTracing {
     return result;
   }
 
+  //TODO remove
   <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
     Extractor<R> extractor, R request, Headers headers
   ) {
@@ -233,6 +235,13 @@ public final class KafkaTracing {
     for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
       Header next = i.next();
       if (traceIdHeaders.contains(next.key())) i.remove();
+//TODO  void clearHeaders(TraceContextOrSamplingFlags extracted, Headers headers) {
+//    if (!TraceContextOrSamplingFlags.EMPTY.equals(extracted)) {
+//      // Headers::remove creates and consumes an iterator each time. This does one loop instead.
+//      for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
+//        Header next = i.next();
+//        if (propagationKeys.contains(next.key())) i.remove();
+//      }
     }
   }
 

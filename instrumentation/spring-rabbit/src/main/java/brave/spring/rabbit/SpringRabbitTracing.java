@@ -217,6 +217,7 @@ public final class SpringRabbitTracing {
     return factory;
   }
 
+  //TODO remove
   <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
     Extractor<R> extractor, R request, Message message
   ) {
@@ -247,5 +248,10 @@ public final class SpringRabbitTracing {
   // multi, or visa versa.
   void clearTraceIdHeaders(Map<String, Object> headers) {
     for (String traceIDHeader : traceIdHeaders) headers.remove(traceIDHeader);
+//TODO  void clearHeaders(TraceContextOrSamplingFlags extracted, Message message) {
+//    if (!TraceContextOrSamplingFlags.EMPTY.equals(extracted)) {
+//      Map<String, Object> headers = message.getMessageProperties().getHeaders();
+//      for (String key : propagationKeys) headers.remove(key);
+//    }
   }
 }

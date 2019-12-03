@@ -150,8 +150,12 @@ public class TracingMessageListenerTest extends ITJms {
 
     onMessageConsumed(message);
 
+<<<<<<< HEAD
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
+=======
+    assertThat(message.getProperties()).isNotEmpty();
+>>>>>>> baba417ef... refactor: from extractAndClear and later inject to extract and later clearAndInject
 
     MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
     MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
@@ -169,8 +173,12 @@ public class TracingMessageListenerTest extends ITJms {
 
     onMessageConsumed(message);
 
+<<<<<<< HEAD
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
+=======
+    assertThat(message.getProperties()).isNotEmpty();
+>>>>>>> baba417ef... refactor: from extractAndClear and later inject to extract and later clearAndInject
 
     assertChildOf(testSpanHandler.takeLocalSpan(), parent);
   }
@@ -196,8 +204,12 @@ public class TracingMessageListenerTest extends ITJms {
 
     onMessageConsumed(message);
 
+<<<<<<< HEAD
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
+=======
+    assertThat(message.getProperties()).isNotEmpty();
+>>>>>>> baba417ef... refactor: from extractAndClear and later inject to extract and later clearAndInject
 
     MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
     MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
@@ -215,8 +227,12 @@ public class TracingMessageListenerTest extends ITJms {
 
     onMessageConsumed(message);
 
+<<<<<<< HEAD
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
+=======
+    assertThat(message.getProperties()).isNotEmpty();
+>>>>>>> baba417ef... refactor: from extractAndClear and later inject to extract and later clearAndInject
 
     assertChildOf(testSpanHandler.takeLocalSpan(), parent);
   }
