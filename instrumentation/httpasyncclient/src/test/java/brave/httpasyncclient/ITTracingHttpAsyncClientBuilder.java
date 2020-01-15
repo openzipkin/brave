@@ -13,12 +13,17 @@
  */
 package brave.httpasyncclient;
 
+import brave.ScopedSpan;
+import brave.Tracer;
 import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicBoolean;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -28,6 +33,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertTrue;
 
 public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
   @Override protected CloseableHttpAsyncClient newClient(int port) {
@@ -91,5 +97,54 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(currentTraceContext.get()).isNull();
     
     takeSpan();
+
+  @Test public void currentSpanIsVisibleInCallbackThread() throws Exception {
+    Tracer tracer = httpTracing.tracing().tracer();
+    AtomicBoolean spanIsVisible = new AtomicBoolean();
+    AtomicBoolean callbackCompleted = new AtomicBoolean();
+    FutureCallback<HttpResponse> callback = new FutureCallback<HttpResponse>() {
+      @Override public void completed(HttpResponse result) {
+        spanIsVisible.set(tracer.currentSpan() != null);
+        callbackCompleted.set(true);
+      }
+      @Override public void failed(Exception ex) {
+        callbackCompleted.set(true);
+      }
+      @Override public void cancelled() {
+        callbackCompleted.set(true);
+      }
+    };
+
+    server.enqueue(new MockResponse());
+    closeClient(client);
+    client = TracingHttpAsyncClientBuilder.create(httpTracing).build();
+    client.start();
+
+    ScopedSpan span = tracer.startScopedSpan("test");
+    try { 
+      getAsyncWithCallback(client, "/foo", callback);
+    } finally {
+      span.finish();
+    }
+
+    server.takeRequest();
+    waitForCallbackCompletion(callbackCompleted);
+    assertTrue("Span was not visible in callback thread", spanIsVisible.get());
+
+    takeSpan(); takeSpan();
+  }
+
+  private void getAsyncWithCallback(CloseableHttpAsyncClient client, String pathIncludingQuery, FutureCallback<HttpResponse> callback) throws Exception {
+    client.execute(new HttpGet(URI.create(url(pathIncludingQuery))), callback).get();
+  }
+
+  private void waitForCallbackCompletion(AtomicBoolean callbackCompleted) throws Exception {
+    for (int i = 0; i < 10; i++) {
+      if (callbackCompleted.get()) {
+        return;
+      }
+      Thread.sleep(100);
+    }
+    throw new AssertionError("Callback did not complete within 1 second");
   }
 }

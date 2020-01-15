@@ -14,6 +14,7 @@
 package brave.httpasyncclient;
 
 import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
@@ -56,12 +57,14 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     return new TracingHttpAsyncClientBuilder(httpTracing);
   }
 
+  final Tracer tracer;
   final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
+    this.tracer = httpTracing.tracing().tracer();
     this.handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -135,7 +138,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
         new TracingAsyncRequestProducer(requestProducer, context),
         new TracingAsyncResponseConsumer<>(responseConsumer, context),
         context,
-        callback
+        new FutureCallbackWithCurrentSpan(tracer.currentSpan(), callback)
       );
     }
 
@@ -149,6 +152,37 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public void start() {
       delegate.start();
+    }
+  }
+
+  final class FutureCallbackWithCurrentSpan<T> implements FutureCallback<T> {
+    private final FutureCallback<T> callback;
+    private final Span span;
+
+    FutureCallbackWithCurrentSpan(Span span, FutureCallback<T> callback) {
+      this.span = span;
+      this.callback = callback;
+    }
+
+    @Override
+    public void completed(T t) {
+      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+        callback.completed(t);
+      }
+    }
+
+    @Override
+    public void failed(Exception e) {
+      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+        callback.failed(e);
+      }
+    }
+
+    @Override
+    public void cancelled() {
+      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+        callback.cancelled();
+      }
     }
   }
 
