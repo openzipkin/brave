@@ -1,0 +1,12 @@
+Brave
+
+Copyright 2013-2020 The OpenZipkin Authors
+
+-------------------------------------------------------------------------------
+
+This product contains a modified portion of 'InetAddresses', distributed
+by Google in the Guava Library:
+
+  * Copyright (C) 2008 The Guava Authors
+  * License: Apache License v2.0
+  * Homepage: https://github.com/google/guava
