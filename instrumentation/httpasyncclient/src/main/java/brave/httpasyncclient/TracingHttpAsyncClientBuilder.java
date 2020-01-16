@@ -14,7 +14,6 @@
 package brave.httpasyncclient;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
@@ -57,14 +56,12 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     return new TracingHttpAsyncClientBuilder(httpTracing);
   }
 
-  final Tracer tracer;
   final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
-    this.tracer = httpTracing.tracing().tracer();
     this.handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -133,12 +130,13 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
       HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
       FutureCallback<T> callback) {
-      context.setAttribute(TraceContext.class.getName(), currentTraceContext.get());
+      TraceContext traceCtx = currentTraceContext.get();
+      context.setAttribute(TraceContext.class.getName(), traceCtx);
       return delegate.execute(
         new TracingAsyncRequestProducer(requestProducer, context),
         new TracingAsyncResponseConsumer<>(responseConsumer, context),
         context,
-        new FutureCallbackWithCurrentSpan(tracer.currentSpan(), callback)
+        new TraceContextAwareFutureCallback(currentTraceContext, traceCtx, callback)
       );
     }
 
@@ -155,32 +153,31 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  final class FutureCallbackWithCurrentSpan<T> implements FutureCallback<T> {
+  static final class TraceContextAwareFutureCallback<T> implements FutureCallback<T> {
+    private final CurrentTraceContext currentTraceContext;
+    private final TraceContext traceCtx;
     private final FutureCallback<T> callback;
-    private final Span span;
 
-    FutureCallbackWithCurrentSpan(Span span, FutureCallback<T> callback) {
-      this.span = span;
+    TraceContextAwareFutureCallback(CurrentTraceContext currentTraceContext, TraceContext traceCtx, FutureCallback<T> callback) {
+      this.currentTraceContext = currentTraceContext;
+      this.traceCtx = traceCtx;
       this.callback = callback;
     }
 
-    @Override
-    public void completed(T t) {
-      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+    @Override public void completed(T t) {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
         callback.completed(t);
       }
     }
 
-    @Override
-    public void failed(Exception e) {
-      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+    @Override public void failed(Exception e) {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
         callback.failed(e);
       }
     }
 
-    @Override
-    public void cancelled() {
-      try (Tracer.SpanInScope s = tracer.withSpanInScope(span)) {
+    @Override public void cancelled() {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
         callback.cancelled();
       }
     }

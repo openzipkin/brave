@@ -97,6 +97,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(currentTraceContext.get()).isNull();
     
     takeSpan();
+  }
 
   @Test public void currentSpanIsVisibleInCallbackThread() throws Exception {
     Tracer tracer = httpTracing.tracing().tracer();
