@@ -15,14 +15,6 @@ package brave.spring.rabbit;
 
 import brave.Tracing;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import org.aopalliance.aop.Advice;
-import org.assertj.core.api.Condition;
-import org.assertj.core.data.Index;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -31,7 +23,10 @@ import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 import zipkin2.reporter.Reporter;
 
-import static java.util.Arrays.*;
+import java.util.Collection;
+import java.util.List;
+
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
