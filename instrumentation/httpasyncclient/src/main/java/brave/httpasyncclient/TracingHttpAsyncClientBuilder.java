@@ -91,16 +91,16 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   static final class RemoveScope implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      process(context);
+      removeScope(context);
     }
-
-    static void process(HttpContext context) {
+  }
+  
+  static void removeScope(HttpContext context) {
       Scope scope = (Scope) context.getAttribute(Scope.class.getName());
       if (scope == null) return;
       context.removeAttribute(Scope.class.getName());
       scope.close();
     }
-  }
 
   final class HandleReceive implements HttpResponseInterceptor {
     @Override public void process(HttpResponse response, HttpContext context) {
@@ -182,7 +182,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public void failed(Exception ex) {
-      RemoveScope.process(context);
+      removeScope(context);
       Span currentSpan = (Span) context.getAttribute(Span.class.getName());
       if (currentSpan != null) {
         context.removeAttribute(Span.class.getName());
@@ -225,7 +225,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public void failed(Exception ex) {
-      RemoveScope.process(context);
+      removeScope(context);
       Span currentSpan = (Span) context.getAttribute(Span.class.getName());
       if (currentSpan != null) {
         context.removeAttribute(Span.class.getName());
