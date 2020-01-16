@@ -15,8 +15,14 @@ package brave.spring.rabbit;
 
 import brave.Tracing;
 import brave.propagation.ThreadLocalCurrentTraceContext;
+
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import org.aopalliance.aop.Advice;
+import org.assertj.core.api.Condition;
+import org.assertj.core.data.Index;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -25,6 +31,7 @@ import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 import zipkin2.reporter.Reporter;
 
+import static java.util.Arrays.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
@@ -82,11 +89,12 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_when_absent() {
+  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_as_first_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-      .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+      .hasSize(2)
+      .matches(adviceArray -> asList(adviceArray).get(0) instanceof TracingRabbitListenerAdvice);
   }
 }
