@@ -86,6 +86,7 @@ public class SpringRabbitTracingTest {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
+    // the order of advices is important for the downstream interceptor to see the tracing context
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
       .hasSize(2)
       .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
