@@ -15,6 +15,7 @@ package brave.httpasyncclient;
 
 import brave.ScopedSpan;
 import brave.Tracer;
+import brave.propagation.TraceContext;
 import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
@@ -99,40 +100,38 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     takeSpan();
   }
 
-  @Test public void currentSpanIsVisibleInCallbackThread() throws Exception {
+  @Test public void currentTraceContextIsVisibleInCallbackThread() throws Exception {
     Tracer tracer = httpTracing.tracing().tracer();
-    AtomicBoolean spanIsVisible = new AtomicBoolean();
-    AtomicBoolean callbackCompleted = new AtomicBoolean();
-    FutureCallback<HttpResponse> callback = new FutureCallback<HttpResponse>() {
-      @Override public void completed(HttpResponse result) {
-        spanIsVisible.set(tracer.currentSpan() != null);
-        callbackCompleted.set(true);
-      }
-      @Override public void failed(Exception ex) {
-        callbackCompleted.set(true);
-      }
-      @Override public void cancelled() {
-        callbackCompleted.set(true);
-      }
-    };
-
+    AtomicBoolean callbackHasTraceCtx = new AtomicBoolean(false);
+    AtomicBoolean callbackCompleted = new AtomicBoolean(false);
     server.enqueue(new MockResponse());
     closeClient(client);
     client = TracingHttpAsyncClientBuilder.create(httpTracing).build();
     client.start();
-
     ScopedSpan span = tracer.startScopedSpan("test");
+    TraceContext expectedTraceCtx = span.context();
+
     try { 
-      getAsyncWithCallback(client, "/foo", callback);
+      getAsyncWithCallback(client, "/foo", new FutureCallback<HttpResponse>() {
+        @Override public void completed(HttpResponse result) {
+          callbackHasTraceCtx.set(expectedTraceCtx == currentTraceContext.get());
+          callbackCompleted.set(true);
+        }
+        @Override public void failed(Exception ex) {
+          callbackCompleted.set(true);
+        }
+        @Override public void cancelled() {
+          callbackCompleted.set(true);
+        }
+      });
     } finally {
       span.finish();
     }
-
     server.takeRequest();
     waitForCallbackCompletion(callbackCompleted);
-    assertTrue("Span was not visible in callback thread", spanIsVisible.get());
-
     takeSpan(); takeSpan();
+
+    assertTrue("Callback thread did not have expected trace ctx", callbackHasTraceCtx.get());
   }
 
   private void getAsyncWithCallback(CloseableHttpAsyncClient client, String pathIncludingQuery, FutureCallback<HttpResponse> callback) throws Exception {
