@@ -136,7 +136,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
         new TracingAsyncRequestProducer(requestProducer, context),
         new TracingAsyncResponseConsumer<>(responseConsumer, context),
         context,
-        new TraceContextAwareFutureCallback(currentTraceContext, traceCtx, callback)
+        callback == null ? null : new TraceContextAwareFutureCallback(currentTraceContext, traceCtx, callback)
       );
     }
 
