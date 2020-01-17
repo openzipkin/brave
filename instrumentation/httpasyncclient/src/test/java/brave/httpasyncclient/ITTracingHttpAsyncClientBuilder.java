@@ -27,6 +27,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
   @Override protected CloseableHttpAsyncClient newClient(int port) {
@@ -73,6 +74,22 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
+    takeSpan();
+  }
+  
+  @Test public void failedInterceptorRemovesScope() throws Exception {
+    assertThat(currentTraceContext.get()).isNull();
+    client = TracingHttpAsyncClientBuilder.create(httpTracing)
+      .addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
+        throw new RuntimeException("Test");
+      }).build();
+    client.start();
+    
+    assertThatThrownBy(() -> get(client, "/foo"))
+      .hasCauseInstanceOf(RuntimeException.class).hasMessageContaining("Test");
+    
+    assertThat(currentTraceContext.get()).isNull();
+    
     takeSpan();
   }
 }
