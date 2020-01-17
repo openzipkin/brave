@@ -82,11 +82,13 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_when_absent() {
+  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_as_first_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
+    // the order of advices is important for the downstream interceptor to see the tracing context
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-      .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+      .hasSize(2)
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
   }
 }

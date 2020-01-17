@@ -207,8 +207,8 @@ public final class SpringRabbitTracing {
 
     // Otherwise, add ours and return
     Advice[] newChain = new Advice[chain.length + 1];
-    System.arraycopy(chain, 0, newChain, 0, chain.length);
-    newChain[chain.length] = tracingAdvice;
+    newChain[0] = tracingAdvice;
+    System.arraycopy(chain, 0, newChain, 1, chain.length);
     factory.setAdviceChain(newChain);
     return factory;
   }
