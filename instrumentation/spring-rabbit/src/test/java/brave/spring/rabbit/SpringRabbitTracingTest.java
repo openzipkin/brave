@@ -25,7 +25,6 @@ import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 import zipkin2.reporter.Reporter;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
@@ -89,6 +88,6 @@ public class SpringRabbitTracingTest {
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
       .hasSize(2)
-      .matches(adviceArray -> asList(adviceArray).get(0) instanceof TracingRabbitListenerAdvice);
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
   }
 }
