@@ -130,12 +130,13 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
       HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
       FutureCallback<T> callback) {
-      context.setAttribute(TraceContext.class.getName(), currentTraceContext.get());
+      TraceContext traceCtx = currentTraceContext.get();
+      context.setAttribute(TraceContext.class.getName(), traceCtx);
       return delegate.execute(
         new TracingAsyncRequestProducer(requestProducer, context),
         new TracingAsyncResponseConsumer<>(responseConsumer, context),
         context,
-        callback
+        callback == null ? null : new TraceContextAwareFutureCallback(currentTraceContext, traceCtx, callback)
       );
     }
 
@@ -149,6 +150,36 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public void start() {
       delegate.start();
+    }
+  }
+
+  static final class TraceContextAwareFutureCallback<T> implements FutureCallback<T> {
+    private final CurrentTraceContext currentTraceContext;
+    private final TraceContext traceCtx;
+    private final FutureCallback<T> callback;
+
+    TraceContextAwareFutureCallback(CurrentTraceContext currentTraceContext, TraceContext traceCtx, FutureCallback<T> callback) {
+      this.currentTraceContext = currentTraceContext;
+      this.traceCtx = traceCtx;
+      this.callback = callback;
+    }
+
+    @Override public void completed(T t) {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
+        callback.completed(t);
+      }
+    }
+
+    @Override public void failed(Exception e) {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
+        callback.failed(e);
+      }
+    }
+
+    @Override public void cancelled() {
+      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
+        callback.cancelled();
+      }
     }
   }
 

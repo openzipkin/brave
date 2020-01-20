@@ -13,12 +13,20 @@
  */
 package brave.httpasyncclient;
 
+import brave.ScopedSpan;
+import brave.Tracer;
+import brave.propagation.TraceContext;
 import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -91,5 +99,40 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(currentTraceContext.get()).isNull();
     
     takeSpan();
+  }
+
+  @Test public void currentTraceContextIsVisibleInCallbackThread() throws Exception {
+    CountDownLatch callbackCompleted = new CountDownLatch(1);
+    AtomicReference callbackTraceContext = new AtomicReference();
+    Tracer tracer = httpTracing.tracing().tracer();
+    server.enqueue(new MockResponse());
+    ScopedSpan span = tracer.startScopedSpan("test");
+    TraceContext expectedTraceContext = span.context();
+
+    try { 
+      getAsyncWithCallback(client, "/foo", new FutureCallback<HttpResponse>() {
+        @Override public void completed(HttpResponse result) {
+          callbackTraceContext.set(currentTraceContext.get());
+          callbackCompleted.countDown();
+        }
+        @Override public void failed(Exception ex) {
+          callbackCompleted.countDown();
+        }
+        @Override public void cancelled() {
+          callbackCompleted.countDown();
+        }
+      });
+    } finally {
+      span.finish();
+    }
+    server.takeRequest();
+    callbackCompleted.await(1, TimeUnit.SECONDS);
+    assertThat(callbackTraceContext.get()).isSameAs(expectedTraceContext);
+
+    takeSpan(); takeSpan();
+  }
+
+  private void getAsyncWithCallback(CloseableHttpAsyncClient client, String pathIncludingQuery, FutureCallback<HttpResponse> callback) throws Exception {
+    client.execute(new HttpGet(URI.create(url(pathIncludingQuery))), callback).get();
   }
 }
