@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,10 +33,11 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.opencensus.common.Scope;
-import io.opencensus.contrib.grpc.metrics.RpcMeasureConstants;
 import io.opencensus.implcore.tags.TagMapImpl;
 import io.opencensus.implcore.tags.TagValueWithMetadata;
 import io.opencensus.tags.TagKey;
+import io.opencensus.tags.TagMetadata;
+import io.opencensus.tags.TagMetadata.TagTtl;
 import io.opencensus.tags.TagValue;
 import io.opencensus.tags.Tags;
 import io.opencensus.testing.export.TestHandler;
@@ -77,7 +78,7 @@ public class ITCensusInterop {
       io.opencensus.trace.Span censusSpan =
         io.opencensus.trace.Tracing.getTracer().getCurrentSpan();
       for (Map.Entry<TagKey, TagValueWithMetadata> entry : censusTags.entrySet()) {
-        String stringValue = entry.getValue().getTagValue().asString();
+        String stringValue = entry.getValue().toString(); // to see the metadata is a private api!
         spanCustomizer.tag(entry.getKey().getName(), stringValue);
         censusSpan.putAttribute(entry.getKey().getName(), stringAttributeValue(stringValue));
       }
@@ -150,7 +151,10 @@ public class ITCensusInterop {
       .isEqualTo(serverSpan.traceId());
     assertThat(clientSpan.getContext().getSpanId().toLowerBase16())
       .isEqualTo(serverSpan.parentId());
-    assertThat(serverSpan.tags()).containsEntry("method", "helloworld.Greeter/SayHello");
+
+    assertThat(serverSpan.tags()).containsExactly(
+      entry("grpc_server_method", unpropagatedTag("helloworld.Greeter/SayHello"))
+    );
   }
 
   @Test
@@ -161,7 +165,8 @@ public class ITCensusInterop {
     try (Scope tagger =
            Tags.getTagger()
              .emptyBuilder()
-             .put(RpcMeasureConstants.RPC_METHOD, TagValue.create("edge.Ingress/InitialRoute"))
+             // simulate gRPC <1.22 which propagated the tag name "method"
+             .putPropagating(TagKey.create("method"), TagValue.create("edge.Ingress/InitialRoute"))
              .buildScoped()) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
@@ -174,8 +179,10 @@ public class ITCensusInterop {
       .isEqualTo(serverSpan.traceId());
     assertThat(clientSpan.getContext().getSpanId().toLowerBase16())
       .isEqualTo(serverSpan.parentId());
+
     assertThat(serverSpan.tags()).containsExactly(
-      entry("method", "helloworld.Greeter/SayHello")
+      entry("grpc_server_method", unpropagatedTag("helloworld.Greeter/SayHello")),
+      entry("method", propagatedTag("edge.Ingress/InitialRoute"))
     );
 
     // Show that parentMethod inherits in-process
@@ -198,8 +205,13 @@ public class ITCensusInterop {
     assertThat(clientSpan.traceId())
       .isEqualTo(serverSpan.getContext().getTraceId().toLowerBase16());
     assertThat(clientSpan.id()).isEqualTo(serverSpan.getParentSpanId().toLowerBase16());
-    assertThat(serverSpan.getAttributes().getAttributeMap())
-      .containsEntry("method", stringAttributeValue("helloworld.Greeter/SayHello"));
+
+    // gRPC 1.22 renamed the remote propagated tag "method" to "grpc_server_method", and stopped
+    // propagating it.
+    assertThat(serverSpan.getAttributes().getAttributeMap()).containsExactly(
+      entry("grpc_server_method",
+        stringAttributeValue(unpropagatedTag("helloworld.Greeter/SayHello")))
+    );
   }
 
   void initServer(boolean traceWithBrave) throws Exception {
@@ -253,5 +265,15 @@ public class ITCensusInterop {
       .withFailMessage("Span was not reported")
       .isNotNull();
     return result;
+  }
+
+  static String propagatedTag(String value) {
+    return TagValueWithMetadata.create(TagValue.create(value),
+      TagMetadata.create(TagTtl.UNLIMITED_PROPAGATION)).toString();
+  }
+
+  static String unpropagatedTag(String value) {
+    return TagValueWithMetadata.create(TagValue.create(value),
+      TagMetadata.create(TagTtl.NO_PROPAGATION)).toString();
   }
 }

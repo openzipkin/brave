@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,9 +19,6 @@ import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
-import static org.apache.dubbo.rpc.Constants.$INVOKE;
-import static org.apache.dubbo.rpc.Constants.$INVOKE_ASYNC;
-
 final class DubboParser {
   /**
    * Returns the method name of the invocation or the first string arg of an "$invoke" or
@@ -32,7 +29,7 @@ final class DubboParser {
    */
   static @Nullable String method(Invocation invocation) {
     String methodName = invocation.getMethodName();
-    if ($INVOKE.equals(methodName) || $INVOKE_ASYNC.equals(methodName)) {
+    if ("$invoke".equals(methodName) || "$invokeAsync".equals(methodName)) {
       Object[] arguments = invocation.getArguments();
       if (arguments != null && arguments.length > 0 && arguments[0] instanceof String) {
         methodName = (String) arguments[0];

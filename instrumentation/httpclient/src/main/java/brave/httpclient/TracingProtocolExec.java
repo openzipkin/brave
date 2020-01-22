@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.sampler.SamplerFunction;
 import java.io.IOException;
 import org.apache.http.Header;
 import org.apache.http.HttpException;
@@ -38,11 +39,13 @@ import org.apache.http.impl.execchain.ClientExecChain;
  */
 final class TracingProtocolExec implements ClientExecChain {
   final Tracer tracer;
+  final SamplerFunction<brave.http.HttpRequest> httpSampler;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
   final ClientExecChain protocolExec;
 
   TracingProtocolExec(HttpTracing httpTracing, ClientExecChain protocolExec) {
     this.tracer = httpTracing.tracing().tracer();
+    this.httpSampler = httpTracing.clientRequestSampler();
     this.handler = HttpClientHandler.create(httpTracing);
     this.protocolExec = protocolExec;
   }
@@ -50,14 +53,14 @@ final class TracingProtocolExec implements ClientExecChain {
   @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
     HttpClientContext clientContext, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = handler.nextSpan(new HttpClientRequest(request));
+    Span span = tracer.nextSpan(httpSampler, new HttpClientRequest(request));
     HttpClientResponse response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
       CloseableHttpResponse result = protocolExec.execute(route, request, clientContext, execAware);
       response = new HttpClientResponse(result);
       return result;
-    } catch (IOException | HttpException | RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
