@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,7 +39,12 @@ final class GrpcPropagation<K> implements Propagation<K> {
   static final Metadata.Key<Map<String, String>> GRPC_TAGS_BIN =
     Metadata.Key.of("grpc-tags-bin", new TagContextBinaryMarshaller());
 
-  /** The census tag key corresponding to the {@link MethodDescriptor#getFullMethodName()}. */
+  /**
+   * The census tag key corresponding to the {@link MethodDescriptor#getFullMethodName()}.
+   *
+   * <p>Note: this was removed in gRPC 1.22. We currently continue to propagate it for interop with
+   * earlier versions of gRPC.
+   */
   static final String RPC_METHOD = "method";
 
   static Propagation.Factory newFactory(Propagation.Factory delegate) {

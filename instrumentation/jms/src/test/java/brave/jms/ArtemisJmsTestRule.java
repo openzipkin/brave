@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,7 +22,7 @@ import javax.jms.QueueConnection;
 import javax.jms.TopicConnection;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQMessage;
-import org.apache.activemq.artemis.junit.EmbeddedJMSResource;
+import org.apache.activemq.artemis.junit.EmbeddedActiveMQResource;
 import org.junit.rules.TestName;
 
 /**
@@ -32,7 +32,7 @@ import org.junit.rules.TestName;
  * <p>See https://issues.apache.org/jira/browse/AMQ-5736?focusedCommentId=16593091&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-16593091
  */
 class ArtemisJmsTestRule extends JmsTestRule {
-  EmbeddedJMSResource resource = new EmbeddedJMSResource();
+  EmbeddedActiveMQResource resource = new EmbeddedActiveMQResource();
   ActiveMQJMSConnectionFactory factory;
   AtomicBoolean started = new AtomicBoolean();
 
