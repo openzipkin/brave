@@ -41,6 +41,7 @@ import static brave.jms.MessageParser.destination;
 final class TracingMessageListener implements MessageListener {
   /** Creates a message listener which also adds a consumer span. */
   static MessageListener create(MessageListener delegate, JmsTracing jmsTracing) {
+    if (delegate == null) return null;
     if (delegate instanceof TracingMessageListener) return delegate;
     return new TracingMessageListener(delegate, jmsTracing, true);
   }

@@ -289,6 +289,11 @@ public class TracingMessageListenerTest {
       .containsOnly("RuntimeException");
   }
 
+  @Test public void null_listener_if_delegate_is_null() {
+     assertThat(TracingMessageListener.create(null, jmsTracing))
+       .isNull();
+  }
+
   void onMessageConsumed(Message message) throws Exception {
     doNothing().when(delegate).onMessage(message);
     tracingMessageListener.onMessage(message);
