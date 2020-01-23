@@ -60,7 +60,7 @@ final class TracingMessageConsumer extends TracingConsumer<MessageConsumer>
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSException {
-    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
+    delegate.setMessageListener(listener != null ? TracingMessageListener.create(listener, jmsTracing) : null);
   }
 
   @Override public Message receive() throws JMSException {

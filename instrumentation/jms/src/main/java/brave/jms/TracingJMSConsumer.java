@@ -40,7 +40,7 @@ import javax.jms.MessageListener;
   }
 
   @Override public void setMessageListener(MessageListener listener) throws JMSRuntimeException {
-    delegate.setMessageListener(TracingMessageListener.create(listener, jmsTracing));
+    delegate.setMessageListener(listener != null ? TracingMessageListener.create(listener, jmsTracing) : null);
   }
 
   @Override public Message receive() {
