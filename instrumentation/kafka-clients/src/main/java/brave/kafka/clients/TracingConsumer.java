@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -227,6 +227,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public OffsetAndMetadata committed(TopicPartition partition, Duration timeout) {
     return delegate.committed(partition, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.4
+  public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions) {
+    return delegate.committed(partitions);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.4
+  public Map<TopicPartition, OffsetAndMetadata> committed(
+    Set<TopicPartition> partitions, Duration timeout) {
+    return delegate.committed(partitions, timeout);
   }
 
   @Override public Map<MetricName, ? extends Metric> metrics() {
