@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,15 +14,14 @@
 package brave.jaxrs2;
 
 import brave.test.http.ITHttpAsyncClient;
-import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
-import org.junit.Ignore;
-
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.core.MediaType;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
+import org.junit.Ignore;
 
 public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   @Override protected Client newClient(int port) {
@@ -64,7 +63,6 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
       .request(MediaType.TEXT_PLAIN_TYPE)
       .post(Entity.text(body), String.class);
   }
-
 
   @Override @Ignore("automatic error propagation is impossible")
   public void reportsSpanOnTransportException() {
