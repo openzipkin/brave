@@ -100,7 +100,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     }
 
     @Override public void header(String name, String value) {
-      delegate.getStringHeaders().putSingle(name, value);
+      delegate.getHeaders().putSingle(name, value);
     }
   }
 
