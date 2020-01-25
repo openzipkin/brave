@@ -22,6 +22,7 @@ import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.core.MediaType;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.Ignore;
+import zipkin2.Callback;
 
 public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   @Override protected Client newClient(int port) {
@@ -43,16 +44,17 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
       .get(String.class);
   }
 
-  @Override protected void getAsync(Client client, String pathIncludingQuery) {
-    client.target(url(pathIncludingQuery))
+  @Override protected void getAsync(Client client, String path, Callback<Void> callback) {
+    client.target(url(path))
       .request(MediaType.TEXT_PLAIN_TYPE)
       .async()
       .get(new InvocationCallback<String>() {
         @Override public void completed(String response) {
+          callback.onSuccess(null);
         }
 
         @Override public void failed(Throwable throwable) {
-          throwable.printStackTrace();
+          callback.onError(throwable);
         }
       });
   }

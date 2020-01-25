@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,11 +22,14 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
 import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
+import zipkin2.Callback;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,10 +69,20 @@ public class ITTracingAsyncClientHttpRequestInterceptor
       String.class).get();
   }
 
-  @Override protected void getAsync(AsyncClientHttpRequestFactory client, String uri) {
+  @Override protected void getAsync(AsyncClientHttpRequestFactory client, String path,
+    Callback<Void> callback) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
-    restTemplate.getForEntity(url(uri), String.class);
+    restTemplate.getForEntity(url(path), String.class)
+      .addCallback(new ListenableFutureCallback<ResponseEntity<String>>() {
+        @Override public void onFailure(Throwable throwable) {
+          callback.onError(throwable);
+        }
+
+        @Override public void onSuccess(ResponseEntity<String> entity) {
+          callback.onSuccess(null);
+        }
+      });
   }
 
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {

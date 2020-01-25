@@ -57,14 +57,16 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
       .execute();
   }
 
-  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
-    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
+  @Override
+  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Void> callback) {
+    client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
-          e.printStackTrace();
+          callback.onError(e);
         }
 
-        @Override public void onResponse(Call call, Response response) throws IOException {
+        @Override public void onResponse(Call call, Response response) {
+          callback.onSuccess(null);
         }
       });
   }
