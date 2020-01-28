@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -40,6 +41,10 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
       .retryOnConnectionFailure(false)
+      .dispatcher(new Dispatcher(
+        httpTracing.tracing().currentTraceContext()
+          .executorService(new Dispatcher().executorService())
+      ))
       .build()
     );
   }
