@@ -19,6 +19,7 @@ import brave.propagation.TraceContext;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import org.jvnet.animal_sniffer.IgnoreJRERequirement;
 import org.springframework.util.concurrent.FailureCallback;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
@@ -67,7 +68,8 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 5.0
-  public CompletableFuture<T> completable() {
+  // Only called when in JRE 1.8+
+  @IgnoreJRERequirement public CompletableFuture<T> completable() {
     return delegate.completable(); // NOTE: trace context is not propagated
   }
 
