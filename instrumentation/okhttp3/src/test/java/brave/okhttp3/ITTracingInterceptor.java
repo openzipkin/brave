@@ -40,7 +40,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
       .build();
   }
 
-  @Override protected void closeClient(Call.Factory client) throws IOException {
+  @Override protected void closeClient(Call.Factory client) {
     ((OkHttpClient) client).dispatcher().executorService().shutdownNow();
   }
 
@@ -53,7 +53,8 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
     throws Exception {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
-      .post(RequestBody.create(body, MediaType.parse("text/plain"))).build())
+      // intentionally deprecated method so that the v3.x tests can compile
+      .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
       .execute();
   }
 
