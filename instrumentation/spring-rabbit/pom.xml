@@ -51,7 +51,7 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-aop</artifactId>
-      <version>${spring4.version}</version>
+      <version>${spring5.version}</version>
       <scope>provided</scope>
     </dependency>
 
@@ -63,7 +63,7 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-core</artifactId>
-      <version>${spring4.version}</version>
+      <version>${spring5.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
