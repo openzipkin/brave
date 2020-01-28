@@ -56,12 +56,15 @@ public final class TracingCallFactory implements Call.Factory {
 
   @Override public Call newCall(Request request) {
     TraceContext invocationContext = currentTraceContext.get();
-    OkHttpClient.Builder b = ok.newBuilder();
-    if (invocationContext != null) {
+    Call call;
+    if (invocationContext != null) { // scope the call to the invocation context
+      OkHttpClient.Builder b = ok.newBuilder();
       b.interceptors().add(0, new TraceContextInterceptor(invocationContext));
+      call = b.build().newCall(request);
+      return new TraceContextCall(call, currentTraceContext, invocationContext);
+    } else { // it is a root span, so just invoke normally
+      return ok.newCall(request);
     }
-    // TODO: This can hide errors at the beginning of call.execute, such as invalid host!
-    return b.build().newCall(request);
   }
 
   /** In case a request is deferred due to a backlog, we re-apply the span that was in scope */

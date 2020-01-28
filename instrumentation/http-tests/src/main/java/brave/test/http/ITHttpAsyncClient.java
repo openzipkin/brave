@@ -117,4 +117,28 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       .extracting(Span::kind)
       .containsOnly(null, Span.Kind.CLIENT);
   }
+
+  /** This ensures that response callbacks run when there is no invocation trace context. */
+  @Test public void asyncRootSpan() throws Exception {
+    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+    server.enqueue(new MockResponse());
+
+    getAsync(client, "/foo", new Callback<Void>() {
+      @Override public void onSuccess(Void success) {
+        result.add(currentTraceContext.get());
+      }
+
+      @Override public void onError(Throwable throwable) {
+        result.add(throwable);
+      }
+    });
+
+    server.takeRequest();
+
+    assertThat(result.poll(1, TimeUnit.SECONDS))
+      .isNull();
+
+    assertThat(takeSpan().kind())
+      .isEqualTo(Span.Kind.CLIENT);
+  }
 }

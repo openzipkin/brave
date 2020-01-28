@@ -41,10 +41,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
       .retryOnConnectionFailure(false)
-      .dispatcher(new Dispatcher(
-        httpTracing.tracing().currentTraceContext()
-          .executorService(new Dispatcher().executorService())
-      ))
       .build()
     );
   }
@@ -53,10 +49,8 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     ((TracingCallFactory) client).ok.dispatcher().executorService().shutdownNow();
   }
 
-  @Override protected void get(Call.Factory client, String pathIncludingQuery)
-    throws IOException {
-    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-      .execute();
+  @Override protected void get(Call.Factory client, String pathIncludingQuery) throws IOException {
+    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build()).execute();
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)

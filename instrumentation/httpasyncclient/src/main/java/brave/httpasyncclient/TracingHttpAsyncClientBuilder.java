@@ -157,36 +157,44 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void start() {
       delegate.start();
     }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
   }
 
   static final class TraceContextFutureCallback<T> implements FutureCallback<T> {
     final FutureCallback<T> delegate;
     final CurrentTraceContext currentTraceContext;
-    final TraceContext traceContext;
+    final TraceContext invocationContext;
 
     TraceContextFutureCallback(FutureCallback<T> delegate,
-      CurrentTraceContext currentTraceContext, TraceContext traceContext) {
-      this.currentTraceContext = currentTraceContext;
-      this.traceContext = traceContext;
+      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
       this.delegate = delegate;
+      this.currentTraceContext = currentTraceContext;
+      this.invocationContext = invocationContext;
     }
 
     @Override public void completed(T t) {
-      try (Scope scope = currentTraceContext.maybeScope(traceContext)) {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.completed(t);
       }
     }
 
     @Override public void failed(Exception e) {
-      try (Scope scope = currentTraceContext.maybeScope(traceContext)) {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.failed(e);
       }
     }
 
     @Override public void cancelled() {
-      try (Scope scope = currentTraceContext.maybeScope(traceContext)) {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.cancelled();
       }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 

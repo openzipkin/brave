@@ -45,8 +45,7 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
 
   @Override public void addCallback(ListenableFutureCallback<? super T> callback) {
     delegate.addCallback(callback != null
-      ? new TraceContextListenableFutureCallback<>(callback, currentTraceContext,
-      invocationContext)
+      ? new TraceContextListenableFutureCallback<>(callback, this)
       : null
     );
   }
@@ -57,12 +56,10 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     delegate.addCallback(successCallback, failureCallback);
     delegate.addCallback(
       successCallback != null
-        ? new TraceContextSuccessCallback<>(successCallback, currentTraceContext,
-        invocationContext)
+        ? new TraceContextSuccessCallback<>(successCallback, this)
         : null,
       failureCallback != null
-        ? new TraceContextFailureCallback(failureCallback, currentTraceContext,
-        invocationContext)
+        ? new TraceContextFailureCallback(failureCallback, this)
         : null
     );
   }
@@ -102,10 +99,10 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     final TraceContext invocationContext;
 
     TraceContextListenableFutureCallback(ListenableFutureCallback<T> delegate,
-      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
-      this.currentTraceContext = currentTraceContext;
-      this.invocationContext = invocationContext;
+      TraceContextListenableFuture<?> future) {
       this.delegate = delegate;
+      this.currentTraceContext = future.currentTraceContext;
+      this.invocationContext = future.invocationContext;
     }
 
     @Override public void onSuccess(T result) {
@@ -118,6 +115,10 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.onFailure(ex);
       }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 
@@ -127,16 +128,20 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     final TraceContext invocationContext;
 
     TraceContextSuccessCallback(SuccessCallback<T> delegate,
-      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
-      this.currentTraceContext = currentTraceContext;
-      this.invocationContext = invocationContext;
+      TraceContextListenableFuture<?> future) {
       this.delegate = delegate;
+      this.currentTraceContext = future.currentTraceContext;
+      this.invocationContext = future.invocationContext;
     }
 
     @Override public void onSuccess(T result) {
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.onSuccess(result);
       }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 
@@ -146,16 +151,20 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     final TraceContext invocationContext;
 
     TraceContextFailureCallback(FailureCallback delegate,
-      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
-      this.currentTraceContext = currentTraceContext;
-      this.invocationContext = invocationContext;
+      TraceContextListenableFuture<?> future) {
       this.delegate = delegate;
+      this.currentTraceContext = future.currentTraceContext;
+      this.invocationContext = future.invocationContext;
     }
 
     @Override public void onFailure(Throwable ex) {
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate.onFailure(ex);
       }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 }
