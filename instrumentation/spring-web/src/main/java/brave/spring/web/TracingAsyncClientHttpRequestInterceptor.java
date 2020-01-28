@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,10 +14,12 @@
 package brave.spring.web;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
 import brave.spring.web.TracingClientHttpRequestInterceptor.HttpClientResponse;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +41,11 @@ public final class TracingAsyncClientHttpRequestInterceptor
     return new TracingAsyncClientHttpRequestInterceptor(httpTracing);
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   @Autowired TracingAsyncClientHttpRequestInterceptor(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -51,10 +53,18 @@ public final class TracingAsyncClientHttpRequestInterceptor
     byte[] body, AsyncClientHttpRequestExecution execution) throws IOException {
     Span span =
       handler.handleSend(new TracingClientHttpRequestInterceptor.HttpClientRequest(request));
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+
+    // avoid context sync overhead when we are the root span
+    TraceContext invocationContext = span.context().parentIdAsLong() != 0
+      ? currentTraceContext.get()
+      : null;
+
+    try (Scope ws = currentTraceContext.newScope(span.context())) {
       ListenableFuture<ClientHttpResponse> result = execution.executeAsync(request, body);
       result.addCallback(new TraceListenableFutureCallback(span, handler));
-      return result;
+      return invocationContext != null
+        ? new TraceContextListenableFuture<>(result, currentTraceContext, invocationContext)
+        : result;
     } catch (IOException | RuntimeException | Error e) {
       handler.handleReceive(null, e, span);
       throw e;

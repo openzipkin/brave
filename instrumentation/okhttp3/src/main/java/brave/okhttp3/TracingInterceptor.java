@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,10 +14,11 @@
 package brave.okhttp3;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
@@ -39,12 +40,12 @@ public final class TracingInterceptor implements Interceptor {
     return new TracingInterceptor(httpTracing);
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -56,7 +57,7 @@ public final class TracingInterceptor implements Interceptor {
 
     HttpClientResponse response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (Scope ws = currentTraceContext.newScope(span.context())) {
       Response result = chain.proceed(request.build());
       response = new HttpClientResponse(result);
       return result;
