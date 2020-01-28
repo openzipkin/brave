@@ -42,15 +42,16 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
-      <version>${spring4.version}</version>
+      <version>${spring5.version}</version>
       <scope>provided</scope>
     </dependency>
 
-    <!-- needed for AsyncClientHttpRequestInterceptor -->
+    <!-- needed for org.springframework.util.concurrent.ListenableFuture
+         used by AsyncClientHttpRequestInterceptor -->
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-core</artifactId>
-      <version>${spring4.version}</version>
+      <version>${spring5.version}</version>
       <optional>true</optional>
     </dependency>
 
@@ -62,6 +63,12 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <version>${spring5.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
