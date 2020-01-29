@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -432,6 +432,23 @@ public class TracerTest {
         .isNotSameAs(context)
         .extracting(TraceContext::localRootId)
         .isEqualTo(context.spanId());
+    }
+  }
+
+  @Test public void currentSpan_retainsSharedFlag() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1L).spanId(2L).shared(true).sampled(true).build();
+
+    try (Scope ws = currentTraceContext.newScope(context)) {
+      assertThat(tracer.currentSpan().context().shared()).isTrue();
+    }
+  }
+
+  @Test public void currentSpan_doesntSetSharedFlag() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
+    try (Scope ws = currentTraceContext.newScope(context)) {
+      assertThat(tracer.currentSpan().context().shared()).isFalse();
     }
   }
 
@@ -897,6 +914,37 @@ public class TracerTest {
     // Check we don't always make children local roots
     Span child = tracer.newChild(span.context());
     assertThat(child.context().localRootId()).isEqualTo(span.context().localRootId());
+    assertThat(child.context().isLocalRoot()).isFalse();
+  }
+
+  @Test public void joinSpan_notYetSampledIsNotShared_root() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().shared()).isFalse();
+  }
+
+  @Test public void joinSpan_notYetSampledIsNotShared_child() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).shared(true).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().shared()).isFalse();
+  }
+
+  @Test public void newChild_childOfLocalRootIsNotShared() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1).spanId(2).shared(true).sampled(true).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
+    assertThat(span.context().shared()).isTrue();
+    assertThat(span.context().isLocalRoot()).isTrue();
+
+    // Check we don't inherit the shared flag
+    Span child = tracer.newChild(span.context());
+    assertThat(child.context().localRootId()).isEqualTo(span.context().localRootId());
+    assertThat(child.context().shared()).isFalse();
     assertThat(child.context().isLocalRoot()).isFalse();
   }
 

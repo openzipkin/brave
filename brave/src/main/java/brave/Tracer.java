@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -180,12 +180,26 @@ public class Tracer {
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    long parentId = context.parentIdAsLong(), spanId = context.spanId();
+    long spanId = context.spanId();
+
+    TraceContext decorated;
     if (!supportsJoin) {
-      parentId = context.spanId();
-      spanId = 0L;
+      decorated = decorateContext(context, spanId);
+    } else {
+      int flags = InternalPropagation.instance.flags(context);
+      flags |= FLAG_SHARED;
+      decorated = decorateContext(
+        flags,
+        context.traceIdHigh(),
+        context.traceId(),
+        context.localRootId(),
+        context.parentIdAsLong(),
+        spanId,
+        context.extra()
+      );
     }
-    return _toSpan(decorateContext(context, parentId, spanId));
+
+    return _toSpan(decorated);
   }
 
   /**
@@ -197,10 +211,11 @@ public class Tracer {
    */
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
-    return _toSpan(decorateContext(parent, parent.spanId(), 0L));
+    return _toSpan(decorateContext(parent, parent.spanId()));
   }
 
   TraceContext newRootContext(int flags) {
+    flags &= ~FLAG_SHARED; // cannot be shared if we aren't reusing the span ID
     return decorateContext(flags, 0L, 0L, 0L, 0L, 0L, Collections.emptyList());
   }
 
@@ -212,16 +227,16 @@ public class Tracer {
    * implies the {@link TraceContext#localRootId()} could be zero, if the context was manually
    * created.
    */
-  TraceContext decorateContext(TraceContext parent, long parentId, long spanId) {
+  TraceContext decorateContext(TraceContext parent, long parentId) {
     int flags = InternalPropagation.instance.flags(parent);
-    if (spanId != 0L) flags |= FLAG_SHARED;
+    flags &= ~FLAG_SHARED; // cannot be shared if we aren't reusing the span ID
     return decorateContext(
       flags,
       parent.traceIdHigh(),
       parent.traceId(),
       parent.localRootId(),
       parentId,
-      spanId,
+      0L,
       parent.extra()
     );
   }
@@ -449,9 +464,19 @@ public class Tracer {
   @Nullable public Span currentSpan() {
     TraceContext context = currentTraceContext.get();
     if (context == null) return null;
+
     if (!isDecorated(context)) { // It wasn't initialized by our tracer, so we must decorate.
-      context = decorateContext(context, context.parentIdAsLong(), context.spanId());
+      context = decorateContext(
+        InternalPropagation.instance.flags(context),
+        context.traceIdHigh(),
+        context.traceId(),
+        context.localRootId(),
+        context.parentIdAsLong(),
+        context.spanId(),
+        context.extra()
+      );
     }
+
     if (isNoop(context)) return new NoopSpan(context);
 
     // Returns a lazy span to reduce overhead when tracer.currentSpan() is invoked just to see if
@@ -525,7 +550,7 @@ public class Tracer {
     if (samplerFunction == null) throw new NullPointerException("samplerFunction == null");
     if (arg == null) throw new NullPointerException("arg == null");
     TraceContext parent = currentTraceContext.get();
-    if (parent != null) return decorateContext(parent, parent.spanId(), 0L);
+    if (parent != null) return decorateContext(parent, parent.spanId());
 
     Boolean sampled = samplerFunction.trySample(arg);
     SamplingFlags flags = sampled != null ? (sampled ? SAMPLED : NOT_SAMPLED) : EMPTY;
@@ -543,7 +568,7 @@ public class Tracer {
     if (name == null) throw new NullPointerException("name == null");
     if (parent == null) parent = currentTraceContext.get();
     TraceContext context =
-      parent != null ? decorateContext(parent, parent.spanId(), 0L) : newRootContext(0);
+      parent != null ? decorateContext(parent, parent.spanId()) : newRootContext(0);
     return newScopedSpan(name, context);
   }
 
