@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -55,24 +55,29 @@ public final class TracingCallFactory implements Call.Factory {
   }
 
   @Override public Call newCall(Request request) {
-    TraceContext currentSpan = currentTraceContext.get();
-    OkHttpClient.Builder b = ok.newBuilder();
-    if (currentSpan != null) b.interceptors().add(0, new SetParentSpanInScope(currentSpan));
-    // TODO: This can hide errors at the beginning of call.execute, such as invalid host!
-    return b.build().newCall(request);
+    TraceContext invocationContext = currentTraceContext.get();
+    Call call;
+    if (invocationContext != null) { // scope the call to the invocation context
+      OkHttpClient.Builder b = ok.newBuilder();
+      b.interceptors().add(0, new TraceContextInterceptor(invocationContext));
+      call = b.build().newCall(request);
+      return new TraceContextCall(call, currentTraceContext, invocationContext);
+    } else { // it is a root span, so just invoke normally
+      return ok.newCall(request);
+    }
   }
 
   /** In case a request is deferred due to a backlog, we re-apply the span that was in scope */
-  class SetParentSpanInScope implements Interceptor {
-    final TraceContext previous;
+  class TraceContextInterceptor implements Interceptor {
+    final TraceContext invocationContext;
 
-    SetParentSpanInScope(TraceContext previous) {
-      this.previous = previous;
+    TraceContextInterceptor(TraceContext invocationContext) {
+      this.invocationContext = invocationContext;
     }
 
     @Override public Response intercept(Chain chain) throws IOException {
       // using maybeScope as when there's no backlog situation the span may already be in scope
-      try (Scope ws = currentTraceContext.maybeScope(previous)) {
+      try (Scope ws = currentTraceContext.maybeScope(invocationContext)) {
         return chain.proceed(chain.request());
       }
     }

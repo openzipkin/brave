@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -48,27 +49,28 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     ((TracingCallFactory) client).ok.dispatcher().executorService().shutdownNow();
   }
 
-  @Override protected void get(Call.Factory client, String pathIncludingQuery)
-    throws IOException {
-    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
-      .execute();
+  @Override protected void get(Call.Factory client, String pathIncludingQuery) throws IOException {
+    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build()).execute();
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
     throws Exception {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
-      .post(RequestBody.create(body, MediaType.parse("text/plain"))).build())
+      // intentionally deprecated method so that the v3.x tests can compile
+      .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
       .execute();
   }
 
-  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
-    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
+  @Override
+  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Void> callback) {
+    client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
-          e.printStackTrace();
+          callback.onError(e);
         }
 
         @Override public void onResponse(Call call, Response response) {
+          callback.onSuccess(null);
         }
       });
   }

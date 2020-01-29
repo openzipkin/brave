@@ -40,7 +40,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
       .build();
   }
 
-  @Override protected void closeClient(Call.Factory client) throws IOException {
+  @Override protected void closeClient(Call.Factory client) {
     ((OkHttpClient) client).dispatcher().executorService().shutdownNow();
   }
 
@@ -53,18 +53,21 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
     throws Exception {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
-      .post(RequestBody.create(body, MediaType.parse("text/plain"))).build())
+      // intentionally deprecated method so that the v3.x tests can compile
+      .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
       .execute();
   }
 
-  @Override protected void getAsync(Call.Factory client, String pathIncludingQuery) {
-    client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build())
+  @Override
+  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Void> callback) {
+    client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
-          e.printStackTrace();
+          callback.onError(e);
         }
 
-        @Override public void onResponse(Call call, Response response) throws IOException {
+        @Override public void onResponse(Call call, Response response) {
+          callback.onSuccess(null);
         }
       });
   }

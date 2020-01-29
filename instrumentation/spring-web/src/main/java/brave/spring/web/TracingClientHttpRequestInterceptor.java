@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,10 +14,11 @@
 package brave.spring.web;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
@@ -34,11 +35,11 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     return new TracingClientHttpRequestInterceptor(httpTracing);
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
 
   @Autowired TracingClientHttpRequestInterceptor(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -47,7 +48,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     Span span = handler.handleSend(new HttpClientRequest(request));
     HttpClientResponse response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (Scope ws = currentTraceContext.newScope(span.context())) {
       ClientHttpResponse result = execution.execute(request, body);
       response = new HttpClientResponse(result);
       return result;

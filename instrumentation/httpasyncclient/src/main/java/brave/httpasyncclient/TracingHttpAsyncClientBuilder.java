@@ -94,13 +94,13 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       removeScope(context);
     }
   }
-  
+
   static void removeScope(HttpContext context) {
-      Scope scope = (Scope) context.getAttribute(Scope.class.getName());
-      if (scope == null) return;
-      context.removeAttribute(Scope.class.getName());
-      scope.close();
-    }
+    Scope scope = (Scope) context.getAttribute(Scope.class.getName());
+    if (scope == null) return;
+    context.removeAttribute(Scope.class.getName());
+    scope.close();
+  }
 
   final class HandleReceive implements HttpResponseInterceptor {
     @Override public void process(HttpResponse response, HttpContext context) {
@@ -128,15 +128,21 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
-      HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
+      HttpAsyncResponseConsumer<T> responseConsumer, HttpContext httpContext,
       FutureCallback<T> callback) {
-      TraceContext traceCtx = currentTraceContext.get();
-      context.setAttribute(TraceContext.class.getName(), traceCtx);
+
+      TraceContext invocationContext = currentTraceContext.get();
+      if (invocationContext != null) {
+        httpContext.setAttribute(TraceContext.class.getName(), invocationContext);
+      }
+
       return delegate.execute(
-        new TracingAsyncRequestProducer(requestProducer, context),
-        new TracingAsyncResponseConsumer<>(responseConsumer, context),
-        context,
-        callback == null ? null : new TraceContextAwareFutureCallback(currentTraceContext, traceCtx, callback)
+        new TracingAsyncRequestProducer(requestProducer, httpContext),
+        new TracingAsyncResponseConsumer<>(responseConsumer, httpContext),
+        httpContext,
+        callback != null && invocationContext != null
+          ? new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext)
+          : callback
       );
     }
 
@@ -151,35 +157,44 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void start() {
       delegate.start();
     }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
   }
 
-  static final class TraceContextAwareFutureCallback<T> implements FutureCallback<T> {
-    private final CurrentTraceContext currentTraceContext;
-    private final TraceContext traceCtx;
-    private final FutureCallback<T> callback;
+  static final class TraceContextFutureCallback<T> implements FutureCallback<T> {
+    final FutureCallback<T> delegate;
+    final CurrentTraceContext currentTraceContext;
+    final TraceContext invocationContext;
 
-    TraceContextAwareFutureCallback(CurrentTraceContext currentTraceContext, TraceContext traceCtx, FutureCallback<T> callback) {
+    TraceContextFutureCallback(FutureCallback<T> delegate,
+      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
+      this.delegate = delegate;
       this.currentTraceContext = currentTraceContext;
-      this.traceCtx = traceCtx;
-      this.callback = callback;
+      this.invocationContext = invocationContext;
     }
 
     @Override public void completed(T t) {
-      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
-        callback.completed(t);
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.completed(t);
       }
     }
 
     @Override public void failed(Exception e) {
-      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
-        callback.failed(e);
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.failed(e);
       }
     }
 
     @Override public void cancelled() {
-      try (Scope scope = currentTraceContext.maybeScope(traceCtx)) {
-        callback.cancelled();
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.cancelled();
       }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 
