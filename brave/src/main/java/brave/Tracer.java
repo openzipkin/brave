@@ -514,7 +514,7 @@ public class Tracer {
    * }</pre>
    */
   public ScopedSpan startScopedSpan(String name) {
-    return startScopedSpanWithParent(name, null);
+    return startScopedSpanWithParent(name, currentTraceContext.get());
   }
 
   /**
@@ -566,7 +566,6 @@ public class Tracer {
   // this api is needed to make tools such as executors which need to carry the invocation context
   public ScopedSpan startScopedSpanWithParent(String name, @Nullable TraceContext parent) {
     if (name == null) throw new NullPointerException("name == null");
-    if (parent == null) parent = currentTraceContext.get();
     TraceContext context =
       parent != null ? decorateContext(parent, parent.spanId()) : newRootContext(0);
     return newScopedSpan(name, context);

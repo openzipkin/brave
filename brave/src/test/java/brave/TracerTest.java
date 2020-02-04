@@ -883,6 +883,21 @@ public class TracerTest {
     }
   }
 
+  @Test public void startScopedSpanWithParent_ignoresCurrentSpan() {
+    ScopedSpan span = tracer.startScopedSpan("foo");
+    try {
+      ScopedSpan child = tracer.startScopedSpanWithParent("bar", null);
+      try {
+        assertThat(child.context().parentIdAsLong()).isZero();
+        assertThat(child.context().traceIdString()).isNotEqualTo(span.context().traceIdString());
+      } finally {
+        child.finish();
+      }
+    } finally {
+      span.finish();
+    }
+  }
+
   @Test public void startScopedSpanWithParent_resultantSpanIsLocalRoot() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     ScopedSpan span = tracer.startScopedSpanWithParent("foo", context);
