@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -35,6 +35,7 @@ import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -47,6 +48,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpClientHandlerTest {
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   List<Span> spans = new ArrayList<>();
   @Mock HttpSampler sampler;
   HttpTracing httpTracing;
@@ -218,37 +220,75 @@ public class HttpClientHandlerTest {
   @Test public void handleSend_parserSeesUnwrappedType() {
     when(requestSampler.trySample(defaultRequest)).thenReturn(null);
 
-    brave.Span span = defaultHandler.handleSend(defaultRequest);
-    defaultHandler.handleReceive(defaultResponse, null, span);
+    defaultHandler.handleSend(defaultRequest);
 
     verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
   }
 
   @Test public void handleReceive_oldHandler() {
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleSend(injector, adapter, request);
     handler.handleReceive(response, null, span);
 
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
   }
 
   @Test public void handleReceive_parserSeesUnwrappedType() {
-    when(requestSampler.trySample(defaultRequest)).thenReturn(null);
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = defaultHandler.handleSend(defaultRequest);
     defaultHandler.handleReceive(defaultResponse, null, span);
 
-    verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
+    HttpClientResponse.Adapter adapter = new HttpClientResponse.Adapter(defaultResponse);
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
   }
 
   @Test public void handleReceive_parserSeesUnwrappedType_oldHandler() {
-    when(sampler.trySample(defaultRequest)).thenReturn(null);
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleSend(defaultRequest);
     handler.handleReceive(defaultResponse, null, span);
 
     HttpClientResponse.Adapter adapter = new HttpClientResponse.Adapter(defaultResponse);
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
+  }
+
+  /** Ensure bad implementation of HttpClientResponse doesn't crash */
+  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+
+    defaultHandler.handleReceive(mock(HttpClientResponse.class), null, span);
+
+    verify(span).isNoop();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  /** Ensure bad implementation of HttpClientResponse doesn't crash */
+  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.customizer()).thenReturn(span);
+
+    Exception error = new RuntimeException("peanuts");
+
+    defaultHandler.handleReceive(mock(HttpClientResponse.class), error, span);
+
+    verify(span).isNoop();
+    verify(span).customizer();
+    verify(span).tag("error", "peanuts");
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleReceive_oneOfResponseError() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> defaultHandler.handleReceive(null, null, span))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Either the response or error parameters may be null, but not both");
   }
 }

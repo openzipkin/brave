@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -142,16 +142,28 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
    * <p>This is typically called once the response headers are sent, and after the span is {@link
    * brave.Tracer.SpanInScope#close() no longer in scope}.
    *
+   * <p>Note: Either the response or error parameters may be null, but not both.
+   *
    * @see HttpServerParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
    * @since 4.3
    */
   public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (response instanceof HttpServerResponse) {
-      HttpServerResponse.Adapter adapter =
-        new HttpServerResponse.Adapter((HttpServerResponse) response);
-      handleFinish(adapter, adapter.unwrapped, error, span);
-    } else {
+    if (response == null && error == null) {
+      throw new IllegalArgumentException(
+        "Either the response or error parameters may be null, but not both");
+    }
+
+    if (!(response instanceof HttpServerResponse)) {
       handleFinish(adapter, response, error, span);
+      return;
+    }
+
+    HttpServerResponse serverResponse = (HttpServerResponse) response;
+    Object unwrapped = serverResponse.unwrap();
+    if (unwrapped == null) { // Handle bad implementation of HttpServerResponse
+      handleFinish(error, span);
+    } else {
+      handleFinish(new HttpServerResponse.Adapter(serverResponse), unwrapped, error, span);
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -50,7 +50,7 @@ public abstract class HttpClientRequest extends HttpRequest {
    * @see #SETTER
    * @since 5.7
    */
-  @Nullable public abstract void header(String name, String value);
+  public abstract void header(String name, String value);
 
   /**
    * <h3>Why do we need an {@link HttpClientAdapter}?</h3>
