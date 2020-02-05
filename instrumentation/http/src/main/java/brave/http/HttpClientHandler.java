@@ -182,8 +182,11 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @since 4.3
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    assert response != null || error != null :
-      "Either the response or error parameters may be null, but not both";
+    if (response == null && error == null) {
+      throw new IllegalArgumentException(
+        "Either the response or error parameters may be null, but not both");
+    }
+
     if (!(response instanceof HttpClientResponse)) {
       handleFinish(adapter, response, error, span);
       return;

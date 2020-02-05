@@ -35,6 +35,7 @@ import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -281,5 +282,13 @@ public class HttpClientHandlerTest {
     verify(span).tag("error", "peanuts");
     verify(span).finish();
     verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleReceive_oneOfResponseError() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> defaultHandler.handleReceive(null, null, span))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Either the response or error parameters may be null, but not both");
   }
 }

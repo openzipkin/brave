@@ -34,6 +34,7 @@ import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -263,5 +264,13 @@ public class HttpServerHandlerTest {
     verify(span).tag("error", "peanuts");
     verify(span).finish();
     verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleSend_oneOfResponseError() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> defaultHandler.handleSend(null, null, span))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Either the response or error parameters may be null, but not both");
   }
 }
