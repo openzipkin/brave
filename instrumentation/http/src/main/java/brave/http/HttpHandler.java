@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,6 +48,14 @@ abstract class HttpHandler {
 
   /** parses remote IP:port and tags while the span is in scope (for logging for example) */
   abstract <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span);
+
+
+  // adapter shouldn't be null. we accept it only to not crash on bad instrumentation
+  void handleFinish(@Nullable Throwable error, Span span) {
+    if (span.isNoop()) return;
+    if (error != null) parser.errorParser().error(error, span.customizer());
+    span.finish();
+  }
 
   <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
     @Nullable Throwable error, Span span) {

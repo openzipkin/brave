@@ -47,6 +47,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServerHandlerTest {
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();
   @Mock HttpSampler sampler;
   HttpTracing httpTracing;
@@ -206,33 +207,61 @@ public class HttpServerHandlerTest {
   }
 
   @Test public void handleSend_oldHandler() {
-    when(extractor.extract(request)).thenReturn(TraceContextOrSamplingFlags.EMPTY);
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleReceive(extractor, request);
     handler.handleSend(response, null, span);
 
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
   }
 
-  @Test public void handleSend_parserSeesHttpRequest() {
-    when(requestSampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void handleSend_parserSeesUnwrappedType() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = defaultHandler.handleReceive(defaultRequest);
     defaultHandler.handleSend(defaultResponse, null, span);
 
     HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
   }
 
-  @Test public void handleSend_parserSeesHttpRequest_oldHandler() {
-    when(extractor.extract(defaultRequest)).thenReturn(TraceContextOrSamplingFlags.EMPTY);
-    when(sampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void handleSend_parserSeesUnwrappedType_oldHandler() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleReceive(extractor, defaultRequest);
     handler.handleSend(defaultResponse, null, span);
 
     HttpServerResponse.Adapter adapter = new HttpServerResponse.Adapter(defaultResponse);
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
+  }
+
+  /** Ensure bad implementation of HttpServerResponse doesn't crash */
+  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+
+    defaultHandler.handleSend(mock(HttpServerResponse.class), null, span);
+
+    verify(span).isNoop();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  /** Ensure bad implementation of HttpServerResponse doesn't crash */
+  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.customizer()).thenReturn(span);
+
+    Exception error = new RuntimeException("peanuts");
+
+    defaultHandler.handleSend(mock(HttpServerResponse.class), error, span);
+
+    verify(span).isNoop();
+    verify(span).customizer();
+    verify(span).tag("error", "peanuts");
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
   }
 }
