@@ -70,7 +70,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     get(client, "/foo");
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,6 +29,7 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import zipkin2.Span;
 
@@ -91,6 +92,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * breaking are less.
  */
 public abstract class ITHttp {
+  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+
   public static final String EXTRA_KEY = "user-id";
 
   /**

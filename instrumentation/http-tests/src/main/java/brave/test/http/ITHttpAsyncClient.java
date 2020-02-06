@@ -66,7 +66,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     ScopedSpan otherSpan = tracer.startScopedSpan("test2");
     try {
       for (int i = 0; i < 2; i++) {
-        RecordedRequest request = server.takeRequest();
+        RecordedRequest request = takeRequest();
         assertThat(request.getHeader("x-b3-traceId"))
           .isEqualTo(parent.context().traceIdString());
         assertThat(request.getHeader("x-b3-parentspanid"))
@@ -106,7 +106,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     } finally {
       parent.finish();
     }
-    server.takeRequest();
+    takeRequest();
 
     assertThat(result.poll(1, TimeUnit.SECONDS))
       .isInstanceOf(TraceContext.class)
@@ -133,7 +133,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       }
     });
 
-    server.takeRequest();
+    takeRequest();
 
     assertThat(result.poll(1, TimeUnit.SECONDS))
       .isNull();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,10 +24,12 @@ import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunctions;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -67,7 +69,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeaders().toMultimap())
       .containsKeys("x-b3-traceId", "x-b3-spanId")
       .containsEntry("x-b3-sampled", asList("1"));
@@ -86,7 +88,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(parent.context().traceIdString());
     assertThat(request.getHeader("x-b3-parentspanid"))
@@ -109,7 +111,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    assertThat(server.takeRequest().getHeader(EXTRA_KEY))
+    assertThat(takeRequest().getHeader(EXTRA_KEY))
       .isEqualTo("joey");
 
     // we report one in-process and one RPC client span
@@ -129,7 +131,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    assertThat(server.takeRequest().getHeader(EXTRA_KEY))
+    assertThat(takeRequest().getHeader(EXTRA_KEY))
       .isEqualTo("joey");
   }
 
@@ -142,7 +144,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeaders().toMultimap())
       .containsKeys("x-b3-traceId", "x-b3-spanId")
       .doesNotContainKey("x-b3-parentSpanId")
@@ -161,7 +163,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, path);
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeaders().toMultimap())
       .containsEntry("x-b3-sampled", asList("0"));
   }
@@ -284,7 +286,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     post(client, path, body);
 
-    assertThat(server.takeRequest().getBody().readUtf8())
+    assertThat(takeRequest().getBody().readUtf8())
       .isEqualTo(body);
 
     Span span = takeSpan();
@@ -327,5 +329,10 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   protected String url(String pathIncludingQuery) {
     return "http://127.0.0.1:" + server.getPort() + pathIncludingQuery;
+  }
+
+  /** Ensures a timeout receiving a request happens before the method timeout */
+  protected RecordedRequest takeRequest() throws InterruptedException {
+    return server.takeRequest(3, TimeUnit.SECONDS);
   }
 }
