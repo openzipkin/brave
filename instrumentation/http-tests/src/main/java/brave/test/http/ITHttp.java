@@ -92,6 +92,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * breaking are less.
  */
 public abstract class ITHttp {
+  /**
+   * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
+   * This way, there's visibility on which method hung without asking the end users to edit build
+   * config.
+   */
   @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
 
   public static final String EXTRA_KEY = "user-id";
