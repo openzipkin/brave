@@ -30,7 +30,7 @@ import static java.util.Arrays.asList;
  */
 public final class B3Propagation<K> implements Propagation<K> {
   /** Describes the formats used to inject headers. */
-  enum Format {
+  public enum Format {
     /** The trace context is encoded with a several fields prefixed with "x-b3-". */
     MULTI,
     /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormat(TraceContext)}. */
