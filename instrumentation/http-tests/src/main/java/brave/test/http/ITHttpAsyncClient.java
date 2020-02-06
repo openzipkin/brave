@@ -21,6 +21,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
@@ -30,11 +32,12 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
-  static final Callback<Void> NOOP_CALLBACK = new Callback<Void>() {
+  static final Callback<Void> LOG_ON_ERROR_CALLBACK = new Callback<Void>() {
     @Override public void onSuccess(Void aVoid) {
     }
 
     @Override public void onError(Throwable throwable) {
+      Logger.getAnonymousLogger().log(Level.SEVERE, "Unexpected error", throwable);
     }
   };
 
@@ -57,8 +60,8 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     ScopedSpan parent = tracer.startScopedSpan("test");
     try {
-      getAsync(client, "/items/1", NOOP_CALLBACK);
-      getAsync(client, "/items/2", NOOP_CALLBACK);
+      getAsync(client, "/items/1", LOG_ON_ERROR_CALLBACK);
+      getAsync(client, "/items/2", LOG_ON_ERROR_CALLBACK);
     } finally {
       parent.finish();
     }
