@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -63,9 +63,11 @@ public final class SparkTracing {
         delegate.handle(error, request, response);
       } finally {
         Span span = tracer.currentSpan();
-        if (span == null) return;
-        handler.handleSend(new HttpServerResponse(response, request.requestMethod()), error, span);
-        ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+        if (span != null) {
+          HttpServerResponse res = new HttpServerResponse(response, request.requestMethod());
+          handler.handleSend(res, error, span);
+          ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+        }
       }
     };
   }
