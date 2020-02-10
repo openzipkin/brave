@@ -14,7 +14,7 @@ kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
 
 To use the producer simply wrap it like this :
 ```java
-Producer<K, V> stringProducer = new KafkaProducer<>(settings);
+Producer<K, V> producer = new KafkaProducer<>(settings);
 TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
 tracingProducer.send(new ProducerRecord<K, V>("my-topic", key, value));
 ```
