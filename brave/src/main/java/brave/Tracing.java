@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,7 +30,6 @@ import brave.sampler.SamplerFunction;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -152,8 +151,8 @@ public abstract class Tracing implements Closeable {
     Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
 
     /**
-     * Lower-case label of the remote node in the service graph, such as "favstar". Avoid names with
-     * variables or unique identifiers embedded. Defaults to "unknown".
+     * Label of the remote node in the service graph, such as "favstar". Avoid names with variables
+     * or unique identifiers embedded. Defaults to "unknown".
      *
      * <p>This is a primary label for trace lookup and aggregation, so it should be intuitive and
      * consistent. Many use a name from service discovery.
@@ -164,7 +163,7 @@ public abstract class Tracing implements Closeable {
       if (localServiceName == null || localServiceName.isEmpty()) {
         throw new IllegalArgumentException(localServiceName + " is not a valid serviceName");
       }
-      this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
+      this.localServiceName = localServiceName;
       return this;
     }
 
