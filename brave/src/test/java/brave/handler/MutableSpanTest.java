@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -176,6 +176,20 @@ public class MutableSpanTest {
       entry(2L, "cc=xxxx-xxxx-xxxx-xxxx"),
       entry(3L, "3")
     );
+  }
+
+  @Test public void localServiceNamePreservesCase() {
+    String expectedLocalServiceName = "FavStar";
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(expectedLocalServiceName);
+    assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
+  }
+
+  @Test public void remoteServiceNamePreservesCase() {
+    String expectedRemoteServiceName = "FavStar";
+    MutableSpan span = new MutableSpan();
+    span.remoteServiceName(expectedRemoteServiceName);
+    assertThat(span.remoteServiceName()).isEqualTo(expectedRemoteServiceName);
   }
 
   /**

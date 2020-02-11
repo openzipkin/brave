@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,6 @@ import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
-import java.util.Locale;
 
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.
@@ -148,7 +147,7 @@ public final class MutableSpan implements Cloneable {
     if (localServiceName == null || localServiceName.isEmpty()) {
       throw new NullPointerException("localServiceName is empty");
     }
-    this.localServiceName = localServiceName.toLowerCase(Locale.ROOT);
+    this.localServiceName = localServiceName;
   }
 
   /** When null {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
@@ -184,7 +183,7 @@ public final class MutableSpan implements Cloneable {
     if (remoteServiceName == null || remoteServiceName.isEmpty()) {
       throw new NullPointerException("remoteServiceName is empty");
     }
-    this.remoteServiceName = remoteServiceName.toLowerCase(Locale.ROOT);
+    this.remoteServiceName = remoteServiceName;
   }
 
   /**
