@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,6 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Rule;
+import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.rules.Timeout;
@@ -35,7 +36,7 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
-  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(5)); // max per method
 
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
