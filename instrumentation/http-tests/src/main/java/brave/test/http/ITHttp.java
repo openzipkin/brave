@@ -27,6 +27,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Rule;
+import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.rules.Timeout;
@@ -97,7 +98,7 @@ public abstract class ITHttp {
    * This way, there's visibility on which method hung without asking the end users to edit build
    * config.
    */
-  @Rule public Timeout globalTimeout = Timeout.seconds(5); // 5 seconds max per method
+  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(5)); // max per method
 
   public static final String EXTRA_KEY = "user-id";
 
