@@ -225,6 +225,7 @@ public class HttpClientHandlerTest {
     verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
   }
 
+
   @Test public void handleReceive_oldHandler() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);

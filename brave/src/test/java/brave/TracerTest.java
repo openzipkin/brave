@@ -47,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
@@ -288,8 +289,6 @@ public class TracerTest {
   }
 
   @Test public void toSpan_decoratesExternalContext() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
-
     assertThat(tracer.toSpan(context).context())
       .isNotSameAs(context)
       .extracting(TraceContext::localRootId)
@@ -425,8 +424,6 @@ public class TracerTest {
   }
 
   @Test public void currentSpan_decoratesExternalContext() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
-
     try (Scope ws = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context())
         .isNotSameAs(context)
@@ -445,8 +442,6 @@ public class TracerTest {
   }
 
   @Test public void currentSpan_doesntSetSharedFlag() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
-
     try (Scope ws = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context().shared()).isFalse();
     }
@@ -471,6 +466,21 @@ public class TracerTest {
   @Test public void nextSpan_usesSampler() {
     assertThat(tracer.nextSpan().context().parentId()).isNull();
     assertThat(tracer.nextSpan(neverSample(), false).context().sampled()).isFalse();
+  }
+
+  @Test public void nextSpanWithParent() {
+    Span span = tracer.nextSpanWithParent(deferDecision(), false, context);
+
+    assertThat(span.context().parentId()).isEqualTo(context.spanId());
+  }
+
+  @Test public void nextSpanWithParent_overrideToMakeNewTrace() {
+    Span span;
+    try (Scope ws  = currentTraceContext.newScope(context)) {
+      span = tracer.nextSpanWithParent(deferDecision(), false, null);
+    }
+
+    assertThat(span.context().parentId()).isNull();
   }
 
   @Test public void nextSpan_extractedNothing_makesChildOfCurrent() {
@@ -550,8 +560,7 @@ public class TracerTest {
   }
 
   @Test public void nextSpan_extractedTraceContext() {
-    TraceContext traceContext = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceContext);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
 
     assertThat(tracer.nextSpan(extracted).context())
       .extracting(TraceContext::traceId, TraceContext::parentId)
@@ -559,8 +568,7 @@ public class TracerTest {
   }
 
   @Test public void nextSpan_extractedTraceContext_extra() {
-    TraceContext traceContext = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceContext)
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context)
       .toBuilder().addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
@@ -841,7 +849,6 @@ public class TracerTest {
   @Test public void joinSpan_whenJoinIsSupported_resultantSpanIsLocalRoot() {
     tracer = Tracing.newBuilder().supportsJoin(true).build().tracer();
 
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.joinSpan(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -856,7 +863,6 @@ public class TracerTest {
   @Test public void joinSpan_whenJoinIsNotSupported_resultantSpanIsLocalRoot() {
     tracer = Tracing.newBuilder().supportsJoin(false).build().tracer();
 
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.joinSpan(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -899,7 +905,6 @@ public class TracerTest {
   }
 
   @Test public void startScopedSpanWithParent_resultantSpanIsLocalRoot() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     ScopedSpan span = tracer.startScopedSpanWithParent("foo", context);
     try {
       assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -920,7 +925,6 @@ public class TracerTest {
   }
 
   @Test public void newChild_resultantSpanIsLocalRoot() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.newChild(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -933,7 +937,6 @@ public class TracerTest {
   }
 
   @Test public void joinSpan_notYetSampledIsNotShared_root() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
     Span span = tracer.joinSpan(context);
 
     assertThat(span.context().shared()).isFalse();

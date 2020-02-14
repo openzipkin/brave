@@ -102,6 +102,19 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   }
 
   /**
+   * Like {@link #handleSend(HttpClientRequest)}, except explicitly controls the parent of the
+   * client span.
+   *
+   * @param parent the parent of the client span representing this request, or null for a new trace.
+   * @see Tracer#nextSpanWithParent(SamplerFunction, Object, TraceContext)
+   * @since 5.10
+   */
+  public Span handleSend(HttpClientRequest request, @Nullable TraceContext parent) {
+    if (request == null) throw new NullPointerException("request == null");
+    return handleSend(request, tracer.nextSpanWithParent(httpSampler, request, parent));
+  }
+
+  /**
    * Like {@link #handleSend(HttpClientRequest)}, except explicitly controls the span representing
    * the request.
    *
