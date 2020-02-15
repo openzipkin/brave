@@ -57,9 +57,9 @@ public final class TracingInterceptor implements Interceptor {
 
     Span span;
     TraceContext parent = chain.request().tag(TraceContext.class);
-    if (parent != null) {
-      span = handler.handleSend(request, parent != NULL_SENTINEL ? parent : null);
-    } else {
+    if (parent != null) { // TracingCallFactory setup this request
+      span = handler.handleSendWithParent(request, parent != NULL_SENTINEL ? parent : null);
+    } else { // This is using interceptors only
       span = handler.handleSend(request);
     }
 

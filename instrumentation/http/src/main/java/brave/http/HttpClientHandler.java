@@ -94,6 +94,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    *
    * <p>Call this before sending the request on the wire.
    *
+   * @see #handleSendWithParent(HttpClientRequest, TraceContext)
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
@@ -109,7 +110,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @see Tracer#nextSpanWithParent(SamplerFunction, Object, TraceContext)
    * @since 5.10
    */
-  public Span handleSend(HttpClientRequest request, @Nullable TraceContext parent) {
+  public Span handleSendWithParent(HttpClientRequest request, @Nullable TraceContext parent) {
     if (request == null) throw new NullPointerException("request == null");
     return handleSend(request, tracer.nextSpanWithParent(httpSampler, request, parent));
   }

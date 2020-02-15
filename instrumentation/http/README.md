@@ -134,8 +134,8 @@ covers topics including propagation. You may find our [feature tests](src/test/j
 ## Http Client
 
 The first step in developing http client instrumentation is implementing
-a `HttpClientAdapter` for your native library. This ensures users can
-portably control tags using `HttpClientParser`.
+`HttpClientRequest` and `HttpClientResponse` for your native library.
+This ensures users can portably control tags using `HttpClientParser`.
 
 Next, you'll need to indicate how to insert trace IDs into the outgoing
 request. Often, this is as simple as `Request::setHeader`.
@@ -146,8 +146,7 @@ constructor like so:
 ```java
 MyTracingFilter(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
-  handler = HttpClientHandler.create(httpTracing, new MyHttpClientAdapter());
-  extractor = httpTracing.tracing().propagation().injector(Request::setHeader);
+  handler = HttpClientHandler.create(httpTracing);
 }
 ```
 
@@ -157,23 +156,49 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
-3. Invoke the request
+3. Capture the result of the request
 4. Catch any errors
 5. Complete the span
 
 ```java
-Span span = handler.handleSend(injector, request); // 1.
+Span span = handler.handleSend(new WrappedHttpClientRequest(request)); // 1.
+HttpClientResponse response = null;
 Throwable error = null;
-SpanInScope scope = tracer.withSpanInScope(span); // 2.
-try {
-  response = invoke(request); // 3.
-} catch (RuntimeException | Error e) {
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  result = invoke(request);
+  response = new WrappedHttpClientResponse(result); // 3.
+  return result;
+} catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
   handler.handleReceive(response, error, span); // 5.
-  scope.close();
 }
+```
+
+### Asynchronous callbacks
+
+Asynchronous callbacks are a bit more complicated as they can happen on
+different threads. This means you need to manually carry the trace context from
+where the HTTP call is scheduled until when the request actually starts.
+
+You generally need to...
+1. Stash the invoking trace context as a property of the request
+2. Retrieve that context when the request starts
+3. Use that context when creating the client span
+
+```java
+public void onSchedule(HttpContext context) {
+  TraceContext invocationContext = currentTraceContext().get();
+  context.setAttribute(TraceContext.class, invocationContext); // 1.
+}
+
+// use the invocation context in callback associated with starting the request
+public void onStart(HttpContext context, HttpClientRequest req) {
+  TraceContext parent = context.getAttribute(TraceContext.class); // 2.
+
+  WrappedHttpClientRequest request = new WrappedHttpClientRequest(req);
+  Span span = handler.handleSendWithParent(request, parent); // 3.
 ```
 
 ## Http Server
