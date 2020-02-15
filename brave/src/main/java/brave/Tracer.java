@@ -548,12 +548,12 @@ public class Tracer {
 
   /**
    * Like {@link #nextSpan(SamplerFunction, Object)} except this controls the parent context
-   * explicitly. This is useful when an invocation context is propagated manually, such as commonly
+   * explicitly. This is useful when an invocation context is propagated manually, commonly
    * the case with asynchronous client frameworks.
    *
    * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
    * @param arg parameter to {@link SamplerFunction#trySample(Object)}
-   * @param parent the potentially null parent to use for this span
+   * @param parent of the new span, or {@code null} if it should have no parent
    * @see #nextSpan(SamplerFunction, Object)
    * @since 5.10
    */
