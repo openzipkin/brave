@@ -553,7 +553,7 @@ public class Tracer {
    *
    * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
    * @param arg parameter to {@link SamplerFunction#trySample(Object)}
-   * @param parent null if the span was null.
+   * @param parent the potentially null parent to use for this span
    * @see #nextSpan(SamplerFunction, Object)
    * @since 5.10
    */
