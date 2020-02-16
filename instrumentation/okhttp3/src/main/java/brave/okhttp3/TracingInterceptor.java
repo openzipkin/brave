@@ -19,12 +19,15 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import static brave.okhttp3.TracingCallFactory.NULL_SENTINEL;
 
 /**
  * This is a network-level interceptor, which creates a new span for each attempt. Note that this
@@ -52,7 +55,14 @@ public final class TracingInterceptor implements Interceptor {
   @Override public Response intercept(Chain chain) throws IOException {
     HttpClientRequest request = new HttpClientRequest(chain.request());
 
-    Span span = handler.handleSend(request);
+    Span span;
+    TraceContext parent = chain.request().tag(TraceContext.class);
+    if (parent != null) { // TracingCallFactory setup this request
+      span = handler.handleSendWithParent(request, parent != NULL_SENTINEL ? parent : null);
+    } else { // This is using interceptors only
+      span = handler.handleSend(request);
+    }
+
     parseRouteAddress(chain, span);
 
     HttpClientResponse response = null;

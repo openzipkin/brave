@@ -733,8 +733,19 @@ use of `Tracer.currentSpan()` from external code.
 Here's an example of explicit propagation:
 ```java
 class MyFilter extends Filter {
+
+  public void onSchedule(Attributes attributes) {
+    // Stash the invoking trace context as this will be the correct parent of
+    // the request.
+    attributes.put(TraceContext.class, currentTraceContext.get());
+  }
+
   public void onStart(Request request, Attributes attributes) {
-    // Assume you have code to start the span and add relevant tags...
+    // Retrieve the parent, if any, and start the span.
+    TraceContext parent = attributes.get(TraceContext.class);
+    Span span = tracer.nextSpanWithParent(samplerFunction, request, parent);
+
+    // add tags etc..
 
     // We can't open a scope as onFinish happens on another thread.
     // Instead, we propagate the span manually so at least basic tracing

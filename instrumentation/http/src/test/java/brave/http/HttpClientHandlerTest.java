@@ -18,6 +18,8 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.http.HttpClientRequest.FromHttpAdapter;
 import brave.http.HttpClientRequest.ToHttpAdapter;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
@@ -223,6 +225,24 @@ public class HttpClientHandlerTest {
     defaultHandler.handleSend(defaultRequest);
 
     verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
+  }
+
+  @Test public void handleSendWithParent_overrideContext() {
+    try (Scope ws = this.defaultHandler.currentTraceContext.newScope(context)) {
+      brave.Span span = defaultHandler.handleSendWithParent(defaultRequest, null);
+
+      // If the overwrite was successful, we have a root span.
+      assertThat(span.context().parentIdAsLong()).isZero();
+    }
+  }
+
+  @Test public void handleSendWithParent_overrideNull() {
+    try (Scope ws = this.defaultHandler.currentTraceContext.newScope(null)) {
+      brave.Span span = defaultHandler.handleSendWithParent(defaultRequest, context);
+
+      // If the overwrite was successful, we have a child span.
+      assertThat(span.context().parentIdAsLong()).isEqualTo(context.spanId());
+    }
   }
 
   @Test public void handleReceive_oldHandler() {

@@ -52,7 +52,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
       ClientHttpResponse result = execution.execute(request, body);
       response = new HttpClientResponse(result);
       return result;
-    } catch (IOException | RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {

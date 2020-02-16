@@ -529,7 +529,7 @@ public class Tracer {
    */
   public <T> ScopedSpan startScopedSpan(String name, SamplerFunction<T> samplerFunction, T arg) {
     if (name == null) throw new NullPointerException("name == null");
-    return newScopedSpan(name, nextContext(samplerFunction, arg));
+    return newScopedSpan(name, nextContext(samplerFunction, arg, currentTraceContext.get()));
   }
 
   /**
@@ -543,13 +543,28 @@ public class Tracer {
    * @since 5.8
    */
   public <T> Span nextSpan(SamplerFunction<T> samplerFunction, T arg) {
-    return _toSpan(nextContext(samplerFunction, arg));
+    return _toSpan(nextContext(samplerFunction, arg, currentTraceContext.get()));
   }
 
-  <T> TraceContext nextContext(SamplerFunction<T> samplerFunction, T arg) {
+  /**
+   * Like {@link #nextSpan(SamplerFunction, Object)} except this controls the parent context
+   * explicitly. This is useful when an invocation context is propagated manually, commonly
+   * the case with asynchronous client frameworks.
+   *
+   * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
+   * @param arg parameter to {@link SamplerFunction#trySample(Object)}
+   * @param parent of the new span, or {@code null} if it should have no parent
+   * @see #nextSpan(SamplerFunction, Object)
+   * @since 5.10
+   */
+  public <T> Span nextSpanWithParent(SamplerFunction<T> samplerFunction, T arg,
+    @Nullable TraceContext parent) {
+    return _toSpan(nextContext(samplerFunction, arg, parent));
+  }
+
+  <T> TraceContext nextContext(SamplerFunction<T> samplerFunction, T arg, TraceContext parent) {
     if (samplerFunction == null) throw new NullPointerException("samplerFunction == null");
     if (arg == null) throw new NullPointerException("arg == null");
-    TraceContext parent = currentTraceContext.get();
     if (parent != null) return decorateContext(parent, parent.spanId());
 
     Boolean sampled = samplerFunction.trySample(arg);
