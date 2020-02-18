@@ -34,8 +34,8 @@ public abstract class Response {
   /**
    * The error raised during response processing or {@code null} if there was none.
    *
-   * <p>Lack of a throwable does not mean success. For example, in HTTP, there could be a 409
-   * status code with no corresponding Java exception.
+   * <p>Lack of throwable, {@code null}, does not mean success. For example, in HTTP, there could be
+   * a 409 status code with no corresponding Java exception.
    *
    * <h3>Handling errors</h3>
    * Handlers invoke {@link Span#error(Throwable)} prior to passing control to user-defined response
