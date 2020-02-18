@@ -52,6 +52,14 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   public void finishedSpanHandlerSeesException() {
   }
 
+  @Override @Ignore("resteasy swallows the exception")
+  public void errorTag_exceptionOverridesHttpStatus_async() {
+  }
+
+  @Override @Ignore("resteasy swallows the exception")
+  public void finishedSpanHandlerSeesException_async() {
+  }
+
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
