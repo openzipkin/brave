@@ -55,7 +55,7 @@ public class HttpServletResponseWrapper extends HttpServerResponse { // not fina
   }
 
   @Override public Throwable error() {
-    return null;
+    return error;
   }
 
   @Override public final Object unwrap() {
