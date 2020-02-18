@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,13 +39,34 @@ public abstract class HttpServerRequest extends HttpRequest {
   }
 
   /**
-   * Override and return true when it is possible to parse the {@link Span#remoteIpAndPort(String,
-   * int) remote IP and port} from the {@link #unwrap() delegate}. Defaults to false.
+   * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add remote socket
+   * information about the client from the {@link #unwrap() delegate}.
    *
-   * @see HttpServerAdapter#parseClientIpAndPort(Object, Span)
+   * <p>By default, this tries to parse the {@link #parseClientIpFromXForwardedFor(Span) forwarded
+   * IP}. Override to add client socket information when forwarded info is not available.
+   *
+   * <p>Aside: the ability to parse socket information on server request objects is likely even if
+   * it is not as likely on the client side. This is because client requests are often parsed before
+   * a network route is chosen, whereas server requests are parsed after the network layer.
+   *
+   * @return true if parsing was successful.
+   * @since 5.7
    */
   public boolean parseClientIpAndPort(Span span) {
-    return false;
+    return parseClientIpFromXForwardedFor(span);
+  }
+
+  /**
+   * Uses the first value in the "X-Forwarded-For" header, or returns false if not present.
+   *
+   * @since 5.10
+   */
+  public boolean parseClientIpFromXForwardedFor(Span span) {
+    String forwardedFor = header("X-Forwarded-For");
+    if (forwardedFor == null) return false;
+    int indexOfComma = forwardedFor.indexOf(',');
+    if (indexOfComma != -1) forwardedFor = forwardedFor.substring(0, indexOfComma);
+    return span.remoteIpAndPort(forwardedFor, 0);
   }
 
   /**

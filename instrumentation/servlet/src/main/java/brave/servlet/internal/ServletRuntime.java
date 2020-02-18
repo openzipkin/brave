@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,11 +15,14 @@ package brave.servlet.internal;
 
 import brave.Span;
 import brave.http.HttpServerHandler;
-import brave.servlet.HttpServletAdapter;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
+import brave.internal.Nullable;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
@@ -43,13 +46,13 @@ public abstract class ServletRuntime {
     return (HttpServletResponse) response;
   }
 
-  /** public while {@link HttpServletAdapter} exists. */
+  /** public for {@link brave.servlet.HttpServletResponseWrapper}. */
   public abstract int status(HttpServletResponse response);
 
   public abstract boolean isAsync(HttpServletRequest request);
 
   public abstract void handleAsync(
-    HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler,
+    HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
     HttpServletRequest request, HttpServletResponse response, Span span);
 
   ServletRuntime() {
@@ -57,11 +60,6 @@ public abstract class ServletRuntime {
 
   public static ServletRuntime get() {
     return SERVLET_RUNTIME;
-  }
-
-  public brave.http.HttpServerResponse httpServerResponse(
-    HttpServletRequest req, HttpServletResponse resp) {
-    return new HttpServerResponse(req, resp, status(resp));
   }
 
   /** Attempt to match the host runtime to a capable Platform implementation. */
@@ -91,7 +89,7 @@ public abstract class ServletRuntime {
     }
 
     @Override public void handleAsync(
-      HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler,
+      HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
       HttpServletRequest request, HttpServletResponse response, Span span) {
       if (span.isNoop()) return; // don't add overhead when we aren't httpTracing
       TracingAsyncListener listener = new TracingAsyncListener(handler, span);
@@ -99,12 +97,12 @@ public abstract class ServletRuntime {
     }
 
     static final class TracingAsyncListener implements AsyncListener {
-      final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+      final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
       final Span span;
       volatile boolean complete; // multiple async events can occur, only complete once
 
       TracingAsyncListener(
-        HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler,
+        HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
         Span span
       ) {
         this.handler = handler;
@@ -113,21 +111,23 @@ public abstract class ServletRuntime {
 
       @Override public void onComplete(AsyncEvent e) {
         if (complete) return;
-        handler.handleSend(httpServerResponse(e), null, span);
+        Throwable error = maybeError(e.getThrowable(), (HttpServletRequest) e.getSuppliedRequest());
+        HttpServerResponse response = httpServerResponse(e, error);
+        handler.handleSend(response, error, span);
         complete = true;
       }
 
       @Override public void onTimeout(AsyncEvent e) {
         if (complete) return;
-        span.tag("error", String.format("Timed out after %sms", e.getAsyncContext().getTimeout()));
-        handler.handleSend(httpServerResponse(e), null, span);
+        Throwable error = maybeError(e.getThrowable(), (HttpServletRequest) e.getSuppliedRequest());
+        HttpServerResponse response = httpServerResponse(e, error);
+        // we use an async timeout exception in case the event had no http response or throwable
+        handler.handleSend(response, error != null ? error : new AsyncTimeoutException(e), span);
         complete = true;
       }
 
       @Override public void onError(AsyncEvent e) {
-        if (complete) return;
-        handler.handleSend(httpServerResponse(e), e.getThrowable(), span);
-        complete = true;
+        onComplete(e); // logic is the same to complete an error span
       }
 
       /** If another async is created (ex via asyncContext.dispatch), this needs to be re-attached */
@@ -143,10 +143,23 @@ public abstract class ServletRuntime {
       }
     }
 
-    static HttpServerResponse httpServerResponse(AsyncEvent event) {
+    static final class AsyncTimeoutException extends TimeoutException {
+      AsyncTimeoutException(AsyncEvent e) {
+        super("Timed out after " + e.getAsyncContext().getTimeout() + "ms");
+      }
+
+      @Override
+      public Throwable fillInStackTrace() {
+        return this; // stack trace doesn't add value as this is used in a callback
+      }
+    }
+
+    @Nullable
+    static HttpServerResponse httpServerResponse(AsyncEvent event, @Nullable Throwable error) {
       HttpServletRequest req = (HttpServletRequest) event.getSuppliedRequest();
       HttpServletResponse resp = (HttpServletResponse) event.getSuppliedResponse();
-      return new HttpServerResponse(req, resp, resp.getStatus());
+      if (resp == null) return null;
+      return brave.servlet.HttpServletResponseWrapper.create(req, resp, error);
     }
   }
 
@@ -160,7 +173,7 @@ public abstract class ServletRuntime {
     }
 
     @Override public void handleAsync(
-      HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler,
+      HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
       HttpServletRequest request, HttpServletResponse response, Span span) {
       assert false : "this should never be called in Servlet 2.5";
     }
@@ -259,34 +272,10 @@ public abstract class ServletRuntime {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final HttpServletResponse delegate;
-    final String method, httpRoute;
-    final int statusCode;
-
-    HttpServerResponse(HttpServletRequest req, HttpServletResponse resp, int statusCode) {
-      if (req == null) throw new NullPointerException("req == null");
-      if (resp == null) throw new NullPointerException("resp == null");
-      this.delegate = resp;
-      this.method = req.getMethod();
-      this.httpRoute = (String) req.getAttribute("http.route");
-      this.statusCode = statusCode;
-    }
-
-    @Override public String method() {
-      return method;
-    }
-
-    @Override public String route() {
-      return httpRoute;
-    }
-
-    @Override public HttpServletResponse unwrap() {
-      return delegate;
-    }
-
-    @Override public int statusCode() {
-      return statusCode;
-    }
+  /** Looks for a valid request attribute "error" when the error parameter is null */
+  @Nullable public static Throwable maybeError(@Nullable Throwable error, HttpServletRequest req) {
+    if (error != null) return error;
+    Object maybeError = req.getAttribute("error");
+    return maybeError instanceof Throwable ? (Throwable) maybeError : null;
   }
 }

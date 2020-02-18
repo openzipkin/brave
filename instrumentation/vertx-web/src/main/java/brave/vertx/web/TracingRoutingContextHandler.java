@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.vertx.web;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import io.vertx.core.Handler;
@@ -56,7 +57,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
       context.next();
     }
   }
@@ -111,30 +112,31 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   }
 
   static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final io.vertx.core.http.HttpServerResponse delegate;
-    final String method, httpRoute;
+    final RoutingContext delegate;
 
     HttpServerResponse(RoutingContext context) {
-      this.delegate = context.response();
-      this.method = context.request().rawMethod();
-      String httpRoute = context.currentRoute().getPath();
-      this.httpRoute = httpRoute != null ? httpRoute : "";
+      this.delegate = context;
     }
 
-    @Override public io.vertx.core.http.HttpServerResponse unwrap() {
+    @Override public Throwable error() {
+      return delegate.failure();
+    }
+
+    @Override public RoutingContext unwrap() {
       return delegate;
     }
 
     @Override public int statusCode() {
-      return delegate.getStatusCode();
+      return delegate.response().getStatusCode();
     }
 
     @Override public String method() {
-      return method;
+      return delegate.request().rawMethod();
     }
 
     @Override public String route() {
-      return httpRoute;
+      String httpRoute = delegate.currentRoute().getPath();
+      return httpRoute != null ? httpRoute : "";
     }
   }
 }

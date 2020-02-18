@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.spring.web;
 
-import brave.spring.web.TracingClientHttpRequestInterceptor.HttpClientResponse;
+import brave.spring.web.TracingClientHttpRequestInterceptor.ClientHttpResponseWrapper;
 import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,24 +25,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpClientResponseTest {
+public class ClientHttpResponseWrapperTest {
   @Mock ClientHttpResponse response;
 
   @Test public void statusCode() throws IOException {
     when(response.getRawStatusCode()).thenReturn(200);
 
-    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
+    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroOnIOE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IOException());
 
-    assertThat(new HttpClientResponse(response).statusCode()).isZero();
+    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isZero();
   }
 
   @Test public void statusCode_zeroOnIAE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IllegalArgumentException());
 
-    assertThat(new HttpClientResponse(response).statusCode()).isZero();
+    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isZero();
   }
 }

@@ -16,7 +16,10 @@ package brave.okhttp3;
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -44,7 +47,7 @@ public final class TracingInterceptor implements Interceptor {
   }
 
   final CurrentTraceContext currentTraceContext;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
@@ -53,7 +56,7 @@ public final class TracingInterceptor implements Interceptor {
   }
 
   @Override public Response intercept(Chain chain) throws IOException {
-    HttpClientRequest request = new HttpClientRequest(chain.request());
+    RequestWrapper request = new RequestWrapper(chain.request());
 
     Span span;
     TraceContext parent = chain.request().tag(TraceContext.class);
@@ -65,16 +68,15 @@ public final class TracingInterceptor implements Interceptor {
 
     parseRouteAddress(chain, span);
 
-    HttpClientResponse response = null;
+    Response result = null;
     Throwable error = null;
     try (Scope ws = currentTraceContext.newScope(span.context())) {
-      Response result = chain.proceed(request.build());
-      response = new HttpClientResponse(result);
-      return result;
-    } catch (IOException | RuntimeException | Error e) {
-      error = e;
-      throw e;
+      return result = chain.proceed(request.build());
+    } catch (Throwable t) {
+      error = t;
+      throw t;
     } finally {
+      ResponseWrapper response = result != null ? new ResponseWrapper(result, error) : null;
       handler.handleReceive(response, error, span);
     }
   }
@@ -87,11 +89,11 @@ public final class TracingInterceptor implements Interceptor {
     span.remoteIpAndPort(socketAddress.getHostString(), socketAddress.getPort());
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class RequestWrapper extends HttpClientRequest {
     final Request delegate;
     Request.Builder builder;
 
-    HttpClientRequest(Request delegate) {
+    RequestWrapper(Request delegate) {
       this.delegate = delegate;
     }
 
@@ -125,11 +127,17 @@ public final class TracingInterceptor implements Interceptor {
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+  static final class ResponseWrapper extends HttpClientResponse {
     final Response delegate;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(Response delegate) {
+    ResponseWrapper(Response delegate, @Nullable Throwable error) {
       this.delegate = delegate;
+      this.error = error;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public Object unwrap() {

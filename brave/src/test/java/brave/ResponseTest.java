@@ -17,38 +17,32 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class RequestTest {
+public class ResponseTest {
   @Test public void toString_mentionsDelegate() {
-    class IceCreamRequest extends Request {
+    class IceCreamResponse extends Response {
       @Override public Span.Kind spanKind() {
         return Span.Kind.SERVER;
+      }
+
+      @Override public Throwable error() {
+        return null;
       }
 
       @Override public Object unwrap() {
         return "chocolate";
       }
     }
-    assertThat(new IceCreamRequest())
-      .hasToString("IceCreamRequest{chocolate}");
+    assertThat(new IceCreamResponse())
+      .hasToString("IceCreamResponse{chocolate}");
   }
 
   @Test public void toString_doesntStackoverflowWhenUnwrapIsThis() {
-    class BuggyRequest extends Request {
+    class BuggyResponse extends Response {
       @Override public Object unwrap() {
         return this;
       }
 
-      @Override public Span.Kind spanKind() {
-        return Span.Kind.SERVER;
-      }
-    }
-    assertThat(new BuggyRequest())
-      .hasToString("BuggyRequest");
-  }
-
-  @Test public void toString_doesntNPEWhenUnwrapIsNull() {
-    class NoRequest extends Request {
-      @Override public Object unwrap() {
+      @Override public Throwable error() {
         return null;
       }
 
@@ -56,7 +50,25 @@ public class RequestTest {
         return Span.Kind.SERVER;
       }
     }
-    assertThat(new NoRequest())
-      .hasToString("NoRequest");
+    assertThat(new BuggyResponse())
+      .hasToString("BuggyResponse");
+  }
+
+  @Test public void toString_doesntNPEWhenUnwrapIsNull() {
+    class NoResponse extends Response {
+      @Override public Object unwrap() {
+        return null;
+      }
+
+      @Override public Throwable error() {
+        return null;
+      }
+
+      @Override public Span.Kind spanKind() {
+        return Span.Kind.SERVER;
+      }
+    }
+    assertThat(new NoResponse())
+      .hasToString("NoResponse");
   }
 }

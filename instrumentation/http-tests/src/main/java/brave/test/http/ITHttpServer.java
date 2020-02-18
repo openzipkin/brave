@@ -14,17 +14,21 @@
 package brave.test.http;
 
 import brave.SpanCustomizer;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -403,13 +407,66 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
-  public void addsErrorTagOnException() throws Exception {
-    addsErrorTagOnException("/exception");
+  public void errorTag_onException() throws Exception {
+    errorTag_onException("/exception");
   }
 
   @Test
-  public void addsErrorTagOnException_async() throws Exception {
-    addsErrorTagOnException("/exceptionAsync");
+  public void errorTag_onException_async() throws Exception {
+    errorTag_onException("/exceptionAsync");
+  }
+
+  Span errorTag_onException(String path) throws Exception {
+    Span span = reportsSpanOnException(path);
+    assertThat(span.tags()).containsKey("error");
+    return span;
+  }
+
+  @Test
+  public void errorTag_exceptionOverridesHttpStatus() throws Exception {
+    errorTag_exceptionOverridesHttpStatus("/exception");
+  }
+
+  @Test
+  public void errorTag_exceptionOverridesHttpStatus_async() throws Exception {
+    errorTag_exceptionOverridesHttpStatus("/exceptionAsync");
+  }
+
+  void errorTag_exceptionOverridesHttpStatus(String path) throws Exception {
+    Span span = errorTag_onException(path);
+    assertThat(span.tags().get("error"))
+      .isNotEqualTo(span.tags().get("http.status_code"));
+  }
+
+  @Test
+  public void finishedSpanHandlerSeesException() throws Exception {
+    finishedSpanHandlerSeesException("/exception");
+  }
+
+  @Test
+  public void finishedSpanHandlerSeesException_async() throws Exception {
+    finishedSpanHandlerSeesException("/exceptionAsync");
+  }
+
+  /**
+   * This ensures custom finished span handlers can see the actual exception thrown, not just the
+   * "error" tag value.
+   */
+  void finishedSpanHandlerSeesException(String path) throws Exception {
+    AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
+    httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
+        @Override public boolean handle(TraceContext context, MutableSpan span) {
+          caughtThrowable.set(span.error());
+          return true;
+        }
+      })
+      .build());
+    init();
+
+    errorTag_onException(path);
+
+    assertThat(caughtThrowable.get()).isNotNull();
   }
 
   @Test
@@ -454,11 +511,5 @@ public abstract class ITHttpServer extends ITHttp {
       }
       return response.newBuilder().body(toReturn).build();
     }
-  }
-
-  private void addsErrorTagOnException(String path) throws Exception {
-    Span span = reportsSpanOnException(path);
-    assertThat(span.tags())
-      .containsKey("error");
   }
 }

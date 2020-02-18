@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -67,14 +67,14 @@ public class TracingApplicationEventListenerTest {
       .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
-  @Test public void statusCodeAsInt() {
+  @Test public void statusCode() {
     when(event.getContainerResponse()).thenReturn(response);
     when(response.getStatus()).thenReturn(200);
 
     assertThat(new HttpServerResponse(event).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCodeAsInt_zeroNoResponse() {
+  @Test public void statusCode_zeroNoResponse() {
     assertThat(new HttpServerResponse(event).statusCode()).isZero();
   }
 }

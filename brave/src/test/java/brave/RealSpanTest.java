@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -102,7 +102,7 @@ public class RealSpanTest {
       .containsExactly("foo");
   }
 
-  @Test public void remoteEndpoint_nulls() {
+  @Deprecated @Test public void remoteEndpoint_nulls() {
     span.remoteEndpoint(Endpoint.newBuilder().build());
     span.flush();
 

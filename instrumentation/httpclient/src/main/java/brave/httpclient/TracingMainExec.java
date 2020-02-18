@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,13 +19,13 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpClientRequest;
 import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.httpclient.TracingProtocolExec.HttpRequestWrapper;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import java.io.IOException;
 import org.apache.http.HttpException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
@@ -50,13 +50,13 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     this.mainExec = mainExec;
   }
 
-  @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
+  @Override public CloseableHttpResponse execute(HttpRoute route,
+    org.apache.http.client.methods.HttpRequestWrapper request,
     HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
     Span span = tracer.currentSpan();
-    if (span != null) {
-      handler.handleSend(new TracingProtocolExec.HttpClientRequest(request), span);
-    }
+    if (span != null) handler.handleSend(new HttpRequestWrapper(request), span);
+
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
     if (span != null) {
       if (isRemote(context, span)) {

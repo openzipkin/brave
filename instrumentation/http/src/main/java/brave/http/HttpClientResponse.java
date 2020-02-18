@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package brave.http;
 
 import brave.Span;
-import brave.internal.Nullable;
 
 /**
  * Marks an interface for use in {@link HttpClientHandler#handleReceive(Object, Throwable, Span)}.
@@ -23,38 +22,13 @@ import brave.internal.Nullable;
  * @see HttpClientRequest
  * @since 5.7
  */
-public abstract class HttpClientResponse {
-  /**
-   * Returns the underlying http response object. Ex. {@code org.apache.http.HttpResponse}
-   *
-   * <p>Note: Some implementations are composed of multiple types, such as a response and an object
-   * representing the matched route. Moreover, an implementation may change the type returned due to
-   * refactoring. Unless you control the implementation, cast carefully (ex using {@code instance
-   * of}) instead of presuming a specific type will always be returned.
-   */
-  public abstract Object unwrap();
-
-  /** @see HttpAdapter#methodFromResponse(Object) */
-  @Nullable public String method() {
-    return null;
+public abstract class HttpClientResponse extends HttpResponse {
+  @Override public Span.Kind spanKind() {
+    return Span.Kind.CLIENT;
   }
 
-  /** @see HttpAdapter#route(Object) */
-  @Nullable public String route() {
-    return null;
-  }
-
-  /** @see HttpAdapter#statusCodeAsInt(Object) */
-  public abstract int statusCode();
-
-  /** @see HttpAdapter#finishTimestamp(Object) */
-  public long finishTimestamp() {
-    return 0L;
-  }
-
-  @Override public String toString() {
-    // unwrap() returning null is a bug, but don't NPE during toString()
-    return "HttpServerResponse{" + unwrap() + "}";
+  @Override public Throwable error() {
+    return null; // error() was added in v5.10, but this type was added in v5.7
   }
 
   /**

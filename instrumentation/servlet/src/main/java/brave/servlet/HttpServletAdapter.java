@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,9 +37,9 @@ public class HttpServletAdapter extends HttpServerAdapter<HttpServletRequest, Ht
    */
   // not static so that this can be overridden by implementations as needed.
   public HttpServletResponse adaptResponse(HttpServletRequest req, HttpServletResponse resp) {
-    String httpRoute = (String) req.getAttribute("http.route");
-    return httpRoute != null
-      ? new DecoratedHttpServletResponse(resp, req.getMethod(), httpRoute)
+    Object maybeRoute = req.getAttribute("http.route");
+    return maybeRoute instanceof String
+      ? new DecoratedHttpServletResponse(resp, req.getMethod(), (String) maybeRoute)
       : resp;
   }
 

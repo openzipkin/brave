@@ -17,7 +17,10 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import java.io.IOException;
 import org.apache.http.Header;
@@ -28,7 +31,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
@@ -40,7 +42,7 @@ import org.apache.http.impl.execchain.ClientExecChain;
 final class TracingProtocolExec implements ClientExecChain {
   final Tracer tracer;
   final SamplerFunction<brave.http.HttpRequest> httpSampler;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
   final ClientExecChain protocolExec;
 
   TracingProtocolExec(HttpTracing httpTracing, ClientExecChain protocolExec) {
@@ -50,28 +52,28 @@ final class TracingProtocolExec implements ClientExecChain {
     this.protocolExec = protocolExec;
   }
 
-  @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
+  @Override public CloseableHttpResponse execute(HttpRoute route,
+    org.apache.http.client.methods.HttpRequestWrapper request,
     HttpClientContext clientContext, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = tracer.nextSpan(httpSampler, new HttpClientRequest(request));
-    HttpClientResponse response = null;
+    Span span = tracer.nextSpan(httpSampler, new HttpRequestWrapper(request));
+    CloseableHttpResponse result = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      CloseableHttpResponse result = protocolExec.execute(route, request, clientContext, execAware);
-      response = new HttpClientResponse(result);
-      return result;
+      return result = protocolExec.execute(route, request, clientContext, execAware);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
+      HttpResponseWrapper response = result != null ? new HttpResponseWrapper(result, error) : null;
       handler.handleReceive(response, error, span);
     }
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class HttpRequestWrapper extends HttpClientRequest {
     final HttpRequest delegate;
 
-    HttpClientRequest(HttpRequest delegate) {
+    HttpRequestWrapper(HttpRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -84,8 +86,8 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public String path() {
-      if (delegate instanceof HttpRequestWrapper) {
-        return ((HttpRequestWrapper) delegate).getURI().getPath();
+      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        return ((org.apache.http.client.methods.HttpRequestWrapper) delegate).getURI().getPath();
       }
       String result = delegate.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
@@ -93,8 +95,9 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public String url() {
-      if (delegate instanceof HttpRequestWrapper) {
-        HttpRequestWrapper wrapper = (HttpRequestWrapper) delegate;
+      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        org.apache.http.client.methods.HttpRequestWrapper
+          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) delegate;
         HttpHost target = wrapper.getTarget();
         if (target != null) return target.toURI() + wrapper.getURI();
       }
@@ -111,15 +114,21 @@ final class TracingProtocolExec implements ClientExecChain {
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+  static final class HttpResponseWrapper extends HttpClientResponse {
     final HttpResponse delegate;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(HttpResponse delegate) {
+    HttpResponseWrapper(HttpResponse delegate, @Nullable Throwable error) {
       this.delegate = delegate;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
       return delegate;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -38,11 +39,11 @@ final class TracingDispatcher extends Dispatcher {
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
       return response = delegate.dispatch(request);
-    } catch (InterruptedException | RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new HttpServerResponse(response), error, span);
+      handler.handleSend(new HttpServerResponse(response, error), error, span);
     }
   }
 
@@ -76,9 +77,15 @@ final class TracingDispatcher extends Dispatcher {
 
   static final class HttpServerResponse extends brave.http.HttpServerResponse {
     final MockResponse delegate;
+    final @Nullable Throwable error;
 
-    HttpServerResponse(MockResponse delegate) {
+    HttpServerResponse(MockResponse delegate, @Nullable Throwable error) {
       this.delegate = delegate;
+      this.error = error;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public Object unwrap() {

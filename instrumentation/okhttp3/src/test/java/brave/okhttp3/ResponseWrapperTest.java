@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.okhttp3;
 
-import brave.okhttp3.TracingInterceptor.HttpClientResponse;
+import brave.okhttp3.TracingInterceptor.ResponseWrapper;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class HttpClientResponseTest {
+public class ResponseWrapperTest {
   Response.Builder responseBuilder = new Response.Builder()
     .request(new Request.Builder().url("http://localhost/foo").build())
     .protocol(Protocol.HTTP_1_1);
@@ -29,12 +29,12 @@ public class HttpClientResponseTest {
   @Test public void statusCode() {
     Response response = responseBuilder.code(200).message("ok").build();
 
-    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
+    assertThat(new ResponseWrapper(response, null).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zero() {
     Response response = responseBuilder.code(0).message("ice cream!").build();
 
-    assertThat(new HttpClientResponse(response).statusCode()).isZero();
+    assertThat(new ResponseWrapper(response, null).statusCode()).isZero();
   }
 }

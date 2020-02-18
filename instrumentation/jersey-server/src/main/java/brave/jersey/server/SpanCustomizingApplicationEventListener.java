@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -65,16 +65,15 @@ public class SpanCustomizingApplicationEventListener
 
   @Override public void onEvent(RequestEvent event) {
     // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
-    if (event.getType() != REQUEST_MATCHED && event.getType() != FINISHED) return;
+    if (event.getType() != FINISHED) return;
     ContainerRequest request = event.getContainerRequest();
     SpanCustomizer span = (SpanCustomizer) request.getProperty(SpanCustomizer.class.getName());
     if (span == null) return;
-    if (event.getType() != REQUEST_MATCHED) {
-      parser.requestMatched(event, span);
-      return;
-    }
+
     // Set the route attribute on completion to avoid any thread visibility issues reading it
     request.setProperty("http.route", route(event.getContainerRequest()));
+    if (request.getProperty("error") == null) request.setProperty("error", event.getException());
+    parser.requestMatched(event, span);
   }
 
   /**

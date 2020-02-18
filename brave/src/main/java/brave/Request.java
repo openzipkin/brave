@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,6 +27,7 @@ import brave.sampler.SamplerFunction;
  * @see SamplerFunction
  * @see TraceContext.Extractor
  * @see TraceContext.Injector
+ * @see Response
  * @since 5.9
  */
 public abstract class Request {
@@ -34,7 +35,7 @@ public abstract class Request {
   public abstract Span.Kind spanKind();
 
   /**
-   * Returns the underlying request object or {@code this} if there is none. Here are some request
+   * Returns the underlying request object or {@code null} if there is none. Here are some request
    * objects: {@code org.apache.http.HttpRequest}, {@code org.apache.dubbo.rpc.Invocation}, {@code
    * org.apache.kafka.clients.consumer.ConsumerRecord}.
    *
@@ -49,7 +50,7 @@ public abstract class Request {
 
   @Override public String toString() {
     Object unwrapped = unwrap();
-    // unwrap() returning null is a bug. It could also return this. don't NPE or stack overflow!
+    // handles case where unwrap() returning this or null: don't NPE or stack overflow!
     if (unwrapped == null || unwrapped == this) return getClass().getSimpleName();
     return getClass().getSimpleName() + "{" + unwrapped + "}";
   }

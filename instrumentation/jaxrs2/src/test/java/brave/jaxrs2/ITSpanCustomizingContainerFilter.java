@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,7 @@ import org.jboss.resteasy.plugins.server.servlet.ListenerBootstrap;
 import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
 import org.jboss.resteasy.spi.ResteasyConfiguration;
 import org.jboss.resteasy.spi.ResteasyDeployment;
-import org.junit.AssumptionViolatedException;
+import org.junit.Ignore;
 import org.junit.Test;
 import zipkin2.Span;
 
@@ -40,8 +40,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITSpanCustomizingContainerFilter extends ITServletContainer {
 
-  @Override @Test public void reportsClientAddress() {
-    throw new AssumptionViolatedException("ContainerRequestContext doesn't include remote address");
+  @Override @Ignore("ContainerRequestContext doesn't include remote address")
+  public void reportsClientAddress() {
+  }
+
+  @Override @Ignore("resteasy swallows the exception")
+  public void errorTag_exceptionOverridesHttpStatus() {
+  }
+
+  @Override @Ignore("resteasy swallows the exception")
+  public void finishedSpanHandlerSeesException() {
   }
 
   @Test public void tagsResource() throws Exception {

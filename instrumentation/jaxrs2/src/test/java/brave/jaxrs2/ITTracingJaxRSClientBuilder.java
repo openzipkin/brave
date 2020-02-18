@@ -71,7 +71,15 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override @Ignore("automatic error propagation is impossible")
-  public void addsErrorTagOnTransportException() {
+  public void errorTag_onTransportException() {
+  }
+
+  @Override @Ignore("automatic error propagation is impossible")
+  public void errorTag_exceptionOverridesHttpStatus() {
+  }
+
+  @Override @Ignore("automatic error propagation is impossible")
+  public void finishedSpanHandlerSeesException() {
   }
 
   @Override @Ignore("blind to the implementation of redirects")

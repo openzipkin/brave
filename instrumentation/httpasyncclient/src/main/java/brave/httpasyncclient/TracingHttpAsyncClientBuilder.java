@@ -16,6 +16,8 @@ package brave.httpasyncclient;
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
@@ -57,7 +59,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   final CurrentTraceContext currentTraceContext;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
@@ -74,11 +76,10 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   final class HandleSend implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      HttpHost host = HttpClientContext.adapt(context).getTargetHost();
-      HttpClientRequest wrapped = new HttpClientRequest(host, request);
-
       TraceContext parent = (TraceContext) context.removeAttribute(TraceContext.class.getName());
-      Span span = handler.handleSendWithParent(wrapped, parent);
+
+      HttpHost host = HttpClientContext.adapt(context).getTargetHost();
+      Span span = handler.handleSendWithParent(new HttpRequestWrapper(request, host), parent);
       parseTargetAddress(host, span);
 
       context.setAttribute(Span.class.getName(), span);
@@ -103,7 +104,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void process(HttpResponse response, HttpContext context) {
       Span span = (Span) context.getAttribute(Span.class.getName());
       if (span == null) return;
-      handler.handleReceive(new HttpClientResponse(response), null, span);
+      handler.handleReceive(new HttpResponseWrapper(response), null, span);
     }
   }
 
@@ -298,53 +299,57 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class HttpRequestWrapper extends HttpClientRequest {
+    final HttpRequest delegate;
     @Nullable final HttpHost target;
-    final HttpRequest request;
 
-    HttpClientRequest(HttpHost target, HttpRequest request) {
+    HttpRequestWrapper(HttpRequest delegate, @Nullable HttpHost target) {
+      this.delegate = delegate;
       this.target = target;
-      this.request = request;
     }
 
     @Override public Object unwrap() {
-      return request;
+      return delegate;
     }
 
     @Override public String method() {
-      return request.getRequestLine().getMethod();
+      return delegate.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      String result = request.getRequestLine().getUri();
+      String result = delegate.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (target != null) return target.toURI() + request.getRequestLine().getUri();
-      return request.getRequestLine().getUri();
+      if (target != null) return target.toURI() + delegate.getRequestLine().getUri();
+      return delegate.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = request.getFirstHeader(name);
+      Header result = delegate.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      request.setHeader(name, value);
+      delegate.setHeader(name, value);
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
+  static final class HttpResponseWrapper extends HttpClientResponse {
     final HttpResponse delegate;
 
-    HttpClientResponse(HttpResponse delegate) {
+    HttpResponseWrapper(HttpResponse delegate) {
       this.delegate = delegate;
     }
 
     @Override public Object unwrap() {
       return delegate;
+    }
+
+    @Override public Throwable error() {
+      return null; // HttpAsyncRequestProducer cannot see the response and error at the same time
     }
 
     @Override public int statusCode() {

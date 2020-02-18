@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,8 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -30,7 +32,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
   final Tracer tracer;
 
   TracingHttpServerHandler(HttpTracing httpTracing) {
@@ -44,8 +46,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       return;
     }
 
-    HttpServerRequest request =
-      new HttpServerRequest((HttpRequest) msg, (InetSocketAddress) ctx.channel().remoteAddress());
+    HttpRequestWrapper request =
+      new HttpRequestWrapper((HttpRequest) msg, (InetSocketAddress) ctx.channel().remoteAddress());
 
     Span span = handler.handleReceive(request);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
@@ -56,7 +58,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     Throwable error = null;
     try {
       ctx.fireChannelRead(msg);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
@@ -77,23 +79,23 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     // Guard re-scoping the same span
     SpanInScope spanInScope = ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).get();
     if (spanInScope == null) spanInScope = tracer.withSpanInScope(span);
-    Throwable t = null;
+    Throwable error = null;
     try {
       ctx.write(msg, prm);
-    } catch (RuntimeException | Error e) {
-      t = e;
-      throw e;
+    } catch (Throwable t) {
+      error = t;
+      throw t;
     } finally {
-      handler.handleSend(new HttpServerResponse(response), t, span);
+      handler.handleSend(new HttpResponseWrapper(response, error), error, span);
       spanInScope.close();
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class HttpRequestWrapper extends HttpServerRequest {
     final HttpRequest request;
     @Nullable final InetSocketAddress remoteAddress;
 
-    HttpServerRequest(HttpRequest request, InetSocketAddress remoteAddress) {
+    HttpRequestWrapper(HttpRequest request, InetSocketAddress remoteAddress) {
       this.request = request;
       this.remoteAddress = remoteAddress;
     }
@@ -128,15 +130,21 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+  static final class HttpResponseWrapper extends HttpServerResponse {
     final HttpResponse delegate;
+    @Nullable final Throwable error;
 
-    HttpServerResponse(HttpResponse delegate) {
+    HttpResponseWrapper(HttpResponse delegate, @Nullable Throwable error) {
       this.delegate = delegate;
+      this.error = error;
     }
 
     @Override public HttpResponse unwrap() {
       return delegate;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {

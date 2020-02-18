@@ -20,7 +20,7 @@ import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import brave.spring.web.TracingClientHttpRequestInterceptor.HttpClientResponse;
+import brave.spring.web.TracingClientHttpRequestInterceptor.ClientHttpResponseWrapper;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
@@ -52,7 +52,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
   @Override public ListenableFuture<ClientHttpResponse> intercept(HttpRequest request,
     byte[] body, AsyncClientHttpRequestExecution execution) throws IOException {
     Span span =
-      handler.handleSend(new TracingClientHttpRequestInterceptor.HttpClientRequest(request));
+      handler.handleSend(new TracingClientHttpRequestInterceptor.HttpRequestWrapper(request));
 
     // avoid context sync overhead when we are the root span
     TraceContext invocationContext = span.context().parentIdAsLong() != 0
@@ -87,7 +87,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
     }
 
     @Override public void onSuccess(ClientHttpResponse result) {
-      handler.handleReceive(new HttpClientResponse(result), null, span);
+      handler.handleReceive(new ClientHttpResponseWrapper(result, null), null, span);
     }
   }
 }
