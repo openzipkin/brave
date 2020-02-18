@@ -23,6 +23,7 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.junit.Ignore;
 import spark.servlet.SparkFilter;
 
 public class ITTracingFilter extends ITServletContainer {
@@ -56,5 +57,13 @@ public class ITTracingFilter extends ITServletContainer {
     Dynamic sparkFilter = handler.getServletContext().addFilter("sparkFilter", new SparkFilter());
     sparkFilter.setInitParameter("applicationClass", TestApplication.class.getName());
     sparkFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+  }
+
+  @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
+  public void errorTag_exceptionOverridesHttpStatus() {
+  }
+
+  @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
+  public void finishedSpanHandlerSeesException() {
   }
 }
