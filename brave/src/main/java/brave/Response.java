@@ -32,7 +32,7 @@ public abstract class Response {
   public abstract Span.Kind spanKind();
 
   /**
-   * The error raised during response processing or null if there was none.
+   * The error raised during response processing or {@code null} if there was none.
    *
    * <p>Lack of a throwable does not mean success. For example, in HTTP, there could be a 409
    * status code with no corresponding Java exception.
