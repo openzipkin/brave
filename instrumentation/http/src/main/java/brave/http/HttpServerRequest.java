@@ -40,14 +40,14 @@ public abstract class HttpServerRequest extends HttpRequest {
 
   /**
    * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add remote socket
-   * information about the client from the {@link #unwrap() delegate}.
+   * information about the client from the {@linkplain #unwrap() delegate}.
    *
-   * <p>By default, this tries to parse the {@link #parseClientIpFromXForwardedFor(Span) forwarded
-   * IP}. Override to add client socket information when forwarded info is not available.
+   * <p>By default, this tries to parse the {@linkplain #parseClientIpFromXForwardedFor(Span)
+   * forwarded IP}. Override to add client socket information when forwarded info is not available.
    *
-   * <p>Aside: the ability to parse socket information on server request objects is likely even if
-   * it is not as likely on the client side. This is because client requests are often parsed before
-   * a network route is chosen, whereas server requests are parsed after the network layer.
+   * <p>Aside: It is more likely a server request object will be able to parse socket information
+   * as opposed to a client object. This is because client requests are often parsed before a
+   * network route is chosen, whereas server requests are parsed after the network layer.
    *
    * @return true if parsing was successful.
    * @since 5.7
