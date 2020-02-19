@@ -85,8 +85,9 @@
     <spring5.version>5.2.3.RELEASE</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
-    <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
-    <jetty.version>8.1.22.v20160922</jetty.version>
+    <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
+    <!-- prefer sparkjava's jetty to reduce downloads -->
+    <jetty.version>9.4.18.v20190429</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.10.0.Final</resteasy.version>

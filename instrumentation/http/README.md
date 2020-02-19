@@ -158,7 +158,7 @@ You generally need to...
 5. Complete the span
 
 ```java
-Span span = handler.handleSend(new WrappedHttpClientRequest(request)); // 1.
+Span span = handler.handleSend(new HttpClientRequestWrapper(request)); // 1.
 Result result = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
@@ -167,8 +167,8 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   error = e; // 4.
   throw e;
 } finally {
-  WrappedHttpClientResponse response = result != null
-    ? new WrappedHttpClientResponse(result, error)
+  HttpClientResponseWrapper response = result != null
+    ? new HttpClientResponseWrapper(result, error)
     : null;
   handler.handleReceive(response, error, span); // 5.
 }
@@ -195,7 +195,7 @@ public void onSchedule(HttpContext context) {
 public void onStart(HttpContext context, HttpClientRequest req) {
   TraceContext parent = context.getAttribute(TraceContext.class); // 2.
 
-  WrappedHttpClientRequest request = new WrappedHttpClientRequest(req);
+  HttpClientRequestWrapper request = new HttpClientRequestWrapper(req);
   Span span = handler.handleSendWithParent(request, parent); // 3.
 ```
 
@@ -228,7 +228,7 @@ You generally need to...
 5. Complete the span
 
 ```java
-Span span = handler.handleReceive(new WrappedHttpServerRequest(request)); // 1.
+Span span = handler.handleReceive(new HttpServerRequestWrapper(request)); // 1.
 Result result = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
@@ -237,8 +237,8 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   error = e; // 4.
   throw e;
 } finally {
-  WrappedHttpServerResponse response = result != null
-    ? new WrappedHttpServerResponse(result, error)
+  HttpServerResponseWrapper response = result != null
+    ? new HttpServerResponseWrapper(result, error)
     : null;
   handler.handleSend(response, error, span); // 5.
 }

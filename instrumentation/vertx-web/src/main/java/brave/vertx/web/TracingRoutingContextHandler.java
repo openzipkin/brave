@@ -17,6 +17,8 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import io.vertx.core.Handler;
 import io.vertx.core.net.SocketAddress;
@@ -35,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
@@ -52,7 +54,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return;
     }
 
-    Span span = handler.handleReceive(new HttpServerRequest(context.request()));
+    Span span = handler.handleReceive(new HttpServerRequestWrapper(context.request()));
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
@@ -74,14 +76,14 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      handler.handleSend(new HttpServerResponse(context), context.failure(), span);
+      handler.handleSend(new HttpServerResponseWrapper(context), context.failure(), span);
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class HttpServerRequestWrapper extends HttpServerRequest {
     final io.vertx.core.http.HttpServerRequest delegate;
 
-    HttpServerRequest(io.vertx.core.http.HttpServerRequest delegate) {
+    HttpServerRequestWrapper(io.vertx.core.http.HttpServerRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -111,10 +113,10 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+  static final class HttpServerResponseWrapper extends HttpServerResponse {
     final RoutingContext delegate;
 
-    HttpServerResponse(RoutingContext context) {
+    HttpServerResponseWrapper(RoutingContext context) {
       this.delegate = context;
     }
 

@@ -23,10 +23,13 @@ import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -99,7 +102,8 @@ public abstract class ServletRuntime {
     static final class TracingAsyncListener implements AsyncListener {
       final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
       final Span span;
-      volatile boolean complete; // multiple async events can occur, only complete once
+      final AtomicBoolean complete = new AtomicBoolean(); // multiple async events can occur
+      final AtomicBoolean timeout = new AtomicBoolean(); // multiple timeout events can occur
 
       TracingAsyncListener(
         HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
@@ -110,24 +114,32 @@ public abstract class ServletRuntime {
       }
 
       @Override public void onComplete(AsyncEvent e) {
-        if (complete) return;
-        Throwable error = maybeError(e.getThrowable(), (HttpServletRequest) e.getSuppliedRequest());
-        HttpServerResponse response = httpServerResponse(e, error);
-        handler.handleSend(response, error, span);
-        complete = true;
+        if (!complete.compareAndSet(false, true)) return; // already completed
+        HttpServletRequest req = (HttpServletRequest) e.getSuppliedRequest();
+        HttpServletResponse res = (HttpServletResponse) e.getSuppliedResponse();
+        HttpServerResponse response =
+          brave.servlet.HttpServletResponseWrapper.create(req, res, e.getThrowable());
+        handler.handleSend(response, response.error(), span);
       }
 
+      // Per Servlet 3 section 2.3.3.3, we can't see the final HTTP status, yet. defer to onComplete
+      // https://download.oracle.com/otndocs/jcp/servlet-3.0-mrel-eval-oth-JSpec/
       @Override public void onTimeout(AsyncEvent e) {
-        if (complete) return;
-        Throwable error = maybeError(e.getThrowable(), (HttpServletRequest) e.getSuppliedRequest());
-        HttpServerResponse response = httpServerResponse(e, error);
-        // we use an async timeout exception in case the event had no http response or throwable
-        handler.handleSend(response, error != null ? error : new AsyncTimeoutException(e), span);
-        complete = true;
+        if (!timeout.compareAndSet(false, true)) return; // already timed out
+        // Propagate the timeout so that the onComplete hook can see it.
+        ServletRequest request = e.getSuppliedRequest();
+        if (request.getAttribute("error") == null) {
+          request.setAttribute("error", new AsyncTimeoutException(e));
+        }
       }
 
+      // Per Servlet 3 section 2.3.3.3, we can't see the final HTTP status, yet. defer to onComplete
+      // https://download.oracle.com/otndocs/jcp/servlet-3.0-mrel-eval-oth-JSpec/
       @Override public void onError(AsyncEvent e) {
-        onComplete(e); // logic is the same to complete an error span
+        ServletRequest request = e.getSuppliedRequest();
+        if (request.getAttribute("error") == null) {
+          request.setAttribute("error", e.getThrowable());
+        }
       }
 
       /** If another async is created (ex via asyncContext.dispatch), this needs to be re-attached */
@@ -153,14 +165,6 @@ public abstract class ServletRuntime {
         return this; // stack trace doesn't add value as this is used in a callback
       }
     }
-
-    @Nullable
-    static HttpServerResponse httpServerResponse(AsyncEvent event, @Nullable Throwable error) {
-      HttpServletRequest req = (HttpServletRequest) event.getSuppliedRequest();
-      HttpServletResponse resp = (HttpServletResponse) event.getSuppliedResponse();
-      if (resp == null) return null;
-      return brave.servlet.HttpServletResponseWrapper.create(req, resp, error);
-    }
   }
 
   static final class Servlet25 extends ServletRuntime {
@@ -184,15 +188,10 @@ public abstract class ServletRuntime {
     static final String RETURN_NULL = "RETURN_NULL";
 
     /**
-     * Eventhough the Servlet 2.5 version of HttpServletResponse doesn't have the getStatus method,
+     * Even though the Servlet 2.5 version of HttpServletResponse doesn't have the getStatus method,
      * routine servlet runtimes, do, for example {@code org.eclipse.jetty.server.Response}
      */
     @Override public int status(HttpServletResponse response) {
-      // unwrap if we've decorated the response
-      if (response instanceof HttpServletResponseWrapper) {
-        HttpServletResponseWrapper decorated = ((HttpServletResponseWrapper) response);
-        response = (HttpServletResponse) decorated.getResponse();
-      }
       if (response instanceof Servlet25ServerResponseAdapter) {
         // servlet 2.5 doesn't have get status
         return ((Servlet25ServerResponseAdapter) response).getStatusInServlet25();
@@ -273,9 +272,12 @@ public abstract class ServletRuntime {
   }
 
   /** Looks for a valid request attribute "error" when the error parameter is null */
-  @Nullable public static Throwable maybeError(@Nullable Throwable error, HttpServletRequest req) {
-    if (error != null) return error;
+  @Nullable public static Throwable maybeError(@Nullable Throwable thrown, HttpServletRequest req) {
+    if (thrown != null) return thrown;
     Object maybeError = req.getAttribute("error");
-    return maybeError instanceof Throwable ? (Throwable) maybeError : null;
+    if (maybeError instanceof Throwable) return (Throwable) maybeError;
+    maybeError = req.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+    if (maybeError instanceof Throwable) return (Throwable) maybeError;
+    return null;
   }
 }

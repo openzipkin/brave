@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +13,17 @@
  */
 package brave.spring.webmvc;
 
+import brave.test.http.Jetty9ServerController;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 public class ITSpanCustomizingHandlerInterceptor extends BaseITSpanCustomizingHandlerInterceptor {
+  public ITSpanCustomizingHandlerInterceptor() {
+    super(new Jetty9ServerController());
+  }
+
   @Override protected void addDelegatingTracingFilter(ServletContextHandler handler) {
     handler.addFilter(DelegatingTracingFilter.class, "/*", EnumSet.allOf(DispatcherType.class));
   }

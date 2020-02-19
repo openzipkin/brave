@@ -62,16 +62,16 @@ public final class SparkTracing {
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
-    return (error, request, response) -> {
+    return (error, req, res) -> {
       try {
-        delegate.handle(error, request, response);
+        delegate.handle(error, req, res);
       } finally {
         Span span = tracer.currentSpan();
         if (span != null) {
-          HttpServerResponse res =
-            HttpServletResponseWrapper.create(request.raw(), response.raw(), error);
-          handler.handleSend(res, res.error(), span);
-          ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+          HttpServerResponse response =
+            HttpServletResponseWrapper.create(req.raw(), res.raw(), error);
+          handler.handleSend(response, response.error(), span);
+          ((SpanInScope) req.attribute(SpanInScope.class.getName())).close();
         }
       }
     };

@@ -17,6 +17,8 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import java.io.IOException;
@@ -27,7 +29,7 @@ import okhttp3.Response;
 /** Example interceptor. Use the real deal brave-instrumentation-okhttp3 in real life */
 final class TracingInterceptor implements Interceptor {
   final Tracer tracer;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
@@ -50,7 +52,7 @@ final class TracingInterceptor implements Interceptor {
     }
   }
 
-  static final class RequestWrapper extends brave.http.HttpClientRequest {
+  static final class RequestWrapper extends HttpClientRequest {
     final Request delegate;
     Request.Builder builder;
 
@@ -88,7 +90,7 @@ final class TracingInterceptor implements Interceptor {
     }
   }
 
-  static final class ResponseWrapper extends brave.http.HttpClientResponse {
+  static final class ResponseWrapper extends HttpClientResponse {
     final Response delegate;
     @Nullable final Throwable error;
 

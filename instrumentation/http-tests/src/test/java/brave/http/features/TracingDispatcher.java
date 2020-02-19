@@ -16,6 +16,8 @@ package brave.http.features;
 import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import okhttp3.mockwebserver.Dispatcher;
@@ -25,7 +27,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 final class TracingDispatcher extends Dispatcher {
   final Dispatcher delegate;
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingDispatcher(HttpTracing httpTracing, Dispatcher delegate) {
     tracer = httpTracing.tracing().tracer();
@@ -34,7 +36,7 @@ final class TracingDispatcher extends Dispatcher {
   }
 
   @Override public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
-    Span span = handler.handleReceive(new HttpServerRequest(request));
+    Span span = handler.handleReceive(new RecordedRequestWrapper(request));
     MockResponse response = null;
     Throwable error = null;
     try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
@@ -43,14 +45,14 @@ final class TracingDispatcher extends Dispatcher {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new HttpServerResponse(response, error), error, span);
+      handler.handleSend(new MockResponseWrapper(response, error), error, span);
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class RecordedRequestWrapper extends HttpServerRequest {
     final RecordedRequest delegate;
 
-    HttpServerRequest(RecordedRequest delegate) {
+    RecordedRequestWrapper(RecordedRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -75,11 +77,11 @@ final class TracingDispatcher extends Dispatcher {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+  static final class MockResponseWrapper extends HttpServerResponse {
     final MockResponse delegate;
     final @Nullable Throwable error;
 
-    HttpServerResponse(MockResponse delegate, @Nullable Throwable error) {
+    MockResponseWrapper(MockResponse delegate, @Nullable Throwable error) {
       this.delegate = delegate;
       this.error = error;
     }

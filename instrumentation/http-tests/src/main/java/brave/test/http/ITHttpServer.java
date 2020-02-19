@@ -390,35 +390,31 @@ public abstract class ITHttpServer extends ITHttp {
       .containsEntry("error", "400");
   }
 
+  /**
+   * Some synchronous frameworks have limited means to adjust the HTTP status code upon raising an
+   * exception. When this is the case, use the following built-in exception:
+   *
+   * <p><pre>{@code
+   *   throw new UnavailableException("not ready", 1); // implies 503
+   * }</pre>
+   */
   @Test
-  public void reportsSpanOnException() throws Exception {
-    reportsSpanOnException("/exception");
-  }
-
-  @Test
-  public void reportsSpanOnException_async() throws Exception {
-    reportsSpanOnException("/exceptionAsync");
-  }
-
-  Span reportsSpanOnException(String path) throws Exception {
-    get(path);
-
-    return takeSpan();
+  public void httpStatusCodeTagMatchesResponse_onException() throws Exception {
+    httpStatusCodeTagMatchesResponse_onException("/exception");
   }
 
   @Test
-  public void errorTag_onException() throws Exception {
-    errorTag_onException("/exception");
+  public void httpStatusCodeTagMatchesResponse_onException_async() throws Exception {
+    httpStatusCodeTagMatchesResponse_onException("/exceptionAsync");
   }
 
-  @Test
-  public void errorTag_onException_async() throws Exception {
-    errorTag_onException("/exceptionAsync");
-  }
+  Span httpStatusCodeTagMatchesResponse_onException(String path) throws Exception {
+    Response response = get(path);
 
-  Span errorTag_onException(String path) throws Exception {
-    Span span = reportsSpanOnException(path);
-    assertThat(span.tags()).containsKey("error");
+    Span span = takeSpan();
+    assertThat(span.tags())
+      .containsEntry("http.status_code", String.valueOf(response.code()));
+
     return span;
   }
 
@@ -433,9 +429,11 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   void errorTag_exceptionOverridesHttpStatus(String path) throws Exception {
-    Span span = errorTag_onException(path);
+    get(path);
+
+    Span span = takeSpan();
     assertThat(span.tags().get("error"))
-      .isNotEqualTo(span.tags().get("http.status_code"));
+      .contains("not ready"); // some controllers format the exception
   }
 
   @Test
@@ -464,7 +462,8 @@ public abstract class ITHttpServer extends ITHttp {
       .build());
     init();
 
-    errorTag_onException(path);
+    get(path);
+    takeSpan();
 
     assertThat(caughtThrowable.get()).isNotNull();
   }

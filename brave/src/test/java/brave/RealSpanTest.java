@@ -102,7 +102,7 @@ public class RealSpanTest {
       .containsExactly("foo");
   }
 
-  @Deprecated @Test public void remoteEndpoint_nulls() {
+  @Test public void remoteEndpoint_nulls() {
     span.remoteEndpoint(Endpoint.newBuilder().build());
     span.flush();
 

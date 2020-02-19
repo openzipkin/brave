@@ -16,7 +16,10 @@ package brave.jersey.server;
 import brave.Span;
 import brave.Tracer;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import javax.inject.Inject;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
@@ -37,7 +40,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   }
 
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
   final EventParser parser;
 
   @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
@@ -52,7 +55,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   @Override public RequestEventListener onRequest(RequestEvent event) {
     if (event.getType() != RequestEvent.Type.START) return null;
-    Span span = handler.handleReceive(new HttpServerRequest(event.getContainerRequest()));
+    Span span = handler.handleReceive(new ContainerRequestWrapper(event.getContainerRequest()));
     return new TracingRequestEventListener(span, tracer.withSpanInScope(span));
   }
 
@@ -100,11 +103,9 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           spanInScope = tracer.withSpanInScope(span);
           break;
         case FINISHED:
-          String maybeHttpRoute = route(event.getContainerRequest());
-          if (maybeHttpRoute != null) {
-            event.getContainerRequest().setProperty("http.route", maybeHttpRoute);
-          }
-          handler.handleSend(new HttpServerResponse(event), event.getException(), span);
+          String route = route(event.getContainerRequest());
+          RequestEventWrapper response = new RequestEventWrapper(event, route);
+          handler.handleSend(response, response.error(), span);
           // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
           // Don't close the scope unless it is a synchronous method.
           if (!async && (maybeSpanInScope = spanInScope) != null) {
@@ -121,10 +122,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       || event.getUriInfo().getMatchedResourceMethod().isSuspendDeclared();
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class ContainerRequestWrapper extends HttpServerRequest {
     final ContainerRequest delegate;
 
-    HttpServerRequest(ContainerRequest delegate) {
+    ContainerRequestWrapper(ContainerRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -154,11 +155,13 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     // HttpServletRequest.getRemoteAddr
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
+  static final class RequestEventWrapper extends HttpServerResponse {
     final RequestEvent delegate;
+    @Nullable final String route;
 
-    HttpServerResponse(RequestEvent delegate) {
+    RequestEventWrapper(RequestEvent delegate, @Nullable String route) {
       this.delegate = delegate;
+      this.route = route;
     }
 
     @Override public Object unwrap() {
@@ -166,7 +169,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     }
 
     @Override public Throwable error() {
-      return delegate.getException();
+      return SpanCustomizingApplicationEventListener.unwrapError(delegate);
     }
 
     @Override public String method() {
@@ -174,8 +177,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     }
 
     @Override public String route() {
-      Object maybeRoute = delegate.getContainerRequest().getProperty("http.route");
-      return maybeRoute instanceof String ? (String) maybeRoute : null;
+      return route;
     }
 
     @Override public int statusCode() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.jersey.server;
 
-import brave.jersey.server.TracingApplicationEventListener.HttpServerResponse;
+import brave.jersey.server.TracingApplicationEventListener.RequestEventWrapper;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -85,11 +85,11 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
     .build(RequestEvent.Type.FINISHED);
 
   @Benchmark public String parseRoute() {
-    return new HttpServerResponse(event).route();
+    return new RequestEventWrapper(event, null).route();
   }
 
   @Benchmark public String parseRoute_nested() {
-    return new HttpServerResponse(nestedEvent).route();
+    return new RequestEventWrapper(nestedEvent, null).route();
   }
 
   // Convenience main entry-point

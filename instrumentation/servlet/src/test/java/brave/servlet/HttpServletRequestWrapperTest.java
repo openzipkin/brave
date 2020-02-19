@@ -29,6 +29,18 @@ public class HttpServletRequestWrapperTest {
   HttpServerRequest wrapper = HttpServletRequestWrapper.create(request);
   Span span = mock(Span.class);
 
+  @Test public void unwrap() {
+    assertThat(wrapper.unwrap())
+      .isEqualTo(request);
+  }
+
+  @Test public void method() {
+    when(request.getMethod()).thenReturn("POST");
+
+    assertThat(wrapper.method())
+      .isEqualTo("POST");
+  }
+
   @Test public void path_doesntCrashOnNullUrl() {
     assertThat(wrapper.path())
       .isNull();

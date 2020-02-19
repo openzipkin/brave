@@ -49,6 +49,18 @@ public class HttpServerRequestTest {
     verifyNoMoreInteractions(span);
   }
 
+  @Test public void parseClientIpAndPort_picksFirstXForwardedFor() {
+    when(serverRequest.header("X-Forwarded-For")).thenReturn("1.2.3.4,3.4.5.6");
+
+    when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
+    when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();
+
+    serverRequest.parseClientIpAndPort(span);
+
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
+  }
+
   @Test public void parseClientIpAndPort_skipsOnNoIp() {
     when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
     when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();

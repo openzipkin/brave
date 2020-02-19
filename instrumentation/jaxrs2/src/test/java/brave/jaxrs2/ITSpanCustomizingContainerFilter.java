@@ -15,6 +15,7 @@ package brave.jaxrs2;
 
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
+import brave.test.http.Jetty9ServerController;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -39,6 +40,9 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITSpanCustomizingContainerFilter extends ITServletContainer {
+  public ITSpanCustomizingContainerFilter() {
+    super(new Jetty9ServerController());
+  }
 
   @Override @Ignore("ContainerRequestContext doesn't include remote address")
   public void reportsClientAddress() {

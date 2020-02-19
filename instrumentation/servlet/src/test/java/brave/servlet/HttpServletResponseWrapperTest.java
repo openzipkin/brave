@@ -26,10 +26,17 @@ public class HttpServletResponseWrapperTest {
   HttpServletRequest request = mock(HttpServletRequest.class);
   HttpServletResponse response = mock(HttpServletResponse.class);
 
-  @Test public void statusCode() {
+  @Test public void unwrap() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
+    assertThat(wrapper.unwrap())
+      .isEqualTo(response);
+  }
+
+  @Test public void statusCode() {
     when(response.getStatus()).thenReturn(200);
+
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     assertThat(wrapper.statusCode()).isEqualTo(200);
   }
@@ -45,17 +52,60 @@ public class HttpServletResponseWrapperTest {
   }
 
   @Test public void method_isRequestMethod() {
-    when(request.getMethod()).thenReturn("POST");
-
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
+
+    when(request.getMethod()).thenReturn("POST");
 
     assertThat(wrapper.method()).isEqualTo("POST");
   }
 
-  @Test public void route_isHttpRouteAttribute() {
-    when(request.getAttribute("http.route")).thenReturn("/users/{userId}");
+  @Test public void error_noRequest() {
+    Exception error = new Exception();
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(null, response, error);
 
+    assertThat(wrapper.error()).isSameAs(error);
+  }
+
+  @Test public void error_fromRequestAttribute() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
+
+    Exception requestError = new Exception();
+    when(request.getAttribute("error")).thenReturn(requestError);
+
+    assertThat(wrapper.error()).isSameAs(requestError);
+  }
+
+  @Test public void error_badRequestAttribute() {
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
+
+    when(request.getAttribute("error")).thenReturn(new Object());
+
+    assertThat(wrapper.error()).isNull();
+  }
+
+  @Test public void error_overridesRequestAttribute() {
+    Exception error = new Exception();
+
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, error);
+
+    Exception requestError = new Exception();
+    when(request.getAttribute("error")).thenReturn(requestError);
+
+    assertThat(wrapper.error()).isSameAs(error);
+  }
+
+  @Test public void route_okOnBadAttribute() {
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
+
+    when(request.getAttribute("http.route")).thenReturn(new Object());
+
+    assertThat(wrapper.route()).isNull();
+  }
+
+  @Test public void route_isHttpRouteAttribute() {
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
+
+    when(request.getAttribute("http.route")).thenReturn("/users/{userId}");
 
     assertThat(wrapper.route()).isEqualTo("/users/{userId}");
   }

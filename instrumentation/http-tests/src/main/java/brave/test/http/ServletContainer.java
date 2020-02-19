@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,18 +15,23 @@ package brave.test.http;
 
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.bio.SocketConnector;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 /** Starts a jetty server which runs a servlet container */
 public abstract class ServletContainer {
+  final ServerController serverController;
   int port = 0; // initially get a port, later reuse one
   Server server;
+
+  protected ServletContainer(ServerController serverController) {
+    this.serverController = serverController;
+  }
 
   /** recreates the server so that it uses the supplied trace configuration */
   public final void init() {
     stop();
-    server = newServer(port);
+    server = serverController.newServer(port);
 
     ServletContextHandler context = new ServletContextHandler();
     context.setContextPath("/");
@@ -36,23 +41,17 @@ public abstract class ServletContainer {
 
     try {
       server.start();
-      port = getLocalPort(server);
+      port = serverController.getLocalPort(server);
     } catch (Exception e) {
       throw new IllegalStateException("Failed to start server.", e);
     }
   }
 
-  protected int getLocalPort(Server server) {
-    return server.getConnectors()[0].getLocalPort();
-  }
+  /** Allows us to work with multiple Jetty versions. */
+  public interface ServerController {
+    Server newServer(int port);
 
-  protected Server newServer(int port) {
-    Server result = new Server();
-    SocketConnector connector = new SocketConnector();
-    connector.setMaxIdleTime(1000 * 60 * 60);
-    connector.setPort(port);
-    result.setConnectors(new Connector[] {connector});
-    return result;
+    int getLocalPort(Server server);
   }
 
   public final String url(String path) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Response;
@@ -88,12 +89,6 @@ public class TestResource {
   }
 
   @GET
-  @Path("exception")
-  public Response disconnect() throws IOException {
-    throw new IOException();
-  }
-
-  @GET
   @Path("items/{itemId}")
   public String item(@PathParam("itemId") String itemId) {
     return itemId;
@@ -115,9 +110,17 @@ public class TestResource {
   }
 
   @GET
+  @Path("exception")
+  public Response notReady() {
+    throw new WebApplicationException(new IllegalStateException("not ready"), 503);
+  }
+
+  @GET
   @Path("exceptionAsync")
-  public void disconnectAsync(@Suspended AsyncResponse response) {
-    Thread thread = new Thread(() -> response.resume(new IOException()));
+  public void notReadyAsync(@Suspended AsyncResponse response) {
+    Thread thread = new Thread(() -> response.resume(
+      new WebApplicationException(new IllegalStateException("not ready"), 503)
+    ));
     thread.start();
     try {
       thread.join();

@@ -86,15 +86,12 @@ public final class TracingFilter implements Filter {
       error = e;
       throw e;
     } finally {
-      if (error == null) {
-        Object maybeError = req.getAttribute("error");
-        // guard as user code may be using the attribute name "error"
-        if (maybeError instanceof Throwable) error = (Throwable) maybeError;
-      }
-      if (servlet.isAsync(req)) { // we don't have the actual response, handle later
+      // When async, even if we caught an exception, we don't have the final response: defer
+      if (servlet.isAsync(req)) {
         servlet.handleAsync(handler, req, res, span);
-      } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(HttpServletResponseWrapper.create(req, res, error), error, span);
+      } else { // we have a synchronous response: finish the span
+        HttpServerResponse responseWrapper = HttpServletResponseWrapper.create(req, res, error);
+        handler.handleSend(responseWrapper, responseWrapper.error(), span);
       }
       scope.close();
     }
