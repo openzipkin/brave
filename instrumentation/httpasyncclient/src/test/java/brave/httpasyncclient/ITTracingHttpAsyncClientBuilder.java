@@ -94,11 +94,12 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   }
 
   @Override
-  protected void getAsync(CloseableHttpAsyncClient client, String path, Callback<Void> callback) {
+  protected void getAsync(CloseableHttpAsyncClient client, String path,
+    Callback<Integer> callback) {
     HttpGet get = new HttpGet(URI.create(url(path)));
     client.execute(get, new FutureCallback<HttpResponse>() {
       @Override public void completed(HttpResponse res) {
-        callback.onSuccess(null);
+        callback.onSuccess(res.getStatusLine().getStatusCode());
       }
 
       @Override public void failed(Exception ex) {

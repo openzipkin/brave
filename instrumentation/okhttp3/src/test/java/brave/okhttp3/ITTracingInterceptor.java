@@ -59,7 +59,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override
-  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Void> callback) {
+  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Integer> callback) {
     client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
@@ -67,7 +67,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
         }
 
         @Override public void onResponse(Call call, Response response) {
-          callback.onSuccess(null);
+          callback.onSuccess(response.code());
         }
       });
   }

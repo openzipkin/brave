@@ -390,6 +390,15 @@ public abstract class ITHttpServer extends ITHttp {
       .containsEntry("error", "400");
   }
 
+  @Test
+  public void httpPathTagExcludesQueryParams() throws Exception {
+    get("/foo?z=2&yAA=1");
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+      .containsEntry("http.path", "/foo");
+  }
+
   /**
    * Some synchronous frameworks have limited means to adjust the HTTP status code upon raising an
    * exception. When this is the case, use the following built-in exception:
@@ -466,15 +475,6 @@ public abstract class ITHttpServer extends ITHttp {
     takeSpan();
 
     assertThat(caughtThrowable.get()).isNotNull();
-  }
-
-  @Test
-  public void httpPathTagExcludesQueryParams() throws Exception {
-    get("/foo?z=2&yAA=1");
-
-    Span span = takeSpan();
-    assertThat(span.tags())
-      .containsEntry("http.path", "/foo");
   }
 
   protected Response get(String path) throws Exception {

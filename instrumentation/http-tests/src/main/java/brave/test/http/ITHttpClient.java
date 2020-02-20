@@ -27,6 +27,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunctions;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.mockwebserver.MockResponse;
@@ -297,15 +298,42 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .isEqualTo("post");
   }
 
+  @Test public void httpPathTagExcludesQueryParams() throws Exception {
+    String path = "/foo?z=2&yAA=1";
+
+    server.enqueue(new MockResponse());
+    get(client, path);
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+      .containsEntry("http.path", "/foo");
+  }
+
+  @Test public void finishedSpanHandlerSeesException() throws Exception {
+    finishedSpanHandlerSeesException(get());
+  }
+
   @Test public void reportsSpanOnTransportException() throws Exception {
-    checkReportsSpanOnTransportException();
+    checkReportsSpanOnTransportException(get());
+  }
+
+  @Test public void errorTag_onTransportException() throws Exception {
+    Span span = checkReportsSpanOnTransportException(get());
+    assertThat(span.tags()).containsKey("error");
+  }
+
+  Callable<Void> get() {
+    return () -> {
+      get(client, "/foo");
+      return null;
+    };
   }
 
   /**
    * This ensures custom finished span handlers can see the actual exception thrown, not just the
    * "error" tag value.
    */
-  @Test public void finishedSpanHandlerSeesException() throws Exception {
+  void finishedSpanHandlerSeesException(Callable<Void> get) throws Exception {
     AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
     close();
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
@@ -318,42 +346,20 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .build());
     client = newClient(server.getPort());
 
-    checkReportsSpanOnTransportException();
+    checkReportsSpanOnTransportException(get);
     assertThat(caughtThrowable.get()).isNotNull();
   }
 
-  protected Span checkReportsSpanOnTransportException() throws InterruptedException {
+  Span checkReportsSpanOnTransportException(Callable<Void> get) throws InterruptedException {
     server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
 
     try {
-      get(client, "/foo");
+      get.call();
     } catch (Exception e) {
       // ok, but the span should include an error!
     }
 
     return takeSpan();
-  }
-
-  @Test public void errorTag_onTransportException() throws Exception {
-    Span span = checkReportsSpanOnTransportException();
-    assertThat(span.tags()).containsKey("error");
-  }
-
-  @Test public void errorTag_exceptionOverridesHttpStatus() throws Exception {
-    Span span = checkReportsSpanOnTransportException();
-    assertThat(span.tags().get("error"))
-      .isNotEqualTo(span.tags().get("http.status_code"));
-  }
-
-  @Test public void httpPathTagExcludesQueryParams() throws Exception {
-    String path = "/foo?z=2&yAA=1";
-
-    server.enqueue(new MockResponse());
-    get(client, path);
-
-    Span span = takeSpan();
-    assertThat(span.tags())
-      .containsEntry("http.path", "/foo");
   }
 
   protected String url(String pathIncludingQuery) {
