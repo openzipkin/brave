@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import brave.propagation.TraceContext;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,7 +90,10 @@ public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
   }
 
   @Test public void toSpan_selfLinksContext() {
-    try (Tracing t = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing t = Tracing.newBuilder()
+      .spanReporter(Reporter.NOOP)
+      .propagationFactory(propagationFactory)
+      .build()) {
       ScopedSpan parent = t.tracer().startScopedSpan("parent");
       try {
         E extra = (E) parent.context().extra().get(0);

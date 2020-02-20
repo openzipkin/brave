@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import org.junit.Test;
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -38,7 +39,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
   }
 
   @Test public void contextsAreIndependent() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing tracing = withNoopSpanReporter()) {
       TraceContext context1 = tracing.tracer().nextSpan().context();
       PropagationFields.put(context1, keyOne, valueOne, factory.type());
       TraceContext context2 = tracing.tracer().newChild(context1).context();
@@ -66,7 +67,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
   }
 
   @Test public void contextIsntBrokenWithSmallChanges() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing tracing = withNoopSpanReporter()) {
 
       TraceContext context1 = tracing.tracer().nextSpan().context();
       PropagationFields.put(context1, keyOne, valueOne, factory.type());
@@ -106,7 +107,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
    * duplicate copies of {@link PropagationFields}.
    */
   @Test public void nextSpanMergesExtraWithImplicitParent_hasFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
         PropagationFields.put(parent.context(), keyOne, valueOne, factory.type());
@@ -138,7 +139,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
   }
 
   @Test public void nextSpanExtraWithImplicitParent_butNoImplicitExtraFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
@@ -166,7 +167,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
   }
 
   @Test public void nextSpanExtraWithImplicitParent_butNoExtractedExtraFields() {
-    try (Tracing tracing = Tracing.newBuilder().propagationFactory(propagationFactory).build()) {
+    try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
@@ -260,5 +261,13 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
     assertThat(fields.toString())
       .contains("{" + keyOne + "=" + valueOne + ", " + keyTwo + "=" + valueThree + "}");
+  }
+
+  /** Ensures we don't accidentally use console logging, which is default */
+  Tracing withNoopSpanReporter() {
+    return Tracing.newBuilder()
+      .spanReporter(Reporter.NOOP)
+      .propagationFactory(propagationFactory)
+      .build();
   }
 }

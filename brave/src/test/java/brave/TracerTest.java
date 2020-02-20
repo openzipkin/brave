@@ -476,7 +476,7 @@ public class TracerTest {
 
   @Test public void nextSpanWithParent_overrideToMakeNewTrace() {
     Span span;
-    try (Scope ws  = currentTraceContext.newScope(context)) {
+    try (Scope ws = currentTraceContext.newScope(context)) {
       span = tracer.nextSpanWithParent(deferDecision(), false, null);
     }
 
@@ -793,7 +793,7 @@ public class TracerTest {
       .isPositive();
   }
 
-  @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() throws InterruptedException {
+  @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() {
     simulateInProcessPropagation(tracer, tracer);
     GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
@@ -804,10 +804,10 @@ public class TracerTest {
       .collect(Collectors.toList())).doesNotContain("brave.flush");
   }
 
-  @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush()
-    throws InterruptedException {
-    Tracer noOpTracer = Tracing.newBuilder()
-      .build().tracer();
+  @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush() {
+    Tracer noOpTracer = Tracing.newBuilder().spanReporter(s -> {
+      // intentionally avoid any special-casing of Reporter.NOOP
+    }).build().tracer();
     simulateInProcessPropagation(noOpTracer, tracer);
     GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check

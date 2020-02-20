@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,6 +23,7 @@ public class TracerClassLoaderTest {
     assertRunIsUnloadable(UsingLoggingReporter.class, getClass().getClassLoader());
   }
 
+  // This test will clutter output; it is somewhat difficult to avoid that and still run the test
   static class UsingLoggingReporter implements Runnable {
     @Override public void run() {
       Tracing.LoggingReporter reporter = new Tracing.LoggingReporter();
