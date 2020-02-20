@@ -126,9 +126,14 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     BlockingQueue<Object> result = new LinkedBlockingQueue<>();
     server.enqueue(new MockResponse());
 
+    // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
+    // callback thread which would cause result.poll() to await max time.
+    Object nullSentinel = new Object();
+
     getAsync(client, "/foo", new Callback<Void>() {
       @Override public void onSuccess(Void success) {
-        result.add(currentTraceContext.get());
+        TraceContext context = currentTraceContext.get();
+        result.add(context != null ? context : nullSentinel);
       }
 
       @Override public void onError(Throwable throwable) {
@@ -139,7 +144,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     takeRequest();
 
     assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isNull();
+      .isSameAs(nullSentinel);
 
     assertThat(takeSpan().kind())
       .isEqualTo(Span.Kind.CLIENT);

@@ -103,10 +103,8 @@ public abstract class ServletRuntime {
       final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
       final Span span;
       final AtomicBoolean complete = new AtomicBoolean(); // multiple async events can occur
-      final AtomicBoolean timeout = new AtomicBoolean(); // multiple timeout events can occur
 
-      TracingAsyncListener(
-        HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
+      TracingAsyncListener(HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
         Span span
       ) {
         this.handler = handler;
@@ -114,7 +112,11 @@ public abstract class ServletRuntime {
       }
 
       @Override public void onComplete(AsyncEvent e) {
-        if (!complete.compareAndSet(false, true)) return; // already completed
+        if (!complete.compareAndSet(false, true)) {
+          // TODO: None of our tests reach this condition. Make a concrete case that re-enters the
+          // onComplete hook or remove the special case
+          return;
+        }
         HttpServletRequest req = (HttpServletRequest) e.getSuppliedRequest();
         HttpServletResponse res = (HttpServletResponse) e.getSuppliedResponse();
         HttpServerResponse response =
@@ -125,7 +127,6 @@ public abstract class ServletRuntime {
       // Per Servlet 3 section 2.3.3.3, we can't see the final HTTP status, yet. defer to onComplete
       // https://download.oracle.com/otndocs/jcp/servlet-3.0-mrel-eval-oth-JSpec/
       @Override public void onTimeout(AsyncEvent e) {
-        if (!timeout.compareAndSet(false, true)) return; // already timed out
         // Propagate the timeout so that the onComplete hook can see it.
         ServletRequest request = e.getSuppliedRequest();
         if (request.getAttribute("error") == null) {

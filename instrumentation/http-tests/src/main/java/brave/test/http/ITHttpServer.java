@@ -484,9 +484,14 @@ public abstract class ITHttpServer extends ITHttp {
   protected Response get(Request request) throws Exception {
     Response response = call(request);
     if (response.code() == 404) {
-      // TODO: jetty isn't registering the tracing filter for all paths!
-      spans.poll(100, TimeUnit.MILLISECONDS);
-      throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
+      Span span = spans.poll(100, TimeUnit.MILLISECONDS);
+      if (span == null) {
+        // In this case, the 404 path is not instrumented. For example, in Spring WebMVC 2.5.
+        // We don't fail here because the primary test here is not span reporting.
+      }
+      throw new AssumptionViolatedException(
+        response.request().url().encodedPath() + " not supported"
+      );
     }
     return response;
   }
@@ -498,6 +503,9 @@ public abstract class ITHttpServer extends ITHttp {
 
   /** like {@link #get(Request)} except doesn't throw unsupported on not found */
   Response call(Request request) throws IOException {
+    // Particularly during async debugging, knowing which test invoked a request is helpful.
+    request = request.newBuilder().header("test", testName.getMethodName()).build();
+
     try (Response response = client.newCall(request).execute()) {
       if (!HttpHeaders.promisesBody(response)) return response;
 
