@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package brave.spring.webmvc;
 
 import brave.http.HttpTracing;
-import java.io.IOException;
 import java.util.concurrent.Callable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Controller class Servlet3TestController extends Servlet25TestController {
 
@@ -34,10 +34,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
     return () -> new ResponseEntity<>(HttpStatus.OK);
   }
 
+  @ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
   @RequestMapping(value = "/exceptionAsync")
-  public Callable<ResponseEntity<Void>> disconnectAsync() {
+  public Callable<ResponseEntity<Void>> notReadyAsync() {
     return () -> {
-      throw new IOException();
+      throw new IllegalStateException("not ready");
     };
   }
 

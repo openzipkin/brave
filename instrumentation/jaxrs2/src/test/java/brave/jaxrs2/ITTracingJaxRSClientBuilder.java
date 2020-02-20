@@ -20,6 +20,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.Ignore;
 import zipkin2.Callback;
@@ -44,13 +45,13 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
       .get(String.class);
   }
 
-  @Override protected void getAsync(Client client, String path, Callback<Void> callback) {
+  @Override protected void getAsync(Client client, String path, Callback<Integer> callback) {
     client.target(url(path))
       .request(MediaType.TEXT_PLAIN_TYPE)
       .async()
-      .get(new InvocationCallback<String>() {
-        @Override public void completed(String response) {
-          callback.onSuccess(null);
+      .get(new InvocationCallback<Response>() {
+        @Override public void completed(Response response) {
+          callback.onSuccess(response.getStatus());
         }
 
         @Override public void failed(Throwable throwable) {
@@ -71,7 +72,11 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override @Ignore("automatic error propagation is impossible")
-  public void addsErrorTagOnTransportException() {
+  public void errorTag_onTransportException() {
+  }
+
+  @Override @Ignore("automatic error propagation is impossible")
+  public void finishedSpanHandlerSeesException() {
   }
 
   @Override @Ignore("blind to the implementation of redirects")

@@ -14,34 +14,42 @@
 package brave.servlet;
 
 import brave.Span;
+import brave.http.HttpServerRequest;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class HttpServletAdapterTest {
-  HttpServletAdapter adapter = new HttpServletAdapter();
-  @Mock HttpServletRequest request;
-  @Mock HttpServletResponse response;
-  @Mock Span span;
+public class HttpServletRequestWrapperTest {
+  HttpServletRequest request = mock(HttpServletRequest.class);
+  HttpServerRequest wrapper = HttpServletRequestWrapper.create(request);
+  Span span = mock(Span.class);
+
+  @Test public void unwrap() {
+    assertThat(wrapper.unwrap())
+      .isEqualTo(request);
+  }
+
+  @Test public void method() {
+    when(request.getMethod()).thenReturn("POST");
+
+    assertThat(wrapper.method())
+      .isEqualTo("POST");
+  }
 
   @Test public void path_doesntCrashOnNullUrl() {
-    assertThat(adapter.path(request))
+    assertThat(wrapper.path())
       .isNull();
   }
 
   @Test public void path_getRequestURI() {
     when(request.getRequestURI()).thenReturn("/bar");
 
-    assertThat(adapter.path(request))
+    assertThat(wrapper.path())
       .isEqualTo("/bar");
   }
 
@@ -49,15 +57,15 @@ public class HttpServletAdapterTest {
     when(request.getRequestURL()).thenReturn(new StringBuffer("http://foo:8080/bar"));
     when(request.getQueryString()).thenReturn("hello=world");
 
-    assertThat(adapter.url(request))
+    assertThat(wrapper.url())
       .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
   @Test public void parseClientIpAndPort_prefersXForwardedFor() {
     when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
-    when(adapter.requestHeader(request, "X-Forwarded-For")).thenReturn("1.2.3.4");
+    when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4");
 
-    adapter.parseClientIpAndPort(request, span);
+    wrapper.parseClientIpAndPort(span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 0);
     verifyNoMoreInteractions(span);
@@ -67,7 +75,7 @@ public class HttpServletAdapterTest {
     when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4");
     when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
 
-    adapter.parseClientIpAndPort(request, span);
+    wrapper.parseClientIpAndPort(span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 0);
     verifyNoMoreInteractions(span);
@@ -77,21 +85,9 @@ public class HttpServletAdapterTest {
     when(request.getRemoteAddr()).thenReturn("1.2.3.4");
     when(request.getRemotePort()).thenReturn(61687);
 
-    adapter.parseClientIpAndPort(request, span);
+    wrapper.parseClientIpAndPort(span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 61687);
     verifyNoMoreInteractions(span);
-  }
-
-  @Test public void statusCodeAsInt() {
-    when(response.getStatus()).thenReturn(200);
-
-    assertThat(adapter.statusCodeAsInt(response)).isEqualTo(200);
-    assertThat(adapter.statusCode(response)).isEqualTo(200);
-  }
-
-  @Test public void statusCodeAsInt_zeroNoResponse() {
-    assertThat(adapter.statusCodeAsInt(response)).isZero();
-    assertThat(adapter.statusCode(response)).isNull();
   }
 }

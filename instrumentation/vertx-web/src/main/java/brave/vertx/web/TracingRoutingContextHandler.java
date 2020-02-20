@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,10 @@ package brave.vertx.web;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import io.vertx.core.Handler;
 import io.vertx.core.net.SocketAddress;
@@ -34,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
@@ -51,12 +54,12 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return;
     }
 
-    Span span = handler.handleReceive(new HttpServerRequest(context.request()));
+    Span span = handler.handleReceive(new HttpServerRequestWrapper(context.request()));
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
       context.next();
     }
   }
@@ -73,14 +76,14 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      handler.handleSend(new HttpServerResponse(context), context.failure(), span);
+      handler.handleSend(new HttpServerResponseWrapper(context), context.failure(), span);
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class HttpServerRequestWrapper extends HttpServerRequest {
     final io.vertx.core.http.HttpServerRequest delegate;
 
-    HttpServerRequest(io.vertx.core.http.HttpServerRequest delegate) {
+    HttpServerRequestWrapper(io.vertx.core.http.HttpServerRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -110,31 +113,32 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final io.vertx.core.http.HttpServerResponse delegate;
-    final String method, httpRoute;
+  static final class HttpServerResponseWrapper extends HttpServerResponse {
+    final RoutingContext delegate;
 
-    HttpServerResponse(RoutingContext context) {
-      this.delegate = context.response();
-      this.method = context.request().rawMethod();
-      String httpRoute = context.currentRoute().getPath();
-      this.httpRoute = httpRoute != null ? httpRoute : "";
+    HttpServerResponseWrapper(RoutingContext context) {
+      this.delegate = context;
     }
 
-    @Override public io.vertx.core.http.HttpServerResponse unwrap() {
+    @Override public Throwable error() {
+      return delegate.failure();
+    }
+
+    @Override public RoutingContext unwrap() {
       return delegate;
     }
 
     @Override public int statusCode() {
-      return delegate.getStatusCode();
+      return delegate.response().getStatusCode();
     }
 
     @Override public String method() {
-      return method;
+      return delegate.request().rawMethod();
     }
 
     @Override public String route() {
-      return httpRoute;
+      String httpRoute = delegate.currentRoute().getPath();
+      return httpRoute != null ? httpRoute : "";
     }
   }
 }

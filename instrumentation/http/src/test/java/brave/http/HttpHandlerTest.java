@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.http;
 
 import brave.Span;
 import brave.SpanCustomizer;
+import brave.handler.FinishedSpanHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -107,6 +108,17 @@ public class HttpHandlerTest {
     verify(spanCustomizer).tag("http.status_code", "404");
     verify(spanCustomizer).tag("error", "404");
     verifyNoMoreInteractions(spanCustomizer);
+  }
+
+  /** Allows {@link FinishedSpanHandler} to see the error regardless of parsing. */
+  @Test public void handleFinish_errorRecordedInSpan() {
+    RuntimeException error = new RuntimeException("foo");
+    when(adapter.statusCodeAsInt(response)).thenReturn(404);
+    when(span.customizer()).thenReturn(spanCustomizer);
+
+    handler.handleFinish(adapter, response, error, span);
+
+    verify(span).error(error);
   }
 
   @Test public void handleFinish_parsesTagsInScope() {

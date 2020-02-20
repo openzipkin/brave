@@ -32,8 +32,8 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
-  static final Callback<Void> LOG_ON_ERROR_CALLBACK = new Callback<Void>() {
-    @Override public void onSuccess(Void aVoid) {
+  static final Callback<Integer> LOG_ON_ERROR_CALLBACK = new Callback<Integer>() {
+    @Override public void onSuccess(Integer statusCode) {
     }
 
     @Override public void onError(Throwable throwable) {
@@ -43,11 +43,17 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
   /**
    * This invokes a GET with the indicated path, but does not block until the response is complete.
-   * The callback should always be invoked. For example, if there is a cancelation without error,
-   * you should invoke the {@link Callback#onError(Throwable)} with your own {@link
-   * CancellationException}.
+   *
+   * <p>The success callback should always be invoked with the HTTP status code. If the
+   * implementation coerces a 500 code without an exception as an error, you should call the success
+   * callback directly.
+   *
+   * <p>One of success or failure callbacks must be invoked even on unexpected scenarios. For
+   * example, if there is a cancelation that didn't issue an error callback directly, you should
+   * invoke the {@link Callback#onError(Throwable)} with your own {@link CancellationException}.
    */
-  protected abstract void getAsync(C client, String path, Callback<Void> callback) throws Exception;
+  protected abstract void getAsync(C client, String path, Callback<Integer> callback)
+    throws Exception;
 
   /**
    * This tests that the parent is determined at the time the request was made, not when the request
@@ -97,8 +103,8 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     ScopedSpan parent = tracer().startScopedSpan("test");
     try {
-      getAsync(client, "/foo", new Callback<Void>() {
-        @Override public void onSuccess(Void success) {
+      getAsync(client, "/foo", new Callback<Integer>() {
+        @Override public void onSuccess(Integer statusCode) {
           result.add(currentTraceContext.get());
         }
 
@@ -126,9 +132,14 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     BlockingQueue<Object> result = new LinkedBlockingQueue<>();
     server.enqueue(new MockResponse());
 
-    getAsync(client, "/foo", new Callback<Void>() {
-      @Override public void onSuccess(Void success) {
-        result.add(currentTraceContext.get());
+    // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
+    // callback thread which would cause result.poll() to await max time.
+    Object nullSentinel = new Object();
+
+    getAsync(client, "/foo", new Callback<Integer>() {
+      @Override public void onSuccess(Integer statusCode) {
+        TraceContext context = currentTraceContext.get();
+        result.add(context != null ? context : nullSentinel);
       }
 
       @Override public void onError(Throwable throwable) {
@@ -139,9 +150,38 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     takeRequest();
 
     assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isNull();
+      .isSameAs(nullSentinel);
 
     assertThat(takeSpan().kind())
       .isEqualTo(Span.Kind.CLIENT);
+  }
+
+  @Test public void httpStatusCodeTagMatchesCallback() throws Exception {
+    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+    // Default policy only records non-success codes
+    int expectedStatusCode = 400;
+    server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));
+
+    getAsync(client, "/foo", new Callback<Integer>() {
+      @Override public void onSuccess(Integer statusCode) {
+        result.add(statusCode);
+      }
+
+      @Override public void onError(Throwable throwable) {
+        result.add(throwable);
+      }
+    });
+
+    takeRequest();
+
+    // Ensure the getAsync() method is implemented correctly
+    Object object = result.poll(1, TimeUnit.SECONDS);
+    assertThat(object).isInstanceOf(Integer.class);
+    int statusCodeFromCallback = (int) object;
+    assertThat(statusCodeFromCallback).isEqualTo(expectedStatusCode);
+
+    Span span = takeSpan();
+    assertThat(span.tags().get("http.status_code"))
+      .isEqualTo(String.valueOf(expectedStatusCode));
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.jaxrs2;
 
-import brave.jaxrs2.TracingClientFilter.HttpClientResponse;
+import brave.jaxrs2.TracingClientFilter.ClientResponseContextWrapper;
 import javax.ws.rs.client.ClientResponseContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,18 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpClientResponseTest {
+public class ClientResponseContextWrapperTest {
   @Mock ClientResponseContext response;
 
   @Test public void statusCode() {
     when(response.getStatus()).thenReturn(200);
 
-    assertThat(new HttpClientResponse(response).statusCode()).isEqualTo(200);
+    assertThat(new ClientResponseContextWrapper(response).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroWhenNegative() {
     when(response.getStatus()).thenReturn(-1);
 
-    assertThat(new HttpClientResponse(response).statusCode()).isZero();
+    assertThat(new ClientResponseContextWrapper(response).statusCode()).isZero();
   }
 }

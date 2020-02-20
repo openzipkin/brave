@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,10 +16,10 @@ package brave.jaxrs2;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
-import java.io.IOException;
 import javax.ws.rs.GET;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Response;
@@ -67,19 +67,21 @@ public class TestResource { // public for resteasy to inject
 
   @GET
   @Path("async")
-  public void async(@Suspended AsyncResponse response) throws IOException {
+  public void async(@Suspended AsyncResponse response) {
     new Thread(() -> response.resume(Response.status(200).build())).start();
   }
 
   @GET
   @Path("exception")
-  public Response disconnect() throws IOException {
-    throw new IOException();
+  public Response notReady() {
+    throw new WebApplicationException(new IllegalStateException("not ready"), 503);
   }
 
   @GET
   @Path("exceptionAsync")
-  public void disconnectAsync(@Suspended AsyncResponse response) throws IOException {
-    new Thread(() -> response.resume(new IOException())).start();
+  public void notReadyAsync(@Suspended AsyncResponse response) {
+    new Thread(() -> response.resume(
+      new WebApplicationException(new IllegalStateException("not ready"), 503)
+    )).start();
   }
 }

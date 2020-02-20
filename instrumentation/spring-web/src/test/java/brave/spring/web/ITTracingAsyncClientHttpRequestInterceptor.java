@@ -29,6 +29,7 @@ import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFacto
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.web.client.HttpStatusCodeException;
 import zipkin2.Callback;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,17 +71,21 @@ public class ITTracingAsyncClientHttpRequestInterceptor
   }
 
   @Override protected void getAsync(AsyncClientHttpRequestFactory client, String path,
-    Callback<Void> callback) {
+    Callback<Integer> callback) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForEntity(url(path), String.class)
       .addCallback(new ListenableFutureCallback<ResponseEntity<String>>() {
         @Override public void onFailure(Throwable throwable) {
-          callback.onError(throwable);
+          if (throwable instanceof HttpStatusCodeException) {
+            callback.onSuccess(((HttpStatusCodeException) throwable).getRawStatusCode());
+          } else {
+            callback.onError(throwable);
+          }
         }
 
         @Override public void onSuccess(ResponseEntity<String> entity) {
-          callback.onSuccess(null);
+          callback.onSuccess(entity.getStatusCodeValue());
         }
       });
   }

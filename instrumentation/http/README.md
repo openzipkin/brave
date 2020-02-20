@@ -24,16 +24,15 @@ Naming and tags are configurable in a library-agnostic way. For example,
 the same `HttpTracing` component configures OkHttp or Apache HttpClient
 identically.
 
-For example, to change the tagging policy for clients, you can do
-something like this:
+For example, to add a non-default tag for HTTP clients, you can do this:
 
 ```java
 httpTracing = httpTracing.toBuilder()
     .clientParser(new HttpClientParser() {
       @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.name(spanName(adapter, req)); // default span name
-        customizer.tag("http.url", adapter.url(req)); // the whole url, not just the path
+      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer span) {
+        super.request(adapter, req, span);
+        span.tag("http.url", req.url()); // add the url in addition to defaults
       }
     })
     .build();
@@ -49,14 +48,12 @@ Ex:
 ```java
 overrideSpanName = new HttpClientParser() {
   @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-    // If using JAX-RS, maybe we want to use the resource method
-    if (adapter instanceof ContainerAdapter) {
-      Method method = ((ContainerAdapter) adapter).resourceMethod(req);
-      return method.getName().toLowerCase();
+    // If using Armeria, maybe we want to reuse the request log name
+    if (req instanceof ServiceRequestContext) {
+      RequestLog requestLog = ((ServiceRequestContext) req).log();
+      return requestLog.name();
     }
-    // If not using framework-specific knowledge, we can use http
-    // attributes or go with the default.
-    return super.spanName(adapter, req);
+    return super.spanName(adapter, req); // otherwise, go with the defaults
   }
 };
 ```
@@ -101,10 +98,10 @@ httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
 
 ## Http Route
 The http route is an expression such as `/items/:itemId` representing an
-application endpoint. `HttpAdapter.route()` parses this from a response,
-returning the route that matched the request, empty if no route matched,
-or null if routes aren't supported. This value is either used to create
-a tag "http.route" or as an input to a span naming function.
+application endpoint. Implement `HttpServerResponse.route()` to return the
+route that matched the request, empty if no route matched, or null if routes
+aren't supported. This value is either used to create a tag "http.route" or as
+an input to a span naming function.
 
 ### Http route cardinality
 The http route groups similar requests together, so results in limited
@@ -161,17 +158,18 @@ You generally need to...
 5. Complete the span
 
 ```java
-Span span = handler.handleSend(new WrappedHttpClientRequest(request)); // 1.
-HttpClientResponse response = null;
+Span span = handler.handleSend(new HttpClientRequestWrapper(request)); // 1.
+Result result = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
-  result = invoke(request);
-  response = new WrappedHttpClientResponse(result); // 3.
-  return result;
+  return result = invoke(request); // 3.
 } catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
+  HttpClientResponseWrapper response = result != null
+    ? new HttpClientResponseWrapper(result, error)
+    : null;
   handler.handleReceive(response, error, span); // 5.
 }
 ```
@@ -197,7 +195,7 @@ public void onSchedule(HttpContext context) {
 public void onStart(HttpContext context, HttpClientRequest req) {
   TraceContext parent = context.getAttribute(TraceContext.class); // 2.
 
-  WrappedHttpClientRequest request = new WrappedHttpClientRequest(req);
+  HttpClientRequestWrapper request = new HttpClientRequestWrapper(req);
   Span span = handler.handleSendWithParent(request, parent); // 3.
 ```
 
@@ -208,9 +206,10 @@ The first step in developing http server instrumentation is implementing
 library. This ensures your instrumentation can extract headers, sample and
 control tags.
 
-With these two items, you now have the most important parts needed to
-trace your server library. You'll likely initialize the following in a
-constructor like so:
+With these two implemented, you have the most important parts needed to trace
+your server library. Initialize the HTTP server handler that uses the request
+and response types along with the tracer.
+
 ```java
 MyTracingInterceptor(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
@@ -229,78 +228,66 @@ You generally need to...
 5. Complete the span
 
 ```java
-Span span = handler.handleReceive(extractor, request); // 1.
+Span span = handler.handleReceive(new HttpServerRequestWrapper(request)); // 1.
+Result result = null;
 Throwable error = null;
-SpanInScope scope = tracer.withSpanInScope(span); // 2.
-try { // 2.
-  response = invoke(request); // 3.
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return result = process(request); // 3.
 } catch (RuntimeException | Error e) {
   error = e; // 4.
   throw e;
 } finally {
+  HttpServerResponseWrapper response = result != null
+    ? new HttpServerResponseWrapper(result, error)
+    : null;
   handler.handleSend(response, error, span); // 5.
-  scope.close();
 }
 ```
 
-### Supporting HttpAdapter.route(response)
+### Supporting HttpResponse.route()
 
-Although the route is associated with the request, not the response,
-it is parsed from the response object. The reason is that many server
-implementations process the request before they can identify the route.
+Although the route is associated with the request, not the response, it is
+parsed from the response object. The reason is that many server implementations
+process the request before they can identify the route.
 
-Instrumentation authors implement support via extending HttpAdapter
+Instrumentation authors implement support via extending `HttpResponse`
 accordingly. There are a few patterns which might help.
 
-#### Callback with non-final type
-When a framework uses an callback model, you are in control of the type
-being parsed. If the response type isn't final, simply subclass it with
-the route data.
+#### Servlet based libraries
+'brave-instrumentation-servlet' includes the type `HttpServletResponseWrapper`.
+This looks for the request attribute "http.route", which can be set in any way.
 
-For example, if Spring MVC, it would be this:
+For example, Spring WebMVC can add the route using `HandlerInterceptorAdapter`.
+This is how our 'brave-instrumentation-spring-webmvc' works:
+
 ```java
-    // check for a wrapper type which holds the template
-    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter() {
-      @Override public String template(HttpServletResponse response) {
-        return response instanceof HttpServletResponseWithTemplate
-            ? ((HttpServletResponseWithTemplate) response).route : null;
-      }
-
-      @Override public String toString() {
-        return "WebMVCAdapter{}";
-      }
-    });
-
---snip--
-
-// when parsing the response, scope the route from the request
-
-    Object template = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
-    if (route != null) {
-      response = new HttpServletResponseWithTemplate(response, route.toString());
-    }
-    handler.handleSend(response, ex, span);
+static void setHttpRouteAttribute(HttpServletRequest request) {
+  Object httpRoute = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
+  request.setAttribute("http.route", httpRoute != null ? httpRoute.toString() : "");
+}
 ```
 
-#### Callback with final type
-If the response type is final, you may be able to make a copy and stash
-the route as a synthetic header. Since this is a copy of the response,
-there's no chance a user will receive this header in a real response.
+#### Adding a field to `HttpServerResponse`
+Another easy way is to add a field to your `HttpServerResponse` wrapper, and
+parse that in your implementation of `HttpServerResponse.route()`
 
-Here's an example for Play, where the header "brave-http-route" holds
-the route temporarily until the parser can read it.
+Here is an example for Play, which passes the template along with the `Result`
+to the HTTP server handler:
 ```scala
-    result.onComplete {
-      case Failure(t) => handler.handleSend(null, t, span)
-      case Success(r) => {
-        // add a synthetic header if there was a routing path set
-        var resp = template.map(t => r.withHeaders("brave-http-route" -> t)).getOrElse(r)
-        handler.handleSend(resp, null, span)
-      }
-    }
+var template = req.attrs.get(Router.Attrs.HandlerDef).map(_.path)
+
 --snip--
-    override def route(response: Result): String =
-      response.header.headers.apply("brave-http-route")
+
+result.onComplete {
+  case Failure(t) => handler.handleSend(null, t, span)
+  case Success(r) => {
+    handler.handleSend(new ResultWrapper(result, template), null, span)
+  }
+}
+
+--snip--
+  override def route(): String =
+    template.map(t => StringUtils.replace(t, "<[^/]+>", "")).getOrElse("")
 ```
 
 #### Common mistakes

@@ -18,11 +18,12 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.servlet.HttpServletRequestWrapper;
+import brave.servlet.HttpServletResponseWrapper;
 import spark.ExceptionHandler;
 import spark.Filter;
-import spark.Request;
-import spark.Response;
 
 public final class SparkTracing {
   public static SparkTracing create(Tracing tracing) {
@@ -43,94 +44,36 @@ public final class SparkTracing {
 
   public Filter before() {
     return (request, response) -> {
-      Span span = handler.handleReceive(new HttpServerRequest(request));
+      // Add servlet attribute "http.route" if this or similar is merged:
+      // https://github.com/perwendel/spark/pull/1126
+      Span span = handler.handleReceive(HttpServletRequestWrapper.create(request.raw()));
       request.attribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
     };
   }
 
   public Filter afterAfter() {
-    return (request, response) -> {
+    return (req, res) -> {
       Span span = tracer.currentSpan();
       if (span == null) return;
-      handler.handleSend(new HttpServerResponse(response, request.requestMethod()), null, span);
-      ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+      HttpServerResponse response = HttpServletResponseWrapper.create(req.raw(), res.raw(), null);
+      handler.handleSend(response, response.error(), span);
+      ((SpanInScope) req.attribute(SpanInScope.class.getName())).close();
     };
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
-    return (error, request, response) -> {
+    return (error, req, res) -> {
       try {
-        delegate.handle(error, request, response);
+        delegate.handle(error, req, res);
       } finally {
         Span span = tracer.currentSpan();
         if (span != null) {
-          HttpServerResponse res = new HttpServerResponse(response, request.requestMethod());
-          handler.handleSend(res, error, span);
-          ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+          HttpServerResponse response =
+            HttpServletResponseWrapper.create(req.raw(), res.raw(), error);
+          handler.handleSend(response, response.error(), span);
+          ((SpanInScope) req.attribute(SpanInScope.class.getName())).close();
         }
       }
     };
-  }
-
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
-    final Request delegate;
-
-    HttpServerRequest(Request delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override public Request unwrap() {
-      return delegate;
-    }
-
-    @Override public boolean parseClientIpAndPort(Span span) {
-      return span.remoteIpAndPort(delegate.raw().getRemoteAddr(), delegate.raw().getRemotePort());
-    }
-
-    @Override public String method() {
-      return delegate.requestMethod();
-    }
-
-    @Override public String path() {
-      return delegate.pathInfo();
-    }
-
-    @Override public String url() {
-      String baseUrl = delegate.url();
-      if (delegate.queryString() != null && !delegate.queryString().isEmpty()) {
-        return baseUrl + "?" + delegate.queryString();
-      }
-      return baseUrl;
-    }
-
-    @Override public String header(String name) {
-      return delegate.raw().getHeader(name);
-    }
-  }
-
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final Response delegate;
-    final String method;
-
-    HttpServerResponse(Response delegate, String method) {
-      this.delegate = delegate;
-      this.method = method;
-    }
-
-    @Override public Response unwrap() {
-      return delegate;
-    }
-
-    @Override public String method() {
-      return method;
-    }
-
-    @Override public String route() {
-      return null; // Update if this or similar merged https://github.com/perwendel/spark/pull/1126
-    }
-
-    @Override public int statusCode() {
-      return delegate.status();
-    }
   }
 }

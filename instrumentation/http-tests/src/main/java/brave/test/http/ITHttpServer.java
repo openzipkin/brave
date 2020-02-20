@@ -14,17 +14,21 @@
 package brave.test.http;
 
 import brave.SpanCustomizer;
+import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -387,38 +391,90 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
-  public void reportsSpanOnException() throws Exception {
-    reportsSpanOnException("/exception");
-  }
-
-  @Test
-  public void reportsSpanOnException_async() throws Exception {
-    reportsSpanOnException("/exceptionAsync");
-  }
-
-  Span reportsSpanOnException(String path) throws Exception {
-    get(path);
-
-    return takeSpan();
-  }
-
-  @Test
-  public void addsErrorTagOnException() throws Exception {
-    addsErrorTagOnException("/exception");
-  }
-
-  @Test
-  public void addsErrorTagOnException_async() throws Exception {
-    addsErrorTagOnException("/exceptionAsync");
-  }
-
-  @Test
   public void httpPathTagExcludesQueryParams() throws Exception {
     get("/foo?z=2&yAA=1");
 
     Span span = takeSpan();
     assertThat(span.tags())
       .containsEntry("http.path", "/foo");
+  }
+
+  /**
+   * Some synchronous frameworks have limited means to adjust the HTTP status code upon raising an
+   * exception. When this is the case, use the following built-in exception:
+   *
+   * <p><pre>{@code
+   *   throw new UnavailableException("not ready", 1); // implies 503
+   * }</pre>
+   */
+  @Test
+  public void httpStatusCodeTagMatchesResponse_onException() throws Exception {
+    httpStatusCodeTagMatchesResponse_onException("/exception");
+  }
+
+  @Test
+  public void httpStatusCodeTagMatchesResponse_onException_async() throws Exception {
+    httpStatusCodeTagMatchesResponse_onException("/exceptionAsync");
+  }
+
+  Span httpStatusCodeTagMatchesResponse_onException(String path) throws Exception {
+    Response response = get(path);
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+      .containsEntry("http.status_code", String.valueOf(response.code()));
+
+    return span;
+  }
+
+  @Test
+  public void errorTag_exceptionOverridesHttpStatus() throws Exception {
+    errorTag_exceptionOverridesHttpStatus("/exception");
+  }
+
+  @Test
+  public void errorTag_exceptionOverridesHttpStatus_async() throws Exception {
+    errorTag_exceptionOverridesHttpStatus("/exceptionAsync");
+  }
+
+  void errorTag_exceptionOverridesHttpStatus(String path) throws Exception {
+    get(path);
+
+    Span span = takeSpan();
+    assertThat(span.tags().get("error"))
+      .contains("not ready"); // some controllers format the exception
+  }
+
+  @Test
+  public void finishedSpanHandlerSeesException() throws Exception {
+    finishedSpanHandlerSeesException("/exception");
+  }
+
+  @Test
+  public void finishedSpanHandlerSeesException_async() throws Exception {
+    finishedSpanHandlerSeesException("/exceptionAsync");
+  }
+
+  /**
+   * This ensures custom finished span handlers can see the actual exception thrown, not just the
+   * "error" tag value.
+   */
+  void finishedSpanHandlerSeesException(String path) throws Exception {
+    AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
+    httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
+      .addFinishedSpanHandler(new FinishedSpanHandler() {
+        @Override public boolean handle(TraceContext context, MutableSpan span) {
+          caughtThrowable.set(span.error());
+          return true;
+        }
+      })
+      .build());
+    init();
+
+    get(path);
+    takeSpan();
+
+    assertThat(caughtThrowable.get()).isNotNull();
   }
 
   protected Response get(String path) throws Exception {
@@ -428,9 +484,14 @@ public abstract class ITHttpServer extends ITHttp {
   protected Response get(Request request) throws Exception {
     Response response = call(request);
     if (response.code() == 404) {
-      // TODO: jetty isn't registering the tracing filter for all paths!
-      spans.poll(100, TimeUnit.MILLISECONDS);
-      throw new AssumptionViolatedException(request.url().encodedPath() + " not supported");
+      Span span = spans.poll(100, TimeUnit.MILLISECONDS);
+      if (span == null) {
+        // In this case, the 404 path is not instrumented. For example, in Spring WebMVC 2.5.
+        // We don't fail here because the primary test here is not span reporting.
+      }
+      throw new AssumptionViolatedException(
+        response.request().url().encodedPath() + " not supported"
+      );
     }
     return response;
   }
@@ -442,6 +503,9 @@ public abstract class ITHttpServer extends ITHttp {
 
   /** like {@link #get(Request)} except doesn't throw unsupported on not found */
   Response call(Request request) throws IOException {
+    // Particularly during async debugging, knowing which test invoked a request is helpful.
+    request = request.newBuilder().header("test", testName.getMethodName()).build();
+
     try (Response response = client.newCall(request).execute()) {
       if (!HttpHeaders.promisesBody(response)) return response;
 
@@ -454,11 +518,5 @@ public abstract class ITHttpServer extends ITHttp {
       }
       return response.newBuilder().body(toReturn).build();
     }
-  }
-
-  private void addsErrorTagOnException(String path) throws Exception {
-    Span span = reportsSpanOnException(path);
-    assertThat(span.tags())
-      .containsKey("error");
   }
 }

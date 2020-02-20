@@ -50,13 +50,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
       <scope>test</scope>
-      <exclusions>
-        <!-- sparkjava provides its own jetty -->
-        <exclusion>
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
   </dependencies>
 

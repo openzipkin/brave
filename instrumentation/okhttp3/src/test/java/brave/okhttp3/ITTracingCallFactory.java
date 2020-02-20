@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -62,7 +61,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override
-  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Void> callback) {
+  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Integer> callback) {
     client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
@@ -70,7 +69,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
         }
 
         @Override public void onResponse(Call call, Response response) {
-          callback.onSuccess(null);
+          callback.onSuccess(response.code());
         }
       });
   }

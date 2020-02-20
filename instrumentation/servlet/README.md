@@ -92,8 +92,9 @@ public class DelegatingTracingFilter implements Filter {
 
 ## Collaborating with `TracingFilter`
 
-`TracingFilter` sets the servlet attributes so that you can access span
-data without relying on implicit context:
+`TracingFilter` adds some utilities as request attributes, so that you
+can read the trace context or write span data with less coupling. These
+attributes have the same name as their corresponding Java types:
 * `brave.SpanCustomizer` - add tags or rename the span without a tracer
 * `brave.propagation.TraceContext` - shows trace IDs and any extra data
 
@@ -103,7 +104,18 @@ SpanCustomizer customizer = (SpanCustomizer) request.getAttribute(SpanCustomizer
 if (customizer != null) customizer.tag("platform", "XX");
 ```
 
-`TracingFilter` also looks for the attribute "http.route". When present,
-this is available to normal parsing, for example a route-base span name.
-This feature allows frameworks like spring-webmvc to contribute
-controller information with less code duplication.
+`TracingFilter` looks for request attributes when completing a span.
+When integrating higher level frameworks, set the following attributes:
+
+* "http.route" - A string representing the route which this request matched or
+                 "" (empty string), if there was no match. Ex "/users/{userId}"
+                 Only set "http.route" when routing is supported!
+* "error" - An instance of `Throwable` raised when processing a user handler.
+            This is only necessary when the error is not propagated to the
+            Servlet layer.
+
+Ex. To copy the Spring match pattern as the "http.route":
+```java
+Object httpRoute = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
+request.setAttribute("http.route", httpRoute != null ? httpRoute.toString() : "");
+```

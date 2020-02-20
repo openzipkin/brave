@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -11,11 +11,11 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.netty.http;
+package brave.httpasyncclient;
 
-import brave.netty.http.TracingHttpServerHandler.HttpServerResponse;
-import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import brave.httpasyncclient.TracingHttpAsyncClientBuilder.HttpResponseWrapper;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -25,18 +25,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpServerResponseTest {
+public class HttpResponseWrapperTest {
   @Mock HttpResponse response;
-  @Mock HttpResponseStatus status;
+  @Mock StatusLine statusLine;
 
-  @Test public void statusCodeAsInt() {
-    when(response.status()).thenReturn(status);
-    when(status.code()).thenReturn(200);
+  @Test public void statusCode() {
+    when(response.getStatusLine()).thenReturn(statusLine);
+    when(statusLine.getStatusCode()).thenReturn(200);
 
-    assertThat(new HttpServerResponse(response).statusCode()).isEqualTo(200);
+    assertThat(new HttpResponseWrapper(response).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCodeAsInt_zeroNoResponse() {
-    assertThat(new HttpServerResponse(response).statusCode()).isZero();
+  @Test public void statusCode_zeroWhenNoStatusLine() {
+    assertThat(new HttpResponseWrapper(response).statusCode()).isZero();
   }
 }

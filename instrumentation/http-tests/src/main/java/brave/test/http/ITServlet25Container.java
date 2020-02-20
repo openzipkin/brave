@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,9 +21,11 @@ import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,6 +39,10 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet25Container extends ITServletContainer {
+
+  protected ITServlet25Container(ServletContainer.ServerController serverController) {
+    super(serverController);
+  }
 
   static class StatusServlet extends HttpServlet {
     final int status;
@@ -71,9 +77,13 @@ public abstract class ITServlet25Container extends ITServletContainer {
   }
 
   static class ExceptionServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-      throw new IOException(); // null exception message!
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+      throws UnavailableException {
+      // Change the status from 500 to 503
+      req.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 503);
+      // TODO: org.eclipse.jetty.server.HttpChannelState.onError() clobbers ^^ and hard-codes
+      // status based on servlet types.
+      throw new UnavailableException("not ready", 1 /* temporary implies 503 */);
     }
   }
 

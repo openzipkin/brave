@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,13 +22,11 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 
 public class ITTracingFilter extends ITServlet3Container {
 
-  @Override
-  protected Filter newTracingFilter() {
+  @Override protected Filter newTracingFilter() {
     return TracingFilter.create(httpTracing);
   }
 
-  @Override
-  protected void addFilter(ServletContextHandler handler, Filter filter) {
+  @Override protected void addFilter(ServletContextHandler handler, Filter filter) {
     FilterRegistration.Dynamic filterRegistration =
       handler.getServletContext().addFilter(filter.getClass().getSimpleName(), filter);
     filterRegistration.setAsyncSupported(true);

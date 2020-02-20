@@ -53,7 +53,6 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
   // Do not use @Override annotation to avoid compatibility issue version < 4.1
   public void addCallback(SuccessCallback<? super T> successCallback,
     FailureCallback failureCallback) {
-    delegate.addCallback(successCallback, failureCallback);
     delegate.addCallback(
       successCallback != null
         ? new TraceContextSuccessCallback<>(successCallback, this)

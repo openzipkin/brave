@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,8 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -43,7 +45,7 @@ public final class TracingFilter implements Filter {
 
   final ServletRuntime servlet = ServletRuntime.get();
   final CurrentTraceContext currentTraceContext;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingFilter(HttpTracing httpTracing) {
     currentTraceContext = httpTracing.tracing().currentTraceContext();
@@ -53,8 +55,8 @@ public final class TracingFilter implements Filter {
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
     throws IOException, ServletException {
-    HttpServletRequest httpRequest = (HttpServletRequest) request;
-    HttpServletResponse httpResponse = servlet.httpServletResponse(response);
+    HttpServletRequest req = (HttpServletRequest) request;
+    HttpServletResponse res = servlet.httpServletResponse(response);
 
     // Prevent duplicate spans for the same request
     TraceContext context = (TraceContext) request.getAttribute(TraceContext.class.getName());
@@ -69,7 +71,7 @@ public final class TracingFilter implements Filter {
       return;
     }
 
-    Span span = handler.handleReceive(new HttpServerRequest(httpRequest));
+    Span span = handler.handleReceive(new HttpServletRequestWrapper(req));
 
     // Add attributes for explicit access to customization or span context
     request.setAttribute(SpanCustomizer.class.getName(), span.customizer());
@@ -79,15 +81,17 @@ public final class TracingFilter implements Filter {
     Scope scope = currentTraceContext.newScope(span.context());
     try {
       // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
-      chain.doFilter(httpRequest, httpResponse);
-    } catch (IOException | ServletException | RuntimeException | Error e) {
+      chain.doFilter(req, res);
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      if (servlet.isAsync(httpRequest)) { // we don't have the actual response, handle later
-        servlet.handleAsync(handler, httpRequest, httpResponse, span);
-      } else { // we have a synchronous response, so we can finish the span
-        handler.handleSend(servlet.httpServerResponse(httpRequest, httpResponse), error, span);
+      // When async, even if we caught an exception, we don't have the final response: defer
+      if (servlet.isAsync(req)) {
+        servlet.handleAsync(handler, req, res, span);
+      } else { // we have a synchronous response: finish the span
+        HttpServerResponse responseWrapper = HttpServletResponseWrapper.create(req, res, error);
+        handler.handleSend(responseWrapper, responseWrapper.error(), span);
       }
       scope.close();
     }
@@ -97,41 +101,5 @@ public final class TracingFilter implements Filter {
   }
 
   @Override public void init(FilterConfig filterConfig) {
-  }
-
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
-    final HttpServletRequest delegate;
-
-    HttpServerRequest(HttpServletRequest delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override public HttpServletRequest unwrap() {
-      return delegate;
-    }
-
-    @Override public boolean parseClientIpAndPort(Span span) {
-      return span.remoteIpAndPort(delegate.getRemoteAddr(), delegate.getRemotePort());
-    }
-
-    @Override public String method() {
-      return delegate.getMethod();
-    }
-
-    @Override public String path() {
-      return delegate.getRequestURI();
-    }
-
-    @Override public String url() {
-      StringBuffer url = delegate.getRequestURL();
-      if (delegate.getQueryString() != null && !delegate.getQueryString().isEmpty()) {
-        url.append('?').append(delegate.getQueryString());
-      }
-      return url.toString();
-    }
-
-    @Override public String header(String name) {
-      return delegate.getHeader(name);
-    }
   }
 }

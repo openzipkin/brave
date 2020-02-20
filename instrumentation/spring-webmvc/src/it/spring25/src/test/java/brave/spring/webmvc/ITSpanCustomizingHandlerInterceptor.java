@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,10 +16,15 @@ package brave.spring.webmvc;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.test.http.ITServletContainer;
+import brave.test.http.ServletContainer;
 import java.io.IOException;
 import java.util.EnumSet;
+import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.DispatcherType;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.bio.SocketConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AssumptionViolatedException;
@@ -37,6 +42,25 @@ import static org.springframework.web.servlet.DispatcherServlet.HANDLER_ADAPTER_
 import static org.springframework.web.servlet.DispatcherServlet.HANDLER_MAPPING_BEAN_NAME;
 
 public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
+  public ITSpanCustomizingHandlerInterceptor() {
+    super(new Jetty7ServerController());
+  }
+
+  /** Overridden to support Jetty 7.x (that uses Servlet 2.5) */
+  static final class Jetty7ServerController implements ServletContainer.ServerController {
+    @Override public Server newServer(int port) {
+      Server result = new Server();
+      SocketConnector connector = new SocketConnector();
+      connector.setMaxIdleTime(1000 * 60 * 60);
+      connector.setPort(port);
+      result.setConnectors(new Connector[] {connector});
+      return result;
+    }
+
+    @Override public int getLocalPort(Server server) {
+      return server.getConnectors()[0].getLocalPort();
+    }
+  }
 
   @Override public void notFound() {
     throw new AssumptionViolatedException("TODO: add MVC handling for not found");
@@ -77,8 +101,8 @@ public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/exception")
-    public void disconnect() throws IOException {
-      throw new IOException();
+    public void notReady() throws UnavailableException {
+      throw new UnavailableException("not ready", 1 /* temporary implies 503 */);
     }
   }
 

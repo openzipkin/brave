@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -36,7 +37,40 @@ public class HttpServerRequestTest {
   HttpServerRequest.ToHttpAdapter toAdapter;
   HttpServerRequest.FromHttpAdapter<Object> fromAdapter;
 
-  @Before public void callRealMethod() {
+  @Test public void parseClientIpAndPort_prefersXForwardedFor() {
+    when(serverRequest.header("X-Forwarded-For")).thenReturn("1.2.3.4");
+
+    when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
+    when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();
+
+    serverRequest.parseClientIpAndPort(span);
+
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void parseClientIpAndPort_picksFirstXForwardedFor() {
+    when(serverRequest.header("X-Forwarded-For")).thenReturn("1.2.3.4,3.4.5.6");
+
+    when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
+    when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();
+
+    serverRequest.parseClientIpAndPort(span);
+
+    verify(span).remoteIpAndPort("1.2.3.4", 0);
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void parseClientIpAndPort_skipsOnNoIp() {
+    when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
+    when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();
+
+    serverRequest.parseClientIpAndPort(span);
+
+    verifyNoMoreInteractions(span);
+  }
+
+  @Before public void setup() {
     when(serverRequest.unwrap()).thenReturn(request);
     toAdapter = new HttpServerRequest.ToHttpAdapter(serverRequest);
     fromAdapter = new HttpServerRequest.FromHttpAdapter<>(adapter, request);

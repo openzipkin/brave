@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,9 +17,11 @@ import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import java.util.List;
 import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ExtendedUriInfo;
+import org.glassfish.jersey.server.internal.process.MappableException;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -27,7 +29,6 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 import org.glassfish.jersey.uri.UriTemplate;
 
 import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.FINISHED;
-import static org.glassfish.jersey.server.monitoring.RequestEvent.Type.REQUEST_MATCHED;
 
 /**
  * Adds application-tier data to an existing http span via {@link EventParser}. This also sets the
@@ -65,16 +66,32 @@ public class SpanCustomizingApplicationEventListener
 
   @Override public void onEvent(RequestEvent event) {
     // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
-    if (event.getType() != REQUEST_MATCHED && event.getType() != FINISHED) return;
+    if (event.getType() != FINISHED) return;
     ContainerRequest request = event.getContainerRequest();
-    SpanCustomizer span = (SpanCustomizer) request.getProperty(SpanCustomizer.class.getName());
-    if (span == null) return;
-    if (event.getType() != REQUEST_MATCHED) {
-      parser.requestMatched(event, span);
-      return;
+    Object maybeSpan = request.getProperty(SpanCustomizer.class.getName());
+    if (!(maybeSpan instanceof SpanCustomizer)) return;
+
+    // Set the HTTP route attribute so that TracingFilter can see it
+    request.setProperty("http.route", route(request));
+
+    Throwable error = unwrapError(event);
+    // Set the error attribute so that TracingFilter can see it
+    if (error != null && request.getProperty("error") == null) request.setProperty("error", error);
+
+    parser.requestMatched(event, (SpanCustomizer) maybeSpan);
+  }
+
+  @Nullable static Throwable unwrapError(RequestEvent event) {
+    Throwable error = event.getException();
+    // For example, if thrown in an async controller
+    if (error instanceof MappableException && error.getCause() != null) {
+      error = error.getCause();
     }
-    // Set the route attribute on completion to avoid any thread visibility issues reading it
-    request.setProperty("http.route", route(event.getContainerRequest()));
+    // MappableException can wrap a WebApplicationException!
+    if (error instanceof WebApplicationException && error.getCause() != null) {
+      error = error.getCause();
+    }
+    return error;
   }
 
   /**

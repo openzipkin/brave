@@ -60,6 +60,9 @@ abstract class HttpHandler {
   <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
     @Nullable Throwable error, Span span) {
     if (span.isNoop()) return;
+
+    if (error != null) span.error(error); // Ensures MutableSpan.error() for FinishedSpanHandler
+
     long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
 
     // Scope the trace context so that log statements are valid and also parse code can use

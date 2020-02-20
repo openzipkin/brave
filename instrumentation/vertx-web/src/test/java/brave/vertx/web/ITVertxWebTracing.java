@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -79,7 +79,7 @@ public class ITVertxWebTracing extends ITHttpServer {
       ctx.response().end("happy");
     });
     router.route("/exception").handler(ctx -> {
-      ctx.fail(new Exception());
+      ctx.fail(503, new IllegalStateException("not ready"));
     });
     router.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));
@@ -96,7 +96,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     });
     router.mountSubRouter("/nested", subrouter);
     router.route("/exceptionAsync").handler(ctx -> {
-      ctx.request().endHandler(v -> ctx.fail(new Exception()));
+      ctx.request().endHandler(v -> ctx.fail(503, new IllegalStateException("not ready")));
     });
 
     Handler<RoutingContext> routingContextHandler =

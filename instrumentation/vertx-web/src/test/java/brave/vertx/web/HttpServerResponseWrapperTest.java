@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,9 @@
  */
 package brave.vertx.web;
 
-import brave.vertx.web.TracingRoutingContextHandler.HttpServerResponse;
+import brave.vertx.web.TracingRoutingContextHandler.HttpServerResponseWrapper;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.RoutingContext;
 import org.junit.Before;
@@ -27,10 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpServerResponseTest {
+public class HttpServerResponseWrapperTest {
   @Mock RoutingContext context;
   @Mock HttpServerRequest request;
-  @Mock io.vertx.core.http.HttpServerResponse response;
+  @Mock HttpServerResponse response;
   @Mock Route currentRoute;
 
   @Before public void setup() {
@@ -42,31 +43,31 @@ public class HttpServerResponseTest {
   @Test public void method() {
     when(request.rawMethod()).thenReturn("GET");
 
-    assertThat(new HttpServerResponse(context).method())
+    assertThat(new HttpServerResponseWrapper(context).method())
       .isEqualTo("GET");
   }
 
   @Test public void route_emptyByDefault() {
-    assertThat(new HttpServerResponse(context).route())
+    assertThat(new HttpServerResponseWrapper(context).route())
       .isEmpty();
   }
 
   @Test public void route() {
     when(currentRoute.getPath()).thenReturn("/users/:userID");
 
-    assertThat(new HttpServerResponse(context).route())
+    assertThat(new HttpServerResponseWrapper(context).route())
       .isEqualTo("/users/:userID");
   }
 
   @Test public void statusCode() {
     when(response.getStatusCode()).thenReturn(200);
 
-    assertThat(new HttpServerResponse(context).statusCode())
+    assertThat(new HttpServerResponseWrapper(context).statusCode())
       .isEqualTo(200);
   }
 
   @Test public void statusCode_zero() {
-    assertThat(new HttpServerResponse(context).statusCode())
+    assertThat(new HttpServerResponseWrapper(context).statusCode())
       .isZero();
   }
 }
