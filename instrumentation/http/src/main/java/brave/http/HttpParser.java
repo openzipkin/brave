@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,8 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 
-public class HttpParser {
+/** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
+@Deprecated public class HttpParser {
   static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
 
   /**

@@ -64,16 +64,13 @@ for more.
 
 #### Span Data
 Naming and tags are configurable in a library-agnostic way. For example,
-to change the span and tag naming policy for clients, you can do this:
+to add a non-default tag for HTTP clients, you can do this:
 
 ```java
 httpTracing = httpTracing.toBuilder()
-    .clientParser(new HttpClientParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-        customizer.tag(TraceKeys.HTTP_URL, adapter.url(req)); // the whole url, not just the path
-      }
+    .clientRequestParser((req, context, span) -> {
+      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      span.tag("http.url", req.url()); // add the url in addition to defaults
     })
     .build();
 ```
@@ -86,12 +83,9 @@ to favicon (which many browsers automatically fetch).
 
 ```java
 httpTracing = httpTracing.toBuilder()
-    .serverSampler(new HttpSampler() {
-       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-         if (adapter.path(request).startsWith("/favicon")) return false;
-         return null; // defer decision to probabilistic on trace ID
-       }
-     })
+    .serverSampler(HttpRuleSampler.newBuilder()
+      .putRule(pathStartsWith("/favicon"), Sampler.NEVER_SAMPLE)
+      .build())
     .build();
 ```
 

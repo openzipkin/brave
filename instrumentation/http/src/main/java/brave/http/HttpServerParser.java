@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,11 +16,8 @@ package brave.http;
 import brave.SpanCustomizer;
 import brave.internal.Nullable;
 
-/**
- * Parses the request and response into reasonable defaults for http server spans. Subclass to
- * customize, for example, to add tags based on user ID.
- */
-public class HttpServerParser extends HttpParser {
+/** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
+@Deprecated public class HttpServerParser extends HttpParser {
 
   /**
    * Customizes the span based on the request received from the client.

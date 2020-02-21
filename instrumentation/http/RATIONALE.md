@@ -54,3 +54,23 @@ of adding more surface to the public api of the new types like
 `HttpServerAdapter`, when users look at public methods exposed, they would see
 all of the public methods defined in the adapter. This would cause confusion,
 something worse than adding an object allocation on these paths.
+
+## `HttpRequestParser` and `HttpResponseParser`
+
+`HttpRequestParser` and `HttpResponseParser`replace the deprecated type
+`HttpParser`. They use the `HttpRequest` and `HttpResponse` type directly,
+avoiding the deprecated `HttpAdapter`. By constraining these a single side
+of an  HTTP call, we can implement these easier, for example as lambdas.
+
+These also fixes a few problems noticed in practice with `HttpParser`:
+
+ * Implementation complexity of `ErrorParser`: this is now handled outside
+ * Overhead of scoping the current span: `TraceContext` is now a parameter
+ * Boxing of the HTTP status code: the integer form is now used
+
+## The `TraceContext` parameter of `HttpRequestParser` and `HttpResponseParser`
+
+The `TraceContext` parameter of the parsers provides advanced data handling,
+such as `ExtraFieldPropagation.get(context, "field-name")`. This is explicitly
+passed to avoid reliance on expensive span scoping which no longer occurs
+around parse events.
