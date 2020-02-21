@@ -130,7 +130,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     defaultInjector.inject(span.context(), request);
 
     Object unwrapped = request.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Handle bad implementation
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
     HttpAdapter<Object, Void> adapter = new HttpClientAdapters.ToRequestAdapter(request, unwrapped);
 
     return handleStart(adapter, unwrapped, span);
@@ -216,7 +216,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
     HttpClientResponse clientResponse = (HttpClientResponse) response;
     Object unwrapped = clientResponse.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Handle bad implementation
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
 
     handleFinish(new ToResponseAdapter(clientResponse, unwrapped), unwrapped, error, span);
   }

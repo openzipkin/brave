@@ -95,7 +95,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     Span span = nextSpan(defaultExtractor.extract(request), request);
 
     Object unwrapped = request.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Handle bad implementation
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
     HttpAdapter<Object, Void> adapter = new HttpServerAdapters.ToRequestAdapter(request, unwrapped);
 
     return handleStart(adapter, unwrapped, span);
@@ -166,7 +166,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
 
     HttpServerResponse serverResponse = (HttpServerResponse) response;
     Object unwrapped = serverResponse.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Handle bad implementation
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
 
     handleFinish(new ToResponseAdapter(serverResponse, unwrapped), unwrapped, error, span);
   }

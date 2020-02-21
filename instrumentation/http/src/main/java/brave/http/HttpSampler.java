@@ -77,7 +77,7 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
     if (request == null) return null;
 
     Object unwrapped = request.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Handle bad implementation
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
 
     HttpAdapter<Object, Void> adapter;
     if (request instanceof HttpClientRequest) {
