@@ -185,7 +185,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   HttpClientResponseWrapper response = result != null
     ? new HttpClientResponseWrapper(result, error)
     : null;
-  handler.handleReceive(response, error, span); // 5.
+  handler.handleReceive(response, span); // 5.
 }
 ```
 
@@ -255,7 +255,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   HttpServerResponseWrapper response = result != null
     ? new HttpServerResponseWrapper(result, error)
     : null;
-  handler.handleSend(response, error, span); // 5.
+  handler.handleSend(response, span); // 5.
 }
 ```
 

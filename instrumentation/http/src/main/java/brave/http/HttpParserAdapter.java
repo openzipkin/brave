@@ -14,7 +14,6 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -70,8 +69,7 @@ import static brave.http.HttpHandler.NULL_SENTINEL;
     }
   }
 
-  @Override public void parse(@Nullable HttpResponse response, @Nullable Throwable error,
-    TraceContext context, SpanCustomizer span) {
+  @Override public void parse(HttpResponse response, TraceContext context, SpanCustomizer span) {
     HttpAdapter<?, Object> adapter;
     Object resp;
 
@@ -102,7 +100,7 @@ import static brave.http.HttpHandler.NULL_SENTINEL;
 
     Scope ws = currentTraceContext.maybeScope(context);
     try {
-      parser.response(adapter, resp, error, span);
+      parser.response(adapter, resp, response.error(), span);
     } finally {
       ws.close();
     }

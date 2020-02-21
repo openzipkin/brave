@@ -66,7 +66,7 @@ final class TracingProtocolExec implements ClientExecChain {
       throw e;
     } finally {
       HttpResponseWrapper response = result != null ? new HttpResponseWrapper(result, error) : null;
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(response, span);
     }
   }
 

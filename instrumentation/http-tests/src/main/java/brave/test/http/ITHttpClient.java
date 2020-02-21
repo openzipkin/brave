@@ -219,8 +219,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
         span.tag("http.url", request.url()); // just the path is logged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
-      .clientResponseParser((response, error, context, span) -> {
-        HttpResponseParser.DEFAULT.parse(response, error, context, span);
+      .clientResponseParser((response, context, span) -> {
+        HttpResponseParser.DEFAULT.parse(response, context, span);
         span.tag("response_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .build().clientOf("remote-service");

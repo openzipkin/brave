@@ -86,7 +86,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       error = t;
       throw t;
     } finally {
-      handler.handleSend(new HttpResponseWrapper(response, error), error, span);
+      handler.handleSend(new HttpResponseWrapper(response), error, span);
       spanInScope.close();
     }
   }

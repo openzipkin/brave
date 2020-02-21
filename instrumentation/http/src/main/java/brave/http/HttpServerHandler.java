@@ -36,7 +36,7 @@ import brave.sampler.SamplerFunction;
  *   error = e;
  *   throw e;
  * } finally {
- *   handler.handleSend(response, error, span);
+ *   handler.handleSend(response, span);
  * }
  * }</pre>
  *

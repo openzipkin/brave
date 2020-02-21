@@ -60,14 +60,19 @@ abstract class HttpHandler {
 
     if (span.isNoop()) return;
 
-    if (error != null) span.error(error); // Ensures MutableSpan.error() for FinishedSpanHandler
+    if (error != null) {
+      span.error(error); // Ensures MutableSpan.error() for FinishedSpanHandler
 
-    long finishTimestamp = response != null ? response.finishTimestamp() : 0L;
+      if (response == null) { // There's nothing to parse: finish and return;
+        span.finish();
+        return;
+      }
+    }
 
-    SpanCustomizer customizer = span.customizer();
     try {
-      responseParser.parse(response, error, span.context(), customizer);
+      responseParser.parse(response, span.context(), span.customizer());
     } finally {
+      long finishTimestamp = response.finishTimestamp();
       if (finishTimestamp == 0L) {
         span.finish();
       } else {

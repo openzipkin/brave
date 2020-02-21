@@ -14,7 +14,9 @@
 package brave.http;
 
 import brave.ErrorParser;
+import brave.Span;
 import brave.SpanCustomizer;
+import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 
@@ -25,8 +27,8 @@ import brave.propagation.TraceContext;
  * <p>Here's an example that adds all HTTP status codes, not just the error ones.
  * <pre>{@code
  * httpTracing = httpTracing.toBuilder()
- *   .clientResponseParser((response, error, context, span) -> {
- *     HttpResponseParser.DEFAULT.parse(response, error, context, span);
+ *   .clientResponseParser((response, context, span) -> {
+ *     HttpResponseParser.DEFAULT.parse(response, context, span);
  *     int statusCode = response != null ? response.statusCode() : 0;
  *     if (statusCode > 0) span.tag("http.status_code", String.valueOf(statusCode));
  *   }).build();
@@ -41,15 +43,12 @@ public interface HttpResponseParser {
   /**
    * Implement to choose what data from the http response are parsed into the span representing it.
    *
-   * <p>Note: Either the response or error parameters may be null, but not both.
-   *
-   * <p>Note: This is called after {@link ErrorParser#error(Throwable, SpanCustomizer)}, which
-   * means any "error" tag set will likely overwrite what the error parser set.
+   * <p>Note: This is called after {@link Span#error(Throwable)}, which means any "error" tag set
+   * here will overwrite what the {@linkplain Tracing#errorParser() error parser} set.
    *
    * @see Default
    */
-  void parse(@Nullable HttpResponse response, @Nullable Throwable error, TraceContext context,
-    SpanCustomizer customizer);
+  void parse(HttpResponse response, TraceContext context, SpanCustomizer customizer);
 
   /**
    * The default data policy sets the span name to the HTTP route when available, and sets the and
@@ -71,19 +70,18 @@ public interface HttpResponseParser {
      * /users/:userId").
      *
      * <p>If you only want to change how exceptions are parsed, override {@link #error(int,
-     * Throwable, TraceContext, SpanCustomizer)} instead.
+     * Throwable, SpanCustomizer)} instead.
      */
-    @Override public void parse(@Nullable HttpResponse response, @Nullable Throwable error,
-      TraceContext context, SpanCustomizer customizer) {
+    @Override public void parse(HttpResponse response, TraceContext context, SpanCustomizer span) {
       int statusCode = 0;
       if (response != null) {
         statusCode = response.statusCode();
         String nameFromRoute = spanNameFromRoute(response, statusCode);
-        if (nameFromRoute != null) customizer.name(nameFromRoute);
+        if (nameFromRoute != null) span.name(nameFromRoute);
         String maybeStatus = maybeStatusAsString(statusCode, 299);
-        if (maybeStatus != null) customizer.tag("http.status_code", maybeStatus);
+        if (maybeStatus != null) span.tag("http.status_code", maybeStatus);
       }
-      error(statusCode, error, context, customizer);
+      error(statusCode, response.error(), span);
     }
 
     /** The intent of this is to by default add "http.status_code", when not a success code */
@@ -113,9 +111,8 @@ public interface HttpResponseParser {
      *
      * <p>Conventionally associated with the tag key "error"
      */
-    protected void error(int httpStatus, @Nullable Throwable error, TraceContext context,
-      SpanCustomizer customizer) {
-      if (error != null) return; // the call site used the ErrorParser
+    protected void error(int httpStatus, @Nullable Throwable error, SpanCustomizer span) {
+      if (error != null) return; // the call site used Span.error
 
       // Instrumentation error should not make span errors. We don't know the difference between a
       // library being unable to get the http status and a bad status (0). We don't classify zero as
@@ -127,7 +124,7 @@ public interface HttpResponseParser {
       // success range. 1xx-3xx are not errors. It is endpoint-specific if client codes like 404 are
       // in fact errors. That's why this is overridable.
       if (httpStatus < 100 || httpStatus > 399) {
-        customizer.tag("error", String.valueOf(httpStatus));
+        span.tag("error", String.valueOf(httpStatus));
       }
     }
   }

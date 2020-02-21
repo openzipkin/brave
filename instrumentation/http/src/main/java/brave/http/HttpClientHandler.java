@@ -39,7 +39,7 @@ import static brave.http.HttpClientAdapters.FromResponseAdapter;
  *   error = e;
  *   throw e;
  * } finally {
- *   handler.handleReceive(response, error, span);
+ *   handler.handleReceive(response, span);
  * }
  * }</pre>
  *

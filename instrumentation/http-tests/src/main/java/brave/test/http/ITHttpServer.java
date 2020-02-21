@@ -235,8 +235,8 @@ public abstract class ITHttpServer extends ITHttp {
         span.tag("http.url", request.url()); // just the path is logged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
-      .serverResponseParser((response, error, context, span) -> {
-        HttpResponseParser.DEFAULT.parse(response, error, context, span);
+      .serverResponseParser((response, context, span) -> {
+        HttpResponseParser.DEFAULT.parse(response, context, span);
         span.tag("response_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .build();
