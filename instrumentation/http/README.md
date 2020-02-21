@@ -168,7 +168,7 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
-3. Capture the result of the request
+3. Invoke the request
 4. Catch any errors
 5. Complete the span
 
@@ -185,7 +185,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   HttpClientResponseWrapper response = result != null
     ? new HttpClientResponseWrapper(result, error)
     : null;
-  handler.handleReceive(response, span); // 5.
+  handler.handleReceive(response, error, span); // 5.
 }
 ```
 
@@ -238,7 +238,7 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Extract any trace IDs from headers and start the span
 2. Put the span in scope so things like log integration works
-3. Invoke the request
+3. Process the request
 4. Catch any errors
 5. Complete the span
 
@@ -255,7 +255,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   HttpServerResponseWrapper response = result != null
     ? new HttpServerResponseWrapper(result, error)
     : null;
-  handler.handleSend(response, span); // 5.
+  handler.handleSend(response, error, span); // 5.
 }
 ```
 

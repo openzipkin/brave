@@ -25,18 +25,30 @@ import brave.sampler.SamplerFunction;
  * This standardizes a way to instrument http servers, particularly in a way that encourages use of
  * portable customizations via {@link HttpRequestParser} and {@link HttpResponseParser}.
  *
- * <p>This is an example of synchronous instrumentation:
+ * <p>Synchronous interception is the most straight forward instrumentation.
+ *
+ * <p>You generally need to:
+ * <ol>
+ *   <li>Extract any trace IDs from headers and start the span</li>
+ *   <li>Put the span in scope so things like log integration works</li>
+ *   <li>Process the request</li>
+ *   <li>Catch any errors</li>
+ *   <li>Complete the span</li>
+ * </ol>
  * <pre>{@code
- * Span span = handler.handleReceive(request);
+ * Span span = handler.handleReceive(new HttpServerRequestWrapper(request)); // 1.
+ * Result result = null;
  * Throwable error = null;
- * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
- *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
- *   response = invoke(request);
+ * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ *   return result = process(request); // 3.
  * } catch (RuntimeException | Error e) {
- *   error = e;
+ *   error = e; // 4.
  *   throw e;
  * } finally {
- *   handler.handleSend(response, span);
+ *   HttpServerResponseWrapper response = result != null
+ *     ? new HttpServerResponseWrapper(result, error)
+ *     : null;
+ *   handler.handleSend(response, error, span); // 5.
  * }
  * }</pre>
  *

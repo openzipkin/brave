@@ -28,18 +28,31 @@ import static brave.http.HttpClientAdapters.FromResponseAdapter;
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
  * portable customizations via {@link HttpRequestParser} and {@link HttpResponseParser}.
  *
- * <p>This is an example of synchronous instrumentation:
+ * <p>Synchronous interception is the most straight forward instrumentation.
+ *
+ * <p>You generally need to:
+ * <ol>
+ *   <li>Start the span and add trace headers to the request</li>
+ *   <li>Put the span in scope so things like log integration works</li>
+ *   <li>Invoke the request</li>
+ *   <li>Catch any errors</li>
+ *   <li>Complete the span</li>
+ * </ol>
+ *
  * <pre>{@code
- * Span span = handler.handleSend(request);
+ * Span span = handler.handleSend(new HttpClientRequestWrapper(request)); // 1.
+ * Result result = null;
  * Throwable error = null;
- * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
- *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
- *   response = invoke(request);
- * } catch (RuntimeException | Error e) {
- *   error = e;
+ * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ *   return result = invoke(request); // 3.
+ * } catch (Throwable e) {
+ *   error = e; // 4.
  *   throw e;
  * } finally {
- *   handler.handleReceive(response, span);
+ *   HttpClientResponseWrapper response = result != null
+ *     ? new HttpClientResponseWrapper(result, error)
+ *     : null;
+ *   handler.handleReceive(response, error, span); // 5.
  * }
  * }</pre>
  *
