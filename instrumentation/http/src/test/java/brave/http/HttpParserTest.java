@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpParserTest {
+@Deprecated public class HttpParserTest {
   @Mock HttpClientAdapter<Object, Object> adapter;
   @Mock SpanCustomizer customizer;
   Object request = new Object();

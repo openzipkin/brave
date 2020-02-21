@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,8 @@ import brave.Span;
 import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
+
+import static brave.http.HttpHandler.NULL_SENTINEL;
 
 /**
  * Decides whether to start a new trace based on http request properties such as path.
@@ -73,13 +75,18 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
 
   @Override @Nullable public Boolean trySample(HttpRequest request) {
     if (request == null) return null;
+
+    Object unwrapped = request.unwrap();
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
+
     HttpAdapter<Object, Void> adapter;
     if (request instanceof HttpClientRequest) {
-      adapter = new HttpClientRequest.ToHttpAdapter((HttpClientRequest) request);
+      adapter = new HttpClientAdapters.ToRequestAdapter((HttpClientRequest) request, unwrapped);
     } else {
-      adapter = new HttpServerRequest.ToHttpAdapter((HttpServerRequest) request);
+      adapter = new HttpServerAdapters.ToRequestAdapter((HttpServerRequest) request, unwrapped);
     }
-    return trySample(adapter, request.unwrap());
+
+    return trySample(adapter, unwrapped);
   }
 
   /**

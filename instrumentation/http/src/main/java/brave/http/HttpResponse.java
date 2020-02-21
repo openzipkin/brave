@@ -34,7 +34,7 @@ public abstract class HttpResponse extends Response {
    *
    * @since 5.10
    */
-  // TODO: see if we can return HttpRequest instead before cutting 5.10
+  // TODO: Consider `httpResponse.request()` and deprecating `httpResponse.method()` #1086
   @Nullable public String method() {
     return null;
   }

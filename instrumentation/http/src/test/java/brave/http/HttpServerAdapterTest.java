@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpServerAdapterTest {
+@Deprecated public class HttpServerAdapterTest {
   @Mock HttpServerAdapter<Object, Object> adapter;
   @Mock Span span;
   Object request = new Object();

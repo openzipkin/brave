@@ -105,9 +105,12 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     }
 
     @Override public boolean parseClientIpAndPort(Span span) {
-      if (remoteAddress.getAddress() == null) return false;
-      return span.remoteIpAndPort(Platform.get().getHostString(remoteAddress),
-        remoteAddress.getPort());
+      if (parseClientIpFromXForwardedFor(span)) return true;
+      if (remoteAddress == null || remoteAddress.getAddress() == null) return false;
+      return span.remoteIpAndPort(
+        Platform.get().getHostString(remoteAddress),
+        remoteAddress.getPort()
+      );
     }
 
     @Override public String method() {

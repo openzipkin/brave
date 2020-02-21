@@ -18,6 +18,7 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.servlet.HttpServletRequestWrapper;
@@ -35,7 +36,7 @@ public final class SparkTracing {
   }
 
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
     tracer = httpTracing.tracing().tracer();

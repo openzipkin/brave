@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,8 @@ package brave.http;
 
 import zipkin2.Endpoint;
 
-public abstract class HttpClientAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
+/** @deprecated Since 5.10, use {@link HttpClientRequest} and {@link HttpClientResponse} */
+@Deprecated public abstract class HttpClientAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
   /**
    * Returns true if an IP representing the client was readable.
    *

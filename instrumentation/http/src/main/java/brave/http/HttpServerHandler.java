@@ -16,6 +16,7 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
+import brave.http.HttpServerAdapters.ToResponseAdapter;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -92,7 +93,12 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
    */
   public Span handleReceive(HttpServerRequest request) {
     Span span = nextSpan(defaultExtractor.extract(request), request);
-    return handleStart(new HttpServerRequest.ToHttpAdapter(request), request.unwrap(), span);
+
+    Object unwrapped = request.unwrap();
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
+    HttpAdapter<Object, Void> adapter = new HttpServerAdapters.ToRequestAdapter(request, unwrapped);
+
+    return handleStart(adapter, unwrapped, span);
   }
 
   /**
@@ -112,7 +118,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     if (request instanceof HttpServerRequest) {
       serverRequest = (HttpServerRequest) request;
     } else {
-      serverRequest = new HttpServerRequest.FromHttpAdapter<>(adapter, request);
+      serverRequest = new HttpServerAdapters.FromRequestAdapter<>(adapter, request);
     }
     Span span = nextSpan(extractor.extract(carrier), serverRequest);
     return handleStart(adapter, request, span);
@@ -160,10 +166,8 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
 
     HttpServerResponse serverResponse = (HttpServerResponse) response;
     Object unwrapped = serverResponse.unwrap();
-    if (unwrapped == null) { // Handle bad implementation of HttpServerResponse
-      handleFinish(error, span);
-    } else {
-      handleFinish(new HttpServerResponse.Adapter(serverResponse), unwrapped, error, span);
-    }
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
+
+    handleFinish(new ToResponseAdapter(serverResponse, unwrapped), unwrapped, error, span);
   }
 }

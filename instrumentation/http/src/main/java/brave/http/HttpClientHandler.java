@@ -16,6 +16,8 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
+import brave.http.HttpClientAdapters.FromRequestAdapter;
+import brave.http.HttpClientAdapters.ToResponseAdapter;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
@@ -106,7 +108,8 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * Like {@link #handleSend(HttpClientRequest)}, except explicitly controls the parent of the
    * client span.
    *
-   * @param parent the parent of the client span representing this request, or null for a new trace.
+   * @param parent the parent of the client span representing this request, or null for a new
+   * trace.
    * @see Tracer#nextSpanWithParent(SamplerFunction, Object, TraceContext)
    * @since 5.10
    */
@@ -125,7 +128,12 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     if (request == null) throw new NullPointerException("request == null");
     if (span == null) throw new NullPointerException("span == null");
     defaultInjector.inject(span.context(), request);
-    return handleStart(new HttpClientRequest.ToHttpAdapter(request), request.unwrap(), span);
+
+    Object unwrapped = request.unwrap();
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
+    HttpAdapter<Object, Void> adapter = new HttpClientAdapters.ToRequestAdapter(request, unwrapped);
+
+    return handleStart(adapter, unwrapped, span);
   }
 
   /**
@@ -179,7 +187,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     if (request instanceof HttpClientRequest) {
       clientRequest = (HttpClientRequest) request;
     } else {
-      clientRequest = new HttpClientRequest.FromHttpAdapter<>(adapter, request);
+      clientRequest = new FromRequestAdapter<>(adapter, request);
     }
     return tracer.nextSpan(httpSampler, clientRequest);
   }
@@ -208,10 +216,8 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
     HttpClientResponse clientResponse = (HttpClientResponse) response;
     Object unwrapped = clientResponse.unwrap();
-    if (unwrapped == null) { // Handle bad implementation of HttpClientResponse
-      handleFinish(error, span);
-    } else {
-      handleFinish(new HttpClientResponse.Adapter(clientResponse), unwrapped, error, span);
-    }
+    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
+
+    handleFinish(new ToResponseAdapter(clientResponse, unwrapped), unwrapped, error, span);
   }
 }
