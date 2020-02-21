@@ -16,7 +16,6 @@ package brave.http;
 import brave.ErrorParser;
 import brave.SpanCustomizer;
 import brave.internal.Nullable;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 
 /**
@@ -44,8 +43,8 @@ public interface HttpResponseParser {
    *
    * <p>Note: Either the response or error parameters may be null, but not both.
    *
-   * <p>Note: This is called after {@link ErrorParser#error(Throwable, SpanCustomizer)}, which means
-   * any "error" tag set will likely overwrite what the error parser set.
+   * <p>Note: This is called after {@link ErrorParser#error(Throwable, SpanCustomizer)}, which
+   * means any "error" tag set will likely overwrite what the error parser set.
    *
    * @see Default
    */
@@ -101,9 +100,7 @@ public interface HttpResponseParser {
       String route = response.route();
       if (route == null) return null; // don't undo a valid name elsewhere
       if (!"".equals(route)) return method + " " + route;
-      if (statusCode / 100 == 3) return method + " redirected";
-      if (statusCode == 404) return method + " not_found";
-      return null; // unexpected
+      return catchAllName(statusCode, method);
     }
 
     /**
@@ -129,12 +126,28 @@ public interface HttpResponseParser {
       // Unlike success path tagging, we only want to indicate something as error if it is not in a
       // success range. 1xx-3xx are not errors. It is endpoint-specific if client codes like 404 are
       // in fact errors. That's why this is overridable.
-
-      // 1xx, 2xx, and 3xx codes are not all valid, but the math is good enough vs drift and opinion
-      // about individual codes in the range.
       if (httpStatus < 100 || httpStatus > 399) {
         customizer.tag("error", String.valueOf(httpStatus));
       }
+    }
+  }
+
+  /** Helps avoid high cardinality names for redirected or absent resources. */
+  // TODO: testme including status 304
+  @Nullable static String catchAllName(int statusCode, String method) {
+    switch (statusCode) {
+      // from https://tools.ietf.org/html/rfc7231#section-6.4
+      case 301:
+      case 302:
+      case 303:
+      case 305:
+      case 306:
+      case 307:
+        return method + " redirected";
+      case 404:
+        return method + " not_found";
+      default:
+        return null;
     }
   }
 }

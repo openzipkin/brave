@@ -60,7 +60,7 @@ Note that span name can be overwritten any time, for example, when
 parsing the response, which is the case when route-based names are used.
 
 This increased performance and allows easier access to extra fields. For
-example, a commonly request was to add extra fields as tags. This can now
+example, a common request was to add extra fields as tags. This can now
 be done in the parser instead of the FinishedSpanHandler, if desired.
 
 ### Extra fields

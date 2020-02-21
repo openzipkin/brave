@@ -17,7 +17,7 @@ import brave.ErrorParser;
 import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext;
 
-/** Added to allow us to keep compatabilty with deprecated {@link HttpTracing#serverParser()} */
+/** Added to allow us to keep compatibility with deprecated {@link HttpTracing#serverParser()} */
 @Deprecated final class HttpServerParserAdapter extends HttpServerParser {
   final HttpRequestParser requestParser;
   final HttpResponseParser responseParser;
@@ -63,7 +63,6 @@ import brave.propagation.CurrentTraceContext;
     } else {
       throw new AssertionError("programming bug");
     }
-    errorParser.error(error, customizer);
     responseParser.parse(response, error, currentTraceContext.get(), customizer);
   }
 }

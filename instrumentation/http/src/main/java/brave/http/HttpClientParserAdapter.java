@@ -63,7 +63,6 @@ import brave.propagation.CurrentTraceContext;
     } else {
       throw new AssertionError("programming bug");
     }
-    errorParser.error(error, customizer);
     responseParser.parse(response, error, currentTraceContext.get(), customizer);
   }
 }

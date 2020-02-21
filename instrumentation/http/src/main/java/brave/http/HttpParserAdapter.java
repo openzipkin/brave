@@ -38,8 +38,8 @@ import static brave.http.HttpHandler.NULL_SENTINEL;
     Object req;
 
     // The order matters here because the deprecated HttpClientHandler.create(httpTracing, adapter)
-    // can be used even with the new HttpRequest type. This means we have to check the HttpResponse
-    // type after checking to see if we are in an adapter scenario.
+    // can be used even with the HttpRequest type. This means we have to check the HttpRequest type
+    // after checking to see if we are in an adapter scenario.
     if (request instanceof HttpClientAdapters.FromRequestAdapter) {
       HttpClientAdapters.FromRequestAdapter wrapped =
         (HttpClientAdapters.FromRequestAdapter) request;
@@ -76,7 +76,7 @@ import static brave.http.HttpHandler.NULL_SENTINEL;
     Object resp;
 
     // The order matters here because the deprecated HttpClientHandler.create(httpTracing, adapter)
-    // can be used even with the new HttpResponse type. This means we have to check the HttpResponse
+    // can be used even with the HttpResponse type. This means we have to check the HttpResponse
     // type after checking to see if we are in an adapter scenario.
     if (response instanceof HttpClientAdapters.FromResponseAdapter) {
       HttpClientAdapters.FromResponseAdapter wrapped =

@@ -18,6 +18,8 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 
+import static brave.http.HttpResponseParser.catchAllName;
+
 /** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
 @Deprecated public class HttpParser {
   static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
@@ -120,9 +122,7 @@ import brave.internal.Nullable;
     String route = adapter.route(res);
     if (route == null) return null; // don't undo a valid name elsewhere
     if (!"".equals(route)) return method + " " + route;
-    if (statusCode / 100 == 3) return method + " redirected";
-    if (statusCode == 404) return method + " not_found";
-    return null; // unexpected
+    return catchAllName(statusCode, method);
   }
 
   /**

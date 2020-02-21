@@ -141,9 +141,9 @@ public abstract class ITHttpServer extends ITHttp {
   @Test public void customSampler() throws Exception {
     String path = "/foo";
 
-    SamplerFunction<HttpRequest> sampler = (HttpRuleSampler.newBuilder()
+    SamplerFunction<HttpRequest> sampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
-      .build());
+      .build();
 
     httpTracing = httpTracing.toBuilder().serverSampler(sampler).build();
     init();
@@ -235,10 +235,10 @@ public abstract class ITHttpServer extends ITHttp {
         span.tag("http.url", request.url()); // just the path is logged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
-      .serverResponseParser(((response, error, context, span) -> {
+      .serverResponseParser((response, error, context, span) -> {
         HttpResponseParser.DEFAULT.parse(response, error, context, span);
         span.tag("response_customizer.is_span", (span instanceof brave.Span) + "");
-      }))
+      })
       .build();
     init();
 
