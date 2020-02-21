@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,8 @@ package brave.http;
 
 import brave.Span;
 
-public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
+/** @deprecated Since 5.10, use {@link HttpServerRequest} and {@link HttpServerResponse} */
+@Deprecated public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp> {
   /**
    * @deprecated {@link #parseClientIpAndPort} addresses this functionality. This will be removed in
    * Brave v6.
@@ -24,27 +25,12 @@ public abstract class HttpServerAdapter<Req, Resp> extends HttpAdapter<Req, Resp
     return false;
   }
 
-  /**
-   * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add remote socket
-   * information about the client. By default, this tries to parse the {@link
-   * #parseClientIpFromXForwardedFor(Object, Span) forwarded IP}. Override to add client socket
-   * information when forwarded info is not available.
-   *
-   * <p>Aside: the ability to parse socket information on server request objects is likely even if
-   * it is not as likely on the client side. This is because client requests are often parsed before
-   * a network route is chosen, whereas server requests are parsed after the network layer.
-   *
-   * @since 5.2
-   */
+  /** @see HttpServerRequest#parseClientIpAndPort(Span) */
   public boolean parseClientIpAndPort(Req req, Span span) {
     return parseClientIpFromXForwardedFor(req, span);
   }
 
-  /**
-   * Returns the first value in the "X-Forwarded-For" header, or null if not present.
-   *
-   * @since 5.2
-   */
+  /** @see HttpServerRequest#parseClientIpFromXForwardedFor(Span) */
   public boolean parseClientIpFromXForwardedFor(Req req, Span span) {
     String forwardedFor = requestHeader(req, "X-Forwarded-For");
     if (forwardedFor == null) return false;

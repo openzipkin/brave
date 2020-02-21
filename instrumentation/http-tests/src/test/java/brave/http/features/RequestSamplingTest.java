@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,8 +14,6 @@
 package brave.http.features;
 
 import brave.Tracing;
-import brave.http.HttpAdapter;
-import brave.http.HttpSampler;
 import brave.http.HttpTracing;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
@@ -35,7 +33,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.neverSample;
-import static brave.sampler.SamplerFunctions.nullSafe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -53,11 +50,7 @@ public class RequestSamplingTest {
     .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
     // server starts traces under the path /api
-    .serverSampler(nullSafe(new HttpSampler() {
-      @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-        return adapter.path(request).startsWith("/api");
-      }
-    }))
+    .serverSampler((request) -> request.path().startsWith("/api"))
     // client doesn't start new traces
     .clientSampler(neverSample())
     .build();

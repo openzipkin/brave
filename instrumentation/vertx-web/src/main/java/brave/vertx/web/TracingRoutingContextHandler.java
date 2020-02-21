@@ -108,6 +108,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
 
     @Override public boolean parseClientIpAndPort(Span span) {
+      if (parseClientIpFromXForwardedFor(span)) return true;
       SocketAddress addr = delegate.remoteAddress();
       return span.remoteIpAndPort(addr.host(), addr.port());
     }

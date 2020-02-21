@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpServletAdapterTest {
+@Deprecated public class HttpServletAdapterTest {
   HttpServletAdapter adapter = new HttpServletAdapter();
   @Mock HttpServletRequest request;
   @Mock HttpServletResponse response;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,10 @@
  */
 package brave.http;
 
+import brave.Clock;
 import brave.Request;
 import brave.internal.Nullable;
+import brave.propagation.TraceContext;
 
 /**
  * Abstract request type used for parsing and sampling of http clients and servers.
@@ -24,21 +26,63 @@ import brave.internal.Nullable;
  * @since 5.8
  */
 public abstract class HttpRequest extends Request {
-  /** @see HttpAdapter#startTimestamp(Object) */
+  /**
+   * The timestamp in epoch microseconds of the beginning of this request or zero to take this
+   * implicitly from the current clock. Defaults to zero.
+   *
+   * <p>This is helpful in two scenarios: late parsing and avoiding redundant timestamp overhead.
+   * If a server span, this helps reach the "original" beginning of the request, which is always
+   * prior to parsing.
+   *
+   * <p>Note: Overriding has the same problems as using {@link brave.Span#start(long)}. For
+   * example, it can result in negative duration if the clock used is allowed to correct backwards.
+   * It can also result in misalignments in the trace, unless {@link brave.Tracing.Builder#clock(Clock)}
+   * uses the same implementation.
+   *
+   * @see HttpResponse#finishTimestamp()
+   * @see brave.Span#start(long)
+   * @see brave.Tracing#clock(TraceContext)
+   * @since 5.8
+   */
   public long startTimestamp() {
     return 0L;
   }
 
-  /** @see HttpAdapter#method(Object) */
+  /**
+   * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
+   *
+   * <p>Conventionally associated with the key "http.method"
+   *
+   * <h3>Note</h3>
+   * <p>It is part of the <a href="https://tools.ietf.org/html/rfc7231#section-4.1">HTTP RFC</a>
+   * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
+   * integration tests fail, but you will surprise any consumers who expect compliant results.
+   */
   @Nullable public abstract String method();
 
-  /** @see HttpAdapter#path(Object) */
+  /**
+   * The absolute http path, without any query parameters or null if unreadable. Ex.
+   * "/objects/abcd-ff"
+   *
+   * <p>Conventionally associated with the key "http.path"
+   *
+   * @see #url()
+   * @see HttpResponse#route()
+   */
   @Nullable public abstract String path();
 
-  /** @see HttpAdapter#url(Object) */
+  /**
+   * The entire URL, including the scheme, host and query parameters if available or null if
+   * unreadable.
+   *
+   * <p>Conventionally associated with the key "http.url"
+   *
+   * @see #path()
+   * @see HttpResponse#route()
+   */
   @Nullable public abstract String url();
 
-  /** @see HttpAdapter#requestHeader(Object, String) */
+  /** Returns one value corresponding to the specified header, or null. */
   @Nullable public abstract String header(String name);
 
   HttpRequest() { // sealed type: only client and server

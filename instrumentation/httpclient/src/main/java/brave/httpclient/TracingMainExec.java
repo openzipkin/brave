@@ -23,7 +23,9 @@ import brave.httpclient.TracingProtocolExec.HttpRequestWrapper;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import java.io.IOException;
+import java.net.InetAddress;
 import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -61,7 +63,7 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     if (span != null) {
       if (isRemote(context, span)) {
         if (serverName != null) span.remoteServiceName(serverName);
-        HttpAdapter.parseTargetAddress(request, span);
+        parseTargetAddress(request, span);
       } else {
         span.kind(null); // clear as cache hit
       }
@@ -71,5 +73,17 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
 
   boolean isRemote(HttpContext context, Span span) {
     return true;
+  }
+
+  static void parseTargetAddress(org.apache.http.client.methods.HttpRequestWrapper httpRequest,
+    Span span) {
+    if (span.isNoop()) return;
+    HttpHost target = httpRequest.getTarget();
+    if (target == null) return;
+    InetAddress address = target.getAddress();
+    if (address != null) {
+      if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
+    }
+    span.remoteIpAndPort(target.getHostName(), target.getPort());
   }
 }

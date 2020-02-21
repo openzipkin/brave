@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,113 +13,57 @@
  */
 package brave.http;
 
-import brave.Clock;
-import brave.Span;
 import brave.internal.Nullable;
-import brave.propagation.TraceContext;
 import java.net.URI;
 
-public abstract class HttpAdapter<Req, Resp> {
-  /**
-   * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
-   *
-   * <p>Conventionally associated with the key "http.method"
-   *
-   * <h3>Note</h3>
-   * <p>It is part of the <a href="https://tools.ietf.org/html/rfc7231#section-4.1">HTTP RFC</a>
-   * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
-   * integration tests fail, but you will surprise any consumers who expect compliant results.
-   */
+/** @deprecated Since 5.10, use {@link HttpRequest} and {@link HttpResponse} */
+@Deprecated public abstract class HttpAdapter<Req, Resp> {
+  /** @see HttpRequest#method() */
   @Nullable public abstract String method(Req request);
 
-  /**
-   * The absolute http path, without any query parameters or null if unreadable. Ex.
-   * "/objects/abcd-ff"
-   *
-   * <p>Conventionally associated with the key "http.path"
-   *
-   * @see #route(Object)
-   */
+  /** @see HttpRequest#path() */
   @Nullable public String path(Req request) {
     String url = url(request);
     if (url == null) return null;
     return URI.create(url).getPath(); // TODO benchmark
   }
 
-  /**
-   * The entire URL, including the scheme, host and query parameters if available or null if
-   * unreadable.
-   *
-   * <p>Conventionally associated with the key "http.url"
-   */
+  /** @see HttpRequest#url() */
   @Nullable public abstract String url(Req request);
 
-  /** Returns one value corresponding to the specified header, or null. */
+  /** @see HttpRequest#header(String) */
   @Nullable public abstract String requestHeader(Req request, String name);
 
   /**
-   * The timestamp in epoch microseconds of the beginning of this request or zero to take this
-   * implicitly from the current clock. Defaults to zero.
-   *
-   * <p>This is helpful in two scenarios: late parsing and avoiding redundant timestamp overhead.
-   * If a server span, this helps reach the "original" beginning of the request, which is always
-   * prior to parsing.
-   *
-   * <p>Note: Overriding has the same problems as using {@link brave.Span#start(long)}. For
-   * example, it can result in negative duration if the clock used is allowed to correct backwards.
-   * It can also result in misalignments in the trace, unless {@link brave.Tracing.Builder#clock(Clock)}
-   * uses the same implementation.
-   *
-   * @see #finishTimestamp(Object)
-   * @see brave.Span#start(long)
-   * @see brave.Tracing#clock(TraceContext)
+   * @see HttpRequest#startTimestamp()
    * @since 5.7
    */
   public long startTimestamp(Req request) {
     return 0L;
   }
 
-  /**
-   * Like {@link #method(Object)} except used in response parsing.
-   *
-   * <p>Notably, this is used to create a route-based span name.
-   */
+  /** @see HttpResponse#method() */
   // FromResponse suffix is needed as you can't compile methods that only differ on generic params
   @Nullable public String methodFromResponse(Resp resp) {
     return null;
   }
 
-  /**
-   * Returns an expression such as "/items/:itemId" representing an application endpoint,
-   * conventionally associated with the tag key "http.route". If no route matched, "" (empty string)
-   * is returned. Null indicates this instrumentation doesn't understand http routes.
-   *
-   * <p>Eventhough the route is associated with the request, not the response, this is present
-   * on the response object. The reasons is that many server implementations process the request
-   * before they can identify the route route.
-   */
-  // BRAVE6: It isn't possible for a user to easily consume HttpServerAdapter, which is why this
-  // method, while generally about the server, is pushed up to the HttpAdapter. The signatures for
-  // sampling and parsing could be changed to make it more convenient.
+  /** @see HttpResponse#route() */
+  // NOTE: It wasn't possible for a user to easily consume HttpServerAdapter, which is why this
+  // method, while generally about the server, was pushed up to the HttpAdapter.
   @Nullable public String route(Resp response) {
     return null;
   }
 
   /**
-   * The HTTP status code or null if unreadable.
-   *
-   * <p>Conventionally associated with the key "http.status_code"
-   *
+   * @see HttpResponse#statusCode()
    * @see #statusCodeAsInt(Object)
    * @deprecated Since 5.7, use {@link #statusCodeAsInt(Object)} which prevents boxing.
    */
   @Deprecated @Nullable public abstract Integer statusCode(Resp response);
 
   /**
-   * Like {@link #statusCode(Object)} except returns a primitive where zero implies absent.
-   *
-   * <p>Using this method usually avoids allocation, so is encouraged when parsing data.
-   *
+   * @see HttpResponse#statusCode()
    * @since 4.16
    */
   public int statusCodeAsInt(Resp response) {
@@ -128,21 +72,7 @@ public abstract class HttpAdapter<Req, Resp> {
   }
 
   /**
-   * The timestamp in epoch microseconds of the end of this request or zero to take this implicitly
-   * from the current clock. Defaults to zero.
-   *
-   * <p>This is helpful in two scenarios: late parsing and avoiding redundant timestamp overhead.
-   * For example, you can asynchronously handle span completion without losing precision of the
-   * actual end.
-   *
-   * <p>Note: Overriding has the same problems as using {@link Span#finish(long)}. For
-   * example, it can result in negative duration if the clock used is allowed to correct backwards.
-   * It can also result in misalignments in the trace, unless {@link brave.Tracing.Builder#clock(Clock)}
-   * uses the same implementation.
-   *
-   * @see #startTimestamp(Object)
-   * @see brave.Span#finish(long)
-   * @see brave.Tracing#clock(TraceContext)
+   * @see HttpResponse#finishTimestamp()
    * @since 5.7
    */
   public long finishTimestamp(Resp response) {
