@@ -34,7 +34,7 @@ import static brave.http.HttpHandler.NULL_SENTINEL;
  *
  * @see HttpRuleSampler
  * @see SamplerFunction
- * @deprecated Since 5.8, use {@code RequestSampler<HttpRequest>}.
+ * @deprecated Since 5.8, use {@code SamplerFunction<HttpRequest>}.
  */
 @Deprecated
 // abstract class as you can't lambda generic methods anyway. This lets us make helpers in the future

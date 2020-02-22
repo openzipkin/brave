@@ -137,7 +137,6 @@ public class HttpServerHandlerTest {
     verify(span).context();
     verify(span).customizer();
     verify(span).error(error);
-    verify(span).tag("error", "peanuts");
     verify(span).finish();
     verifyNoMoreInteractions(span);
   }

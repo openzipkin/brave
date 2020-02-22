@@ -14,32 +14,45 @@
 package brave.http;
 
 import brave.Span;
-import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.http.HttpClientAdapters.FromRequestAdapter;
-import brave.http.HttpClientAdapters.ToResponseAdapter;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 
+import static brave.http.HttpClientAdapters.FromResponseAdapter;
+
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
- * portable customizations via {@link HttpClientParser}.
+ * portable customizations via {@link HttpRequestParser} and {@link HttpResponseParser}.
  *
- * <p>This is an example of synchronous instrumentation:
+ * <p>Synchronous interception is the most straight forward instrumentation.
+ *
+ * <p>You generally need to:
+ * <ol>
+ *   <li>Start the span and add trace headers to the request</li>
+ *   <li>Put the span in scope so things like log integration works</li>
+ *   <li>Invoke the request</li>
+ *   <li>Catch any errors</li>
+ *   <li>Complete the span</li>
+ * </ol>
+ *
  * <pre>{@code
- * Span span = handler.handleSend(request);
+ * Span span = handler.handleSend(new HttpClientRequestWrapper(request)); // 1.
+ * Result result = null;
  * Throwable error = null;
- * try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
- *   // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
- *   response = invoke(request);
- * } catch (RuntimeException | Error e) {
- *   error = e;
+ * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ *   return result = invoke(request); // 3.
+ * } catch (Throwable e) {
+ *   error = e; // 4.
  *   throw e;
  * } finally {
- *   handler.handleReceive(response, error, span);
+ *   HttpClientResponseWrapper response = result != null
+ *     ? new HttpClientResponseWrapper(result, error)
+ *     : null;
+ *   handler.handleReceive(response, error, span); // 5.
  * }
  * }</pre>
  *
@@ -47,6 +60,9 @@ import brave.sampler.SamplerFunction;
  * @param <Resp> the native http response type of the client.
  * @since 4.3
  */
+// The generic type parameters should always be <HttpClientRequest, HttpClientResponse>. Even if the
+// deprecated methods are removed in Brave v6, we should not remove these parameters as that would
+// cause a compilation break and lead to revlock.
 public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   /** @since 5.7 */
   public static HttpClientHandler<HttpClientRequest, HttpClientResponse> create(
@@ -68,17 +84,14 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   }
 
   final Tracer tracer;
-  @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
+  @Deprecated @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
   final Sampler sampler;
   final SamplerFunction<HttpRequest> httpSampler;
   @Nullable final String serverName;
   final Injector<HttpClientRequest> defaultInjector;
 
-  HttpClientHandler(HttpTracing httpTracing, HttpClientAdapter<Req, Resp> adapter) {
-    super(
-      httpTracing.tracing().currentTraceContext(),
-      httpTracing.clientParser()
-    );
+  HttpClientHandler(HttpTracing httpTracing, @Deprecated HttpClientAdapter<Req, Resp> adapter) {
+    super(httpTracing.clientRequestParser(), httpTracing.clientResponseParser());
     this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
@@ -97,6 +110,8 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * <p>Call this before sending the request on the wire.
    *
    * @see #handleSendWithParent(HttpClientRequest, TraceContext)
+   * @see HttpTracing#clientRequestSampler()
+   * @see HttpTracing#clientRequestParser()
    * @since 5.7
    */
   public Span handleSend(HttpClientRequest request) {
@@ -128,12 +143,12 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     if (request == null) throw new NullPointerException("request == null");
     if (span == null) throw new NullPointerException("span == null");
     defaultInjector.inject(span.context(), request);
+    return handleStart(request, span);
+  }
 
-    Object unwrapped = request.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
-    HttpAdapter<Object, Void> adapter = new HttpClientAdapters.ToRequestAdapter(request, unwrapped);
-
-    return handleStart(adapter, unwrapped, span);
+  @Override void parseRequest(HttpRequest request, Span span) {
+    if (serverName != null) span.remoteServiceName(serverName);
+    requestParser.parse(request, span.context(), span.customizer());
   }
 
   /**
@@ -166,14 +181,18 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
-    injector.inject(span.context(), carrier);
-    return handleStart(adapter, request, span);
-  }
+    if (request == null) throw new NullPointerException("request == null");
+    if (span == null) throw new NullPointerException("span == null");
 
-  @Override <Req1> void parseRequest(HttpAdapter<Req1, ?> adapter, Req1 request, Span span) {
-    span.kind(Span.Kind.CLIENT);
-    if (serverName != null) span.remoteServiceName(serverName);
-    parser.request(adapter, request, span.customizer());
+    injector.inject(span.context(), carrier);
+    HttpClientRequest clientRequest;
+    if (request instanceof HttpClientRequest) {
+      clientRequest = (HttpClientRequest) request;
+    } else {
+      clientRequest = new HttpClientAdapters.FromRequestAdapter<>(adapter, request);
+    }
+
+    return handleStart(clientRequest, span);
   }
 
   /**
@@ -200,24 +219,16 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    *
    * <p>Note: Either the response or error parameters may be null, but not both.
    *
-   * @see HttpClientParser#response(HttpAdapter, Object, Throwable, SpanCustomizer)
+   * @see HttpTracing#clientResponseParser()
    * @since 4.3
    */
   public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (response == null && error == null) {
-      throw new IllegalArgumentException(
-        "Either the response or error parameters may be null, but not both");
+    HttpClientResponse clientResponse;
+    if (response == null || response instanceof HttpClientResponse) {
+      clientResponse = (HttpClientResponse) response;
+    } else {
+      clientResponse = new FromResponseAdapter(adapter, response);
     }
-
-    if (!(response instanceof HttpClientResponse)) {
-      handleFinish(adapter, response, error, span);
-      return;
-    }
-
-    HttpClientResponse clientResponse = (HttpClientResponse) response;
-    Object unwrapped = clientResponse.unwrap();
-    if (unwrapped == null) unwrapped = NULL_SENTINEL; // Ensure adapter methods never see null
-
-    handleFinish(new ToResponseAdapter(clientResponse, unwrapped), unwrapped, error, span);
+    handleFinish(clientResponse, error, span);
   }
 }

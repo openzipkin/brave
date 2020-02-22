@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,10 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 
-public class HttpParser {
+import static brave.http.HttpResponseParser.Default.catchAllName;
+
+/** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
+@Deprecated public class HttpParser {
   static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
 
   /**
@@ -119,9 +122,7 @@ public class HttpParser {
     String route = adapter.route(res);
     if (route == null) return null; // don't undo a valid name elsewhere
     if (!"".equals(route)) return method + " " + route;
-    if (statusCode / 100 == 3) return method + " redirected";
-    if (statusCode == 404) return method + " not_found";
-    return null; // unexpected
+    return catchAllName(method, statusCode);
   }
 
   /**

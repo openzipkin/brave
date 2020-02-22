@@ -167,7 +167,6 @@ public class HttpClientHandlerTest {
     verify(span).context();
     verify(span).customizer();
     verify(span).error(error);
-    verify(span).tag("error", "peanuts");
     verify(span).finish();
     verifyNoMoreInteractions(span);
   }

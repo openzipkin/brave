@@ -20,11 +20,14 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
 import brave.http.HttpClientParser;
+import brave.http.HttpRequest;
+import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
@@ -159,9 +162,12 @@ public abstract class ITHttpClient<C> extends ITHttp {
     String path = "/foo";
 
     close();
-    httpTracing = httpTracing.toBuilder().clientSampler(HttpRuleSampler.newBuilder()
+
+    SamplerFunction<HttpRequest> sampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
-      .build()).build();
+      .build();
+
+    httpTracing = httpTracing.toBuilder().clientSampler(sampler).build();
     client = newClient(server.getPort());
 
     server.enqueue(new MockResponse());
@@ -204,6 +210,39 @@ public abstract class ITHttpClient<C> extends ITHttp {
   }
 
   @Test public void supportsPortableCustomization() throws Exception {
+    String uri = "/foo/bar?z=2&yAA=1";
+
+    close();
+    httpTracing = httpTracing.toBuilder()
+      .clientRequestParser((request, context, span) -> {
+        span.name(request.method().toLowerCase() + " " + request.path());
+        span.tag("http.url", request.url()); // just the path is logged by default
+        span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
+      })
+      .clientResponseParser((response, context, span) -> {
+        HttpResponseParser.DEFAULT.parse(response, context, span);
+        span.tag("response_customizer.is_span", (span instanceof brave.Span) + "");
+      })
+      .build().clientOf("remote-service");
+
+    client = newClient(server.getPort());
+    server.enqueue(new MockResponse());
+    get(client, uri);
+
+    Span span = takeSpan();
+    assertThat(span.name())
+      .isEqualTo("get /foo/bar");
+
+    assertThat(span.remoteServiceName())
+      .isEqualTo("remote-service");
+
+    assertThat(span.tags())
+      .containsEntry("http.url", url(uri))
+      .containsEntry("request_customizer.is_span", "false")
+      .containsEntry("response_customizer.is_span", "false");
+  }
+
+  @Deprecated @Test public void supportsDeprecatedPortableCustomization() throws Exception {
     String uri = "/foo/bar?z=2&yAA=1";
 
     close();

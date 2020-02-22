@@ -28,12 +28,9 @@ For example, to add a non-default tag for HTTP clients, you can do this:
 
 ```java
 httpTracing = httpTracing.toBuilder()
-    .clientParser(new HttpClientParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer span) {
-        super.request(adapter, req, span);
-        span.tag("http.url", req.url()); // add the url in addition to defaults
-      }
+    .clientRequestParser((req, context, span) -> {
+      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      span.tag("http.url", req.url()); // add the url in addition to defaults
     })
     .build();
 
@@ -46,20 +43,38 @@ override `spanName` in your client or server parser.
 
 Ex:
 ```java
-overrideSpanName = new HttpClientParser() {
-  @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+overrideSpanName = new HttpRequestParser.Default() {
+  @Override protected String spanName(HttpRequest req, TraceContext context) {
     // If using Armeria, maybe we want to reuse the request log name
-    if (req instanceof ServiceRequestContext) {
-      RequestLog requestLog = ((ServiceRequestContext) req).log();
+    Object raw = req.unwrap();
+    if (raw instanceof ServiceRequestContext) {
+      RequestLog requestLog = ((ServiceRequestContext) raw).log();
       return requestLog.name();
     }
-    return super.spanName(adapter, req); // otherwise, go with the defaults
+    return super.spanName(req, context); // otherwise, go with the defaults
   }
 };
 ```
 
 Note that span name can be overwritten any time, for example, when
 parsing the response, which is the case when route-based names are used.
+
+This increased performance and allows easier access to extra fields. For
+example, a common request was to add extra fields as tags. This can now
+be done in the parser instead of the FinishedSpanHandler, if desired.
+
+### Extra fields
+To add extra fields as span tags, use the context parameter like so:
+
+```java
+httpTracing = httpTracing.toBuilder()
+    .clientRequestParser((req, context, span) -> {
+      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      String userName = ExtraFieldPropagation.get(context, "user-name");
+      if (userName != null) span.tag("user-name", userName);
+    })
+    .build();
+```
 
 ## Sampling Policy
 The default sampling policy is to use the default (trace ID) sampler for
@@ -153,7 +168,7 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
-3. Capture the result of the request
+3. Invoke the request
 4. Catch any errors
 5. Complete the span
 
@@ -223,7 +238,7 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Extract any trace IDs from headers and start the span
 2. Put the span in scope so things like log integration works
-3. Invoke the request
+3. Process the request
 4. Catch any errors
 5. Complete the span
 
