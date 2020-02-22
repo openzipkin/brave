@@ -58,7 +58,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     } finally {
       ClientHttpResponseWrapper
         response = result != null ? new ClientHttpResponseWrapper(result, error) : null;
-      handler.handleReceive(response, span);
+      handler.handleReceive(response, error, span);
     }
   }
 

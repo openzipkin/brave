@@ -45,7 +45,7 @@ final class TracingDispatcher extends Dispatcher {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new MockResponseWrapper(response), error, span);
+      handler.handleSend(new MockResponseWrapper(response, error), error, span);
     }
   }
 

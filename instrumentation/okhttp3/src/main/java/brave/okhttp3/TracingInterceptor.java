@@ -77,7 +77,7 @@ public final class TracingInterceptor implements Interceptor {
       throw t;
     } finally {
       ResponseWrapper response = result != null ? new ResponseWrapper(result, error) : null;
-      handler.handleReceive(response, span);
+      handler.handleReceive(response, error, span);
     }
   }
 

@@ -70,8 +70,8 @@ public class HttpTracing implements Closeable {
    * @deprecated Since 5.10, use {@link #clientRequestParser()} and {@link #clientResponseParser()}
    */
   @Deprecated public HttpClientParser clientParser() {
-    if (clientRequestParser instanceof HttpParserAdapter) {
-      return (HttpClientParser) ((HttpParserAdapter) clientRequestParser).parser;
+    if (clientRequestParser instanceof HttpRequestParserAdapters.ClientAdapter) {
+      return (HttpClientParser) ((HttpRequestParserAdapters.ClientAdapter) clientRequestParser).parser;
     }
     return new HttpClientParserAdapter(
       clientRequestParser,
@@ -137,8 +137,8 @@ public class HttpTracing implements Closeable {
    * @deprecated Since 5.10, use {@link #serverRequestParser()} and {@link #serverResponseParser()}
    */
   @Deprecated public HttpServerParser serverParser() {
-    if (serverRequestParser instanceof HttpParserAdapter) {
-      return (HttpServerParser) ((HttpParserAdapter) serverRequestParser).parser;
+    if (serverRequestParser instanceof HttpRequestParserAdapters.ServerAdapter) {
+      return (HttpServerParser) ((HttpRequestParserAdapters.ServerAdapter) serverRequestParser).parser;
     }
     return new HttpServerParserAdapter(
       serverRequestParser,
@@ -279,10 +279,10 @@ public class HttpTracing implements Closeable {
      */
     @Deprecated public Builder clientParser(HttpClientParser clientParser) {
       if (clientParser == null) throw new NullPointerException("clientParser == null");
-      HttpParserAdapter adapter =
-        new HttpParserAdapter(tracing.currentTraceContext(), clientParser);
-      this.clientRequestParser = adapter;
-      this.clientResponseParser = adapter;
+      this.clientRequestParser =
+        new HttpRequestParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
+      this.clientResponseParser =
+        new HttpResponseParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
       this.tracing.errorParser();
       return this;
     }
@@ -327,10 +327,10 @@ public class HttpTracing implements Closeable {
      */
     @Deprecated public Builder serverParser(HttpServerParser serverParser) {
       if (serverParser == null) throw new NullPointerException("serverParser == null");
-      HttpParserAdapter adapter =
-        new HttpParserAdapter(tracing.currentTraceContext(), serverParser);
-      this.serverRequestParser = adapter;
-      this.serverResponseParser = adapter;
+      this.serverRequestParser =
+        new HttpRequestParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
+      this.serverResponseParser =
+        new HttpResponseParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
       return this;
     }
 

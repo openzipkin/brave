@@ -61,7 +61,7 @@ public class HttpServletResponseWrapperTest {
 
   @Test public void error_noRequest() {
     Exception error = new Exception();
-    HttpServerResponse wrapper = HttpServletResponseWrapper.create(null, response);
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(null, response, error);
 
     assertThat(wrapper.error()).isSameAs(error);
   }
@@ -86,7 +86,7 @@ public class HttpServletResponseWrapperTest {
   @Test public void error_overridesRequestAttribute() {
     Exception error = new Exception();
 
-    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response);
+    HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, error);
 
     Exception requestError = new Exception();
     when(request.getAttribute("error")).thenReturn(requestError);
