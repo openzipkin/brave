@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.mongo;
+package brave.mongodb;
 
 import brave.Span;
 import brave.Tracer;
@@ -33,8 +33,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Optional;
 
-import static brave.mongo.TraceMongoCommandListener.getCollectionName;
-import static brave.mongo.TraceMongoCommandListener.getSpanName;
+import static brave.mongodb.TraceMongoCommandListener.getCollectionName;
+import static brave.mongodb.TraceMongoCommandListener.getSpanName;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.verify;

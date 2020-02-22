@@ -22,12 +22,12 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-mongo</artifactId>
+  <artifactId>brave-instrumentation-mongodb</artifactId>
   <name>Brave Instrumentation: MongoDB</name>
 
   <properties>
     <!-- Matches Export-Package in bnd.bnd -->
-    <module.name>brave.mongo</module.name>
+    <module.name>brave.mongodb</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- mongodb-driver requires Java 8 -->
