@@ -62,8 +62,7 @@ public interface HttpRequestParser {
     @Override public void parse(HttpRequest req, TraceContext context, SpanCustomizer span) {
       String name = spanName(req, context);
       if (name != null) span.name(name);
-      String method = req.method();
-      if (method != null) span.tag("http.method", method);
+      span.tag("http.method", req.method());
       String path = req.path();
       if (path != null) span.tag("http.path", path);
     }

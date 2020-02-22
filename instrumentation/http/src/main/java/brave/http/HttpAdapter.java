@@ -19,7 +19,7 @@ import java.net.URI;
 /** @deprecated Since 5.10, use {@link HttpRequest} and {@link HttpResponse} */
 @Deprecated public abstract class HttpAdapter<Req, Resp> {
   /** @see HttpRequest#method() */
-  @Nullable public abstract String method(Req request);
+  public abstract String method(Req request);
 
   /** @see HttpRequest#path() */
   @Nullable public String path(Req request) {

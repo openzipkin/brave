@@ -157,10 +157,6 @@ import static org.mockito.Mockito.when;
     verify(requestAdapter).startTimestamp(request);
   }
 
-  @Test public void fromRequestAdapter_method_nullOnNoMatch() {
-    assertThat(fromRequestAdapter.method()).isNull();
-  }
-
   @Test public void fromRequestAdapter_method_delegatesToAdapter() {
     when(requestAdapter.method(request)).thenReturn("GET");
 

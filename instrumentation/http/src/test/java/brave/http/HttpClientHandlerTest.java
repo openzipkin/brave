@@ -54,6 +54,7 @@ public class HttpClientHandlerTest {
 
   @Before public void init() {
     init(httpTracingBuilder(tracingBuilder()));
+    when(request.method()).thenReturn("GET");
   }
 
   void init(HttpTracing.Builder builder) {

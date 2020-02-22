@@ -58,7 +58,7 @@ public abstract class HttpRequest extends Request {
    * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
    * integration tests fail, but you will surprise any consumers who expect compliant results.
    */
-  @Nullable public abstract String method();
+  public abstract String method();
 
   /**
    * The absolute http path, without any query parameters or null if unreadable. Ex.
