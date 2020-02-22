@@ -98,7 +98,7 @@ public interface HttpResponseParser {
       String route = response.route();
       if (route == null) return null; // don't undo a valid name elsewhere
       if (!"".equals(route)) return method + " " + route;
-      return catchAllName(statusCode, method);
+      return catchAllName(method, statusCode);
     }
 
     /**
@@ -127,24 +127,23 @@ public interface HttpResponseParser {
         span.tag("error", String.valueOf(httpStatus));
       }
     }
-  }
 
-  /** Helps avoid high cardinality names for redirected or absent resources. */
-  // TODO: testme including status 304
-  @Nullable static String catchAllName(int statusCode, String method) {
-    switch (statusCode) {
-      // from https://tools.ietf.org/html/rfc7231#section-6.4
-      case 301:
-      case 302:
-      case 303:
-      case 305:
-      case 306:
-      case 307:
-        return method + " redirected";
-      case 404:
-        return method + " not_found";
-      default:
-        return null;
+    /** Helps avoid high cardinality names for redirected or absent resources. */
+    @Nullable static String catchAllName(String method, int statusCode) {
+      switch (statusCode) {
+        // from https://tools.ietf.org/html/rfc7231#section-6.4
+        case 301:
+        case 302:
+        case 303:
+        case 305:
+        case 306:
+        case 307:
+          return method + " redirected";
+        case 404:
+          return method + " not_found";
+        default:
+          return null;
+      }
     }
   }
 }

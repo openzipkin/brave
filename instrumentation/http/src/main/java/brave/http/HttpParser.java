@@ -18,7 +18,7 @@ import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 
-import static brave.http.HttpResponseParser.catchAllName;
+import static brave.http.HttpResponseParser.Default.catchAllName;
 
 /** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
 @Deprecated public class HttpParser {
@@ -122,7 +122,7 @@ import static brave.http.HttpResponseParser.catchAllName;
     String route = adapter.route(res);
     if (route == null) return null; // don't undo a valid name elsewhere
     if (!"".equals(route)) return method + " " + route;
-    return catchAllName(statusCode, method);
+    return catchAllName(method, statusCode);
   }
 
   /**
