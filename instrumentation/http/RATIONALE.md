@@ -55,6 +55,28 @@ of adding more surface to the public api of the new types like
 all of the public methods defined in the adapter. This would cause confusion,
 something worse than adding an object allocation on these paths.
 
+## Method as a required property
+
+Even though we've seen method incorrectly set in the past, we've never seen it
+missing. In v5.10 we changed HTTP method to be a required property.
+
+### Why not HTTP path?
+While it seems path would also always be available, it isn't valid for all HTTP
+methods (ex OPTIONS and CONNECT). Also, it can be null due to bad parsing (ex
+some things don't natively return the path, only the URL). Finally, it has been
+found [missing before](https://github.com/reactor/reactor-netty/pull/998).
+
+If we started to make HTTP path a required property, it would invalidate
+instrumentation not located here, which have been working under the assumption
+that it could be null. A late change to make something known to be nullable,
+would result in our library raising `NullPointerExceptions`, crashing requests
+for scenarios that would neither crash, nor impact tracing formerly.
+
+Moreover, we have not had any complaints about the HTTP path property being
+optional, and it has been for several years. If we knew users aren't demanding
+this, yet forced a known set of problems by doing so, we'd be actively against
+an priority of telemetry development: do no harm.
+
 ## `HttpRequestParser` and `HttpResponseParser`
 
 `HttpRequestParser` and `HttpResponseParser`replace the deprecated type
