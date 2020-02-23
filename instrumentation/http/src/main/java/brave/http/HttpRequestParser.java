@@ -14,7 +14,7 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import brave.propagation.ExtraFieldPropagation;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 
 /**
@@ -62,14 +62,16 @@ public interface HttpRequestParser {
     @Override public void parse(HttpRequest req, TraceContext context, SpanCustomizer span) {
       String name = spanName(req, context);
       if (name != null) span.name(name);
-      String method = req.method();
-      if (method != null) span.tag("http.method", method);
+      span.tag("http.method", req.method());
       String path = req.path();
       if (path != null) span.tag("http.path", path);
     }
 
-    /** Returns the span name of the request. Defaults to the http method. */
-    protected String spanName(HttpRequest req, TraceContext context) {
+    /**
+     * Returns the span name of the request or null if the data needed is unavailable. Defaults to
+     * the http method.
+     */
+    @Nullable protected String spanName(HttpRequest req, TraceContext context) {
       return req.method();
     }
   }

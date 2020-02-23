@@ -57,6 +57,7 @@ public class HttpServerHandlerTest {
     close();
     httpTracing = builder.build();
     handler = HttpServerHandler.create(httpTracing);
+    when(request.method()).thenReturn("GET");
   }
 
   HttpTracing.Builder httpTracingBuilder(Tracing.Builder tracingBuilder) {
