@@ -49,7 +49,7 @@ public abstract class HttpRequest extends Request {
   }
 
   /**
-   * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
+   * The HTTP method, or verb, such as "GET" or "POST".
    *
    * <p>Conventionally associated with the key "http.method"
    *
@@ -61,10 +61,11 @@ public abstract class HttpRequest extends Request {
   public abstract String method();
 
   /**
-   * The absolute http path, without any query parameters or null if unreadable. Ex.
-   * "/objects/abcd-ff"
+   * The absolute http path, without any query parameters. Ex. "/objects/abcd-ff"
    *
    * <p>Conventionally associated with the key "http.path"
+   *
+   * <p>{@code null} could mean not applicable to the HTTP method (ex CONNECT).
    *
    * @see #url()
    * @see HttpResponse#route()
