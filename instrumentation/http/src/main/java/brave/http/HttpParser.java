@@ -68,8 +68,11 @@ import static brave.http.HttpResponseParser.Default.catchAllName;
     if (path != null) customizer.tag("http.path", path);
   }
 
-  /** Returns the span name of the request. Defaults to the http method. */
-  protected <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+  /**
+   * Returns the span name of the request or null if the data needed is unavailable. Defaults to the
+   * http method.
+   */
+  @Nullable protected <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
     return adapter.method(req);
   }
 
