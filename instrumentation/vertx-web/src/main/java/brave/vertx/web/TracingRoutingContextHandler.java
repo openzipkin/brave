@@ -16,6 +16,7 @@ package brave.vertx.web;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
+import brave.http.HttpRequest;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
@@ -116,9 +117,15 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
   static final class HttpServerResponseWrapper extends HttpServerResponse {
     final RoutingContext delegate;
+    HttpServerRequestWrapper request;
 
     HttpServerResponseWrapper(RoutingContext context) {
       this.delegate = context;
+    }
+
+    @Override public HttpRequest request() {
+      if (request == null) request = new HttpServerRequestWrapper(delegate.request());
+      return request;
     }
 
     @Override public Throwable error() {
@@ -133,10 +140,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return delegate.response().getStatusCode();
     }
 
-    @Override public String method() {
-      return delegate.request().rawMethod();
-    }
-
+    // This is an example of where the route is not on the request object. Hence, we override.
     @Override public String route() {
       String httpRoute = delegate.currentRoute().getPath();
       return httpRoute != null ? httpRoute : "";

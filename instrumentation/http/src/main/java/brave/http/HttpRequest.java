@@ -73,6 +73,23 @@ public abstract class HttpRequest extends Request {
   @Nullable public abstract String path();
 
   /**
+   * Returns an expression such as "/items/:itemId" representing an application endpoint,
+   * conventionally associated with the tag key "http.route". If no route matched, "" (empty string)
+   * is returned. Null indicates this instrumentation doesn't understand http routes.
+   *
+   * <p>The route is associated with the request, but it may not be visible until response
+   * processing. The reasons is that many server implementations process the request before they can
+   * identify the route. Parsing should expect this and look at {@link HttpResponse#route()} as
+   * needed.
+   *
+   * @see HttpRequest#path()
+   * @since 5.10
+   */
+  @Nullable public String route() {
+    return null;
+  }
+
+  /**
    * The entire URL, including the scheme, host and query parameters if available or null if
    * unreadable.
    *

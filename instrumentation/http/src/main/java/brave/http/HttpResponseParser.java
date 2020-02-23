@@ -92,7 +92,7 @@ public interface HttpResponseParser {
       return null;
     }
 
-    static String spanNameFromRoute(HttpResponse response, int statusCode) {
+    @Nullable static String spanNameFromRoute(HttpResponse response, int statusCode) {
       String method = response.method();
       if (method == null) return null; // don't undo a valid name elsewhere
       String route = response.route();

@@ -142,6 +142,10 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       this.error = error;
     }
 
+    @Override public String route() {
+      return null; // TODO: is there a way to get the request from the channel
+    }
+
     @Override public HttpResponse unwrap() {
       return delegate;
     }

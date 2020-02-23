@@ -15,11 +15,11 @@ package brave.jersey.server;
 
 import brave.Span;
 import brave.Tracer;
+import brave.http.HttpRequest;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
 import javax.inject.Inject;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
@@ -30,8 +30,6 @@ import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
-
-import static brave.jersey.server.SpanCustomizingApplicationEventListener.route;
 
 @Provider
 public final class TracingApplicationEventListener implements ApplicationEventListener {
@@ -103,8 +101,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           spanInScope = tracer.withSpanInScope(span);
           break;
         case FINISHED:
-          String route = route(event.getContainerRequest());
-          RequestEventWrapper response = new RequestEventWrapper(event, route);
+          RequestEventWrapper response = new RequestEventWrapper(event);
           handler.handleSend(response, response.error(), span);
           // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
           // Don't close the scope unless it is a synchronous method.
@@ -127,6 +124,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
     ContainerRequestWrapper(ContainerRequest delegate) {
       this.delegate = delegate;
+    }
+
+    @Override public String route() {
+      return SpanCustomizingApplicationEventListener.route(delegate);
     }
 
     @Override public Object unwrap() {
@@ -157,11 +158,10 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   static final class RequestEventWrapper extends HttpServerResponse {
     final RequestEvent delegate;
-    @Nullable final String route;
+    ContainerRequestWrapper request;
 
-    RequestEventWrapper(RequestEvent delegate, @Nullable String route) {
+    RequestEventWrapper(RequestEvent delegate) {
       this.delegate = delegate;
-      this.route = route;
     }
 
     @Override public Object unwrap() {
@@ -172,12 +172,9 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
       return SpanCustomizingApplicationEventListener.unwrapError(delegate);
     }
 
-    @Override public String method() {
-      return delegate.getContainerRequest().getMethod();
-    }
-
-    @Override public String route() {
-      return route;
+    @Override public HttpRequest request() {
+      if (request == null) request = new ContainerRequestWrapper(delegate.getContainerRequest());
+      return request;
     }
 
     @Override public int statusCode() {
