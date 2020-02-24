@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,8 @@ package brave.spring.beans;
 
 import brave.Tracing;
 import brave.http.HttpClientParser;
+import brave.http.HttpRequestParser;
+import brave.http.HttpResponseParser;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
@@ -33,6 +35,8 @@ public class HttpTracingFactoryBeanTest {
   public static Tracing TRACING = mock(Tracing.class);
   public static HttpClientParser CLIENT_PARSER = mock(HttpClientParser.class);
   public static HttpServerParser SERVER_PARSER = mock(HttpServerParser.class);
+  public static HttpRequestParser REQUEST_PARSER = mock(HttpRequestParser.class);
+  public static HttpResponseParser RESPONSE_PARSER = mock(HttpResponseParser.class);
 
   XmlBeans context;
 
@@ -71,6 +75,40 @@ public class HttpTracingFactoryBeanTest {
       .isEqualTo(CLIENT_PARSER);
   }
 
+  @Test public void clientRequestParser() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"clientRequestParser\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".REQUEST_PARSER\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
+      .extracting("clientRequestParser")
+      .isEqualTo(REQUEST_PARSER);
+  }
+
+  @Test public void clientResponseParser() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"clientResponseParser\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".RESPONSE_PARSER\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
+      .extracting("clientResponseParser")
+      .isEqualTo(RESPONSE_PARSER);
+  }
+
   @Test public void serverParser() {
     context = new XmlBeans(""
       + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
@@ -86,6 +124,40 @@ public class HttpTracingFactoryBeanTest {
     assertThat(context.getBean("httpTracing", HttpTracing.class))
       .extracting("serverParser")
       .isEqualTo(SERVER_PARSER);
+  }
+
+  @Test public void serverRequestParser() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"serverRequestParser\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".REQUEST_PARSER\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
+      .extracting("serverRequestParser")
+      .isEqualTo(REQUEST_PARSER);
+  }
+
+  @Test public void serverResponseParser() {
+    context = new XmlBeans(""
+      + "<bean id=\"httpTracing\" class=\"brave.spring.beans.HttpTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"serverResponseParser\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".RESPONSE_PARSER\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", HttpTracing.class))
+      .extracting("serverResponseParser")
+      .isEqualTo(RESPONSE_PARSER);
   }
 
   @Test public void clientSampler() {
