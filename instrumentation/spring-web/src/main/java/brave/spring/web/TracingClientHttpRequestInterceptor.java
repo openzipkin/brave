@@ -45,19 +45,20 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     handler = HttpClientHandler.create(httpTracing);
   }
 
-  @Override public ClientHttpResponse intercept(HttpRequest request, byte[] body,
+  @Override public ClientHttpResponse intercept(HttpRequest req, byte[] body,
     ClientHttpRequestExecution execution) throws IOException {
-    Span span = handler.handleSend(new HttpRequestWrapper(request));
+    HttpRequestWrapper request = new HttpRequestWrapper(req);
+    Span span = handler.handleSend(request);
     ClientHttpResponse result = null;
     Throwable error = null;
     try (Scope ws = currentTraceContext.newScope(span.context())) {
-      return result = execution.execute(request, body);
+      return result = execution.execute(req, body);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
       ClientHttpResponseWrapper
-        response = result != null ? new ClientHttpResponseWrapper(result, error) : null;
+        response = result != null ? new ClientHttpResponseWrapper(request, result, error) : null;
       handler.handleReceive(response, error, span);
     }
   }
@@ -96,20 +97,27 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
   }
 
   static final class ClientHttpResponseWrapper extends HttpClientResponse {
+    final HttpRequestWrapper request;
     final ClientHttpResponse delegate;
     @Nullable final Throwable error;
 
-    ClientHttpResponseWrapper(ClientHttpResponse delegate, @Nullable Throwable error) {
+    ClientHttpResponseWrapper(
+      HttpRequestWrapper request, ClientHttpResponse delegate, @Nullable Throwable error) {
+      this.request = request;
       this.delegate = delegate;
       this.error = error;
     }
 
-    @Override public Throwable error() {
-      return error;
-    }
-
     @Override public Object unwrap() {
       return delegate;
+    }
+
+    @Override public HttpRequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {

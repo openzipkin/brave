@@ -36,7 +36,8 @@ import brave.sampler.SamplerFunction;
  *   <li>Complete the span</li>
  * </ol>
  * <pre>{@code
- * Span span = handler.handleReceive(new HttpServerRequestWrapper(request)); // 1.
+ * HttpServerRequestWrapper wrapper = new HttpServerRequestWrapper(request);
+ * Span span = handler.handleReceive(wrapper); // 1.
  * Result result = null;
  * Throwable error = null;
  * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
@@ -46,7 +47,7 @@ import brave.sampler.SamplerFunction;
  *   throw e;
  * } finally {
  *   HttpServerResponseWrapper response = result != null
- *     ? new HttpServerResponseWrapper(result, error)
+ *     ? new HttpServerResponseWrapper(wrapper, result, error)
  *     : null;
  *   handler.handleSend(response, error, span); // 5.
  * }

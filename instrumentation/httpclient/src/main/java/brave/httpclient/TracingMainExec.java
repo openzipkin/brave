@@ -56,7 +56,8 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     org.apache.http.client.methods.HttpRequestWrapper request,
     HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = tracer.currentSpan();
+    Span span = (Span) context.removeAttribute(Span.class.getName());
+
     if (span != null) handler.handleSend(new HttpRequestWrapper(request), span);
 
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);

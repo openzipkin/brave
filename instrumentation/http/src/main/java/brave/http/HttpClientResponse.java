@@ -23,7 +23,7 @@ import brave.Span;
  * @since 5.7
  */
 public abstract class HttpClientResponse extends HttpResponse {
-  @Override public Span.Kind spanKind() {
+  @Override public final Span.Kind spanKind() {
     return Span.Kind.CLIENT;
   }
 
