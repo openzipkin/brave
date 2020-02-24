@@ -14,6 +14,7 @@
 package brave.jaxrs2;
 
 import brave.jaxrs2.TracingClientFilter.ClientResponseContextWrapper;
+import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientResponseContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,17 +26,23 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ClientResponseContextWrapperTest {
+  @Mock ClientRequestContext request;
   @Mock ClientResponseContext response;
+
+  @Test public void request() {
+    assertThat(new ClientResponseContextWrapper(request, response).request().unwrap())
+      .isSameAs(request);
+  }
 
   @Test public void statusCode() {
     when(response.getStatus()).thenReturn(200);
 
-    assertThat(new ClientResponseContextWrapper(response).statusCode()).isEqualTo(200);
+    assertThat(new ClientResponseContextWrapper(request, response).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroWhenNegative() {
     when(response.getStatus()).thenReturn(-1);
 
-    assertThat(new ClientResponseContextWrapper(response).statusCode()).isZero();
+    assertThat(new ClientResponseContextWrapper(request, response).statusCode()).isZero();
   }
 }

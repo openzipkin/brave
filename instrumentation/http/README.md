@@ -173,7 +173,8 @@ You generally need to...
 5. Complete the span
 
 ```java
-Span span = handler.handleSend(new HttpClientRequestWrapper(request)); // 1.
+HttpClientRequestWrapper wrapper = new HttpClientRequestWrapper(request);
+Span span = handler.handleSend(wrapper); // 1.
 Result result = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
@@ -183,7 +184,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   throw e;
 } finally {
   HttpClientResponseWrapper response = result != null
-    ? new HttpClientResponseWrapper(result, error)
+    ? new HttpClientResponseWrapper(wrapper, result, error)
     : null;
   handler.handleReceive(response, error, span); // 5.
 }

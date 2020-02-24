@@ -72,8 +72,4 @@ public class ITNettyHttpTracing extends ITHttpServer {
   @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
   public void finishedSpanHandlerSeesException() {
   }
-
-  @Override @Ignore("TODO: is there a way to get the request from the channel")
-  public void readsRequestAtResponseTime() {
-  }
 }

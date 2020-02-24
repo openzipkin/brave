@@ -39,6 +39,10 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
     this.delegate = delegate;
   }
 
+  @Override public final Object unwrap() {
+    return delegate;
+  }
+
   /**
    * This sets the client IP:port to the {@linkplain HttpServletRequest#getRemoteAddr() remote
    * address} if the {@link #parseClientIpAndPort default parsing} fails.
@@ -81,9 +85,5 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
     maybeError = delegate.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
     if (maybeError instanceof Throwable) return (Throwable) maybeError;
     return null;
-  }
-
-  @Override public final Object unwrap() {
-    return delegate;
   }
 }

@@ -345,12 +345,12 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       this.response = response;
     }
 
-    @Override public brave.http.HttpRequest request() {
-      return request;
-    }
-
     @Override public Object unwrap() {
       return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {

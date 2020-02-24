@@ -230,7 +230,7 @@ public abstract class ITHttpServer extends ITHttp {
   @Test
   public void readsRequestAtResponseTime() throws Exception {
     httpTracing = httpTracing.toBuilder()
-      .clientResponseParser((response, context, span) -> {
+      .serverResponseParser((response, context, span) -> {
         span.tag("http.url", response.request().url()); // just the path is tagged by default
       })
       .build();

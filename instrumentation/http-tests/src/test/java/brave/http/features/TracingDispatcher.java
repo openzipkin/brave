@@ -16,7 +16,6 @@ package brave.http.features;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.http.HttpRequest;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
@@ -92,16 +91,16 @@ final class TracingDispatcher extends Dispatcher {
       this.error = error;
     }
 
-    @Override public HttpRequest request() {
+    @Override public Object unwrap() {
+      return response;
+    }
+
+    @Override public RecordedRequestWrapper request() {
       return request;
     }
 
     @Override public Throwable error() {
       return error;
-    }
-
-    @Override public Object unwrap() {
-      return response;
     }
 
     @Override public int statusCode() {

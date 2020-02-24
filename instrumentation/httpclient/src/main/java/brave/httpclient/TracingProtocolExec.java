@@ -119,7 +119,7 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   static final class HttpResponseWrapper extends HttpClientResponse {
-    final brave.http.HttpRequest request;
+    final HttpRequestWrapper request;
     final HttpResponse response;
     @Nullable final Throwable error;
 
@@ -135,7 +135,7 @@ final class TracingProtocolExec implements ClientExecChain {
       return response;
     }
 
-    @Override public brave.http.HttpRequest request() {
+    @Override @Nullable public HttpRequestWrapper request() {
       return request;
     }
 

@@ -13,6 +13,7 @@
  */
 package brave.netty.http;
 
+import brave.http.HttpServerRequest;
 import brave.netty.http.TracingHttpServerHandler.HttpResponseWrapper;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -26,17 +27,23 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpResponseWrapperTest {
+  @Mock HttpServerRequest request;
   @Mock HttpResponse response;
   @Mock HttpResponseStatus status;
+
+  @Test public void request() {
+    assertThat(new HttpResponseWrapper(request, response, null).request())
+      .isSameAs(request);
+  }
 
   @Test public void statusCode() {
     when(response.status()).thenReturn(status);
     when(status.code()).thenReturn(200);
 
-    assertThat(new HttpResponseWrapper(response, null).statusCode()).isEqualTo(200);
+    assertThat(new HttpResponseWrapper(request, response, null).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroNoResponse() {
-    assertThat(new HttpResponseWrapper(response, null).statusCode()).isZero();
+    assertThat(new HttpResponseWrapper(request, response, null).statusCode()).isZero();
   }
 }

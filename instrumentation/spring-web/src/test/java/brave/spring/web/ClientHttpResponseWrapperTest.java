@@ -29,8 +29,13 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ClientHttpResponseWrapperTest {
-  @Mock ClientHttpResponse response;
   HttpRequestWrapper request = new HttpRequestWrapper(mock(HttpRequest.class));
+  @Mock ClientHttpResponse response;
+
+  @Test public void request() {
+    assertThat(new ClientHttpResponseWrapper(request, response, null).request())
+      .isSameAs(request);
+  }
 
   @Test public void statusCode() throws IOException {
     when(response.getRawStatusCode()).thenReturn(200);

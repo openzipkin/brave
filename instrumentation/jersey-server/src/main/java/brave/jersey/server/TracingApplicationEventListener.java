@@ -15,7 +15,6 @@ package brave.jersey.server;
 
 import brave.Span;
 import brave.Tracer;
-import brave.http.HttpRequest;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
@@ -157,28 +156,28 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   }
 
   static final class RequestEventWrapper extends HttpServerResponse {
-    final RequestEvent delegate;
+    final RequestEvent event;
     ContainerRequestWrapper request;
 
-    RequestEventWrapper(RequestEvent delegate) {
-      this.delegate = delegate;
+    RequestEventWrapper(RequestEvent event) {
+      this.event = event;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return event;
     }
 
-    @Override public Throwable error() {
-      return SpanCustomizingApplicationEventListener.unwrapError(delegate);
-    }
-
-    @Override public HttpRequest request() {
-      if (request == null) request = new ContainerRequestWrapper(delegate.getContainerRequest());
+    @Override public ContainerRequestWrapper request() {
+      if (request == null) request = new ContainerRequestWrapper(event.getContainerRequest());
       return request;
     }
 
+    @Override public Throwable error() {
+      return SpanCustomizingApplicationEventListener.unwrapError(event);
+    }
+
     @Override public int statusCode() {
-      ContainerResponse response = delegate.getContainerResponse();
+      ContainerResponse response = event.getContainerResponse();
       if (response == null) return 0;
       return response.getStatus();
     }

@@ -98,18 +98,18 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
 
   static final class ClientHttpResponseWrapper extends HttpClientResponse {
     final HttpRequestWrapper request;
-    final ClientHttpResponse delegate;
+    final ClientHttpResponse response;
     @Nullable final Throwable error;
 
     ClientHttpResponseWrapper(
-      HttpRequestWrapper request, ClientHttpResponse delegate, @Nullable Throwable error) {
+      HttpRequestWrapper request, ClientHttpResponse response, @Nullable Throwable error) {
       this.request = request;
-      this.delegate = delegate;
+      this.response = response;
       this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
     }
 
     @Override public HttpRequestWrapper request() {
@@ -122,7 +122,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
 
     @Override public int statusCode() {
       try {
-        return delegate.getRawStatusCode();
+        return response.getRawStatusCode();
       } catch (Exception e) {
         return 0;
       }

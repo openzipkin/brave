@@ -13,7 +13,6 @@
  */
 package brave.servlet;
 
-import brave.http.HttpRequest;
 import brave.http.HttpServerResponse;
 import brave.internal.Nullable;
 import brave.servlet.internal.ServletRuntime;
@@ -50,7 +49,11 @@ public class HttpServletResponseWrapper extends HttpServerResponse { // not fina
     this.caught = caught;
   }
 
-  @Override public HttpRequest request() {
+  @Override public final Object unwrap() {
+    return response;
+  }
+
+  @Override @Nullable public HttpServletRequestWrapper request() {
     return request;
   }
 
@@ -71,9 +74,5 @@ public class HttpServletResponseWrapper extends HttpServerResponse { // not fina
       return 500;
     }
     return result;
-  }
-
-  @Override public final Object unwrap() {
-    return response;
   }
 }
