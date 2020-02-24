@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -44,8 +44,7 @@ public class EventParser {
    * where the event type is {@link RequestEvent.Type#REQUEST_MATCHED}
    *
    * <p>Adds the tags {@link #RESOURCE_CLASS} and {@link #RESOURCE_METHOD}. Override or use {@link
-   * #NOOP}
-   * to change this behavior.
+   * #NOOP} to change this behavior.
    */
   protected void requestMatched(RequestEvent event, SpanCustomizer customizer) {
     ResourceMethod method = event.getContainerRequest().getUriInfo().getMatchedResourceMethod();

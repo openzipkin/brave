@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,9 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.grpc.GrpcPropagation.Tags;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.rpc.RpcRequest;
@@ -25,6 +26,7 @@ import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
+import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
@@ -35,6 +37,7 @@ import static brave.grpc.GrpcServerRequest.GETTER;
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
   final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final Extractor<GrpcServerRequest> extractor;
   final SamplerFunction<RpcRequest> sampler;
   final GrpcServerParser parser;
@@ -42,6 +45,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
     tracer = grpcTracing.rpcTracing.tracing().tracer();
+    currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
     extractor = grpcTracing.propagation.extractor(GETTER);
     sampler = grpcTracing.rpcTracing.serverSampler();
     parser = grpcTracing.serverParser;
@@ -49,7 +53,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
   }
 
   @Override
-  public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+  public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
     Metadata headers, ServerCallHandler<ReqT, RespT> next) {
     GrpcServerRequest request = new GrpcServerRequest(call.getMethodDescriptor(), headers);
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
@@ -64,21 +68,19 @@ final class TracingServerInterceptor implements ServerInterceptor {
     span.kind(Span.Kind.SERVER);
     parser.onStart(call, headers, span.customizer());
     // startCall invokes user interceptors, so we place the span in scope here
-    ServerCall.Listener<ReqT> result;
-    SpanInScope scope = tracer.withSpanInScope(span);
+    Listener<ReqT> result;
     Throwable error = null;
-    try {
+    try (Scope scope = currentTraceContext.maybeScope(span.context())) {
       result = next.startCall(new TracingServerCall<>(span, call), headers);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
     }
 
     // This ensures the server implementation can see the span in scope
-    return new ScopingServerCallListener<>(tracer, span, result, parser);
+    return new TracingServerCallListener<>(result, currentTraceContext, parser, span);
   }
 
   /** Creates a potentially noop span representing this request */
@@ -95,7 +97,6 @@ final class TracingServerInterceptor implements ServerInterceptor {
       : tracer.nextSpan(extracted);
   }
 
-  // TODO: this looks like it should be scoping, but isn't. Revisit
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
     final Span span;
 
@@ -106,20 +107,29 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     @Override public void request(int numMessages) {
       span.start();
-      super.request(numMessages);
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
+        super.request(numMessages);
+      }
     }
 
-    @Override
-    public void sendMessage(RespT message) {
-      super.sendMessage(message);
-      parser.onMessageSent(message, span.customizer());
+    @Override public void sendHeaders(Metadata headers) {
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
+        super.sendHeaders(headers);
+      }
+    }
+
+    @Override public void sendMessage(RespT message) {
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
+        super.sendMessage(message);
+        parser.onMessageSent(message, span.customizer());
+      }
     }
 
     @Override public void close(Status status, Metadata trailers) {
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         super.close(status, trailers);
         parser.onClose(status, trailers, span.customizer());
-      } catch (RuntimeException | Error e) {
+      } catch (Throwable e) {
         span.error(e);
         throw e;
       } finally {
@@ -128,70 +138,56 @@ final class TracingServerInterceptor implements ServerInterceptor {
     }
   }
 
-  static final class ScopingServerCallListener<ReqT>
+  static final class TracingServerCallListener<ReqT>
     extends SimpleForwardingServerCallListener<ReqT> {
-    final Tracer tracer;
+    final CurrentTraceContext currentTraceContext;
     final Span span;
     final GrpcServerParser parser;
 
-    ScopingServerCallListener(Tracer tracer, Span span, ServerCall.Listener<ReqT> delegate,
-      GrpcServerParser parser) {
+    TracingServerCallListener(Listener<ReqT> delegate, CurrentTraceContext currentTraceContext,
+      GrpcServerParser parser, Span span) {
       super(delegate);
-      this.tracer = tracer;
+      this.currentTraceContext = currentTraceContext;
       this.span = span;
       this.parser = parser;
     }
 
     @Override public void onMessage(ReqT message) {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         parser.onMessageReceived(message, span.customizer());
         delegate().onMessage(message);
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onHalfClose() {
-      SpanInScope scope = tracer.withSpanInScope(span);
       Throwable error = null;
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         delegate().onHalfClose();
-      } catch (RuntimeException | Error e) {
+      } catch (Throwable e) {
         error = e;
         throw e;
       } finally {
         // If there was an exception executing onHalfClose, we don't expect other lifecycle
         // commands to succeed. Accordingly, we close the span
         if (error != null) span.error(error).finish();
-        scope.close();
       }
     }
 
     @Override public void onCancel() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         delegate().onCancel();
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onComplete() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         delegate().onComplete();
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onReady() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         delegate().onReady();
-      } finally {
-        scope.close();
       }
     }
   }
