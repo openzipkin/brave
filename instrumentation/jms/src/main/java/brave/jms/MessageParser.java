@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -36,16 +36,35 @@ final class MessageParser {
   }
 
   @Nullable static String channelKind(@Nullable Destination destination) {
-    if (destination instanceof Queue) return "queue";
-    if (destination instanceof Topic) return "topic";
-    return null;
+    if (destination == null) return null;
+    return isQueue(destination) ? "queue" : "topic";
+  }
+
+  /**
+   * Handles special case of a destination being both a Queue and a Topic by checking if the
+   * {@linkplain Queue#getQueueName() queue name} is readable.
+   */
+  static boolean isQueue(@Nullable Destination destination) {
+    boolean isQueue = destination instanceof Queue;
+    boolean isTopic = destination instanceof Topic;
+    if (isQueue && isTopic) {
+      try {
+        isQueue = ((Queue) destination).getQueueName() != null;
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error getting destination name from {0}", destination, null);
+      }
+    }
+    return isQueue;
   }
 
   @Nullable static String channelName(@Nullable Destination destination) {
+    if (destination == null) return null;
+    boolean isQueue = isQueue(destination);
     try {
-      if (destination instanceof Queue) {
+      if (isQueue) {
         return ((Queue) destination).getQueueName();
-      } else if (destination instanceof Topic) {
+      } else {
         return ((Topic) destination).getTopicName();
       }
     } catch (Throwable t) {
