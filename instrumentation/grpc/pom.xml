@@ -35,7 +35,6 @@
     <main.signature.artifact>java16</main.signature.artifact>
 
     <protobuf.version>3.11.0</protobuf.version>
-    <opencensus.version>0.24.0</opencensus.version>
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 
@@ -66,18 +65,6 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-context-log4j2</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.opencensus</groupId>
-      <artifactId>opencensus-impl-lite</artifactId>
-      <version>${opencensus.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.opencensus</groupId>
-      <artifactId>opencensus-testing</artifactId>
-      <version>${opencensus.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- for Generated annotation in tests -->

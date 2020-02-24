@@ -48,8 +48,6 @@ import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -72,8 +70,6 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor {
-  Logger testLogger = LogManager.getLogger();
-
   /**
    * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
    * like those using blocking clients, happen on the main thread.
@@ -278,7 +274,6 @@ public abstract class BaseITTracingClientInterceptor {
       new ClientInterceptor() {
         @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
           MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          testLogger.info("in span!");
           tracer.currentSpanCustomizer().annotate("before");
           return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
             next.newCall(method, callOptions)) {

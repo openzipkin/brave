@@ -21,7 +21,6 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
 import java.util.List;
 import java.util.Map;
 
@@ -38,14 +37,6 @@ final class GrpcPropagation<K> implements Propagation<K> {
   /** This stashes the tag context in "extra" so it isn't lost */
   static final Metadata.Key<Map<String, String>> GRPC_TAGS_BIN =
     Metadata.Key.of("grpc-tags-bin", new TagContextBinaryMarshaller());
-
-  /**
-   * The census tag key corresponding to the {@link MethodDescriptor#getFullMethodName()}.
-   *
-   * <p>Note: this was removed in gRPC 1.22. We currently continue to propagate it for interop with
-   * earlier versions of gRPC.
-   */
-  static final String RPC_METHOD = "method";
 
   static Propagation.Factory newFactory(Propagation.Factory delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
@@ -128,15 +119,22 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
 
     @Override public TraceContextOrSamplingFlags extract(C carrier) {
-      Tags tags = null;
-      if (carrier instanceof GrpcServerRequest) {
-        tags = extractTags(((GrpcServerRequest) carrier).getMetadata(GRPC_TAGS_BIN));
-        byte[] bytes = ((GrpcServerRequest) carrier).getMetadata(GRPC_TRACE_BIN);
-        if (bytes != null) {
-          TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
-          if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);
-        }
+      if (!(carrier instanceof GrpcServerRequest)) return delegate.extract(carrier);
+
+      GrpcServerRequest serverRequest = (GrpcServerRequest) carrier;
+
+      // First, check if we are propagating gRPC tags.
+      Map<String, String> tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
+      Tags tags = tagsBin != null ? new Tags(tagsBin) : null;
+
+      // Next, check to see if there is a gRPC formatted trace context: use it if parsable.
+      byte[] bytes = serverRequest.getMetadata(GRPC_TRACE_BIN);
+      if (bytes != null) {
+        TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
+        if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);
       }
+
+      // Finally, try to extract an incoming, non-gRPC trace context. If tags exist, propagate them.
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
       if (tags == null) return result;
       return result.toBuilder().addExtra(tags).build();
@@ -157,28 +155,16 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
   }
 
-  static Tags extractTags(Map<String, String> extracted) {
-    if (extracted == null) return null;
-    // Remove the incoming RPC method as we should replace it with our current server method.
-    String parentMethod = extracted.remove(RPC_METHOD);
-    return new Tags(extracted, parentMethod);
-  }
-
   static final class Tags extends MapPropagationFields<String, String> {
-    final String parentMethod;
-
     Tags() {
-      parentMethod = null;
     }
 
     Tags(Tags parent) {
       super(parent);
-      parentMethod = parent.parentMethod;
     }
 
-    Tags(Map<String, String> extracted, String parentMethod) {
+    Tags(Map<String, String> extracted) {
       super(extracted);
-      this.parentMethod = parentMethod;
     }
   }
 }

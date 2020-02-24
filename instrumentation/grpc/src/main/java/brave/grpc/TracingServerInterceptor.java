@@ -15,7 +15,6 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
-import brave.grpc.GrpcPropagation.Tags;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext.Extractor;
@@ -31,7 +30,6 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 
-import static brave.grpc.GrpcPropagation.RPC_METHOD;
 import static brave.grpc.GrpcServerRequest.GETTER;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
@@ -57,15 +55,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
     Metadata headers, ServerCallHandler<ReqT, RespT> next) {
     GrpcServerRequest request = new GrpcServerRequest(call.getMethodDescriptor(), headers);
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
-    Span span = nextSpan(extracted, request);
-
-    // If grpc propagation is enabled, make sure we refresh the server method
-    if (grpcPropagationFormatEnabled) {
-      Tags tags = span.context().findExtra(Tags.class);
-      if (tags != null) tags.put(RPC_METHOD, call.getMethodDescriptor().getFullMethodName());
-    }
-
-    span.kind(Span.Kind.SERVER);
+    Span span = nextSpan(extracted, request).kind(Span.Kind.SERVER);
     parser.onStart(call, headers, span.customizer());
     // startCall invokes user interceptors, so we place the span in scope here
     Listener<ReqT> result;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -79,10 +79,8 @@ public final class GrpcTracing {
      * Default is false.
      *
      * <p>This wraps an existing propagation implementation, but prefers extracting
-     * "grpc-trace-bin" and "grpc-tags-bin" when parsing gRPC metadata. The incoming service method
-     * is propagated to outgoing client requests and written in the tags context as the key named
-     * "method". Regardless of whether "grpc-trace-bin" was parsed, it is speculatively written on
-     * outgoing requests.
+     * "grpc-trace-bin" and "grpc-tags-bin" when parsing gRPC metadata. Regardless of whether
+     * "grpc-trace-bin" was parsed, it is speculatively written on outgoing requests.
      *
      * <p>Warning: the format of both "grpc-trace-bin" and "grpc-tags-bin" are version 0. As such,
      * consider this feature experimental.

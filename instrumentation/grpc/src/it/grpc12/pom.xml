@@ -89,7 +89,6 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>@maven-compiler-plugin.version@</version>
         <configuration>
-          <!-- Census doesn't exist in grpc 1.2 -->
           <excludes>
             <exclude>**/IT*.java</exclude>
           </excludes>
