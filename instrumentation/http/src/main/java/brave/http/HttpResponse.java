@@ -45,7 +45,8 @@ public abstract class HttpResponse extends Response {
    * Returns the {@linkplain HttpRequest#method() HTTP method} of the request that caused this
    * response or {@code null} if unreadable.
    *
-   * <p>Note: This value may be present even when {@link #request()} is {@code null}.
+   * <p>Note: This value may be present even when {@link #request()} is {@code null}, but
+   * implementations should implement {@link #request()} when possible.
    *
    * @see HttpRequest#method()
    * @since 5.10
@@ -59,7 +60,8 @@ public abstract class HttpResponse extends Response {
    * Returns the {@linkplain HttpRequest#route() HTTP route} of the request that caused this
    * response or {@code null} if unreadable.
    *
-   * <p>Note: This value may be present even when {@link #request()} is {@code null}.
+   * <p>Note: This value may be present even when {@link #request()} is {@code null}, but
+   * implementations should implement {@link #request()} when possible.
    *
    * @see HttpRequest#route()
    * @since 5.10

@@ -55,7 +55,8 @@ public class HttpServletResponseWrapper extends HttpServerResponse { // not fina
   }
 
   @Override public Throwable error() {
-    if (caught != null || request == null) return caught;
+    if (caught != null) return caught;
+    if (request == null) return null;
     return request.maybeError();
   }
 

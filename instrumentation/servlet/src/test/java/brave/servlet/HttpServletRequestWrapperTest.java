@@ -14,7 +14,7 @@
 package brave.servlet;
 
 import brave.Span;
-import brave.http.HttpServerRequest;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 import org.junit.Test;
 
@@ -26,7 +26,8 @@ import static org.mockito.Mockito.when;
 
 public class HttpServletRequestWrapperTest {
   HttpServletRequest request = mock(HttpServletRequest.class);
-  HttpServerRequest wrapper = HttpServletRequestWrapper.create(request);
+  HttpServletRequestWrapper wrapper =
+    (HttpServletRequestWrapper) HttpServletRequestWrapper.create(request);
   Span span = mock(Span.class);
 
   @Test public void unwrap() {
@@ -89,5 +90,31 @@ public class HttpServletRequestWrapperTest {
 
     verify(span).remoteIpAndPort("1.2.3.4", 61687);
     verifyNoMoreInteractions(span);
+  }
+
+  @Test public void maybeError_fromRequestAttribute() {
+    Exception requestError = new Exception();
+    when(request.getAttribute("error")).thenReturn(requestError);
+
+    assertThat(wrapper.maybeError()).isSameAs(requestError);
+  }
+
+  @Test public void maybeError_badRequestAttribute() {
+    when(request.getAttribute("error")).thenReturn(new Object());
+
+    assertThat(wrapper.maybeError()).isNull();
+  }
+
+  @Test public void maybeError_dispatcher() {
+    Exception error = new Exception();
+    when(request.getAttribute(RequestDispatcher.ERROR_EXCEPTION)).thenReturn(error);
+
+    assertThat(wrapper.maybeError()).isSameAs(error);
+  }
+
+  @Test public void maybeError_dispatcher_badAttribute() {
+    when(request.getAttribute(RequestDispatcher.ERROR_EXCEPTION)).thenReturn(new Object());
+
+    assertThat(wrapper.maybeError()).isNull();
   }
 }
