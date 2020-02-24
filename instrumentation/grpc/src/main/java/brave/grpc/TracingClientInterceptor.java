@@ -15,7 +15,6 @@ package brave.grpc;
 
 import brave.Span;
 import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -65,16 +64,14 @@ final class TracingClientInterceptor implements ClientInterceptor {
     GrpcClientRequest request = new GrpcClientRequest(method);
     Span span = tracer.nextSpanWithParent(sampler, request, invocationContext);
 
-    SpanInScope scope = tracer.withSpanInScope(span);
     Throwable error = null;
-    try {
+    try (Scope scope = currentTraceContext.maybeScope(span.context())) {
       return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
         @Override public void start(Listener<RespT> responseListener, Metadata headers) {
           request.metadata = headers;
           injector.inject(span.context(), request);
           span.kind(Span.Kind.CLIENT).start();
-          SpanInScope scope = tracer.withSpanInScope(span);
-          try { // retrolambda can't resolve this try/finally
+          try (Scope scope = currentTraceContext.maybeScope(span.context())) {
             parser.onStart(method, callOptions, headers, span.customizer());
 
             // Ensures callbacks execute on the invocation context. For example, if a user has code
@@ -87,18 +84,13 @@ final class TracingClientInterceptor implements ClientInterceptor {
             );
 
             super.start(new TracingClientCallListener<>(responseListener, span), headers);
-          } finally {
-            scope.close();
           }
         }
 
         @Override public void sendMessage(ReqT message) {
-          SpanInScope scope = tracer.withSpanInScope(span);
-          try { // retrolambda can't resolve this try/finally
+          try (Scope scope = currentTraceContext.maybeScope(span.context())) {
             super.sendMessage(message);
             parser.onMessageSent(message, span.customizer());
-          } finally {
-            scope.close();
           }
         }
       };
@@ -107,7 +99,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
       throw e;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
     }
   }
 
@@ -127,38 +118,26 @@ final class TracingClientInterceptor implements ClientInterceptor {
     }
 
     @Override public void onReady() {
-      Scope scope = currentTraceContext.maybeScope(invocationContext);
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onReady();
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onHeaders(Metadata headers) {
-      Scope scope = currentTraceContext.maybeScope(invocationContext);
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onHeaders(headers);
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onMessage(RespT message) {
-      Scope scope = currentTraceContext.maybeScope(invocationContext);
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onMessage(message);
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onClose(Status status, Metadata trailers) {
-      Scope scope = currentTraceContext.maybeScope(invocationContext);
-      try {
-        super.onClose(status, trailers);
-      } finally {
-        scope.close();
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate().onClose(status, trailers);
       }
     }
   }
@@ -172,23 +151,18 @@ final class TracingClientInterceptor implements ClientInterceptor {
     }
 
     @Override public void onMessage(RespT message) {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         parser.onMessageReceived(message, span.customizer());
         delegate().onMessage(message);
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onClose(Status status, Metadata trailers) {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         super.onClose(status, trailers);
         parser.onClose(status, trailers, span.customizer());
       } finally {
         span.finish();
-        scope.close();
       }
     }
   }
