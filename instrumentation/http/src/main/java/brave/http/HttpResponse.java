@@ -37,7 +37,7 @@ public abstract class HttpResponse extends Response {
    *
    * @since 5.10
    */
-  @Nullable public HttpRequest request() {
+  @Override @Nullable public HttpRequest request() {
     return null;
   }
 
