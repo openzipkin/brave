@@ -103,7 +103,7 @@
     <okhttp.version>4.3.1</okhttp.version>
     <httpclient.version>4.5.11</httpclient.version>
 
-    <grpc.version>1.26.0</grpc.version>
+    <grpc.version>1.27.0</grpc.version>
     <!-- prefer grpc's version of netty -->
     <netty.version>4.1.42.Final</netty.version>
 
