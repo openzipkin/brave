@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave;
 import brave.handler.MutableSpan;
 
 /** This is a simplified type used for parsing errors. It only allows annotations or tags. */
-// This implementation works with SpanCustomizer and ScopedSpan which don't share a common interface
-// yet both support tag and annotations.
+// This implementation works with SpanCustomizer, MutableSpan and ScopedSpan, which don't share a
+// common interface, yet both support tag and annotations.
 public class ErrorParser {
   /** Adds no tags to the span representing the operation in error. */
   public static final ErrorParser NOOP = new ErrorParser() {
@@ -35,7 +35,7 @@ public class ErrorParser {
     error(error, (Object) customizer);
   }
 
-  /** Used to parse errors on a subtype of {@linkplain SpanCustomizer} */
+  /** Used to parse errors on a subtype of {@linkplain MutableSpan} */
   public final void error(Throwable error, MutableSpan span) {
     error(error, (Object) span);
   }
