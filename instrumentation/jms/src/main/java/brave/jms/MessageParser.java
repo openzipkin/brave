@@ -15,6 +15,7 @@ package brave.jms;
 
 import brave.internal.Nullable;
 import javax.jms.Destination;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.Topic;
@@ -58,6 +59,16 @@ final class MessageParser {
     return isQueue;
   }
 
+  /**
+   * Similar to other properties, {@code null} should be expected even if it seems unintuitive.
+   *
+   * The JMS 1.1 specification 4.2.1 suggests destination details are provider specific. Further,
+   * JavaDoc on {@link Queue#getQueueName()} and {@link Topic#getTopicName()} say "Clients that
+   * depend upon the name are not portable." Next, such operations can raise {@link JMSException}
+   * messages which this code can coerce to null. Finally, destinations are not constrained to
+   * implement only one of {@link Queue} or {@link Destination}. This implies one could return null
+   * while the other doesn't, such as was the case in issue #1098.
+   */
   @Nullable static String channelName(@Nullable Destination destination) {
     if (destination == null) return null;
     boolean isQueue = isQueue(destination);
