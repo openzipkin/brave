@@ -261,7 +261,7 @@ public class B3PropagationTest {
     headers.put("X-B3-TraceId", traceId);
     headers.put("X-B3-SpanId", spanId);
 
-    Stream.of("", "d", "hello").forEach(sampled -> {
+    Stream.of("", "d", "💩", "hello").forEach(sampled -> {
       headers.put("X-B3-Sampled", sampled);
       assertThat(extract(headers)).isSameAs(TraceContextOrSamplingFlags.EMPTY);
 

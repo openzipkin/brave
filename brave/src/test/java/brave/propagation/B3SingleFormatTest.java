@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -247,6 +247,22 @@ public class B3SingleFormatTest {
   @Test public void parseB3SingleFormat_sampled() {
     assertThat(parseB3SingleFormat("1"))
       .isEqualTo(TraceContextOrSamplingFlags.SAMPLED);
+  }
+
+  @Test public void parseB3SingleFormat_ascii() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-💩"))
+      .isNull(); // instead of crashing
+
+    verify(platform)
+      .log("Invalid input: non-ASCII character at offset {0}", 34, null);
+  }
+
+  @Test public void parseB3SingleFormat_sampledCorrupt() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-y"))
+      .isNull(); // instead of crashing
+
+    verify(platform)
+      .log("Invalid input: expected 0, 1 or d for sampled at offset {0}", 34, null);
   }
 
   @Test public void parseB3SingleFormat_debug() {

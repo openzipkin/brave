@@ -165,6 +165,15 @@ public final class B3SingleFormat {
       return null;
     }
 
+    // Cheaply check for only ASCII characters. This allows for more precise messages later, but
+    // kicks out early on data such as unicode.
+    for (int i = beginIndex; i < endIndex; i++) {
+      if (b3.charAt(i) >= 128) {
+        Platform.get().log("Invalid input: non-ASCII character at offset {0}", i, null);
+        return null;
+      }
+    }
+
     long traceIdHigh, traceId;
     if (b3.charAt(pos + 32) == '-') {
       traceIdHigh = tryParse16HexCharacters(b3, pos, endIndex);
