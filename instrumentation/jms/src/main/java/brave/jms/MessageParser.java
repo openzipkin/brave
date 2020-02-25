@@ -62,7 +62,7 @@ final class MessageParser {
   /**
    * Similar to other properties, {@code null} should be expected even if it seems unintuitive.
    *
-   * The JMS 1.1 specification 4.2.1 suggests destination details are provider specific. Further,
+   * <p>The JMS 1.1 specification 4.2.1 suggests destination details are provider specific. Further,
    * JavaDoc on {@link Queue#getQueueName()} and {@link Topic#getTopicName()} say "Clients that
    * depend upon the name are not portable." Next, such operations can raise {@link JMSException}
    * messages which this code can coerce to null. Finally, destinations are not constrained to
