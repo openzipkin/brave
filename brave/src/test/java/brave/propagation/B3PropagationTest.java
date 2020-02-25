@@ -265,7 +265,7 @@ public class B3PropagationTest {
       headers.put("X-B3-Sampled", sampled);
       assertThat(extract(headers)).isSameAs(TraceContextOrSamplingFlags.EMPTY);
 
-      verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled: {0}", sampled, null);
+      verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'", sampled, null);
     });
   }
 

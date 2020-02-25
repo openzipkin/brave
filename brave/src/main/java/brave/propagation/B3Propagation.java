@@ -117,7 +117,7 @@ public final class B3Propagation<K> implements Propagation<K> {
    */
   static final String SAMPLED_NAME = "X-B3-Sampled";
   static final String SAMPLED_MALFORMED =
-    "Invalid input: expected 0 or 1 for " + SAMPLED_NAME + ": {0}";
+    "Invalid input: expected 0 or 1 for " + SAMPLED_NAME + ", but found '{0}'";
 
   /**
    * "1" implies sampled and is a request to override collection-tier sampling policy.
