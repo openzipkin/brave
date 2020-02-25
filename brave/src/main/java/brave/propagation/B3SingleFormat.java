@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -163,6 +163,15 @@ public final class B3SingleFormat {
     } else if (endIndex > FORMAT_MAX_LENGTH) {
       Platform.get().log("Invalid input: too long", null);
       return null;
+    }
+
+    // Cheaply check for only ASCII characters. This allows for more precise messages later, but
+    // kicks out early on data such as unicode.
+    for (int i = beginIndex; i < endIndex; i++) {
+      if (b3.charAt(i) >= 128) {
+        Platform.get().log("Invalid input: non-ASCII character at offset {0}", i, null);
+        return null;
+      }
     }
 
     long traceIdHigh, traceId;
