@@ -15,6 +15,7 @@ package brave.http.features;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
@@ -35,17 +36,18 @@ final class TracingDispatcher extends Dispatcher {
     this.delegate = delegate;
   }
 
-  @Override public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
-    Span span = handler.handleReceive(new RecordedRequestWrapper(request));
+  @Override public MockResponse dispatch(RecordedRequest req) throws InterruptedException {
+    RecordedRequestWrapper request = new RecordedRequestWrapper(req);
+    Span span = handler.handleReceive(request);
     MockResponse response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = delegate.dispatch(request);
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      return response = delegate.dispatch(req);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new MockResponseWrapper(response, error), error, span);
+      handler.handleSend(new MockResponseWrapper(request, response, error), error, span);
     }
   }
 
@@ -78,24 +80,31 @@ final class TracingDispatcher extends Dispatcher {
   }
 
   static final class MockResponseWrapper extends HttpServerResponse {
-    final MockResponse delegate;
+    final RecordedRequestWrapper request;
+    final MockResponse response;
     final @Nullable Throwable error;
 
-    MockResponseWrapper(MockResponse delegate, @Nullable Throwable error) {
-      this.delegate = delegate;
+    MockResponseWrapper(RecordedRequestWrapper request, MockResponse response,
+      @Nullable Throwable error) {
+      this.request = request;
+      this.response = response;
       this.error = error;
+    }
+
+    @Override public Object unwrap() {
+      return response;
+    }
+
+    @Override public RecordedRequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
       return error;
     }
 
-    @Override public Object unwrap() {
-      return delegate;
-    }
-
     @Override public int statusCode() {
-      return Integer.parseInt(delegate.getStatus().split(" ")[1]);
+      return Integer.parseInt(response.getStatus().split(" ")[1]);
     }
   }
 }

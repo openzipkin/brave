@@ -28,31 +28,47 @@ import brave.propagation.TraceContext;
  */
 public abstract class HttpResponse extends Response {
   /**
-   * Like {@link HttpRequest#method()} except used in response parsing.
+   * The request that initiated this HTTP response or {@code null} if unknown.
    *
-   * <p>Notably, this is used to create a route-based span name.
+   * <p>Implementations should return the last wire-level request that caused this response or
+   * error. HTTP properties like {@linkplain HttpRequest#path() path} and {@linkplain
+   * HttpRequest#header(String) headers} might be different, due to redirects or authentication.
+   * Some properties might not be visible until response processing, notably {@link #route()}.
    *
    * @since 5.10
    */
-  // TODO: Consider `httpResponse.request()` and deprecating `httpResponse.method()` #1086
-  @Nullable public String method() {
+  @Override @Nullable public HttpRequest request() {
     return null;
   }
 
   /**
-   * Returns an expression such as "/items/:itemId" representing an application endpoint,
-   * conventionally associated with the tag key "http.route". If no route matched, "" (empty string)
-   * is returned. Null indicates this instrumentation doesn't understand http routes.
+   * Returns the {@linkplain HttpRequest#method() HTTP method} of the request that caused this
+   * response or {@code null} if unreadable.
    *
-   * <p>Eventhough the route is associated with the request, not the response, this is present
-   * on the response object. The reasons is that many server implementations process the request
-   * before they can identify the route route.
+   * <p>Note: This value may be present even when {@link #request()} is {@code null}, but
+   * implementations should implement {@link #request()} when possible.
    *
-   * @see HttpRequest#path()
+   * @see HttpRequest#method()
+   * @since 5.10
+   */
+  @Nullable public String method() {
+    HttpRequest request = request();
+    return request != null ? request.method() : null;
+  }
+
+  /**
+   * Returns the {@linkplain HttpRequest#route() HTTP route} of the request that caused this
+   * response or {@code null} if unreadable.
+   *
+   * <p>Note: This value may be present even when {@link #request()} is {@code null}, but
+   * implementations should implement {@link #request()} when possible.
+   *
+   * @see HttpRequest#route()
    * @since 5.10
    */
   @Nullable public String route() {
-    return null;
+    HttpRequest request = request();
+    return request != null ? request.route() : null;
   }
 
   /**

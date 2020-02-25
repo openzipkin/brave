@@ -14,8 +14,10 @@
 package brave.httpasyncclient;
 
 import brave.httpasyncclient.TracingHttpAsyncClientBuilder.HttpResponseWrapper;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -26,17 +28,26 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpResponseWrapperTest {
+  @Mock HttpClientContext context;
+  @Mock HttpRequest request;
   @Mock HttpResponse response;
   @Mock StatusLine statusLine;
+
+  @Test public void request() {
+    when(context.getRequest()).thenReturn(request);
+
+    assertThat(new HttpResponseWrapper(response, context).request().unwrap())
+      .isSameAs(request);
+  }
 
   @Test public void statusCode() {
     when(response.getStatusLine()).thenReturn(statusLine);
     when(statusLine.getStatusCode()).thenReturn(200);
 
-    assertThat(new HttpResponseWrapper(response).statusCode()).isEqualTo(200);
+    assertThat(new HttpResponseWrapper(response, context).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroWhenNoStatusLine() {
-    assertThat(new HttpResponseWrapper(response).statusCode()).isZero();
+    assertThat(new HttpResponseWrapper(response, context).statusCode()).isZero();
   }
 }

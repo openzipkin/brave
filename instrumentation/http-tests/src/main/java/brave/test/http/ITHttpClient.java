@@ -209,6 +209,24 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .isEqualTo("get");
   }
 
+  @Test public void readsRequestAtResponseTime() throws Exception {
+    String uri = "/foo/bar?z=2&yAA=1";
+
+    close();
+    httpTracing = httpTracing.toBuilder()
+      .clientResponseParser((response, context, span) -> {
+        span.tag("http.url", response.request().url()); // just the path is tagged by default
+      })
+      .build();
+
+    client = newClient(server.getPort());
+    server.enqueue(new MockResponse());
+    get(client, uri);
+
+    assertThat(takeSpan().tags())
+      .containsEntry("http.url", url(uri));
+  }
+
   @Test public void supportsPortableCustomization() throws Exception {
     String uri = "/foo/bar?z=2&yAA=1";
 
@@ -216,7 +234,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     httpTracing = httpTracing.toBuilder()
       .clientRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
-        span.tag("http.url", request.url()); // just the path is logged by default
+        span.tag("http.url", request.url()); // just the path is tagged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .clientResponseParser((response, context, span) -> {
@@ -252,7 +270,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
         public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
           SpanCustomizer customizer) {
           customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-          customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+          customizer.tag("http.url", adapter.url(req)); // just the path is tagged by default
           customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
           customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,11 +16,14 @@ package brave.netty.http;
 import brave.Span;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
+import brave.http.HttpServerRequest;
 import brave.http.HttpTracing;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.util.AttributeKey;
 
 public final class NettyHttpTracing {
+  static final AttributeKey<HttpServerRequest> REQUEST_ATTRIBUTE =
+    AttributeKey.valueOf(HttpServerRequest.class.getName());
   static final AttributeKey<Span> SPAN_ATTRIBUTE = AttributeKey.valueOf(Span.class.getName());
   static final AttributeKey<SpanInScope> SPAN_IN_SCOPE_ATTRIBUTE =
     AttributeKey.valueOf(SpanInScope.class.getName());

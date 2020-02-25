@@ -40,6 +40,11 @@ public class HttpServerResponseWrapperTest {
     when(context.currentRoute()).thenReturn(currentRoute);
   }
 
+  @Test public void request() {
+    assertThat(new HttpServerResponseWrapper(context).request().unwrap())
+      .isSameAs(request);
+  }
+
   @Test public void method() {
     when(request.rawMethod()).thenReturn("GET");
 

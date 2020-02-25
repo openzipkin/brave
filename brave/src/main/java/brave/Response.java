@@ -32,10 +32,20 @@ public abstract class Response {
   public abstract Span.Kind spanKind();
 
   /**
+   * The request that initiated this response or {@code null} if unknown.
+   *
+   * <p>Implementations should return the last wire-level request that caused this response or
+   * error.
+   */
+  @Nullable public Request request() {
+    return null;
+  }
+
+  /**
    * The error raised during response processing or {@code null} if there was none.
    *
-   * <p>Lack of throwable, {@code null}, does not mean success. For example, in HTTP, there could be
-   * a 409 status code with no corresponding Java exception.
+   * <p>Lack of throwable, {@code null}, does not mean success. For example, in HTTP, there could
+   * be a 409 status code with no corresponding Java exception.
    *
    * <h3>Handling errors</h3>
    * Handlers invoke {@link Span#error(Throwable)} prior to passing control to user-defined response

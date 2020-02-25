@@ -228,11 +228,27 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
+  public void readsRequestAtResponseTime() throws Exception {
+    httpTracing = httpTracing.toBuilder()
+      .serverResponseParser((response, context, span) -> {
+        span.tag("http.url", response.request().url()); // just the path is tagged by default
+      })
+      .build();
+    init();
+
+    String uri = "/foo?z=2&yAA=1";
+    get(uri);
+
+    assertThat(takeSpan().tags())
+      .containsEntry("http.url", url(uri));
+  }
+
+  @Test
   public void supportsPortableCustomization() throws Exception {
     httpTracing = httpTracing.toBuilder()
       .serverRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
-        span.tag("http.url", request.url()); // just the path is logged by default
+        span.tag("http.url", request.url()); // just the path is tagged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .serverResponseParser((response, context, span) -> {
@@ -257,7 +273,7 @@ public abstract class ITHttpServer extends ITHttp {
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+        customizer.tag("http.url", adapter.url(req)); // just the path is tagged by default
         customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
         customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
       }
@@ -357,7 +373,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   final HttpRequestParser addHttpUrlTag = (request, context, span) -> {
     HttpRequestParser.DEFAULT.parse(request, context, span);
-    span.tag("http.url", request.url()); // just the path is logged by default
+    span.tag("http.url", request.url()); // just the path is tagged by default
   };
 
   /** If http route is supported, then the span name should include it */

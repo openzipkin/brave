@@ -49,6 +49,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     HttpRequestWrapper request =
       new HttpRequestWrapper((HttpRequest) msg, (InetSocketAddress) ctx.channel().remoteAddress());
 
+    ctx.channel().attr(NettyHttpTracing.REQUEST_ATTRIBUTE).set(request);
     Span span = handler.handleReceive(request);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
     SpanInScope spanInScope = tracer.withSpanInScope(span);
@@ -86,7 +87,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       error = t;
       throw t;
     } finally {
-      handler.handleSend(new HttpResponseWrapper(response, error), error, span);
+      HttpServerRequest request = ctx.channel().attr(NettyHttpTracing.REQUEST_ATTRIBUTE).get();
+      handler.handleSend(new HttpResponseWrapper(request, response, error), error, span);
       spanInScope.close();
     }
   }
@@ -134,16 +136,26 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
   }
 
   static final class HttpResponseWrapper extends HttpServerResponse {
+    @Nullable final HttpServerRequest request;
     final HttpResponse delegate;
     @Nullable final Throwable error;
 
-    HttpResponseWrapper(HttpResponse delegate, @Nullable Throwable error) {
-      this.delegate = delegate;
+    HttpResponseWrapper(
+      @Nullable HttpServerRequest request,
+      HttpResponse response,
+      @Nullable Throwable error
+    ) {
+      this.request = request;
+      this.delegate = response;
       this.error = error;
     }
 
     @Override public HttpResponse unwrap() {
       return delegate;
+    }
+
+    @Override @Nullable public HttpServerRequest request() {
+      return request;
     }
 
     @Override public Throwable error() {

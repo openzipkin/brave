@@ -53,19 +53,23 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   @Override public CloseableHttpResponse execute(HttpRoute route,
-    org.apache.http.client.methods.HttpRequestWrapper request,
-    HttpClientContext clientContext, HttpExecutionAware execAware)
+    org.apache.http.client.methods.HttpRequestWrapper req,
+    HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = tracer.nextSpan(httpSampler, new HttpRequestWrapper(request));
+    HttpRequestWrapper request = new HttpRequestWrapper(req);
+    Span span = tracer.nextSpan(httpSampler, request);
+    context.setAttribute(Span.class.getName(), span);
+
     CloseableHttpResponse result = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return result = protocolExec.execute(route, request, clientContext, execAware);
+      return result = protocolExec.execute(route, req, context, execAware);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      HttpResponseWrapper response = result != null ? new HttpResponseWrapper(result, error) : null;
+      HttpResponseWrapper response = result != null
+        ? new HttpResponseWrapper(result, context, error) : null;
       handler.handleReceive(response, error, span);
     }
   }
@@ -115,16 +119,24 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   static final class HttpResponseWrapper extends HttpClientResponse {
-    final HttpResponse delegate;
+    final HttpRequestWrapper request;
+    final HttpResponse response;
     @Nullable final Throwable error;
 
-    HttpResponseWrapper(HttpResponse delegate, @Nullable Throwable error) {
-      this.delegate = delegate;
+    HttpResponseWrapper(HttpResponse response, HttpClientContext context,
+      @Nullable Throwable error) {
+      HttpRequest request = context.getRequest();
+      this.request = request != null ? new HttpRequestWrapper(request) : null;
+      this.response = response;
       this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
@@ -132,7 +144,7 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public int statusCode() {
-      StatusLine statusLine = delegate.getStatusLine();
+      StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }

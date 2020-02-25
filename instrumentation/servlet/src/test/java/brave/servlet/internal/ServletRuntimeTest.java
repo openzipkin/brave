@@ -19,40 +19,14 @@ import java.util.Collection;
 import java.util.Locale;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Response;
 import org.junit.Test;
 
-import static brave.servlet.internal.ServletRuntime.maybeError;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class ServletRuntimeTest {
   ServletRuntime servlet25 = new ServletRuntime.Servlet25();
-  HttpServletRequest request = mock(HttpServletRequest.class);
-
-  @Test public void maybeError_fromRequestAttribute() {
-    Exception requestError = new Exception();
-    when(request.getAttribute("error")).thenReturn(requestError);
-
-    assertThat(maybeError(null, request)).isSameAs(requestError);
-  }
-
-  @Test public void maybeError_badRequestAttribute() {
-    when(request.getAttribute("error")).thenReturn(new Object());
-
-    assertThat(maybeError(null, request)).isNull();
-  }
-
-  @Test public void maybeError_overridesRequestAttribute() {
-    Exception error = new Exception();
-    Exception requestError = new Exception();
-    when(request.getAttribute("error")).thenReturn(requestError);
-
-    assertThat(maybeError(error, request)).isSameAs(error);
-  }
 
   /** getStatus doesn't exist in Servlet 2.5, so we add mechanisms to catch it. */
   @Test public void servlet25_httpServletResponse_catchesStatus() throws IOException {

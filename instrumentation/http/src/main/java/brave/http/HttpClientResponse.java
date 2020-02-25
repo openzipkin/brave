@@ -14,6 +14,7 @@
 package brave.http;
 
 import brave.Span;
+import brave.internal.Nullable;
 
 /**
  * Marks an interface for use in {@link HttpClientHandler#handleReceive(Object, Throwable, Span)}.
@@ -23,8 +24,13 @@ import brave.Span;
  * @since 5.7
  */
 public abstract class HttpClientResponse extends HttpResponse {
-  @Override public Span.Kind spanKind() {
+  @Override public final Span.Kind spanKind() {
     return Span.Kind.CLIENT;
+  }
+
+  /** {@inheritDoc} */
+  @Override @Nullable public HttpClientRequest request() {
+    return null;
   }
 
   @Override public Throwable error() {

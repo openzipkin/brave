@@ -26,6 +26,13 @@ public class ResponseWrapperTest {
     .request(new Request.Builder().url("http://localhost/foo").build())
     .protocol(Protocol.HTTP_1_1);
 
+  @Test public void request() {
+    Response response = responseBuilder.code(200).message("ok").build();
+
+    assertThat(new ResponseWrapper(response, null).request().unwrap())
+      .isSameAs(response.request());
+  }
+
   @Test public void statusCode() {
     Response response = responseBuilder.code(200).message("ok").build();
 

@@ -78,9 +78,9 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void process(HttpRequest request, HttpContext context) {
       TraceContext parent = (TraceContext) context.removeAttribute(TraceContext.class.getName());
 
-      HttpHost host = HttpClientContext.adapt(context).getTargetHost();
-      Span span = handler.handleSendWithParent(new HttpRequestWrapper(request, host), parent);
-      parseTargetAddress(host, span);
+      HttpRequestWrapper wrapper = new HttpRequestWrapper(request, context);
+      Span span = handler.handleSendWithParent(wrapper, parent);
+      parseTargetAddress(wrapper.target, span);
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
@@ -94,7 +94,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   static void removeScope(HttpContext context) {
-    Scope scope = (Scope) context.getAttribute(Scope.class.getName());
+    Scope scope = (Scope) context.removeAttribute(Scope.class.getName());
     if (scope == null) return;
     context.removeAttribute(Scope.class.getName());
     scope.close();
@@ -102,9 +102,9 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   final class HandleReceive implements HttpResponseInterceptor {
     @Override public void process(HttpResponse response, HttpContext context) {
-      Span span = (Span) context.getAttribute(Span.class.getName());
+      Span span = (Span) context.removeAttribute(Span.class.getName());
       if (span == null) return;
-      handler.handleReceive(new HttpResponseWrapper(response), null, span);
+      handler.handleReceive(new HttpResponseWrapper(response, context), null, span);
     }
   }
 
@@ -227,9 +227,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public void failed(Exception ex) {
       removeScope(context);
-      Span currentSpan = (Span) context.getAttribute(Span.class.getName());
+      Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        context.removeAttribute(Span.class.getName());
         handler.handleReceive(null, ex, currentSpan);
       }
       requestProducer.failed(ex);
@@ -270,9 +269,8 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public void failed(Exception ex) {
       removeScope(context);
-      Span currentSpan = (Span) context.getAttribute(Span.class.getName());
+      Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        context.removeAttribute(Span.class.getName());
         handler.handleReceive(null, ex, currentSpan);
       }
       responseConsumer.failed(ex);
@@ -300,52 +298,59 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   static final class HttpRequestWrapper extends HttpClientRequest {
-    final HttpRequest delegate;
+    final HttpRequest request;
     @Nullable final HttpHost target;
 
-    HttpRequestWrapper(HttpRequest delegate, @Nullable HttpHost target) {
-      this.delegate = delegate;
-      this.target = target;
+    HttpRequestWrapper(HttpRequest request, HttpContext context) {
+      this.request = request;
+      this.target = HttpClientContext.adapt(context).getTargetHost();
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return request;
     }
 
     @Override public String method() {
-      return delegate.getRequestLine().getMethod();
+      return request.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      String result = delegate.getRequestLine().getUri();
+      String result = request.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (target != null) return target.toURI() + delegate.getRequestLine().getUri();
-      return delegate.getRequestLine().getUri();
+      if (target != null) return target.toURI() + request.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = delegate.getFirstHeader(name);
+      Header result = request.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      delegate.setHeader(name, value);
+      request.setHeader(name, value);
     }
   }
 
   static final class HttpResponseWrapper extends HttpClientResponse {
-    final HttpResponse delegate;
+    @Nullable final HttpRequestWrapper request;
+    final HttpResponse response;
 
-    HttpResponseWrapper(HttpResponse delegate) {
-      this.delegate = delegate;
+    HttpResponseWrapper(HttpResponse response, HttpContext context) {
+      HttpRequest request = HttpClientContext.adapt(context).getRequest();
+      this.request = request != null ? new HttpRequestWrapper(request, context) : null;
+      this.response = response;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
@@ -353,7 +358,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public int statusCode() {
-      StatusLine statusLine = delegate.getStatusLine();
+      StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }

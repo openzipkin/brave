@@ -16,11 +16,14 @@ package brave.spring.web;
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.spring.web.TracingClientHttpRequestInterceptor.ClientHttpResponseWrapper;
+import brave.spring.web.TracingClientHttpRequestInterceptor.HttpRequestWrapper;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
@@ -42,30 +45,30 @@ public final class TracingAsyncClientHttpRequestInterceptor
   }
 
   final CurrentTraceContext currentTraceContext;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   @Autowired TracingAsyncClientHttpRequestInterceptor(HttpTracing httpTracing) {
     currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpClientHandler.create(httpTracing);
   }
 
-  @Override public ListenableFuture<ClientHttpResponse> intercept(HttpRequest request,
+  @Override public ListenableFuture<ClientHttpResponse> intercept(HttpRequest req,
     byte[] body, AsyncClientHttpRequestExecution execution) throws IOException {
-    Span span =
-      handler.handleSend(new TracingClientHttpRequestInterceptor.HttpRequestWrapper(request));
+    HttpRequestWrapper request = new HttpRequestWrapper(req);
+    Span span = handler.handleSend(request);
 
     // avoid context sync overhead when we are the root span
     TraceContext invocationContext = span.context().parentIdAsLong() != 0
       ? currentTraceContext.get()
       : null;
 
-    try (Scope ws = currentTraceContext.newScope(span.context())) {
-      ListenableFuture<ClientHttpResponse> result = execution.executeAsync(request, body);
-      result.addCallback(new TraceListenableFutureCallback(span, handler));
+    try (Scope ws = currentTraceContext.maybeScope(span.context())) {
+      ListenableFuture<ClientHttpResponse> result = execution.executeAsync(req, body);
+      result.addCallback(new TraceListenableFutureCallback(request, span, handler));
       return invocationContext != null
         ? new TraceContextListenableFuture<>(result, currentTraceContext, invocationContext)
         : result;
-    } catch (IOException | RuntimeException | Error e) {
+    } catch (Throwable e) {
       handler.handleReceive(null, e, span);
       throw e;
     }
@@ -73,11 +76,14 @@ public final class TracingAsyncClientHttpRequestInterceptor
 
   static final class TraceListenableFutureCallback
     implements ListenableFutureCallback<ClientHttpResponse> {
+    final HttpRequestWrapper request;
     final Span span;
-    final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+    final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
-    TraceListenableFutureCallback(Span span,
-      HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler) {
+    TraceListenableFutureCallback(
+      HttpRequestWrapper request, Span span,
+      HttpClientHandler<HttpClientRequest, HttpClientResponse> handler) {
+      this.request = request;
       this.span = span;
       this.handler = handler;
     }
@@ -87,7 +93,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
     }
 
     @Override public void onSuccess(ClientHttpResponse result) {
-      handler.handleReceive(new ClientHttpResponseWrapper(result, null), null, span);
+      handler.handleReceive(new ClientHttpResponseWrapper(request, result, null), null, span);
     }
   }
 }
