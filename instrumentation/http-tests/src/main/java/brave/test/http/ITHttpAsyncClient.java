@@ -41,6 +41,10 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     }
   };
 
+  // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
+  // callback thread which would cause result.poll() to await max time.
+  Object nullSentinel = new Object();
+
   /**
    * This invokes a GET with the indicated path, but does not block until the response is complete.
    *
@@ -128,13 +132,9 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
-  @Test public void asyncRootSpan() throws Exception {
+  @Test public void callbackContextIsFromInvocationTime_root() throws Exception {
     BlockingQueue<Object> result = new LinkedBlockingQueue<>();
     server.enqueue(new MockResponse());
-
-    // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
-    // callback thread which would cause result.poll() to await max time.
-    Object nullSentinel = new Object();
 
     getAsync(client, "/foo", new Callback<Integer>() {
       @Override public void onSuccess(Integer statusCode) {
@@ -156,15 +156,14 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       .isEqualTo(Span.Kind.CLIENT);
   }
 
-  @Test public void httpStatusCodeTagMatchesCallback() throws Exception {
+  @Test public void addsStatusCodeWhenNotOk_async() throws Exception {
     BlockingQueue<Object> result = new LinkedBlockingQueue<>();
-    // Default policy only records non-success codes
     int expectedStatusCode = 400;
     server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));
 
     getAsync(client, "/foo", new Callback<Integer>() {
       @Override public void onSuccess(Integer statusCode) {
-        result.add(statusCode);
+        result.add(statusCode != null ? statusCode : nullSentinel);
       }
 
       @Override public void onError(Throwable throwable) {
@@ -176,12 +175,15 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     // Ensure the getAsync() method is implemented correctly
     Object object = result.poll(1, TimeUnit.SECONDS);
-    assertThat(object).isInstanceOf(Integer.class);
-    int statusCodeFromCallback = (int) object;
-    assertThat(statusCodeFromCallback).isEqualTo(expectedStatusCode);
+    assertThat(object)
+      .isInstanceOf(Integer.class)
+      .isNotSameAs(nullSentinel)
+      .isEqualTo(expectedStatusCode);
 
+    String expectedStatusCodeString = String.valueOf(expectedStatusCode);
     Span span = takeSpan();
-    assertThat(span.tags().get("http.status_code"))
-      .isEqualTo(String.valueOf(expectedStatusCode));
+    assertThat(span.tags())
+      .containsEntry("http.status_code", expectedStatusCodeString)
+      .containsEntry("error", expectedStatusCodeString);
   }
 }
