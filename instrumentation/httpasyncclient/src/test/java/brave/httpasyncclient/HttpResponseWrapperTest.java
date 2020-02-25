@@ -47,7 +47,7 @@ public class HttpResponseWrapperTest {
     assertThat(new HttpResponseWrapper(response, context).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode__zeroWhenNoStatusLine() {
+  @Test public void statusCode_zeroWhenNoStatusLine() {
     assertThat(new HttpResponseWrapper(response, context).statusCode()).isZero();
   }
 }
