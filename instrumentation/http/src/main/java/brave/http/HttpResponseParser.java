@@ -48,7 +48,7 @@ public interface HttpResponseParser {
    *
    * @see Default
    */
-  void parse(HttpResponse response, TraceContext context, SpanCustomizer customizer);
+  void parse(HttpResponse response, TraceContext context, SpanCustomizer span);
 
   /**
    * The default data policy sets the span name to the HTTP route when available, and sets the and
