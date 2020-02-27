@@ -15,6 +15,10 @@ package brave.mongodb;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
+import brave.internal.Nullable;
+import brave.propagation.ThreadLocalSpan;
+import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.connection.ClusterId;
 import com.mongodb.connection.ConnectionDescription;
@@ -24,6 +28,7 @@ import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.event.CommandSucceededEvent;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonElement;
 import org.bson.BsonString;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,116 +36,134 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Optional;
+import java.util.Arrays;
 
-import static brave.mongodb.TraceMongoCommandListener.getCollectionName;
+import static brave.mongodb.TraceMongoCommandListener.getNonEmptyBsonString;
 import static brave.mongodb.TraceMongoCommandListener.getSpanName;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TraceMongoCommandListenerTest {
-  private static final BsonDocument LONG_COMMAND = BsonDocument.parse("{" +
+  static BsonDocument LONG_COMMAND = BsonDocument.parse("{" +
     "   \"insert\": \"myCollection\",\n" +
     "   \"bar\": {" +
     "       \"test\": \"asdfghjkl\",\n" +
     "   },\n" +
     "}");
 
-  private static final Throwable EXCEPTION = new RuntimeException("Error occurred");
+  static Throwable EXCEPTION = new RuntimeException("Error occurred");
 
-  @Mock private Tracer tracer;
+  @Mock Tracing tracing;
+  @Mock Tracer tracer;
+  @Mock ThreadLocalSpan threadLocalSpan;
+  @Mock Span span;
 
-  @Mock private Span span;
-
-  private TraceMongoCommandListener listener;
+  TraceMongoCommandListener listener;
 
   @Before public void setUp() {
-    listener = TraceMongoCommandListener.builder()
-      .tracer(tracer)
-      .build();
+    when(tracing.tracer()).thenReturn(tracer);
+    listener = new TraceMongoCommandListener(MongoDBTracing.create(tracing), threadLocalSpan);
   }
 
-  @Test public void getCollectionName_emptyCommand() {
-    assertThat(getCollectionName(new BsonDocument())).isNotPresent();
+  @Test public void getCollectionName_missingCommand() {
+    assertThat(listener.getCollectionName(new BsonDocument(), "find")).isNull();
   }
 
-  @Test public void getCollectionName_notString() {
-    assertThat(getCollectionName(new BsonDocument("foo", BsonBoolean.TRUE))).isNotPresent();
+  @Test public void getCollectionName_notStringCommandArgument() {
+    assertThat(listener.getCollectionName(new BsonDocument("find", BsonBoolean.TRUE), "find")).isNull();
   }
 
-  @Test public void getCollectionName_emptyString() {
-    assertThat(getCollectionName(new BsonDocument("foo", new BsonString("  ")))).isNotPresent();
+  @Test public void getCollectionName_emptyStringCommandArgument() {
+    assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString("  ")), "find")).isNull();
   }
 
-  @Test public void getCollectionName_normal() {
-    assertThat(getCollectionName(new BsonDocument("foo", new BsonString(" bar ")))).hasValue("bar");
+  @Test public void getCollectionName_notAllowListedCommand() {
+    assertThat(listener.getCollectionName(new BsonDocument("cmd", new BsonString(" bar ")), "cmd")).isNull();
   }
 
-  @Test public void getAbbreviatedCommand_negativeMaxLength() {
-    doGetAbbreviatedCommandTest(-1, Optional.empty());
+  @Test public void getCollectionName_allowListedCommand() {
+    assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString(" bar ")), "find")).isEqualTo("bar");
+  }
+
+  @Test public void getCollectionName_collectionFieldOnly() {
+    assertThat(listener.getCollectionName(new BsonDocument("collection", new BsonString(" bar ")), "find")).isEqualTo("bar");
+  }
+
+  @Test public void getCollectionName_allowListedCommandAndCollectionField() {
+    BsonDocument command = new BsonDocument(Arrays.asList(
+      new BsonElement("collection", new BsonString("coll")),
+      new BsonElement("find", new BsonString("bar"))
+    ));
+    assertThat(listener.getCollectionName(command, "find")).isEqualTo("bar"); // command wins
+  }
+
+  @Test public void getCollectionName_notAllowListedCommandAndCollectionField() {
+    BsonDocument command = new BsonDocument(Arrays.asList(
+      new BsonElement("collection", new BsonString("coll")),
+      new BsonElement("cmd", new BsonString("bar"))
+    ));
+    assertThat(listener.getCollectionName(command, "cmd")).isEqualTo("coll"); // collection field wins
+  }
+
+  @Test public void getNonEmptyBsonString_null() {
+    assertThat(getNonEmptyBsonString(null)).isNull();
+  }
+
+  @Test public void getNonEmptyBsonString_notString() {
+    assertThat(getNonEmptyBsonString(BsonBoolean.TRUE)).isNull();
+  }
+
+  @Test public void getNonEmptyBsonString_empty() {
+    assertThat(getNonEmptyBsonString(new BsonString("  "))).isNull();
+  }
+
+  @Test public void getNonEmptyBsonString_normal() {
+    assertThat(getNonEmptyBsonString(new BsonString(" foo  "))).isEqualTo("foo");
   }
 
   @Test public void getAbbreviatedCommand_zeroMaxLength() {
-    doGetAbbreviatedCommandTest(0, Optional.empty());
+    doGetAbbreviatedCommandTest(0, null);
   }
 
   @Test public void getAbbreviatedCommand_shortMaxLength() {
-    doGetAbbreviatedCommandTest(5, Optional.of("{\"ins"));
+    doGetAbbreviatedCommandTest(5, "{\"ins");
   }
 
   @Test public void getAbbreviatedCommand_longMaxLength() {
     doGetAbbreviatedCommandTest(1000,
-      Optional.of("{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}"));
+      "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
   }
 
-  private void doGetAbbreviatedCommandTest(final int maxAbbreviatedCommandLength, final Optional<String> expectedValue) {
-    final TraceMongoCommandListener listener = TraceMongoCommandListener.builder()
-      .tracer(tracer)
+  void doGetAbbreviatedCommandTest(int maxAbbreviatedCommandLength, @Nullable String expectedValue) {
+    TraceMongoCommandListener listener = new TraceMongoCommandListener(MongoDBTracing.newBuilder(tracing)
       .maxAbbreviatedCommandLength(maxAbbreviatedCommandLength)
-      .build();
+      .build());
     assertThat(listener.getAbbreviatedCommand(LONG_COMMAND)).isEqualTo(expectedValue);
   }
 
   @Test public void getSpanName_emptyCollectionName() {
-    assertThat(getSpanName("foo", Optional.empty())).isEqualTo("foo");
+    assertThat(getSpanName("foo", null)).isEqualTo("foo");
   }
 
   @Test public void getSpanName_presentCollectionName() {
-    assertThat(getSpanName("foo", Optional.of("bar"))).isEqualTo("foo bar");
-  }
-
-  @Test public void builder_missingTracer() {
-    try {
-      TraceMongoCommandListener.builder().build();
-    } catch (final NullPointerException ignored) {
-      return;
-    }
-    fail("Should have thrown NPE due to missing .tracer() call");
-  }
-
-  @Test public void builder_setsValuesCorrectly() {
-    final int maxAbbreviatedCommandLength = 55;
-    final TraceMongoCommandListener listener = TraceMongoCommandListener.builder()
-      .tracer(tracer)
-      .maxAbbreviatedCommandLength(maxAbbreviatedCommandLength)
-      .build();
-    assertThat(listener).extracting("tracer").isEqualTo(tracer);
-    assertThat(listener).extracting("maxAbbreviatedCommandLength").isEqualTo(maxAbbreviatedCommandLength);
+    assertThat(getSpanName("foo", "bar")).isEqualTo("foo bar");
   }
 
   @Test public void commandStarted_noopSpan() {
-    when(tracer.nextSpan()).thenReturn(span);
+    when(threadLocalSpan.next()).thenReturn(span);
     when(span.isNoop()).thenReturn(true);
 
     listener.commandStarted(createCommandStartedEvent());
 
-    verify(tracer).nextSpan();
+    verify(threadLocalSpan).next();
     verify(span).isNoop();
-    verifyNoMoreInteractions(tracer, span);
+    verifyNoMoreInteractions(threadLocalSpan, span);
   }
 
   @Test public void commandStarted_normal() {
@@ -149,13 +172,14 @@ public class TraceMongoCommandListenerTest {
     listener.commandStarted(createCommandStartedEvent());
 
     verifyCommandStartedMocks();
-    verifyNoMoreInteractions(tracer, span);
+    verifyNoMoreInteractions(threadLocalSpan, span);
   }
 
   @Test public void commandSucceeded_withoutCommandStarted() {
     listener.commandSucceeded(createCommandSucceededEvent());
 
-    verifyNoMoreInteractions(tracer);
+    verify(threadLocalSpan).remove();
+    verifyNoMoreInteractions(threadLocalSpan);
   }
 
   @Test public void commandSucceeded_normal() {
@@ -163,16 +187,37 @@ public class TraceMongoCommandListenerTest {
 
     listener.commandStarted(createCommandStartedEvent());
 
+    when(threadLocalSpan.remove()).thenReturn(span);
+
     listener.commandSucceeded(createCommandSucceededEvent());
 
     verifyCommandStartedMocks();
+    verify(threadLocalSpan).remove();
     verify(span).finish();
-    verifyNoMoreInteractions(tracer);
+    verifyNoMoreInteractions(threadLocalSpan);
   }
 
   @Test public void commandFailed_withoutCommandStarted() {
-    listener.commandFailed(createCommandFailedEvent());
-    verifyNoMoreInteractions(tracer);
+    listener.commandFailed(createCommandFailedEvent(EXCEPTION));
+
+    verify(threadLocalSpan).remove();
+    verifyNoMoreInteractions(threadLocalSpan);
+  }
+
+  @Test public void commandFailed_nullThrowable() {
+    setupCommandStartedMocks();
+    listener.commandStarted(createCommandStartedEvent());
+
+    when(threadLocalSpan.remove()).thenReturn(span);
+    when(span.error(any(MongoException.class))).thenReturn(span);
+
+    listener.commandFailed(createCommandFailedEvent(null));
+
+    verifyCommandStartedMocks();
+    verify(threadLocalSpan).remove();
+    verify(span).error(any(MongoException.class));
+    verify(span).finish();
+    verifyNoMoreInteractions(threadLocalSpan);
   }
 
   @Test public void commandFailed_normal() {
@@ -180,46 +225,47 @@ public class TraceMongoCommandListenerTest {
 
     listener.commandStarted(createCommandStartedEvent());
 
+    when(threadLocalSpan.remove()).thenReturn(span);
     when(span.error(EXCEPTION)).thenReturn(span);
 
-    listener.commandFailed(createCommandFailedEvent());
+    listener.commandFailed(createCommandFailedEvent(EXCEPTION));
 
     verifyCommandStartedMocks();
+    verify(threadLocalSpan).remove();
+    verify(span).error(EXCEPTION);
     verify(span).finish();
-    verifyNoMoreInteractions(tracer);
+    verifyNoMoreInteractions(threadLocalSpan);
   }
 
-  private void setupCommandStartedMocks() {
-    when(tracer.nextSpan()).thenReturn(span);
+  void setupCommandStartedMocks() {
+    when(threadLocalSpan.next()).thenReturn(span);
     when(span.isNoop()).thenReturn(false);
     when(span.name("insert myCollection")).thenReturn(span);
     when(span.kind(Span.Kind.CLIENT)).thenReturn(span);
-    when(span.remoteServiceName("dbName")).thenReturn(span);
-    when(span.tag("db.type", "mongo")).thenReturn(span);
-    when(span.tag("mongo.database", "dbName")).thenReturn(span);
-    when(span.tag("mongo.operation", "insert")).thenReturn(span);
-    when(span.tag("mongo.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}")).thenReturn(span);
-    when(span.tag("mongo.collection", "myCollection")).thenReturn(span);
+    when(span.remoteServiceName("mongodb-dbName")).thenReturn(span);
+    when(span.tag("mongodb.command.name", "insert")).thenReturn(span);
+    when(span.tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}")).thenReturn(span);
+    when(span.tag("mongodb.collection", "myCollection")).thenReturn(span);
+    when(span.tag(eq("mongodb.cluster.id"), anyString())).thenReturn(span);
     when(span.remoteIpAndPort("127.0.0.1", 27017)).thenReturn(true);
     when(span.start()).thenReturn(span);
   }
 
-  private void verifyCommandStartedMocks() {
-    verify(tracer).nextSpan();
+  void verifyCommandStartedMocks() {
+    verify(threadLocalSpan).next();
     verify(span).isNoop();
     verify(span).name("insert myCollection");
     verify(span).kind(Span.Kind.CLIENT);
-    verify(span).remoteServiceName("dbName");
-    verify(span).tag("db.type", "mongo");
-    verify(span).tag("mongo.database", "dbName");
-    verify(span).tag("mongo.operation", "insert");
-    verify(span).tag("mongo.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
-    verify(span).tag("mongo.collection", "myCollection");
+    verify(span).remoteServiceName("mongodb-dbName");
+    verify(span).tag("mongodb.command.name", "insert");
+    verify(span).tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
+    verify(span).tag("mongodb.collection", "myCollection");
+    verify(span).tag(eq("mongodb.cluster.id"), anyString());
     verify(span).remoteIpAndPort("127.0.0.1", 27017);
     verify(span).start();
   }
 
-  private CommandStartedEvent createCommandStartedEvent() {
+  CommandStartedEvent createCommandStartedEvent() {
     return new CommandStartedEvent(
       1,
       createConnectionDescription(),
@@ -229,7 +275,7 @@ public class TraceMongoCommandListenerTest {
     );
   }
 
-  private CommandSucceededEvent createCommandSucceededEvent() {
+  CommandSucceededEvent createCommandSucceededEvent() {
     return new CommandSucceededEvent(
       1,
       createConnectionDescription(),
@@ -239,17 +285,17 @@ public class TraceMongoCommandListenerTest {
     );
   }
 
-  private CommandFailedEvent createCommandFailedEvent() {
+  CommandFailedEvent createCommandFailedEvent(@Nullable Throwable throwable) {
     return new CommandFailedEvent(
       1,
       createConnectionDescription(),
       "insert",
       2000,
-      EXCEPTION
+      throwable
     );
   }
 
-  private ConnectionDescription createConnectionDescription() {
+  ConnectionDescription createConnectionDescription() {
     return new ConnectionDescription(new ServerId(new ClusterId(), new ServerAddress()));
   }
 }

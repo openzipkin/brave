@@ -30,17 +30,38 @@
     <module.name>brave.mongodb</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <!-- mongodb-driver requires Java 8 -->
-    <main.java.version>1.8</main.java.version>
-    <main.signature.artifact>java18</main.signature.artifact>
+    <!-- mongodb-driver 3.x requires Java 6 -->
+    <main.java.version>1.6</main.java.version>
+    <main.signature.artifact>java16</main.signature.artifact>
+
+    <mongodb-driver.version>3.11.2</mongodb-driver.version>
+    <mongodb-driver-reactivestreams.version>1.12.0</mongodb-driver-reactivestreams.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.mongodb</groupId>
       <artifactId>mongodb-driver</artifactId>
-      <version>3.11.2</version>
+      <version>${mongodb-driver.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver-async</artifactId>
+      <version>${mongodb-driver.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver-reactivestreams</artifactId>
+      <version>${mongodb-driver-reactivestreams.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>
