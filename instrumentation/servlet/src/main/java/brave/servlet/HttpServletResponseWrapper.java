@@ -20,8 +20,6 @@ import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static brave.servlet.internal.ServletRuntime.maybeError;
-
 /**
  * This delegates to {@link HttpServletResponse} methods, taking care to portably handle {@link
  * #statusCode()}.
@@ -31,29 +29,42 @@ import static brave.servlet.internal.ServletRuntime.maybeError;
 // Public for use in sparkjava or other frameworks that re-use servlet types
 public class HttpServletResponseWrapper extends HttpServerResponse { // not final for inner subtype
   /**
-   * Looks for the {@link HttpServletRequest#setAttribute(String, Object) request attributes}
-   * "http.route" and "error" to customize the result.
-   *
    * @param caught an exception caught serving the request.
    * @since 5.10
    */
-  public static HttpServerResponse create(@Nullable HttpServletRequest req,
-    HttpServletResponse res, @Nullable Throwable caught) {
-    if (req == null) return new HttpServletResponseWrapper(res, caught);
-    return new WithRequestProperties(req, res, caught);
+  public static HttpServerResponse create(@Nullable HttpServletRequest request,
+    HttpServletResponse response, @Nullable Throwable caught) {
+    return new HttpServletResponseWrapper(request, response, caught);
   }
 
-  final HttpServletResponse delegate;
+  @Nullable final HttpServletRequestWrapper request;
+  final HttpServletResponse response;
   @Nullable final Throwable caught;
 
-  HttpServletResponseWrapper(HttpServletResponse delegate, @Nullable Throwable caught) {
-    if (delegate == null) throw new NullPointerException("delegate == null");
-    this.delegate = delegate;
+  HttpServletResponseWrapper(@Nullable HttpServletRequest request, HttpServletResponse response,
+    @Nullable Throwable caught) {
+    if (response == null) throw new NullPointerException("response == null");
+    this.request = request != null ? new HttpServletRequestWrapper(request) : null;
+    this.response = response;
     this.caught = caught;
   }
 
+  @Override public final Object unwrap() {
+    return response;
+  }
+
+  @Override @Nullable public HttpServletRequestWrapper request() {
+    return request;
+  }
+
+  @Override public Throwable error() {
+    if (caught != null) return caught;
+    if (request == null) return null;
+    return request.maybeError();
+  }
+
   @Override public int statusCode() {
-    int result = ServletRuntime.get().status(delegate);
+    int result = ServletRuntime.get().status(response);
     if (caught != null && result == 200) { // We may have a potentially bad status due to defaults
       // Servlet only seems to define one exception that has a built-in code. Logic in Jetty
       // defaults the status to 500 otherwise.
@@ -63,36 +74,5 @@ public class HttpServletResponseWrapper extends HttpServerResponse { // not fina
       return 500;
     }
     return result;
-  }
-
-  @Override public Throwable error() {
-    return caught;
-  }
-
-  @Override public final Object unwrap() {
-    return delegate;
-  }
-
-  static final class WithRequestProperties extends HttpServletResponseWrapper {
-    final HttpServletRequest req;
-
-    WithRequestProperties(HttpServletRequest req, HttpServletResponse res,
-      @Nullable Throwable error) {
-      super(res, error);
-      this.req = req;
-    }
-
-    @Override public Throwable error() {
-      return maybeError(caught, req);
-    }
-
-    @Override public String method() {
-      return req.getMethod();
-    }
-
-    @Override public String route() {
-      Object maybeRoute = req.getAttribute("http.route");
-      return maybeRoute instanceof String ? (String) maybeRoute : null;
-    }
   }
 }

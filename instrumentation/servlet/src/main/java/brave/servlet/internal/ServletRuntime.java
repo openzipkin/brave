@@ -17,7 +17,6 @@ import brave.Span;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
-import brave.internal.Nullable;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -28,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -270,15 +268,5 @@ public abstract class ServletRuntime {
     int getStatusInServlet25() {
       return httpStatus;
     }
-  }
-
-  /** Looks for a valid request attribute "error" when the error parameter is null */
-  @Nullable public static Throwable maybeError(@Nullable Throwable thrown, HttpServletRequest req) {
-    if (thrown != null) return thrown;
-    Object maybeError = req.getAttribute("error");
-    if (maybeError instanceof Throwable) return (Throwable) maybeError;
-    maybeError = req.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
-    if (maybeError instanceof Throwable) return (Throwable) maybeError;
-    return null;
   }
 }

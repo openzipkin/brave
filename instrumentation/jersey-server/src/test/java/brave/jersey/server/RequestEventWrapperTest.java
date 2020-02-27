@@ -35,23 +35,25 @@ public class RequestEventWrapperTest {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getMethod()).thenReturn("GET");
 
-    assertThat(new RequestEventWrapper(event, null).method())
+    assertThat(new RequestEventWrapper(event).method())
       .isEqualTo("GET");
   }
 
-  @Test public void route() {
-    assertThat(new RequestEventWrapper(event, "/items/{itemId}").route())
-      .isEqualTo("/items/{itemId}");
+  @Test public void request() {
+    when(event.getContainerRequest()).thenReturn(request);
+
+    assertThat(new RequestEventWrapper(event).request().unwrap())
+      .isSameAs(request);
   }
 
   @Test public void statusCode() {
     when(event.getContainerResponse()).thenReturn(response);
     when(response.getStatus()).thenReturn(200);
 
-    assertThat(new RequestEventWrapper(event, null).statusCode()).isEqualTo(200);
+    assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroNoResponse() {
-    assertThat(new RequestEventWrapper(event, null).statusCode()).isZero();
+    assertThat(new RequestEventWrapper(event).statusCode()).isZero();
   }
 }

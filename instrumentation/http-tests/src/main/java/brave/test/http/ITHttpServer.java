@@ -17,12 +17,16 @@ import brave.SpanCustomizer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
+import brave.http.HttpRequest;
+import brave.http.HttpRequestParser;
+import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -137,9 +141,11 @@ public abstract class ITHttpServer extends ITHttp {
   @Test public void customSampler() throws Exception {
     String path = "/foo";
 
-    httpTracing = httpTracing.toBuilder().serverSampler(HttpRuleSampler.newBuilder()
+    SamplerFunction<HttpRequest> sampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith(path), Sampler.NEVER_SAMPLE)
-      .build()).build();
+      .build();
+
+    httpTracing = httpTracing.toBuilder().serverSampler(sampler).build();
     init();
 
     Request request = new Request.Builder().url(url(path)).build();
@@ -222,11 +228,52 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   @Test
+  public void readsRequestAtResponseTime() throws Exception {
+    httpTracing = httpTracing.toBuilder()
+      .serverResponseParser((response, context, span) -> {
+        span.tag("http.url", response.request().url()); // just the path is tagged by default
+      })
+      .build();
+    init();
+
+    String uri = "/foo?z=2&yAA=1";
+    get(uri);
+
+    assertThat(takeSpan().tags())
+      .containsEntry("http.url", url(uri));
+  }
+
+  @Test
   public void supportsPortableCustomization() throws Exception {
+    httpTracing = httpTracing.toBuilder()
+      .serverRequestParser((request, context, span) -> {
+        span.name(request.method().toLowerCase() + " " + request.path());
+        span.tag("http.url", request.url()); // just the path is tagged by default
+        span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
+      })
+      .serverResponseParser((response, context, span) -> {
+        HttpResponseParser.DEFAULT.parse(response, context, span);
+        span.tag("response_customizer.is_span", (span instanceof brave.Span) + "");
+      })
+      .build();
+    init();
+
+    String uri = "/foo?z=2&yAA=1";
+    get(uri);
+
+    Span span = takeSpan();
+    assertThat(span.tags())
+      .containsEntry("http.url", url(uri))
+      .containsEntry("request_customizer.is_span", "false")
+      .containsEntry("response_customizer.is_span", "false");
+  }
+
+  @Test
+  @Deprecated public void supportsPortableCustomizationDeprecated() throws Exception {
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
+        customizer.tag("http.url", adapter.url(req)); // just the path is tagged by default
         customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
         customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
       }
@@ -258,7 +305,7 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void httpRoute() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
+    httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
     routeBasedRequestNameIncludesPathPrefix("/items");
@@ -270,7 +317,7 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void httpRoute_nested() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
+    httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
     routeBasedRequestNameIncludesPathPrefix("/nested/items");
@@ -282,7 +329,7 @@ public abstract class ITHttpServer extends ITHttp {
    */
   @Test
   public void httpRoute_async() throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(addHttpUrlTag).build();
+    httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
     routeBasedRequestNameIncludesPathPrefix("/async_items");
@@ -324,12 +371,9 @@ public abstract class ITHttpServer extends ITHttp {
       .doesNotContain("//"); // no duplicate slashes
   }
 
-  final HttpServerParser addHttpUrlTag = new HttpServerParser() {
-    @Override
-    public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-      super.request(adapter, req, customizer);
-      customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
-    }
+  final HttpRequestParser addHttpUrlTag = (request, context, span) -> {
+    HttpRequestParser.DEFAULT.parse(request, context, span);
+    span.tag("http.url", request.url()); // just the path is tagged by default
   };
 
   /** If http route is supported, then the span name should include it */

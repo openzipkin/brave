@@ -157,10 +157,6 @@ import static org.mockito.Mockito.when;
     verify(requestAdapter).startTimestamp(request);
   }
 
-  @Test public void fromRequestAdapter_method_nullOnNoMatch() {
-    assertThat(fromRequestAdapter.method()).isNull();
-  }
-
   @Test public void fromRequestAdapter_method_delegatesToAdapter() {
     when(requestAdapter.method(request)).thenReturn("GET");
 
@@ -342,11 +338,11 @@ import static org.mockito.Mockito.when;
     assertThat(fromResponseAdapter.statusCode()).isZero();
   }
 
-  @Test public void fromResponseAdapter_statusCode_delegatesToAdapter() {
-    when(responseAdapter.statusCode(response)).thenReturn(200);
+  @Test public void fromResponseAdapter_statusCode_delegatesToAdapterStatusCodeAsInt() {
+    when(responseAdapter.statusCodeAsInt(response)).thenReturn(200);
 
     assertThat(fromResponseAdapter.statusCode()).isEqualTo(200);
 
-    verify(responseAdapter).statusCode(response);
+    verify(responseAdapter).statusCodeAsInt(response);
   }
 }

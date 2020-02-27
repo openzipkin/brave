@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.brave.okhttp3_v3;
+package brave.httpclient_v43;
 
-public class ITTracingInterceptor extends brave.okhttp3.ITTracingInterceptor {
+public class ITTracingHttpClientBuilder extends brave.httpclient.ITTracingHttpClientBuilder {
 }

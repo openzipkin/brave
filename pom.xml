@@ -19,7 +19,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>5.9.6-SNAPSHOT</version>
+  <version>5.10.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -103,19 +103,15 @@
     <okhttp.version>4.3.1</okhttp.version>
     <httpclient.version>4.5.11</httpclient.version>
 
-    <grpc.version>1.26.0</grpc.version>
+    <grpc.version>1.27.0</grpc.version>
     <!-- prefer grpc's version of netty -->
     <netty.version>4.1.42.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.13</junit.version>
     <assertj.version>3.14.0</assertj.version>
-    <powermock.version>2.0.2</powermock.version>
-    <!-- Up to v2.27.0 of mockito has a conflict https://github.com/mockito/mockito/issues/1606
-    java.lang.NoSuchMethodError: net.bytebuddy.dynamic.loading.MultipleParentClassLoader$Builder.appendMostSpecific(Ljava/util/Collection;)Lnet/bytebuddy/dynamic/loading/MultipleParentClassLoader$Builder
-    -->
-    <mockito.version>2.23.4</mockito.version>
-    <!-- last version on jax-rs 2.0 per https://eclipse-ee4j.github.io/jersey/download.html -->
+    <powermock.version>2.0.5</powermock.version>
+    <mockito.version>2.28.2</mockito.version>
     <jersey.version>2.25.1</jersey.version>
     <jmh.version>1.22</jmh.version>
     <testcontainers.version>1.12.5</testcontainers.version>

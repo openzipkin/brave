@@ -54,6 +54,7 @@ public class HttpClientHandlerTest {
 
   @Before public void init() {
     init(httpTracingBuilder(tracingBuilder()));
+    when(request.method()).thenReturn("GET");
   }
 
   void init(HttpTracing.Builder builder) {
@@ -167,7 +168,6 @@ public class HttpClientHandlerTest {
     verify(span).context();
     verify(span).customizer();
     verify(span).error(error);
-    verify(span).tag("error", "peanuts");
     verify(span).finish();
     verifyNoMoreInteractions(span);
   }

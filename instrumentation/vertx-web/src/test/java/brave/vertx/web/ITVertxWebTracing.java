@@ -13,10 +13,8 @@
  */
 package brave.vertx.web;
 
-import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.http.HttpAdapter;
-import brave.http.HttpServerParser;
+import brave.http.HttpRequestParser;
 import brave.propagation.ExtraFieldPropagation;
 import brave.test.http.ITHttpServer;
 import io.vertx.core.Handler;
@@ -140,12 +138,9 @@ public class ITVertxWebTracing extends ITHttpServer {
   }
 
   void handlesReroute(String path) throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        super.request(adapter, req, customizer);
-        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
-      }
+    httpTracing = httpTracing.toBuilder().serverRequestParser((request, context, span) -> {
+      HttpRequestParser.DEFAULT.parse(request, context, span);
+      span.tag("http.url", request.url()); // just the path is logged by default
     }).build();
     init();
 

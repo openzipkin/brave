@@ -49,7 +49,7 @@ public abstract class HttpRequest extends Request {
   }
 
   /**
-   * The HTTP method, or verb, such as "GET" or "POST" or null if unreadable.
+   * The HTTP method, or verb, such as "GET" or "POST".
    *
    * <p>Conventionally associated with the key "http.method"
    *
@@ -58,18 +58,36 @@ public abstract class HttpRequest extends Request {
    * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
    * integration tests fail, but you will surprise any consumers who expect compliant results.
    */
-  @Nullable public abstract String method();
+  public abstract String method();
 
   /**
-   * The absolute http path, without any query parameters or null if unreadable. Ex.
-   * "/objects/abcd-ff"
+   * The absolute http path, without any query parameters. Ex. "/objects/abcd-ff"
    *
    * <p>Conventionally associated with the key "http.path"
+   *
+   * <p>{@code null} could mean not applicable to the HTTP method (ex CONNECT).
    *
    * @see #url()
    * @see HttpResponse#route()
    */
   @Nullable public abstract String path();
+
+  /**
+   * Returns an expression such as "/items/:itemId" representing an application endpoint,
+   * conventionally associated with the tag key "http.route". If no route matched, "" (empty string)
+   * is returned. Null indicates this instrumentation doesn't understand http routes.
+   *
+   * <p>The route is associated with the request, but it may not be visible until response
+   * processing. The reasons is that many server implementations process the request before they can
+   * identify the route. Parsing should expect this and look at {@link HttpResponse#route()} as
+   * needed.
+   *
+   * @see HttpRequest#path()
+   * @since 5.10
+   */
+  @Nullable public String route() {
+    return null;
+  }
 
   /**
    * The entire URL, including the scheme, host and query parameters if available or null if

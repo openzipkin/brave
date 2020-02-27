@@ -13,7 +13,7 @@
  */
 package brave.jersey.server;
 
-import brave.jersey.server.TracingApplicationEventListener.RequestEventWrapper;
+import brave.jersey.server.TracingApplicationEventListener.ContainerRequestWrapper;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -79,17 +79,13 @@ public class TracingApplicationEventListenerAdapterBenchmarks {
       return nestedUriInfo;
     }
   };
-  RequestEvent nestedEvent = new RequestEventImpl.Builder()
-    .setContainerRequest(nestedRequest)
-    .setContainerResponse(new ContainerResponse(request, new ServerResponse()))
-    .build(RequestEvent.Type.FINISHED);
 
   @Benchmark public String parseRoute() {
-    return new RequestEventWrapper(event, null).route();
+    return new ContainerRequestWrapper(nestedRequest).route();
   }
 
   @Benchmark public String parseRoute_nested() {
-    return new RequestEventWrapper(nestedEvent, null).route();
+    return new ContainerRequestWrapper(nestedRequest).route();
   }
 
   // Convenience main entry-point

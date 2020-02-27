@@ -18,6 +18,7 @@ import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
 import brave.context.log4j2.ThreadContextScopeDecorator;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -40,14 +41,13 @@ import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
+import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -70,14 +70,13 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor {
-  Logger testLogger = LogManager.getLogger();
-
   /**
    * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
    * like those using blocking clients, happen on the main thread.
    */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
   Tracing tracing = tracingBuilder(ALWAYS_SAMPLE).build();
+  CurrentTraceContext currentTraceContext = tracing.currentTraceContext();
   Tracer tracer = tracing.tracer();
 
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
@@ -275,7 +274,6 @@ public abstract class BaseITTracingClientInterceptor {
       new ClientInterceptor() {
         @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
           MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          testLogger.info("in span!");
           tracer.currentSpanCustomizer().annotate("before");
           return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
             next.newCall(method, callOptions)) {
@@ -371,6 +369,87 @@ public abstract class BaseITTracingClientInterceptor {
 
     assertThat(takeSpan().name()).isEqualTo("helloworld.greeter/sayhello");
     // @After will also check that sayHelloWithManyReplies was not sampled
+  }
+
+  /**
+   * This ensures that response callbacks run in the invocation context, not the client one. This
+   * allows async chaining to appear caused by the parent, not by the most recent client. Otherwise,
+   * we would see a client span child of a client span, which could be confused with duplicate
+   * instrumentation and affect dependency link counts.
+   */
+  // Same as ITHttpAsyncClient.callbackContextIsFromInvocationTime()
+  @Test public void callbackContextIsFromInvocationTime() throws Exception {
+    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
+      GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserver<HelloReply>() {
+        @Override public void onNext(HelloReply helloReply) {
+          result.add(currentTraceContext.get());
+        }
+
+        @Override public void onError(Throwable throwable) {
+          result.add(throwable);
+        }
+
+        @Override public void onCompleted() {
+          onNext(null);
+        }
+      });
+    } finally {
+      parent.finish();
+    }
+
+    // onNext
+    assertThat(result.poll(1, TimeUnit.SECONDS))
+      .isInstanceOf(TraceContext.class)
+      .isSameAs(parent.context());
+
+    // onCompleted
+    assertThat(result.poll(1, TimeUnit.SECONDS))
+      .isInstanceOf(TraceContext.class)
+      .isSameAs(parent.context());
+
+    // Check we reported 1 in-process span and 1 RPC client spans
+    assertThat(Arrays.asList(takeSpan(), takeSpan()))
+      .extracting(Span::kind)
+      .containsOnly(null, Span.Kind.CLIENT);
+  }
+
+  /** This ensures that response callbacks run when there is no invocation trace context. */
+  // Same as ITHttpAsyncClient.asyncRootSpan()
+  @Test public void asyncRootSpan() throws Exception {
+    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+
+    // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
+    // callback thread which would cause result.poll() to await max time.
+    Object nullSentinel = new Object();
+
+    GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserver<HelloReply>() {
+      @Override public void onNext(HelloReply helloReply) {
+        TraceContext context = currentTraceContext.get();
+        result.add(context != null ? context : nullSentinel);
+      }
+
+      @Override public void onError(Throwable throwable) {
+        result.add(throwable);
+      }
+
+      @Override public void onCompleted() {
+        onNext(null);
+      }
+    });
+
+    // onNext
+    assertThat(result.poll(1, TimeUnit.SECONDS))
+      .isSameAs(nullSentinel);
+
+    // onCompleted
+    assertThat(result.poll(1, TimeUnit.SECONDS))
+      .isSameAs(nullSentinel);
+
+    assertThat(takeSpan().kind())
+      .isEqualTo(Span.Kind.CLIENT);
   }
 
   Tracing.Builder tracingBuilder(Sampler sampler) {

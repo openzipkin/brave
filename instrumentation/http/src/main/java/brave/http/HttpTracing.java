@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.http;
 
-import brave.ErrorParser;
+import brave.Span;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.sampler.SamplerFunction;
@@ -46,8 +46,39 @@ public class HttpTracing implements Closeable {
     return tracing;
   }
 
-  public HttpClientParser clientParser() {
-    return clientParser;
+  /**
+   * Used by {@link HttpClientHandler#handleSend(HttpClientRequest)} to add a span name and tags
+   * about the request before it is sent to the server.
+   *
+   * @since 5.10
+   */
+  public HttpRequestParser clientRequestParser() {
+    return clientRequestParser;
+  }
+
+  /**
+   * Used by {@link HttpClientHandler#handleReceive(Object, Throwable, Span)} to add tags about the
+   * response received from the server.
+   *
+   * @since 5.10
+   */
+  public HttpResponseParser clientResponseParser() {
+    return clientResponseParser;
+  }
+
+  /**
+   * @deprecated Since 5.10, use {@link #clientRequestParser()} and {@link #clientResponseParser()}
+   */
+  @Deprecated public HttpClientParser clientParser() {
+    if (clientRequestParser instanceof HttpRequestParserAdapters.ClientAdapter) {
+      return (HttpClientParser) ((HttpRequestParserAdapters.ClientAdapter) clientRequestParser).parser;
+    }
+    return new HttpClientParserAdapter(
+      clientRequestParser,
+      clientResponseParser,
+      tracing.currentTraceContext(),
+      tracing.errorParser()
+    );
   }
 
   /**
@@ -82,8 +113,39 @@ public class HttpTracing implements Closeable {
     return toBuilder().serverName(serverName).build();
   }
 
-  public HttpServerParser serverParser() {
-    return serverParser;
+  /**
+   * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add a span name and tags
+   * about the request before the server processes it.
+   *
+   * @since 5.10
+   */
+  public HttpRequestParser serverRequestParser() {
+    return serverRequestParser;
+  }
+
+  /**
+   * Used by {@link HttpServerHandler#handleSend(Object, Throwable, Span)} to add tags about the
+   * response sent to the client.
+   *
+   * @since 5.10
+   */
+  public HttpResponseParser serverResponseParser() {
+    return serverResponseParser;
+  }
+
+  /**
+   * @deprecated Since 5.10, use {@link #serverRequestParser()} and {@link #serverResponseParser()}
+   */
+  @Deprecated public HttpServerParser serverParser() {
+    if (serverRequestParser instanceof HttpRequestParserAdapters.ServerAdapter) {
+      return (HttpServerParser) ((HttpRequestParserAdapters.ServerAdapter) serverRequestParser).parser;
+    }
+    return new HttpServerParserAdapter(
+      serverRequestParser,
+      serverResponseParser,
+      tracing.currentTraceContext(),
+      tracing.errorParser()
+    );
   }
 
   /** @deprecated Since 5.8, use {@link #clientRequestSampler()} */
@@ -131,56 +193,49 @@ public class HttpTracing implements Closeable {
   }
 
   final Tracing tracing;
-  final HttpClientParser clientParser;
-  final String serverName;
-  final HttpServerParser serverParser;
+  final HttpRequestParser clientRequestParser, serverRequestParser;
+  final HttpResponseParser clientResponseParser, serverResponseParser;
   final SamplerFunction<HttpRequest> clientSampler, serverSampler;
+  final String serverName;
 
   HttpTracing(Builder builder) {
     this.tracing = builder.tracing;
-    this.clientParser = builder.clientParser;
-    this.serverName = builder.serverName;
-    this.serverParser = builder.serverParser;
+    this.clientRequestParser = builder.clientRequestParser;
+    this.serverRequestParser = builder.serverRequestParser;
+    this.clientResponseParser = builder.clientResponseParser;
+    this.serverResponseParser = builder.serverResponseParser;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    this.serverName = builder.serverName;
     // assign current IFF there's no instance already current
     CURRENT.compareAndSet(null, this);
   }
 
   public static final class Builder {
     Tracing tracing;
-    HttpClientParser clientParser;
-    String serverName;
-    HttpServerParser serverParser;
+    HttpRequestParser clientRequestParser, serverRequestParser;
+    HttpResponseParser clientResponseParser, serverResponseParser;
     SamplerFunction<HttpRequest> clientSampler, serverSampler;
+    String serverName;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
-      final ErrorParser errorParser = tracing.errorParser();
       this.tracing = tracing;
       this.serverName = "";
-      // override to re-use any custom error parser from the tracing component
-      this.clientParser = new HttpClientParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
-      this.serverParser = new HttpServerParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
-      this.clientSampler = SamplerFunctions.deferDecision();
-      this.serverSampler = SamplerFunctions.deferDecision();
+      this.clientRequestParser = this.serverRequestParser = HttpRequestParser.DEFAULT;
+      this.clientResponseParser = this.serverResponseParser = HttpResponseParser.DEFAULT;
+      this.clientSampler = this.serverSampler = SamplerFunctions.deferDecision();
     }
 
     Builder(HttpTracing source) {
       this.tracing = source.tracing;
-      this.clientParser = source.clientParser;
-      this.serverName = source.serverName;
-      this.serverParser = source.serverParser;
+      this.clientRequestParser = source.clientRequestParser;
+      this.serverRequestParser = source.serverRequestParser;
+      this.clientResponseParser = source.clientResponseParser;
+      this.serverResponseParser = source.serverResponseParser;
       this.clientSampler = source.clientSampler;
       this.serverSampler = source.serverSampler;
+      this.serverName = source.serverName;
     }
 
     /** @see HttpTracing#tracing() */
@@ -191,14 +246,44 @@ public class HttpTracing implements Closeable {
     }
 
     /**
-     * Overrides the tagging policy for http client spans.
+     * Overrides the tagging policy for HTTP client requests.
      *
-     * @see HttpParser#errorParser() for advice when making custom types
-     * @see HttpTracing#clientParser()
+     * @see HttpTracing#clientRequestParser()
+     * @since 5.10
      */
-    public Builder clientParser(HttpClientParser clientParser) {
+    public Builder clientRequestParser(HttpRequestParser clientRequestParser) {
+      if (clientRequestParser == null) {
+        throw new NullPointerException("clientRequestParser == null");
+      }
+      this.clientRequestParser = clientRequestParser;
+      return this;
+    }
+
+    /**
+     * Overrides the tagging policy for HTTP client responses.
+     *
+     * @see HttpTracing#clientResponseParser()
+     * @since 5.10
+     */
+    public Builder clientResponseParser(HttpResponseParser clientResponseParser) {
+      if (clientResponseParser == null) {
+        throw new NullPointerException("clientResponseParser == null");
+      }
+      this.clientResponseParser = clientResponseParser;
+      return this;
+    }
+
+    /**
+     * @deprecated Since 5.10, use {@link #clientRequestParser(HttpRequestParser)} and {@link
+     * #clientResponseParser(HttpResponseParser)}
+     */
+    @Deprecated public Builder clientParser(HttpClientParser clientParser) {
       if (clientParser == null) throw new NullPointerException("clientParser == null");
-      this.clientParser = clientParser;
+      this.clientRequestParser =
+        new HttpRequestParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
+      this.clientResponseParser =
+        new HttpResponseParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
+      this.tracing.errorParser();
       return this;
     }
 
@@ -209,14 +294,43 @@ public class HttpTracing implements Closeable {
     }
 
     /**
-     * Overrides the tagging policy for http client spans.
+     * Overrides the tagging policy for HTTP server requests.
      *
-     * @see HttpParser#errorParser() for advice when making custom types
-     * @see HttpTracing#serverParser()
+     * @see HttpTracing#serverRequestParser()
+     * @since 5.10
      */
-    public Builder serverParser(HttpServerParser serverParser) {
+    public Builder serverRequestParser(HttpRequestParser serverRequestParser) {
+      if (serverRequestParser == null) {
+        throw new NullPointerException("serverRequestParser == null");
+      }
+      this.serverRequestParser = serverRequestParser;
+      return this;
+    }
+
+    /**
+     * Overrides the tagging policy for HTTP server responses.
+     *
+     * @see HttpTracing#serverResponseParser()
+     * @since 5.10
+     */
+    public Builder serverResponseParser(HttpResponseParser serverResponseParser) {
+      if (serverResponseParser == null) {
+        throw new NullPointerException("serverResponseParser == null");
+      }
+      this.serverResponseParser = serverResponseParser;
+      return this;
+    }
+
+    /**
+     * @deprecated Since 5.10, use {@link #serverRequestParser(HttpRequestParser)} and {@link
+     * #serverResponseParser(HttpResponseParser)}
+     */
+    @Deprecated public Builder serverParser(HttpServerParser serverParser) {
       if (serverParser == null) throw new NullPointerException("serverParser == null");
-      this.serverParser = serverParser;
+      this.serverRequestParser =
+        new HttpRequestParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
+      this.serverResponseParser =
+        new HttpResponseParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
       return this;
     }
 

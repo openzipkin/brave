@@ -224,7 +224,7 @@ import brave.internal.Nullable;
     }
 
     @Override public int statusCode() {
-      return adapter.statusCode(response);
+      return adapter.statusCodeAsInt(response);
     }
 
     @Override public long finishTimestamp() {

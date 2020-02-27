@@ -14,35 +14,44 @@
 package brave.spring.web;
 
 import brave.spring.web.TracingClientHttpRequestInterceptor.ClientHttpResponseWrapper;
+import brave.spring.web.TracingClientHttpRequestInterceptor.HttpRequestWrapper;
 import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ClientHttpResponseWrapperTest {
+  HttpRequestWrapper request = new HttpRequestWrapper(mock(HttpRequest.class));
   @Mock ClientHttpResponse response;
+
+  @Test public void request() {
+    assertThat(new ClientHttpResponseWrapper(request, response, null).request())
+      .isSameAs(request);
+  }
 
   @Test public void statusCode() throws IOException {
     when(response.getRawStatusCode()).thenReturn(200);
 
-    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isEqualTo(200);
+    assertThat(new ClientHttpResponseWrapper(request, response, null).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroOnIOE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IOException());
 
-    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isZero();
+    assertThat(new ClientHttpResponseWrapper(request, response, null).statusCode()).isZero();
   }
 
   @Test public void statusCode_zeroOnIAE() throws IOException {
     when(response.getRawStatusCode()).thenThrow(new IllegalArgumentException());
 
-    assertThat(new ClientHttpResponseWrapper(response, null).statusCode()).isZero();
+    assertThat(new ClientHttpResponseWrapper(request, response, null).statusCode()).isZero();
   }
 }

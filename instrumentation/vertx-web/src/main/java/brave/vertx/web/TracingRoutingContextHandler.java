@@ -14,12 +14,12 @@
 package brave.vertx.web;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import io.vertx.core.Handler;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
@@ -36,12 +36,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@code TracingHandler} in https://github.com/opentracing-contrib/java-vertx-web
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
-  final Tracer tracer;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final CurrentTraceContext currentTraceContext;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing);
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
   }
 
   @Override public void handle(RoutingContext context) {
@@ -59,7 +59,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
 
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (Scope ws = currentTraceContext.maybeScope(span.context())) {
       context.next();
     }
   }
@@ -115,30 +115,33 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
   }
 
   static final class HttpServerResponseWrapper extends HttpServerResponse {
-    final RoutingContext delegate;
+    final RoutingContext context;
+    HttpServerRequestWrapper request;
 
     HttpServerResponseWrapper(RoutingContext context) {
-      this.delegate = context;
-    }
-
-    @Override public Throwable error() {
-      return delegate.failure();
+      this.context = context;
     }
 
     @Override public RoutingContext unwrap() {
-      return delegate;
+      return context;
+    }
+
+    @Override public HttpServerRequestWrapper request() {
+      if (request == null) request = new HttpServerRequestWrapper(context.request());
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return context.failure();
     }
 
     @Override public int statusCode() {
-      return delegate.response().getStatusCode();
+      return context.response().getStatusCode();
     }
 
-    @Override public String method() {
-      return delegate.request().rawMethod();
-    }
-
+    // This is an example of where the route is not on the request object. Hence, we override.
     @Override public String route() {
-      String httpRoute = delegate.currentRoute().getPath();
+      String httpRoute = context.currentRoute().getPath();
       return httpRoute != null ? httpRoute : "";
     }
   }

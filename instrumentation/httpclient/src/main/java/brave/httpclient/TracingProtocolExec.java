@@ -53,78 +53,92 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   @Override public CloseableHttpResponse execute(HttpRoute route,
-    org.apache.http.client.methods.HttpRequestWrapper request,
-    HttpClientContext clientContext, HttpExecutionAware execAware)
+    org.apache.http.client.methods.HttpRequestWrapper req,
+    HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = tracer.nextSpan(httpSampler, new HttpRequestWrapper(request));
+    HttpRequestWrapper request = new HttpRequestWrapper(req, context.getTargetHost());
+    Span span = tracer.nextSpan(httpSampler, request);
+    context.setAttribute(Span.class.getName(), span);
+
     CloseableHttpResponse result = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return result = protocolExec.execute(route, request, clientContext, execAware);
+      return result = protocolExec.execute(route, req, context, execAware);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      HttpResponseWrapper response = result != null ? new HttpResponseWrapper(result, error) : null;
+      HttpResponseWrapper response = result != null
+        ? new HttpResponseWrapper(result, context, error) : null;
       handler.handleReceive(response, error, span);
     }
   }
 
   static final class HttpRequestWrapper extends HttpClientRequest {
-    final HttpRequest delegate;
+    final HttpRequest request;
+    @Nullable final HttpHost target;
 
-    HttpRequestWrapper(HttpRequest delegate) {
-      this.delegate = delegate;
+    HttpRequestWrapper(HttpRequest request, @Nullable HttpHost target) {
+      this.request = request;
+      this.target = target;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return request;
     }
 
     @Override public String method() {
-      return delegate.getRequestLine().getMethod();
+      return request.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
-        return ((org.apache.http.client.methods.HttpRequestWrapper) delegate).getURI().getPath();
+      if (request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        return ((org.apache.http.client.methods.HttpRequestWrapper) request).getURI().getPath();
       }
-      String result = delegate.getRequestLine().getUri();
+      String result = request.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+      if (target != null && request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
         org.apache.http.client.methods.HttpRequestWrapper
-          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) delegate;
-        HttpHost target = wrapper.getTarget();
-        if (target != null) return target.toURI() + wrapper.getURI();
+          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) request;
+        return target.toURI() + wrapper.getURI();
       }
-      return delegate.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = delegate.getFirstHeader(name);
+      Header result = request.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      delegate.setHeader(name, value);
+      request.setHeader(name, value);
     }
   }
 
   static final class HttpResponseWrapper extends HttpClientResponse {
-    final HttpResponse delegate;
+    final HttpRequestWrapper request;
+    final HttpResponse response;
     @Nullable final Throwable error;
 
-    HttpResponseWrapper(HttpResponse delegate, @Nullable Throwable error) {
-      this.delegate = delegate;
+    HttpResponseWrapper(HttpResponse response, HttpClientContext context,
+      @Nullable Throwable error) {
+      HttpRequest request = context.getRequest();
+      HttpHost target = context.getTargetHost();
+      this.request = request != null ? new HttpRequestWrapper(request, target) : null;
+      this.response = response;
       this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
@@ -132,7 +146,7 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public int statusCode() {
-      StatusLine statusLine = delegate.getStatusLine();
+      StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }

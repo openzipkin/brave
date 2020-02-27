@@ -71,7 +71,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     Span span = tracer.currentSpan();
     if (span == null) return;
     ((SpanInScope) request.getProperty(SpanInScope.class.getName())).close();
-    handler.handleReceive(new ClientResponseContextWrapper(response), null, span);
+    handler.handleReceive(new ClientResponseContextWrapper(request, response), null, span);
   }
 
   static final class ClientRequestContextWrapper extends HttpClientRequest {
@@ -107,14 +107,21 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
   }
 
   static final class ClientResponseContextWrapper extends HttpClientResponse {
-    final ClientResponseContext delegate;
+    final ClientRequestContextWrapper request;
+    final ClientResponseContext response;
 
-    ClientResponseContextWrapper(ClientResponseContext delegate) {
-      this.delegate = delegate;
+    ClientResponseContextWrapper(
+      ClientRequestContext request, ClientResponseContext response) {
+      this.request = new ClientRequestContextWrapper(request);
+      this.response = response;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public ClientRequestContextWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
@@ -122,7 +129,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     }
 
     @Override public int statusCode() {
-      int result = delegate.getStatus();
+      int result = response.getStatus();
       return result != -1 ? result : 0;
     }
   }

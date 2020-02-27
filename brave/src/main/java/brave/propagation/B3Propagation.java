@@ -15,6 +15,7 @@ package brave.propagation;
 
 import brave.Request;
 import brave.Span;
+import brave.internal.Platform;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -115,10 +116,14 @@ public final class B3Propagation<K> implements Propagation<K> {
    * decision to the receiver of this header).
    */
   static final String SAMPLED_NAME = "X-B3-Sampled";
+  static final String SAMPLED_MALFORMED =
+    "Invalid input: expected 0 or 1 for " + SAMPLED_NAME + ", but found '{0}'";
+
   /**
    * "1" implies sampled and is a request to override collection-tier sampling policy.
    */
   static final String FLAGS_NAME = "X-B3-Flags";
+
   final K b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
   final List<K> fields;
   final Format[] injectFormats;
@@ -236,9 +241,31 @@ public final class B3Propagation<K> implements Propagation<K> {
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
       String sampled = getter.get(carrier, propagation.sampledKey);
-      Boolean sampledV = sampled != null
-        ? sampled.equals("1") || sampled.equalsIgnoreCase("true")
-        : null;
+      Boolean sampledV;
+      if (sampled == null) {
+        sampledV = null; // defer decision
+      } else if (sampled.length() == 1) { // handle fast valid paths
+        char sampledC = sampled.charAt(0);
+
+        if (sampledC == '1') {
+          sampledV = true;
+        } else if (sampledC == '0') {
+          sampledV = false;
+        } else {
+          Platform.get().log(SAMPLED_MALFORMED, sampled, null);
+          return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
+        }
+      } else if (sampled.equalsIgnoreCase("true")) { // old clients
+        sampledV = true;
+      } else if (sampled.equalsIgnoreCase("false")) { // old clients
+        sampledV = false;
+      } else {
+        Platform.get().log(SAMPLED_MALFORMED, sampled, null);
+        return TraceContextOrSamplingFlags.EMPTY; // Restart trace instead of propagating false
+      }
+
+      // The only flag we action is 1, but it could be that any integer is present.
+      // Here, we leniently parse as debug is not a primary consideration of the trace context.
       boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
 
       String traceIdString = getter.get(carrier, propagation.traceIdKey);

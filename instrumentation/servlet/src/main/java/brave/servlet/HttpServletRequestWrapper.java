@@ -15,6 +15,8 @@ package brave.servlet;
 
 import brave.Span;
 import brave.http.HttpServerRequest;
+import brave.internal.Nullable;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -37,6 +39,10 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
     this.delegate = delegate;
   }
 
+  @Override public final Object unwrap() {
+    return delegate;
+  }
+
   /**
    * This sets the client IP:port to the {@linkplain HttpServletRequest#getRemoteAddr() remote
    * address} if the {@link #parseClientIpAndPort default parsing} fails.
@@ -48,6 +54,11 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
 
   @Override public final String method() {
     return delegate.getMethod();
+  }
+
+  @Override public String route() {
+    Object maybeRoute = delegate.getAttribute("http.route");
+    return maybeRoute instanceof String ? (String) maybeRoute : null;
   }
 
   @Override public final String path() {
@@ -67,7 +78,12 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
     return delegate.getHeader(name);
   }
 
-  @Override public final Object unwrap() {
-    return delegate;
+  /** Looks for a valid request attribute "error" */
+  @Nullable Throwable maybeError() {
+    Object maybeError = delegate.getAttribute("error");
+    if (maybeError instanceof Throwable) return (Throwable) maybeError;
+    maybeError = delegate.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+    if (maybeError instanceof Throwable) return (Throwable) maybeError;
+    return null;
   }
 }

@@ -14,9 +14,8 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 
 abstract class HttpHandler {
   /**
@@ -25,57 +24,60 @@ abstract class HttpHandler {
    */
   static final Object NULL_SENTINEL = new Object();
 
-  final CurrentTraceContext currentTraceContext;
-  final HttpParser parser;
+  final HttpRequestParser requestParser;
+  final HttpResponseParser responseParser;
 
-  HttpHandler(CurrentTraceContext currentTraceContext, HttpParser parser) {
-    this.currentTraceContext = currentTraceContext;
-    this.parser = parser;
+  HttpHandler(HttpRequestParser requestParser, HttpResponseParser responseParser) {
+    this.requestParser = requestParser;
+    this.responseParser = responseParser;
   }
 
-  <Req> Span handleStart(HttpAdapter<Req, ?> adapter, Req request, Span span) {
+  Span handleStart(HttpRequest request, Span span) {
     if (span.isNoop()) return span;
-    Scope ws = currentTraceContext.maybeScope(span.context());
-    try {
-      parseRequest(adapter, request, span);
-    } finally {
-      ws.close();
-    }
 
-    // all of the above parsing happened before a timestamp on the span
-    long timestamp = adapter.startTimestamp(request);
-    if (timestamp == 0L) {
-      span.start();
-    } else {
-      span.start(timestamp);
+    span.kind(request.spanKind());
+    try {
+      parseRequest(request, span);
+    } finally {
+      // all of the above parsing happened before a timestamp on the span
+      long timestamp = request.startTimestamp();
+      if (timestamp == 0L) {
+        span.start();
+      } else {
+        span.start(timestamp);
+      }
     }
     return span;
   }
 
-  /** parses remote IP:port and tags while the span is in scope (for logging for example) */
-  abstract <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span);
+  abstract void parseRequest(HttpRequest request, Span span);
 
-  <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
-    @Nullable Throwable error, Span span) {
+  void handleFinish(@Nullable HttpResponse response, @Nullable Throwable error, Span span) {
+    if (response == null && error == null) {
+      throw new IllegalArgumentException(
+        "Either the response or error parameters may be null, but not both");
+    }
+
     if (span.isNoop()) return;
 
-    if (error != null) span.error(error); // Ensures MutableSpan.error() for FinishedSpanHandler
+    if (error != null) {
+      span.error(error); // Ensures MutableSpan.error() for FinishedSpanHandler
 
-    long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
+      if (response == null) { // There's nothing to parse: finish and return;
+        span.finish();
+        return;
+      }
+    }
 
-    // Scope the trace context so that log statements are valid and also parse code can use
-    // Tracer.currentSpan() as necessary.
-    Scope ws = currentTraceContext.maybeScope(span.context());
     try {
-      parser.response(adapter, response, error, span.customizer());
+      responseParser.parse(response, span.context(), span.customizer());
     } finally {
-      // See instrumentation/RATIONALE.md for why we call finish in scope
+      long finishTimestamp = response.finishTimestamp();
       if (finishTimestamp == 0L) {
         span.finish();
       } else {
         span.finish(finishTimestamp);
       }
-      ws.close();
     }
   }
 }

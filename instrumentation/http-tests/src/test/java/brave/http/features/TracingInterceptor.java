@@ -91,16 +91,23 @@ final class TracingInterceptor implements Interceptor {
   }
 
   static final class ResponseWrapper extends HttpClientResponse {
-    final Response delegate;
+    final RequestWrapper request;
+    final Response response;
     @Nullable final Throwable error;
 
-    ResponseWrapper(Response delegate, @Nullable Throwable error) {
-      this.delegate = delegate;
+    ResponseWrapper(Response response, @Nullable Throwable error) {
+      // intentionally not the same instance as chain.proceed, as properties may have changed
+      this.request = new RequestWrapper(response.request());
+      this.response = response;
       this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public RequestWrapper request() {
+      return request;
     }
 
     @Override public Throwable error() {
@@ -108,7 +115,7 @@ final class TracingInterceptor implements Interceptor {
     }
 
     @Override public int statusCode() {
-      return delegate.code();
+      return response.code();
     }
   }
 }

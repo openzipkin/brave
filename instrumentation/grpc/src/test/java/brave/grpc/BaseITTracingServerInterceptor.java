@@ -49,8 +49,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -71,8 +69,6 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class BaseITTracingServerInterceptor {
-  Logger testLogger = LogManager.getLogger();
-
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
   Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
@@ -221,7 +217,6 @@ public abstract class BaseITTracingServerInterceptor {
       @Override
       public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
         Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        testLogger.info("in span!");
         fromUserInterceptor.set(tracing.currentTraceContext().get());
         return next.startCall(call, headers);
       }
