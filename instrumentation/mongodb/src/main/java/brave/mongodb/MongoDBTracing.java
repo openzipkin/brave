@@ -123,6 +123,6 @@ public final class MongoDBTracing {
   MongoDBTracing(Builder builder) {
     tracing = builder.tracing;
     maxAbbreviatedCommandLength = builder.maxAbbreviatedCommandLength;
-    commandsWithCollectionName = Collections.unmodifiableSet(builder.commandsWithCollectionName);
+    commandsWithCollectionName = Collections.unmodifiableSet(new HashSet<>(builder.commandsWithCollectionName));
   }
 }

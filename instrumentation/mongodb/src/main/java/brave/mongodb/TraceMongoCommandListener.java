@@ -171,6 +171,7 @@ final class TraceMongoCommandListener implements CommandListener {
   }
 
   static String getSpanName(String commandName, @Nullable String collectionName) {
-    return commandName + (collectionName == null ? "" : (" " + collectionName));
+    if (collectionName == null) return commandName;
+    return commandName + " " + collectionName;
   }
 }

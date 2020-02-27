@@ -64,6 +64,14 @@ public class MongoDBTracingTest {
       .containsExactlyInAnyOrder("testCommand", "command2", "command3");
   }
 
+  @Test public void newBuilder_doesNotMutateAlreadyBuiltObject() {
+    MongoDBTracing.Builder builder = MongoDBTracing.newBuilder(tracing);
+    MongoDBTracing mongoDBTracing = builder.build();
+    builder.addCommandWithCollectionName("testCommand");
+    assertThat(mongoDBTracing).extracting("commandsWithCollectionName", InstanceOfAssertFactories.ITERABLE)
+      .doesNotContain("testCommand");
+  }
+
   @Test public void toBuilder_setsValuesCorrectly() {
     int maxAbbreviatedCommandLength = 55;
     MongoDBTracing.Builder builder = MongoDBTracing.newBuilder(tracing)
