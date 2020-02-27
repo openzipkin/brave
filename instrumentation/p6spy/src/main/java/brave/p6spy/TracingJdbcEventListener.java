@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
-  private final static Pattern URL_SERVICE_NAME_FINDER =
+  private static final Pattern URL_SERVICE_NAME_FINDER =
     Pattern.compile("zipkinServiceName=(\\w*)");
 
   @Nullable final String remoteServiceName;
