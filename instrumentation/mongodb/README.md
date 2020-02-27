@@ -23,8 +23,7 @@ collection/view name, the command's name (`insert`, `update`, `find`, etc.).
 An application registers command listeners with a `MongoClient` by configuring `MongoClientSettings` as follows:
 
 ```java
-CommandListener listener = MongoDBTracing.newBuilder(Tracing.current())
-        .build()
+CommandListener listener = MongoDBTracing.create(Tracing.current())
         .commandListener();
 MongoClientSettings settings = MongoClientSettings.builder()
         .addCommandListener(listener)
