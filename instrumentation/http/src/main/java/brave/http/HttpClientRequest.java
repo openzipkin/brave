@@ -44,7 +44,7 @@ public abstract class HttpClientRequest extends HttpRequest {
    *
    * <p>This is only used when {@link TraceContext.Injector#inject(TraceContext, Object) injecting}
    * a trace context as internally implemented by {link HttpClientHandler}. Calls during sampling or
-   * parsing are invalid and may be ignored.
+   * parsing are invalid and may be ignored by instrumentation.
    *
    * @see #SETTER
    * @since 5.7
