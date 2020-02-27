@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.brave.okhttp3_v3;
+package brave.okhttp3_v3;
 
 public class ITTracingCallFactory extends brave.okhttp3.ITTracingCallFactory {
 }

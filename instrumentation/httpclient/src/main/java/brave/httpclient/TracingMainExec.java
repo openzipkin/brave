@@ -58,13 +58,15 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     throws IOException, HttpException {
     Span span = (Span) context.removeAttribute(Span.class.getName());
 
-    if (span != null) handler.handleSend(new HttpRequestWrapper(request), span);
+    if (span != null) {
+      handler.handleSend(new HttpRequestWrapper(request, route.getTargetHost()), span);
+    }
 
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
     if (span != null) {
       if (isRemote(context, span)) {
         if (serverName != null) span.remoteServiceName(serverName);
-        parseTargetAddress(request, span);
+        parseTargetAddress(route.getTargetHost(), span);
       } else {
         span.kind(null); // clear as cache hit
       }
@@ -76,10 +78,7 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     return true;
   }
 
-  static void parseTargetAddress(org.apache.http.client.methods.HttpRequestWrapper httpRequest,
-    Span span) {
-    if (span.isNoop()) return;
-    HttpHost target = httpRequest.getTarget();
+  static void parseTargetAddress(HttpHost target, Span span) {
     if (target == null) return;
     InetAddress address = target.getAddress();
     if (address != null) {

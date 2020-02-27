@@ -56,7 +56,7 @@ final class TracingProtocolExec implements ClientExecChain {
     org.apache.http.client.methods.HttpRequestWrapper req,
     HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    HttpRequestWrapper request = new HttpRequestWrapper(req);
+    HttpRequestWrapper request = new HttpRequestWrapper(req, context.getTargetHost());
     Span span = tracer.nextSpan(httpSampler, request);
     context.setAttribute(Span.class.getName(), span);
 
@@ -75,46 +75,47 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   static final class HttpRequestWrapper extends HttpClientRequest {
-    final HttpRequest delegate;
+    final HttpRequest request;
+    @Nullable final HttpHost target;
 
-    HttpRequestWrapper(HttpRequest delegate) {
-      this.delegate = delegate;
+    HttpRequestWrapper(HttpRequest request, @Nullable HttpHost target) {
+      this.request = request;
+      this.target = target;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return request;
     }
 
     @Override public String method() {
-      return delegate.getRequestLine().getMethod();
+      return request.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
-        return ((org.apache.http.client.methods.HttpRequestWrapper) delegate).getURI().getPath();
+      if (request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        return ((org.apache.http.client.methods.HttpRequestWrapper) request).getURI().getPath();
       }
-      String result = delegate.getRequestLine().getUri();
+      String result = request.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
       return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (delegate instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+      if (target != null && request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
         org.apache.http.client.methods.HttpRequestWrapper
-          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) delegate;
-        HttpHost target = wrapper.getTarget();
-        if (target != null) return target.toURI() + wrapper.getURI();
+          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) request;
+        return target.toURI() + wrapper.getURI();
       }
-      return delegate.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = delegate.getFirstHeader(name);
+      Header result = request.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      delegate.setHeader(name, value);
+      request.setHeader(name, value);
     }
   }
 
@@ -126,7 +127,8 @@ final class TracingProtocolExec implements ClientExecChain {
     HttpResponseWrapper(HttpResponse response, HttpClientContext context,
       @Nullable Throwable error) {
       HttpRequest request = context.getRequest();
-      this.request = request != null ? new HttpRequestWrapper(request) : null;
+      HttpHost target = context.getTargetHost();
+      this.request = request != null ? new HttpRequestWrapper(request, target) : null;
       this.response = response;
       this.error = error;
     }
