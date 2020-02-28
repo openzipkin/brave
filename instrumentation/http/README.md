@@ -10,7 +10,7 @@ instructions on what to put into http spans, and sampling policy.
 ## Span data policy
 By default, the following are added to both http client and server spans:
 * Span.name is the http method in lowercase: ex "get" or a route described below
-* Tags/binary annotations:
+* Tags:
   * "http.method", eg "GET"
   * "http.path", which does not include query parameters.
   * "http.status_code" when the status is not success.
