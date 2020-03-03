@@ -32,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+// TODO: Add support for Reactive tracing. See the notes in RATIONALE.md.
 @Ignore("makesChildOfCurrentSpan() fails because support for reactive MongoDB tracing is unimplemented")
 public class ITMongoDBTracingReactive extends ITMongoDBTracingBase {
   MongoClient mongoClient;

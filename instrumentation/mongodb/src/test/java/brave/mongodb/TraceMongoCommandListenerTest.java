@@ -243,10 +243,10 @@ public class TraceMongoCommandListenerTest {
     when(span.name("insert myCollection")).thenReturn(span);
     when(span.kind(Span.Kind.CLIENT)).thenReturn(span);
     when(span.remoteServiceName("mongodb-dbName")).thenReturn(span);
-    when(span.tag("mongodb.command.name", "insert")).thenReturn(span);
+    when(span.tag("mongodb.command_name", "insert")).thenReturn(span);
     when(span.tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}")).thenReturn(span);
     when(span.tag("mongodb.collection", "myCollection")).thenReturn(span);
-    when(span.tag(eq("mongodb.cluster.id"), anyString())).thenReturn(span);
+    when(span.tag(eq("mongodb.cluster_id"), anyString())).thenReturn(span);
     when(span.remoteIpAndPort("127.0.0.1", 27017)).thenReturn(true);
     when(span.start()).thenReturn(span);
   }
@@ -257,10 +257,10 @@ public class TraceMongoCommandListenerTest {
     verify(span).name("insert myCollection");
     verify(span).kind(Span.Kind.CLIENT);
     verify(span).remoteServiceName("mongodb-dbName");
-    verify(span).tag("mongodb.command.name", "insert");
+    verify(span).tag("mongodb.command_name", "insert");
     verify(span).tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
     verify(span).tag("mongodb.collection", "myCollection");
-    verify(span).tag(eq("mongodb.cluster.id"), anyString());
+    verify(span).tag(eq("mongodb.cluster_id"), anyString());
     verify(span).remoteIpAndPort("127.0.0.1", 27017);
     verify(span).start();
   }

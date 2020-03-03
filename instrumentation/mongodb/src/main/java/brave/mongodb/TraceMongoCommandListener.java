@@ -35,27 +35,8 @@ import java.util.Set;
  * A MongoDB command listener that will report via Brave how long each command takes and other information about the
  * commands.
  *
- * Implementation notes regarding the <b>synchronous</b> MongoDB clients ({@link com.mongodb.MongoClient} and
- * {@link com.mongodb.client.MongoClient}):
- * <p>It is sufficient to use {@link ThreadLocalSpan} because every command starts and ends on the same thread.</p>
- * <p>Most commands are executed in the thread where the {@code MongoClient} methods are called from, so (assuming that
- * the tracing context is correctly propagated to that thread) all spans should have the correct parent.</p>
- * <p>There are two exceptions to the above rule. Some maintenance operations are done on background threads:
- * <a href="https://github.com/mongodb/mongo-java-driver/blob/67c9f738ae44bc15befb822644e7266634c7dcf5/driver-legacy/src/main/com/mongodb/MongoClient.java#L802">cursor cleaning</a>
- * and
- * <a href="https://github.com/mongodb/mongo-java-driver/blob/67c9f738ae44bc15befb822644e7266634c7dcf5/driver-core/src/main/com/mongodb/internal/connection/DefaultConnectionPool.java#L95">connection pool maintenance</a>.
- * The spans resulting from these maintenance operations will not have a parent span.</p>
- *
- * Implementation notes regarding the <b>asynchronous</b> MongoDB clients ({@code com.mongodb.async.MongoClient} and
- * {@code com.mongodb.reactivestreams.client.MongoClient}:
- * <p>Support for asynchronous clients is <b>unimplemented</b>.</p>
- * <p>The asynchronous clients use threads for the async completion handlers (meaning that
- * {@link #commandStarted(CommandStartedEvent)}} and {@link #commandSucceeded(CommandSucceededEvent)}/
- * {@link #commandFailed(CommandFailedEvent)}} may get called from background threads and also not necessarily from the
- * same thread).</p>
- * <p>It should be possible to set a custom {@link com.mongodb.connection.StreamFactoryFactory} on the {@link
- * com.mongodb.MongoClientSettings.Builder} which can propagate the tracing context correctly between those handlers,
- * but this is <b>unimplemented</b> and it is unknown if this would be sufficient.</p>
+ * See <a href="https://github.com/openzipkin/brave/blob/master/instrumentation/mongodb/RATIONALE.md">RATIONALE.md</a>
+ * for implementation notes.
  */
 final class TraceMongoCommandListener implements CommandListener {
   final Set<String> commandsWithCollectionName;
@@ -92,7 +73,7 @@ final class TraceMongoCommandListener implements CommandListener {
     span.name(getSpanName(commandName, collectionName))
       .kind(Span.Kind.CLIENT)
       .remoteServiceName("mongodb-" + databaseName)
-      .tag("mongodb.command.name", commandName);
+      .tag("mongodb.command_name", commandName);
 
     String abbreviatedCommand = getAbbreviatedCommand(command);
     if (abbreviatedCommand != null) {
@@ -107,7 +88,7 @@ final class TraceMongoCommandListener implements CommandListener {
     if (connectionDescription != null) {
       ConnectionId connectionId = connectionDescription.getConnectionId();
       if (connectionId != null) {
-        span.tag("mongodb.cluster.id", connectionId.getServerId().getClusterId().getValue());
+        span.tag("mongodb.cluster_id", connectionId.getServerId().getClusterId().getValue());
       }
 
       try {

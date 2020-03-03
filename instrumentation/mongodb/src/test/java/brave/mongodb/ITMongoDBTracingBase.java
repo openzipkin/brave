@@ -14,6 +14,7 @@
 package brave.mongodb;
 
 import brave.Tracing;
+import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import com.mongodb.MongoClientSettings;
@@ -59,7 +60,9 @@ public class ITMongoDBTracingBase {
   Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
       .spanReporter(spans::add)
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+        .addScopeDecorator(StrictScopeDecorator.create())
+        .build())
       .sampler(sampler);
   }
 
