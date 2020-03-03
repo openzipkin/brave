@@ -29,6 +29,9 @@ import java.util.Set;
  * <p>To use it, call <code>.addCommandListener(MongoDBTracing.create(tracing).commandListener())</code>
  * on the {@link com.mongodb.MongoClientOptions} or {@link com.mongodb.MongoClientSettings} object that is used to
  * create the {@code MongoClient} to be instrumented.
+ *
+ * As of now, this instrumentation can only be used with the synchronous MongoDB driver. Do not use it with the
+ * asynchronous or reactive drivers as tracing data will be incorrect.
  */
 public final class MongoDBTracing {
   public static MongoDBTracing create(final Tracing tracing) {
@@ -54,7 +57,6 @@ public final class MongoDBTracing {
       "mapReduce", "geoSearch", "delete", "find", "findAndModify", "insert", "update", "collMod", "compact",
       "convertToCapped", "create", "createIndexes", "drop", "dropIndexes", "killCursors", "listIndexes", "reIndex");
     final Set<String> commandsWithCollectionName = new HashSet<>();
-    int maxAbbreviatedCommandLength = 1000;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
@@ -64,21 +66,7 @@ public final class MongoDBTracing {
 
     Builder(MongoDBTracing mongoDBTracing) {
       tracing = mongoDBTracing.tracing;
-      maxAbbreviatedCommandLength = mongoDBTracing.maxAbbreviatedCommandLength;
       commandsWithCollectionName.addAll(mongoDBTracing.commandsWithCollectionName);
-    }
-
-    /**
-     * Sets how many characters of the MongoDB command to report in the "mongodb.command" tag. Defaults to 1000.
-     *
-     * If zero, command reporting will be disabled. The command name will still be reported as "mongodb.command.name".
-     *
-     * Set it to a large number (ex. {@link Integer#MAX_VALUE}) to disable truncation.
-     */
-    public Builder maxAbbreviatedCommandLength(int maxAbbreviatedCommandLength) {
-      if (maxAbbreviatedCommandLength < 0) throw new IllegalArgumentException("maxAbbreviatedCommandLength < 0");
-      this.maxAbbreviatedCommandLength = maxAbbreviatedCommandLength;
-      return this;
     }
 
     /**
@@ -121,12 +109,10 @@ public final class MongoDBTracing {
   }
 
   final Tracing tracing;
-  final int maxAbbreviatedCommandLength;
   final Set<String> commandsWithCollectionName;
 
   MongoDBTracing(Builder builder) {
     tracing = builder.tracing;
-    maxAbbreviatedCommandLength = builder.maxAbbreviatedCommandLength;
     commandsWithCollectionName = Collections.unmodifiableSet(new HashSet<>(builder.commandsWithCollectionName));
   }
 }

@@ -14,7 +14,6 @@
 package brave.mongodb;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
@@ -60,14 +59,12 @@ public class TraceMongoCommandListenerTest {
   static Throwable EXCEPTION = new RuntimeException("Error occurred");
 
   @Mock Tracing tracing;
-  @Mock Tracer tracer;
   @Mock ThreadLocalSpan threadLocalSpan;
   @Mock Span span;
 
   TraceMongoCommandListener listener;
 
   @Before public void setUp() {
-    when(tracing.tracer()).thenReturn(tracer);
     listener = new TraceMongoCommandListener(MongoDBTracing.create(tracing), threadLocalSpan);
   }
 
@@ -125,26 +122,6 @@ public class TraceMongoCommandListenerTest {
 
   @Test public void getNonEmptyBsonString_normal() {
     assertThat(getNonEmptyBsonString(new BsonString(" foo  "))).isEqualTo("foo");
-  }
-
-  @Test public void getAbbreviatedCommand_zeroMaxLength() {
-    doGetAbbreviatedCommandTest(0, null);
-  }
-
-  @Test public void getAbbreviatedCommand_shortMaxLength() {
-    doGetAbbreviatedCommandTest(5, "{\"ins");
-  }
-
-  @Test public void getAbbreviatedCommand_longMaxLength() {
-    doGetAbbreviatedCommandTest(1000,
-      "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
-  }
-
-  void doGetAbbreviatedCommandTest(int maxAbbreviatedCommandLength, @Nullable String expectedValue) {
-    TraceMongoCommandListener listener = new TraceMongoCommandListener(MongoDBTracing.newBuilder(tracing)
-      .maxAbbreviatedCommandLength(maxAbbreviatedCommandLength)
-      .build());
-    assertThat(listener.getAbbreviatedCommand(LONG_COMMAND)).isEqualTo(expectedValue);
   }
 
   @Test public void getSpanName_emptyCollectionName() {
@@ -244,7 +221,6 @@ public class TraceMongoCommandListenerTest {
     when(span.kind(Span.Kind.CLIENT)).thenReturn(span);
     when(span.remoteServiceName("mongodb-dbName")).thenReturn(span);
     when(span.tag("mongodb.command_name", "insert")).thenReturn(span);
-    when(span.tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}")).thenReturn(span);
     when(span.tag("mongodb.collection", "myCollection")).thenReturn(span);
     when(span.tag(eq("mongodb.cluster_id"), anyString())).thenReturn(span);
     when(span.remoteIpAndPort("127.0.0.1", 27017)).thenReturn(true);
@@ -258,7 +234,6 @@ public class TraceMongoCommandListenerTest {
     verify(span).kind(Span.Kind.CLIENT);
     verify(span).remoteServiceName("mongodb-dbName");
     verify(span).tag("mongodb.command_name", "insert");
-    verify(span).tag("mongodb.command", "{\"insert\": \"myCollection\", \"bar\": {\"test\": \"asdfghjkl\"}}");
     verify(span).tag("mongodb.collection", "myCollection");
     verify(span).tag(eq("mongodb.cluster_id"), anyString());
     verify(span).remoteIpAndPort("127.0.0.1", 27017);

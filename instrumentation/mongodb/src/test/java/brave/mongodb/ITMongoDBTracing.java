@@ -41,7 +41,6 @@ public class ITMongoDBTracing extends ITMongoDBTracingBase {
 
   @Before public void init() {
     CommandListener listener = MongoDBTracing.newBuilder(tracing)
-      .maxAbbreviatedCommandLength(8)
       .build()
       .commandListener();
     MongoClientSettings settings = mongoClientSettingsBuilder()
@@ -127,8 +126,7 @@ public class ITMongoDBTracing extends ITMongoDBTracingBase {
       .flatExtracting(s -> s.tags().entrySet())
       .contains(
         entry("mongodb.collection", COLLECTION_NAME),
-        entry("mongodb.command_name", "find"),
-        entry("mongodb.command", "{\"find\":")
+        entry("mongodb.command_name", "find")
       )
       .anyMatch(entry -> "mongodb.cluster_id".equals(entry.getKey()) && !entry.getValue().isEmpty());
   }
@@ -145,8 +143,7 @@ public class ITMongoDBTracing extends ITMongoDBTracingBase {
       .flatExtracting(s -> s.tags().entrySet())
       .contains(
         entry("mongodb.collection", "largeCollection"),
-        entry("mongodb.command_name", "insert"),
-        entry("mongodb.command", "{\"insert")
+        entry("mongodb.command_name", "insert")
       )
       .anyMatch(entry -> "mongodb.cluster_id".equals(entry.getKey()) && !entry.getValue().isEmpty());
   }

@@ -16,8 +16,6 @@ reactive drivers as tracing data will be incorrect.
 - `error`: `Throwable` in case of failed command
 - Tags:
   - `mongodb.command.name`: the name of the MongoDB command. Examples: `find`, `listCollections`, etc.
-  - `mongodb.command`: a possibly truncated, JSON version of the full command. Example:
-    `{"find": "myCollection", "filter": { "myField": { "$gte": 5 } } }`"
   - `mongodb.collection`: the name of the MongoDB collection/view that the command operates on, if available
   - `mongodb.cluster.id`: a client-generated identifier that uniquely identifies a connection to a MongoDB cluster
 

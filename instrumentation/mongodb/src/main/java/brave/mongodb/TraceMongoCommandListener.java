@@ -26,7 +26,6 @@ import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.event.CommandSucceededEvent;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
-import org.bson.json.JsonWriterSettings;
 
 import java.net.InetSocketAddress;
 import java.util.Set;
@@ -40,9 +39,7 @@ import java.util.Set;
  */
 final class TraceMongoCommandListener implements CommandListener {
   final Set<String> commandsWithCollectionName;
-  final int maxAbbreviatedCommandLength;
   final ThreadLocalSpan threadLocalSpan;
-  final JsonWriterSettings jsonWriterSettings;
 
   TraceMongoCommandListener(MongoDBTracing mongoDBTracing) {
     this(mongoDBTracing, ThreadLocalSpan.create(mongoDBTracing.tracing.tracer()));
@@ -50,11 +47,7 @@ final class TraceMongoCommandListener implements CommandListener {
 
   TraceMongoCommandListener(MongoDBTracing mongoDBTracing, ThreadLocalSpan threadLocalSpan) {
     commandsWithCollectionName = mongoDBTracing.commandsWithCollectionName;
-    maxAbbreviatedCommandLength = mongoDBTracing.maxAbbreviatedCommandLength;
     this.threadLocalSpan = threadLocalSpan;
-    jsonWriterSettings = JsonWriterSettings.builder()
-      .maxLength(maxAbbreviatedCommandLength)
-      .build();
   }
 
   /**
@@ -74,11 +67,6 @@ final class TraceMongoCommandListener implements CommandListener {
       .kind(Span.Kind.CLIENT)
       .remoteServiceName("mongodb-" + databaseName)
       .tag("mongodb.command_name", commandName);
-
-    String abbreviatedCommand = getAbbreviatedCommand(command);
-    if (abbreviatedCommand != null) {
-      span.tag("mongodb.command", abbreviatedCommand);
-    }
 
     if (collectionName != null) {
       span.tag("mongodb.collection", collectionName);
@@ -134,21 +122,6 @@ final class TraceMongoCommandListener implements CommandListener {
     if (bsonValue == null || !bsonValue.isString()) return null;
     String stringValue = bsonValue.asString().getValue().trim();
     return stringValue.isEmpty() ? null : stringValue;
-  }
-
-  /**
-   * Returns an abbreviated version of the command for logging/tracing purposes. Currently this is simply a
-   * truncated version of the command's JSON string representation.
-   *
-   * Note that sensitive data related to the MongoDB protocol itself is already scrubbed at this point according to
-   * https://github.com/mongodb/specifications/blob/master/source/command-monitoring/command-monitoring.rst#security
-   *
-   * @return an abbreviated version of the command for logging/tracing purposes
-   */
-  @Nullable String getAbbreviatedCommand(BsonDocument command) {
-    if (maxAbbreviatedCommandLength <= 0) return null;
-    String abbreviatedCommand = command.toJson(jsonWriterSettings);
-    return abbreviatedCommand.isEmpty() ? null : abbreviatedCommand;
   }
 
   static String getSpanName(String commandName, @Nullable String collectionName) {
