@@ -15,9 +15,9 @@ reactive drivers as tracing data will be incorrect.
 - `remoteIpAndPort`: the IP address and port number of the MongoDB server that the command was issued to
 - `error`: `Throwable` in case of failed command
 - Tags:
-  - `mongodb.command.name`: the name of the MongoDB command. Examples: `find`, `listCollections`, etc.
+  - `mongodb.command_name`: the name of the MongoDB command. Examples: `find`, `listCollections`, etc.
   - `mongodb.collection`: the name of the MongoDB collection/view that the command operates on, if available
-  - `mongodb.cluster.id`: a client-generated identifier that uniquely identifies a connection to a MongoDB cluster
+  - `mongodb.cluster_id`: a client-generated identifier that uniquely identifies a connection to a MongoDB cluster
 
 ## Usage
 
