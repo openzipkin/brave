@@ -66,7 +66,7 @@ final class TraceMongoCommandListener implements CommandListener {
     span.name(getSpanName(commandName, collectionName))
       .kind(Span.Kind.CLIENT)
       .remoteServiceName("mongodb-" + databaseName)
-      .tag("mongodb.command_name", commandName);
+      .tag("mongodb.command", commandName);
 
     if (collectionName != null) {
       span.tag("mongodb.collection", collectionName);

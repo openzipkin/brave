@@ -29,3 +29,9 @@ thread).
 It should be possible to set a custom `com.mongodb.connection.StreamFactoryFactory` on the
 `com.mongodb.MongoClientSettings.Builder` which can propagate the tracing context correctly between those handlers,
 but this is **unimplemented** and it is unknown if this would be sufficient.
+
+# Tag naming convention
+
+An attempt was made to name the tags (such as `mongodb.cluster_id` and `mongodb.command`) similarly as in
+[MongoMetricsCommandListener](https://github.com/micrometer-metrics/micrometer/blob/master/micrometer-core/src/main/java/io/micrometer/core/instrument/binder/mongodb/MongoMetricsCommandListener.java),
+however, underscores were used instead of dots to avoid nested dots.

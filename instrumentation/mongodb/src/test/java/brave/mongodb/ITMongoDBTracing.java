@@ -126,7 +126,7 @@ public class ITMongoDBTracing extends ITMongoDBTracingBase {
       .flatExtracting(s -> s.tags().entrySet())
       .contains(
         entry("mongodb.collection", COLLECTION_NAME),
-        entry("mongodb.command_name", "find")
+        entry("mongodb.command", "find")
       )
       .anyMatch(entry -> "mongodb.cluster_id".equals(entry.getKey()) && !entry.getValue().isEmpty());
   }
@@ -143,7 +143,7 @@ public class ITMongoDBTracing extends ITMongoDBTracingBase {
       .flatExtracting(s -> s.tags().entrySet())
       .contains(
         entry("mongodb.collection", "largeCollection"),
-        entry("mongodb.command_name", "insert")
+        entry("mongodb.command", "insert")
       )
       .anyMatch(entry -> "mongodb.cluster_id".equals(entry.getKey()) && !entry.getValue().isEmpty());
   }
