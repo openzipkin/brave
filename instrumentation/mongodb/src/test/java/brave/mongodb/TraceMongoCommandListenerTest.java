@@ -14,7 +14,6 @@
 package brave.mongodb;
 
 import brave.Span;
-import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
 import com.mongodb.MongoException;
@@ -58,14 +57,13 @@ public class TraceMongoCommandListenerTest {
 
   static Throwable EXCEPTION = new RuntimeException("Error occurred");
 
-  @Mock Tracing tracing;
   @Mock ThreadLocalSpan threadLocalSpan;
   @Mock Span span;
 
   TraceMongoCommandListener listener;
 
   @Before public void setUp() {
-    listener = new TraceMongoCommandListener(MongoDBTracing.create(tracing), threadLocalSpan);
+    listener = new TraceMongoCommandListener(threadLocalSpan);
   }
 
   @Test public void getCollectionName_missingCommand() {

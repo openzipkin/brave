@@ -28,6 +28,8 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
 import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -38,15 +40,18 @@ import java.util.Set;
  * for implementation notes.
  */
 final class TraceMongoCommandListener implements CommandListener {
-  final Set<String> commandsWithCollectionName;
+  // See https://docs.mongodb.com/manual/reference/command for the command reference
+  static final Set<String> COMMANDS_WITH_COLLECTION_NAME = new HashSet<>(Arrays.asList("aggregate", "count", "distinct",
+    "mapReduce", "geoSearch", "delete", "find", "findAndModify", "insert", "update", "collMod", "compact",
+    "convertToCapped", "create", "createIndexes", "drop", "dropIndexes", "killCursors", "listIndexes", "reIndex"));
+
   final ThreadLocalSpan threadLocalSpan;
 
   TraceMongoCommandListener(MongoDBTracing mongoDBTracing) {
-    this(mongoDBTracing, ThreadLocalSpan.create(mongoDBTracing.tracing.tracer()));
+    this(ThreadLocalSpan.create(mongoDBTracing.tracing.tracer()));
   }
 
-  TraceMongoCommandListener(MongoDBTracing mongoDBTracing, ThreadLocalSpan threadLocalSpan) {
-    commandsWithCollectionName = mongoDBTracing.commandsWithCollectionName;
+  TraceMongoCommandListener(ThreadLocalSpan threadLocalSpan) {
     this.threadLocalSpan = threadLocalSpan;
   }
 
@@ -105,7 +110,7 @@ final class TraceMongoCommandListener implements CommandListener {
   }
 
   @Nullable String getCollectionName(BsonDocument command, String commandName) {
-    if (commandsWithCollectionName.contains(commandName)) {
+    if (COMMANDS_WITH_COLLECTION_NAME.contains(commandName)) {
       String collectionName = getNonEmptyBsonString(command.get(commandName));
       if (collectionName != null) {
         return collectionName;
