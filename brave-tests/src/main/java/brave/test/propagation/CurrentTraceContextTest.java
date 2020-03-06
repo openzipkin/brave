@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,8 +14,10 @@
 package brave.test.propagation;
 
 import brave.internal.Nullable;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import brave.test.util.ClassLoaders;
 import java.util.concurrent.Callable;
@@ -34,10 +36,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
+  ExtraFieldPropagation.Factory extraFieldFactory =
+    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_FIELD);
+  protected static final String EXTRA_FIELD = "user-name";
 
   protected final CurrentTraceContext currentTraceContext;
-  protected final TraceContext context =
-    TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
+  protected final TraceContext context = extraFieldFactory.decorate(
+    TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build()
+  );
   protected final TraceContext notYetSampledContext =
     TraceContext.newBuilder().traceId(2L).spanId(1L).build();
   protected final TraceContext unsampledContext =
@@ -72,6 +78,20 @@ public abstract class CurrentTraceContextTest {
       verifyImplicitContext(context);
     } finally {
       scope.close();
+    }
+  }
+
+  @Test public void newScope_noticesDifferentExtraField() {
+    try (Scope scope = currentTraceContext.newScope(context)) {
+      TraceContext differentExtraField = context.toBuilder().build();
+      ExtraFieldPropagation.set(differentExtraField, EXTRA_FIELD, "foo");
+
+      try (Scope scope2 = currentTraceContext.newScope(differentExtraField)) {
+        assertThat(scope2).isNotEqualTo(Scope.NOOP);
+        assertThat(currentTraceContext.get())
+          .isEqualTo(differentExtraField);
+        verifyImplicitContext(differentExtraField);
+      }
     }
   }
 

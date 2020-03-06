@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.context.log4j2;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
@@ -32,7 +33,9 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
   static class CurrentSupplier implements Supplier<CurrentTraceContext> {
     @Override public CurrentTraceContext get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(ThreadContextScopeDecorator.create())
+        .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+          .addExtraField(EXTRA_FIELD)
+          .build())
         .build();
     }
   }
@@ -47,6 +50,8 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
         .isEqualTo(context.spanIdString());
       assertThat(ThreadContext.get("sampled"))
         .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
+      assertThat(ThreadContext.get(EXTRA_FIELD))
+        .isEqualTo(ExtraFieldPropagation.get(context, EXTRA_FIELD));
     } else {
       assertThat(ThreadContext.get("traceId"))
         .isNull();
@@ -55,6 +60,8 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
       assertThat(ThreadContext.get("spanId"))
         .isNull();
       assertThat(ThreadContext.get("sampled"))
+        .isNull();
+      assertThat(ThreadContext.get(EXTRA_FIELD))
         .isNull();
     }
   }

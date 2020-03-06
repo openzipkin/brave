@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -35,8 +35,27 @@ import org.apache.log4j.MDC;
  * }</pre>
  */
 public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
+  /** @since 5.11 */
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
   public static ScopeDecorator create() {
-    return new MDCScopeDecorator();
+    return new MDCScopeDecorator(new Builder());
+  }
+
+  /** @since 5.11 */
+  public static final class Builder extends CorrelationFieldScopeDecorator.Builder<Builder> {
+    @Override public ScopeDecorator build() {
+      return new MDCScopeDecorator(this);
+    }
+
+    Builder() {
+    }
+  }
+
+  MDCScopeDecorator(Builder builder) {
+    super(builder);
   }
 
   @Override protected String get(String key) {
@@ -50,8 +69,5 @@ public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
 
   @Override protected void remove(String key) {
     MDC.remove(key);
-  }
-
-  MDCScopeDecorator() {
   }
 }
