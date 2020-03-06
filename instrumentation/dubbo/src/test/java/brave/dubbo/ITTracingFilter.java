@@ -37,7 +37,7 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITTracingFilter {
-  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(5)); // max per method
+  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(10)); // max per method
 
   /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
