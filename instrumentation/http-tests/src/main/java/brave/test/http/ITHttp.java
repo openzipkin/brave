@@ -99,7 +99,7 @@ public abstract class ITHttp {
    * This way, there's visibility on which method hung without asking the end users to edit build
    * config.
    */
-  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(5)); // max per method
+  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(10)); // max per method
   @Rule public TestName testName = new TestName();
 
   public static final String EXTRA_KEY = "user-id";
