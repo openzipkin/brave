@@ -98,6 +98,10 @@ void process(Message message) {
 }
 ```
 
+## Compatibility issues
+
+* There are known issues with ActiveMQ Client versions <= `5.15.11` when using `BytesMessage`: <https://github.com/openzipkin/brave/issues/967>. ActiveMQ has [fixed this issue](https://issues.apache.org/jira/browse/AMQ-7291) and following versions should work when using `BytesMessage`.
+
 ## Troubleshooting
 If you have problems with a JMS provider, such as broken traces, please capture the "FINE" output of
 the Java logger: `brave.jms.JmsTracing` and ask on [gitter](https://gitter.im/openzipkin/zipkin).
